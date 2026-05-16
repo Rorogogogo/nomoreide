@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.nomoreide/
+nomoreide.config.json
+.devport/
+devport.config.json
