@@ -4,3 +4,5 @@ dist/
 nomoreide.config.json
 .devport/
 devport.config.json
+.DS_Store
+*.tsbuildinfo
