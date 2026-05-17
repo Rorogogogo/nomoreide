@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { buildDiffRows, visibleDiffRows } from "../src/web/client/src/features/git/diff-viewer";
+import {
+  buildDiffRows,
+  diffStats,
+  visibleDiffRows,
+} from "../src/web/client/src/features/git/diff-viewer";
 
 describe("buildDiffRows", () => {
   test("tracks old and new line numbers across unified diff rows", () => {
@@ -96,5 +100,28 @@ describe("buildDiffRows", () => {
         newLine: null,
       },
     ]);
+  });
+
+  test("counts additions, deletions, and hunks", () => {
+    expect(
+      diffStats(
+        [
+          "diff --git a/a.txt b/a.txt",
+          "--- a/a.txt",
+          "+++ b/a.txt",
+          "@@ -1,2 +1,3 @@",
+          "-old",
+          "+new",
+          "+added",
+          " context",
+          "@@ -10 +11 @@",
+          "-removed",
+        ].join("\n"),
+      ),
+    ).toEqual({
+      additions: 2,
+      deletions: 2,
+      hunks: 2,
+    });
   });
 });

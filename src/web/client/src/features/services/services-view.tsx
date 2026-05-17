@@ -13,7 +13,19 @@ import {
   Save,
   Search,
   Square,
+  Terminal,
 } from "lucide-react";
+import {
+  siBun,
+  siDeno,
+  siDocker,
+  siGo,
+  siNodedotjs,
+  siPython,
+  siRust,
+  siVite,
+  type SimpleIcon,
+} from "simple-icons/icons";
 import {
   getServiceLogs,
   postForm,
@@ -30,6 +42,7 @@ import { Alert } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { processKindForCommand, type ProcessKind } from "./process-kind";
 
 export function ServicesView({
   data,
@@ -42,6 +55,7 @@ export function ServicesView({
   const [selectedLogService, setSelectedLogService] = useState(firstService);
   const [logs, setLogs] = useState<LogEntry[]>(data.logs);
   const [logQuery, setLogQuery] = useState("");
+  const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
   const [streamLogs, setStreamLogs] = useState(false);
   const logPaneRef = useRef<HTMLDivElement>(null);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
@@ -268,12 +282,65 @@ export function ServicesView({
       <div className="min-h-0 min-w-0 overflow-auto">
         <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
           <CardHeader className="border-b border-border px-3 py-2">
-            <CardTitle>Services</CardTitle>
-            <CardDescription className="text-xs">
-              Grouped services are nested; ungrouped services stay standalone.
-            </CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle>Services</CardTitle>
+                <CardDescription className="text-xs">
+                  Grouped services are nested; ungrouped services stay standalone.
+                </CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  aria-pressed={serviceComposer === "service"}
+                  className={cn(
+                    serviceComposer === "service" && "border-primary bg-primary text-primary-foreground",
+                  )}
+                  onClick={() =>
+                    setServiceComposer((current) => (current === "service" ? null : "service"))
+                  }
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Plus />
+                  Add Service
+                </Button>
+                <Button
+                  aria-pressed={serviceComposer === "group"}
+                  className={cn(
+                    serviceComposer === "group" && "border-primary bg-primary text-primary-foreground",
+                  )}
+                  onClick={() =>
+                    setServiceComposer((current) => (current === "group" ? null : "group"))
+                  }
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Box />
+                  Create Group
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
+            {serviceComposer ? (
+              <div className="border-b border-border bg-background/70 p-3">
+                {serviceComposer === "service" ? (
+                  <ServiceForm
+                    cwd={data.cwd}
+                    onRefresh={onRefresh}
+                    onSaved={() => setServiceComposer(null)}
+                  />
+                ) : (
+                  <GroupForm
+                    services={data.config.services}
+                    onRefresh={onRefresh}
+                    onSaved={() => setServiceComposer(null)}
+                  />
+                )}
+              </div>
+            ) : null}
             {hasVisibleServices ? (
               <div className="divide-y divide-border">
                 {data.config.bundles.map((group) => (
@@ -367,20 +434,6 @@ export function ServicesView({
 
       <div className="min-h-0 overflow-auto border-l border-border">
         <PortsOverview ports={data.ports} />
-        <CollapsiblePanel
-          description="Register a process command."
-          icon={<Plus className="size-4" />}
-          title="Add Service"
-        >
-          <ServiceForm onRefresh={onRefresh} cwd={data.cwd} />
-        </CollapsiblePanel>
-        <CollapsiblePanel
-          description="Choose services to run together."
-          icon={<Box className="size-4" />}
-          title="Create Group"
-        >
-          <GroupForm services={data.config.services} onRefresh={onRefresh} />
-        </CollapsiblePanel>
       </div>
     </div>
   );
@@ -402,22 +455,37 @@ function ServiceGroupSection({
   statuses: DashboardData["runtime"]["services"];
 }) {
   const [editing, setEditing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const active = services.some((service) => isServiceOn(statuses[service.name]?.state));
 
   return (
     <section>
       <div className="grid gap-2 bg-muted/35 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Box className="size-3.5 text-muted-foreground" />
-            <Badge appearance="subtle" className="shadow-none" size="small" variant="secondary">
-              group
-            </Badge>
-            <span className="text-sm font-medium">{group.name}</span>
-            <Badge variant="secondary">{group.services.length}</Badge>
-          </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">
-            {group.services.join(", ")}
-          </div>
+          <button
+            className="flex max-w-full items-start gap-2 text-left"
+            onClick={() => setCollapsed((current) => !current)}
+            type="button"
+          >
+            <ChevronDown
+              className={cn(
+                "mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform",
+                collapsed && "-rotate-90",
+              )}
+            />
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-2">
+                <Badge appearance="subtle" className="shadow-none" size="small" variant="secondary">
+                  group
+                </Badge>
+                <span className="text-sm font-medium">{group.name}</span>
+                <Badge variant="secondary">{group.services.length}</Badge>
+              </span>
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {group.services.join(", ")}
+              </span>
+            </span>
+          </button>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button
@@ -430,25 +498,14 @@ function ServiceGroupSection({
             <Pencil />
             Edit
           </Button>
-          <ActionButton
-            icon={<Play />}
-            label="Start"
+          <LifecycleActions
+            active={active}
+            baseUrl={`/api/bundles/${encodeURIComponent(group.name)}`}
+            restartAction={async () => {
+              await postForm(`/api/bundles/${encodeURIComponent(group.name)}/stop`, {});
+              await postForm(`/api/bundles/${encodeURIComponent(group.name)}/start`, {});
+            }}
             targetLabel={`group ${group.name}`}
-            url={`/api/bundles/${encodeURIComponent(group.name)}/start`}
-            onRefresh={onRefresh}
-          />
-          <ActionButton
-            icon={<Square />}
-            label="Stop"
-            targetLabel={`group ${group.name}`}
-            url={`/api/bundles/${encodeURIComponent(group.name)}/stop`}
-            onRefresh={onRefresh}
-          />
-          <ActionButton
-            icon={<RotateCcw />}
-            label="Restart"
-            targetLabel={`group ${group.name}`}
-            url={`/api/bundles/${encodeURIComponent(group.name)}/restart`}
             onRefresh={onRefresh}
           />
         </div>
@@ -466,23 +523,25 @@ function ServiceGroupSection({
           />
         </div>
       ) : null}
-      <div className="divide-y divide-border border-t border-border bg-background/45">
-        {services.length ? (
-          services.map((service) => (
-            <ServiceRow
-              key={service.name}
-              service={service}
-              status={statuses[service.name]}
-              ports={ports}
-              onRefresh={onRefresh}
-            />
-          ))
-        ) : (
-          <Alert variant="muted" className="m-4">
-            This group does not match any registered services.
-          </Alert>
-        )}
-      </div>
+      {collapsed ? null : (
+        <div className="divide-y divide-border border-t border-border bg-background/45">
+          {services.length ? (
+            services.map((service) => (
+              <ServiceRow
+                key={service.name}
+                service={service}
+                status={statuses[service.name]}
+                ports={ports}
+                onRefresh={onRefresh}
+              />
+            ))
+          ) : (
+            <Alert variant="muted" className="m-4">
+              This group does not match any registered services.
+            </Alert>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -534,7 +593,7 @@ function LogViewer({
         logs.map((entry, index) => (
           <div
             className={cn(
-              "grid min-w-max grid-cols-[168px_58px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5",
+              "grid min-w-max grid-cols-[168px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5",
               entry.stream === "stderr"
                 ? "bg-red-50/70 text-red-800"
                 : "bg-emerald-50/35 text-zinc-800",
@@ -542,15 +601,12 @@ function LogViewer({
             key={`${entry.timestamp}-${entry.stream}-${index}`}
           >
             <span className="text-muted-foreground">{entry.timestamp}</span>
-            <span
-              className={cn(
-                "font-semibold uppercase",
-                entry.stream === "stderr" ? "text-red-700" : "text-emerald-700",
-              )}
-            >
-              {entry.stream}
-            </span>
             <span className="whitespace-pre-wrap break-words">
+              {entry.stream === "stderr" ? (
+                <span className="mr-2 rounded bg-red-100 px-1 font-semibold uppercase text-red-700">
+                  stderr
+                </span>
+              ) : null}
               {highlightText(entry.text, query)}
             </span>
           </div>
@@ -685,6 +741,7 @@ function ServiceRow({
   onRefresh: () => Promise<void>;
 }) {
   const state = status?.state ?? "stopped";
+  const active = isServiceOn(state);
   const openUrl = status?.url ?? (service.port ? serviceUrl(service.port) : undefined);
   const configuredPort = service.port
     ? ports.find((port) => port.port === service.port)
@@ -697,7 +754,7 @@ function ServiceRow({
     <div className="grid gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Box className="size-3.5 text-muted-foreground" />
+          <ProcessBadge command={service.command} />
           <span className="text-sm font-medium">{service.name}</span>
           <StateBadge state={state} />
           {service.port ? <Badge variant="outline">:{service.port}</Badge> : null}
@@ -725,30 +782,19 @@ function ServiceRow({
             Open
           </Button>
         ) : null}
-        <ActionButton
-          icon={<Play />}
-          label="Start"
+        <LifecycleActions
+          active={active}
+          baseUrl={`/api/services/${encodeURIComponent(service.name)}`}
           targetLabel={service.name}
-          url={`/api/services/${encodeURIComponent(service.name)}/start`}
-          onRefresh={onRefresh}
-        />
-        <ActionButton
-          icon={<Square />}
-          label="Stop"
-          targetLabel={service.name}
-          url={`/api/services/${encodeURIComponent(service.name)}/stop`}
-          onRefresh={onRefresh}
-        />
-        <ActionButton
-          icon={<RotateCcw />}
-          label="Restart"
-          targetLabel={service.name}
-          url={`/api/services/${encodeURIComponent(service.name)}/restart`}
           onRefresh={onRefresh}
         />
       </div>
     </div>
   );
+}
+
+function isServiceOn(state: ServiceStatus["state"] | undefined): boolean {
+  return state === "running" || state === "starting";
 }
 
 function PortsOverview({ ports }: { ports: PortOverview[] }) {
@@ -921,13 +967,117 @@ function StateBadge({ state }: { state: ServiceStatus["state"] }) {
   );
 }
 
+function ProcessBadge({
+  command,
+  compact,
+}: {
+  command: string;
+  compact?: boolean;
+}) {
+  const process = processKindForCommand(command);
+  const icon = processBadgeIcon[process.kind];
+
+  return (
+    <span
+      aria-label={`${process.label} process`}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-md border bg-white shadow-sm",
+        compact ? "size-6" : "size-7",
+        icon ? "border-zinc-200" : "border-zinc-300 bg-zinc-100 text-zinc-700",
+      )}
+      style={icon ? { color: `#${icon.hex}` } : undefined}
+      title={process.label}
+    >
+      {icon ? (
+        <svg
+          aria-hidden="true"
+          className={compact ? "size-3.5" : "size-4"}
+          fill="currentColor"
+          role="img"
+          viewBox="0 0 24 24"
+        >
+          <path d={icon.path} />
+        </svg>
+      ) : (
+        <Terminal className={compact ? "size-3.5" : "size-4"} />
+      )}
+    </span>
+  );
+}
+
+const processBadgeIcon: Record<ProcessKind, SimpleIcon | null> = {
+  bun: siBun,
+  cargo: siRust,
+  deno: siDeno,
+  docker: siDocker,
+  generic: null,
+  go: siGo,
+  node: siNodedotjs,
+  python: siPython,
+  rust: siRust,
+  vite: siVite,
+};
+
+function LifecycleActions({
+  active,
+  baseUrl,
+  onRefresh,
+  restartAction,
+  targetLabel,
+}: {
+  active: boolean;
+  baseUrl: string;
+  onRefresh: () => Promise<void>;
+  restartAction?: () => Promise<void>;
+  targetLabel: string;
+}) {
+  if (!active) {
+    return (
+      <ActionButton
+        intent="start"
+        icon={<Play />}
+        label="Start"
+        targetLabel={targetLabel}
+        url={`${baseUrl}/start`}
+        onRefresh={onRefresh}
+      />
+    );
+  }
+
+  return (
+    <>
+      <ActionButton
+        intent="restart"
+        icon={<RotateCcw />}
+        label="Restart"
+        action={restartAction}
+        targetLabel={targetLabel}
+        url={`${baseUrl}/restart`}
+        onRefresh={onRefresh}
+      />
+      <ActionButton
+        intent="stop"
+        icon={<Square />}
+        label="Stop"
+        targetLabel={targetLabel}
+        url={`${baseUrl}/stop`}
+        onRefresh={onRefresh}
+      />
+    </>
+  );
+}
+
 function ActionButton({
+  action,
+  intent = "neutral",
   icon,
   label,
   targetLabel,
   url,
   onRefresh,
 }: {
+  action?: () => Promise<void>;
+  intent?: "neutral" | "restart" | "start" | "stop";
   icon: ReactNode;
   label: string;
   targetLabel: string;
@@ -938,13 +1088,18 @@ function ActionButton({
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   return (
     <Button
+      className={actionButtonClass[intent]}
       variant="outline"
       size="sm"
       disabled={busy}
       onClick={async () => {
         setBusy(true);
         try {
-          await postForm(url, {});
+          if (action) {
+            await action();
+          } else {
+            await postForm(url, {});
+          }
           showSuccessToast(`${label} requested for ${targetLabel}.`);
           await onRefresh();
         } catch (caught) {
@@ -960,12 +1115,27 @@ function ActionButton({
   );
 }
 
+const actionButtonClass = {
+  neutral: "",
+  restart: "border-amber-600 bg-amber-600 text-white hover:bg-amber-700",
+  start: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
+  stop: "border-red-600 bg-red-600 text-white hover:bg-red-700",
+} satisfies Record<"neutral" | "restart" | "start" | "stop", string>;
+
 function actionErrorMessage(label: string, targetLabel: string, caught: unknown): string {
   const message = caught instanceof Error ? caught.message : String(caught);
   return `${label} failed for ${targetLabel}: ${message}`;
 }
 
-function ServiceForm({ cwd, onRefresh }: { cwd: string; onRefresh: () => Promise<void> }) {
+function ServiceForm({
+  cwd,
+  onRefresh,
+  onSaved,
+}: {
+  cwd: string;
+  onRefresh: () => Promise<void>;
+  onSaved?: () => void;
+}) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -984,6 +1154,7 @@ function ServiceForm({ cwd, onRefresh }: { cwd: string; onRefresh: () => Promise
       formElement.reset();
       showSuccessToast(`${name} added.`);
       await onRefresh();
+      onSaved?.();
     } catch (caught) {
       showErrorToast(actionErrorMessage("Add service", name || "service", caught));
     }
@@ -1086,6 +1257,7 @@ function GroupForm({
                 type="checkbox"
                 value={service.name}
               />
+              <ProcessBadge command={service.command} compact />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{service.name}</span>
                 <span className="block truncate font-mono text-[11px] text-muted-foreground">

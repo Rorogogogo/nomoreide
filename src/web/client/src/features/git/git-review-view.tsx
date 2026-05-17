@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { getGitDiff, type DashboardData } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
-import { DiffViewer } from "./diff-viewer";
+import { Button } from "@/components/ui/button";
+import { DiffViewer, diffStats } from "./diff-viewer";
 import { ChangedFilesList } from "./changed-files-list";
 
 export function GitReviewView({
@@ -12,6 +14,9 @@ export function GitReviewView({
   const [selectedFile, setSelectedFile] = useState(data.git.status?.files[0]?.path ?? "");
   const [diff, setDiff] = useState("");
   const [diffError, setDiffError] = useState<string | null>(null);
+  const [activeHunkIndex, setActiveHunkIndex] = useState(0);
+  const files = data.git.status?.files ?? [];
+  const stats = useMemo(() => diffStats(diff), [diff]);
 
   useEffect(() => {
     const firstFile = data.git.status?.files[0]?.path ?? "";
@@ -32,7 +37,10 @@ export function GitReviewView({
     setDiffError(null);
     void getGitDiff(selectedFile)
       .then((nextDiff) => {
-        if (active) setDiff(nextDiff);
+        if (active) {
+          setDiff(nextDiff);
+          setActiveHunkIndex(0);
+        }
       })
       .catch((caught) => {
         if (active) setDiffError(caught instanceof Error ? caught.message : String(caught));
@@ -42,6 +50,46 @@ export function GitReviewView({
     };
   }, [selectedFile]);
 
+  function selectFile(path: string) {
+    setActiveHunkIndex(0);
+    setSelectedFile(path);
+  }
+
+  function goToNextChange() {
+    if (stats.hunks && activeHunkIndex < stats.hunks - 1) {
+      setActiveHunkIndex((current) => current + 1);
+      return;
+    }
+
+    const currentFileIndex = files.findIndex((file) => file.path === selectedFile);
+    const nextFile = files[currentFileIndex + 1];
+    if (nextFile) {
+      selectFile(nextFile.path);
+    }
+  }
+
+  function goToPreviousChange() {
+    if (activeHunkIndex > 0) {
+      setActiveHunkIndex((current) => current - 1);
+      return;
+    }
+
+    const currentFileIndex = files.findIndex((file) => file.path === selectedFile);
+    const previousFile = files[currentFileIndex - 1];
+    if (previousFile) {
+      selectFile(previousFile.path);
+    }
+  }
+
+  const currentFileIndex = files.findIndex((file) => file.path === selectedFile);
+  const hasNextChange = Boolean(
+    (stats.hunks && activeHunkIndex < stats.hunks - 1) ||
+      files[currentFileIndex + 1],
+  );
+  const hasPreviousChange = Boolean(
+    activeHunkIndex > 0 || files[currentFileIndex - 1],
+  );
+
   return (
     <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden">
@@ -50,7 +98,7 @@ export function GitReviewView({
           error={data.git.error}
           files={data.git.status?.files ?? []}
           selectedFile={selectedFile}
-          onSelectFile={setSelectedFile}
+          onSelectFile={selectFile}
         />
       </aside>
 
@@ -60,9 +108,37 @@ export function GitReviewView({
             <h2 className="truncate text-[13px] font-semibold tracking-tight">
               {selectedFile || "Diff"}
             </h2>
-            <p className="text-[10px] text-muted-foreground">
-              Long rows scroll horizontally inside the editor pane.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+              <span>Long rows scroll horizontally inside the editor pane.</span>
+              {stats.additions || stats.deletions ? (
+                <span className="flex items-center gap-1 font-mono">
+                  <span className="text-emerald-700">+{stats.additions}</span>
+                  <span className="text-red-700">-{stats.deletions}</span>
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              disabled={!selectedFile || !hasPreviousChange}
+              onClick={goToPreviousChange}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ArrowUp />
+              Previous
+            </Button>
+            <Button
+              disabled={!selectedFile || !hasNextChange}
+              onClick={goToNextChange}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ArrowDown />
+              Next
+            </Button>
           </div>
         </div>
         <div className="min-h-0 min-w-0 flex-1">
@@ -71,7 +147,10 @@ export function GitReviewView({
               <Alert variant="destructive">{diffError}</Alert>
             </div>
           ) : selectedFile ? (
-            <DiffViewer diff={diff || "No unstaged diff for this file."} />
+            <DiffViewer
+              activeHunkIndex={activeHunkIndex}
+              diff={diff || "No unstaged diff for this file."}
+            />
           ) : (
             <div className="p-4">
               <Alert variant="muted" className="border-dashed p-12 text-center">
