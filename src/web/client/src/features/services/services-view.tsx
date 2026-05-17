@@ -293,7 +293,8 @@ export function ServicesView({
                 <Button
                   aria-pressed={serviceComposer === "service"}
                   className={cn(
-                    serviceComposer === "service" && "border-primary bg-primary text-primary-foreground",
+                    serviceComposer === "service" &&
+                      "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
                   )}
                   onClick={() =>
                     setServiceComposer((current) => (current === "service" ? null : "service"))
@@ -308,7 +309,8 @@ export function ServicesView({
                 <Button
                   aria-pressed={serviceComposer === "group"}
                   className={cn(
-                    serviceComposer === "group" && "border-primary bg-primary text-primary-foreground",
+                    serviceComposer === "group" &&
+                      "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
                   )}
                   onClick={() =>
                     setServiceComposer((current) => (current === "group" ? null : "group"))
