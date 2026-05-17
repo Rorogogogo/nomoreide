@@ -42,6 +42,15 @@ export interface LogEntry {
   timestamp: string;
 }
 
+export interface ServiceTestResult {
+  ok: boolean;
+  message: string;
+  exitCode?: number | null;
+  signal?: string | null;
+  stdout: string[];
+  stderr: string[];
+}
+
 export interface GitFileStatus {
   path: string;
   index: string;
@@ -133,6 +142,30 @@ export async function postForm(
   }
 
   await requestJson(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+}
+
+export async function testServiceCommand(
+  values: Record<string, string | number | undefined>,
+): Promise<ServiceTestResult> {
+  return postFormForJson<ServiceTestResult>("/api/services/test", values);
+}
+
+async function postFormForJson<T>(
+  url: string,
+  values: Record<string, string | number | undefined>,
+): Promise<T> {
+  const body = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && String(value).trim()) {
+      body.set(key, String(value));
+    }
+  }
+
+  return requestJson<T>(url, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,

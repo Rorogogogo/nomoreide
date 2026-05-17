@@ -4,6 +4,7 @@ import { ConfigStore, ConfigValidationError } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { testServiceCommand } from "./service-tester.js";
 import {
   buildDashboardPayload,
   getSelectedGitRepository,
@@ -195,6 +196,20 @@ async function routeRequest(options: {
         description: optionalFormValue(form, "description"),
       });
       sendJson(response, { ok: true, config });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/services/test") {
+      const form = await readForm(request);
+      const portValue = form.get("port")?.trim();
+      sendJson(
+        response,
+        await testServiceCommand({
+          command: requiredFormValue(form, "command"),
+          cwd: requiredFormValue(form, "cwd"),
+          port: portValue ? Number(portValue) : undefined,
+        }),
+      );
       return;
     }
 

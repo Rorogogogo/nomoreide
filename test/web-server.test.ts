@@ -238,16 +238,70 @@ describe("web server", () => {
     });
 
     const body = await response.json();
-    const raw = JSON.parse(await readConfig(configPath));
+    const config = await new ConfigStore(configPath).load();
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ ok: true });
-    expect(raw.services[0]).toMatchObject({
+    expect(config.services[0]).toMatchObject({
       name: "frontend",
       command: "npm run dev",
       cwd: tempDir,
       port: 5173,
       description: "Vite app",
+    });
+  });
+
+  test("tests a service command without registering it", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/services/test`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify("console.log('ready')")}`,
+        cwd: tempDir,
+      }),
+    });
+    const body = await response.json();
+    const config = await new ConfigStore(configPath).load();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+    });
+    expect(body.message).toContain("Command completed");
+    expect(config.services).toEqual([]);
+  });
+
+  test("reports service command test failures", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/services/test`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify("process.exit(7)")}`,
+        cwd: tempDir,
+      }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: false,
+      exitCode: 7,
     });
   });
 
