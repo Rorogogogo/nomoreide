@@ -2,6 +2,14 @@
   "name": "nomoreide",
   "version": "0.1.0",
   "description": "An AI-native terminal workbench for services, Git review, logs, and MCP workflows.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rorogogogo/nomoreide.git"
+  },
+  "homepage": "https://github.com/Rorogogogo/nomoreide#readme",
+  "bugs": {
+    "url": "https://github.com/Rorogogogo/nomoreide/issues"
+  },
   "license": "MIT",
   "keywords": [
     "ai",
@@ -22,6 +30,7 @@
     "build": "vite build && tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
     "dev:web": "vite --host 127.0.0.1",
+    "prepublishOnly": "npm test && npm run build",
     "test": "vitest run"
   },
   "dependencies": {
