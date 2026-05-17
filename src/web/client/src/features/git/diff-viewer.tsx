@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 type DiffRowKind = "add" | "delete" | "hunk" | "context" | "meta";
@@ -9,29 +10,82 @@ export interface DiffRow {
   newLine: number | null;
 }
 
-export function DiffViewer({ diff }: { diff: string }) {
+export interface DiffStats {
+  additions: number;
+  deletions: number;
+  hunks: number;
+}
+
+export function DiffViewer({
+  activeHunkIndex = 0,
+  diff,
+}: {
+  activeHunkIndex?: number;
+  diff: string;
+}) {
   const rows = visibleDiffRows(diff);
+  const hunkRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useEffect(() => {
+    const hunk = hunkRefs.current[activeHunkIndex];
+    hunk?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [activeHunkIndex, diff]);
+
+  let hunkIndex = -1;
 
   return (
     <div className="h-full min-h-0 overflow-auto bg-white text-xs leading-6">
       <div className="min-w-max font-mono">
-        {rows.map((row, index) => (
-          <div
-            className={cn(
-              "grid grid-cols-[3rem_3rem_minmax(40rem,1fr)]",
-              row.kind === "add" && "bg-emerald-50 text-emerald-800",
-              row.kind === "delete" && "bg-red-50 text-red-800",
-              row.kind === "hunk" && "bg-muted text-muted-foreground",
-            )}
-            key={`${index}-${row.content}`}
-          >
-            <LineNumber value={row.oldLine} />
-            <LineNumber value={row.newLine} />
-            <span className="whitespace-pre px-2">{row.content || " "}</span>
-          </div>
-        ))}
+        {rows.map((row, index) => {
+          if (row.kind === "hunk") {
+            hunkIndex += 1;
+          }
+          const currentHunkIndex = hunkIndex;
+
+          return (
+            <div
+              className={cn(
+                "grid grid-cols-[3rem_3rem_minmax(40rem,1fr)]",
+                row.kind === "add" && "bg-emerald-50 text-emerald-800",
+                row.kind === "delete" && "bg-red-50 text-red-800",
+                row.kind === "hunk" && "bg-muted text-muted-foreground",
+                row.kind === "hunk" &&
+                  currentHunkIndex === activeHunkIndex &&
+                  "outline outline-1 outline-offset-[-1px] outline-primary/35",
+              )}
+              key={`${index}-${row.content}`}
+              ref={
+                row.kind === "hunk"
+                  ? (node) => {
+                      hunkRefs.current[currentHunkIndex] = node;
+                    }
+                  : undefined
+              }
+            >
+              <LineNumber value={row.oldLine} />
+              <LineNumber value={row.newLine} />
+              <span className="whitespace-pre px-2">{row.content || " "}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+export function diffStats(diff: string): DiffStats {
+  return diff.split("\n").reduce<DiffStats>(
+    (stats, line) => {
+      if (line.startsWith("@@")) {
+        stats.hunks += 1;
+      } else if (line.startsWith("+") && !line.startsWith("+++")) {
+        stats.additions += 1;
+      } else if (line.startsWith("-") && !line.startsWith("---")) {
+        stats.deletions += 1;
+      }
+      return stats;
+    },
+    { additions: 0, deletions: 0, hunks: 0 },
   );
 }
 
