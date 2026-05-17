@@ -7,8 +7,8 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Server,
-  TerminalSquare,
 } from "lucide-react";
+import logoUrl from "@/assets/nomoreide-logo.png";
 import { getDashboard, type DashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,8 +113,12 @@ export function App() {
               sidebarCollapsed ? "justify-center" : "gap-3",
             )}
           >
-            <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <TerminalSquare className="size-5" />
+            <div className="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary">
+              <img
+                alt="NoMoreIDE"
+                className="size-full object-cover"
+                src={logoUrl}
+              />
             </div>
             <div className={cn("min-w-0", sidebarCollapsed && "hidden")}>
               <div className="text-sm font-semibold">NoMoreIDE</div>

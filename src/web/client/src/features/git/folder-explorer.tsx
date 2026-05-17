@@ -18,6 +18,7 @@ export function FolderExplorer({
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const canGoBack = canOpenParentFolder(listing);
 
   useEffect(() => {
     setBrowsePath(initialPath);
@@ -49,16 +50,17 @@ export function FolderExplorer({
   return (
     <div className="rounded-md border border-border bg-background">
       <div className="flex items-center gap-2 border-b border-border p-2">
-        <Button
-          aria-label="Open parent folder"
-          disabled={!listing || listing.parent === listing.path}
-          onClick={() => listing && setBrowsePath(listing.parent)}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <ChevronDown className="rotate-90" />
-        </Button>
+        {canGoBack ? (
+          <Button
+            aria-label="Open parent folder"
+            onClick={() => listing && setBrowsePath(listing.parent)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <ChevronDown className="rotate-90" />
+          </Button>
+        ) : null}
         <div className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
           {listing?.path ?? browsePath}
         </div>
@@ -94,4 +96,10 @@ export function FolderExplorer({
       </div>
     </div>
   );
+}
+
+export function canOpenParentFolder(
+  listing: Pick<DirectoryListing, "parent" | "path"> | null,
+): boolean {
+  return Boolean(listing && listing.parent !== listing.path);
 }

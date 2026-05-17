@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -219,8 +220,8 @@ function FolderPickerDialog({
   onUse: () => void;
   selectedPath: string;
 }) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/35 px-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/35 px-4">
       <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4 shadow-xl">
         <div className="mb-3 flex items-center gap-3">
           <div className="flex size-8 items-center justify-center rounded-lg border border-border bg-background">
@@ -252,6 +253,7 @@ function FolderPickerDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
