@@ -5,6 +5,10 @@ import { ConfigStore } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import {
+  createUiLifecycleManager,
+  type UiLifecycleManager,
+} from "../web/ui-lifecycle.js";
 
 export const NOMOREIDE_TOOL_NAMES = [
   "nomoreide_list_services",
@@ -18,6 +22,10 @@ export const NOMOREIDE_TOOL_NAMES = [
   "nomoreide_stop_bundle",
   "nomoreide_status",
   "nomoreide_git_status",
+  "nomoreide_git_branches",
+  "nomoreide_git_switch_branch",
+  "nomoreide_git_create_branch",
+  "nomoreide_git_fetch",
   "nomoreide_git_diff",
   "nomoreide_git_staged_diff",
   "nomoreide_git_log",
@@ -26,11 +34,15 @@ export const NOMOREIDE_TOOL_NAMES = [
   "nomoreide_git_commit",
   "nomoreide_git_register_repository",
   "nomoreide_git_select_repository",
+  "nomoreide_open_ui",
+  "nomoreide_close_ui",
 ] as const;
 
 interface CreateNoMoreIdeMcpServerOptions {
   configPath?: string;
   logDir?: string;
+  uiLifecycle?: UiLifecycleManager;
+  uiPort?: number;
 }
 
 export interface NoMoreIdeMcpServer {
@@ -38,7 +50,13 @@ export interface NoMoreIdeMcpServer {
   configStore: ConfigStore;
   logStore: LogStore;
   manager: ProcessManager;
+  uiLifecycle: UiLifecycleManager;
   toolNames: typeof NOMOREIDE_TOOL_NAMES;
+}
+
+interface StartNoMoreIdeMcpServerOptions {
+  env?: NodeJS.ProcessEnv;
+  createServer?: () => Pick<NoMoreIdeMcpServer, "server" | "uiLifecycle">;
 }
 
 const serviceNameSchema = z.object({
@@ -57,6 +75,10 @@ const gitPathSchema = gitCwdSchema.extend({
   path: z.string().min(1).optional().describe("Optional file path."),
 });
 
+const gitBranchSchema = gitCwdSchema.extend({
+  name: z.string().min(1).describe("Branch name."),
+});
+
 const gitPathsSchema = gitCwdSchema.extend({
   paths: z.array(z.string().min(1)).min(1),
 });
@@ -64,13 +86,22 @@ const gitPathsSchema = gitCwdSchema.extend({
 export function createNoMoreIdeMcpServer(
   options: CreateNoMoreIdeMcpServerOptions = {},
 ): NoMoreIdeMcpServer {
+  const configPath = options.configPath ?? resolve(process.cwd(), "nomoreide.config.json");
+  const logDir = options.logDir ?? resolve(process.cwd(), ".nomoreide/logs");
   const configStore = new ConfigStore(
-    options.configPath ?? resolve(process.cwd(), "nomoreide.config.json"),
+    configPath,
   );
   const logStore = new LogStore({
-    baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
+    baseDir: logDir,
   });
   const manager = new ProcessManager({ configStore, logStore });
+  const uiLifecycle =
+    options.uiLifecycle ??
+    createUiLifecycleManager({
+      configPath,
+      logDir,
+      port: options.uiPort,
+    });
   const server = new FastMCP({
     name: "NoMoreIDE MCP",
     version: "0.1.0",
@@ -172,6 +203,34 @@ export function createNoMoreIdeMcpServer(
   });
 
   server.addTool({
+    name: "nomoreide_git_branches",
+    description: "List local and remote Git branches for a repository.",
+    parameters: gitCwdSchema,
+    execute: async ({ cwd }) => stringify(await git(cwd).branches()),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_switch_branch",
+    description: "Switch to a local branch, or track a remote branch.",
+    parameters: gitBranchSchema,
+    execute: async ({ cwd, name }) => await git(cwd).switchBranch(name),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_create_branch",
+    description: "Create and switch to a new Git branch.",
+    parameters: gitBranchSchema,
+    execute: async ({ cwd, name }) => await git(cwd).createBranch(name),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_fetch",
+    description: "Fetch and prune remote Git refs for a repository.",
+    parameters: gitCwdSchema,
+    execute: async ({ cwd }) => await git(cwd).fetch(),
+  });
+
+  server.addTool({
     name: "nomoreide_git_staged_diff",
     description: "Show staged Git diff for a repository or file.",
     parameters: gitPathSchema,
@@ -231,11 +290,24 @@ export function createNoMoreIdeMcpServer(
       stringify(await configStore.selectGitRepository(name)),
   });
 
+  server.addTool({
+    name: "nomoreide_open_ui",
+    description: "Open or reuse the singleton NoMoreIDE web UI.",
+    execute: async () => stringify(await uiLifecycle.ensureStarted()),
+  });
+
+  server.addTool({
+    name: "nomoreide_close_ui",
+    description: "Close the NoMoreIDE web UI owned by this MCP process.",
+    execute: async () => stringify(await uiLifecycle.close()),
+  });
+
   return {
     server,
     configStore,
     logStore,
     manager,
+    uiLifecycle,
     toolNames: NOMOREIDE_TOOL_NAMES,
   };
 }
@@ -244,8 +316,22 @@ function git(cwd?: string): GitManager {
   return new GitManager(cwd ?? process.cwd());
 }
 
-export async function startNoMoreIdeMcpServer(): Promise<void> {
-  const { server } = createNoMoreIdeMcpServer();
+export async function startNoMoreIdeMcpServer(
+  options: StartNoMoreIdeMcpServerOptions = {},
+): Promise<void> {
+  const env = options.env ?? process.env;
+  const { server, uiLifecycle } = options.createServer?.() ?? createNoMoreIdeMcpServer();
+  if (env.NOMOREIDE_AUTO_UI !== "0") {
+    try {
+      await uiLifecycle.ensureStarted();
+    } catch (error) {
+      process.stderr.write(
+        `nomoreide: UI auto-start failed: ${
+          error instanceof Error ? error.message : String(error)
+        }\n`,
+      );
+    }
+  }
   await server.start({ transportType: "stdio" });
 }
 

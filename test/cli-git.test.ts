@@ -72,6 +72,33 @@ describe("CLI git commands", () => {
     expect(output.join("\n")).toContain("Registered Git repository app");
     expect(output.join("\n")).toContain("Selected Git repository app");
   });
+
+  test("returns a usage error for non-absolute git repository paths", async () => {
+    const exitCode = await runCli(
+      ["git", "add-repo", "app", "--path", "~/repo/app"],
+      cliOptions(),
+    );
+
+    expect(exitCode).toBe(1);
+    expect(errors.join("\n")).toContain("Please add an absolute path");
+  });
+
+  test("lists, creates, and switches git branches", async () => {
+    await runCli(["git", "branch", "--cwd", repoDir], cliOptions());
+    await runCli(
+      ["git", "create-branch", "--cwd", repoDir, "feature/cli"],
+      cliOptions(),
+    );
+    const exitCode = await runCli(
+      ["git", "switch", "--cwd", repoDir, "master"],
+      cliOptions(),
+    );
+    await runCli(["git", "branch", "--cwd", repoDir], cliOptions());
+
+    expect(exitCode).toBe(0);
+    expect(output.join("\n")).toContain("*\tmaster");
+    expect(output.join("\n")).toContain(" \tfeature/cli");
+  });
 });
 
 function cliOptions() {

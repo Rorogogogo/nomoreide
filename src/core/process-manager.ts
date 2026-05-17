@@ -145,6 +145,11 @@ export class ProcessManager {
     return statuses;
   }
 
+  async restartBundle(name: string): Promise<ServiceStatus[]> {
+    await this.stopBundle(name);
+    return this.startBundle(name);
+  }
+
   async stopAll(): Promise<void> {
     await Promise.all(
       [...this.runtimes.keys()].map((name) => this.stopService(name)),
@@ -201,6 +206,13 @@ export class ProcessManager {
 
       for (const line of lines) {
         if (line.length > 0) {
+          const url = localUrlFromLine(line);
+          if (url) {
+            const runtime = this.runtimes.get(service);
+            if (runtime) {
+              runtime.status = { ...runtime.status, url };
+            }
+          }
           void this.logStore.append(service, stream, line);
         }
       }
@@ -213,6 +225,10 @@ export class ProcessManager {
       }
     });
   }
+}
+
+function localUrlFromLine(line: string): string | undefined {
+  return line.match(/https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/?/)?.[0];
 }
 
 async function stopChild(

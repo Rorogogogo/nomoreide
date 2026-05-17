@@ -8,6 +8,14 @@ This is an MVP with a working MCP server, core process manager, terminal UI, Rea
 
 ## Install
 
+Run without installing:
+
+```bash
+npx -y nomoreide
+```
+
+Install globally:
+
 ```bash
 npm install -g nomoreide
 ```
@@ -36,60 +44,113 @@ npm run dev
 Start the terminal UI:
 
 ```bash
-npm run dev -- tui
+nomoreide tui
 ```
 
 Start the local web UI:
 
 ```bash
-npm run dev -- web
+nomoreide web
 ```
 
 The web UI listens on `http://127.0.0.1:4317` by default. Use another port with:
 
 ```bash
-npm run dev -- web --port=4320
+nomoreide web --port=4320
 ```
+
+From a local checkout, prefix CLI commands with `npm run dev --` instead of `nomoreide`.
+
+## Agent CLI MCP Setup
+
+NoMoreIDE runs as a local stdio MCP server. The easiest setup is to let each agent CLI launch the published npm package with `npx`.
+
+### Claude Code
+
+```bash
+claude mcp add --transport stdio nomoreide -- npx -y nomoreide
+```
+
+Use project scope if you want to commit a shared `.mcp.json` for the current repository:
+
+```bash
+claude mcp add --transport stdio --scope project nomoreide -- npx -y nomoreide
+```
+
+Inside Claude Code, run `/mcp` to confirm the server is connected.
+
+### Codex CLI
+
+```bash
+codex mcp add nomoreide -- npx -y nomoreide
+```
+
+Or add it directly to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.nomoreide]
+command = "npx"
+args = ["-y", "nomoreide"]
+```
+
+Inside Codex, run `/mcp` to confirm the server is connected.
+
+### Gemini CLI
+
+Add NoMoreIDE to your Gemini CLI `settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "npx",
+      "args": ["-y", "nomoreide"]
+    }
+  }
+}
+```
+
+Restart Gemini CLI, then run `/mcp` to confirm the server is connected.
 
 ## CLI
 
 Register a service:
 
 ```bash
-npm run dev -- add service backend --command "npm run dev" --cwd /absolute/path/to/backend --port 3001
+nomoreide add service backend --command "npm run dev" --cwd /absolute/path/to/backend --port 3001
 ```
 
 Register a bundle:
 
 ```bash
-npm run dev -- add bundle full-stack db backend frontend
+nomoreide add bundle full-stack db backend frontend
 ```
 
 List registered services and bundles:
 
 ```bash
-npm run dev -- list
+nomoreide list
 ```
 
 Start, stop, or restart a registered service:
 
 ```bash
-npm run dev -- start backend
-npm run dev -- stop backend
-npm run dev -- restart backend
+nomoreide start backend
+nomoreide stop backend
+nomoreide restart backend
 ```
 
 Start or stop a bundle:
 
 ```bash
-npm run dev -- start full-stack
-npm run dev -- stop full-stack
+nomoreide start full-stack
+nomoreide stop full-stack
 ```
 
 Read recent in-memory logs for the current NoMoreIDE process:
 
 ```bash
-npm run dev -- logs backend
+nomoreide logs backend
 ```
 
 ## Git
@@ -99,42 +160,51 @@ NoMoreIDE includes safe Git review commands. It does not expose destructive acti
 Show status:
 
 ```bash
-npm run dev -- git status --cwd /absolute/path/to/repo
+nomoreide git status --cwd /absolute/path/to/repo
 ```
 
 Register and select Git folders for the web UI:
 
 ```bash
-npm run dev -- git add-repo app --path /absolute/path/to/repo
-npm run dev -- git select-repo app
+nomoreide git add-repo app --path /absolute/path/to/repo
+nomoreide git select-repo app
 ```
 
 Show unstaged diff:
 
 ```bash
-npm run dev -- git diff --cwd /absolute/path/to/repo
+nomoreide git diff --cwd /absolute/path/to/repo
 ```
 
 Stage or unstage explicit files:
 
 ```bash
-npm run dev -- git stage --cwd /absolute/path/to/repo src/index.ts README.md
-npm run dev -- git unstage --cwd /absolute/path/to/repo src/index.ts
+nomoreide git stage --cwd /absolute/path/to/repo src/index.ts README.md
+nomoreide git unstage --cwd /absolute/path/to/repo src/index.ts
 ```
 
 Commit staged changes:
 
 ```bash
-npm run dev -- git commit --cwd /absolute/path/to/repo --message "feat: add service dashboard"
+nomoreide git commit --cwd /absolute/path/to/repo --message "feat: add service dashboard"
 ```
 
 Show recent commits:
 
 ```bash
-npm run dev -- git log --cwd /absolute/path/to/repo
+nomoreide git log --cwd /absolute/path/to/repo
 ```
 
-For an MCP client, point a stdio server entry at the built CLI:
+List branches, fetch remotes, switch branches, or create a branch:
+
+```bash
+nomoreide git branch --cwd /absolute/path/to/repo
+nomoreide git fetch --cwd /absolute/path/to/repo
+nomoreide git switch --cwd /absolute/path/to/repo feature/work
+nomoreide git create-branch --cwd /absolute/path/to/repo feature/new-work
+```
+
+For a local checkout MCP client setup, point a stdio server entry at the built CLI:
 
 ```json
 {
@@ -162,6 +232,10 @@ NoMoreIDE stores service definitions in `nomoreide.config.json` in the directory
 - `nomoreide_stop_bundle`
 - `nomoreide_status`
 - `nomoreide_git_status`
+- `nomoreide_git_branches`
+- `nomoreide_git_switch_branch`
+- `nomoreide_git_create_branch`
+- `nomoreide_git_fetch`
 - `nomoreide_git_diff`
 - `nomoreide_git_staged_diff`
 - `nomoreide_git_log`

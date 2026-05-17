@@ -51,6 +51,36 @@ describe("GitManager", () => {
     expect(diff).toContain("+changed");
   });
 
+  test("returns a new-file diff for untracked files", async () => {
+    await writeFile(join(repoDir, "feature.txt"), "hello\nworld\n");
+
+    const diff = await git.fileDiff({
+      path: "feature.txt",
+      index: "?",
+      workingTree: "?",
+    });
+
+    expect(diff).toContain("new file mode");
+    expect(diff).toContain("--- /dev/null");
+    expect(diff).toContain("+++ b/feature.txt");
+    expect(diff).toContain("+hello");
+    expect(diff).toContain("+world");
+  });
+
+  test("returns staged diff when a file only has index changes", async () => {
+    await writeFile(join(repoDir, "README.md"), "staged\n");
+    await git.stage(["README.md"]);
+
+    const diff = await git.fileDiff({
+      path: "README.md",
+      index: "M",
+      workingTree: " ",
+    });
+
+    expect(diff).toContain("-initial");
+    expect(diff).toContain("+staged");
+  });
+
   test("stages, unstages, and commits explicit files", async () => {
     await writeFile(join(repoDir, "feature.txt"), "hello\n");
 
@@ -74,6 +104,46 @@ describe("GitManager", () => {
 
     expect(commit).toContain("add feature");
     expect(log[0]?.subject).toBe("add feature");
+  });
+
+  test("lists local and remote branches", async () => {
+    const remoteDir = await mkdtemp(join(tmpdir(), "nomoreide-git-remote-"));
+    try {
+      await execGit(["checkout", "-b", "feature/local"]);
+      await execGit(["checkout", "-b", "main"]);
+      await execFileAsync("git", ["init", "--bare"], { cwd: remoteDir });
+      await execGit(["remote", "add", "origin", remoteDir]);
+      await execGit(["push", "-u", "origin", "main"]);
+      await execGit(["push", "origin", "feature/local:feature/remote"]);
+      await execGit(["fetch", "--prune"]);
+
+      const branches = await git.branches();
+
+      expect(branches).toContainEqual({
+        name: "main",
+        current: true,
+        remote: false,
+        upstream: "origin/main",
+      });
+      expect(branches).toContainEqual({
+        name: "origin/feature/remote",
+        current: false,
+        remote: true,
+        upstream: undefined,
+      });
+    } finally {
+      await rm(remoteDir, { recursive: true, force: true });
+    }
+  });
+
+  test("creates and switches branches", async () => {
+    await git.createBranch("feature/work");
+
+    expect((await git.status()).branch).toBe("feature/work");
+
+    await git.switchBranch("master");
+
+    expect((await git.status()).branch).toBe("master");
   });
 });
 

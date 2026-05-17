@@ -7,7 +7,7 @@ import { runCli } from "./cli/commands.js";
 
 const command = process.argv[2] ?? "mcp";
 
-if (command === "mcp" || command === "start") {
+if (command === "mcp" || (command === "start" && process.argv.length <= 3)) {
   await startNoMoreIdeMcpServer();
 } else if (command === "tui") {
   await createTuiApp().start();
@@ -17,12 +17,12 @@ if (command === "mcp" || command === "start") {
   const server = await createWebServer({ port }).start();
   console.error(`NoMoreIDE web UI: ${server.url}`);
 } else if (
-  ["add", "list", "logs", "start", "stop", "restart"].includes(command)
+  ["add", "git", "list", "logs", "start", "stop", "restart"].includes(command)
 ) {
   process.exitCode = await runCli(process.argv.slice(2));
 } else {
   console.error(
-    "Usage: nomoreide [mcp|tui|web|list|logs|start|stop|restart|add]",
+    "Usage: nomoreide [mcp|tui|web|git|list|logs|start|stop|restart|add]",
   );
   process.exitCode = 1;
 }

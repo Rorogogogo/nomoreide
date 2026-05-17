@@ -40,6 +40,21 @@ describe("ProcessManager", () => {
     );
   });
 
+  test("detects local URLs from service output", async () => {
+    await config.registerService({
+      name: "frontend",
+      command: nodeCommand(
+        "console.log('  ➜  Local:   http://localhost:5174/'); setInterval(() => {}, 1000);",
+      ),
+      cwd: tempDir,
+    });
+
+    await manager.startService("frontend");
+    await waitFor(() => manager.status().services.frontend.url === "http://localhost:5174/");
+
+    expect(manager.status().services.frontend.url).toBe("http://localhost:5174/");
+  });
+
   test("stops a running service", async () => {
     await config.registerService({
       name: "worker",
@@ -90,6 +105,36 @@ describe("ProcessManager", () => {
       "backend",
       "frontend",
     ]);
+    expect(manager.status().services.backend.state).toBe("running");
+    expect(manager.status().services.frontend.state).toBe("running");
+  });
+
+  test("restarts every service in a bundle", async () => {
+    await config.registerService({
+      name: "backend",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+    await config.registerService({
+      name: "frontend",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+    await config.registerBundle({
+      name: "full-stack",
+      services: ["backend", "frontend"],
+    });
+
+    const firstStatuses = await manager.startBundle("full-stack");
+    const restartedStatuses = await manager.restartBundle("full-stack");
+
+    expect(restartedStatuses.map((status) => status.name).sort()).toEqual([
+      "backend",
+      "frontend",
+    ]);
+    expect(restartedStatuses.map((status) => status.pid)).not.toEqual(
+      firstStatuses.map((status) => status.pid),
+    );
     expect(manager.status().services.backend.state).toBe("running");
     expect(manager.status().services.frontend.state).toBe("running");
   });
