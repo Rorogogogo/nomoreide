@@ -5,6 +5,7 @@ type DiffRowKind = "add" | "delete" | "hunk" | "context" | "meta";
 
 export interface DiffRow {
   content: string;
+  hunkIndex: number | null;
   kind: DiffRowKind;
   oldLine: number | null;
   newLine: number | null;
@@ -31,43 +32,33 @@ export function DiffViewer({
     hunk?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [activeHunkIndex, diff]);
 
-  let hunkIndex = -1;
-
   return (
     <div className="h-full min-h-0 overflow-auto bg-white text-xs leading-6">
       <div className="min-w-max font-mono">
-        {rows.map((row, index) => {
-          if (row.kind === "hunk") {
-            hunkIndex += 1;
-          }
-          const currentHunkIndex = hunkIndex;
-
-          return (
-            <div
-              className={cn(
-                "grid grid-cols-[3rem_3rem_minmax(40rem,1fr)]",
-                row.kind === "add" && "bg-emerald-50 text-emerald-800",
-                row.kind === "delete" && "bg-red-50 text-red-800",
-                row.kind === "hunk" && "bg-muted text-muted-foreground",
-                row.kind === "hunk" &&
-                  currentHunkIndex === activeHunkIndex &&
-                  "outline outline-1 outline-offset-[-1px] outline-primary/35",
-              )}
-              key={`${index}-${row.content}`}
-              ref={
-                row.kind === "hunk"
-                  ? (node) => {
-                      hunkRefs.current[currentHunkIndex] = node;
-                    }
-                  : undefined
-              }
-            >
-              <LineNumber value={row.oldLine} />
-              <LineNumber value={row.newLine} />
-              <span className="whitespace-pre px-2">{row.content || " "}</span>
-            </div>
-          );
-        })}
+        {rows.map((row, index) => (
+          <div
+            className={cn(
+              "grid grid-cols-[3rem_3rem_minmax(40rem,1fr)]",
+              row.kind === "add" && "bg-emerald-50 text-emerald-800",
+              row.kind === "delete" && "bg-red-50 text-red-800",
+              scrollTargetRowForHunk(rows, index) &&
+                row.hunkIndex === activeHunkIndex &&
+                "outline outline-1 outline-offset-[-1px] outline-primary/35",
+            )}
+            key={`${index}-${row.content}`}
+            ref={
+              row.hunkIndex !== null && scrollTargetRowForHunk(rows, index)
+                ? (node) => {
+                    hunkRefs.current[row.hunkIndex ?? 0] = node;
+                  }
+                : undefined
+            }
+          >
+            <LineNumber value={row.oldLine} />
+            <LineNumber value={row.newLine} />
+            <span className="whitespace-pre px-2">{row.content || " "}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -94,18 +85,26 @@ export function visibleDiffRows(diff: string): DiffRow[] {
   if (!rows.some((row) => row.kind === "hunk")) {
     return rows;
   }
-  return rows.filter((row) => row.kind !== "meta");
+  return rows.filter((row) => row.kind !== "meta" && row.kind !== "hunk");
 }
 
 export function buildDiffRows(diff: string): DiffRow[] {
   let oldLine: number | null = null;
   let newLine: number | null = null;
+  let hunkIndex: number | null = null;
 
   return diff.split("\n").map((line) => {
     if (isDiffMetadata(line)) {
       oldLine = null;
       newLine = null;
-      return { content: line, kind: "meta" as const, oldLine: null, newLine: null };
+      hunkIndex = null;
+      return {
+        content: line,
+        hunkIndex,
+        kind: "meta" as const,
+        oldLine: null,
+        newLine: null,
+      };
     }
 
     if (line.startsWith("@@")) {
@@ -114,20 +113,40 @@ export function buildDiffRows(diff: string): DiffRow[] {
         oldLine = Number(hunk[1]);
         newLine = Number(hunk[2]);
       }
-      return { content: line, kind: "hunk" as const, oldLine: null, newLine: null };
+      hunkIndex = (hunkIndex ?? -1) + 1;
+      return {
+        content: line,
+        hunkIndex,
+        kind: "hunk" as const,
+        oldLine: null,
+        newLine: null,
+      };
     }
 
     if (oldLine === null || newLine === null) {
-      return { content: line, kind: "meta" as const, oldLine: null, newLine: null };
+      return {
+        content: line,
+        hunkIndex: null,
+        kind: "meta" as const,
+        oldLine: null,
+        newLine: null,
+      };
     }
 
     if (line.startsWith("\\ No newline")) {
-      return { content: line, kind: "meta" as const, oldLine: null, newLine: null };
+      return {
+        content: line,
+        hunkIndex,
+        kind: "meta" as const,
+        oldLine: null,
+        newLine: null,
+      };
     }
 
     if (line.startsWith("+") && !line.startsWith("+++")) {
       const row = {
         content: line,
+        hunkIndex,
         kind: "add" as const,
         oldLine: null,
         newLine,
@@ -139,6 +158,7 @@ export function buildDiffRows(diff: string): DiffRow[] {
     if (line.startsWith("-") && !line.startsWith("---")) {
       const row = {
         content: line,
+        hunkIndex,
         kind: "delete" as const,
         oldLine,
         newLine: null,
@@ -149,6 +169,7 @@ export function buildDiffRows(diff: string): DiffRow[] {
 
     const row = {
       content: line,
+      hunkIndex,
       kind: "context" as const,
       oldLine,
       newLine,
@@ -157,6 +178,23 @@ export function buildDiffRows(diff: string): DiffRow[] {
     newLine += 1;
     return row;
   });
+}
+
+function scrollTargetRowForHunk(rows: DiffRow[], index: number): boolean {
+  const hunkIndex = rows[index]?.hunkIndex;
+  if (hunkIndex === null) {
+    return false;
+  }
+
+  const firstChangedRow = rows.findIndex(
+    (row) =>
+      row.hunkIndex === hunkIndex && (row.kind === "add" || row.kind === "delete"),
+  );
+  if (firstChangedRow !== -1) {
+    return firstChangedRow === index;
+  }
+
+  return rows.findIndex((row) => row.hunkIndex === hunkIndex) === index;
 }
 
 function isDiffMetadata(line: string): boolean {
