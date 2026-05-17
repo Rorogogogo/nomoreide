@@ -71,7 +71,7 @@ describe("buildDiffRows", () => {
     expect(rows[9]).toMatchObject({ kind: "context", oldLine: 10, newLine: 10 });
   });
 
-  test("hides raw git metadata rows while keeping hunk headers", () => {
+  test("hides raw git metadata and hunk header rows", () => {
     const rows = visibleDiffRows(
       [
         "diff --git a/a.txt b/a.txt",
@@ -84,10 +84,26 @@ describe("buildDiffRows", () => {
       ].join("\n"),
     );
 
-    expect(rows.map((row) => row.content)).toEqual([
-      "@@ -1 +1 @@",
-      "-old",
-      "+new",
+    expect(rows.map((row) => row.content)).toEqual(["-old", "+new"]);
+  });
+
+  test("keeps hunk indexes on visible rows for scroll targets", () => {
+    const rows = visibleDiffRows(
+      [
+        "@@ -1 +1 @@",
+        "-old",
+        "+new",
+        "@@ -20 +20 @@",
+        "-later",
+        "+next",
+      ].join("\n"),
+    );
+
+    expect(rows.map(({ content, hunkIndex }) => ({ content, hunkIndex }))).toEqual([
+      { content: "-old", hunkIndex: 0 },
+      { content: "+new", hunkIndex: 0 },
+      { content: "-later", hunkIndex: 1 },
+      { content: "+next", hunkIndex: 1 },
     ]);
   });
 
@@ -95,6 +111,7 @@ describe("buildDiffRows", () => {
     expect(visibleDiffRows("No unstaged diff for this file.")).toEqual([
       {
         content: "No unstaged diff for this file.",
+        hunkIndex: null,
         kind: "meta",
         oldLine: null,
         newLine: null,

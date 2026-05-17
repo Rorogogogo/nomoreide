@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { DiffViewer, diffStats } from "./diff-viewer";
 import { ChangedFilesList } from "./changed-files-list";
+import { nextChangeDecision } from "./review-navigation";
 
 export function GitReviewView({
   data,
@@ -15,7 +16,9 @@ export function GitReviewView({
   const [diff, setDiff] = useState("");
   const [diffError, setDiffError] = useState<string | null>(null);
   const [activeHunkIndex, setActiveHunkIndex] = useState(0);
+  const [pendingNextFilePath, setPendingNextFilePath] = useState<string | null>(null);
   const files = data.git.status?.files ?? [];
+  const filePaths = useMemo(() => files.map((file) => file.path), [files]);
   const stats = useMemo(() => diffStats(diff), [diff]);
 
   useEffect(() => {
@@ -40,6 +43,7 @@ export function GitReviewView({
         if (active) {
           setDiff(nextDiff);
           setActiveHunkIndex(0);
+          setPendingNextFilePath(null);
         }
       })
       .catch((caught) => {
@@ -52,23 +56,33 @@ export function GitReviewView({
 
   function selectFile(path: string) {
     setActiveHunkIndex(0);
+    setPendingNextFilePath(null);
     setSelectedFile(path);
   }
 
   function goToNextChange() {
-    if (stats.hunks && activeHunkIndex < stats.hunks - 1) {
-      setActiveHunkIndex((current) => current + 1);
-      return;
-    }
+    const decision = nextChangeDecision({
+      activeHunkIndex,
+      filePaths,
+      hunkCount: stats.hunks,
+      pendingNextFilePath,
+      selectedFile,
+    });
 
-    const currentFileIndex = files.findIndex((file) => file.path === selectedFile);
-    const nextFile = files[currentFileIndex + 1];
-    if (nextFile) {
-      selectFile(nextFile.path);
+    if (decision.kind === "hunk") {
+      setPendingNextFilePath(null);
+      setActiveHunkIndex(decision.activeHunkIndex);
+    } else if (decision.kind === "confirm-next-file") {
+      setPendingNextFilePath(decision.filePath);
+    } else if (decision.kind === "file") {
+      selectFile(decision.filePath);
+    } else {
+      setPendingNextFilePath(null);
     }
   }
 
   function goToPreviousChange() {
+    setPendingNextFilePath(null);
     if (activeHunkIndex > 0) {
       setActiveHunkIndex((current) => current - 1);
       return;
@@ -89,6 +103,9 @@ export function GitReviewView({
   const hasPreviousChange = Boolean(
     activeHunkIndex > 0 || files[currentFileIndex - 1],
   );
+  const navigationHint = pendingNextFilePath
+    ? `End of file. Click Next again to open ${pendingNextFilePath}.`
+    : null;
 
   return (
     <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
@@ -119,6 +136,11 @@ export function GitReviewView({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {navigationHint ? (
+              <span className="max-w-72 truncate rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+                {navigationHint}
+              </span>
+            ) : null}
             <Button
               disabled={!selectedFile || !hasPreviousChange}
               onClick={goToPreviousChange}
