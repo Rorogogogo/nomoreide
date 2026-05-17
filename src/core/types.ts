@@ -31,6 +31,7 @@ export interface ServiceStatus {
   name: string;
   state: ServiceState;
   pid?: number;
+  url?: string;
   startedAt?: string;
   exitedAt?: string;
   exitCode?: number | null;

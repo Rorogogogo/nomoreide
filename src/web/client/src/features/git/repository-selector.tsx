@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, X } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ export function RepositorySelector({
 }) {
   const [open, setOpen] = useState(false);
   const [path, setPath] = useState(data.git.cwd);
+  const [addError, setAddError] = useState<string | null>(null);
   const [browseDialogOpen, setBrowseDialogOpen] = useState(false);
   const [draftPath, setDraftPath] = useState(data.git.cwd);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +49,7 @@ export function RepositorySelector({
 
   const selectPath = useCallback((nextPath: string) => {
     setPath(nextPath);
+    setAddError(null);
   }, []);
 
   async function selectRepository(name: string) {
@@ -57,12 +60,23 @@ export function RepositorySelector({
 
   async function addRepository(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await postForm("/api/git/repositories", {
-      name: pathName(path),
-      path,
-    });
-    setOpen(false);
-    await onRefresh();
+    const nextPath = path.trim();
+    if (!isAbsolutePath(nextPath)) {
+      setAddError("Please add an absolute path. Paths beginning with ~ are not expanded here.");
+      return;
+    }
+
+    try {
+      await postForm("/api/git/repositories", {
+        name: pathName(nextPath),
+        path: nextPath,
+      });
+      setOpen(false);
+      setAddError(null);
+      await onRefresh();
+    } catch (caught) {
+      setAddError(caught instanceof Error ? caught.message : String(caught));
+    }
   }
 
   return (
@@ -138,7 +152,10 @@ export function RepositorySelector({
             <form className="grid gap-2 sm:grid-cols-[1fr_auto]" onSubmit={addRepository}>
               <Input
                 aria-label="Paste absolute path"
-                onChange={(event) => setPath(event.target.value)}
+                onChange={(event) => {
+                  setPath(event.target.value);
+                  setAddError(null);
+                }}
                 placeholder="/Users/you/projects/app"
                 value={path}
               />
@@ -147,6 +164,12 @@ export function RepositorySelector({
                 Add {pathName(path)}
               </Button>
             </form>
+            <Alert
+              className={cn("mt-2 px-3 py-2 text-xs", addError ? "" : "border-dashed")}
+              variant={addError ? "destructive" : "muted"}
+            >
+              {addError ?? "Please add an absolute path. Paths beginning with ~ are not expanded."}
+            </Alert>
 
             <Button
               className="mt-3 w-full"
@@ -177,6 +200,10 @@ export function RepositorySelector({
       ) : null}
     </div>
   );
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith("/");
 }
 
 function FolderPickerDialog({

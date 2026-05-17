@@ -96,4 +96,15 @@ describe("ConfigStore", () => {
     ]);
     expect(config.selectedGitRepository).toBe("app");
   });
+
+  test("rejects git repository paths that are not absolute", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(
+      store.registerGitRepository({
+        name: "app",
+        path: "~/repo/app",
+      }),
+    ).rejects.toThrow("Please add an absolute path");
+  });
 });

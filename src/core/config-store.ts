@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute } from "node:path";
 import { z } from "zod";
 import type {
   BundleDefinition,
@@ -77,12 +77,17 @@ export class ConfigStore {
     return config;
   }
 
-  async registerBundle(bundle: BundleDefinition): Promise<NoMoreIdeConfig> {
+  async registerBundle(
+    bundle: BundleDefinition,
+    previousName?: string,
+  ): Promise<NoMoreIdeConfig> {
     const parsedBundle = bundleSchema.parse(bundle);
     const config = await this.load();
 
     config.bundles = [
-      ...config.bundles.filter((item) => item.name !== parsedBundle.name),
+      ...config.bundles.filter(
+        (item) => item.name !== parsedBundle.name && item.name !== previousName,
+      ),
       parsedBundle,
     ];
 
@@ -94,6 +99,7 @@ export class ConfigStore {
     repository: GitRepositoryDefinition,
   ): Promise<NoMoreIdeConfig> {
     const parsedRepository = gitRepositorySchema.parse(repository);
+    requireAbsolutePath(parsedRepository.path);
     const config = await this.load();
 
     config.gitRepositories = [
@@ -118,6 +124,16 @@ export class ConfigStore {
     config.selectedGitRepository = name;
     await this.save(config);
     return config;
+  }
+}
+
+export class ConfigValidationError extends Error {}
+
+function requireAbsolutePath(path: string): void {
+  if (!isAbsolute(path)) {
+    throw new ConfigValidationError(
+      "Please add an absolute path. Paths beginning with ~ are not expanded here.",
+    );
   }
 }
 

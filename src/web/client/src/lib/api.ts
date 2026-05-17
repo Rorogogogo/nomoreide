@@ -20,10 +20,19 @@ export interface ServiceStatus {
   name: string;
   state: "stopped" | "starting" | "running" | "exited";
   pid?: number;
+  url?: string;
   startedAt?: string;
   exitedAt?: string;
   exitCode?: number | null;
   signal?: string | null;
+}
+
+export interface PortOverview {
+  port: number;
+  available: boolean;
+  state: "available" | "managed" | "occupied";
+  services: string[];
+  urls: string[];
 }
 
 export interface LogEntry {
@@ -37,6 +46,13 @@ export interface GitFileStatus {
   path: string;
   index: string;
   workingTree: string;
+}
+
+export interface GitBranch {
+  name: string;
+  current: boolean;
+  remote: boolean;
+  upstream?: string;
 }
 
 export interface DirectoryEntry {
@@ -63,6 +79,7 @@ export interface DashboardData {
   runtime: {
     services: Record<string, ServiceStatus>;
   };
+  ports: PortOverview[];
   logs: LogEntry[];
   git: {
     cwd: string;
@@ -73,6 +90,7 @@ export interface DashboardData {
           files: GitFileStatus[];
         }
       | null;
+    branches: GitBranch[];
     error?: string;
   };
 }
@@ -94,6 +112,13 @@ export async function getDirectories(path: string): Promise<DirectoryListing> {
   return requestJson<DirectoryListing>(
     `/api/fs/directories?path=${encodeURIComponent(path)}`,
   );
+}
+
+export async function getServiceLogs(name: string): Promise<LogEntry[]> {
+  const response = await requestJson<{ ok: true; logs: LogEntry[] }>(
+    `/api/services/${encodeURIComponent(name)}/logs`,
+  );
+  return response.logs;
 }
 
 export async function postForm(

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { ConfigStore } from "../core/config-store.js";
+import { ConfigStore, ConfigValidationError } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
@@ -116,11 +116,11 @@ export async function runCli(
     }
 
     throw new UsageError(
-      "Usage: nomoreide [mcp|tui|web|list|logs|start|stop|restart|add]",
+      "Usage: nomoreide [mcp|tui|web|git|list|logs|start|stop|restart|add]",
     );
   } catch (error) {
     stderr(error instanceof Error ? error.message : String(error));
-    return error instanceof UsageError ? 1 : 2;
+    return error instanceof UsageError || error instanceof ConfigValidationError ? 1 : 2;
   }
 }
 
@@ -192,6 +192,38 @@ async function runGitCli(
     return 0;
   }
 
+  if (subcommand === "branch") {
+    for (const branch of await git.branches()) {
+      const marker = branch.current ? "*" : " ";
+      const scope = branch.remote ? "remote" : "local";
+      stdout(`${marker}\t${branch.name}\t${scope}\t${branch.upstream ?? "-"}`);
+    }
+    return 0;
+  }
+
+  if (subcommand === "switch") {
+    const name = positional[0];
+    if (!name) {
+      throw new UsageError("branch name is required");
+    }
+    stdout(await git.switchBranch(name));
+    return 0;
+  }
+
+  if (subcommand === "create-branch") {
+    const name = positional[0];
+    if (!name) {
+      throw new UsageError("branch name is required");
+    }
+    stdout(await git.createBranch(name));
+    return 0;
+  }
+
+  if (subcommand === "fetch") {
+    stdout(await git.fetch());
+    return 0;
+  }
+
   if (subcommand === "stage") {
     await git.stage(positional);
     stdout(`Staged ${positional.join(", ")}`);
@@ -214,7 +246,7 @@ async function runGitCli(
   }
 
   throw new UsageError(
-    "Usage: nomoreide git [status|diff|staged-diff|log|stage|unstage|commit]",
+    "Usage: nomoreide git [status|branch|switch|create-branch|fetch|diff|staged-diff|log|stage|unstage|commit]",
   );
 }
 

@@ -1,3 +1,4 @@
+import net from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -11,6 +12,7 @@ const execFileAsync = promisify(execFile);
 
 let tempDir: string;
 let server: Awaited<ReturnType<ReturnType<typeof createWebServer>["start"]>>;
+let portServers: net.Server[] = [];
 
 beforeEach(async () => {
   tempDir = await mkdtemp(join(tmpdir(), "nomoreide-web-"));
@@ -18,6 +20,15 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await server?.stop();
+  await Promise.all(
+    portServers.map(
+      (item) =>
+        new Promise<void>((resolve) => {
+          item.close(() => resolve());
+        }),
+    ),
+  );
+  portServers = [];
   await rm(tempDir, { recursive: true, force: true });
 });
 
@@ -39,6 +50,24 @@ describe("web server", () => {
     expect(html).toContain('<div id="root"></div>');
     expect(html).toContain('type="module"');
     expect(html).not.toContain("<h2>Services</h2>");
+  });
+
+  test("serves a NoMoreIDE health endpoint for UI discovery", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/health`);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      app: "nomoreide",
+    });
   });
 
   test("returns dashboard data for the React web app", async () => {
@@ -79,6 +108,36 @@ describe("web server", () => {
     expect(body.git).toMatchObject({
       cwd: tempDir,
       selectedRepository: null,
+    });
+  });
+
+  test("reports configured ports occupied by external processes", async () => {
+    const occupiedPort = await listenOnFreePort();
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.registerService({
+      name: "frontend",
+      command: "npm run dev",
+      cwd: tempDir,
+      port: occupiedPort,
+    });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/dashboard`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ports).toContainEqual({
+      port: occupiedPort,
+      available: false,
+      state: "occupied",
+      services: ["frontend"],
+      urls: [],
     });
   });
 
@@ -220,6 +279,72 @@ describe("web server", () => {
     });
   });
 
+  test("renames a bundle from a web form post", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.registerBundle({
+      name: "old-stack",
+      services: ["backend"],
+    });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/bundles`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        originalName: "old-stack",
+        name: "full-stack",
+        services: "backend, frontend",
+      }),
+    });
+
+    const body = await response.json();
+    const raw = JSON.parse(await readConfig(configPath));
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ ok: true });
+    expect(raw.bundles).toEqual([
+      {
+        name: "full-stack",
+        services: ["backend", "frontend"],
+      },
+    ]);
+  });
+
+  test("restarts a registered bundle through the action API", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.registerService({
+      name: "backend",
+      command: `${JSON.stringify(process.execPath)} -e ${JSON.stringify("setInterval(() => {}, 1000)")}`,
+      cwd: tempDir,
+    });
+    await config.registerBundle({
+      name: "full-stack",
+      services: ["backend"],
+    });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/bundles/full-stack/restart`, {
+      method: "POST",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      statuses: [{ name: "backend", state: "running" }],
+    });
+  });
+
   test("renders git status when the web cwd is a git repository", async () => {
     await execFileAsync("git", ["init"], { cwd: tempDir });
     await execFileAsync("git", ["config", "user.email", "nomoreide@example.test"], {
@@ -331,6 +456,26 @@ describe("web server", () => {
     ]);
   });
 
+  test("rejects non-absolute git repository paths from the web UI", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/git/repositories`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "app", path: "~/repo/app" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("Please add an absolute path");
+  });
+
   test("lists directories for the project explorer", async () => {
     const repoA = join(tempDir, "repo-a");
     const repoB = join(tempDir, "repo-b");
@@ -400,6 +545,104 @@ describe("web server", () => {
     expect(diff).toContain("-export const value = 'short';");
     expect(diff).toContain(`+export const value = '${"x".repeat(240)}';`);
   });
+
+  test("returns a new-file diff for untracked files from the diff API", async () => {
+    await initGitRepo(tempDir);
+    await createFile(join(tempDir, "new-file.ts"), "export const value = 1;\n");
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/git/diff?file=new-file.ts`);
+    const diff = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(diff).toContain("new file mode");
+    expect(diff).toContain("+++ b/new-file.ts");
+    expect(diff).toContain("+export const value = 1;");
+  });
+
+  test("returns git branches in dashboard data", async () => {
+    await initGitRepo(tempDir);
+    await execFileAsync("git", ["checkout", "-b", "feature/api"], { cwd: tempDir });
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/dashboard`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.git.branches).toContainEqual({
+      name: "feature/api",
+      current: true,
+      remote: false,
+    });
+  });
+
+  test("creates and switches git branches from the web UI", async () => {
+    await initGitRepo(tempDir);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const createResponse = await fetch(`${server.url}/api/git/branches`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "feature/web" }),
+    });
+    const switchResponse = await fetch(`${server.url}/api/git/branches/switch`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "master" }),
+    });
+    const dashboard = await (await fetch(`${server.url}/api/dashboard`)).json();
+
+    expect(createResponse.status).toBe(200);
+    expect(switchResponse.status).toBe(200);
+    expect(dashboard.git.status.branch).toBe("master");
+    expect(dashboard.git.branches.map((branch: { name: string }) => branch.name)).toContain(
+      "feature/web",
+    );
+  });
+
+  test("fetches git branches from the web UI", async () => {
+    await initGitRepo(tempDir);
+    const remoteDir = join(tempDir, "remote.git");
+    await execFileAsync("git", ["init", "--bare", remoteDir], { cwd: tempDir });
+    await execFileAsync("git", ["remote", "add", "origin", remoteDir], { cwd: tempDir });
+    await execFileAsync("git", ["push", "-u", "origin", "master"], { cwd: tempDir });
+    await execFileAsync("git", ["push", "origin", "master:feature/remote"], { cwd: tempDir });
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/git/fetch`, { method: "POST" });
+    const dashboard = await (await fetch(`${server.url}/api/dashboard`)).json();
+
+    expect(response.status).toBe(200);
+    expect(dashboard.git.branches).toContainEqual({
+      name: "origin/feature/remote",
+      current: false,
+      remote: true,
+    });
+  });
 });
 
 async function readConfig(path: string): Promise<string> {
@@ -410,4 +653,30 @@ async function readConfig(path: string): Promise<string> {
 async function createFile(path: string, contents: string): Promise<void> {
   const { writeFile } = await import("node:fs/promises");
   await writeFile(path, contents);
+}
+
+async function initGitRepo(path: string): Promise<void> {
+  await execFileAsync("git", ["init"], { cwd: path });
+  await execFileAsync("git", ["config", "user.email", "nomoreide@example.test"], {
+    cwd: path,
+  });
+  await execFileAsync("git", ["config", "user.name", "NoMoreIDE Test"], {
+    cwd: path,
+  });
+  await createFile(join(path, "README.md"), "hello\n");
+  await execFileAsync("git", ["add", "README.md"], { cwd: path });
+  await execFileAsync("git", ["commit", "-m", "initial"], { cwd: path });
+}
+
+async function listenOnFreePort(): Promise<number> {
+  const portServer = net.createServer();
+  portServers.push(portServer);
+
+  await new Promise<void>((resolve, reject) => {
+    portServer.once("error", reject);
+    portServer.listen(0, "127.0.0.1", () => resolve());
+  });
+
+  const address = portServer.address();
+  return typeof address === "object" && address ? address.port : 0;
 }

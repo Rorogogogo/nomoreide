@@ -2,10 +2,12 @@ import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ConfigStore } from "../core/config-store.js";
+import { ConfigStore, ConfigValidationError } from "../core/config-store.js";
 import { GitManager, type GitStatus } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
+import { isPortAvailable } from "../core/port-utils.js";
 import { ProcessManager } from "../core/process-manager.js";
+import type { NoMoreIdeConfig, ServiceStatus } from "../core/types.js";
 
 export interface WebServerOptions {
   configPath?: string;
@@ -101,6 +103,11 @@ async function routeRequest(options: {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/health") {
+      sendJson(response, { ok: true, app: "nomoreide" });
+      return;
+    }
+
     if (request.method === "GET" && url.pathname === "/api/fs/directories") {
       sendJson(
         response,
@@ -118,12 +125,44 @@ async function routeRequest(options: {
         sendJson(response, { ok: false, error: "file is required" }, 400);
         return;
       }
-      const diff = await readGitDiff(gitCwd, selectedFile);
+      const git = new GitManager(gitCwd);
+      const status = await git.status();
+      const selectedStatus = status.files.find((file) => file.path === selectedFile);
+      const diff = selectedStatus
+        ? await git.fileDiff(selectedStatus)
+        : await readGitDiff(gitCwd, selectedFile);
       if (diff === undefined) {
         sendJson(response, { ok: false, error: "No changes or file not found." }, 404);
         return;
       }
       sendText(response, diff);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/git/fetch") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const output = await new GitManager(gitCwd).fetch();
+      sendJson(response, { ok: true, output });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/git/branches") {
+      const form = await readForm(request);
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const output = await new GitManager(gitCwd).createBranch(
+        requiredFormValue(form, "name"),
+      );
+      sendJson(response, { ok: true, output });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/git/branches/switch") {
+      const form = await readForm(request);
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const output = await new GitManager(gitCwd).switchBranch(
+        requiredFormValue(form, "name"),
+      );
+      sendJson(response, { ok: true, output });
       return;
     }
 
@@ -155,7 +194,7 @@ async function routeRequest(options: {
       const config = await configStore.registerBundle({
         name: requiredFormValue(form, "name"),
         services,
-      });
+      }, optionalFormValue(form, "originalName"));
       sendJson(response, { ok: true, config });
       return;
     }
@@ -207,7 +246,7 @@ async function routeRequest(options: {
     }
 
     const bundleMatch = url.pathname.match(
-      /^\/api\/bundles\/([^/]+)\/(start|stop)$/,
+      /^\/api\/bundles\/([^/]+)\/(start|stop|restart)$/,
     );
     if (bundleMatch) {
       if (request.method !== "POST") {
@@ -220,7 +259,9 @@ async function routeRequest(options: {
       const statuses =
         action === "start"
           ? await manager.startBundle(name)
-          : await manager.stopBundle(name);
+          : action === "stop"
+            ? await manager.stopBundle(name)
+            : await manager.restartBundle(name);
       sendJson(response, { ok: true, statuses });
       return;
     }
@@ -241,7 +282,7 @@ async function routeRequest(options: {
     sendJson(
       response,
       { ok: false, error: error instanceof Error ? error.message : String(error) },
-      500,
+      error instanceof ConfigValidationError ? 400 : 500,
     );
   }
 }
@@ -256,21 +297,109 @@ async function buildDashboardPayload(options: {
   const firstService = config.services[0]?.name;
   const selectedGitRepository = getSelectedGitRepository(config);
   const gitCwd = selectedGitRepository?.path ?? options.cwd;
-  const gitStatus = await readGitStatus(gitCwd);
+  const runtime = options.manager.status();
+  const [gitStatus, branches, ports] = await Promise.all([
+    readGitStatus(gitCwd),
+    readGitBranches(gitCwd),
+    buildPortOverview(config, runtime.services),
+  ]);
 
   return {
     ok: true,
     cwd: options.cwd,
     config,
-    runtime: options.manager.status(),
+    runtime,
+    ports,
     logs: firstService ? options.logStore.read(firstService, 80) : [],
     git: {
       cwd: gitCwd,
       selectedRepository: selectedGitRepository ?? null,
       status: gitStatus ?? null,
+      branches: branches ?? [],
       error: gitStatus ? undefined : `Not a Git repository: ${gitCwd}`,
     },
   };
+}
+
+interface PortOverview {
+  port: number;
+  available: boolean;
+  state: "available" | "managed" | "occupied";
+  services: string[];
+  urls: string[];
+}
+
+async function buildPortOverview(
+  config: NoMoreIdeConfig,
+  runtimeServices: Record<string, ServiceStatus>,
+): Promise<PortOverview[]> {
+  const ports = new Map<number, { services: Set<string>; urls: Set<string> }>();
+
+  for (const service of config.services) {
+    if (service.port) {
+      const entry = getPortEntry(ports, service.port);
+      entry.services.add(service.name);
+    }
+  }
+
+  for (const status of Object.values(runtimeServices)) {
+    if (!status.url) continue;
+    const port = portFromUrl(status.url);
+    if (!port) continue;
+    const entry = getPortEntry(ports, port);
+    entry.services.add(status.name);
+    entry.urls.add(status.url);
+  }
+
+  return Promise.all(
+    [...ports.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(async ([port, entry]) => {
+        const available = await isPortAvailable(port);
+        const managed = [...entry.services].some((serviceName) => {
+          const status = runtimeServices[serviceName];
+          const urlPort = portFromUrl(status?.url);
+          return (
+            status?.state === "running" &&
+            (urlPort === port ||
+              (urlPort === undefined &&
+                config.services.some(
+                  (service) => service.name === serviceName && service.port === port,
+                )))
+          );
+        });
+
+        return {
+          port,
+          available,
+          state: managed ? "managed" : available ? "available" : "occupied",
+          services: [...entry.services].sort(),
+          urls: [...entry.urls].sort(),
+        };
+      }),
+  );
+}
+
+function getPortEntry(
+  ports: Map<number, { services: Set<string>; urls: Set<string> }>,
+  port: number,
+) {
+  let entry = ports.get(port);
+  if (!entry) {
+    entry = { services: new Set<string>(), urls: new Set<string>() };
+    ports.set(port, entry);
+  }
+  return entry;
+}
+
+function portFromUrl(url: string | undefined): number | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return parsed.port ? Number(parsed.port) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function readWebAppShell(): Promise<string> {
@@ -363,12 +492,25 @@ async function readGitStatus(cwd: string): Promise<GitStatus | undefined> {
   }
 }
 
+async function readGitBranches(cwd: string) {
+  try {
+    return await new GitManager(cwd).branches();
+  } catch {
+    return undefined;
+  }
+}
+
 async function readGitDiff(cwd: string, path: string): Promise<string | undefined> {
   try {
     return await new GitManager(cwd).diff(path);
   } catch {
     return undefined;
   }
+}
+
+async function selectedGitCwd(configStore: ConfigStore, fallbackCwd: string): Promise<string> {
+  const config = await configStore.load();
+  return getSelectedGitRepository(config)?.path ?? fallbackCwd;
 }
 
 async function listDirectories(path: string) {
