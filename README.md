@@ -429,7 +429,7 @@ If this tool saved you from opening VS Code today, consider leaving a ⭐.
 
 <div align="center">
 
-MIT License · Built by [Rorogogogo](https://github.com/Rorogogogo)
+AGPL-3.0 + Commercial · Built by [Rorogogogo](https://github.com/Rorogogogo)
 
 </div>
 
