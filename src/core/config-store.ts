@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute } from "node:path";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import type {
   BundleDefinition,
@@ -42,8 +43,14 @@ const defaultConfig: NoMoreIdeConfig = {
   gitRepositories: [],
 };
 
+export function defaultGlobalConfigPath(): string {
+  const base = process.env.XDG_CONFIG_HOME?.trim();
+  const root = base && base.length > 0 ? base : join(homedir(), ".config");
+  return join(root, "nomoreide", "config.json");
+}
+
 export class ConfigStore {
-  constructor(private readonly configPath = "nomoreide.config.json") {}
+  constructor(private readonly configPath = defaultGlobalConfigPath()) {}
 
   async load(): Promise<NoMoreIdeConfig> {
     try {

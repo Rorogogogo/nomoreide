@@ -81,7 +81,7 @@ export function RepositorySelector({
   }
 
   return (
-    <div className="relative z-30" ref={containerRef}>
+    <div className="relative z-50" ref={containerRef}>
       <Button
         className="max-w-[220px] justify-start gap-2 rounded-md border-border bg-card"
         onClick={() => setOpen((current) => !current)}
@@ -95,7 +95,7 @@ export function RepositorySelector({
       </Button>
 
       {open ? (
-        <div className="absolute right-0 top-10 w-[min(520px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        <div className="absolute right-0 top-10 z-50 w-[min(520px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
           <div className="flex items-start gap-3 border-b border-border p-3">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
               <Globe2 className="size-4" />
