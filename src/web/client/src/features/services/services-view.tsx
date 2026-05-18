@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToasts } from "@/components/ui/toast";
 import { getServiceLogs, type DashboardData, type LogEntry, type ServiceStatus } from "@/lib/api";
+import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
 import { LogSearchInput, LogViewer, logEntryText } from "./log-viewer";
 import { PortsOverview } from "./ports-overview";
@@ -400,6 +401,7 @@ export function ServicesView({
 
         <div className="min-h-0 overflow-auto border-l border-border">
           <PortsOverview ports={data.ports} />
+          <DebugTimeline events={data.timeline ?? []} />
         </div>
       </div>
       {serviceComposer ? (
