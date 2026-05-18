@@ -5,7 +5,7 @@ import { ServicesView } from "../src/web/client/src/features/services/services-v
 import type { DashboardData, ServiceHealth } from "../src/web/client/src/lib/api";
 
 describe("service health UI", () => {
-  test("keeps row health compact and puts diagnostics behind details", () => {
+  test("shows solid health, warning reason, and RAM without process noise", () => {
     const health: ServiceHealth = {
       service: "frontend",
       status: "warning",
@@ -44,10 +44,10 @@ describe("service health UI", () => {
     );
 
     expect(markup).toContain("warning");
-    expect(markup).toContain("Diagnostics");
-    expect(markup).toContain("3 processes");
-    expect(markup).toContain("1220 MB RSS");
-    expect(markup.indexOf("warning")).toBeLessThan(markup.indexOf("Diagnostics"));
+    expect(markup).toContain("High memory usage");
+    expect(markup).toContain("1220 MB RAM");
+    expect(markup).not.toContain("Diagnostics");
+    expect(markup).not.toContain("3 processes");
   });
 
   test("renders services when dashboard health data is missing", () => {
