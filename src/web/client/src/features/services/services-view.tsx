@@ -24,6 +24,7 @@ export function ServicesView({
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
   const [streamLogs, setStreamLogs] = useState(false);
   const logPaneRef = useRef<HTMLDivElement>(null);
+  const stickyBottomRef = useRef(true);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
   const {
     error: showErrorToast,
@@ -104,12 +105,36 @@ export function ServicesView({
   }, [selectedLogService, streamLogs]);
 
   useEffect(() => {
+    const pane = logPaneRef.current;
+    if (!pane) return;
+
+    function updateStickiness() {
+      if (!pane) return;
+      const distanceFromBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
+      stickyBottomRef.current = distanceFromBottom < 40;
+    }
+
+    updateStickiness();
+    pane.addEventListener("scroll", updateStickiness, { passive: true });
+    return () => pane.removeEventListener("scroll", updateStickiness);
+  }, [selectedLogService]);
+
+  useEffect(() => {
     if (!streamLogs) return;
+    if (!stickyBottomRef.current) return;
     const pane = logPaneRef.current;
     if (pane) {
       pane.scrollTop = pane.scrollHeight;
     }
   }, [streamLogs, visibleLogs]);
+
+  useEffect(() => {
+    stickyBottomRef.current = true;
+    const pane = logPaneRef.current;
+    if (pane) {
+      pane.scrollTop = pane.scrollHeight;
+    }
+  }, [selectedLogService]);
 
   useEffect(() => {
     const nextStates = Object.fromEntries(

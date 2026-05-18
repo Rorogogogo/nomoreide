@@ -115,7 +115,7 @@ export class ConfigStore {
       ),
       parsedRepository,
     ];
-    config.selectedGitRepository ??= parsedRepository.name;
+    config.selectedGitRepository = parsedRepository.name;
 
     await this.save(config);
     return config;

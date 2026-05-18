@@ -14,10 +14,10 @@ export function Footer() {
             GitHub
           </a>
           <a
-            href="https://www.npmjs.com/package/nomoreide"
+            href="https://github.com/Rorogogogo/nomoreide#connect-your-ai-agent"
             className="transition hover:text-foreground"
           >
-            npm
+            MCP setup
           </a>
           <a
             href="https://github.com/Rorogogogo/nomoreide/issues"
