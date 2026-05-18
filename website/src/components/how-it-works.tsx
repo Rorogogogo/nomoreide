@@ -1,22 +1,26 @@
-type Step = { n: string; title: string; body: string; code?: string };
+type Step = { n: string; title: string; body: string; code?: string[] };
 
 const STEPS: Step[] = [
   {
     n: "01",
-    title: "Install",
-    body: "One command. No daemons, no signup, no config.",
-    code: "npm i -g nomoreide",
+    title: "Add the MCP server",
+    body: "Register NoMoreIDE with your agent. It runs locally over stdio through npx, so there is no separate daemon or account.",
+    code: [
+      "claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
+      "codex mcp add nomoreide -- npx -y nomoreide",
+      'Gemini: add {"command":"npx","args":["-y","nomoreide"]} to mcpServers.nomoreide',
+    ],
   },
   {
     n: "02",
-    title: "Launch",
-    body: "Drop into your repo and start the workbench. It auto-detects your services and Git state.",
-    code: "nomoreide",
+    title: "Verify the connection",
+    body: "Restart your agent if needed, open the MCP panel, and confirm the nomoreide tools are available.",
+    code: ["/mcp"],
   },
   {
     n: "03",
     title: "Work",
-    body: "Run services, review diffs, tail logs, and chain MCP workflows — all from one place.",
+    body: "Ask your agent to run services, review diffs, tail logs, open the UI, and chain workflows through the NoMoreIDE MCP tools.",
   },
 ];
 
@@ -29,7 +33,7 @@ export function HowItWorks() {
             How it works
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
-            From npm to flow in 30 seconds
+            From MCP setup to flow in 30 seconds
           </h2>
         </div>
 
@@ -47,8 +51,12 @@ export function HowItWorks() {
               {s.code && (
                 <pre className="mt-4 overflow-x-auto rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-xs">
                   <code>
-                    <span className="text-muted-foreground">$ </span>
-                    {s.code}
+                    {s.code.map((line) => (
+                      <span key={line} className="block">
+                        <span className="text-muted-foreground">$ </span>
+                        {line}
+                      </span>
+                    ))}
                   </code>
                 </pre>
               )}

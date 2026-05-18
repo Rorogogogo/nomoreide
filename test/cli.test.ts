@@ -67,6 +67,20 @@ describe("CLI commands", () => {
     expect(exitCode).toBe(1);
     expect(errors.join("\n")).toContain("--command is required");
   });
+
+  test("prints MCP setup commands", async () => {
+    const exitCode = await runCli(["setup"], cliOptions());
+    const text = output.join("\n");
+
+    expect(exitCode).toBe(0);
+    expect(text).toContain(
+      "claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
+    );
+    expect(text).toContain("codex mcp add nomoreide -- npx -y nomoreide");
+    expect(text).toContain("~/.gemini/settings.json");
+    expect(text).toContain("Prompt to paste into your agent");
+    expect(text).toContain("/mcp");
+  });
 });
 
 function cliOptions() {

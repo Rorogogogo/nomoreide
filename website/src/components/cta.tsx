@@ -11,12 +11,14 @@ export function CTA() {
           <span className="text-muted-foreground">Start shipping.</span>
         </h2>
         <p className="mx-auto mt-5 max-w-lg text-muted-foreground md:text-lg">
-          Free and open source. Try it on your next branch — uninstall in one
-          command if it's not for you.
+          Free and open source. Add it to Claude Code or Codex as an MCP server
+          and let your agent use the local tools immediately.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <a href="https://www.npmjs.com/package/nomoreide">Install now</a>
+            <a href="https://github.com/Rorogogogo/nomoreide#connect-your-ai-agent">
+              Set up MCP
+            </a>
           </Button>
           <Button asChild size="lg" variant="outline">
             <a href="https://github.com/Rorogogogo/nomoreide#readme">

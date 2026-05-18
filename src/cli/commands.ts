@@ -10,6 +10,29 @@ import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
 import { runGitCli } from "./git.js";
 
+const USAGE =
+  "Usage: nomoreide [mcp|setup|tui|web|git|list|logs|start|stop|restart|add]";
+
+const MCP_SETUP_LINES = [
+  "NoMoreIDE MCP setup",
+  "",
+  "Claude Code:",
+  "  claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
+  "",
+  "Codex CLI:",
+  "  codex mcp add nomoreide -- npx -y nomoreide",
+  "",
+  "Gemini CLI:",
+  "  Add to ~/.gemini/settings.json:",
+  '  {"mcpServers":{"nomoreide":{"command":"npx","args":["-y","nomoreide"]}}}',
+  "",
+  "Then verify inside your agent:",
+  "  /mcp",
+  "",
+  "Prompt to paste into your agent:",
+  "  Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.",
+];
+
 export interface CliOptions {
   configPath?: string;
   logDir?: string;
@@ -33,6 +56,13 @@ export async function runCli(
 
   try {
     const [command, subcommand, ...rest] = args;
+
+    if (command === "setup") {
+      for (const line of MCP_SETUP_LINES) {
+        stdout(line);
+      }
+      return 0;
+    }
 
     if (command === "git") {
       return await runGitCli(subcommand, rest, stdout, configStore);
@@ -121,9 +151,7 @@ export async function runCli(
       return 0;
     }
 
-    throw new UsageError(
-      "Usage: nomoreide [mcp|tui|web|git|list|logs|start|stop|restart|add]",
-    );
+    throw new UsageError(USAGE);
   } catch (error) {
     stderr(error instanceof Error ? error.message : String(error));
     return error instanceof UsageError || error instanceof ConfigValidationError ? 1 : 2;

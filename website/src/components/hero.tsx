@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { ArrowRight, Copy, Sparkles, Terminal } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -12,19 +15,85 @@ function GithubIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
-const INSTALL_CMD = "npm i -g nomoreide";
+const AGENT_SETUPS = [
+  {
+    id: "claude",
+    label: "Claude Code",
+    description:
+      "Add NoMoreIDE as a stdio MCP server with Claude's built-in MCP command.",
+    language: "shell",
+    lines: ["claude mcp add --transport stdio nomoreide -- npx -y nomoreide"],
+    copyText: "claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
+    promptText:
+      "Please set up NoMoreIDE as a local MCP server for Claude Code. Use stdio transport and run it with npx -y nomoreide. After adding it, tell me how to verify it with /mcp.",
+  },
+  {
+    id: "codex",
+    label: "Codex CLI",
+    description:
+      "Register the same local MCP server in Codex so the tools are available from your coding session.",
+    language: "shell",
+    lines: ["codex mcp add nomoreide -- npx -y nomoreide"],
+    copyText: "codex mcp add nomoreide -- npx -y nomoreide",
+    promptText:
+      "Please set up NoMoreIDE as a local MCP server for Codex CLI. Register a server named nomoreide that runs npx -y nomoreide, then tell me how to verify it with /mcp.",
+  },
+  {
+    id: "gemini",
+    label: "Gemini CLI",
+    description:
+      "Add this server entry to your Gemini settings, then restart Gemini CLI.",
+    language: "json",
+    lines: [
+      "{",
+      '  "mcpServers": {',
+      '    "nomoreide": {',
+      '      "command": "npx",',
+      '      "args": ["-y", "nomoreide"]',
+      "    }",
+      "  }",
+      "}",
+    ],
+    copyText: [
+      "{",
+      '  "mcpServers": {',
+      '    "nomoreide": {',
+      '      "command": "npx",',
+      '      "args": ["-y", "nomoreide"]',
+      "    }",
+      "  }",
+      "}",
+    ].join("\n"),
+    promptText:
+      "Please set up NoMoreIDE as a local MCP server for Gemini CLI. Add a mcpServers.nomoreide entry to my Gemini settings that runs command npx with args [\"-y\", \"nomoreide\"], then tell me to restart Gemini and verify with /mcp.",
+  },
+];
 
 export function Hero() {
-  const [copied, setCopied] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState(AGENT_SETUPS[0].id);
+  const [copiedKind, setCopiedKind] = useState<"setup" | "prompt" | null>(
+    null,
+  );
+  const selectedAgent =
+    AGENT_SETUPS.find((agent) => agent.id === selectedAgentId) ??
+    AGENT_SETUPS[0];
 
   const copyInstall = async () => {
-    await navigator.clipboard.writeText(INSTALL_CMD);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    await navigator.clipboard.writeText(selectedAgent.copyText);
+    setCopiedKind("setup");
+    setTimeout(() => setCopiedKind(null), 1500);
+  };
+
+  const copyPrompt = async () => {
+    await navigator.clipboard.writeText(selectedAgent.promptText);
+    setCopiedKind("prompt");
+    setTimeout(() => setCopiedKind(null), 1500);
+  };
+
+  const selectAgent = (id: string) => {
+    setSelectedAgentId(id);
+    setCopiedKind(null);
   };
 
   return (
@@ -38,7 +107,7 @@ export function Hero() {
             className="group inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:border-foreground/30 hover:text-foreground"
           >
             <Sparkles className="size-3.5" />
-            <span>v0.1.4 — Git review + MCP workflows</span>
+            <span>v0.1.8 - Git review + MCP workflows</span>
             <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
           </a>
 
@@ -50,43 +119,125 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-pretty text-base text-muted-foreground md:text-lg">
-            Run services, review Git diffs, tail logs, and orchestrate MCP
-            workflows — all from one terminal-first interface.
+            Add NoMoreIDE as a local MCP server for Claude Code, Codex, or
+            Gemini, then let your agent manage services, Git diffs, logs, and
+            workflows from one terminal-first interface.
           </p>
 
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-            <button
-              onClick={copyInstall}
-              className="group flex items-center gap-3 rounded-md border border-border bg-background/60 px-4 py-2.5 font-mono text-sm shadow-sm backdrop-blur transition hover:border-foreground/30"
-              aria-label="Copy install command"
-            >
-              <span className="text-muted-foreground">$</span>
-              <span>{INSTALL_CMD}</span>
-              <Copy
-                className={cn(
-                  "size-3.5 text-muted-foreground transition",
-                  copied && "text-green-500",
-                )}
-              />
-              <span
-                className={cn(
-                  "text-xs text-green-500 transition",
-                  copied ? "opacity-100" : "opacity-0",
-                )}
+          <div className="mt-8 flex w-full max-w-3xl flex-col items-stretch gap-4">
+            <div className="rounded-xl border border-border bg-background/70 p-2 text-left shadow-sm backdrop-blur">
+              <div
+                className="grid gap-1 rounded-lg bg-muted/50 p-1 sm:grid-cols-3"
+                role="tablist"
+                aria-label="MCP setup agent"
               >
-                copied
-              </span>
-            </button>
+                {AGENT_SETUPS.map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={agent.id === selectedAgent.id}
+                    onClick={() => selectAgent(agent.id)}
+                    className={cn(
+                      "rounded-md px-3 py-2 text-center text-xs font-medium text-muted-foreground transition hover:text-foreground",
+                      agent.id === selectedAgent.id &&
+                        "bg-background text-foreground shadow-sm",
+                    )}
+                  >
+                    {agent.label}
+                  </button>
+                ))}
+              </div>
 
-            <Button asChild size="lg" variant="outline">
-              <a
-                href="https://github.com/Rorogogogo/nomoreide"
-                className="gap-2"
+              <div className="flex items-center justify-between gap-3 px-2 pt-4 pb-2">
+                <p className="text-sm text-muted-foreground">
+                  {selectedAgent.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={copyInstall}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+                  aria-label={`Copy ${selectedAgent.label} MCP setup`}
+                >
+                  <Copy
+                    className={cn(
+                      "size-3.5 transition",
+                      copiedKind === "setup" && "text-green-500",
+                    )}
+                  />
+                  <span
+                    className={cn(copiedKind === "setup" && "text-green-500")}
+                  >
+                    {copiedKind === "setup" ? "Copied" : "Copy setup"}
+                  </span>
+                </button>
+              </div>
+
+              <pre
+                className="overflow-x-auto rounded-lg border border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed shadow-inner sm:text-sm"
+                role="tabpanel"
               >
-                <GithubIcon className="size-4" />
-                Star on GitHub
-              </a>
-            </Button>
+                <code>
+                  {selectedAgent.lines.map((line, index) => (
+                    <span key={`${selectedAgent.id}-${index}`} className="block">
+                      {selectedAgent.language === "shell" && (
+                        <span className="text-muted-foreground">$ </span>
+                      )}
+                      {line}
+                    </span>
+                  ))}
+                </code>
+              </pre>
+
+              <div className="mt-2 rounded-lg border border-border bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                    Prompt your agent
+                  </p>
+                  <button
+                    type="button"
+                    onClick={copyPrompt}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
+                    aria-label={`Copy ${selectedAgent.label} setup prompt`}
+                  >
+                    <Copy
+                      className={cn(
+                        "size-3.5 transition",
+                        copiedKind === "prompt" && "text-green-500",
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        copiedKind === "prompt" && "text-green-500",
+                      )}
+                    >
+                      {copiedKind === "prompt" ? "Copied" : "Copy prompt"}
+                    </span>
+                  </button>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-foreground/85">
+                  {selectedAgent.promptText}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Button asChild size="lg">
+                <a href="https://github.com/Rorogogogo/nomoreide#connect-your-ai-agent">
+                  Full MCP setup
+                </a>
+              </Button>
+
+              <Button asChild size="lg" variant="outline">
+                <a
+                  href="https://github.com/Rorogogogo/nomoreide"
+                  className="gap-2"
+                >
+                  <GithubIcon className="size-4" />
+                  Star on GitHub
+                </a>
+              </Button>
+            </div>
           </div>
         </div>
 
