@@ -25,6 +25,23 @@ export interface ServiceStatus {
   exitedAt?: string;
   exitCode?: number | null;
   signal?: string | null;
+  processTree?: ProcessTreeSummary;
+}
+
+export interface ProcessTreeSummary {
+  rootPid: number;
+  processCount: number;
+  cpuPercent: number;
+  rssMb: number;
+  processes: ProcessRow[];
+}
+
+export interface ProcessRow {
+  pid: number;
+  ppid: number;
+  cpuPercent: number;
+  rssMb: number;
+  command: string;
 }
 
 export interface PortOverview {
@@ -47,6 +64,25 @@ export interface LogEntry {
   stream: "stdout" | "stderr";
   text: string;
   timestamp: string;
+}
+
+export interface ServiceHealth {
+  service: string;
+  status: "unknown" | "healthy" | "warning" | "unhealthy";
+  summary: string;
+  checkedAt: string;
+  checks: HealthCheckResult[];
+  processTree?: ProcessTreeSummary;
+  ports: PortOverview[];
+  lastErrorLog?: LogEntry;
+  agentContext: string;
+}
+
+export interface HealthCheckResult {
+  name: string;
+  ok: boolean;
+  summary: string;
+  latencyMs?: number;
 }
 
 export interface ServiceTestResult {
@@ -96,6 +132,7 @@ export interface DashboardData {
     services: Record<string, ServiceStatus>;
   };
   ports: PortOverview[];
+  health: Record<string, ServiceHealth>;
   logs: LogEntry[];
   git: {
     cwd: string;

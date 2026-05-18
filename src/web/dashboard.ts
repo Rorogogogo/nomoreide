@@ -6,7 +6,8 @@ import {
   type HostPortStatus,
 } from "../core/port-utils.js";
 import { ProcessManager } from "../core/process-manager.js";
-import type { NoMoreIdeConfig, ServiceStatus } from "../core/types.js";
+import { computeServiceHealth } from "../core/service-health.js";
+import type { NoMoreIdeConfig, ServiceHealth, ServiceStatus } from "../core/types.js";
 
 export async function buildDashboardPayload(options: {
   configStore: ConfigStore;
@@ -18,12 +19,18 @@ export async function buildDashboardPayload(options: {
   const firstService = config.services[0]?.name;
   const selectedGitRepository = getSelectedGitRepository(config);
   const gitCwd = selectedGitRepository?.path ?? options.cwd;
-  const runtime = options.manager.status();
+  const runtime = await options.manager.statusWithResources();
   const [gitStatus, branches, ports] = await Promise.all([
     readGitStatus(gitCwd),
     readGitBranches(gitCwd),
     buildPortOverview(config, runtime.services),
   ]);
+  const health = buildHealthOverview({
+    config,
+    logStore: options.logStore,
+    ports,
+    runtimeServices: runtime.services,
+  });
 
   return {
     ok: true,
@@ -31,6 +38,7 @@ export async function buildDashboardPayload(options: {
     config,
     runtime,
     ports,
+    health,
     logs: firstService ? options.logStore.read(firstService, 80) : [],
     git: {
       cwd: gitCwd,
@@ -49,6 +57,25 @@ interface PortOverview {
   state: "available" | "managed" | "occupied";
   services: string[];
   urls: string[];
+}
+
+function buildHealthOverview(options: {
+  config: NoMoreIdeConfig;
+  logStore: LogStore;
+  ports: PortOverview[];
+  runtimeServices: Record<string, ServiceStatus>;
+}): Record<string, ServiceHealth> {
+  return Object.fromEntries(
+    options.config.services.map((service) => [
+      service.name,
+      computeServiceHealth({
+        service,
+        status: options.runtimeServices[service.name],
+        ports: options.ports.filter((port) => port.services.includes(service.name)),
+        logs: options.logStore.read(service.name, 80),
+      }),
+    ]),
+  );
 }
 
 async function buildPortOverview(
