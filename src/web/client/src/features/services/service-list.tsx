@@ -5,8 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
-import { postForm, type DashboardData, type PortOverview, type ServiceStatus } from "@/lib/api";
+import {
+  postForm,
+  type DashboardData,
+  type PortOverview,
+  type ServiceHealth,
+  type ServiceStatus,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { HealthSummary } from "./health-summary";
 import { ProcessBadge } from "./process-badge";
 import { PortStateBadge } from "./ports-overview";
 import { GroupForm } from "./service-forms";
@@ -18,6 +25,7 @@ export function ServiceGroupSection({
   onRefresh,
   ports,
   services,
+  health,
   statuses,
 }: {
   allServices: DashboardData["config"]["services"];
@@ -25,6 +33,7 @@ export function ServiceGroupSection({
   onRefresh: () => Promise<void>;
   ports: PortOverview[];
   services: DashboardData["config"]["services"];
+  health: DashboardData["health"];
   statuses: DashboardData["runtime"]["services"];
 }) {
   const [editing, setEditing] = useState(false);
@@ -104,6 +113,7 @@ export function ServiceGroupSection({
                 key={service.name}
                 service={service}
                 status={statuses[service.name]}
+                health={health[service.name]}
                 ports={ports}
                 onRefresh={onRefresh}
               />
@@ -122,11 +132,13 @@ export function ServiceGroupSection({
 export function ServiceRow({
   service,
   status,
+  health,
   ports,
   onRefresh,
 }: {
   service: DashboardData["config"]["services"][number];
   status?: ServiceStatus;
+  health?: ServiceHealth;
   ports: PortOverview[];
   onRefresh: () => Promise<void>;
 }) {
@@ -157,6 +169,7 @@ export function ServiceRow({
           {service.command}
         </div>
         <div className="truncate text-[11px] text-muted-foreground">{service.cwd}</div>
+        <HealthSummary health={health} />
       </div>
       <div className="flex flex-wrap justify-end gap-1.5">
         <PortEditor service={service} onRefresh={onRefresh} />

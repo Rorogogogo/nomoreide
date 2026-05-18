@@ -313,6 +313,7 @@ export function ServicesView({
                       onRefresh={onRefresh}
                       ports={data.ports}
                       allServices={data.config.services}
+                      health={data.health}
                       services={data.config.services.filter((service) =>
                         group.services.includes(service.name),
                       )}
@@ -332,6 +333,7 @@ export function ServicesView({
                             key={service.name}
                             service={service}
                             status={data.runtime.services[service.name]}
+                            health={data.health[service.name]}
                             ports={data.ports}
                             onRefresh={onRefresh}
                           />
