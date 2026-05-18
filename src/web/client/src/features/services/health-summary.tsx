@@ -1,4 +1,4 @@
-import { Activity, MemoryStick } from "lucide-react";
+import { Activity, Cpu, MemoryStick } from "lucide-react";
 import type { ServiceHealth } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -26,10 +26,18 @@ export function HealthSummary({ health }: { health?: ServiceHealth }) {
       </span>
       {reason ? <span className="min-w-0 max-w-[420px] truncate">{reason}</span> : null}
       {processTree ? (
-        <span className="inline-flex items-center gap-1 font-mono">
-          <MemoryStick className="size-3" />
-          {formatMemory(processTree.rssMb)} RAM
-        </span>
+        <>
+          <span className="inline-flex items-center gap-1 font-mono">
+            <Cpu className="size-3" />
+            {processTree.processCount}{" "}
+            {processTree.processCount === 1 ? "process" : "processes"}
+          </span>
+          <span className="font-mono">{formatCpu(processTree.cpuPercent)} CPU</span>
+          <span className="inline-flex items-center gap-1 font-mono">
+            <MemoryStick className="size-3" />
+            {formatMemory(processTree.rssMb)} RAM
+          </span>
+        </>
       ) : null}
     </div>
   );
@@ -45,6 +53,11 @@ function healthClassName(status: ServiceHealth["status"]) {
 function formatMemory(value: number): string {
   if (Number.isInteger(value)) return `${value} MB`;
   return `${value.toFixed(1)} MB`;
+}
+
+function formatCpu(value: number): string {
+  if (Number.isInteger(value)) return `${value}%`;
+  return `${value.toFixed(1)}%`;
 }
 
 function compactSummary(summary: string): string {
