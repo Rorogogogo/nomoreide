@@ -48,6 +48,7 @@ describe("service health UI", () => {
     expect(markup).toContain("3 processes");
     expect(markup).toContain("1.7% CPU");
     expect(markup).toContain("1220 MB RAM");
+    expect(markup).toContain("health-metrics");
     expect(markup).not.toContain("Diagnostics");
   });
 
