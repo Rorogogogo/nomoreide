@@ -1,4 +1,5 @@
 import type { ProcessTreeSummary } from "./process-tree.js";
+import type { PortBindingStatus } from "./port-utils.js";
 
 export interface ServiceDefinition {
   name: string;
@@ -48,6 +49,31 @@ export interface LogEntry {
   stream: LogStream;
   text: string;
   timestamp: string;
+}
+
+export type ServiceHealthStatus =
+  | "unknown"
+  | "healthy"
+  | "warning"
+  | "unhealthy";
+
+export interface HealthCheckResult {
+  name: string;
+  ok: boolean;
+  summary: string;
+  latencyMs?: number;
+}
+
+export interface ServiceHealth {
+  service: string;
+  status: ServiceHealthStatus;
+  summary: string;
+  checkedAt: string;
+  checks: HealthCheckResult[];
+  processTree?: ProcessTreeSummary;
+  ports: PortBindingStatus[];
+  lastErrorLog?: LogEntry;
+  agentContext: string;
 }
 
 export interface ToolResult {

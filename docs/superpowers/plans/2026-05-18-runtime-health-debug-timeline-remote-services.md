@@ -575,7 +575,7 @@ git commit -m "feat: summarize service process trees"
 - Modify: `src/core/types.ts`
 - Test: `test/service-health.test.ts`
 
-- [ ] **Step 1: Write health summary tests**
+- [x] **Step 1: Write health summary tests**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -618,13 +618,13 @@ describe("computeServiceHealth", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/service-health.test.ts`
 
 Expected: FAIL because `service-health.ts` does not exist.
 
-- [ ] **Step 3: Implement health computation**
+- [x] **Step 3: Implement health computation**
 
 Create `src/core/service-health.ts`:
 
@@ -698,7 +698,7 @@ function baseHealth(
 
 Add the matching `ServiceHealth` type in `src/core/types.ts`.
 
-- [ ] **Step 4: Include health in dashboard payload**
+- [x] **Step 4: Include health in dashboard payload**
 
 In `src/web/dashboard.ts`, compute `healthByService` after runtime and ports are available:
 
@@ -718,13 +718,13 @@ const health = Object.fromEntries(
 
 Return `health` from the dashboard payload.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run test/service-health.test.ts test/web-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/service-health.ts src/core/types.ts src/web/dashboard.ts test/service-health.test.ts

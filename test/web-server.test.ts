@@ -104,6 +104,12 @@ describe("web server", () => {
       runtime: {
         services: {},
       },
+      health: {
+        backend: {
+          service: "backend",
+          status: "unknown",
+        },
+      },
     });
     expect(body.git).toMatchObject({
       cwd: tempDir,
