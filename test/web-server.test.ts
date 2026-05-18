@@ -138,6 +138,12 @@ describe("web server", () => {
       state: "occupied",
       services: ["frontend"],
       urls: [],
+      hosts: expect.arrayContaining([
+        expect.objectContaining({
+          host: "127.0.0.1",
+          available: false,
+        }),
+      ]),
     });
   });
 

@@ -30,9 +30,16 @@ export interface ServiceStatus {
 export interface PortOverview {
   port: number;
   available: boolean;
+  hosts: HostPortStatus[];
   state: "available" | "managed" | "occupied";
   services: string[];
   urls: string[];
+}
+
+export interface HostPortStatus {
+  host: string;
+  available: boolean;
+  errorCode?: string;
 }
 
 export interface LogEntry {

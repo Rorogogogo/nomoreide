@@ -1,7 +1,10 @@
 import { ConfigStore } from "../core/config-store.js";
 import { GitManager, type GitStatus } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
-import { isPortAvailable } from "../core/port-utils.js";
+import {
+  getPortBindingStatus,
+  type HostPortStatus,
+} from "../core/port-utils.js";
 import { ProcessManager } from "../core/process-manager.js";
 import type { NoMoreIdeConfig, ServiceStatus } from "../core/types.js";
 
@@ -42,6 +45,7 @@ export async function buildDashboardPayload(options: {
 interface PortOverview {
   port: number;
   available: boolean;
+  hosts: HostPortStatus[];
   state: "available" | "managed" | "occupied";
   services: string[];
   urls: string[];
@@ -73,7 +77,7 @@ async function buildPortOverview(
     [...ports.entries()]
       .sort(([left], [right]) => left - right)
       .map(async ([port, entry]) => {
-        const available = await isPortAvailable(port);
+        const binding = await getPortBindingStatus(port);
         const managed = [...entry.services].some((serviceName) => {
           const status = runtimeServices[serviceName];
           const urlPort = portFromUrl(status?.url);
@@ -89,8 +93,9 @@ async function buildPortOverview(
 
         return {
           port,
-          available,
-          state: managed ? "managed" : available ? "available" : "occupied",
+          available: binding.available,
+          hosts: binding.hosts,
+          state: managed ? "managed" : binding.available ? "available" : "occupied",
           services: [...entry.services].sort(),
           urls: [...entry.urls].sort(),
         };
