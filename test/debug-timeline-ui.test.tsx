@@ -27,7 +27,7 @@ function buildData(timeline: TimelineEvent[]): DashboardData {
 }
 
 describe("DebugTimeline UI", () => {
-  test("renders a graph rail with markers colored by severity", () => {
+  test("renders one swimlane per service with severity-colored markers", () => {
     const data = buildData([
       {
         id: "event-1",
@@ -40,10 +40,10 @@ describe("DebugTimeline UI", () => {
       {
         id: "event-2",
         timestamp: "2026-05-18T00:05:00.000Z",
-        kind: "service.lifecycle",
-        service: "api",
+        kind: "service.log",
+        service: "frontend",
         severity: "warning",
-        title: "api degraded",
+        title: "frontend stderr",
       },
       {
         id: "event-3",
@@ -60,19 +60,20 @@ describe("DebugTimeline UI", () => {
     );
 
     expect(markup).toContain("Runtime Monitor");
-    // Graph rail container
-    expect(markup).toContain("timeline-graph");
-    expect(markup).toContain("timeline-rail");
-    // Three markers, one per event
+    // One lane per unique service
+    const laneCount = (markup.match(/timeline-lane/g) || []).length;
+    expect(laneCount).toBe(2);
+    // Service labels visible on lanes
+    expect(markup).toContain("api");
+    expect(markup).toContain("frontend");
+    // Markers — one per event
     const markerCount = (markup.match(/timeline-marker/g) || []).length;
     expect(markerCount).toBeGreaterThanOrEqual(3);
     // Severity colors
     expect(markup).toContain("bg-red-500");
     expect(markup).toContain("bg-amber-500");
-    // Labels still available
-    expect(markup).toContain("api started");
-    expect(markup).toContain("api crashed");
-    expect(markup).toContain("service.lifecycle");
+    // Inline detail list is removed; details surface via dialog on click
+    expect(markup).not.toContain("timeline-list");
   });
 
   test("shows empty state when there are no events", () => {

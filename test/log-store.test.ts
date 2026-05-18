@@ -61,9 +61,45 @@ describe("LogStore", () => {
       expect.objectContaining({
         kind: "service.log",
         service: "api",
-        severity: "warning",
+        severity: "error",
         title: "api stderr",
         detail: "Error: failed to start",
+      }),
+    );
+  });
+
+  test("does not flag benign stderr cargo build output as a timeline event", async () => {
+    const timeline = new TimelineStore({
+      baseDir: join(tempDir, "timeline"),
+    });
+    const logs = new LogStore({
+      baseDir: tempDir,
+      maxLinesPerService: 10,
+      timelineStore: timeline,
+    });
+
+    await logs.append("api", "stderr", "Finished `dev` profile [unoptimized + debuginfo] target(s)");
+    await logs.append("api", "stderr", "Running `target/debug/api`");
+
+    expect(timeline.read()).toHaveLength(0);
+  });
+
+  test("records stdout readiness lines as info timeline events", async () => {
+    const timeline = new TimelineStore({
+      baseDir: join(tempDir, "timeline"),
+    });
+    const logs = new LogStore({
+      baseDir: tempDir,
+      maxLinesPerService: 10,
+      timelineStore: timeline,
+    });
+
+    await logs.append("frontend", "stdout", "VITE v8.0.3 ready in 126 ms");
+
+    expect(timeline.read()).toContainEqual(
+      expect.objectContaining({
+        service: "frontend",
+        severity: "info",
       }),
     );
   });

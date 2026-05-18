@@ -57,12 +57,14 @@ export class LogStore {
 
   private async appendTimelineEvent(entry: LogEntry): Promise<void> {
     if (!this.timelineStore) return;
-    if (entry.stream !== "stderr" && !isReadinessLine(entry.text)) return;
+    const severity = classifyLogSeverity(entry.text);
+    const isReadiness = isReadinessLine(entry.text);
+    if (severity === null && !isReadiness) return;
 
     await this.timelineStore.append({
       kind: "service.log",
       service: entry.service,
-      severity: entry.stream === "stderr" ? "warning" : "info",
+      severity: severity ?? "info",
       title: `${entry.service} ${entry.stream}`,
       detail: entry.text,
       timestamp: entry.timestamp,
@@ -76,4 +78,17 @@ function safeFileName(input: string): string {
 
 function isReadinessLine(text: string): boolean {
   return /\b(ready|listening|local:|server started)\b/i.test(text);
+}
+
+function classifyLogSeverity(text: string): "warning" | "error" | null {
+  if (/\b(panic|fatal|traceback|uncaught|unhandled|EADDRINUSE|ECONNREFUSED|segmentation fault)\b/i.test(text)) {
+    return "error";
+  }
+  if (/\berror\b/i.test(text) && !/0 errors?\b/i.test(text)) {
+    return "error";
+  }
+  if (/\b(warn|warning|deprecated)\b/i.test(text)) {
+    return "warning";
+  }
+  return null;
 }
