@@ -1,12 +1,160 @@
+<div align="center">
+
+<img src="assets/nomoreide-logo.png" alt="NoMoreIDE Logo" width="120" />
+
 # NoMoreIDE
 
-NoMoreIDE is an AI-native terminal workbench for the post-IDE development loop. It gives coding agents and humans a shared local control surface for services, ports, logs, Git review, and MCP workflows.
+**The AI-native terminal workbench for the post-IDE development loop.**
 
-## Status
+[![npm version](https://img.shields.io/npm/v/nomoreide?style=flat-square&color=0ea5e9&label=npm)](https://www.npmjs.com/package/nomoreide)
+[![npm downloads](https://img.shields.io/npm/dm/nomoreide?style=flat-square&color=6366f1)](https://www.npmjs.com/package/nomoreide)
+[![GitHub stars](https://img.shields.io/github/stars/Rorogogogo/nomoreide?style=flat-square&color=f59e0b)](https://github.com/Rorogogogo/nomoreide/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
+[![Node.js ≥20](https://img.shields.io/badge/node-%E2%89%A520-3b82f6?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![MCP Ready](https://img.shields.io/badge/MCP-ready-a855f7?style=flat-square)](https://modelcontextprotocol.io)
 
-This is an MVP with a working MCP server, core process manager, terminal UI, React web UI, and safe Git review tools.
+Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, and MCP workflows — no IDE required.
 
-## Install
+[Quick Start](#quick-start) · [MCP Setup](#-connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
+
+</div>
+
+---
+
+## What Is NoMoreIDE?
+
+NoMoreIDE is a lightweight process manager, Git reviewer, log aggregator, and MCP server — all in one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a terminal UI and a local React web dashboard for humans.
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    Your Project                       │
+│                                                      │
+│   Claude Code / Codex CLI / Gemini CLI               │
+│           │                                          │
+│     MCP (stdio)                                      │
+│           │                                          │
+│   ┌───────▼────────┐    ┌──────────────────────┐    │
+│   │  NoMoreIDE MCP │◄──►│  Process Manager      │    │
+│   │  Server        │    │  Log Store            │    │
+│   └───────┬────────┘    │  Git Manager          │    │
+│           │             │  Config Store         │    │
+│     HTTP API            └──────────────────────┘    │
+│           │                                          │
+│   ┌───────▼──────────────────────────┐              │
+│   │  Web UI  (localhost:4317)        │              │
+│   │  Terminal UI (nomoreide tui)     │              │
+│   └──────────────────────────────────┘              │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+## Connect Your AI Agent
+
+NoMoreIDE runs as a **local stdio MCP server**. Pick your agent CLI and paste the one-liner — that's it.
+
+### Claude Code
+
+```bash
+claude mcp add --transport stdio nomoreide -- npx -y nomoreide
+```
+
+> Want to share the config with your whole team? Use project scope to commit a `.mcp.json`:
+>
+> ```bash
+> claude mcp add --transport stdio --scope project nomoreide -- npx -y nomoreide
+> ```
+
+Then confirm inside Claude Code:
+
+```
+/mcp
+```
+
+<details>
+<summary>Manual config (<code>.mcp.json</code> or Claude settings)</summary>
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "npx",
+      "args": ["-y", "nomoreide"]
+    }
+  }
+}
+```
+
+</details>
+
+---
+
+### Codex CLI
+
+```bash
+codex mcp add nomoreide -- npx -y nomoreide
+```
+
+<details>
+<summary>Manual config (<code>~/.codex/config.toml</code>)</summary>
+
+```toml
+[mcp_servers.nomoreide]
+command = "npx"
+args    = ["-y", "nomoreide"]
+```
+
+</details>
+
+Then confirm inside Codex:
+
+```
+/mcp
+```
+
+---
+
+### Gemini CLI
+
+Open your Gemini CLI settings file (`~/.gemini/settings.json` or the path shown by `gemini config`) and add:
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "npx",
+      "args": ["-y", "nomoreide"]
+    }
+  }
+}
+```
+
+Restart Gemini CLI, then verify:
+
+```
+/mcp
+```
+
+---
+
+### Local Checkout (any agent)
+
+If you prefer to point agents at a locally built binary instead of the published npm package:
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "node",
+      "args": ["/absolute/path/to/nomoreide/dist/index.js"]
+    }
+  }
+}
+```
+
+---
+
+## Quick Start
 
 Run without installing:
 
@@ -20,234 +168,204 @@ Install globally:
 npm install -g nomoreide
 ```
 
-Or from a local checkout:
+Build from source:
 
 ```bash
+git clone https://github.com/Rorogogogo/nomoreide.git
+cd nomoreide
 npm install
 npm run build
 ```
 
-## Run
+---
 
-Start the MCP server:
+## Architecture
+
+```mermaid
+graph TD
+    subgraph Agent["AI Agent (Claude / Codex / Gemini)"]
+        A[Coding Agent CLI]
+    end
+
+    subgraph NoMoreIDE
+        MCP[MCP Server<br/>stdio transport]
+        PM[Process Manager]
+        GM[Git Manager]
+        LS[Log Store]
+        CS[Config Store<br/>nomoreide.config.json]
+        WS[Web Server<br/>:4317]
+        TUI[Terminal UI]
+    end
+
+    subgraph Services["Your Dev Services"]
+        S1[backend :3001]
+        S2[frontend :5173]
+        S3[db :5432]
+    end
+
+    A -- MCP stdio --> MCP
+    MCP --> PM
+    MCP --> GM
+    MCP --> LS
+    MCP --> CS
+    PM --> S1
+    PM --> S2
+    PM --> S3
+    LS --> PM
+    WS --> PM
+    WS --> GM
+    WS --> LS
+    TUI --> PM
+    TUI --> LS
+```
+
+---
+
+## Feature Overview
+
+| Feature | CLI | TUI | Web UI | MCP |
+|---|:---:|:---:|:---:|:---:|
+| Start / stop / restart services | ✓ | ✓ | ✓ | ✓ |
+| Bundle orchestration | ✓ | | ✓ | ✓ |
+| Port conflict detection | | | ✓ | ✓ |
+| Real-time log streaming | ✓ | ✓ | ✓ | ✓ |
+| Git status & diff | ✓ | | ✓ | ✓ |
+| Stage / unstage / commit | ✓ | | ✓ | ✓ |
+| Branch management | ✓ | | ✓ | ✓ |
+| Safe Git (no force-push, no reset) | ✓ | ✓ | ✓ | ✓ |
+
+---
+
+## Running the Interfaces
+
+### MCP Server (default)
 
 ```bash
 nomoreide
-```
-
-From a local checkout:
-
-```bash
+# or from source:
 npm run dev
 ```
 
-Start the terminal UI:
+### Terminal UI
 
 ```bash
 nomoreide tui
 ```
 
-Start the local web UI:
+### Web Dashboard
 
 ```bash
 nomoreide web
-```
-
-The web UI listens on `http://127.0.0.1:4317` by default. Use another port with:
-
-```bash
+# custom port:
 nomoreide web --port=4320
 ```
 
-From a local checkout, prefix CLI commands with `npm run dev --` instead of `nomoreide`.
+The web dashboard is available at `http://127.0.0.1:4317` by default.
 
-## Agent CLI MCP Setup
-
-NoMoreIDE runs as a local stdio MCP server. The easiest setup is to let each agent CLI launch the published npm package with `npx`.
-
-### Claude Code
-
-```bash
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
-```
-
-Use project scope if you want to commit a shared `.mcp.json` for the current repository:
-
-```bash
-claude mcp add --transport stdio --scope project nomoreide -- npx -y nomoreide
-```
-
-Inside Claude Code, run `/mcp` to confirm the server is connected.
-
-### Codex CLI
-
-```bash
-codex mcp add nomoreide -- npx -y nomoreide
-```
-
-Or add it directly to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.nomoreide]
-command = "npx"
-args = ["-y", "nomoreide"]
-```
-
-Inside Codex, run `/mcp` to confirm the server is connected.
-
-### Gemini CLI
-
-Add NoMoreIDE to your Gemini CLI `settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "nomoreide": {
-      "command": "npx",
-      "args": ["-y", "nomoreide"]
-    }
-  }
-}
-```
-
-Restart Gemini CLI, then run `/mcp` to confirm the server is connected.
+---
 
 ## CLI
 
-Register a service:
+### Services
 
 ```bash
-nomoreide add service backend --command "npm run dev" --cwd /absolute/path/to/backend --port 3001
-```
+# Register a service
+nomoreide add service backend \
+  --command "npm run dev" \
+  --cwd /absolute/path/to/backend \
+  --port 3001
 
-Register a bundle:
-
-```bash
+# Register a bundle (ordered group of services)
 nomoreide add bundle full-stack db backend frontend
-```
 
-List registered services and bundles:
-
-```bash
+# List everything
 nomoreide list
-```
 
-Start, stop, or restart a registered service:
-
-```bash
+# Lifecycle
 nomoreide start backend
 nomoreide stop backend
 nomoreide restart backend
-```
-
-Start or stop a bundle:
-
-```bash
 nomoreide start full-stack
 nomoreide stop full-stack
-```
 
-Read recent in-memory logs for the current NoMoreIDE process:
-
-```bash
+# Logs (in-memory, current process)
 nomoreide logs backend
 ```
 
-## Git
+### Git
 
-NoMoreIDE includes safe Git review commands. It does not expose destructive actions such as hard reset, clean, force push, or branch deletion.
-
-Show status:
+NoMoreIDE exposes **read-safe** Git operations only — no hard reset, no clean, no force push, no branch deletion.
 
 ```bash
-nomoreide git status --cwd /absolute/path/to/repo
-```
+# Status & diff
+nomoreide git status --cwd /path/to/repo
+nomoreide git diff   --cwd /path/to/repo
 
-Register and select Git folders for the web UI:
+# Staging & committing
+nomoreide git stage   --cwd /path/to/repo src/index.ts README.md
+nomoreide git unstage --cwd /path/to/repo src/index.ts
+nomoreide git commit  --cwd /path/to/repo --message "feat: add dashboard"
 
-```bash
-nomoreide git add-repo app --path /absolute/path/to/repo
+# History
+nomoreide git log --cwd /path/to/repo
+
+# Branches
+nomoreide git branch        --cwd /path/to/repo
+nomoreide git fetch         --cwd /path/to/repo
+nomoreide git switch        --cwd /path/to/repo feature/my-work
+nomoreide git create-branch --cwd /path/to/repo feature/new-work
+
+# Register repos for the web UI
+nomoreide git add-repo    app --path /path/to/repo
 nomoreide git select-repo app
 ```
 
-Show unstaged diff:
-
-```bash
-nomoreide git diff --cwd /absolute/path/to/repo
-```
-
-Stage or unstage explicit files:
-
-```bash
-nomoreide git stage --cwd /absolute/path/to/repo src/index.ts README.md
-nomoreide git unstage --cwd /absolute/path/to/repo src/index.ts
-```
-
-Commit staged changes:
-
-```bash
-nomoreide git commit --cwd /absolute/path/to/repo --message "feat: add service dashboard"
-```
-
-Show recent commits:
-
-```bash
-nomoreide git log --cwd /absolute/path/to/repo
-```
-
-List branches, fetch remotes, switch branches, or create a branch:
-
-```bash
-nomoreide git branch --cwd /absolute/path/to/repo
-nomoreide git fetch --cwd /absolute/path/to/repo
-nomoreide git switch --cwd /absolute/path/to/repo feature/work
-nomoreide git create-branch --cwd /absolute/path/to/repo feature/new-work
-```
-
-For a local checkout MCP client setup, point a stdio server entry at the built CLI:
-
-```json
-{
-  "mcpServers": {
-    "nomoreide": {
-      "command": "node",
-      "args": ["/absolute/path/to/nomoreide/dist/index.js"]
-    }
-  }
-}
-```
-
-NoMoreIDE stores service definitions in `nomoreide.config.json` in the directory where the server is launched. Logs are written to `.nomoreide/logs/`.
+---
 
 ## MCP Tools
 
-- `nomoreide_list_services`
-- `nomoreide_register_service`
-- `nomoreide_start_service`
-- `nomoreide_stop_service`
-- `nomoreide_restart_service`
-- `nomoreide_read_logs`
-- `nomoreide_register_bundle`
-- `nomoreide_start_bundle`
-- `nomoreide_stop_bundle`
-- `nomoreide_status`
-- `nomoreide_git_status`
-- `nomoreide_git_branches`
-- `nomoreide_git_switch_branch`
-- `nomoreide_git_create_branch`
-- `nomoreide_git_fetch`
-- `nomoreide_git_diff`
-- `nomoreide_git_staged_diff`
-- `nomoreide_git_log`
-- `nomoreide_git_stage`
-- `nomoreide_git_unstage`
-- `nomoreide_git_commit`
-- `nomoreide_git_register_repository`
-- `nomoreide_git_select_repository`
+All tools are prefixed with `nomoreide_` and are available to any connected MCP client.
 
-## Example Service
+### Service Tools
 
-Register a service through MCP with:
+| Tool | Description |
+|---|---|
+| `nomoreide_list_services` | List all registered services and bundles |
+| `nomoreide_register_service` | Register a new service |
+| `nomoreide_start_service` | Start a registered service |
+| `nomoreide_stop_service` | Stop a running service |
+| `nomoreide_restart_service` | Restart a running service |
+| `nomoreide_read_logs` | Read recent in-memory logs for a service |
+| `nomoreide_register_bundle` | Register a bundle of services |
+| `nomoreide_start_bundle` | Start all services in a bundle |
+| `nomoreide_stop_bundle` | Stop all services in a bundle |
+| `nomoreide_status` | Overall server status |
+| `nomoreide_open_ui` | Open the local web UI |
+| `nomoreide_close_ui` | Close the local web UI |
+
+### Git Tools
+
+| Tool | Description |
+|---|---|
+| `nomoreide_git_status` | Show working tree status |
+| `nomoreide_git_diff` | Show unstaged diff |
+| `nomoreide_git_staged_diff` | Show staged diff |
+| `nomoreide_git_log` | Show recent commits |
+| `nomoreide_git_branches` | List branches |
+| `nomoreide_git_fetch` | Fetch from remote |
+| `nomoreide_git_switch_branch` | Switch to a branch |
+| `nomoreide_git_create_branch` | Create a new branch |
+| `nomoreide_git_stage` | Stage specific files |
+| `nomoreide_git_unstage` | Unstage specific files |
+| `nomoreide_git_commit` | Commit staged changes |
+| `nomoreide_git_register_repository` | Register a repo path |
+| `nomoreide_git_select_repository` | Select the active repo |
+
+---
+
+## Example Configurations
+
+### Service Definition (via MCP)
 
 ```json
 {
@@ -258,11 +376,11 @@ Register a service through MCP with:
   "env": {
     "NODE_ENV": "development"
   },
-  "description": "API server"
+  "description": "REST API server"
 }
 ```
 
-## Example Bundle
+### Bundle Definition (via MCP)
 
 ```json
 {
@@ -271,21 +389,46 @@ Register a service through MCP with:
 }
 ```
 
-Then call `nomoreide_start_bundle` with:
+Start the whole stack in one call:
 
 ```json
-{
-  "name": "full-stack"
-}
+{ "name": "full-stack" }
 ```
+
+---
 
 ## Safety Model
 
-NoMoreIDE does not scan the whole machine and does not kill unrelated processes. If a registered service port is already occupied, NoMoreIDE reports the conflict instead of terminating the process.
+NoMoreIDE is designed to be **safe for AI agents to call without guard rails**:
+
+- Does not scan or enumerate the whole filesystem
+- Does not kill processes it did not start
+- Reports port conflicts instead of terminating the occupying process
+- Git tools omit all destructive operations (no `reset --hard`, `clean`, `push --force`, or `branch -D`)
+- Config is scoped to `nomoreide.config.json` in the launch directory
+- Logs are written only to `.nomoreide/logs/`
+
+---
 
 ## Development
 
 ```bash
-npm test
-npm run build
+npm test        # run the full test suite (vitest)
+npm run build   # compile TypeScript → dist/
+npm run dev     # run from source (tsx)
 ```
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome at [github.com/Rorogogogo/nomoreide](https://github.com/Rorogogogo/nomoreide/issues).  
+If this tool saved you from opening VS Code today, consider leaving a ⭐.
+
+---
+
+<div align="center">
+
+MIT License · Built by [Rorogogogo](https://github.com/Rorogogogo)
+
+</div>
