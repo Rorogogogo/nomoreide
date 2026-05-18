@@ -69,6 +69,25 @@ describe("ProcessManager", () => {
     expect(manager.status().services.worker.state).toBe("stopped");
   });
 
+  test("includes process tree resources for running services", async () => {
+    await config.registerService({
+      name: "worker",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+
+    const started = await manager.startService("worker");
+    const status = await manager.statusWithResources();
+
+    expect(status.services.worker.processTree).toMatchObject({
+      rootPid: started.pid,
+      processCount: expect.any(Number),
+      cpuPercent: expect.any(Number),
+      rssMb: expect.any(Number),
+    });
+    expect(status.services.worker.processTree?.processCount).toBeGreaterThan(0);
+  });
+
   test("restarts a running service with a new process", async () => {
     await config.registerService({
       name: "api",
