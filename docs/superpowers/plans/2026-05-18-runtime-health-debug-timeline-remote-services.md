@@ -1009,7 +1009,7 @@ git commit -m "feat: record service debug timeline"
 - Modify: `src/web/client/src/lib/api.ts`
 - Test: `test/web-server.test.ts`
 
-- [ ] **Step 1: Add client-side types**
+- [x] **Step 1: Add client-side types**
 
 Update `src/web/client/src/lib/api.ts` with:
 
@@ -1035,7 +1035,7 @@ export interface DashboardTimelineEvent {
 
 Add `health: Record<string, DashboardServiceHealth>` and `timeline: DashboardTimelineEvent[]` to `DashboardData`.
 
-- [ ] **Step 2: Create `HealthSummary` component**
+- [x] **Step 2: Create `HealthSummary` component**
 
 Render status, summary, process-tree memory, CPU, and port bindings for a service.
 
@@ -1070,15 +1070,15 @@ export function AgentContextPanel({ context }: { context: string }) {
 }
 ```
 
-- [ ] **Step 4: Create `DebugTimeline` component**
+- [x] **Step 4: Create `DebugTimeline` component**
 
-Render timeline events grouped by newest-first order, with severity color and service filter.
+Render timeline events grouped by newest-first order, with severity color and service filter. Now rendered as a visual graph (horizontal rail with severity-colored markers) plus a detail list beneath.
 
-- [ ] **Step 5: Place components in `ServicesView`**
+- [x] **Step 5: Place components in `ServicesView`**
 
-Show health on every service row/card. Show timeline in the right panel or lower section. Show agent context for the selected service.
+Show health on every service row/card. Show timeline in the right panel or lower section. Show agent context for the selected service. (AgentContextPanel still pending — see Step 3.)
 
-- [ ] **Step 6: Run build**
+- [x] **Step 6: Run build**
 
 Run: `npm run build`
 
