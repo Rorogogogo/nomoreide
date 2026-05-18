@@ -111,6 +111,7 @@ describe("web server", () => {
         },
       },
     });
+    expect(body.timeline).toEqual([]);
     expect(body.git).toMatchObject({
       cwd: tempDir,
       selectedRepository: null,
@@ -227,6 +228,18 @@ describe("web server", () => {
         name: "oneshot",
       },
     });
+
+    const dashboardResponse = await fetch(`${server.url}/api/dashboard`);
+    const dashboard = await dashboardResponse.json();
+    expect(dashboard.timeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "service.lifecycle",
+          service: "oneshot",
+          title: "oneshot started",
+        }),
+      ]),
+    );
   });
 
   test("registers a service from a web form post", async () => {

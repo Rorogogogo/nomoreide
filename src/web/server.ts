@@ -1,5 +1,5 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
   ConfigStore,
   ConfigValidationError,
@@ -8,6 +8,7 @@ import {
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { TimelineStore } from "../core/timeline-store.js";
 import { testServiceCommand } from "./service-tester.js";
 import {
   buildDashboardPayload,
@@ -48,10 +49,14 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const configStore = new ConfigStore(
     options.configPath ?? defaultGlobalConfigPath(),
   );
+  const timelineStore = new TimelineStore({
+    baseDir: timelineBaseDir(options.logDir),
+  });
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
+    timelineStore,
   });
-  const manager = new ProcessManager({ configStore, logStore });
+  const manager = new ProcessManager({ configStore, logStore, timelineStore });
   const cwd = options.cwd ?? process.cwd();
 
   return {
@@ -63,6 +68,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
           configStore,
           logStore,
           manager,
+          timelineStore,
           cwd,
         });
       });
@@ -103,8 +109,10 @@ async function routeRequest(options: {
   cwd: string;
   logStore: LogStore;
   manager: ProcessManager;
+  timelineStore: TimelineStore;
 }): Promise<void> {
-  const { request, response, configStore, cwd, logStore, manager } = options;
+  const { request, response, configStore, cwd, logStore, manager, timelineStore } =
+    options;
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
 
   try {
@@ -116,7 +124,13 @@ async function routeRequest(options: {
     if (request.method === "GET" && url.pathname === "/api/dashboard") {
       sendJson(
         response,
-        await buildDashboardPayload({ configStore, cwd, logStore, manager }),
+        await buildDashboardPayload({
+          configStore,
+          cwd,
+          logStore,
+          manager,
+          timelineStore,
+        }),
       );
       return;
     }
@@ -317,4 +331,8 @@ async function routeRequest(options: {
       error instanceof ConfigValidationError ? 400 : 500,
     );
   }
+}
+
+function timelineBaseDir(logDir: string | undefined): string {
+  return logDir ? dirname(resolve(logDir)) : resolve(process.cwd(), ".nomoreide");
 }

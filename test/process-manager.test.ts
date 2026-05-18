@@ -5,17 +5,25 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
 import { LogStore } from "../src/core/log-store.js";
 import { ProcessManager } from "../src/core/process-manager.js";
+import { TimelineStore } from "../src/core/timeline-store.js";
 
 let tempDir: string;
 let manager: ProcessManager;
 let logs: LogStore;
 let config: ConfigStore;
+let timeline: TimelineStore;
 
 beforeEach(async () => {
   tempDir = await mkdtemp(join(tmpdir(), "nomoreide-process-"));
   config = new ConfigStore(join(tempDir, "nomoreide.config.json"));
+  timeline = new TimelineStore({ baseDir: join(tempDir, "timeline") });
   logs = new LogStore({ baseDir: join(tempDir, "logs") });
-  manager = new ProcessManager({ configStore: config, logStore: logs, stopTimeoutMs: 50 });
+  manager = new ProcessManager({
+    configStore: config,
+    logStore: logs,
+    stopTimeoutMs: 50,
+    timelineStore: timeline,
+  });
 });
 
 afterEach(async () => {
@@ -53,6 +61,40 @@ describe("ProcessManager", () => {
     await waitFor(() => manager.status().services.frontend.url === "http://localhost:5174/");
 
     expect(manager.status().services.frontend.url).toBe("http://localhost:5174/");
+  });
+
+  test("records lifecycle and detected URL events in the debug timeline", async () => {
+    await config.registerService({
+      name: "frontend",
+      command: nodeCommand(
+        "console.log('Local: http://localhost:5180/'); setInterval(() => {}, 1000);",
+      ),
+      cwd: tempDir,
+    });
+
+    await manager.startService("frontend");
+    await waitFor(() =>
+      timeline
+        .read()
+        .some((event) => event.kind === "service.port" && event.service === "frontend"),
+    );
+
+    expect(timeline.read()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "service.lifecycle",
+          service: "frontend",
+          severity: "info",
+          title: "frontend started",
+        }),
+        expect.objectContaining({
+          kind: "service.port",
+          service: "frontend",
+          severity: "info",
+          title: "frontend reported http://localhost:5180/",
+        }),
+      ]),
+    );
   });
 
   test("stops a running service", async () => {

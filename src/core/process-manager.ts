@@ -3,6 +3,7 @@ import type { ConfigStore } from "./config-store.js";
 import type { LogStore } from "./log-store.js";
 import { isPortAvailable } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
+import type { TimelineStore } from "./timeline-store.js";
 import type {
   BundleDefinition,
   ServiceDefinition,
@@ -13,6 +14,7 @@ interface ProcessManagerOptions {
   configStore: ConfigStore;
   logStore: LogStore;
   stopTimeoutMs?: number;
+  timelineStore?: TimelineStore;
 }
 
 interface RuntimeService {
@@ -30,11 +32,13 @@ export class ProcessManager {
   private readonly configStore: ConfigStore;
   private readonly logStore: LogStore;
   private readonly stopTimeoutMs: number;
+  private readonly timelineStore?: TimelineStore;
 
   constructor(options: ProcessManagerOptions) {
     this.configStore = options.configStore;
     this.logStore = options.logStore;
     this.stopTimeoutMs = options.stopTimeoutMs ?? 3000;
+    this.timelineStore = options.timelineStore;
   }
 
   async startService(name: string): Promise<ServiceStatus> {
@@ -68,18 +72,38 @@ export class ProcessManager {
     };
 
     this.runtimes.set(name, runtime);
+    void this.appendTimeline({
+      kind: "service.lifecycle",
+      service: name,
+      severity: "info",
+      title: `${name} started`,
+      data: {
+        pid: child.pid,
+      },
+    });
     this.captureStream(name, "stdout", child.stdout);
     this.captureStream(name, "stderr", child.stderr);
 
     child.once("exit", (exitCode, signal) => {
+      const nextState = runtime.stopping ? "stopped" : "exited";
       runtime.status = {
         ...runtime.status,
-        state: runtime.stopping ? "stopped" : "exited",
+        state: nextState,
         exitedAt: new Date().toISOString(),
         exitCode,
         signal,
       };
       runtime.child = undefined;
+      void this.appendTimeline({
+        kind: "service.lifecycle",
+        service: name,
+        severity: nextState === "exited" && exitCode ? "error" : "info",
+        title: `${name} ${nextState}`,
+        data: {
+          exitCode,
+          signal,
+        },
+      });
     });
 
     child.once("error", (error) => {
@@ -91,6 +115,13 @@ export class ProcessManager {
         signal: null,
       };
       void this.logStore.append(name, "stderr", error.message);
+      void this.appendTimeline({
+        kind: "service.lifecycle",
+        service: name,
+        severity: "error",
+        title: `${name} failed`,
+        detail: error.message,
+      });
     });
 
     return { ...runtime.status };
@@ -102,6 +133,12 @@ export class ProcessManager {
     if (!runtime?.child || runtime.status.state !== "running") {
       const stopped = { name, state: "stopped" as const };
       this.runtimes.set(name, { status: stopped, stopping: false });
+      void this.appendTimeline({
+        kind: "service.lifecycle",
+        service: name,
+        severity: "info",
+        title: `${name} stopped`,
+      });
       return stopped;
     }
 
@@ -115,6 +152,12 @@ export class ProcessManager {
     };
     runtime.status = stopped;
     runtime.child = undefined;
+    void this.appendTimeline({
+      kind: "service.lifecycle",
+      service: name,
+      severity: "info",
+      title: `${name} stopped`,
+    });
 
     return { ...stopped };
   }
@@ -227,6 +270,13 @@ export class ProcessManager {
             if (runtime) {
               runtime.status = { ...runtime.status, url };
             }
+            void this.appendTimeline({
+              kind: "service.port",
+              service,
+              severity: "info",
+              title: `${service} reported ${url}`,
+              detail: url,
+            });
           }
           void this.logStore.append(service, stream, line);
         }
@@ -239,6 +289,13 @@ export class ProcessManager {
         buffer = "";
       }
     });
+  }
+
+  private async appendTimeline(
+    event: Parameters<TimelineStore["append"]>[0],
+  ): Promise<void> {
+    if (!this.timelineStore) return;
+    await this.timelineStore.append(event);
   }
 }
 

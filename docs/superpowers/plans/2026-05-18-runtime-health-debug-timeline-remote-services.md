@@ -882,7 +882,7 @@ git commit -m "feat: add service agent context packets"
 - Modify: `src/web/dashboard.ts`
 - Test: `test/timeline-store.test.ts`
 
-- [ ] **Step 1: Write timeline store tests**
+- [x] **Step 1: Write timeline store tests**
 
 ```ts
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -916,13 +916,13 @@ describe("TimelineStore", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/timeline-store.test.ts`
 
 Expected: FAIL because `timeline-store.ts` does not exist.
 
-- [ ] **Step 3: Implement timeline store**
+- [x] **Step 3: Implement timeline store**
 
 Create `src/core/timeline-store.ts`:
 
@@ -974,7 +974,7 @@ export class TimelineStore {
 }
 ```
 
-- [ ] **Step 4: Wire lifecycle and log events**
+- [x] **Step 4: Wire lifecycle and log events**
 
 Pass a `TimelineStore` into `ProcessManager` and `LogStore` construction. Emit:
 
@@ -982,17 +982,17 @@ Pass a `TimelineStore` into `ProcessManager` and `LogStore` construction. Emit:
 - `service.log` for stderr lines and selected stdout readiness lines
 - `service.port` when a URL is detected
 
-- [ ] **Step 5: Include timeline in dashboard**
+- [x] **Step 5: Include timeline in dashboard**
 
 Return `timeline: timelineStore.read(120)` in `buildDashboardPayload`.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `npx vitest run test/timeline-store.test.ts test/process-manager.test.ts test/web-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/timeline-store.ts src/core/types.ts src/core/process-manager.ts src/core/log-store.ts src/web/dashboard.ts test/timeline-store.test.ts

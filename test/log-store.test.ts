@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { LogStore } from "../src/core/log-store.js";
+import { TimelineStore } from "../src/core/timeline-store.js";
 
 let tempDir: string;
 
@@ -42,5 +43,28 @@ describe("LogStore", () => {
       text: "ready",
     });
     expect(entry.timestamp).toEqual(expect.any(String));
+  });
+
+  test("records stderr logs in the debug timeline", async () => {
+    const timeline = new TimelineStore({
+      baseDir: join(tempDir, "timeline"),
+    });
+    const logs = new LogStore({
+      baseDir: tempDir,
+      maxLinesPerService: 10,
+      timelineStore: timeline,
+    });
+
+    await logs.append("api", "stderr", "Error: failed to start");
+
+    expect(timeline.read()).toContainEqual(
+      expect.objectContaining({
+        kind: "service.log",
+        service: "api",
+        severity: "warning",
+        title: "api stderr",
+        detail: "Error: failed to start",
+      }),
+    );
   });
 });

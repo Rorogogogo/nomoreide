@@ -76,6 +76,26 @@ export interface ServiceHealth {
   agentContext: string;
 }
 
+export type TimelineEventKind =
+  | "service.lifecycle"
+  | "service.log"
+  | "service.health"
+  | "service.port"
+  | "mcp.tool"
+  | "git.change"
+  | "user.action";
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  kind: TimelineEventKind;
+  service?: string;
+  severity: "info" | "warning" | "error";
+  title: string;
+  detail?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface ToolResult {
   ok: boolean;
   message: string;

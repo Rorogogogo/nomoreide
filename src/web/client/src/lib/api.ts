@@ -85,6 +85,24 @@ export interface HealthCheckResult {
   latencyMs?: number;
 }
 
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  kind:
+    | "service.lifecycle"
+    | "service.log"
+    | "service.health"
+    | "service.port"
+    | "mcp.tool"
+    | "git.change"
+    | "user.action";
+  service?: string;
+  severity: "info" | "warning" | "error";
+  title: string;
+  detail?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface ServiceTestResult {
   ok: boolean;
   message: string;
@@ -133,6 +151,7 @@ export interface DashboardData {
   };
   ports: PortOverview[];
   health: Record<string, ServiceHealth>;
+  timeline: TimelineEvent[];
   logs: LogEntry[];
   git: {
     cwd: string;

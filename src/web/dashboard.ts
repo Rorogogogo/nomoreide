@@ -7,6 +7,7 @@ import {
 } from "../core/port-utils.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
+import type { TimelineStore } from "../core/timeline-store.js";
 import type { NoMoreIdeConfig, ServiceHealth, ServiceStatus } from "../core/types.js";
 
 export async function buildDashboardPayload(options: {
@@ -14,6 +15,7 @@ export async function buildDashboardPayload(options: {
   cwd: string;
   logStore: LogStore;
   manager: ProcessManager;
+  timelineStore: TimelineStore;
 }) {
   const config = await options.configStore.load();
   const firstService = config.services[0]?.name;
@@ -39,6 +41,7 @@ export async function buildDashboardPayload(options: {
     runtime,
     ports,
     health,
+    timeline: options.timelineStore.read(120),
     logs: firstService ? options.logStore.read(firstService, 80) : [],
     git: {
       cwd: gitCwd,
