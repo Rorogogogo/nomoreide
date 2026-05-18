@@ -1,6 +1,6 @@
 import readline from "node:readline";
 import { resolve } from "node:path";
-import { ConfigStore } from "../core/config-store.js";
+import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import {
   ProcessManager,
@@ -30,7 +30,7 @@ export interface TuiApp {
 
 export function createTuiApp(options: TuiAppOptions = {}): TuiApp {
   const configStore = new ConfigStore(
-    options.configPath ?? resolve(process.cwd(), "nomoreide.config.json"),
+    options.configPath ?? defaultGlobalConfigPath(),
   );
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),

@@ -22,6 +22,20 @@ import { cn } from "@/lib/utils";
 
 type Page = "services" | "git";
 
+export function AppIdentity({ className }: { className?: string }) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <div className="flex items-baseline gap-1.5">
+        <div className="text-sm font-semibold">NoMoreIDE</div>
+        <div className="font-mono text-[10px] text-muted-foreground">v{__APP_VERSION__}</div>
+      </div>
+      <div className="font-mono text-[11px] text-muted-foreground">
+        127.0.0.1 console
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   const [page, setPage] = useState<Page>(() =>
     window.location.pathname.startsWith("/git") ? "git" : "services",
@@ -120,12 +134,7 @@ export function App() {
                 src={logoUrl}
               />
             </div>
-            <div className={cn("min-w-0", sidebarCollapsed && "hidden")}>
-              <div className="text-sm font-semibold">NoMoreIDE</div>
-              <div className="font-mono text-[11px] text-muted-foreground">
-                127.0.0.1 console
-              </div>
-            </div>
+            <AppIdentity className={cn(sidebarCollapsed && "hidden")} />
             <Button
               aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
               className={cn("ml-auto", sidebarCollapsed && "hidden")}
@@ -171,7 +180,7 @@ export function App() {
         >
           <header
             className={cn(
-              "flex shrink-0 flex-wrap items-center justify-between gap-3 border border-border bg-card/90 px-4 py-3 backdrop-blur",
+              "relative z-40 flex shrink-0 flex-wrap items-center justify-between gap-3 border border-border bg-card/90 px-4 py-3 backdrop-blur",
               "border-x-0 border-t-0 border-b",
             )}
           >

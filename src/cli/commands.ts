@@ -1,5 +1,9 @@
 import { resolve } from "node:path";
-import { ConfigStore, ConfigValidationError } from "../core/config-store.js";
+import {
+  ConfigStore,
+  ConfigValidationError,
+  defaultGlobalConfigPath,
+} from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { UsageError } from "./errors.js";
@@ -20,7 +24,7 @@ export async function runCli(
   const stdout = options.stdout ?? ((line: string) => console.log(line));
   const stderr = options.stderr ?? ((line: string) => console.error(line));
   const configStore = new ConfigStore(
-    options.configPath ?? resolve(process.cwd(), "nomoreide.config.json"),
+    options.configPath ?? defaultGlobalConfigPath(),
   );
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),

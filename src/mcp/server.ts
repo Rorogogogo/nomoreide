@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { FastMCP } from "fastmcp";
-import { ConfigStore } from "../core/config-store.js";
+import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import {
@@ -38,7 +38,7 @@ interface StartNoMoreIdeMcpServerOptions {
 export function createNoMoreIdeMcpServer(
   options: CreateNoMoreIdeMcpServerOptions = {},
 ): NoMoreIdeMcpServer {
-  const configPath = options.configPath ?? resolve(process.cwd(), "nomoreide.config.json");
+  const configPath = options.configPath ?? defaultGlobalConfigPath();
   const logDir = options.logDir ?? resolve(process.cwd(), ".nomoreide/logs");
   const configStore = new ConfigStore(
     configPath,

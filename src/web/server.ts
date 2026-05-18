@@ -1,6 +1,10 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { resolve } from "node:path";
-import { ConfigStore, ConfigValidationError } from "../core/config-store.js";
+import {
+  ConfigStore,
+  ConfigValidationError,
+  defaultGlobalConfigPath,
+} from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
@@ -42,7 +46,7 @@ export interface WebServerApp {
 
 export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const configStore = new ConfigStore(
-    options.configPath ?? resolve(process.cwd(), "nomoreide.config.json"),
+    options.configPath ?? defaultGlobalConfigPath(),
   );
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
