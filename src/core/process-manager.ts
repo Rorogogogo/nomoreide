@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import type { ConfigStore } from "./config-store.js";
 import type { LogStore } from "./log-store.js";
 import { isPortAvailable } from "./port-utils.js";
+import { readProcessTree } from "./process-tree.js";
 import type {
   BundleDefinition,
   ServiceDefinition,
@@ -165,6 +166,20 @@ export class ProcessManager {
         ]),
       ),
     };
+  }
+
+  async statusWithResources(): Promise<NoMoreIdeStatus> {
+    const services: Record<string, ServiceStatus> = {};
+
+    for (const [name, runtime] of this.runtimes.entries()) {
+      const status: ServiceStatus = { ...runtime.status };
+      if (status.pid && status.state === "running") {
+        status.processTree = await readProcessTree(status.pid);
+      }
+      services[name] = status;
+    }
+
+    return { services };
   }
 
   private async getService(name: string): Promise<ServiceDefinition> {

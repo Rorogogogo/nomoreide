@@ -1,3 +1,5 @@
+import type { ProcessTreeSummary } from "./process-tree.js";
+
 export interface ServiceDefinition {
   name: string;
   command: string;
@@ -36,6 +38,7 @@ export interface ServiceStatus {
   exitedAt?: string;
   exitCode?: number | null;
   signal?: NodeJS.Signals | null;
+  processTree?: ProcessTreeSummary;
 }
 
 export type LogStream = "stdout" | "stderr";

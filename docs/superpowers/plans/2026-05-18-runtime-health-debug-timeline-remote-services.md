@@ -277,7 +277,7 @@ export interface TimelineEvent {
 - Modify: `src/web/dashboard.ts`
 - Test: `test/port-utils.test.ts`
 
-- [ ] **Step 1: Add failing tests for IPv4, IPv6, and wildcard listeners**
+- [x] **Step 1: Add failing tests for IPv4, IPv6, and wildcard listeners**
 
 Add tests that prove a port is considered busy if any common bind address is busy:
 
@@ -326,13 +326,13 @@ describe("getPortBindingStatus", () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests and confirm they fail**
+- [x] **Step 2: Run the tests and confirm they fail**
 
 Run: `npx vitest run test/port-utils.test.ts`
 
 Expected: FAIL because `getPortBindingStatus` does not exist.
 
-- [ ] **Step 3: Implement multi-host port status**
+- [x] **Step 3: Implement multi-host port status**
 
 Add:
 
@@ -387,17 +387,17 @@ async function checkHostPort(
 }
 ```
 
-- [ ] **Step 4: Update dashboard port overview**
+- [x] **Step 4: Update dashboard port overview**
 
 Use `getPortBindingStatus(port)` in `src/web/dashboard.ts` and include host details in the payload.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run test/port-utils.test.ts test/web-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/port-utils.ts src/web/dashboard.ts test/port-utils.test.ts
@@ -411,7 +411,7 @@ git commit -m "fix: detect service ports across bind hosts"
 - Modify: `src/core/process-manager.ts`
 - Test: `test/process-tree.test.ts`
 
-- [ ] **Step 1: Write tests for parsing `ps` output**
+- [x] **Step 1: Write tests for parsing `ps` output**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -439,13 +439,13 @@ describe("process tree", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/process-tree.test.ts`
 
 Expected: FAIL because `src/core/process-tree.ts` does not exist.
 
-- [ ] **Step 3: Implement process tree parser and reader**
+- [x] **Step 3: Implement process tree parser and reader**
 
 Create `src/core/process-tree.ts` with:
 
@@ -535,7 +535,7 @@ function roundOne(value: number): number {
 }
 ```
 
-- [ ] **Step 4: Expose resource summary in service status**
+- [x] **Step 4: Expose resource summary in service status**
 
 In `src/core/process-manager.ts`, add an async method:
 
@@ -554,13 +554,13 @@ async statusWithResources(): Promise<NoMoreIdeStatus> {
 
 Add `processTree?: ProcessTreeSummary` to `ServiceStatus` in `src/core/types.ts`.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run test/process-tree.test.ts test/process-manager.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/process-tree.ts src/core/process-manager.ts src/core/types.ts test/process-tree.test.ts
