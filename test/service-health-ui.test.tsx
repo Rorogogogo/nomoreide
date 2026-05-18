@@ -51,6 +51,41 @@ describe("service health UI", () => {
     expect(markup).not.toContain("Diagnostics");
   });
 
+  test("formats zero CPU with one decimal place", () => {
+    const health: ServiceHealth = {
+      service: "frontend",
+      status: "healthy",
+      summary: "Service is running without detected warnings.",
+      checkedAt: "2026-05-18T00:00:00.000Z",
+      checks: [],
+      processTree: {
+        rootPid: 10,
+        processCount: 2,
+        cpuPercent: 0,
+        rssMb: 507.7,
+        processes: [],
+      },
+      ports: [],
+      agentContext: "",
+    };
+
+    const markup = renderToStaticMarkup(
+      <ServiceRow
+        health={health}
+        onRefresh={async () => undefined}
+        ports={[]}
+        service={{
+          name: "frontend",
+          command: "npm run dev",
+          cwd: "/repo/client",
+          port: 5001,
+        }}
+      />,
+    );
+
+    expect(markup).toContain("0.0% CPU");
+  });
+
   test("renders services when dashboard health data is missing", () => {
     const data = {
       ok: true,

@@ -56,7 +56,6 @@ function formatMemory(value: number): string {
 }
 
 function formatCpu(value: number): string {
-  if (Number.isInteger(value)) return `${value}%`;
   return `${value.toFixed(1)}%`;
 }
 
