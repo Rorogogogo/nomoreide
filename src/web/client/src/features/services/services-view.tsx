@@ -418,7 +418,7 @@ export function ServicesView({
             />
           ) : (
             <GroupForm
-              services={data.config.services}
+              services={ungroupedServices}
               onRefresh={onRefresh}
               onSaved={() => setServiceComposer(null)}
             />
