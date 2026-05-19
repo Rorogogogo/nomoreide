@@ -1102,7 +1102,7 @@ git commit -m "feat: show service health and debug timeline"
 - Test: `test/docker-service-runner.test.ts`
 - Test: `test/config-store.test.ts`
 
-- [ ] **Step 1: Add config validation tests**
+- [x] **Step 1: Add config validation tests**
 
 Add a test that accepts:
 
@@ -1119,7 +1119,7 @@ Add a test that accepts:
 
 Expected parsed service kind: `docker-compose`.
 
-- [ ] **Step 2: Add runner command tests**
+- [x] **Step 2: Add runner command tests**
 
 ```ts
 import { describe, expect, test, vi } from "vitest";
@@ -1140,11 +1140,11 @@ describe("docker compose commands", () => {
 });
 ```
 
-- [ ] **Step 3: Implement Docker command builder**
+- [x] **Step 3: Implement Docker command builder**
 
 Create `src/core/docker-service-runner.ts` with pure command construction first. Keep execution separate so tests do not require Docker.
 
-- [ ] **Step 4: Integrate Docker services into `ProcessManager`**
+- [x] **Step 4: Integrate Docker services into `ProcessManager`**
 
 For `kind: "docker-compose"`:
 
@@ -1164,7 +1164,7 @@ Runtime status should not pretend Docker service has a local PID. Use:
 }
 ```
 
-- [ ] **Step 5: Add CLI registration**
+- [x] **Step 5: Add CLI registration**
 
 Support:
 
@@ -1177,13 +1177,13 @@ nomoreide add service api \
   --port 3001
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `npx vitest run test/docker-service-runner.test.ts test/config-store.test.ts test/cli.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/docker-service-runner.ts src/core/types.ts src/core/config-store.ts src/core/process-manager.ts src/cli/commands.ts test/docker-service-runner.test.ts test/config-store.test.ts test/cli.test.ts
@@ -1201,7 +1201,7 @@ git commit -m "feat: support docker compose services"
 - Test: `test/ssh-service-runner.test.ts`
 - Test: `test/config-store.test.ts`
 
-- [ ] **Step 1: Add config validation tests**
+- [x] **Step 1: Add config validation tests**
 
 Accept:
 
@@ -1222,7 +1222,7 @@ Reject services with:
 - command containing a null byte
 - missing cwd
 
-- [ ] **Step 2: Add SSH command construction tests**
+- [x] **Step 2: Add SSH command construction tests**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -1244,7 +1244,7 @@ describe("createSshCommand", () => {
 });
 ```
 
-- [ ] **Step 3: Implement SSH runner**
+- [x] **Step 3: Implement SSH runner**
 
 Create `src/core/ssh-service-runner.ts`:
 
@@ -1271,11 +1271,11 @@ function shellEscape(value: string): string {
 }
 ```
 
-- [ ] **Step 4: Integrate SSH services**
+- [x] **Step 4: Integrate SSH services**
 
 For `kind: "ssh"`, `ProcessManager` should spawn `ssh host "cd cwd && exec command"` locally. The root PID is the local ssh process. NoMoreIDE must label the service as remote in status and UI.
 
-- [ ] **Step 5: Add safety warnings in UI**
+- [x] **Step 5: Add safety warnings in UI**
 
 In the service card, display:
 
@@ -1284,7 +1284,7 @@ Remote service on devbox
 Commands run through your local SSH config and SSH agent.
 ```
 
-- [ ] **Step 6: Add CLI registration**
+- [x] **Step 6: Add CLI registration**
 
 Support:
 
@@ -1297,13 +1297,13 @@ nomoreide add service staging-api \
   --port 3001
 ```
 
-- [ ] **Step 7: Run tests**
+- [x] **Step 7: Run tests**
 
 Run: `npx vitest run test/ssh-service-runner.test.ts test/config-store.test.ts test/cli.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/core/ssh-service-runner.ts src/core/types.ts src/core/config-store.ts src/core/process-manager.ts src/cli/commands.ts test/ssh-service-runner.test.ts test/config-store.test.ts test/cli.test.ts
@@ -1316,7 +1316,7 @@ git commit -m "feat: support ssh remote services"
 - Modify: `src/mcp/tools.ts`
 - Test: `test/mcp-server.test.ts`
 
-- [ ] **Step 1: Add tests for new MCP tool names**
+- [x] **Step 1: Add tests for new MCP tool names**
 
 Expected tools:
 
@@ -1328,7 +1328,7 @@ Expected tools:
 ]
 ```
 
-- [ ] **Step 2: Implement `nomoreide_service_health`**
+- [x] **Step 2: Implement `nomoreide_service_health`**
 
 Parameters:
 
@@ -1343,7 +1343,7 @@ Behavior:
 - when `service` is provided, return one health summary
 - when omitted, return all service health summaries
 
-- [ ] **Step 3: Implement `nomoreide_timeline`**
+- [x] **Step 3: Implement `nomoreide_timeline`**
 
 Parameters:
 
@@ -1359,13 +1359,13 @@ Behavior:
 - return newest timeline events
 - filter by service if provided
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run test/mcp-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/mcp/tools.ts test/mcp-server.test.ts
@@ -1378,7 +1378,7 @@ git commit -m "feat: expose health and timeline over mcp"
 - Modify: `README.md`
 - Modify: `docs/superpowers/plans/2026-05-18-runtime-health-debug-timeline-remote-services.md`
 
-- [ ] **Step 1: Document local health features**
+- [x] **Step 1: Document local health features**
 
 Add README examples:
 
@@ -1388,7 +1388,7 @@ nomoreide timeline
 nomoreide context jobjourney-frontend
 ```
 
-- [ ] **Step 2: Document Docker service config**
+- [x] **Step 2: Document Docker service config**
 
 Add:
 
@@ -1401,7 +1401,7 @@ nomoreide add service api \
   --port 3001
 ```
 
-- [ ] **Step 3: Document SSH service config**
+- [x] **Step 3: Document SSH service config**
 
 Add:
 
@@ -1414,7 +1414,7 @@ nomoreide add service staging-api \
   --port 3001
 ```
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run:
 
@@ -1425,7 +1425,7 @@ npm run build
 
 Expected: both pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/superpowers/plans/2026-05-18-runtime-health-debug-timeline-remote-services.md

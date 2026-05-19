@@ -307,10 +307,26 @@ The web dashboard is available at `http://127.0.0.1:4317` by default.
 ### Services
 
 ```bash
-# Register a service
+# Register a local service
 nomoreide add service backend \
   --command "npm run dev" \
   --cwd /absolute/path/to/backend \
+  --port 3001
+
+# Register a Docker Compose service
+nomoreide add service api \
+  --kind docker-compose \
+  --cwd /absolute/path/to/infra \
+  --compose-file docker-compose.yml \
+  --compose-service api \
+  --port 3001
+
+# Register a remote SSH service (uses your local SSH config and agent)
+nomoreide add service staging-api \
+  --kind ssh \
+  --host devbox \
+  --cwd /srv/app \
+  --command "npm run dev" \
   --port 3001
 
 # Register a bundle (ordered group of services)
@@ -378,6 +394,9 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_start_bundle` | Start all services in a bundle |
 | `nomoreide_stop_bundle` | Stop all services in a bundle |
 | `nomoreide_status` | Overall server status |
+| `nomoreide_service_context` | Build a copy-paste agent context packet for a service |
+| `nomoreide_service_health` | Computed health summaries (one service or all) |
+| `nomoreide_timeline` | Recent debug timeline events (optionally per service) |
 | `nomoreide_open_ui` | Open the local web UI |
 | `nomoreide_close_ui` | Close the local web UI |
 
