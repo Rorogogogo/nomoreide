@@ -20,11 +20,13 @@ export function ComposerDialog({
   icon,
   onClose,
   title,
+  size = "md",
 }: {
   children: ReactNode;
   icon: ReactNode;
   onClose: () => void;
   title: string;
+  size?: "md" | "lg";
 }) {
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -44,7 +46,7 @@ export function ComposerDialog({
     >
       <div
         aria-modal="true"
-        className="flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className={`flex max-h-[min(760px,calc(100vh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -241,7 +243,8 @@ export function ServiceForm({
 
   return (
     <form className="grid gap-3" onSubmit={submit}>
-      <fieldset className={sectionClass}>
+      <div className="grid gap-3 sm:grid-cols-2">
+      <fieldset className={`${sectionClass} sm:col-span-2`}>
         <legend className={legendClass}>Step 1 · Service kind</legend>
         <div className="grid grid-cols-3 gap-1.5">
           {kindOptions.map((option) => (
@@ -260,33 +263,49 @@ export function ServiceForm({
         <p className="text-[11px] text-muted-foreground">{activeKind.hint}</p>
       </fieldset>
 
-      <fieldset className={sectionClass}>
-        <legend className={legendClass}>Step 2 · Identity</legend>
-        <Label>
-          Name
-          <Input
-            className="h-8 text-sm"
-            name="name"
-            onChange={(event) => setName(event.target.value)}
-            placeholder="backend"
-            required
-            value={name}
-          />
-        </Label>
-        <Label>
-          Description
-          <Input
-            className="h-8 text-sm"
-            name="description"
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="API server"
-            value={description}
-          />
-        </Label>
-      </fieldset>
+      <div className="grid gap-3 sm:col-start-1 sm:row-start-2 sm:self-start">
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 2 · Identity</legend>
+          <Label>
+            Name
+            <Input
+              className="h-8 text-sm"
+              name="name"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="backend"
+              required
+              value={name}
+            />
+          </Label>
+          <Label>
+            Description
+            <Input
+              className="h-8 text-sm"
+              name="description"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="API server"
+              value={description}
+            />
+          </Label>
+        </fieldset>
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 4 · Networking (optional)</legend>
+          <Label>
+            Port
+            <Input
+              className="h-8 text-sm"
+              inputMode="numeric"
+              name="port"
+              onChange={(event) => setPort(event.target.value)}
+              placeholder="3001"
+              value={port}
+            />
+          </Label>
+        </fieldset>
+      </div>
 
       {kind === "local" ? (
-        <fieldset className={sectionClass}>
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
           <legend className={legendClass}>Step 3 · Local command</legend>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             {serviceCommandPresets.map((preset) => (
@@ -331,7 +350,7 @@ export function ServiceForm({
       ) : null}
 
       {kind === "docker-compose" ? (
-        <fieldset className={sectionClass}>
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
           <legend className={legendClass}>Step 3 · Docker Compose target</legend>
           <Label>
             Compose Service
@@ -368,7 +387,7 @@ export function ServiceForm({
       ) : null}
 
       {kind === "ssh" ? (
-        <fieldset className={sectionClass}>
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
           <legend className={legendClass}>Step 3 · SSH connection</legend>
           <Label>
             SSH Host (alias from ~/.ssh/config)
@@ -417,20 +436,7 @@ export function ServiceForm({
         </fieldset>
       ) : null}
 
-      <fieldset className={sectionClass}>
-        <legend className={legendClass}>Step 4 · Networking (optional)</legend>
-        <Label>
-          Port
-          <Input
-            className="h-8 text-sm"
-            inputMode="numeric"
-            name="port"
-            onChange={(event) => setPort(event.target.value)}
-            placeholder="3001"
-            value={port}
-          />
-        </Label>
-      </fieldset>
+      </div>
 
       {testResult ? <ServiceTestAlert result={testResult} /> : null}
       <div className="flex flex-wrap justify-end gap-2">

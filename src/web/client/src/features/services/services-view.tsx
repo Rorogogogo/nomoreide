@@ -423,6 +423,7 @@ export function ServicesView({
         <ComposerDialog
           icon={serviceComposer === "service" ? <Plus /> : <Box />}
           onClose={() => setServiceComposer(null)}
+          size={serviceComposer === "service" ? "lg" : "md"}
           title={serviceComposer === "service" ? "Add Service" : "Create Group"}
         >
           {serviceComposer === "service" ? (
