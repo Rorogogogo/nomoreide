@@ -322,27 +322,42 @@ export function ServicesView({
                       statuses={data.runtime.services}
                     />
                   ))}
-                  {ungroupedServices.length ? (
-                    <div>
-                      {data.config.bundles.length ? (
-                        <div className="bg-muted/55 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
-                          Ungrouped Services
-                        </div>
-                      ) : null}
-                      <div className="divide-y divide-border">
-                        {ungroupedServices.map((service) => (
-                          <ServiceRow
-                            key={service.name}
-                            service={service}
-                            status={data.runtime.services[service.name]}
-                            health={healthByService[service.name]}
-                            ports={data.ports}
-                            onRefresh={onRefresh}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                  {ungroupedServices.length
+                    ? (
+                        [
+                          { key: "local", label: "Local Services" },
+                          { key: "docker-compose", label: "Docker Compose" },
+                          { key: "ssh", label: "Remote (SSH)" },
+                        ] as const
+                      ).map(({ key, label }) => {
+                        const kindServices = ungroupedServices.filter(
+                          (service) => (service.kind ?? "local") === key,
+                        );
+                        if (kindServices.length === 0) return null;
+                        return (
+                          <div key={key}>
+                            <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+                              <span>{label}</span>
+                              <span className="text-muted-foreground/80">
+                                {kindServices.length}
+                              </span>
+                            </div>
+                            <div className="divide-y divide-border">
+                              {kindServices.map((service) => (
+                                <ServiceRow
+                                  key={service.name}
+                                  service={service}
+                                  status={data.runtime.services[service.name]}
+                                  health={healthByService[service.name]}
+                                  ports={data.ports}
+                                  onRefresh={onRefresh}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    : null}
                 </div>
               ) : (
                 <EmptyState label="No services registered yet." />
