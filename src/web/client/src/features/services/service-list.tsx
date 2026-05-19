@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { ChevronDown, ExternalLink, Pencil, Save } from "lucide-react";
+import { Bot, ChevronDown, ExternalLink, Pencil, Save } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,11 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { AgentContextPanel } from "./agent-context-panel";
 import { HealthSummary } from "./health-summary";
 import { ProcessBadge } from "./process-badge";
 import { PortStateBadge } from "./ports-overview";
-import { GroupForm } from "./service-forms";
+import { ComposerDialog, GroupForm } from "./service-forms";
 import { LifecycleActions, actionErrorMessage } from "./service-actions";
 
 export function ServiceGroupSection({
@@ -142,6 +143,7 @@ export function ServiceRow({
   ports: PortOverview[];
   onRefresh: () => Promise<void>;
 }) {
+  const [contextOpen, setContextOpen] = useState(false);
   const state = status?.state ?? "stopped";
   const active = isServiceOn(state);
   const openUrl = status?.url ?? (service.port ? serviceUrl(service.port) : undefined);
@@ -185,6 +187,18 @@ export function ServiceRow({
             Open
           </Button>
         ) : null}
+        {health?.agentContext ? (
+          <Button
+            onClick={() => setContextOpen(true)}
+            size="sm"
+            title="Copy a paste-ready debug packet for an AI agent"
+            type="button"
+            variant="outline"
+          >
+            <Bot />
+            Context
+          </Button>
+        ) : null}
         <LifecycleActions
           active={active}
           baseUrl={`/api/services/${encodeURIComponent(service.name)}`}
@@ -192,6 +206,17 @@ export function ServiceRow({
           onRefresh={onRefresh}
         />
       </div>
+      {contextOpen && health?.agentContext ? (
+        <ComposerDialog
+          icon={<Bot />}
+          onClose={() => setContextOpen(false)}
+          title={`Agent context — ${service.name}`}
+        >
+          <div className="p-4">
+            <AgentContextPanel context={health.agentContext} />
+          </div>
+        </ComposerDialog>
+      ) : null}
     </div>
   );
 }

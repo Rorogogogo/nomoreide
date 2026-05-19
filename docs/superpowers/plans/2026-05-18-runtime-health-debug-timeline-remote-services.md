@@ -739,7 +739,7 @@ git commit -m "feat: add service health summaries"
 - Modify: `src/mcp/tools.ts`
 - Test: `test/agent-context.test.ts`
 
-- [ ] **Step 1: Write context packet test**
+- [x] **Step 1: Write context packet test**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -769,13 +769,13 @@ describe("buildServiceAgentContext", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/agent-context.test.ts`
 
 Expected: FAIL because `agent-context.ts` does not exist.
 
-- [ ] **Step 3: Implement context builder**
+- [x] **Step 3: Implement context builder**
 
 Create `src/core/agent-context.ts`:
 
@@ -833,7 +833,7 @@ function formatTimeline(events: TimelineEvent[]): string[] {
 }
 ```
 
-- [ ] **Step 4: Add MCP tool**
+- [x] **Step 4: Add MCP tool**
 
 In `src/mcp/tools.ts`, add `nomoreide_service_context`:
 
@@ -859,13 +859,13 @@ In `src/mcp/tools.ts`, add `nomoreide_service_context`:
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run test/agent-context.test.ts test/mcp-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/agent-context.ts src/mcp/tools.ts test/agent-context.test.ts test/mcp-server.test.ts
@@ -1039,7 +1039,7 @@ Add `health: Record<string, DashboardServiceHealth>` and `timeline: DashboardTim
 
 Render status, summary, process-tree memory, CPU, and port bindings for a service.
 
-- [ ] **Step 3: Create `AgentContextPanel` component**
+- [x] **Step 3: Create `AgentContextPanel` component**
 
 Render a copy button and a preformatted context packet:
 
@@ -1084,7 +1084,7 @@ Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/web/client/src/lib/api.ts src/web/client/src/features/services/health-summary.tsx src/web/client/src/features/services/debug-timeline.tsx src/web/client/src/features/services/agent-context-panel.tsx src/web/client/src/features/services/services-view.tsx

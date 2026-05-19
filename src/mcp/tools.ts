@@ -1,9 +1,12 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+import { buildServiceAgentContext } from "../core/agent-context.js";
 import { ConfigStore } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { computeServiceHealth } from "../core/service-health.js";
+import type { TimelineStore } from "../core/timeline-store.js";
 import type { UiLifecycleManager } from "../web/ui-lifecycle.js";
 
 export const NOMOREIDE_TOOL_NAMES = [
@@ -17,6 +20,7 @@ export const NOMOREIDE_TOOL_NAMES = [
   "nomoreide_start_bundle",
   "nomoreide_stop_bundle",
   "nomoreide_status",
+  "nomoreide_service_context",
   "nomoreide_git_status",
   "nomoreide_git_branches",
   "nomoreide_git_switch_branch",
@@ -39,6 +43,7 @@ interface RegisterNoMoreIdeToolsOptions {
   configStore: ConfigStore;
   logStore: LogStore;
   manager: ProcessManager;
+  timelineStore: TimelineStore;
   uiLifecycle: UiLifecycleManager;
 }
 
@@ -69,7 +74,7 @@ const gitPathsSchema = gitCwdSchema.extend({
 export function registerNoMoreIdeTools(
   options: RegisterNoMoreIdeToolsOptions,
 ): void {
-  const { server, configStore, logStore, manager, uiLifecycle } = options;
+  const { server, configStore, logStore, manager, timelineStore, uiLifecycle } = options;
 
   server.addTool({
     name: "nomoreide_list_services",
@@ -150,6 +155,40 @@ export function registerNoMoreIdeTools(
     name: "nomoreide_status",
     description: "Show current NoMoreIDE runtime status.",
     execute: async () => stringify(manager.status()),
+  });
+
+  server.addTool({
+    name: "nomoreide_service_context",
+    description:
+      "Build a copy-paste agent context packet (service definition, runtime status, health summary, recent logs and timeline) for a registered service.",
+    parameters: serviceNameSchema,
+    execute: async ({ name }) => {
+      const config = await configStore.load();
+      const definition = config.services.find((service) => service.name === name);
+      if (!definition) {
+        throw new Error(`Service "${name}" is not registered.`);
+      }
+      const runtime = await manager.statusWithResources();
+      const status = runtime.services[name];
+      const logs = logStore.read(name, 80);
+      const timeline = timelineStore
+        .read(200)
+        .filter((event) => event.service === name);
+      const health = computeServiceHealth({
+        service: definition,
+        status,
+        logs,
+        ports: [],
+        timeline,
+      });
+      return buildServiceAgentContext({
+        service: definition,
+        status,
+        healthSummary: health.summary,
+        recentLogs: logs,
+        timeline,
+      });
+    },
   });
 
   server.addTool({

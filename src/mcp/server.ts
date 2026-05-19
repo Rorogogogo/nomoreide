@@ -1,8 +1,9 @@
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { FastMCP } from "fastmcp";
 import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { TimelineStore } from "../core/timeline-store.js";
 import {
   createUiLifecycleManager,
   type UiLifecycleManager,
@@ -43,10 +44,14 @@ export function createNoMoreIdeMcpServer(
   const configStore = new ConfigStore(
     configPath,
   );
+  const timelineStore = new TimelineStore({
+    baseDir: dirname(resolve(logDir)),
+  });
   const logStore = new LogStore({
     baseDir: logDir,
+    timelineStore,
   });
-  const manager = new ProcessManager({ configStore, logStore });
+  const manager = new ProcessManager({ configStore, logStore, timelineStore });
   const uiLifecycle =
     options.uiLifecycle ??
     createUiLifecycleManager({
@@ -63,6 +68,7 @@ export function createNoMoreIdeMcpServer(
     configStore,
     logStore,
     manager,
+    timelineStore,
     uiLifecycle,
   });
 

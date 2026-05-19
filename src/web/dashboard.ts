@@ -8,7 +8,12 @@ import {
 import { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
-import type { NoMoreIdeConfig, ServiceHealth, ServiceStatus } from "../core/types.js";
+import type {
+  NoMoreIdeConfig,
+  ServiceHealth,
+  ServiceStatus,
+  TimelineEvent,
+} from "../core/types.js";
 
 export async function buildDashboardPayload(options: {
   configStore: ConfigStore;
@@ -27,11 +32,13 @@ export async function buildDashboardPayload(options: {
     readGitBranches(gitCwd),
     buildPortOverview(config, runtime.services),
   ]);
+  const timeline = options.timelineStore.read(120);
   const health = buildHealthOverview({
     config,
     logStore: options.logStore,
     ports,
     runtimeServices: runtime.services,
+    timeline,
   });
 
   return {
@@ -41,7 +48,7 @@ export async function buildDashboardPayload(options: {
     runtime,
     ports,
     health,
-    timeline: options.timelineStore.read(120),
+    timeline,
     logs: firstService ? options.logStore.read(firstService, 80) : [],
     git: {
       cwd: gitCwd,
@@ -67,6 +74,7 @@ function buildHealthOverview(options: {
   logStore: LogStore;
   ports: PortOverview[];
   runtimeServices: Record<string, ServiceStatus>;
+  timeline: TimelineEvent[];
 }): Record<string, ServiceHealth> {
   return Object.fromEntries(
     options.config.services.map((service) => [
@@ -76,6 +84,7 @@ function buildHealthOverview(options: {
         status: options.runtimeServices[service.name],
         ports: options.ports.filter((port) => port.services.includes(service.name)),
         logs: options.logStore.read(service.name, 80),
+        timeline: options.timeline.filter((event) => event.service === service.name),
       }),
     ]),
   );
