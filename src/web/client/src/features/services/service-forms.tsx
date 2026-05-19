@@ -234,10 +234,15 @@ export function ServiceForm({
   const activeKind = kindOptions.find((option) => option.value === kind)!;
   const canTest = kind === "local" && command.trim().length > 0 && formCwd.trim().length > 0;
 
+  const sectionClass =
+    "grid gap-2 rounded-md border border-border bg-muted/30 p-3";
+  const legendClass =
+    "px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
   return (
     <form className="grid gap-3" onSubmit={submit}>
-      <fieldset className="grid gap-2">
-        <legend className="text-xs font-medium">Service kind</legend>
+      <fieldset className={sectionClass}>
+        <legend className={legendClass}>Step 1 · Service kind</legend>
         <div className="grid grid-cols-3 gap-1.5">
           {kindOptions.map((option) => (
             <Button
@@ -255,9 +260,34 @@ export function ServiceForm({
         <p className="text-[11px] text-muted-foreground">{activeKind.hint}</p>
       </fieldset>
 
+      <fieldset className={sectionClass}>
+        <legend className={legendClass}>Step 2 · Identity</legend>
+        <Label>
+          Name
+          <Input
+            className="h-8 text-sm"
+            name="name"
+            onChange={(event) => setName(event.target.value)}
+            placeholder="backend"
+            required
+            value={name}
+          />
+        </Label>
+        <Label>
+          Description
+          <Input
+            className="h-8 text-sm"
+            name="description"
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="API server"
+            value={description}
+          />
+        </Label>
+      </fieldset>
+
       {kind === "local" ? (
-        <fieldset className="grid gap-2">
-          <legend className="text-xs font-medium">Recommended Dev Commands</legend>
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 3 · Local command</legend>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             {serviceCommandPresets.map((preset) => (
               <Button
@@ -276,37 +306,33 @@ export function ServiceForm({
               </Button>
             ))}
           </div>
+          <Label>
+            Command
+            <Input
+              className="h-8 font-mono text-sm"
+              name="command"
+              onChange={(event) => setCommand(event.target.value)}
+              placeholder="npm run dev"
+              required
+              value={command}
+            />
+          </Label>
+          <Label>
+            Working Directory
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              required
+              value={formCwd}
+            />
+          </Label>
         </fieldset>
       ) : null}
 
-      <Label>
-        Name
-        <Input
-          className="h-8 text-sm"
-          name="name"
-          onChange={(event) => setName(event.target.value)}
-          placeholder="backend"
-          required
-          value={name}
-        />
-      </Label>
-
-      {kind === "ssh" ? (
-        <Label>
-          SSH Host (alias from ~/.ssh/config)
-          <Input
-            className="h-8 font-mono text-sm"
-            name="host"
-            onChange={(event) => setHost(event.target.value)}
-            placeholder="devbox"
-            required
-            value={host}
-          />
-        </Label>
-      ) : null}
-
       {kind === "docker-compose" ? (
-        <>
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 3 · Docker Compose target</legend>
           <Label>
             Compose Service
             <Input
@@ -328,71 +354,83 @@ export function ServiceForm({
               value={composeFile}
             />
           </Label>
-        </>
+          <Label>
+            Working Directory (where compose file lives)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              required
+              value={formCwd}
+            />
+          </Label>
+        </fieldset>
       ) : null}
-
-      {kind === "local" || kind === "ssh" ? (
-        <Label>
-          Command
-          <Input
-            className="h-8 font-mono text-sm"
-            name="command"
-            onChange={(event) => setCommand(event.target.value)}
-            placeholder={kind === "ssh" ? "npm run dev" : "npm run dev"}
-            required
-            value={command}
-          />
-        </Label>
-      ) : null}
-
-      <Label>
-        Working Directory
-        <Input
-          className="h-8 font-mono text-sm"
-          name="cwd"
-          onChange={(event) => setFormCwd(event.target.value)}
-          placeholder={kind === "ssh" ? "/srv/app" : undefined}
-          required
-          value={formCwd}
-        />
-      </Label>
-
-      <Label>
-        Port
-        <Input
-          className="h-8 text-sm"
-          inputMode="numeric"
-          name="port"
-          onChange={(event) => setPort(event.target.value)}
-          placeholder="3001"
-          value={port}
-        />
-      </Label>
-
-      <Label>
-        Description
-        <Input
-          className="h-8 text-sm"
-          name="description"
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="API server"
-          value={description}
-        />
-      </Label>
 
       {kind === "ssh" ? (
-        <Alert variant="muted">
-          <div className="font-medium">SSH key handling</div>
-          <div className="mt-1 text-xs">
-            NoMoreIDE never stores key files. Add a <code>Host {host || "&lt;alias&gt;"}</code> entry to
-            <code> ~/.ssh/config</code> with <code>HostName</code>, <code>User</code>, and{" "}
-            <code>IdentityFile ~/.ssh/your-key.pem</code> (chmod 0600). Make sure{" "}
-            <code>ssh-agent</code> is running or your key is loaded
-            (<code>ssh-add ~/.ssh/your-key.pem</code>). NoMoreIDE will run{" "}
-            <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
-          </div>
-        </Alert>
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 3 · SSH connection</legend>
+          <Label>
+            SSH Host (alias from ~/.ssh/config)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="host"
+              onChange={(event) => setHost(event.target.value)}
+              placeholder="devbox"
+              required
+              value={host}
+            />
+          </Label>
+          <Label>
+            Remote Command
+            <Input
+              className="h-8 font-mono text-sm"
+              name="command"
+              onChange={(event) => setCommand(event.target.value)}
+              placeholder="npm run dev"
+              required
+              value={command}
+            />
+          </Label>
+          <Label>
+            Remote Working Directory
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              placeholder="/srv/app"
+              required
+              value={formCwd}
+            />
+          </Label>
+          <Alert variant="muted">
+            <div className="font-medium">SSH key handling</div>
+            <div className="mt-1 text-xs">
+              NoMoreIDE never stores key files. Add a <code>Host {host || "&lt;alias&gt;"}</code> entry to
+              <code> ~/.ssh/config</code> with <code>HostName</code>, <code>User</code>, and{" "}
+              <code>IdentityFile ~/.ssh/your-key.pem</code> (chmod 0600). Make sure{" "}
+              <code>ssh-agent</code> is running or your key is loaded
+              (<code>ssh-add ~/.ssh/your-key.pem</code>). NoMoreIDE will run{" "}
+              <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
+            </div>
+          </Alert>
+        </fieldset>
       ) : null}
+
+      <fieldset className={sectionClass}>
+        <legend className={legendClass}>Step 4 · Networking (optional)</legend>
+        <Label>
+          Port
+          <Input
+            className="h-8 text-sm"
+            inputMode="numeric"
+            name="port"
+            onChange={(event) => setPort(event.target.value)}
+            placeholder="3001"
+            value={port}
+          />
+        </Label>
+      </fieldset>
 
       {testResult ? <ServiceTestAlert result={testResult} /> : null}
       <div className="flex flex-wrap justify-end gap-2">
