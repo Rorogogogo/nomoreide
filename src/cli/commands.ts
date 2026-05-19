@@ -74,17 +74,47 @@ export async function runCli(
       if (!name) {
         throw new UsageError("service name is required");
       }
-      if (!flags.command) {
-        throw new UsageError("--command is required");
-      }
 
-      await configStore.registerService({
-        name,
-        command: flags.command,
-        cwd: flags.cwd ?? process.cwd(),
-        port: flags.port ? Number(flags.port) : undefined,
-        description: flags.description,
-      });
+      const kind = (flags.kind ?? "local") as "local" | "docker-compose" | "ssh";
+      const port = flags.port ? Number(flags.port) : undefined;
+      const description = flags.description;
+
+      if (kind === "docker-compose") {
+        if (!flags.composeService) {
+          throw new UsageError("--compose-service is required");
+        }
+        await configStore.registerService({
+          name,
+          kind: "docker-compose",
+          cwd: flags.cwd ?? process.cwd(),
+          composeFile: flags.composeFile,
+          composeService: flags.composeService,
+          port,
+          description,
+        });
+      } else if (kind === "ssh") {
+        if (!flags.host) throw new UsageError("--host is required");
+        if (!flags.command) throw new UsageError("--command is required");
+        if (!flags.cwd) throw new UsageError("--cwd is required");
+        await configStore.registerService({
+          name,
+          kind: "ssh",
+          host: flags.host,
+          cwd: flags.cwd,
+          command: flags.command,
+          port,
+          description,
+        });
+      } else {
+        if (!flags.command) throw new UsageError("--command is required");
+        await configStore.registerService({
+          name,
+          command: flags.command,
+          cwd: flags.cwd ?? process.cwd(),
+          port,
+          description,
+        });
+      }
       stdout(`Registered service ${name}`);
       return 0;
     }

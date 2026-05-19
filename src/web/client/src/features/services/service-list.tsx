@@ -158,19 +158,37 @@ export function ServiceRow({
     <div className="grid gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
-          <ProcessBadge command={service.command} />
+          <ProcessBadge command={service.command ?? ""} />
           <span className="text-sm font-medium">{service.name}</span>
           <StateBadge state={state} />
+          {service.kind && service.kind !== "local" ? (
+            <Badge variant="outline">{service.kind}</Badge>
+          ) : null}
           {service.port ? <Badge variant="outline">:{service.port}</Badge> : null}
           {configuredPort ? <PortStateBadge port={configuredPort} compact /> : null}
           {detectedPortOverview && detectedPortOverview.port !== service.port ? (
             <Badge variant="success">actual :{detectedPortOverview.port}</Badge>
           ) : null}
         </div>
-        <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-          {service.command}
-        </div>
-        <div className="truncate text-[11px] text-muted-foreground">{service.cwd}</div>
+        {service.command ? (
+          <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+            {service.command}
+          </div>
+        ) : null}
+        {service.kind === "docker-compose" ? (
+          <div className="truncate text-[11px] text-muted-foreground">
+            docker compose service: {service.composeService}
+            {service.composeFile ? ` (${service.composeFile})` : ""}
+          </div>
+        ) : null}
+        {service.kind === "ssh" ? (
+          <div className="truncate text-[11px] text-amber-600 dark:text-amber-400">
+            Remote service on {service.host}. Commands run through your local SSH config and SSH agent.
+          </div>
+        ) : null}
+        {service.cwd ? (
+          <div className="truncate text-[11px] text-muted-foreground">{service.cwd}</div>
+        ) : null}
         <HealthSummary health={health} />
       </div>
       <div className="flex flex-wrap justify-end gap-1.5">
@@ -247,8 +265,8 @@ function PortEditor({
     try {
       await postForm("/api/services", {
         name: service.name,
-        command: service.command,
-        cwd: service.cwd,
+        command: service.command ?? "",
+        cwd: service.cwd ?? "",
         port,
         description: service.description,
       });

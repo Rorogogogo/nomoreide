@@ -1,13 +1,22 @@
 import type { ProcessTreeSummary } from "./process-tree.js";
 import type { PortBindingStatus } from "./port-utils.js";
 
+export type ServiceKind = "local" | "docker-compose" | "ssh";
+
 export interface ServiceDefinition {
   name: string;
-  command: string;
-  cwd: string;
+  kind?: ServiceKind;
   port?: number;
-  env?: Record<string, string>;
   description?: string;
+  // local + ssh
+  command?: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  // docker-compose
+  composeFile?: string;
+  composeService?: string;
+  // ssh
+  host?: string;
 }
 
 export interface BundleDefinition {
@@ -40,6 +49,9 @@ export interface ServiceStatus {
   exitCode?: number | null;
   signal?: NodeJS.Signals | null;
   processTree?: ProcessTreeSummary;
+  kind?: ServiceKind;
+  containerId?: string;
+  host?: string;
 }
 
 export type LogStream = "stdout" | "stderr";

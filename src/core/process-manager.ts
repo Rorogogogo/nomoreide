@@ -1,12 +1,21 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import type { ConfigStore } from "./config-store.js";
+import {
+  readDockerServiceLogs,
+  readDockerServiceStatus,
+  startDockerService,
+  stopDockerService,
+  type DockerComposeTarget,
+} from "./docker-service-runner.js";
 import type { LogStore } from "./log-store.js";
 import { getPortHolder, isPortAvailable, type PortHolder } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
+import { createSshCommand } from "./ssh-service-runner.js";
 import type { TimelineStore } from "./timeline-store.js";
 import type {
   BundleDefinition,
   ServiceDefinition,
+  ServiceKind,
   ServiceStatus,
 } from "./types.js";
 
@@ -72,6 +81,12 @@ export class ProcessManager {
       return { ...existing.status };
     }
 
+    const kind = resolveKind(service);
+
+    if (kind === "docker-compose") {
+      return this.startDockerComposeService(name, service);
+    }
+
     if (service.port && !(await isPortAvailable(service.port))) {
       const holder = await getPortHolder(service.port);
       if (options.killHolder && holder) {
@@ -84,13 +99,7 @@ export class ProcessManager {
       }
     }
 
-    const child = spawn(service.command, {
-      cwd: service.cwd,
-      env: { ...process.env, ...service.env },
-      shell: true,
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: true,
-    });
+    const child = spawnService(name, service, kind);
 
     const runtime: RuntimeService = {
       child,
@@ -98,6 +107,8 @@ export class ProcessManager {
       status: {
         name,
         state: "running",
+        kind,
+        host: kind === "ssh" ? service.host : undefined,
         pid: child.pid,
         startedAt: new Date().toISOString(),
       },
@@ -161,6 +172,10 @@ export class ProcessManager {
 
   async stopService(name: string): Promise<ServiceStatus> {
     const runtime = this.runtimes.get(name);
+
+    if (runtime?.status.kind === "docker-compose" && runtime.status.state === "running") {
+      return this.stopDockerComposeService(name, runtime);
+    }
 
     if (!runtime?.child || runtime.status.state !== "running") {
       const stopped = { name, state: "stopped" as const };
@@ -292,6 +307,74 @@ export class ProcessManager {
     return { services };
   }
 
+  private async startDockerComposeService(
+    name: string,
+    service: ServiceDefinition,
+  ): Promise<ServiceStatus> {
+    const target = toDockerTarget(name, service);
+    const info = await startDockerService(target);
+
+    const status: ServiceStatus = {
+      name,
+      state: "running",
+      kind: "docker-compose",
+      startedAt: new Date().toISOString(),
+      containerId: info.containerId,
+    };
+
+    this.runtimes.set(name, { status, stopping: false });
+    void this.appendTimeline({
+      kind: "service.lifecycle",
+      service: name,
+      severity: "info",
+      title: `${name} started`,
+      data: { containerId: info.containerId },
+    });
+
+    return { ...status };
+  }
+
+  private async stopDockerComposeService(
+    name: string,
+    runtime: RuntimeService,
+  ): Promise<ServiceStatus> {
+    const service = await this.getService(name);
+    runtime.stopping = true;
+    await stopDockerService(toDockerTarget(name, service));
+
+    const stopped: ServiceStatus = {
+      ...runtime.status,
+      state: "stopped",
+      exitedAt: new Date().toISOString(),
+    };
+    runtime.status = stopped;
+
+    void this.appendTimeline({
+      kind: "service.lifecycle",
+      service: name,
+      severity: "info",
+      title: `${name} stopped`,
+    });
+
+    return { ...stopped };
+  }
+
+  async readDockerServiceLogs(name: string, tail = 120): Promise<string> {
+    const service = await this.getService(name);
+    if (resolveKind(service) !== "docker-compose") {
+      throw new Error(`Service "${name}" is not a docker-compose service.`);
+    }
+    return readDockerServiceLogs(toDockerTarget(name, service), tail);
+  }
+
+  async readDockerServiceStatus(name: string) {
+    const service = await this.getService(name);
+    if (resolveKind(service) !== "docker-compose") {
+      throw new Error(`Service "${name}" is not a docker-compose service.`);
+    }
+    return readDockerServiceStatus(toDockerTarget(name, service));
+  }
+
   private async getService(name: string): Promise<ServiceDefinition> {
     const config = await this.configStore.load();
     const service = config.services.find((item) => item.name === name);
@@ -364,6 +447,61 @@ export class ProcessManager {
     if (!this.timelineStore) return;
     await this.timelineStore.append(event);
   }
+}
+
+function resolveKind(service: ServiceDefinition): ServiceKind {
+  return service.kind ?? "local";
+}
+
+function toDockerTarget(
+  name: string,
+  service: ServiceDefinition,
+): DockerComposeTarget {
+  if (!service.cwd || !service.composeService) {
+    throw new Error(
+      `Service "${name}" is missing docker-compose cwd or composeService.`,
+    );
+  }
+  return {
+    cwd: service.cwd,
+    composeFile: service.composeFile,
+    composeService: service.composeService,
+  };
+}
+
+function spawnService(
+  name: string,
+  service: ServiceDefinition,
+  kind: ServiceKind,
+): ChildProcess {
+  if (kind === "ssh") {
+    if (!service.host || !service.cwd || !service.command) {
+      throw new Error(
+        `Service "${name}" is missing ssh host, cwd, or command.`,
+      );
+    }
+    const [bin, args] = createSshCommand({
+      host: service.host,
+      cwd: service.cwd,
+      command: service.command,
+      env: service.env,
+    });
+    return spawn(bin, args, {
+      env: { ...process.env },
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    });
+  }
+  if (!service.command || !service.cwd) {
+    throw new Error(`Service "${name}" is missing command or cwd.`);
+  }
+  return spawn(service.command, {
+    cwd: service.cwd,
+    env: { ...process.env, ...service.env },
+    shell: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
 }
 
 function localUrlFromLine(line: string): string | undefined {

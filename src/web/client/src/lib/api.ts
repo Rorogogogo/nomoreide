@@ -1,9 +1,15 @@
+export type ServiceKind = "local" | "docker-compose" | "ssh";
+
 export interface ServiceDefinition {
   name: string;
-  command: string;
-  cwd: string;
+  kind?: ServiceKind;
+  command?: string;
+  cwd?: string;
   port?: number;
   description?: string;
+  composeFile?: string;
+  composeService?: string;
+  host?: string;
 }
 
 export interface BundleDefinition {
@@ -26,6 +32,9 @@ export interface ServiceStatus {
   exitCode?: number | null;
   signal?: string | null;
   processTree?: ProcessTreeSummary;
+  kind?: ServiceKind;
+  containerId?: string;
+  host?: string;
 }
 
 export interface ProcessTreeSummary {

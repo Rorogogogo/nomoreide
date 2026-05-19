@@ -97,6 +97,74 @@ describe("ConfigStore", () => {
     expect(config.selectedGitRepository).toBe("app");
   });
 
+  test("registers a docker-compose service", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerService({
+      name: "api",
+      kind: "docker-compose",
+      cwd: "/repo",
+      composeFile: "docker-compose.yml",
+      composeService: "api",
+      port: 3001,
+    });
+
+    const config = await store.load();
+    expect(config.services[0]).toMatchObject({
+      name: "api",
+      kind: "docker-compose",
+      composeService: "api",
+      composeFile: "docker-compose.yml",
+      cwd: "/repo",
+      port: 3001,
+    });
+  });
+
+  test("registers an ssh service", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerService({
+      name: "staging-api",
+      kind: "ssh",
+      host: "devbox",
+      cwd: "/srv/app",
+      command: "npm run dev",
+      port: 3001,
+    });
+
+    const config = await store.load();
+    expect(config.services[0]).toMatchObject({
+      name: "staging-api",
+      kind: "ssh",
+      host: "devbox",
+      cwd: "/srv/app",
+      command: "npm run dev",
+    });
+  });
+
+  test("rejects ssh services with empty host or null-byte commands", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(
+      store.registerService({
+        name: "bad",
+        kind: "ssh",
+        host: "",
+        cwd: "/srv/app",
+        command: "x",
+      }),
+    ).rejects.toThrow();
+    await expect(
+      store.registerService({
+        name: "bad",
+        kind: "ssh",
+        host: "h",
+        cwd: "/srv/app",
+        command: "x\0y",
+      }),
+    ).rejects.toThrow(/null byte/);
+  });
+
   test("rejects git repository paths that are not absolute", async () => {
     const store = new ConfigStore(configPath);
 

@@ -68,6 +68,66 @@ describe("CLI commands", () => {
     expect(errors.join("\n")).toContain("--command is required");
   });
 
+  test("adds a docker-compose service", async () => {
+    const exitCode = await runCli(
+      [
+        "add",
+        "service",
+        "api",
+        "--kind",
+        "docker-compose",
+        "--cwd",
+        tempDir,
+        "--compose-file",
+        "docker-compose.yml",
+        "--compose-service",
+        "api",
+        "--port",
+        "3001",
+      ],
+      cliOptions(),
+    );
+
+    expect(exitCode).toBe(0);
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw.services[0]).toMatchObject({
+      name: "api",
+      kind: "docker-compose",
+      composeService: "api",
+      composeFile: "docker-compose.yml",
+    });
+  });
+
+  test("adds an ssh service", async () => {
+    const exitCode = await runCli(
+      [
+        "add",
+        "service",
+        "staging-api",
+        "--kind",
+        "ssh",
+        "--host",
+        "devbox",
+        "--cwd",
+        "/srv/app",
+        "--command",
+        "npm run dev",
+        "--port",
+        "3001",
+      ],
+      cliOptions(),
+    );
+
+    expect(exitCode).toBe(0);
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw.services[0]).toMatchObject({
+      name: "staging-api",
+      kind: "ssh",
+      host: "devbox",
+      command: "npm run dev",
+    });
+  });
+
   test("prints MCP setup commands", async () => {
     const exitCode = await runCli(["setup"], cliOptions());
     const text = output.join("\n");

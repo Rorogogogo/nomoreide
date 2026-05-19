@@ -9,14 +9,44 @@ import type {
   ServiceDefinition,
 } from "./types.js";
 
-const serviceSchema = z.object({
+const baseServiceSchema = z.object({
   name: z.string().min(1),
-  command: z.string().min(1),
-  cwd: z.string().min(1),
   port: z.number().int().positive().max(65535).optional(),
-  env: z.record(z.string()).optional(),
   description: z.string().optional(),
 });
+
+const localServiceSchema = baseServiceSchema.extend({
+  kind: z.literal("local").optional(),
+  command: z.string().min(1),
+  cwd: z.string().min(1),
+  env: z.record(z.string()).optional(),
+});
+
+const dockerServiceSchema = baseServiceSchema.extend({
+  kind: z.literal("docker-compose"),
+  cwd: z.string().min(1),
+  composeFile: z.string().min(1).optional(),
+  composeService: z.string().min(1),
+});
+
+const sshServiceSchema = baseServiceSchema.extend({
+  kind: z.literal("ssh"),
+  host: z.string().min(1),
+  cwd: z.string().min(1),
+  command: z
+    .string()
+    .min(1)
+    .refine((value) => !value.includes("\0"), {
+      message: "SSH command contains invalid null byte.",
+    }),
+  env: z.record(z.string()).optional(),
+});
+
+const serviceSchema = z.union([
+  localServiceSchema,
+  dockerServiceSchema,
+  sshServiceSchema,
+]);
 
 const bundleSchema = z.object({
   name: z.string().min(1),
