@@ -58,6 +58,7 @@ export class ProcessManager {
       env: { ...process.env, ...service.env },
       shell: true,
       stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
     });
 
     const runtime: RuntimeService = {
@@ -200,6 +201,38 @@ export class ProcessManager {
     );
   }
 
+  killAllSync(signal: NodeJS.Signals = "SIGTERM"): void {
+    for (const runtime of this.runtimes.values()) {
+      if (!runtime.child || runtime.child.exitCode !== null) continue;
+      signalProcessTree(runtime.child, signal);
+    }
+  }
+
+  installShutdownHandlers(): () => void {
+    let firing = false;
+    const handle = (signal: NodeJS.Signals) => () => {
+      if (firing) return;
+      firing = true;
+      this.killAllSync("SIGTERM");
+      // Re-raise the signal with default behavior so the host exits.
+      setTimeout(() => process.kill(process.pid, signal), 50);
+    };
+    const onExit = () => this.killAllSync("SIGTERM");
+    const sigint = handle("SIGINT");
+    const sigterm = handle("SIGTERM");
+    const sighup = handle("SIGHUP");
+    process.once("SIGINT", sigint);
+    process.once("SIGTERM", sigterm);
+    process.once("SIGHUP", sighup);
+    process.once("exit", onExit);
+    return () => {
+      process.removeListener("SIGINT", sigint);
+      process.removeListener("SIGTERM", sigterm);
+      process.removeListener("SIGHUP", sighup);
+      process.removeListener("exit", onExit);
+    };
+  }
+
   status(): NoMoreIdeStatus {
     return {
       services: Object.fromEntries(
@@ -321,11 +354,30 @@ async function stopChild(
       }
     };
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      signalProcessTree(child, "SIGKILL");
       finish();
     }, timeoutMs);
 
     child.once("exit", finish);
-    child.kill("SIGTERM");
+    signalProcessTree(child, "SIGTERM");
   });
+}
+
+function signalProcessTree(child: ChildProcess, signal: NodeJS.Signals): void {
+  const pid = child.pid;
+  if (!pid) return;
+  try {
+    // Negative PID = signal the whole process group whose leader is `pid`.
+    // The service was spawned with detached: true so child.pid === PGID.
+    process.kill(-pid, signal);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ESRCH") return;
+    // Fall back to signaling the direct child if the group is gone.
+    try {
+      child.kill(signal);
+    } catch {
+      // ignore
+    }
+  }
 }

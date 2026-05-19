@@ -199,17 +199,63 @@ describe("ProcessManager", () => {
     expect(manager.status().services.backend.state).toBe("running");
     expect(manager.status().services.frontend.state).toBe("running");
   });
+
+  test("stopping a service kills the whole process group, not just the shell wrapper", async () => {
+    const spawnGrandchild =
+      "const { spawn } = require('child_process');" +
+      "const grand = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });" +
+      "console.log('grandchild-pid=' + grand.pid);" +
+      "setInterval(() => {}, 1000);";
+
+    await config.registerService({
+      name: "with-grandchild",
+      command: nodeCommand(spawnGrandchild),
+      cwd: tempDir,
+    });
+
+    await manager.startService("with-grandchild");
+
+    let grandPid = 0;
+    await waitFor(() => {
+      for (const entry of logs.read("with-grandchild")) {
+        const match = entry.text.match(/grandchild-pid=(\d+)/);
+        if (match) {
+          grandPid = Number(match[1]);
+          return true;
+        }
+      }
+      return false;
+    });
+
+    expect(grandPid).toBeGreaterThan(0);
+    expect(isPidAlive(grandPid)).toBe(true);
+
+    await manager.stopService("with-grandchild");
+
+    await waitFor(() => !isPidAlive(grandPid));
+    expect(isPidAlive(grandPid)).toBe(false);
+  });
 });
+
+function isPidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") return false;
+    return true;
+  }
+}
 
 function nodeCommand(script: string): string {
   return `${JSON.stringify(process.execPath)} -e ${JSON.stringify(script)}`;
 }
 
-async function waitFor(predicate: () => boolean): Promise<void> {
+async function waitFor(predicate: () => boolean | Promise<boolean>): Promise<void> {
   const startedAt = Date.now();
 
-  while (Date.now() - startedAt < 1000) {
-    if (predicate()) {
+  while (Date.now() - startedAt < 1500) {
+    if (await predicate()) {
       return;
     }
 

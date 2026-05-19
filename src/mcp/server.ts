@@ -86,7 +86,11 @@ export async function startNoMoreIdeMcpServer(
   options: StartNoMoreIdeMcpServerOptions = {},
 ): Promise<void> {
   const env = options.env ?? process.env;
-  const { server, uiLifecycle } = options.createServer?.() ?? createNoMoreIdeMcpServer();
+  const created = options.createServer?.() ?? createNoMoreIdeMcpServer();
+  const { server, uiLifecycle } = created;
+  if ("manager" in created) {
+    (created as NoMoreIdeMcpServer).manager.installShutdownHandlers();
+  }
   if (env.NOMOREIDE_AUTO_UI !== "0") {
     try {
       await uiLifecycle.ensureStarted();

@@ -57,6 +57,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     timelineStore,
   });
   const manager = new ProcessManager({ configStore, logStore, timelineStore });
+  manager.installShutdownHandlers();
   const cwd = options.cwd ?? process.cwd();
 
   return {
