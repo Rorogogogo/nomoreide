@@ -34,7 +34,7 @@ export class GitManager {
   async status(): Promise<GitStatus> {
     const [branch, porcelain] = await Promise.all([
       this.git(["branch", "--show-current"]),
-      this.git(["status", "--porcelain=v1"]),
+      this.git(["status", "--porcelain=v1", "--untracked-files=all"]),
     ]);
 
     return {
