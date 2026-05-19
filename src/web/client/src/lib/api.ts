@@ -235,10 +235,31 @@ async function postFormForJson<T>(
   });
 }
 
+export interface PortConflictDetail {
+  code: "PORT_IN_USE";
+  port: number;
+  holder: { pid: number; pgid?: number; command: string } | null;
+}
+
+export class PortConflictResponseError extends Error {
+  readonly conflict: PortConflictDetail;
+  constructor(message: string, conflict: PortConflictDetail) {
+    super(message);
+    this.name = "PortConflictResponseError";
+    this.conflict = conflict;
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const body = await response.json().catch(() => undefined);
   if (!response.ok) {
+    if (response.status === 409 && body?.conflict?.code === "PORT_IN_USE") {
+      throw new PortConflictResponseError(
+        body?.error || "Port already in use",
+        body.conflict as PortConflictDetail,
+      );
+    }
     throw new Error(body?.error || response.statusText);
   }
   return body as T;

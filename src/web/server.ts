@@ -7,7 +7,7 @@ import {
 } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
-import { ProcessManager } from "../core/process-manager.js";
+import { PortConflictError, ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { testServiceCommand } from "./service-tester.js";
 import {
@@ -282,13 +282,40 @@ async function routeRequest(options: {
         return;
       }
 
-      const status =
-        action === "start"
-          ? await manager.startService(name)
-          : action === "stop"
-            ? await manager.stopService(name)
-            : await manager.restartService(name);
-      sendJson(response, { ok: true, status });
+      try {
+        let startOptions: { killHolder?: boolean } = {};
+        if (action === "start" || action === "restart") {
+          const form = await readForm(request).catch(() => new URLSearchParams());
+          if (form.get("strategy") === "killHolder") {
+            startOptions = { killHolder: true };
+          }
+        }
+        const status =
+          action === "start"
+            ? await manager.startService(name, startOptions)
+            : action === "stop"
+              ? await manager.stopService(name)
+              : await manager.restartService(name, startOptions);
+        sendJson(response, { ok: true, status });
+      } catch (error) {
+        if (error instanceof PortConflictError) {
+          sendJson(
+            response,
+            {
+              ok: false,
+              error: error.message,
+              conflict: {
+                code: error.code,
+                port: error.port,
+                holder: error.holder,
+              },
+            },
+            409,
+          );
+          return;
+        }
+        throw error;
+      }
       return;
     }
 

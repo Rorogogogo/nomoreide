@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import type { ConfigStore } from "./config-store.js";
 import type { LogStore } from "./log-store.js";
-import { isPortAvailable } from "./port-utils.js";
+import { getPortHolder, isPortAvailable, type PortHolder } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
 import type { TimelineStore } from "./timeline-store.js";
 import type {
@@ -27,6 +27,26 @@ export interface NoMoreIdeStatus {
   services: Record<string, ServiceStatus>;
 }
 
+export interface StartServiceOptions {
+  killHolder?: boolean;
+}
+
+export class PortConflictError extends Error {
+  readonly code = "PORT_IN_USE";
+  readonly service: string;
+  readonly port: number;
+  readonly holder: PortHolder | null;
+
+  constructor(service: string, port: number, holder: PortHolder | null) {
+    const owner = holder ? ` (held by pid ${holder.pid} — ${holder.command})` : "";
+    super(`Port ${port} is already in use for ${service}${owner}.`);
+    this.name = "PortConflictError";
+    this.service = service;
+    this.port = port;
+    this.holder = holder;
+  }
+}
+
 export class ProcessManager {
   private readonly runtimes = new Map<string, RuntimeService>();
   private readonly configStore: ConfigStore;
@@ -41,7 +61,10 @@ export class ProcessManager {
     this.timelineStore = options.timelineStore;
   }
 
-  async startService(name: string): Promise<ServiceStatus> {
+  async startService(
+    name: string,
+    options: StartServiceOptions = {},
+  ): Promise<ServiceStatus> {
     const service = await this.getService(name);
     const existing = this.runtimes.get(name);
 
@@ -50,7 +73,15 @@ export class ProcessManager {
     }
 
     if (service.port && !(await isPortAvailable(service.port))) {
-      throw new Error(`Port ${service.port} is already in use for ${name}.`);
+      const holder = await getPortHolder(service.port);
+      if (options.killHolder && holder) {
+        await killHolder(holder);
+        if (!(await waitForPortFree(service.port, 3000))) {
+          throw new PortConflictError(name, service.port, holder);
+        }
+      } else {
+        throw new PortConflictError(name, service.port, holder);
+      }
     }
 
     const child = spawn(service.command, {
@@ -163,9 +194,12 @@ export class ProcessManager {
     return { ...stopped };
   }
 
-  async restartService(name: string): Promise<ServiceStatus> {
+  async restartService(
+    name: string,
+    options: StartServiceOptions = {},
+  ): Promise<ServiceStatus> {
     await this.stopService(name);
-    return this.startService(name);
+    return this.startService(name, options);
   }
 
   async startBundle(name: string): Promise<ServiceStatus[]> {
@@ -361,6 +395,39 @@ async function stopChild(
     child.once("exit", finish);
     signalProcessTree(child, "SIGTERM");
   });
+}
+
+async function killHolder(holder: PortHolder): Promise<void> {
+  const target = holder.pgid ? -holder.pgid : holder.pid;
+  try {
+    process.kill(target, "SIGTERM");
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ESRCH") throw error;
+  }
+  // Give the process a moment to exit cleanly before escalating.
+  for (let i = 0; i < 20; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      process.kill(holder.pid, 0);
+    } catch {
+      return;
+    }
+  }
+  try {
+    process.kill(target, "SIGKILL");
+  } catch {
+    // ignore
+  }
+}
+
+async function waitForPortFree(port: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await isPortAvailable(port)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return isPortAvailable(port);
 }
 
 function signalProcessTree(child: ChildProcess, signal: NodeJS.Signals): void {
