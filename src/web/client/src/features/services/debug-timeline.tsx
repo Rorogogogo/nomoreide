@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Activity } from "lucide-react";
+import { Activity, ChevronRight } from "lucide-react";
 import { ComposerDialog } from "./service-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TimelineEvent } from "@/lib/api";
@@ -7,15 +7,16 @@ import { cn } from "@/lib/utils";
 import { EmptyState } from "./empty-state";
 
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_EVENTS = 120;
+const BUCKETS = 12;
+const MAX_EVENTS = 200;
 
 export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
-  const [selected, setSelected] = useState<TimelineEvent | null>(null);
+  const [openService, setOpenService] = useState<string | null>(null);
+  const [openEvent, setOpenEvent] = useState<TimelineEvent | null>(null);
 
-  const { lanes, windowStart, windowEnd } = useMemo(
-    () => buildLanes(events),
-    [events],
-  );
+  const { rows, windowStart, windowEnd } = useMemo(() => buildRows(events), [events]);
+
+  const activeRow = openService ? rows.find((row) => row.service === openService) ?? null : null;
 
   return (
     <>
@@ -32,22 +33,20 @@ export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {lanes.length === 0 ? (
+          {rows.length === 0 ? (
             <EmptyState label="No runtime timeline events yet." />
           ) : (
-            <div className="timeline-graph px-3 py-3" data-testid="timeline-graph">
-              <div className="space-y-1.5">
-                {lanes.map((lane) => (
-                  <Swimlane
-                    key={lane.service}
-                    lane={lane}
-                    onSelect={setSelected}
-                    windowEnd={windowEnd}
-                    windowStart={windowStart}
-                  />
-                ))}
-              </div>
-              <div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground">
+            <div className="divide-y divide-border">
+              {rows.map((row) => (
+                <ServiceRowButton
+                  key={row.service}
+                  onClick={() => setOpenService(row.service)}
+                  row={row}
+                  windowEnd={windowEnd}
+                  windowStart={windowStart}
+                />
+              ))}
+              <div className="flex justify-between px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
                 <span>{formatTime(windowStart)}</span>
                 <span>now</span>
               </div>
@@ -55,123 +54,254 @@ export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
           )}
         </CardContent>
       </Card>
-      {selected ? (
+      {activeRow ? (
         <ComposerDialog
           icon={<Activity />}
-          onClose={() => setSelected(null)}
-          title={selected.title}
+          onClose={() => setOpenService(null)}
+          title={activeRow.service}
         >
-          <EventDetail event={selected} />
+          <ServiceEventList
+            onSelect={setOpenEvent}
+            row={activeRow}
+          />
+        </ComposerDialog>
+      ) : null}
+      {openEvent ? (
+        <ComposerDialog
+          icon={<Activity />}
+          onClose={() => setOpenEvent(null)}
+          title={openEvent.title}
+        >
+          <EventDetail event={openEvent} />
         </ComposerDialog>
       ) : null}
     </>
   );
 }
 
-type Lane = {
+type ServiceRow = {
   service: string;
   events: TimelineEvent[];
+  errors: number;
+  warnings: number;
+  infos: number;
+  buckets: number[];
+  bucketSeverity: Array<"error" | "warning" | "info" | null>;
+  lastNotable: TimelineEvent | null;
+  worstSeverity: TimelineEvent["severity"];
 };
 
-function buildLanes(events: TimelineEvent[]) {
+function buildRows(events: TimelineEvent[]) {
   const now = Date.now();
   const windowEnd = now;
   const windowStart = now - WINDOW_MS;
 
-  const recent = events
-    .filter((event) => {
-      const ts = new Date(event.timestamp).getTime();
-      return !Number.isNaN(ts) && ts >= windowStart;
-    })
-    .slice(-MAX_EVENTS);
+  let filtered = events.filter((event) => {
+    const ts = new Date(event.timestamp).getTime();
+    return !Number.isNaN(ts) && ts >= windowStart;
+  });
 
-  if (recent.length === 0 && events.length > 0) {
-    // Use the events we have; widen the window to fit them.
-    const stamps = events
-      .map((event) => new Date(event.timestamp).getTime())
-      .filter((value) => !Number.isNaN(value));
-    const min = Math.min(...stamps);
-    return finalizeLanes(events, min, now);
+  if (filtered.length === 0 && events.length > 0) {
+    filtered = events.slice(-MAX_EVENTS);
+  } else if (filtered.length > MAX_EVENTS) {
+    filtered = filtered.slice(-MAX_EVENTS);
   }
 
-  return finalizeLanes(recent, windowStart, windowEnd);
-}
-
-function finalizeLanes(events: TimelineEvent[], windowStart: number, windowEnd: number) {
   const byService = new Map<string, TimelineEvent[]>();
-  for (const event of events) {
+  for (const event of filtered) {
     const key = event.service || "·system";
     const bucket = byService.get(key) ?? [];
     bucket.push(event);
     byService.set(key, bucket);
   }
-  const lanes: Lane[] = Array.from(byService.entries())
-    .map(([service, list]) => ({
-      service,
-      events: list.sort((a, b) => a.timestamp.localeCompare(b.timestamp)),
-    }))
-    .sort((a, b) => a.service.localeCompare(b.service));
-  return { lanes, windowStart, windowEnd };
+
+  const span = Math.max(windowEnd - windowStart, 1);
+  const rows: ServiceRow[] = Array.from(byService.entries())
+    .map(([service, list]) => {
+      const sorted = [...list].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      const buckets = new Array<number>(BUCKETS).fill(0);
+      const bucketSeverity = new Array<"error" | "warning" | "info" | null>(BUCKETS).fill(null);
+      for (const event of sorted) {
+        const ts = new Date(event.timestamp).getTime();
+        const clamped = Math.max(windowStart, Math.min(windowEnd, ts));
+        const idx = Math.min(
+          BUCKETS - 1,
+          Math.floor(((clamped - windowStart) / span) * BUCKETS),
+        );
+        buckets[idx] += 1;
+        const prev = bucketSeverity[idx];
+        bucketSeverity[idx] = mergeSeverity(prev, event.severity);
+      }
+      const errors = sorted.filter((event) => event.severity === "error").length;
+      const warnings = sorted.filter((event) => event.severity === "warning").length;
+      const infos = sorted.length - errors - warnings;
+      const lastNotable =
+        [...sorted].reverse().find((event) => event.severity !== "info") ?? null;
+      const worstSeverity: TimelineEvent["severity"] =
+        errors > 0 ? "error" : warnings > 0 ? "warning" : "info";
+      return {
+        service,
+        events: sorted,
+        errors,
+        warnings,
+        infos,
+        buckets,
+        bucketSeverity,
+        lastNotable,
+        worstSeverity,
+      };
+    })
+    .sort((a, b) => {
+      const score = (row: ServiceRow) => row.errors * 1000 + row.warnings;
+      const diff = score(b) - score(a);
+      if (diff !== 0) return diff;
+      return a.service.localeCompare(b.service);
+    });
+
+  return { rows, windowStart, windowEnd };
 }
 
-function Swimlane({
-  lane,
-  onSelect,
+function mergeSeverity(
+  prev: "error" | "warning" | "info" | null,
+  next: TimelineEvent["severity"],
+): "error" | "warning" | "info" {
+  if (prev === "error" || next === "error") return "error";
+  if (prev === "warning" || next === "warning") return "warning";
+  return "info";
+}
+
+function ServiceRowButton({
+  onClick,
+  row,
   windowEnd,
   windowStart,
 }: {
-  lane: Lane;
-  onSelect: (event: TimelineEvent) => void;
+  onClick: () => void;
+  row: ServiceRow;
   windowEnd: number;
   windowStart: number;
 }) {
-  const span = Math.max(windowEnd - windowStart, 1);
-  const errorCount = lane.events.filter((event) => event.severity === "error").length;
-  const warnCount = lane.events.filter((event) => event.severity === "warning").length;
-
+  const maxCount = Math.max(1, ...row.buckets);
   return (
-    <div className="timeline-lane grid grid-cols-[88px_minmax(0,1fr)] items-center gap-2">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate text-[11px] font-medium text-foreground" title={lane.service}>
-          {lane.service}
+    <button
+      className="timeline-service-row block w-full px-3 py-2 text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:bg-muted/40"
+      data-testid="timeline-service-row"
+      onClick={onClick}
+      type="button"
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={cn("size-2 shrink-0 rounded-full", severityDot(row.worstSeverity))} />
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground" dir="rtl">
+          <bdi>{row.service}</bdi>
         </span>
-        {errorCount > 0 ? (
+        {row.errors > 0 ? (
           <span className="rounded bg-red-500/15 px-1 font-mono text-[10px] text-red-500">
-            {errorCount}
+            {row.errors}E
           </span>
         ) : null}
-        {warnCount > 0 ? (
+        {row.warnings > 0 ? (
           <span className="rounded bg-amber-500/15 px-1 font-mono text-[10px] text-amber-500">
-            {warnCount}
+            {row.warnings}W
           </span>
         ) : null}
+        <ChevronRight className="size-3 text-muted-foreground" />
       </div>
-      <div className="relative h-5">
-        <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-border" />
-        {lane.events.map((event) => {
-          const ts = new Date(event.timestamp).getTime();
-          const clamped = Math.max(windowStart, Math.min(windowEnd, ts));
-          const left = ((clamped - windowStart) / span) * 100;
-          return (
+      <div
+        className="timeline-density mt-1.5 grid h-3 gap-px"
+        data-testid="timeline-density"
+        style={{ gridTemplateColumns: `repeat(${BUCKETS}, minmax(0, 1fr))` }}
+      >
+        {row.buckets.map((count, idx) => (
+          <DensityCell
+            count={count}
+            key={idx}
+            max={maxCount}
+            severity={row.bucketSeverity[idx]}
+          />
+        ))}
+      </div>
+      {row.lastNotable ? (
+        <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+          {row.lastNotable.detail ?? row.lastNotable.title}
+        </div>
+      ) : (
+        <div className="mt-1 truncate text-[10px] text-muted-foreground">
+          {row.infos} info {row.infos === 1 ? "event" : "events"}
+        </div>
+      )}
+      <div className="mt-0.5 flex justify-between font-mono text-[9px] text-muted-foreground/60">
+        <span>{formatTime(windowStart)}</span>
+        <span>{formatTime(windowEnd)}</span>
+      </div>
+    </button>
+  );
+}
+
+function DensityCell({
+  count,
+  max,
+  severity,
+}: {
+  count: number;
+  max: number;
+  severity: "error" | "warning" | "info" | null;
+}) {
+  if (count === 0) {
+    return <span className="rounded-sm bg-border/60" />;
+  }
+  const intensity = Math.min(1, 0.35 + (count / max) * 0.65);
+  return (
+    <span
+      className={cn("rounded-sm", densityColor(severity))}
+      style={{ opacity: intensity }}
+      title={`${count} event${count === 1 ? "" : "s"}`}
+    />
+  );
+}
+
+function ServiceEventList({
+  onSelect,
+  row,
+}: {
+  onSelect: (event: TimelineEvent) => void;
+  row: ServiceRow;
+}) {
+  const newestFirst = [...row.events].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return (
+    <div className="flex max-h-[480px] flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+        <span>{row.events.length} events</span>
+        <span>·</span>
+        <span>{row.errors} error{row.errors === 1 ? "" : "s"}</span>
+        <span>·</span>
+        <span>{row.warnings} warning{row.warnings === 1 ? "" : "s"}</span>
+      </div>
+      <ul className="min-h-0 divide-y divide-border overflow-auto">
+        {newestFirst.map((event) => (
+          <li key={event.id}>
             <button
-              aria-label={`${event.title} at ${formatTime(ts)}`}
-              className="timeline-marker absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              key={event.id}
+              className="block w-full px-4 py-2 text-left hover:bg-muted/40 focus:outline-none focus-visible:bg-muted/40"
               onClick={() => onSelect(event)}
-              style={{ left: `${left}%` }}
-              title={`${event.title} — ${formatTime(ts)}`}
               type="button"
             >
-              <span
-                className={cn(
-                  "block size-2.5 rounded-full ring-2 ring-background transition-transform hover:scale-125",
-                  markerColor(event.severity),
-                )}
-              />
+              <div className="flex items-center gap-2">
+                <span className={cn("size-2 shrink-0 rounded-full", severityDot(event.severity))} />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                  {event.title}
+                </span>
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  {formatTime(event.timestamp)}
+                </span>
+              </div>
+              {event.detail ? (
+                <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
+                  {event.detail}
+                </div>
+              ) : null}
             </button>
-          );
-        })}
-      </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -216,10 +346,16 @@ function EventDetail({ event }: { event: TimelineEvent }) {
   );
 }
 
-function markerColor(severity: TimelineEvent["severity"]) {
+function severityDot(severity: "error" | "warning" | "info") {
   if (severity === "error") return "bg-red-500";
   if (severity === "warning") return "bg-amber-500";
   return "bg-zinc-400";
+}
+
+function densityColor(severity: "error" | "warning" | "info" | null) {
+  if (severity === "error") return "bg-red-500";
+  if (severity === "warning") return "bg-amber-500";
+  return "bg-zinc-500";
 }
 
 function severityBadge(severity: TimelineEvent["severity"]) {
