@@ -129,6 +129,8 @@ const serviceCommandPresets = [
   },
 ];
 
+type ServiceKindOption = "local" | "docker-compose" | "ssh";
+
 export function ServiceForm({
   cwd,
   onRefresh,
@@ -139,34 +141,53 @@ export function ServiceForm({
   onSaved?: () => void;
 }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const [kind, setKind] = useState<ServiceKindOption>("local");
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
   const [formCwd, setFormCwd] = useState(cwd);
   const [port, setPort] = useState("");
   const [description, setDescription] = useState("");
+  const [composeFile, setComposeFile] = useState("");
+  const [composeService, setComposeService] = useState("");
+  const [host, setHost] = useState("");
   const [testResult, setTestResult] = useState<ServiceTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     setTestResult(null);
-  }, [command, formCwd, port]);
+  }, [command, formCwd, port, kind]);
+
+  function resetForm() {
+    setName("");
+    setCommand("");
+    setFormCwd(cwd);
+    setPort("");
+    setDescription("");
+    setComposeFile("");
+    setComposeService("");
+    setHost("");
+    setTestResult(null);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await postForm("/api/services", {
+      const payload: Record<string, string> = {
         name,
-        command,
+        kind,
         cwd: formCwd,
         port,
         description,
-      });
-      setName("");
-      setCommand("");
-      setFormCwd(cwd);
-      setPort("");
-      setDescription("");
-      setTestResult(null);
+      };
+      if (kind === "local" || kind === "ssh") payload.command = command;
+      if (kind === "docker-compose") {
+        payload.composeFile = composeFile;
+        payload.composeService = composeService;
+      }
+      if (kind === "ssh") payload.host = host;
+
+      await postForm("/api/services", payload);
+      resetForm();
       showSuccessToast(`${name} added.`);
       await onRefresh();
       onSaved?.();
@@ -197,29 +218,67 @@ export function ServiceForm({
     }
   }
 
+  const kindOptions: { value: ServiceKindOption; label: string; hint: string }[] = [
+    { value: "local", label: "Local", hint: "Run a command in a local working directory." },
+    {
+      value: "docker-compose",
+      label: "Docker Compose",
+      hint: "Bring up a service defined in a docker-compose.yml file.",
+    },
+    {
+      value: "ssh",
+      label: "SSH (remote)",
+      hint: "Run a command on a remote host using your local ~/.ssh/config + ssh-agent.",
+    },
+  ];
+  const activeKind = kindOptions.find((option) => option.value === kind)!;
+  const canTest = kind === "local" && command.trim().length > 0 && formCwd.trim().length > 0;
+
   return (
     <form className="grid gap-3" onSubmit={submit}>
       <fieldset className="grid gap-2">
-        <legend className="text-xs font-medium">Recommended Dev Commands</legend>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          {serviceCommandPresets.map((preset) => (
+        <legend className="text-xs font-medium">Service kind</legend>
+        <div className="grid grid-cols-3 gap-1.5">
+          {kindOptions.map((option) => (
             <Button
-              className="justify-start gap-1.5"
-              key={preset.label}
-              onClick={() => {
-                setCommand(preset.command);
-                setDescription(preset.description);
-              }}
+              className="justify-center"
+              key={option.value}
+              onClick={() => setKind(option.value)}
               size="sm"
               type="button"
-              variant="outline"
+              variant={kind === option.value ? "default" : "outline"}
             >
-              <ProcessBadge command={preset.badgeCommand ?? preset.command} compact />
-              <span className="truncate">{preset.label}</span>
+              {option.label}
             </Button>
           ))}
         </div>
+        <p className="text-[11px] text-muted-foreground">{activeKind.hint}</p>
       </fieldset>
+
+      {kind === "local" ? (
+        <fieldset className="grid gap-2">
+          <legend className="text-xs font-medium">Recommended Dev Commands</legend>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {serviceCommandPresets.map((preset) => (
+              <Button
+                className="justify-start gap-1.5"
+                key={preset.label}
+                onClick={() => {
+                  setCommand(preset.command);
+                  setDescription(preset.description);
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ProcessBadge command={preset.badgeCommand ?? preset.command} compact />
+                <span className="truncate">{preset.label}</span>
+              </Button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <Label>
         Name
         <Input
@@ -231,27 +290,73 @@ export function ServiceForm({
           value={name}
         />
       </Label>
-      <Label>
-        Command
-        <Input
-          className="h-8 font-mono text-sm"
-          name="command"
-          onChange={(event) => setCommand(event.target.value)}
-          placeholder="npm run dev"
-          required
-          value={command}
-        />
-      </Label>
+
+      {kind === "ssh" ? (
+        <Label>
+          SSH Host (alias from ~/.ssh/config)
+          <Input
+            className="h-8 font-mono text-sm"
+            name="host"
+            onChange={(event) => setHost(event.target.value)}
+            placeholder="devbox"
+            required
+            value={host}
+          />
+        </Label>
+      ) : null}
+
+      {kind === "docker-compose" ? (
+        <>
+          <Label>
+            Compose Service
+            <Input
+              className="h-8 font-mono text-sm"
+              name="composeService"
+              onChange={(event) => setComposeService(event.target.value)}
+              placeholder="api"
+              required
+              value={composeService}
+            />
+          </Label>
+          <Label>
+            Compose File (optional)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="composeFile"
+              onChange={(event) => setComposeFile(event.target.value)}
+              placeholder="docker-compose.yml"
+              value={composeFile}
+            />
+          </Label>
+        </>
+      ) : null}
+
+      {kind === "local" || kind === "ssh" ? (
+        <Label>
+          Command
+          <Input
+            className="h-8 font-mono text-sm"
+            name="command"
+            onChange={(event) => setCommand(event.target.value)}
+            placeholder={kind === "ssh" ? "npm run dev" : "npm run dev"}
+            required
+            value={command}
+          />
+        </Label>
+      ) : null}
+
       <Label>
         Working Directory
         <Input
           className="h-8 font-mono text-sm"
           name="cwd"
           onChange={(event) => setFormCwd(event.target.value)}
+          placeholder={kind === "ssh" ? "/srv/app" : undefined}
           required
           value={formCwd}
         />
       </Label>
+
       <Label>
         Port
         <Input
@@ -263,6 +368,7 @@ export function ServiceForm({
           value={port}
         />
       </Label>
+
       <Label>
         Description
         <Input
@@ -273,17 +379,34 @@ export function ServiceForm({
           value={description}
         />
       </Label>
+
+      {kind === "ssh" ? (
+        <Alert variant="muted">
+          <div className="font-medium">SSH key handling</div>
+          <div className="mt-1 text-xs">
+            NoMoreIDE never stores key files. Add a <code>Host {host || "&lt;alias&gt;"}</code> entry to
+            <code> ~/.ssh/config</code> with <code>HostName</code>, <code>User</code>, and{" "}
+            <code>IdentityFile ~/.ssh/your-key.pem</code> (chmod 0600). Make sure{" "}
+            <code>ssh-agent</code> is running or your key is loaded
+            (<code>ssh-add ~/.ssh/your-key.pem</code>). NoMoreIDE will run{" "}
+            <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
+          </div>
+        </Alert>
+      ) : null}
+
       {testResult ? <ServiceTestAlert result={testResult} /> : null}
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          disabled={testing || !command.trim() || !formCwd.trim()}
-          onClick={testCommand}
-          type="button"
-          variant="outline"
-        >
-          <Terminal />
-          {testing ? "Testing..." : "Test Command"}
-        </Button>
+        {kind === "local" ? (
+          <Button
+            disabled={testing || !canTest}
+            onClick={testCommand}
+            type="button"
+            variant="outline"
+          >
+            <Terminal />
+            {testing ? "Testing..." : "Test Command"}
+          </Button>
+        ) : null}
         <Button type="submit">Add Service</Button>
       </div>
     </form>

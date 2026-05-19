@@ -276,6 +276,68 @@ describe("web server", () => {
     });
   });
 
+  test("registers a docker-compose service from a web form post", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/services`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        name: "api",
+        kind: "docker-compose",
+        cwd: tempDir,
+        composeFile: "docker-compose.yml",
+        composeService: "api",
+        port: "3001",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const config = await new ConfigStore(configPath).load();
+    expect(config.services[0]).toMatchObject({
+      name: "api",
+      kind: "docker-compose",
+      composeService: "api",
+      composeFile: "docker-compose.yml",
+    });
+  });
+
+  test("registers an ssh service from a web form post", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/services`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        name: "staging-api",
+        kind: "ssh",
+        host: "devbox",
+        cwd: "/srv/app",
+        command: "npm run dev",
+        port: "3001",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const config = await new ConfigStore(configPath).load();
+    expect(config.services[0]).toMatchObject({
+      name: "staging-api",
+      kind: "ssh",
+      host: "devbox",
+      command: "npm run dev",
+    });
+  });
+
   test("tests a service command without registering it", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({

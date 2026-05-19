@@ -207,13 +207,44 @@ async function routeRequest(options: {
     if (request.method === "POST" && url.pathname === "/api/services") {
       const form = await readForm(request);
       const portValue = form.get("port")?.trim();
-      const config = await configStore.registerService({
-        name: requiredFormValue(form, "name"),
-        command: requiredFormValue(form, "command"),
-        cwd: requiredFormValue(form, "cwd"),
-        port: portValue ? Number(portValue) : undefined,
-        description: optionalFormValue(form, "description"),
-      });
+      const port = portValue ? Number(portValue) : undefined;
+      const kind = (optionalFormValue(form, "kind") ?? "local") as
+        | "local"
+        | "docker-compose"
+        | "ssh";
+      const name = requiredFormValue(form, "name");
+      const description = optionalFormValue(form, "description");
+
+      const definition =
+        kind === "docker-compose"
+          ? {
+              name,
+              kind: "docker-compose" as const,
+              cwd: requiredFormValue(form, "cwd"),
+              composeFile: optionalFormValue(form, "composeFile"),
+              composeService: requiredFormValue(form, "composeService"),
+              port,
+              description,
+            }
+          : kind === "ssh"
+            ? {
+                name,
+                kind: "ssh" as const,
+                host: requiredFormValue(form, "host"),
+                cwd: requiredFormValue(form, "cwd"),
+                command: requiredFormValue(form, "command"),
+                port,
+                description,
+              }
+            : {
+                name,
+                command: requiredFormValue(form, "command"),
+                cwd: requiredFormValue(form, "cwd"),
+                port,
+                description,
+              };
+
+      const config = await configStore.registerService(definition);
       sendJson(response, { ok: true, config });
       return;
     }

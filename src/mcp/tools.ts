@@ -86,14 +86,19 @@ export function registerNoMoreIdeTools(
 
   server.addTool({
     name: "nomoreide_register_service",
-    description: "Register or replace a local development service.",
+    description:
+      "Register or replace a development service (local, docker-compose, or ssh). For ssh, NoMoreIDE relies on the user's ~/.ssh/config and ssh-agent and never stores key material; pass a Host alias as `host`.",
     parameters: z.object({
       name: z.string().min(1),
-      command: z.string().min(1),
-      cwd: z.string().min(1),
+      kind: z.enum(["local", "docker-compose", "ssh"]).optional(),
+      command: z.string().min(1).optional(),
+      cwd: z.string().min(1).optional(),
       port: z.number().int().positive().max(65535).optional(),
       env: z.record(z.string()).optional(),
       description: z.string().optional(),
+      composeFile: z.string().min(1).optional(),
+      composeService: z.string().min(1).optional(),
+      host: z.string().min(1).optional(),
     }),
     execute: async (args) => stringify(await configStore.registerService(args)),
   });
