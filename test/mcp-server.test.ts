@@ -34,6 +34,9 @@ describe("NoMoreIDE MCP server", () => {
     expect(mcp.toolNames).toContain("nomoreide_git_commit");
     expect(mcp.toolNames).toContain("nomoreide_git_register_repository");
     expect(mcp.toolNames).toContain("nomoreide_git_select_repository");
+    expect(mcp.toolNames).toContain("nomoreide_service_health");
+    expect(mcp.toolNames).toContain("nomoreide_timeline");
+    expect(mcp.toolNames).toContain("nomoreide_service_context");
     expect(mcp.toolNames).toContain("nomoreide_open_ui");
     expect(mcp.toolNames).toContain("nomoreide_close_ui");
     expect(mcp.server).toBeDefined();

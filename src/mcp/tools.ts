@@ -21,6 +21,8 @@ export const NOMOREIDE_TOOL_NAMES = [
   "nomoreide_stop_bundle",
   "nomoreide_status",
   "nomoreide_service_context",
+  "nomoreide_service_health",
+  "nomoreide_timeline",
   "nomoreide_git_status",
   "nomoreide_git_branches",
   "nomoreide_git_switch_branch",
@@ -188,6 +190,53 @@ export function registerNoMoreIdeTools(
         recentLogs: logs,
         timeline,
       });
+    },
+  });
+
+  server.addTool({
+    name: "nomoreide_service_health",
+    description:
+      "Return computed health summaries for one service or all registered services.",
+    parameters: z.object({
+      service: z.string().min(1).optional(),
+    }),
+    execute: async ({ service }) => {
+      const config = await configStore.load();
+      const runtime = await manager.statusWithResources();
+      const timeline = timelineStore.read(200);
+      const definitions = service
+        ? config.services.filter((item) => item.name === service)
+        : config.services;
+      if (service && definitions.length === 0) {
+        throw new Error(`Service "${service}" is not registered.`);
+      }
+      const health = definitions.map((definition) =>
+        computeServiceHealth({
+          service: definition,
+          status: runtime.services[definition.name],
+          logs: logStore.read(definition.name, 80),
+          ports: [],
+          timeline: timeline.filter((event) => event.service === definition.name),
+        }),
+      );
+      return stringify(service ? health[0] : health);
+    },
+  });
+
+  server.addTool({
+    name: "nomoreide_timeline",
+    description:
+      "Return recent NoMoreIDE debug timeline events, optionally filtered by service.",
+    parameters: z.object({
+      service: z.string().min(1).optional(),
+      limit: z.number().int().positive().max(200).default(80),
+    }),
+    execute: async ({ service, limit }) => {
+      const events = timelineStore.read(200);
+      const filtered = service
+        ? events.filter((event) => event.service === service)
+        : events;
+      return stringify(filtered.slice(-limit));
     },
   });
 
