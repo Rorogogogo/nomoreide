@@ -7,6 +7,7 @@ import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
+import { previewArgs, type ToolCallStore } from "../core/tool-call-store.js";
 import type { UiLifecycleManager } from "../web/ui-lifecycle.js";
 
 export const NOMOREIDE_TOOL_NAMES = [
@@ -47,6 +48,7 @@ interface RegisterNoMoreIdeToolsOptions {
   manager: ProcessManager;
   timelineStore: TimelineStore;
   uiLifecycle: UiLifecycleManager;
+  toolCallStore?: ToolCallStore;
 }
 
 const serviceNameSchema = z.object({
@@ -76,7 +78,18 @@ const gitPathsSchema = gitCwdSchema.extend({
 export function registerNoMoreIdeTools(
   options: RegisterNoMoreIdeToolsOptions,
 ): void {
-  const { server, configStore, logStore, manager, timelineStore, uiLifecycle } = options;
+  const {
+    server: rawServer,
+    configStore,
+    logStore,
+    manager,
+    timelineStore,
+    uiLifecycle,
+    toolCallStore,
+  } = options;
+  const server = toolCallStore
+    ? wrapServerForRecording(rawServer, toolCallStore)
+    : rawServer;
 
   server.addTool({
     name: "nomoreide_list_services",
@@ -361,6 +374,51 @@ export function registerNoMoreIdeTools(
 
 function git(cwd?: string): GitManager {
   return new GitManager(cwd ?? process.cwd());
+}
+
+function wrapServerForRecording(server: FastMCP, store: ToolCallStore): FastMCP {
+  const originalAdd = server.addTool.bind(server);
+  const wrapped = (definition: Parameters<FastMCP["addTool"]>[0]) => {
+    const originalExecute = definition.execute;
+    const recordingDefinition = {
+      ...definition,
+      execute: async (args: unknown, context: unknown) => {
+        const start = Date.now();
+        const startedAt = new Date(start).toISOString();
+        try {
+          const result = await (originalExecute as (
+            a: unknown,
+            c: unknown,
+          ) => Promise<unknown>)(args, context);
+          store.record({
+            tool: definition.name,
+            startedAt,
+            durationMs: Date.now() - start,
+            status: "ok",
+            args: previewArgs(args),
+          });
+          return result as ReturnType<typeof originalExecute>;
+        } catch (error) {
+          store.record({
+            tool: definition.name,
+            startedAt,
+            durationMs: Date.now() - start,
+            status: "error",
+            args: previewArgs(args),
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
+      },
+    } as Parameters<FastMCP["addTool"]>[0];
+    return originalAdd(recordingDefinition);
+  };
+  return new Proxy(server, {
+    get(target, prop, receiver) {
+      if (prop === "addTool") return wrapped;
+      return Reflect.get(target, prop, receiver);
+    },
+  });
 }
 
 function stringify(value: unknown): string {

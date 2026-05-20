@@ -4,6 +4,7 @@ import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
+import { ToolCallStore } from "../core/tool-call-store.js";
 import {
   createUiLifecycleManager,
   type UiLifecycleManager,
@@ -28,6 +29,7 @@ export interface NoMoreIdeMcpServer {
   logStore: LogStore;
   manager: ProcessManager;
   uiLifecycle: UiLifecycleManager;
+  toolCallStore: ToolCallStore;
   toolNames: typeof NOMOREIDE_TOOL_NAMES;
 }
 
@@ -52,12 +54,14 @@ export function createNoMoreIdeMcpServer(
     timelineStore,
   });
   const manager = new ProcessManager({ configStore, logStore, timelineStore });
+  const toolCallStore = new ToolCallStore();
   const uiLifecycle =
     options.uiLifecycle ??
     createUiLifecycleManager({
       configPath,
       logDir,
       port: options.uiPort,
+      toolCallStore,
     });
   const server = new FastMCP({
     name: "NoMoreIDE MCP",
@@ -70,6 +74,7 @@ export function createNoMoreIdeMcpServer(
     manager,
     timelineStore,
     uiLifecycle,
+    toolCallStore,
   });
 
   return {
@@ -78,6 +83,7 @@ export function createNoMoreIdeMcpServer(
     logStore,
     manager,
     uiLifecycle,
+    toolCallStore,
     toolNames: NOMOREIDE_TOOL_NAMES,
   };
 }

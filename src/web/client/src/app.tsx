@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Bot,
   GitBranch,
   PanelLeft,
   PanelLeftClose,
@@ -13,6 +14,7 @@ import { getDashboard, type DashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import { AgentView } from "@/features/agent/agent-view";
 import { ServicesView } from "@/features/services/services-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { RepositorySelector } from "@/features/git/repository-selector";
@@ -20,7 +22,7 @@ import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-type Page = "services" | "git";
+type Page = "services" | "git" | "agent";
 
 export function AppIdentity({ className }: { className?: string }) {
   return (
@@ -37,9 +39,11 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App() {
-  const [page, setPage] = useState<Page>(() =>
-    window.location.pathname.startsWith("/git") ? "git" : "services",
-  );
+  const [page, setPage] = useState<Page>(() => {
+    if (window.location.pathname.startsWith("/agent")) return "agent";
+    if (window.location.pathname.startsWith("/git")) return "git";
+    return "services";
+  });
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,7 +94,7 @@ export function App() {
   }, [page, refresh]);
 
   useEffect(() => {
-    const path = page === "git" ? "/git" : "/";
+    const path = page === "git" ? "/git" : page === "agent" ? "/agent" : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -172,6 +176,13 @@ export function App() {
               label="Git Review"
               onClick={() => setPage("git")}
             />
+            <NavButton
+              active={page === "agent"}
+              collapsed={sidebarCollapsed}
+              icon={<Bot />}
+              label="Agent"
+              onClick={() => setPage("agent")}
+            />
           </nav>
         </aside>
 
@@ -188,7 +199,7 @@ export function App() {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {page === "git" ? "Git Review" : "Services"}
+                  {page === "git" ? "Git Review" : page === "agent" ? "Agent" : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -220,6 +231,7 @@ export function App() {
             {data && page === "git" ? (
               <GitReviewView data={data} />
             ) : null}
+            {page === "agent" ? <AgentView /> : null}
           </div>
         </main>
       </div>
