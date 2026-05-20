@@ -20,11 +20,13 @@ export function ComposerDialog({
   icon,
   onClose,
   title,
+  size = "md",
 }: {
   children: ReactNode;
   icon: ReactNode;
   onClose: () => void;
   title: string;
+  size?: "md" | "lg";
 }) {
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -44,7 +46,7 @@ export function ComposerDialog({
     >
       <div
         aria-modal="true"
-        className="flex max-h-[min(760px,calc(100vh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className={`flex max-h-[min(760px,calc(100vh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
@@ -129,6 +131,8 @@ const serviceCommandPresets = [
   },
 ];
 
+type ServiceKindOption = "local" | "docker-compose" | "ssh";
+
 export function ServiceForm({
   cwd,
   onRefresh,
@@ -139,34 +143,53 @@ export function ServiceForm({
   onSaved?: () => void;
 }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const [kind, setKind] = useState<ServiceKindOption>("local");
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
   const [formCwd, setFormCwd] = useState(cwd);
   const [port, setPort] = useState("");
   const [description, setDescription] = useState("");
+  const [composeFile, setComposeFile] = useState("");
+  const [composeService, setComposeService] = useState("");
+  const [host, setHost] = useState("");
   const [testResult, setTestResult] = useState<ServiceTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     setTestResult(null);
-  }, [command, formCwd, port]);
+  }, [command, formCwd, port, kind]);
+
+  function resetForm() {
+    setName("");
+    setCommand("");
+    setFormCwd(cwd);
+    setPort("");
+    setDescription("");
+    setComposeFile("");
+    setComposeService("");
+    setHost("");
+    setTestResult(null);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      await postForm("/api/services", {
+      const payload: Record<string, string> = {
         name,
-        command,
+        kind,
         cwd: formCwd,
         port,
         description,
-      });
-      setName("");
-      setCommand("");
-      setFormCwd(cwd);
-      setPort("");
-      setDescription("");
-      setTestResult(null);
+      };
+      if (kind === "local" || kind === "ssh") payload.command = command;
+      if (kind === "docker-compose") {
+        payload.composeFile = composeFile;
+        payload.composeService = composeService;
+      }
+      if (kind === "ssh") payload.host = host;
+
+      await postForm("/api/services", payload);
+      resetForm();
       showSuccessToast(`${name} added.`);
       await onRefresh();
       onSaved?.();
@@ -197,93 +220,237 @@ export function ServiceForm({
     }
   }
 
+  const kindOptions: { value: ServiceKindOption; label: string; hint: string }[] = [
+    { value: "local", label: "Local", hint: "Run a command in a local working directory." },
+    {
+      value: "docker-compose",
+      label: "Docker Compose",
+      hint: "Bring up a service defined in a docker-compose.yml file.",
+    },
+    {
+      value: "ssh",
+      label: "SSH (remote)",
+      hint: "Run a command on a remote host using your local ~/.ssh/config + ssh-agent.",
+    },
+  ];
+  const activeKind = kindOptions.find((option) => option.value === kind)!;
+  const canTest = kind === "local" && command.trim().length > 0 && formCwd.trim().length > 0;
+
+  const sectionClass =
+    "grid gap-2 rounded-md border border-border bg-muted/30 p-3";
+  const legendClass =
+    "px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+
   return (
     <form className="grid gap-3" onSubmit={submit}>
-      <fieldset className="grid gap-2">
-        <legend className="text-xs font-medium">Recommended Dev Commands</legend>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          {serviceCommandPresets.map((preset) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+      <fieldset className={`${sectionClass} sm:col-span-2`}>
+        <legend className={legendClass}>Step 1 · Service kind</legend>
+        <div className="grid grid-cols-3 gap-1.5">
+          {kindOptions.map((option) => (
             <Button
-              className="justify-start gap-1.5"
-              key={preset.label}
-              onClick={() => {
-                setCommand(preset.command);
-                setDescription(preset.description);
-              }}
+              className="justify-center"
+              key={option.value}
+              onClick={() => setKind(option.value)}
               size="sm"
               type="button"
-              variant="outline"
+              variant={kind === option.value ? "default" : "outline"}
             >
-              <ProcessBadge command={preset.badgeCommand ?? preset.command} compact />
-              <span className="truncate">{preset.label}</span>
+              {option.label}
             </Button>
           ))}
         </div>
+        <p className="text-[11px] text-muted-foreground">{activeKind.hint}</p>
       </fieldset>
-      <Label>
-        Name
-        <Input
-          className="h-8 text-sm"
-          name="name"
-          onChange={(event) => setName(event.target.value)}
-          placeholder="backend"
-          required
-          value={name}
-        />
-      </Label>
-      <Label>
-        Command
-        <Input
-          className="h-8 font-mono text-sm"
-          name="command"
-          onChange={(event) => setCommand(event.target.value)}
-          placeholder="npm run dev"
-          required
-          value={command}
-        />
-      </Label>
-      <Label>
-        Working Directory
-        <Input
-          className="h-8 font-mono text-sm"
-          name="cwd"
-          onChange={(event) => setFormCwd(event.target.value)}
-          required
-          value={formCwd}
-        />
-      </Label>
-      <Label>
-        Port
-        <Input
-          className="h-8 text-sm"
-          inputMode="numeric"
-          name="port"
-          onChange={(event) => setPort(event.target.value)}
-          placeholder="3001"
-          value={port}
-        />
-      </Label>
-      <Label>
-        Description
-        <Input
-          className="h-8 text-sm"
-          name="description"
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="API server"
-          value={description}
-        />
-      </Label>
+
+      <div className="grid gap-3 sm:col-start-1 sm:row-start-2 sm:self-start">
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 2 · Identity</legend>
+          <Label>
+            Name
+            <Input
+              className="h-8 text-sm"
+              name="name"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="backend"
+              required
+              value={name}
+            />
+          </Label>
+          <Label>
+            Description
+            <Input
+              className="h-8 text-sm"
+              name="description"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="API server"
+              value={description}
+            />
+          </Label>
+        </fieldset>
+        <fieldset className={sectionClass}>
+          <legend className={legendClass}>Step 4 · Networking (optional)</legend>
+          <Label>
+            Port
+            <Input
+              className="h-8 text-sm"
+              inputMode="numeric"
+              name="port"
+              onChange={(event) => setPort(event.target.value)}
+              placeholder="3001"
+              value={port}
+            />
+          </Label>
+        </fieldset>
+      </div>
+
+      {kind === "local" ? (
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
+          <legend className={legendClass}>Step 3 · Local command</legend>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {serviceCommandPresets.map((preset) => (
+              <Button
+                className="justify-start gap-1.5"
+                key={preset.label}
+                onClick={() => {
+                  setCommand(preset.command);
+                  setDescription(preset.description);
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ProcessBadge command={preset.badgeCommand ?? preset.command} compact />
+                <span className="truncate">{preset.label}</span>
+              </Button>
+            ))}
+          </div>
+          <Label>
+            Command
+            <Input
+              className="h-8 font-mono text-sm"
+              name="command"
+              onChange={(event) => setCommand(event.target.value)}
+              placeholder="npm run dev"
+              required
+              value={command}
+            />
+          </Label>
+          <Label>
+            Working Directory
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              required
+              value={formCwd}
+            />
+          </Label>
+        </fieldset>
+      ) : null}
+
+      {kind === "docker-compose" ? (
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
+          <legend className={legendClass}>Step 3 · Docker Compose target</legend>
+          <Label>
+            Compose Service
+            <Input
+              className="h-8 font-mono text-sm"
+              name="composeService"
+              onChange={(event) => setComposeService(event.target.value)}
+              placeholder="api"
+              required
+              value={composeService}
+            />
+          </Label>
+          <Label>
+            Compose File (optional)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="composeFile"
+              onChange={(event) => setComposeFile(event.target.value)}
+              placeholder="docker-compose.yml"
+              value={composeFile}
+            />
+          </Label>
+          <Label>
+            Working Directory (where compose file lives)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              required
+              value={formCwd}
+            />
+          </Label>
+        </fieldset>
+      ) : null}
+
+      {kind === "ssh" ? (
+        <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
+          <legend className={legendClass}>Step 3 · SSH connection</legend>
+          <Label>
+            SSH Host (alias from ~/.ssh/config)
+            <Input
+              className="h-8 font-mono text-sm"
+              name="host"
+              onChange={(event) => setHost(event.target.value)}
+              placeholder="devbox"
+              required
+              value={host}
+            />
+          </Label>
+          <Label>
+            Remote Command
+            <Input
+              className="h-8 font-mono text-sm"
+              name="command"
+              onChange={(event) => setCommand(event.target.value)}
+              placeholder="npm run dev"
+              required
+              value={command}
+            />
+          </Label>
+          <Label>
+            Remote Working Directory
+            <Input
+              className="h-8 font-mono text-sm"
+              name="cwd"
+              onChange={(event) => setFormCwd(event.target.value)}
+              placeholder="/srv/app"
+              required
+              value={formCwd}
+            />
+          </Label>
+          <Alert variant="muted">
+            <div className="font-medium">SSH key handling</div>
+            <div className="mt-1 text-xs">
+              NoMoreIDE never stores key files. Add a <code>Host {host || "&lt;alias&gt;"}</code> entry to
+              <code> ~/.ssh/config</code> with <code>HostName</code>, <code>User</code>, and{" "}
+              <code>IdentityFile ~/.ssh/your-key.pem</code> (chmod 0600). Make sure{" "}
+              <code>ssh-agent</code> is running or your key is loaded
+              (<code>ssh-add ~/.ssh/your-key.pem</code>). NoMoreIDE will run{" "}
+              <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
+            </div>
+          </Alert>
+        </fieldset>
+      ) : null}
+
+      </div>
+
       {testResult ? <ServiceTestAlert result={testResult} /> : null}
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          disabled={testing || !command.trim() || !formCwd.trim()}
-          onClick={testCommand}
-          type="button"
-          variant="outline"
-        >
-          <Terminal />
-          {testing ? "Testing..." : "Test Command"}
-        </Button>
+        {kind === "local" ? (
+          <Button
+            disabled={testing || !canTest}
+            onClick={testCommand}
+            type="button"
+            variant="outline"
+          >
+            <Terminal />
+            {testing ? "Testing..." : "Test Command"}
+          </Button>
+        ) : null}
         <Button type="submit">Add Service</Button>
       </div>
     </form>
@@ -366,27 +533,27 @@ export function GroupForm({
         {services.length ? (
           services.map((service) => (
             <label
-              className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm"
+              className="flex items-center gap-2 overflow-hidden rounded-md border border-border px-2.5 py-1.5 text-sm"
               key={service.name}
             >
               <input
-                className="size-4 accent-primary"
+                className="size-4 shrink-0 accent-primary"
                 defaultChecked={initialServices.includes(service.name)}
                 name="services"
                 type="checkbox"
                 value={service.name}
               />
-              <ProcessBadge command={service.command} compact />
-              <span className="min-w-0">
+              <ProcessBadge command={service.command ?? ""} compact />
+              <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{service.name}</span>
                 <span className="block truncate font-mono text-[11px] text-muted-foreground">
-                  {service.command}
+                  {service.command ?? service.kind ?? ""}
                 </span>
               </span>
             </label>
           ))
         ) : (
-          <Alert variant="muted">Add services before creating a group.</Alert>
+          <Alert variant="muted">All services are already grouped, or none registered.</Alert>
         )}
       </fieldset>
       <Button className="h-8" disabled={!services.length} type="submit">

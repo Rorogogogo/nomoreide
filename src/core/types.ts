@@ -1,13 +1,22 @@
 import type { ProcessTreeSummary } from "./process-tree.js";
 import type { PortBindingStatus } from "./port-utils.js";
 
+export type ServiceKind = "local" | "docker-compose" | "ssh";
+
 export interface ServiceDefinition {
   name: string;
-  command: string;
-  cwd: string;
+  kind?: ServiceKind;
   port?: number;
-  env?: Record<string, string>;
   description?: string;
+  // local + ssh
+  command?: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  // docker-compose
+  composeFile?: string;
+  composeService?: string;
+  // ssh
+  host?: string;
 }
 
 export interface BundleDefinition {
@@ -40,6 +49,16 @@ export interface ServiceStatus {
   exitCode?: number | null;
   signal?: NodeJS.Signals | null;
   processTree?: ProcessTreeSummary;
+  kind?: ServiceKind;
+  containerId?: string;
+  host?: string;
+  inspector?: InspectorStatus;
+}
+
+export interface InspectorStatus {
+  enabled: boolean;
+  port?: number;
+  upstreamPort?: number;
 }
 
 export type LogStream = "stdout" | "stderr";
@@ -74,6 +93,27 @@ export interface ServiceHealth {
   ports: PortBindingStatus[];
   lastErrorLog?: LogEntry;
   agentContext: string;
+}
+
+export type TimelineEventKind =
+  | "service.lifecycle"
+  | "service.log"
+  | "service.health"
+  | "service.port"
+  | "service.http"
+  | "mcp.tool"
+  | "git.change"
+  | "user.action";
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  kind: TimelineEventKind;
+  service?: string;
+  severity: "info" | "warning" | "error";
+  title: string;
+  detail?: string;
+  data?: Record<string, unknown>;
 }
 
 export interface ToolResult {

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToasts } from "@/components/ui/toast";
 import { getServiceLogs, type DashboardData, type LogEntry, type ServiceStatus } from "@/lib/api";
+import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
 import { LogSearchInput, LogViewer, logEntryText } from "./log-viewer";
 import { PortsOverview } from "./ports-overview";
@@ -319,29 +320,46 @@ export function ServicesView({
                         group.services.includes(service.name),
                       )}
                       statuses={data.runtime.services}
+                      timeline={data.timeline}
                     />
                   ))}
-                  {ungroupedServices.length ? (
-                    <div>
-                      {data.config.bundles.length ? (
-                        <div className="bg-muted/55 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
-                          Ungrouped Services
-                        </div>
-                      ) : null}
-                      <div className="divide-y divide-border">
-                        {ungroupedServices.map((service) => (
-                          <ServiceRow
-                            key={service.name}
-                            service={service}
-                            status={data.runtime.services[service.name]}
-                            health={healthByService[service.name]}
-                            ports={data.ports}
-                            onRefresh={onRefresh}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                  {ungroupedServices.length
+                    ? (
+                        [
+                          { key: "local", label: "Local Services" },
+                          { key: "docker-compose", label: "Docker Compose" },
+                          { key: "ssh", label: "Remote (SSH)" },
+                        ] as const
+                      ).map(({ key, label }) => {
+                        const kindServices = ungroupedServices.filter(
+                          (service) => (service.kind ?? "local") === key,
+                        );
+                        if (kindServices.length === 0) return null;
+                        return (
+                          <div key={key}>
+                            <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+                              <span>{label}</span>
+                              <span className="text-muted-foreground/80">
+                                {kindServices.length}
+                              </span>
+                            </div>
+                            <div className="divide-y divide-border">
+                              {kindServices.map((service) => (
+                                <ServiceRow
+                                  key={service.name}
+                                  service={service}
+                                  status={data.runtime.services[service.name]}
+                                  health={healthByService[service.name]}
+                                  ports={data.ports}
+                                  onRefresh={onRefresh}
+                                  timeline={data.timeline}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    : null}
                 </div>
               ) : (
                 <EmptyState label="No services registered yet." />
@@ -400,12 +418,14 @@ export function ServicesView({
 
         <div className="min-h-0 overflow-auto border-l border-border">
           <PortsOverview ports={data.ports} />
+          <DebugTimeline events={data.timeline ?? []} />
         </div>
       </div>
       {serviceComposer ? (
         <ComposerDialog
           icon={serviceComposer === "service" ? <Plus /> : <Box />}
           onClose={() => setServiceComposer(null)}
+          size={serviceComposer === "service" ? "lg" : "md"}
           title={serviceComposer === "service" ? "Add Service" : "Create Group"}
         >
           {serviceComposer === "service" ? (
@@ -416,7 +436,7 @@ export function ServicesView({
             />
           ) : (
             <GroupForm
-              services={data.config.services}
+              services={ungroupedServices}
               onRefresh={onRefresh}
               onSaved={() => setServiceComposer(null)}
             />

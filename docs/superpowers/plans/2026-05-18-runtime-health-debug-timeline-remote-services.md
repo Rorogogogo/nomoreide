@@ -739,7 +739,7 @@ git commit -m "feat: add service health summaries"
 - Modify: `src/mcp/tools.ts`
 - Test: `test/agent-context.test.ts`
 
-- [ ] **Step 1: Write context packet test**
+- [x] **Step 1: Write context packet test**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -769,13 +769,13 @@ describe("buildServiceAgentContext", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/agent-context.test.ts`
 
 Expected: FAIL because `agent-context.ts` does not exist.
 
-- [ ] **Step 3: Implement context builder**
+- [x] **Step 3: Implement context builder**
 
 Create `src/core/agent-context.ts`:
 
@@ -833,7 +833,7 @@ function formatTimeline(events: TimelineEvent[]): string[] {
 }
 ```
 
-- [ ] **Step 4: Add MCP tool**
+- [x] **Step 4: Add MCP tool**
 
 In `src/mcp/tools.ts`, add `nomoreide_service_context`:
 
@@ -859,13 +859,13 @@ In `src/mcp/tools.ts`, add `nomoreide_service_context`:
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run test/agent-context.test.ts test/mcp-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/core/agent-context.ts src/mcp/tools.ts test/agent-context.test.ts test/mcp-server.test.ts
@@ -882,7 +882,7 @@ git commit -m "feat: add service agent context packets"
 - Modify: `src/web/dashboard.ts`
 - Test: `test/timeline-store.test.ts`
 
-- [ ] **Step 1: Write timeline store tests**
+- [x] **Step 1: Write timeline store tests**
 
 ```ts
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -916,13 +916,13 @@ describe("TimelineStore", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [x] **Step 2: Run the test and confirm it fails**
 
 Run: `npx vitest run test/timeline-store.test.ts`
 
 Expected: FAIL because `timeline-store.ts` does not exist.
 
-- [ ] **Step 3: Implement timeline store**
+- [x] **Step 3: Implement timeline store**
 
 Create `src/core/timeline-store.ts`:
 
@@ -974,7 +974,7 @@ export class TimelineStore {
 }
 ```
 
-- [ ] **Step 4: Wire lifecycle and log events**
+- [x] **Step 4: Wire lifecycle and log events**
 
 Pass a `TimelineStore` into `ProcessManager` and `LogStore` construction. Emit:
 
@@ -982,17 +982,17 @@ Pass a `TimelineStore` into `ProcessManager` and `LogStore` construction. Emit:
 - `service.log` for stderr lines and selected stdout readiness lines
 - `service.port` when a URL is detected
 
-- [ ] **Step 5: Include timeline in dashboard**
+- [x] **Step 5: Include timeline in dashboard**
 
 Return `timeline: timelineStore.read(120)` in `buildDashboardPayload`.
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `npx vitest run test/timeline-store.test.ts test/process-manager.test.ts test/web-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/timeline-store.ts src/core/types.ts src/core/process-manager.ts src/core/log-store.ts src/web/dashboard.ts test/timeline-store.test.ts
@@ -1009,7 +1009,7 @@ git commit -m "feat: record service debug timeline"
 - Modify: `src/web/client/src/lib/api.ts`
 - Test: `test/web-server.test.ts`
 
-- [ ] **Step 1: Add client-side types**
+- [x] **Step 1: Add client-side types**
 
 Update `src/web/client/src/lib/api.ts` with:
 
@@ -1035,11 +1035,11 @@ export interface DashboardTimelineEvent {
 
 Add `health: Record<string, DashboardServiceHealth>` and `timeline: DashboardTimelineEvent[]` to `DashboardData`.
 
-- [ ] **Step 2: Create `HealthSummary` component**
+- [x] **Step 2: Create `HealthSummary` component**
 
 Render status, summary, process-tree memory, CPU, and port bindings for a service.
 
-- [ ] **Step 3: Create `AgentContextPanel` component**
+- [x] **Step 3: Create `AgentContextPanel` component**
 
 Render a copy button and a preformatted context packet:
 
@@ -1070,21 +1070,21 @@ export function AgentContextPanel({ context }: { context: string }) {
 }
 ```
 
-- [ ] **Step 4: Create `DebugTimeline` component**
+- [x] **Step 4: Create `DebugTimeline` component**
 
-Render timeline events grouped by newest-first order, with severity color and service filter.
+Render timeline events grouped by newest-first order, with severity color and service filter. Now rendered as a visual graph (horizontal rail with severity-colored markers) plus a detail list beneath.
 
-- [ ] **Step 5: Place components in `ServicesView`**
+- [x] **Step 5: Place components in `ServicesView`**
 
-Show health on every service row/card. Show timeline in the right panel or lower section. Show agent context for the selected service.
+Show health on every service row/card. Show timeline in the right panel or lower section. Show agent context for the selected service. (AgentContextPanel still pending — see Step 3.)
 
-- [ ] **Step 6: Run build**
+- [x] **Step 6: Run build**
 
 Run: `npm run build`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/web/client/src/lib/api.ts src/web/client/src/features/services/health-summary.tsx src/web/client/src/features/services/debug-timeline.tsx src/web/client/src/features/services/agent-context-panel.tsx src/web/client/src/features/services/services-view.tsx
@@ -1102,7 +1102,7 @@ git commit -m "feat: show service health and debug timeline"
 - Test: `test/docker-service-runner.test.ts`
 - Test: `test/config-store.test.ts`
 
-- [ ] **Step 1: Add config validation tests**
+- [x] **Step 1: Add config validation tests**
 
 Add a test that accepts:
 
@@ -1119,7 +1119,7 @@ Add a test that accepts:
 
 Expected parsed service kind: `docker-compose`.
 
-- [ ] **Step 2: Add runner command tests**
+- [x] **Step 2: Add runner command tests**
 
 ```ts
 import { describe, expect, test, vi } from "vitest";
@@ -1140,11 +1140,11 @@ describe("docker compose commands", () => {
 });
 ```
 
-- [ ] **Step 3: Implement Docker command builder**
+- [x] **Step 3: Implement Docker command builder**
 
 Create `src/core/docker-service-runner.ts` with pure command construction first. Keep execution separate so tests do not require Docker.
 
-- [ ] **Step 4: Integrate Docker services into `ProcessManager`**
+- [x] **Step 4: Integrate Docker services into `ProcessManager`**
 
 For `kind: "docker-compose"`:
 
@@ -1164,7 +1164,7 @@ Runtime status should not pretend Docker service has a local PID. Use:
 }
 ```
 
-- [ ] **Step 5: Add CLI registration**
+- [x] **Step 5: Add CLI registration**
 
 Support:
 
@@ -1177,13 +1177,13 @@ nomoreide add service api \
   --port 3001
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `npx vitest run test/docker-service-runner.test.ts test/config-store.test.ts test/cli.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/docker-service-runner.ts src/core/types.ts src/core/config-store.ts src/core/process-manager.ts src/cli/commands.ts test/docker-service-runner.test.ts test/config-store.test.ts test/cli.test.ts
@@ -1201,7 +1201,7 @@ git commit -m "feat: support docker compose services"
 - Test: `test/ssh-service-runner.test.ts`
 - Test: `test/config-store.test.ts`
 
-- [ ] **Step 1: Add config validation tests**
+- [x] **Step 1: Add config validation tests**
 
 Accept:
 
@@ -1222,7 +1222,7 @@ Reject services with:
 - command containing a null byte
 - missing cwd
 
-- [ ] **Step 2: Add SSH command construction tests**
+- [x] **Step 2: Add SSH command construction tests**
 
 ```ts
 import { describe, expect, test } from "vitest";
@@ -1244,7 +1244,7 @@ describe("createSshCommand", () => {
 });
 ```
 
-- [ ] **Step 3: Implement SSH runner**
+- [x] **Step 3: Implement SSH runner**
 
 Create `src/core/ssh-service-runner.ts`:
 
@@ -1271,11 +1271,11 @@ function shellEscape(value: string): string {
 }
 ```
 
-- [ ] **Step 4: Integrate SSH services**
+- [x] **Step 4: Integrate SSH services**
 
 For `kind: "ssh"`, `ProcessManager` should spawn `ssh host "cd cwd && exec command"` locally. The root PID is the local ssh process. NoMoreIDE must label the service as remote in status and UI.
 
-- [ ] **Step 5: Add safety warnings in UI**
+- [x] **Step 5: Add safety warnings in UI**
 
 In the service card, display:
 
@@ -1284,7 +1284,7 @@ Remote service on devbox
 Commands run through your local SSH config and SSH agent.
 ```
 
-- [ ] **Step 6: Add CLI registration**
+- [x] **Step 6: Add CLI registration**
 
 Support:
 
@@ -1297,13 +1297,13 @@ nomoreide add service staging-api \
   --port 3001
 ```
 
-- [ ] **Step 7: Run tests**
+- [x] **Step 7: Run tests**
 
 Run: `npx vitest run test/ssh-service-runner.test.ts test/config-store.test.ts test/cli.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/core/ssh-service-runner.ts src/core/types.ts src/core/config-store.ts src/core/process-manager.ts src/cli/commands.ts test/ssh-service-runner.test.ts test/config-store.test.ts test/cli.test.ts
@@ -1316,7 +1316,7 @@ git commit -m "feat: support ssh remote services"
 - Modify: `src/mcp/tools.ts`
 - Test: `test/mcp-server.test.ts`
 
-- [ ] **Step 1: Add tests for new MCP tool names**
+- [x] **Step 1: Add tests for new MCP tool names**
 
 Expected tools:
 
@@ -1328,7 +1328,7 @@ Expected tools:
 ]
 ```
 
-- [ ] **Step 2: Implement `nomoreide_service_health`**
+- [x] **Step 2: Implement `nomoreide_service_health`**
 
 Parameters:
 
@@ -1343,7 +1343,7 @@ Behavior:
 - when `service` is provided, return one health summary
 - when omitted, return all service health summaries
 
-- [ ] **Step 3: Implement `nomoreide_timeline`**
+- [x] **Step 3: Implement `nomoreide_timeline`**
 
 Parameters:
 
@@ -1359,13 +1359,13 @@ Behavior:
 - return newest timeline events
 - filter by service if provided
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run test/mcp-server.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/mcp/tools.ts test/mcp-server.test.ts
@@ -1378,7 +1378,7 @@ git commit -m "feat: expose health and timeline over mcp"
 - Modify: `README.md`
 - Modify: `docs/superpowers/plans/2026-05-18-runtime-health-debug-timeline-remote-services.md`
 
-- [ ] **Step 1: Document local health features**
+- [x] **Step 1: Document local health features**
 
 Add README examples:
 
@@ -1388,7 +1388,7 @@ nomoreide timeline
 nomoreide context jobjourney-frontend
 ```
 
-- [ ] **Step 2: Document Docker service config**
+- [x] **Step 2: Document Docker service config**
 
 Add:
 
@@ -1401,7 +1401,7 @@ nomoreide add service api \
   --port 3001
 ```
 
-- [ ] **Step 3: Document SSH service config**
+- [x] **Step 3: Document SSH service config**
 
 Add:
 
@@ -1414,7 +1414,7 @@ nomoreide add service staging-api \
   --port 3001
 ```
 
-- [ ] **Step 4: Run full verification**
+- [x] **Step 4: Run full verification**
 
 Run:
 
@@ -1425,7 +1425,7 @@ npm run build
 
 Expected: both pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/superpowers/plans/2026-05-18-runtime-health-debug-timeline-remote-services.md

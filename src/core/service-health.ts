@@ -1,9 +1,11 @@
+import { buildServiceAgentContext } from "./agent-context.js";
 import type { PortBindingStatus } from "./port-utils.js";
 import type {
   LogEntry,
   ServiceDefinition,
   ServiceHealth,
   ServiceStatus,
+  TimelineEvent,
 } from "./types.js";
 
 export interface ComputeServiceHealthInput {
@@ -11,6 +13,7 @@ export interface ComputeServiceHealthInput {
   status?: ServiceStatus;
   ports: PortBindingStatus[];
   logs: LogEntry[];
+  timeline?: TimelineEvent[];
 }
 
 export function computeServiceHealth(
@@ -69,6 +72,13 @@ function baseHealth(
   summary: string,
   lastErrorLog?: LogEntry,
 ): ServiceHealth {
+  const agentContext = buildServiceAgentContext({
+    service: input.service,
+    status: input.status,
+    healthSummary: summary,
+    recentLogs: input.logs,
+    timeline: input.timeline ?? [],
+  });
   return {
     service: input.service.name,
     status,
@@ -78,6 +88,6 @@ function baseHealth(
     processTree: input.status?.processTree,
     ports: input.ports,
     lastErrorLog,
-    agentContext: "",
+    agentContext,
   };
 }

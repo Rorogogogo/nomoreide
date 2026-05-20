@@ -12,32 +12,34 @@ export function HealthSummary({ health }: { health?: ServiceHealth }) {
       : compactSummary(health.summary);
 
   return (
-    <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-      <span
-        className={cn(
-          "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 font-medium",
-          healthClassName(health.status),
-        )}
-      >
-        <span className="inline-flex shrink-0">
-          <Activity className="size-3" />
+    <div className="mt-1.5 grid min-w-0 gap-2 text-[11px] text-muted-foreground sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className={cn(
+            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 font-medium",
+            healthClassName(health.status),
+          )}
+        >
+          <span className="inline-flex shrink-0">
+            <Activity className="size-3" />
+          </span>
+          <span className="whitespace-nowrap">{health.status}</span>
         </span>
-        <span className="whitespace-nowrap">{health.status}</span>
-      </span>
-      {reason ? <span className="min-w-0 max-w-[420px] truncate">{reason}</span> : null}
+        {reason ? <span className="min-w-0 truncate">{reason}</span> : null}
+      </div>
       {processTree ? (
-        <>
+        <div className="health-metrics flex min-w-max items-center gap-2 font-mono sm:justify-end">
           <span className="inline-flex items-center gap-1 font-mono">
             <Cpu className="size-3" />
             {processTree.processCount}{" "}
             {processTree.processCount === 1 ? "process" : "processes"}
           </span>
-          <span className="font-mono">{formatCpu(processTree.cpuPercent)} CPU</span>
+          <span>{formatCpu(processTree.cpuPercent)} CPU</span>
           <span className="inline-flex items-center gap-1 font-mono">
             <MemoryStick className="size-3" />
             {formatMemory(processTree.rssMb)} RAM
           </span>
-        </>
+        </div>
       ) : null}
     </div>
   );

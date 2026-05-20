@@ -1,4 +1,14 @@
+import { exec } from "node:child_process";
 import net from "node:net";
+import { promisify } from "node:util";
+
+const execAsync = promisify(exec);
+
+export interface PortHolder {
+  pid: number;
+  pgid?: number;
+  command: string;
+}
 
 export interface PortStatus {
   port: number;
@@ -48,6 +58,46 @@ export async function getPortBindingStatus(
     available: statuses.every((status) => status.available),
     hosts: statuses,
   };
+}
+
+export async function getPortHolder(port: number): Promise<PortHolder | null> {
+  try {
+    const { stdout } = await execAsync(`lsof -nP -iTCP:${port} -sTCP:LISTEN -t`, {
+      timeout: 1500,
+    });
+    const pid = Number(stdout.trim().split(/\s+/)[0]);
+    if (!Number.isFinite(pid) || pid <= 0) return null;
+    return {
+      pid,
+      pgid: await readPgid(pid),
+      command: await readCommand(pid),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function readPgid(pid: number): Promise<number | undefined> {
+  try {
+    const { stdout } = await execAsync(`ps -o pgid= -p ${pid}`, {
+      timeout: 1000,
+    });
+    const pgid = Number(stdout.trim());
+    return Number.isFinite(pgid) && pgid > 0 ? pgid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function readCommand(pid: number): Promise<string> {
+  try {
+    const { stdout } = await execAsync(`ps -o command= -p ${pid}`, {
+      timeout: 1000,
+    });
+    return stdout.trim().split("\n")[0] || `pid ${pid}`;
+  } catch {
+    return `pid ${pid}`;
+  }
 }
 
 async function checkHostPort(

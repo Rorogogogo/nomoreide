@@ -1,9 +1,15 @@
+export type ServiceKind = "local" | "docker-compose" | "ssh";
+
 export interface ServiceDefinition {
   name: string;
-  command: string;
-  cwd: string;
+  kind?: ServiceKind;
+  command?: string;
+  cwd?: string;
   port?: number;
   description?: string;
+  composeFile?: string;
+  composeService?: string;
+  host?: string;
 }
 
 export interface BundleDefinition {
@@ -26,6 +32,16 @@ export interface ServiceStatus {
   exitCode?: number | null;
   signal?: string | null;
   processTree?: ProcessTreeSummary;
+  kind?: ServiceKind;
+  containerId?: string;
+  host?: string;
+  inspector?: InspectorStatus;
+}
+
+export interface InspectorStatus {
+  enabled: boolean;
+  port?: number;
+  upstreamPort?: number;
 }
 
 export interface ProcessTreeSummary {
@@ -85,6 +101,25 @@ export interface HealthCheckResult {
   latencyMs?: number;
 }
 
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  kind:
+    | "service.lifecycle"
+    | "service.log"
+    | "service.health"
+    | "service.port"
+    | "service.http"
+    | "mcp.tool"
+    | "git.change"
+    | "user.action";
+  service?: string;
+  severity: "info" | "warning" | "error";
+  title: string;
+  detail?: string;
+  data?: Record<string, unknown>;
+}
+
 export interface ServiceTestResult {
   ok: boolean;
   message: string;
@@ -133,6 +168,7 @@ export interface DashboardData {
   };
   ports: PortOverview[];
   health: Record<string, ServiceHealth>;
+  timeline: TimelineEvent[];
   logs: LogEntry[];
   git: {
     cwd: string;
@@ -216,10 +252,31 @@ async function postFormForJson<T>(
   });
 }
 
+export interface PortConflictDetail {
+  code: "PORT_IN_USE";
+  port: number;
+  holder: { pid: number; pgid?: number; command: string } | null;
+}
+
+export class PortConflictResponseError extends Error {
+  readonly conflict: PortConflictDetail;
+  constructor(message: string, conflict: PortConflictDetail) {
+    super(message);
+    this.name = "PortConflictResponseError";
+    this.conflict = conflict;
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const body = await response.json().catch(() => undefined);
   if (!response.ok) {
+    if (response.status === 409 && body?.conflict?.code === "PORT_IN_USE") {
+      throw new PortConflictResponseError(
+        body?.error || "Port already in use",
+        body.conflict as PortConflictDetail,
+      );
+    }
     throw new Error(body?.error || response.statusText);
   }
   return body as T;
