@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import type { ToolCallStore } from "../core/tool-call-store.js";
 import { createWebServer, type RunningWebServer, type WebServerOptions } from "./server.js";
 
 export interface UiLifecycleState {
@@ -31,6 +32,7 @@ export interface UiLifecycleOptions extends WebServerOptions {
   createServer?: (options: WebServerOptions) => ReturnType<typeof createWebServer>;
   fetch?: typeof fetch;
   pid?: number;
+  toolCallStore?: ToolCallStore;
 }
 
 export function createUiLifecycleManager(
@@ -84,6 +86,7 @@ export function createUiLifecycleManager(
         cwd,
         logDir: options.logDir,
         port,
+        toolCallStore: options.toolCallStore,
       }).start();
       await writeState(statePath, {
         pid,

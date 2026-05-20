@@ -9,6 +9,7 @@ import { GitManager } from "../core/git-manager.js";
 import { LogStore } from "../core/log-store.js";
 import { PortConflictError, ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
+import { ToolCallStore } from "../core/tool-call-store.js";
 import { testServiceCommand } from "./service-tester.js";
 import {
   buildDashboardPayload,
@@ -16,6 +17,8 @@ import {
   readGitDiff,
   selectedGitCwd,
 } from "./dashboard.js";
+import { buildAgentInfo } from "./agent-info.js";
+import { buildUsageInfo } from "./usage-info.js";
 import { listDirectories } from "./directories.js";
 import {
   optionalFormValue,
@@ -33,6 +36,7 @@ export interface WebServerOptions {
   cwd?: string;
   logDir?: string;
   port?: number;
+  toolCallStore?: ToolCallStore;
 }
 
 export interface RunningWebServer {
@@ -59,6 +63,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const manager = new ProcessManager({ configStore, logStore, timelineStore });
   manager.installShutdownHandlers();
   const cwd = options.cwd ?? process.cwd();
+  const toolCallStore = options.toolCallStore ?? new ToolCallStore();
 
   return {
     async start() {
@@ -71,6 +76,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
           manager,
           timelineStore,
           cwd,
+          toolCallStore,
         });
       });
       const port = options.port ?? 4317;
@@ -111,9 +117,18 @@ async function routeRequest(options: {
   logStore: LogStore;
   manager: ProcessManager;
   timelineStore: TimelineStore;
+  toolCallStore: ToolCallStore;
 }): Promise<void> {
-  const { request, response, configStore, cwd, logStore, manager, timelineStore } =
-    options;
+  const {
+    request,
+    response,
+    configStore,
+    cwd,
+    logStore,
+    manager,
+    timelineStore,
+    toolCallStore,
+  } = options;
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
 
   try {
@@ -138,6 +153,46 @@ async function routeRequest(options: {
 
     if (request.method === "GET" && url.pathname === "/api/health") {
       sendJson(response, { ok: true, app: "nomoreide" });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent") {
+      sendJson(response, { ok: true, agent: await buildAgentInfo(cwd) });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/usage") {
+      sendJson(response, { ok: true, usage: await buildUsageInfo(cwd) });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/tool-calls") {
+      const limitParam = Number(url.searchParams.get("limit"));
+      const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
+      sendJson(response, { ok: true, records: toolCallStore.recent(limit) });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/tool-calls/stream") {
+      response.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform",
+        connection: "keep-alive",
+      });
+      response.write(`retry: 2000\n\n`);
+      for (const record of toolCallStore.recent(50)) {
+        response.write(`event: tool-call\ndata: ${JSON.stringify(record)}\n\n`);
+      }
+      const heartbeat = setInterval(() => {
+        response.write(`: ping\n\n`);
+      }, 15000);
+      const unsubscribe = toolCallStore.subscribe((record) => {
+        response.write(`event: tool-call\ndata: ${JSON.stringify(record)}\n\n`);
+      });
+      request.on("close", () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      });
       return;
     }
 
