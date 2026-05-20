@@ -8,6 +8,11 @@ import {
   type DockerComposeTarget,
 } from "./docker-service-runner.js";
 import type { LogStore } from "./log-store.js";
+import {
+  startHttpInspector,
+  type HttpInspectorEvent,
+  type HttpInspectorHandle,
+} from "./http-inspector.js";
 import { getPortHolder, isPortAvailable, type PortHolder } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
 import { createSshCommand } from "./ssh-service-runner.js";
@@ -30,6 +35,8 @@ interface RuntimeService {
   child?: ChildProcess;
   status: ServiceStatus;
   stopping: boolean;
+  inspectorEnabled?: boolean;
+  inspectorHandle?: HttpInspectorHandle;
 }
 
 export interface NoMoreIdeStatus {
@@ -137,6 +144,7 @@ export class ProcessManager {
         signal,
       };
       runtime.child = undefined;
+      void this.stopInspector(runtime);
       void this.appendTimeline({
         kind: "service.lifecycle",
         service: name,
@@ -215,6 +223,85 @@ export class ProcessManager {
   ): Promise<ServiceStatus> {
     await this.stopService(name);
     return this.startService(name, options);
+  }
+
+  async setInspectorEnabled(name: string, enabled: boolean): Promise<ServiceStatus> {
+    const runtime = this.runtimes.get(name);
+    if (!runtime) {
+      throw new Error(`Service "${name}" is not running.`);
+    }
+    runtime.inspectorEnabled = enabled;
+    if (enabled) {
+      await this.maybeStartInspector(name);
+    } else {
+      await this.stopInspector(runtime);
+    }
+    runtime.status = {
+      ...runtime.status,
+      inspector: this.inspectorStatus(runtime),
+    };
+    return { ...runtime.status };
+  }
+
+  private async maybeStartInspector(name: string): Promise<void> {
+    const runtime = this.runtimes.get(name);
+    if (!runtime || !runtime.inspectorEnabled || runtime.inspectorHandle) return;
+    const upstreamPort = portFromUrl(runtime.status.url);
+    if (!upstreamPort) return;
+    const handle = await startHttpInspector({
+      upstreamPort,
+      onEvent: (event) => this.recordInspectorEvent(name, event),
+    });
+    runtime.inspectorHandle = handle;
+    runtime.status = {
+      ...runtime.status,
+      inspector: { enabled: true, port: handle.port, upstreamPort },
+    };
+    void this.appendTimeline({
+      kind: "service.lifecycle",
+      service: name,
+      severity: "info",
+      title: `${name} HTTP inspector on :${handle.port}`,
+      detail: `Proxying to upstream :${upstreamPort}`,
+    });
+  }
+
+  private async stopInspector(runtime: RuntimeService): Promise<void> {
+    if (!runtime.inspectorHandle) return;
+    const handle = runtime.inspectorHandle;
+    runtime.inspectorHandle = undefined;
+    await handle.stop();
+  }
+
+  private inspectorStatus(runtime: RuntimeService) {
+    if (!runtime.inspectorEnabled) return undefined;
+    return {
+      enabled: true,
+      port: runtime.inspectorHandle?.port,
+      upstreamPort: portFromUrl(runtime.status.url),
+    };
+  }
+
+  private recordInspectorEvent(name: string, event: HttpInspectorEvent): void {
+    const severity: "info" | "warning" | "error" =
+      event.status >= 500 ? "error" : event.status >= 400 ? "warning" : "info";
+    void this.appendTimeline({
+      kind: "service.http",
+      service: name,
+      severity,
+      title: `${event.method} ${event.path} → ${event.status}`,
+      detail: `${event.durationMs} ms`,
+      timestamp: event.startedAt,
+      data: {
+        id: event.id,
+        method: event.method,
+        path: event.path,
+        status: event.status,
+        durationMs: event.durationMs,
+        reqBytes: event.reqBytes,
+        resBytes: event.resBytes,
+      },
+    });
   }
 
   async startBundle(name: string): Promise<ServiceStatus[]> {
@@ -301,6 +388,7 @@ export class ProcessManager {
       if (status.pid && status.state === "running") {
         status.processTree = await readProcessTree(status.pid);
       }
+      status.inspector = this.inspectorStatus(runtime);
       services[name] = status;
     }
 
@@ -419,6 +507,7 @@ export class ProcessManager {
             const runtime = this.runtimes.get(service);
             if (runtime) {
               runtime.status = { ...runtime.status, url };
+              void this.maybeStartInspector(service);
             }
             void this.appendTimeline({
               kind: "service.port",
@@ -506,6 +595,12 @@ function spawnService(
 
 function localUrlFromLine(line: string): string | undefined {
   return line.match(/https?:\/\/(?:localhost|127\.0\.0\.1):\d+\/?/)?.[0];
+}
+
+function portFromUrl(url: string | undefined): number | undefined {
+  if (!url) return undefined;
+  const match = url.match(/:(\d+)/);
+  return match ? Number(match[1]) : undefined;
 }
 
 async function stopChild(

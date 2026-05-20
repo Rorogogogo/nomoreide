@@ -320,6 +320,7 @@ export function ServicesView({
                         group.services.includes(service.name),
                       )}
                       statuses={data.runtime.services}
+                      timeline={data.timeline}
                     />
                   ))}
                   {ungroupedServices.length
@@ -351,6 +352,7 @@ export function ServicesView({
                                   health={healthByService[service.name]}
                                   ports={data.ports}
                                   onRefresh={onRefresh}
+                                  timeline={data.timeline}
                                 />
                               ))}
                             </div>

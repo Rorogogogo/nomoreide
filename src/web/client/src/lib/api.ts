@@ -35,6 +35,13 @@ export interface ServiceStatus {
   kind?: ServiceKind;
   containerId?: string;
   host?: string;
+  inspector?: InspectorStatus;
+}
+
+export interface InspectorStatus {
+  enabled: boolean;
+  port?: number;
+  upstreamPort?: number;
 }
 
 export interface ProcessTreeSummary {
@@ -102,6 +109,7 @@ export interface TimelineEvent {
     | "service.log"
     | "service.health"
     | "service.port"
+    | "service.http"
     | "mcp.tool"
     | "git.change"
     | "user.action";

@@ -97,6 +97,7 @@ function buildRows(events: TimelineEvent[]) {
   const windowStart = now - WINDOW_MS;
 
   let filtered = events.filter((event) => {
+    if (event.kind === "service.http") return false;
     const ts = new Date(event.timestamp).getTime();
     return !Number.isNaN(ts) && ts >= windowStart;
   });

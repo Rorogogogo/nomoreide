@@ -296,6 +296,22 @@ async function routeRequest(options: {
       return;
     }
 
+    const inspectorMatch = url.pathname.match(
+      /^\/api\/services\/([^/]+)\/inspector$/,
+    );
+    if (inspectorMatch) {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(inspectorMatch[1]);
+      const form = await readForm(request);
+      const enabled = form.get("enabled") === "true" || form.get("enabled") === "1";
+      const status = await manager.setInspectorEnabled(name, enabled);
+      sendJson(response, { ok: true, status });
+      return;
+    }
+
     const serviceMatch = url.pathname.match(
       /^\/api\/services\/([^/]+)\/(start|stop|restart|logs)$/,
     );
