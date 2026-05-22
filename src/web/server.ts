@@ -132,7 +132,10 @@ async function routeRequest(options: {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
 
   try {
-    if (request.method === "HEAD" && (url.pathname === "/" || url.pathname === "/git")) {
+    if (
+      request.method === "HEAD" &&
+      (url.pathname === "/" || url.pathname === "/git" || url.pathname === "/agent")
+    ) {
       sendHead(response, "text/html; charset=utf-8");
       return;
     }
@@ -448,7 +451,10 @@ async function routeRequest(options: {
       }
     }
 
-    if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/git")) {
+    if (
+      request.method === "GET" &&
+      (url.pathname === "/" || url.pathname === "/git" || url.pathname === "/agent")
+    ) {
       sendHtml(response, await readWebAppShell());
       return;
     }

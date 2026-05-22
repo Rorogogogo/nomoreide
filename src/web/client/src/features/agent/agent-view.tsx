@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, Bot, Brain, FolderOpen, Gauge, Plug, Sparkles } from "lucide-react";
+import {
+  Activity,
+  Bot,
+  Brain,
+  ChevronRight,
+  FolderOpen,
+  Gauge,
+  Plug,
+  Sparkles,
+} from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -16,17 +26,54 @@ import {
   type UsageInfo,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import {
+  ClaudeLogo,
+  CodexLogo,
+  GeminiLogo,
+  UnknownAgentLogo,
+} from "./agent-logos";
 
-const AGENT_BADGE: Record<AgentInfo["detected"]["name"], { label: string; tone: string }> = {
-  "claude-code": { label: "Claude Code", tone: "bg-orange-500/15 text-orange-700 border-orange-500/40" },
-  codex: { label: "OpenAI Codex CLI", tone: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40" },
-  gemini: { label: "Gemini CLI", tone: "bg-sky-500/15 text-sky-700 border-sky-500/40" },
-  unknown: { label: "Unknown agent", tone: "bg-muted text-muted-foreground border-border" },
+type AgentBadgeVariant = "primary" | "secondary" | "success" | "warning";
+
+const AGENT_BADGE: Record<
+  AgentInfo["detected"]["name"],
+  { label: string; variant: AgentBadgeVariant; icon: React.ReactNode }
+> = {
+  "claude-code": {
+    label: "Claude Code",
+    variant: "warning",
+    icon: <ClaudeLogo />,
+  },
+  codex: {
+    label: "OpenAI Codex CLI",
+    variant: "secondary",
+    icon: <CodexLogo />,
+  },
+  gemini: {
+    label: "Gemini CLI",
+    variant: "primary",
+    icon: <GeminiLogo />,
+  },
+  unknown: {
+    label: "Unknown agent",
+    variant: "secondary",
+    icon: <UnknownAgentLogo />,
+  },
 };
+
+type AgentTab = "overview" | "memory" | "tools" | "activity";
+
+const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
+  { id: "overview", label: "Overview", icon: <Gauge className="size-3.5" /> },
+  { id: "memory", label: "Memory", icon: <Brain className="size-3.5" /> },
+  { id: "tools", label: "Skills & MCPs", icon: <Plug className="size-3.5" /> },
+  { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
+];
 
 export function AgentView() {
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<AgentTab>("overview");
 
   useEffect(() => {
     let active = true;
@@ -44,24 +91,64 @@ export function AgentView() {
 
   if (error) {
     return (
-      <div className="p-4 text-sm text-destructive">Failed to load agent info: {error}</div>
+      <div className="h-full overflow-auto bg-card/85 p-4">
+        <Alert variant="muted" className="border-destructive/40 text-destructive">
+          Failed to load agent info: {error}
+        </Alert>
+      </div>
     );
   }
 
   if (!agent) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading agent info…</div>;
+    return (
+      <div className="h-full overflow-auto bg-card/85 p-4">
+        <Alert variant="muted">Loading agent info…</Alert>
+      </div>
+    );
   }
 
-  const badge = AGENT_BADGE[agent.detected.name];
-
   return (
-    <div className="grid h-full min-h-0 grid-cols-1 gap-3 overflow-auto bg-card/85 p-3 xl:grid-cols-2">
-      <UsageCard />
+    <div className="flex h-full min-h-0 flex-col bg-card/85">
+      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/90 px-3">
+        {TABS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            onClick={() => setTab(entry.id)}
+            className={cn(
+              "relative flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium transition-colors",
+              tab === entry.id
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {entry.icon}
+            {entry.label}
+            {tab === entry.id ? (
+              <span className="absolute inset-x-1 -bottom-px h-0.5 bg-primary" />
+            ) : null}
+          </button>
+        ))}
+      </div>
 
-      <Card className="min-w-0">
+      <div className="min-h-0 flex-1 overflow-auto">
+        {tab === "overview" ? <OverviewTab agent={agent} /> : null}
+        {tab === "memory" ? <MemoryTab agent={agent} /> : null}
+        {tab === "tools" ? <ToolsTab agent={agent} /> : null}
+        {tab === "activity" ? <ActivityTab agent={agent} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function OverviewTab({ agent }: { agent: AgentInfo }) {
+  const badge = AGENT_BADGE[agent.detected.name];
+  return (
+    <>
+      <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
         <CardHeader className="border-b border-border px-3 py-2">
           <div className="flex items-center gap-2">
-            <Bot className="size-4" />
+            <Bot className="size-4 text-muted-foreground" />
             <CardTitle>Active Agent</CardTitle>
           </div>
           <CardDescription className="text-xs">
@@ -70,16 +157,16 @@ export function AgentView() {
         </CardHeader>
         <CardContent className="space-y-2 p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold",
-                badge.tone,
-              )}
+            <Badge
+              variant={badge.variant}
+              appearance="subtle"
+              size="medium"
+              icon={badge.icon}
             >
               {badge.label}
-            </span>
+            </Badge>
             {agent.detected.parentProcess ? (
-              <span className="font-mono text-[11px] text-muted-foreground">
+              <span className="truncate font-mono text-[11px] text-muted-foreground">
                 parent: {agent.detected.parentProcess}
               </span>
             ) : null}
@@ -93,65 +180,72 @@ export function AgentView() {
           ) : (
             <p className="text-xs text-muted-foreground">No detection signals captured.</p>
           )}
-          <div className="pt-2 text-[11px] text-muted-foreground">
+          <div className="pt-1 text-[11px] text-muted-foreground">
             cwd: <span className="font-mono">{agent.project.cwd}</span>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="min-w-0">
-        <CardHeader className="border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Brain className="size-4" />
-            <CardTitle>Project Memory</CardTitle>
-            <Badge variant="outline" size="small">
-              {agent.project.memoryFiles.length}
-            </Badge>
-          </div>
-          <CardDescription className="text-xs">
-            {agent.project.memoryDir ?? "No memory directory found for this project."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 p-3">
-          {agent.project.claudeMdPath ? (
-            <details className="rounded-md border border-border bg-background/40 p-2">
-              <summary className="cursor-pointer text-xs font-semibold">CLAUDE.md</summary>
-              <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] leading-relaxed">
-                {agent.project.claudeMdPreview}
-              </pre>
-            </details>
-          ) : null}
-          {agent.project.memoryFiles.length ? (
-            agent.project.memoryFiles.map((file) => (
-              <details
-                key={file.path}
-                className="rounded-md border border-border bg-background/40 p-2"
-                open={file.name === "MEMORY.md"}
-              >
-                <summary className="cursor-pointer text-xs font-semibold">
-                  {file.name}{" "}
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {file.size} B
-                  </span>
-                </summary>
-                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] leading-relaxed">
-                  {file.preview}
-                </pre>
-              </details>
-            ))
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              No memory files persisted yet for this project.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <UsageCard />
+    </>
+  );
+}
 
-      <Card className="min-w-0">
-        <CardHeader className="border-b border-border px-3 py-2">
+function MemoryTab({ agent }: { agent: AgentInfo }) {
+  return (
+    <Card className="min-w-0 rounded-none border-0 bg-transparent">
+      <CardHeader className="border-b border-border px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4" />
-            <CardTitle>Skills</CardTitle>
+            <Brain className="size-4 text-muted-foreground" />
+            <CardTitle>Project Memory</CardTitle>
+          </div>
+          <Badge variant="outline" size="small">
+            {agent.project.memoryFiles.length + (agent.project.claudeMdPath ? 1 : 0)}
+          </Badge>
+        </div>
+        <CardDescription className="truncate text-xs">
+          {agent.project.memoryDir ?? "No memory directory found for this project."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2 p-3">
+        {agent.project.claudeMdPath ? (
+          <CollapsibleFile
+            title="CLAUDE.md"
+            preview={agent.project.claudeMdPreview}
+            defaultOpen={true}
+          />
+        ) : null}
+        {agent.project.memoryFiles.length ? (
+          agent.project.memoryFiles.map((file) => (
+            <CollapsibleFile
+              key={file.path}
+              title={file.name}
+              subtitle={`${file.size} B`}
+              preview={file.preview}
+              defaultOpen={file.name === "MEMORY.md"}
+            />
+          ))
+        ) : !agent.project.claudeMdPath ? (
+          <p className="text-xs text-muted-foreground">
+            No memory files persisted yet for this project.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ToolsTab({ agent }: { agent: AgentInfo }) {
+  return (
+    <div className="grid grid-cols-1 divide-y divide-border xl:grid-cols-2 xl:divide-x xl:divide-y-0">
+      <Card className="min-w-0 rounded-none border-0 bg-transparent">
+        <CardHeader className="border-b border-border px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-muted-foreground" />
+              <CardTitle>Skills</CardTitle>
+            </div>
             <Badge variant="outline" size="small">
               {agent.skills.length}
             </Badge>
@@ -166,7 +260,9 @@ export function AgentView() {
               {agent.skills.map((skill) => (
                 <li key={`${skill.scope}:${skill.name}`} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold">{skill.name}</span>
+                    <span className="truncate font-mono text-xs font-semibold">
+                      {skill.name}
+                    </span>
                     <Badge variant="outline" size="small">
                       {skill.scope}
                     </Badge>
@@ -178,16 +274,18 @@ export function AgentView() {
               ))}
             </ul>
           ) : (
-            <p className="p-3 text-xs text-muted-foreground">No skills found.</p>
+            <p className="px-3 py-4 text-xs text-muted-foreground">No skills found.</p>
           )}
         </CardContent>
       </Card>
 
-      <Card className="min-w-0">
+      <Card className="min-w-0 rounded-none border-0 bg-transparent">
         <CardHeader className="border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Plug className="size-4" />
-            <CardTitle>MCP Servers</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Plug className="size-4 text-muted-foreground" />
+              <CardTitle>MCP Servers</CardTitle>
+            </div>
             <Badge variant="outline" size="small">
               {agent.mcpServers.length}
             </Badge>
@@ -202,30 +300,40 @@ export function AgentView() {
               {agent.mcpServers.map((server) => (
                 <li key={`${server.scope}:${server.name}`} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-semibold">{server.name}</span>
+                    <span className="truncate font-mono text-xs font-semibold">
+                      {server.name}
+                    </span>
                     <Badge variant="outline" size="small">
                       {server.scope}
                     </Badge>
                   </div>
-                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                  <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
                     {server.command ?? server.url ?? server.type ?? "—"}
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="p-3 text-xs text-muted-foreground">No MCP servers configured.</p>
+            <p className="px-3 py-4 text-xs text-muted-foreground">No MCP servers configured.</p>
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
 
+function ActivityTab({ agent }: { agent: AgentInfo }) {
+  return (
+    <>
       <ToolCallFeed />
 
-      <Card className="min-w-0 xl:col-span-2">
+      <Card className="min-w-0 rounded-none border-0 bg-transparent">
         <CardHeader className="border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="size-4" />
-            <CardTitle>Recent Projects</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="size-4 text-muted-foreground" />
+              <CardTitle>Recent Projects</CardTitle>
+            </div>
             <Badge variant="outline" size="small">
               {agent.projects.length}
             </Badge>
@@ -251,7 +359,7 @@ export function AgentView() {
                         {project.path}
                       </span>
                       {project.current ? (
-                        <Badge variant="success" size="small">
+                        <Badge variant="success" appearance="subtle" size="small">
                           current
                         </Badge>
                       ) : null}
@@ -263,7 +371,9 @@ export function AgentView() {
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right font-mono text-[10px] text-muted-foreground">
-                    {project.mcpServerCount ? `${project.mcpServerCount} mcp` : null}
+                    {project.mcpServerCount ? (
+                      <div>{project.mcpServerCount} mcp</div>
+                    ) : null}
                     {project.lastSessionModified ? (
                       <div>{formatTimestamp(project.lastSessionModified)}</div>
                     ) : null}
@@ -272,10 +382,51 @@ export function AgentView() {
               ))}
             </ul>
           ) : (
-            <p className="p-3 text-xs text-muted-foreground">No known projects.</p>
+            <p className="px-3 py-4 text-xs text-muted-foreground">No known projects.</p>
           )}
         </CardContent>
       </Card>
+    </>
+  );
+}
+
+function CollapsibleFile({
+  title,
+  subtitle,
+  preview,
+  defaultOpen = false,
+}: {
+  title: string;
+  subtitle?: string;
+  preview?: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-md border border-border bg-background/40">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold"
+      >
+        <ChevronRight
+          className={cn(
+            "size-3.5 text-muted-foreground transition-transform",
+            open && "rotate-90",
+          )}
+        />
+        <span>{title}</span>
+        {subtitle ? (
+          <span className="font-mono text-[10px] font-normal text-muted-foreground">
+            {subtitle}
+          </span>
+        ) : null}
+      </button>
+      {open && preview ? (
+        <pre className="max-h-64 overflow-auto whitespace-pre-wrap border-t border-border px-2.5 py-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+          {preview}
+        </pre>
+      ) : null}
     </div>
   );
 }
@@ -313,20 +464,22 @@ function UsageCard() {
   }, []);
 
   return (
-    <Card className="min-w-0 xl:col-span-2">
+    <Card className="min-w-0 rounded-none border-0 bg-transparent">
       <CardHeader className="border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <Gauge className="size-4" />
+          <Gauge className="size-4 text-muted-foreground" />
           <CardTitle>Token & Cost Usage</CardTitle>
         </div>
         <CardDescription className="text-xs">
           Last-session metrics from <code className="font-mono">~/.claude.json</code> and rate limits scraped from <code className="font-mono">~/.codex/sessions</code>.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3 p-3">
+      <CardContent className="p-3">
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
-        {usage?.claude ? <ClaudeUsageBlock usage={usage.claude} /> : null}
-        {usage?.codex ? <CodexUsageBlock usage={usage.codex} /> : null}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {usage?.claude ? <ClaudeUsageBlock usage={usage.claude} /> : null}
+          {usage?.codex ? <CodexUsageBlock usage={usage.codex} /> : null}
+        </div>
         {!usage?.claude && !usage?.codex && !error ? (
           <p className="text-xs text-muted-foreground">
             No usage data yet. Run a session with Claude Code or Codex CLI in this project.
@@ -338,13 +491,15 @@ function UsageCard() {
 }
 
 function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }) {
-  const totalInput = usage.inputTokens + usage.cacheCreationInputTokens + usage.cacheReadInputTokens;
+  const totalInput =
+    usage.inputTokens + usage.cacheCreationInputTokens + usage.cacheReadInputTokens;
   const cachePct = totalInput > 0 ? (usage.cacheReadInputTokens / totalInput) * 100 : 0;
   return (
-    <div className="rounded-md border border-border bg-background/40 p-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <div className="rounded-md border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase text-muted-foreground">
+          <ClaudeLogo className="size-3.5 text-amber-700" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Claude Code · last session
           </span>
           {usage.sessionId ? (
@@ -358,7 +513,7 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px] sm:grid-cols-4">
         <Stat label="Input" value={formatTokens(usage.inputTokens)} />
         <Stat label="Output" value={formatTokens(usage.outputTokens)} />
         <Stat label="Cache read" value={formatTokens(usage.cacheReadInputTokens)} />
@@ -369,7 +524,7 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
         <Stat label="API" value={formatDuration(usage.apiDurationMs)} />
       </div>
 
-      <div className="mt-3">
+      <div className="border-t border-border px-3 py-2">
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <span>Cache read share of input</span>
           <span className="font-mono">{cachePct.toFixed(1)}%</span>
@@ -383,8 +538,8 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
       </div>
 
       {usage.fiveHour || usage.weekly ? (
-        <div className="mt-3 space-y-2 rounded-md border border-border bg-background/60 p-2">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground">
+        <div className="space-y-2 border-t border-border px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Rate limits
           </div>
           {usage.fiveHour ? <UsageBar label="5h block" window={usage.fiveHour} /> : null}
@@ -393,8 +548,8 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
       ) : null}
 
       {usage.models.length ? (
-        <div className="mt-3 space-y-1">
-          <div className="text-[11px] font-semibold uppercase text-muted-foreground">
+        <div className="space-y-1 border-t border-border px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             By model
           </div>
           {usage.models.map((model) => (
@@ -405,7 +560,7 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
               <span className="truncate">{model.model}</span>
               <span className="shrink-0 text-muted-foreground">
                 {formatTokens(model.inputTokens + model.outputTokens)} tok ·{" "}
-                ${model.costUSD.toFixed(4)}
+                <span className="text-emerald-700">${model.costUSD.toFixed(4)}</span>
               </span>
             </div>
           ))}
@@ -417,24 +572,23 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
 
 function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex"]> }) {
   return (
-    <div className="rounded-md border border-border bg-background/40 p-3">
-      <div className="flex items-baseline justify-between">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Codex · rate limits
-        </span>
+    <div className="rounded-md border border-border">
+      <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
+        <div className="flex items-center gap-2">
+          <CodexLogo className="size-3.5 text-foreground" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Codex · rate limits
+          </span>
+        </div>
         {usage.timestamp ? (
           <span className="font-mono text-[10px] text-muted-foreground">
             {new Date(usage.timestamp).toLocaleString()}
           </span>
         ) : null}
       </div>
-      <div className="mt-3 space-y-2">
-        {usage.primary ? (
-          <UsageBar label="5h window" window={usage.primary} />
-        ) : null}
-        {usage.secondary ? (
-          <UsageBar label="Weekly window" window={usage.secondary} />
-        ) : null}
+      <div className="space-y-2 px-3 py-2">
+        {usage.primary ? <UsageBar label="5h window" window={usage.primary} /> : null}
+        {usage.secondary ? <UsageBar label="Weekly window" window={usage.secondary} /> : null}
       </div>
     </div>
   );
@@ -473,7 +627,7 @@ function UsageBar({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="font-mono text-xs font-semibold">{value}</div>
     </div>
   );
@@ -528,29 +682,30 @@ function ToolCallFeed() {
   const visible = [...records].reverse();
 
   return (
-    <Card className="min-w-0 xl:col-span-2">
+    <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
       <CardHeader className="border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
-          <Activity className="size-4" />
-          <CardTitle>Live MCP Tool Calls</CardTitle>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
-              connected
-                ? "bg-emerald-500/15 text-emerald-700"
-                : "bg-muted text-muted-foreground",
-            )}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-muted-foreground" />
+            <CardTitle>Live MCP Tool Calls</CardTitle>
+            <Badge variant="outline" size="small">
+              {records.length}
+            </Badge>
+          </div>
+          <Badge
+            variant={connected ? "success" : "secondary"}
+            appearance="subtle"
+            size="small"
+            icon={
+              <span
+                className={cn(
+                  "inline-block size-1.5 rounded-full",
+                  connected ? "animate-pulse bg-emerald-500" : "bg-muted-foreground/60",
+                )}
+              />
+            }
           >
-            <span
-              className={cn(
-                "inline-block size-1.5 rounded-full",
-                connected ? "animate-pulse bg-emerald-500" : "bg-muted-foreground/60",
-              )}
-            />
             {connected ? "live" : "reconnecting…"}
-          </span>
-          <Badge variant="outline" size="small">
-            {records.length}
           </Badge>
         </div>
         <CardDescription className="text-xs">
@@ -559,7 +714,7 @@ function ToolCallFeed() {
       </CardHeader>
       <CardContent className="p-0">
         {visible.length ? (
-          <ul className="max-h-80 divide-y divide-border overflow-auto">
+          <ul className="max-h-96 divide-y divide-border overflow-auto">
             {visible.map((record) => (
               <li key={record.id} className="px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
@@ -570,6 +725,7 @@ function ToolCallFeed() {
                     <span>{record.durationMs} ms</span>
                     <Badge
                       variant={record.status === "ok" ? "success" : "danger"}
+                      appearance="subtle"
                       size="small"
                     >
                       {record.status}
@@ -593,7 +749,7 @@ function ToolCallFeed() {
             ))}
           </ul>
         ) : (
-          <p className="p-3 text-xs text-muted-foreground">
+          <p className="px-3 py-4 text-xs text-muted-foreground">
             No tool calls yet. Invoke a NoMoreIDE MCP tool from your agent and it will appear here.
           </p>
         )}
