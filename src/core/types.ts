@@ -31,12 +31,26 @@ export interface GitRepositoryDefinition {
   path: string;
 }
 
+export type DatabaseEngine = "postgres" | "mysql" | "sqlite";
+
+/**
+ * A read-only database connection for DB Peek. For `postgres`/`mysql`, `url` is
+ * the connection string (stored like a secret, masked in API responses). For
+ * `sqlite`, `url` is an absolute path to the `.db` file.
+ */
+export interface DatabaseConnection {
+  name: string;
+  engine: DatabaseEngine;
+  url: string;
+}
+
 export interface NoMoreIdeConfig {
   version: 1;
   services: ServiceDefinition[];
   bundles: BundleDefinition[];
   gitRepositories: GitRepositoryDefinition[];
   selectedGitRepository?: string;
+  databases: DatabaseConnection[];
 }
 
 export type ServiceState = "stopped" | "starting" | "running" | "exited";

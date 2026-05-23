@@ -5,6 +5,7 @@ import {
   ConfigValidationError,
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
+import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
@@ -50,6 +51,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const cwd = options.cwd ?? process.cwd();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
+  const dbPeek = new DbPeek({ configStore });
   const testRunner = new TestRunner({ logStore, configStore, cwd });
   const reproBundle = new ReproBundleBuilder({
     errorInbox,
@@ -60,6 +62,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const services: RouteServices = {
     configStore,
     cwd,
+    dbPeek,
     errorInbox,
     logStore,
     manager,

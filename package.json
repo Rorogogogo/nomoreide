@@ -33,7 +33,10 @@
     "dev": "tsx src/index.ts",
     "dev:web": "vite --host 127.0.0.1",
     "prepublishOnly": "npm test && npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "video:render": "npm --prefix video run render",
+    "video:still": "npm --prefix video run still",
+    "video:studio": "npm --prefix video run studio"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
@@ -46,6 +49,8 @@
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
     "lucide-react": "^1.16.0",
+    "mysql2": "^3.22.3",
+    "pg": "^8.21.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "simple-icons": "^16.20.0",
@@ -58,6 +63,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
     "@types/node": "^22.15.19",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.4"

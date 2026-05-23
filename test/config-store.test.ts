@@ -27,7 +27,31 @@ describe("ConfigStore", () => {
       services: [],
       bundles: [],
       gitRepositories: [],
+      databases: [],
     });
+  });
+
+  test("registers, masks, and removes a database connection", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerDatabase({
+      name: "shop",
+      engine: "postgres",
+      url: "postgres://user:secret@localhost:5432/shop",
+    });
+
+    let config = await store.load();
+    expect(config.databases).toEqual([
+      {
+        name: "shop",
+        engine: "postgres",
+        url: "postgres://user:secret@localhost:5432/shop",
+      },
+    ]);
+
+    await store.removeDatabase("shop");
+    config = await store.load();
+    expect(config.databases).toEqual([]);
   });
 
   test("registers a service and persists it", async () => {
