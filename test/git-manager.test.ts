@@ -145,6 +145,116 @@ describe("GitManager", () => {
 
     expect((await git.status()).branch).toBe("master");
   });
+
+  test("commitFiles parses -z output for add/modify/delete and rename", async () => {
+    // commit 1: add two files, modify README
+    await writeFile(join(repoDir, "README.md"), "modified\n");
+    await writeFile(join(repoDir, "a.txt"), "a\n");
+    await writeFile(join(repoDir, "b.txt"), "b\n");
+    await execGit(["add", "."]);
+    await execGit(["commit", "-m", "multi-change commit"]);
+
+    const head = (await execGit(["rev-parse", "HEAD"])).trim();
+    const files = await git.commitFiles(head);
+    const paths = files.map((f) => f.path).sort();
+    expect(paths).toEqual(["README.md", "a.txt", "b.txt"]);
+    const byPath = Object.fromEntries(files.map((f) => [f.path, f.index]));
+    expect(byPath["README.md"]).toBe("M");
+    expect(byPath["a.txt"]).toBe("A");
+    expect(byPath["b.txt"]).toBe("A");
+
+    // commit 2: rename a.txt -> renamed.txt
+    await execGit(["mv", "a.txt", "renamed.txt"]);
+    await execGit(["commit", "-m", "rename"]);
+    const renameHead = (await execGit(["rev-parse", "HEAD"])).trim();
+    const renameFiles = await git.commitFiles(renameHead);
+    expect(renameFiles).toHaveLength(1);
+    expect(renameFiles[0].path).toBe("renamed.txt");
+    expect(renameFiles[0].index).toBe("R");
+  });
+
+  test("commitDiff returns patch text including root commits", async () => {
+    await writeFile(join(repoDir, "feature.txt"), "added\n");
+    await execGit(["add", "feature.txt"]);
+    await execGit(["commit", "-m", "add feature"]);
+
+    const headHash = (await execGit(["rev-parse", "HEAD"])).trim();
+    const rootHash = (await execGit(["rev-list", "--max-parents=0", "HEAD"])).trim();
+
+    const headDiff = await git.commitDiff(headHash);
+    expect(headDiff).toContain("+++ b/feature.txt");
+    expect(headDiff).toContain("+added");
+
+    const rootDiff = await git.commitDiff(rootHash);
+    expect(rootDiff).toContain("README.md");
+
+    await expect(git.commitDiff("not-a-hash!!")).rejects.toThrow(/invalid commit hash/);
+  });
+
+  test("listTrackedFiles returns paths from git ls-files", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    await writeFile(join(repoDir, "a.txt"), "a\n");
+    await mkdir(join(repoDir, "nested"), { recursive: true });
+    await writeFile(join(repoDir, "nested/b.txt"), "b\n");
+    await execGit(["add", "a.txt", "nested/b.txt"]);
+    await execGit(["commit", "-m", "add files"]);
+
+    const files = await git.listTrackedFiles();
+    expect(files.sort()).toEqual(["README.md", "a.txt", "nested/b.txt"]);
+  });
+
+  test("readTrackedFile returns content for tracked files", async () => {
+    const content = await git.readTrackedFile("README.md");
+    expect(content.content).toBe("initial\n");
+    expect(content.binary).toBe(false);
+    expect(content.truncated).toBe(false);
+  });
+
+  test("readTrackedFile rejects untracked paths", async () => {
+    await writeFile(join(repoDir, "untracked.txt"), "hello\n");
+    await expect(git.readTrackedFile("untracked.txt")).rejects.toThrow(/not tracked/);
+  });
+
+  test("readTrackedFile rejects path traversal", async () => {
+    await expect(git.readTrackedFile("../escape")).rejects.toThrow();
+  });
+
+  test("graph returns ordered commits with refs, parents, and lanes", async () => {
+    // master: initial -> M (second on master)
+    //                  \-> side commit C -> merged via M
+    await writeFile(join(repoDir, "main.txt"), "main\n");
+    await execGit(["add", "main.txt"]);
+    await execGit(["commit", "-m", "main work"]);
+
+    await execGit(["checkout", "-b", "side", "HEAD~1"]);
+    await writeFile(join(repoDir, "side.txt"), "side\n");
+    await execGit(["add", "side.txt"]);
+    await execGit(["commit", "-m", "side work"]);
+
+    await execGit(["checkout", "master"]);
+    await execGit(["merge", "--no-ff", "side", "-m", "merge side"]);
+    await execGit(["tag", "v0.1"]);
+
+    const graph = await git.graph(50);
+
+    expect(graph.length).toBeGreaterThanOrEqual(4);
+    const subjects = graph.map((c) => c.subject);
+    expect(subjects).toContain("merge side");
+    expect(subjects).toContain("side work");
+    expect(subjects).toContain("main work");
+    expect(subjects).toContain("initial commit");
+
+    const merge = graph.find((c) => c.subject === "merge side")!;
+    expect(merge.parents).toHaveLength(2);
+    expect(merge.edges).toHaveLength(2);
+
+    const head = graph[0];
+    expect(head.refs.some((r) => r.kind === "head" && r.name === "HEAD")).toBe(true);
+    expect(head.refs.some((r) => r.kind === "branch" && r.name === "master")).toBe(true);
+
+    const tagged = graph.find((c) => c.refs.some((r) => r.kind === "tag" && r.name === "v0.1"));
+    expect(tagged).toBeDefined();
+  });
 });
 
 async function execGit(args: string[]): Promise<string> {

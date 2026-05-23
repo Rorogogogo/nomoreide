@@ -230,6 +230,82 @@ async function routeRequest(options: {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/api/git/files") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      try {
+        const files = await new GitManager(gitCwd).listTrackedFiles();
+        sendJson(response, { ok: true, files });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, 400);
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/git/file") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const path = url.searchParams.get("path")?.trim();
+      if (!path) {
+        sendJson(response, { ok: false, error: "path is required" }, 400);
+        return;
+      }
+      try {
+        const file = await new GitManager(gitCwd).readTrackedFile(path);
+        sendJson(response, { ok: true, ...file });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, 404);
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/git/commit") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const hash = url.searchParams.get("hash")?.trim();
+      const file = url.searchParams.get("file")?.trim() || undefined;
+      if (!hash) {
+        sendJson(response, { ok: false, error: "hash is required" }, 400);
+        return;
+      }
+      try {
+        const diff = await new GitManager(gitCwd).commitDiff(hash, file);
+        sendText(response, diff);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, 400);
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/git/commit/files") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const hash = url.searchParams.get("hash")?.trim();
+      if (!hash) {
+        sendJson(response, { ok: false, error: "hash is required" }, 400);
+        return;
+      }
+      try {
+        const files = await new GitManager(gitCwd).commitFiles(hash);
+        sendJson(response, { ok: true, files });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, 400);
+      }
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/git/graph") {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const limitParam = url.searchParams.get("limit")?.trim();
+      const parsedLimit = limitParam ? Number(limitParam) : 200;
+      const limit = Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(Math.floor(parsedLimit), 2000)
+        : 200;
+      const commits = await new GitManager(gitCwd).graph(limit);
+      sendJson(response, { ok: true, commits });
+      return;
+    }
+
     if (request.method === "POST" && url.pathname === "/api/git/fetch") {
       const gitCwd = await selectedGitCwd(configStore, cwd);
       const output = await new GitManager(gitCwd).fetch();

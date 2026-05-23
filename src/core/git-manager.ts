@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { assignLanes, type GitGraphLayoutRow } from "./git-graph-layout.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +20,27 @@ export interface GitStatus {
 export interface GitLogEntry {
   hash: string;
   subject: string;
+}
+
+export type GitGraphRefKind = "head" | "branch" | "remote" | "tag";
+
+export interface GitGraphRef {
+  name: string;
+  kind: GitGraphRefKind;
+}
+
+export interface GitGraphCommit {
+  hash: string;
+  parents: string[];
+  author: string;
+  email: string;
+  timestamp: number;
+  subject: string;
+  refs: GitGraphRef[];
+  lane: number;
+  laneCount: number;
+  edges: GitGraphLayoutRow["edges"];
+  throughLanes: number[];
 }
 
 export interface GitBranch {
@@ -88,6 +110,173 @@ export class GitManager {
         const [hash = "", subject = ""] = line.split("\t");
         return { hash, subject };
       });
+  }
+
+  async graph(limit = 200): Promise<GitGraphCommit[]> {
+    const recordSep = "\x1e";
+    const fieldSep = "\x1f";
+    const format = ["%H", "%P", "%an", "%ae", "%at", "%s"].join(fieldSep) + recordSep;
+
+    const [logOutput, refsOutput, headHash] = await Promise.all([
+      this.git([
+        "log",
+        "--all",
+        "--date-order",
+        `--max-count=${limit}`,
+        `--pretty=format:${format}`,
+      ]),
+      this.git([
+        "for-each-ref",
+        "--format=%(refname)%09%(objectname)",
+        "refs/heads",
+        "refs/remotes",
+        "refs/tags",
+      ]),
+      this.git(["rev-parse", "HEAD"]).catch(() => ""),
+    ]);
+
+    const refsByHash = new Map<string, GitGraphRef[]>();
+    for (const line of refsOutput.split("\n").filter(Boolean)) {
+      const [refName = "", hash = ""] = line.split("\t");
+      if (!refName || !hash) continue;
+      if (refName.endsWith("/HEAD")) continue;
+      let name = refName;
+      let kind: GitGraphRefKind;
+      if (refName.startsWith("refs/heads/")) {
+        name = refName.slice("refs/heads/".length);
+        kind = "branch";
+      } else if (refName.startsWith("refs/remotes/")) {
+        name = refName.slice("refs/remotes/".length);
+        kind = "remote";
+      } else if (refName.startsWith("refs/tags/")) {
+        name = refName.slice("refs/tags/".length);
+        kind = "tag";
+      } else {
+        continue;
+      }
+      const list = refsByHash.get(hash) ?? [];
+      list.push({ name, kind });
+      refsByHash.set(hash, list);
+    }
+
+    const trimmedHead = headHash.trim();
+    if (trimmedHead) {
+      const list = refsByHash.get(trimmedHead) ?? [];
+      list.unshift({ name: "HEAD", kind: "head" });
+      refsByHash.set(trimmedHead, list);
+    }
+
+    const parsed = logOutput
+      .split(recordSep)
+      .map((record) => record.replace(/^\n/, ""))
+      .filter((record) => record.length > 0)
+      .map((record) => {
+        const [hash = "", parentField = "", author = "", email = "", timestamp = "0", subject = ""] =
+          record.split(fieldSep);
+        return {
+          hash,
+          parents: parentField ? parentField.split(" ").filter(Boolean) : [],
+          author,
+          email,
+          timestamp: Number(timestamp) || 0,
+          subject,
+        };
+      })
+      .filter((commit) => commit.hash);
+
+    const layout = assignLanes(parsed.map(({ hash, parents }) => ({ hash, parents })));
+
+    return parsed.map((commit, index) => ({
+      ...commit,
+      refs: refsByHash.get(commit.hash) ?? [],
+      lane: layout[index].lane,
+      laneCount: layout[index].laneCount,
+      edges: layout[index].edges,
+      throughLanes: layout[index].throughLanes,
+    }));
+  }
+
+  async listTrackedFiles(): Promise<string[]> {
+    const output = await this.git(["ls-files", "-z"]);
+    return output.split("\0").filter((path) => path.length > 0);
+  }
+
+  async readTrackedFile(
+    path: string,
+    options: { maxBytes?: number } = {},
+  ): Promise<{ content: string; truncated: boolean; binary: boolean; size: number }> {
+    const maxBytes = options.maxBytes ?? 1_000_000;
+    const tracked = new Set(await this.listTrackedFiles());
+    if (!tracked.has(path)) {
+      throw new Error("file is not tracked by git");
+    }
+    const fullPath = resolveInside(this.cwd, path);
+    const buffer = await readFile(fullPath);
+    const binary = buffer.includes(0);
+    if (binary) {
+      return { content: "", truncated: false, binary: true, size: buffer.length };
+    }
+    const truncated = buffer.length > maxBytes;
+    const slice = truncated ? buffer.subarray(0, maxBytes) : buffer;
+    return {
+      content: slice.toString("utf8"),
+      truncated,
+      binary: false,
+      size: buffer.length,
+    };
+  }
+
+  async commitDiff(hash: string, path?: string): Promise<string> {
+    const sha = this.validateHash(hash);
+    const args = ["show", "--patch", "--format=", sha];
+    if (path) {
+      args.push("--", path);
+    }
+    // `git show` handles root commits (no parent) gracefully, unlike `diff <sha>^..<sha>`.
+    return this.git(args);
+  }
+
+  async commitFiles(hash: string): Promise<GitFileStatus[]> {
+    const sha = this.validateHash(hash);
+    const output = await this.git([
+      "show",
+      "--name-status",
+      "--format=",
+      "-z",
+      sha,
+    ]);
+    // With -z, fields are NUL-separated:
+    //   regular:  STATUS \0 PATH \0
+    //   rename:   R### \0 OLD \0 NEW \0   (also C### for copies)
+    const files: GitFileStatus[] = [];
+    const tokens = output.split("\0").filter((t) => t.length > 0);
+    let i = 0;
+    while (i < tokens.length) {
+      const statusToken = tokens[i];
+      const letter = (statusToken[0] ?? " ").toUpperCase();
+      if (letter === "R" || letter === "C") {
+        const newPath = tokens[i + 2];
+        if (newPath) {
+          files.push({ path: newPath, index: letter, workingTree: " " });
+        }
+        i += 3;
+      } else {
+        const path = tokens[i + 1];
+        if (path) {
+          files.push({ path, index: letter, workingTree: " " });
+        }
+        i += 2;
+      }
+    }
+    return files;
+  }
+
+  private validateHash(hash: string): string {
+    const sha = requireName(hash, "commit");
+    if (!/^[0-9a-f]{4,64}$/i.test(sha)) {
+      throw new Error("invalid commit hash");
+    }
+    return sha;
   }
 
   async branches(): Promise<GitBranch[]> {
