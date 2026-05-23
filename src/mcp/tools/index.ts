@@ -2,6 +2,7 @@ import type { FastMCP } from "fastmcp";
 import type { ToolCallStore } from "../../core/tool-call-store.js";
 import { wrapServerForRecording, type ToolContext } from "./context.js";
 import { AGENT_TOOL_NAMES, registerAgentTools } from "./agent.js";
+import { ERROR_TOOL_NAMES, registerErrorTools } from "./errors.js";
 import { GIT_TOOL_NAMES, registerGitTools } from "./git.js";
 import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 
@@ -16,6 +17,7 @@ import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 export const NOMOREIDE_TOOL_NAMES = [
   ...SERVICE_TOOL_NAMES,
   ...GIT_TOOL_NAMES,
+  ...ERROR_TOOL_NAMES,
   ...AGENT_TOOL_NAMES,
 ] as const;
 
@@ -34,6 +36,7 @@ export function registerNoMoreIdeTools(
 
   registerServiceTools(server, ctx);
   registerGitTools(server, ctx);
+  registerErrorTools(server, ctx);
   registerAgentTools(server, ctx);
 }
 

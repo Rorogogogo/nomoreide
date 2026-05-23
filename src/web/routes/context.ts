@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ConfigStore } from "../../core/config-store.js";
+import type { ErrorInbox } from "../../core/error-inbox.js";
 import type { LogStore } from "../../core/log-store.js";
 import type { ProcessManager } from "../../core/process-manager.js";
 import type { TimelineStore } from "../../core/timeline-store.js";
@@ -9,6 +10,7 @@ import type { ToolCallStore } from "../../core/tool-call-store.js";
 export interface RouteServices {
   configStore: ConfigStore;
   cwd: string;
+  errorInbox: ErrorInbox;
   logStore: LogStore;
   manager: ProcessManager;
   timelineStore: TimelineStore;

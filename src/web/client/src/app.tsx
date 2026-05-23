@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   Bot,
   GitBranch,
+  Inbox,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { AgentView } from "@/features/agent/agent-view";
+import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { RepositorySelector } from "@/features/git/repository-selector";
@@ -22,7 +24,7 @@ import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-type Page = "services" | "git" | "agent";
+type Page = "services" | "git" | "agent" | "errors";
 
 export function AppIdentity({ className }: { className?: string }) {
   return (
@@ -41,6 +43,7 @@ export function AppIdentity({ className }: { className?: string }) {
 export function App() {
   const [page, setPage] = useState<Page>(() => {
     if (window.location.pathname.startsWith("/agent")) return "agent";
+    if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
   });
@@ -94,7 +97,14 @@ export function App() {
   }, [page, refresh]);
 
   useEffect(() => {
-    const path = page === "git" ? "/git" : page === "agent" ? "/agent" : "/";
+    const path =
+      page === "git"
+        ? "/git"
+        : page === "agent"
+          ? "/agent"
+          : page === "errors"
+            ? "/errors"
+            : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -177,6 +187,13 @@ export function App() {
               onClick={() => setPage("git")}
             />
             <NavButton
+              active={page === "errors"}
+              collapsed={sidebarCollapsed}
+              icon={<Inbox />}
+              label="Error Inbox"
+              onClick={() => setPage("errors")}
+            />
+            <NavButton
               active={page === "agent"}
               collapsed={sidebarCollapsed}
               icon={<Bot />}
@@ -199,7 +216,13 @@ export function App() {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {page === "git" ? "Git Review" : page === "agent" ? "Agent" : "Services"}
+                  {page === "git"
+                    ? "Git Review"
+                    : page === "agent"
+                      ? "Agent"
+                      : page === "errors"
+                        ? "Error Inbox"
+                        : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -237,6 +260,7 @@ export function App() {
               <GitReviewView data={data} />
             ) : null}
             {page === "agent" ? <AgentView /> : null}
+            {page === "errors" ? <ErrorInboxView /> : null}
           </div>
         </main>
       </div>

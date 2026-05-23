@@ -11,15 +11,17 @@ High-leverage additions beyond the current Services / Logs / Git / Agent dashboa
 ## 1. Env/Secrets Manager — ✅ shipped (ROR-10)
 View and edit `.env` files per service in one place, with masking. Done: `.env*` key/value table, secret masking, comment-preserving writes (`src/core/env-file.ts` + `config-files.ts`). Remaining bonus: "inject into running process" so they don't restart-and-pray.
 
-## 2. Error Inbox (killer feature)
+## 2. Error Inbox (killer feature) — ✅ shipped (ROR-14)
 Auto-tail logs across all services. Surface stack traces / `ERROR` lines into a single feed. Each entry has a **"Copy to agent"** button that builds a prompt with the stack trace, recent diff in the affected file, and last N log lines for context. Turns "I have a bug" → one click → ready-to-paste prompt.
 
-**Build:**
-- **Core** — `src/core/error-inbox.ts`: subscribe to `LogStore` line events, run a small set of detectors (regex for `ERROR`/`WARN`, language stack-trace shapes: Node `at ...`, Python `Traceback`, Java `Exception in thread`). Dedupe by signature (first trace line + file), keep a ring buffer of distinct incidents `{ id, service, level, signature, file?, line?, firstSeen, lastSeen, count, logExcerpt }`.
-- **File extraction** — parse the top frame for `path:line`; resolve against the service `cwd` to pick the affected file.
-- **API** — `GET /api/errors` (list incidents), `GET /api/errors/:id/prompt` (assemble the copy-to-agent payload: incident excerpt + `GitManager.diff()` for the file + last N `LogStore` lines).
-- **UI** — new `features/errors/error-inbox-view.tsx` + sidebar tab; row → detail with a **Copy to agent** button (clipboard) and a "send to MCP" variant.
-- **Reuses** — `LogStore` (already tails + ring-buffers per service), `GitManager.diff`, the existing SSE pattern from `/api/agent/tool-calls/stream` for live updates.
+Done as a vertical slice:
+- **Core** — `src/core/error-inbox.ts`: subscribes via the new `LogStore.subscribe()` emitter, runs detectors (error/exception headers, `WARN`, Node `at …`, Python `Traceback` + `File "…", line N`, Java `Exception in thread`), dedupes by normalized signature into a ring buffer of incidents, and looks back through context lines to attach the top `path:line` frame (resolved against the service `cwd`).
+- **API** — `src/web/routes/errors-routes.ts`: `GET /api/errors`, `GET /api/errors/stream` (SSE), `GET /api/errors/:id/prompt` (excerpt + `GitManager.diff()` + last 40 log lines). Registered in `routes/index.ts`.
+- **UI** — `features/errors/` (`error-inbox-view` + `incident-detail` + `use-error-incidents` hook) behind a new **Error Inbox** sidebar tab; live SSE feed, master/detail, clipboard **Copy to agent**.
+- **MCP** — `src/mcp/tools/errors.ts`: `nomoreide_list_errors` + `nomoreide_error_prompt` (the "send to MCP" variant).
+- **Reuses** — `LogStore` ring buffer + new subscribe, `GitManager.diff`, the SSE pattern from `/api/agent/tool-calls/stream`.
+
+Remaining bonus (now unblocked): #7 test-runner pipeline and #8 repro bundle both build on these incidents.
 
 ## 3. HTTP Request Inspector — 📋 scoped (ROR-6, backlog)
 Proxy on the service port that records requests/responses; replay, share, or pipe to an agent without Postman/Charles. Groundwork already exists in `src/core/http-inspector.ts` and `POST /api/services/:name/inspector`. Remaining: a `features/services/` inspector panel (request timeline, body view, replay) and a "copy request as agent prompt" action.

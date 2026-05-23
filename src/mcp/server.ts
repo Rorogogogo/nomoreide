@@ -1,6 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { FastMCP } from "fastmcp";
 import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
+import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
@@ -26,6 +27,7 @@ interface CreateNoMoreIdeMcpServerOptions {
 export interface NoMoreIdeMcpServer {
   server: FastMCP;
   configStore: ConfigStore;
+  errorInbox: ErrorInbox;
   logStore: LogStore;
   manager: ProcessManager;
   uiLifecycle: UiLifecycleManager;
@@ -54,6 +56,7 @@ export function createNoMoreIdeMcpServer(
     timelineStore,
   });
   const manager = new ProcessManager({ configStore, logStore, timelineStore });
+  const errorInbox = new ErrorInbox({ logStore, configStore });
   const toolCallStore = new ToolCallStore();
   const uiLifecycle =
     options.uiLifecycle ??
@@ -70,6 +73,7 @@ export function createNoMoreIdeMcpServer(
   registerNoMoreIdeTools({
     server,
     configStore,
+    errorInbox,
     logStore,
     manager,
     timelineStore,
@@ -80,6 +84,7 @@ export function createNoMoreIdeMcpServer(
   return {
     server,
     configStore,
+    errorInbox,
     logStore,
     manager,
     uiLifecycle,
