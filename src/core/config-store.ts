@@ -13,6 +13,8 @@ const baseServiceSchema = z.object({
   name: z.string().min(1),
   port: z.number().int().positive().max(65535).optional(),
   description: z.string().optional(),
+  /** Command used by the Test Runner; defaults to `npm test` when absent. */
+  test: z.string().min(1).optional(),
 });
 
 const localServiceSchema = baseServiceSchema.extend({

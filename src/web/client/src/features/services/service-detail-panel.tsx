@@ -6,8 +6,9 @@ import { EnvTab } from "./service-detail/env-tab";
 import { HttpTab } from "./service-detail/http-tab";
 import { LogsTab } from "./service-detail/logs-tab";
 import { ProcessesTab } from "./service-detail/processes-tab";
+import { TestsTab } from "./service-detail/tests-tab";
 
-type Tab = "processes" | "http" | "env" | "logs";
+type Tab = "processes" | "http" | "env" | "tests" | "logs";
 
 export function ServiceDetailPanel({
   serviceName,
@@ -40,6 +41,9 @@ export function ServiceDetailPanel({
         <TabButton active={tab === "env"} onClick={() => setTab("env")}>
           Env
         </TabButton>
+        <TabButton active={tab === "tests"} onClick={() => setTab("tests")}>
+          Tests
+        </TabButton>
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
           Logs
         </TabButton>
@@ -54,6 +58,7 @@ export function ServiceDetailPanel({
         />
       ) : null}
       {tab === "env" ? <EnvTab serviceName={serviceName} /> : null}
+      {tab === "tests" ? <TestsTab serviceName={serviceName} /> : null}
       {tab === "logs" ? <LogsTab serviceName={serviceName} /> : null}
     </div>
   );
