@@ -36,6 +36,8 @@ Built on FastMCP 3.0.0, runs as a stdio MCP server for AI agents (Claude Code, C
 
 HTTP server on `localhost:4317`. Serves a React SPA + REST API endpoints under `/api/*`. The React frontend (`src/web/client/src/`) uses Vite, React 19, Tailwind CSS 4, Radix UI, and Framer Motion. Two main feature modules: `features/services/` (start/stop/logs/health) and `features/git/` (diff, staging, branching).
 
+`server.ts` is a thin dispatcher: it builds a `RouteServices` context once and matches each request against a **route registry** (`src/web/routes/`). Each domain owns a `<domain>-routes.ts` exporting a `Route[]` (`dashboard`, `agent`, `git`, `service`, `shell`); `routes/index.ts` concatenates them in dispatch order (`/api/*` groups first, the SPA-shell catch-alls last). Use `route(method, path, handler)` for exact paths and `patternRoute(regex, paramNames, handler)` for parameterized ones (the handler does its own method check, mirroring 405 behavior). **Adding an endpoint never edits the dispatcher** — add/extend a route module and register it in `routes/index.ts`.
+
 ### CLI & TUI (`src/cli/`, `src/tui/`)
 
 `src/index.ts` routes to the appropriate mode. CLI subcommands: `mcp`, `tui`, `web`, `add`, `git`, `list`, `logs`, `setup`, `start`, `stop`, `restart`.
@@ -60,3 +62,12 @@ User ───────────► CLI / TUI / Web UI
 - **TypeScript strict mode**: `tsconfig.json` has `strict: true`; `src/web/client` is excluded from the server tsconfig and built separately by Vite.
 - **Test isolation**: tests use `os.tmpdir()` fixtures via Vitest; all test files live in `/test/`.
 - **Dual license**: AGPL-3.0 for open source, commercial license for proprietary use (see `COMMERCIAL.md`).
+
+## Expandability (keep it modular as it grows)
+
+The project is meant to grow feature-by-feature, so new work should land as a **vertical slice**, not edits scattered across god-files:
+
+- A feature = `core/<feature>.ts` (logic) + `web/routes/<feature>-routes.ts` (HTTP) + a group in `mcp/tools.ts` (agent surface, where relevant) + `web/client/src/features/<feature>/` (UI). Wire it up at the registry/index, don't grow a central switchboard.
+- **Soft size budgets** (a refactor *smell*, not a CI hard-fail): ~300 lines/file, ~50 lines/function. When a file crosses it, split by responsibility — extract React data-fetching into hooks and sub-sections into their own components; group server routes/MCP tools by domain. Large core modules (`process-manager.ts`, `git-manager.ts`) are acceptable but watch their growth.
+- Keep generic dispatch/routing **feature-agnostic**; feature specifics live in the feature's own module.
+- Respect the existing safety boundaries: `GitManager` stays read-safe (destructive ops belong in a separate, explicitly-guarded module), and app features needing external data (Linear/DB/GitHub) hold **their own** credential/driver — they can't borrow the agent's MCPs.
