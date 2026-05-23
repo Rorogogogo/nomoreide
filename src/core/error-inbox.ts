@@ -224,9 +224,12 @@ export class ErrorInbox {
   }
 
   private async serviceCwd(service: string): Promise<string> {
+    // Test-runner incidents are tagged `<service>:test`; resolve the base
+    // service so the affected-file diff still uses its working directory.
+    const baseService = service.replace(/:test$/, "");
     try {
       const config = await this.configStore.load();
-      const definition = config.services.find((item) => item.name === service);
+      const definition = config.services.find((item) => item.name === baseService);
       if (definition?.cwd) {
         return isAbsolute(definition.cwd)
           ? definition.cwd

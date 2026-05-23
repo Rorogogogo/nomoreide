@@ -8,6 +8,8 @@ export interface ServiceDefinition {
   kind?: ServiceKind;
   port?: number;
   description?: string;
+  /** Test Runner command; defaults to `npm test` when absent. */
+  test?: string;
   // local + ssh
   command?: string;
   cwd?: string;

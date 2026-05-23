@@ -87,6 +87,54 @@ export const serviceRoutes: Route[] = [
     );
   }),
 
+  patternRoute(
+    /^\/api\/services\/([^/]+)\/test$/,
+    ["name"],
+    async ({ request, response, params, testRunner }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const form = await readForm(request);
+      try {
+        const run = await testRunner.run(params.name, optionalFormValue(form, "pattern"));
+        sendJson(response, { ok: true, run });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 409);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/services\/([^/]+)\/test\/stream$/,
+    ["name"],
+    ({ request, response, params, testRunner }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      response.writeHead(200, {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache, no-transform",
+        connection: "keep-alive",
+      });
+      response.write(`retry: 2000\n\n`);
+      const current = testRunner.current(params.name);
+      if (current) {
+        const seed = JSON.stringify({ type: "status", run: current });
+        response.write(`event: status\ndata: ${seed}\n\n`);
+      }
+      const heartbeat = setInterval(() => response.write(`: ping\n\n`), 15000);
+      const unsubscribe = testRunner.subscribe(params.name, (event) => {
+        response.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+      });
+      request.on("close", () => {
+        clearInterval(heartbeat);
+        unsubscribe();
+      });
+    },
+  ),
+
   route("POST", "/api/bundles", async ({ request, response, configStore }) => {
     const form = await readForm(request);
     const services = requiredFormValue(form, "services")

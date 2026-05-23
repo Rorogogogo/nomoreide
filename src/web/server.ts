@@ -8,6 +8,7 @@ import {
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
 import { sendHtml, sendJson } from "./http-utils.js";
@@ -48,6 +49,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const cwd = options.cwd ?? process.cwd();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
+  const testRunner = new TestRunner({ logStore, configStore, cwd });
 
   const services: RouteServices = {
     configStore,
@@ -55,6 +57,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     errorInbox,
     logStore,
     manager,
+    testRunner,
     timelineStore,
     toolCallStore,
   };

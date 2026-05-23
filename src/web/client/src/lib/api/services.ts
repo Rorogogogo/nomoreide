@@ -10,6 +10,7 @@ export interface ServiceDefinition {
   cwd?: string;
   port?: number;
   description?: string;
+  test?: string;
   composeFile?: string;
   composeService?: string;
   host?: string;
@@ -305,4 +306,35 @@ export async function testServiceCommand(
   values: Record<string, string | number | undefined>,
 ): Promise<ServiceTestResult> {
   return postFormForJson<ServiceTestResult>("/api/services/test", values);
+}
+
+export type TestRunStatus = "running" | "passed" | "failed" | "error";
+
+export interface TestRun {
+  id: number;
+  service: string;
+  command: string;
+  pattern?: string;
+  status: TestRunStatus;
+  startedAt: string;
+  endedAt?: string;
+  exitCode?: number | null;
+  failingCount: number;
+}
+
+export interface TestRunEvent {
+  type: "output" | "status";
+  run: TestRun;
+  line?: { stream: "stdout" | "stderr"; text: string };
+}
+
+/** Start a test run for a service. Returns `ok:false` (409) if one is already active. */
+export async function runServiceTests(
+  name: string,
+  pattern?: string,
+): Promise<{ ok: boolean; run?: TestRun; error?: string }> {
+  return postFormForJson(
+    `/api/services/${encodeURIComponent(name)}/test`,
+    pattern ? { pattern } : {},
+  );
 }
