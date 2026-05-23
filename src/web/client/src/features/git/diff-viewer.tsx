@@ -1,5 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+// Diffs whose individual lines run this long (data dumps: CSV, logs, minified
+// blobs) are unreadable as a code diff and bog the layout down. Hide by default.
+const LONG_LINE_THRESHOLD = 800;
 
 type DiffRowKind = "add" | "delete" | "hunk" | "context" | "meta";
 
@@ -26,19 +31,57 @@ export function DiffViewer({
 }) {
   const rows = visibleDiffRows(diff);
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [showAnyway, setShowAnyway] = useState(false);
+
+  const longestLine = useMemo(
+    () => rows.reduce((max, row) => Math.max(max, row.content.length), 0),
+    [rows],
+  );
+  const isDataDump = longestLine > LONG_LINE_THRESHOLD;
+
+  // Reset the "show anyway" override whenever the file/diff changes.
+  useEffect(() => {
+    setShowAnyway(false);
+  }, [diff]);
 
   useEffect(() => {
+    if (isDataDump && !showAnyway) return;
     const hunk = hunkRefs.current[activeHunkIndex];
     hunk?.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [activeHunkIndex, diff]);
+  }, [activeHunkIndex, diff, isDataDump, showAnyway]);
+
+  if (isDataDump && !showAnyway) {
+    const additions = rows.filter((row) => row.kind === "add").length;
+    const deletions = rows.filter((row) => row.kind === "delete").length;
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-white p-6">
+        <div className="max-w-sm space-y-3 text-center">
+          <p className="text-[13px] font-medium text-foreground">
+            Diff hidden for this data file
+          </p>
+          <p className="text-[12px] text-muted-foreground">
+            Rows run up to {longestLine.toLocaleString()} characters, so this looks
+            like a CSV, log, or other data dump rather than source code.
+          </p>
+          <p className="font-mono text-[11px]">
+            <span className="text-emerald-700">+{additions}</span>{" "}
+            <span className="text-red-700">-{deletions}</span> lines changed
+          </p>
+          <Button onClick={() => setShowAnyway(true)} size="sm" type="button" variant="outline">
+            Show diff anyway
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full min-h-0 overflow-auto bg-white text-xs leading-6">
-      <div className="min-w-max font-mono">
+    <div className="absolute inset-0 overflow-auto bg-white text-xs leading-6">
+      <div className="min-w-full font-mono">
         {rows.map((row, index) => (
           <div
             className={cn(
-              "grid grid-cols-[3rem_3rem_minmax(40rem,1fr)]",
+              "grid grid-cols-[3rem_3rem_minmax(0,1fr)]",
               row.kind === "add" && "bg-emerald-50 text-emerald-800",
               row.kind === "delete" && "bg-red-50 text-red-800",
               scrollTargetRowForHunk(rows, index) &&
@@ -56,7 +99,7 @@ export function DiffViewer({
           >
             <LineNumber value={row.oldLine} />
             <LineNumber value={row.newLine} />
-            <span className="whitespace-pre px-2">{row.content || " "}</span>
+            <span className="min-w-0 whitespace-pre-wrap break-all px-2">{row.content || " "}</span>
           </div>
         ))}
       </div>
