@@ -1,20 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
-import { Copy, Play, Square } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChevronUp,
+  Copy,
+  Eye,
+  EyeOff,
+  File as FileIcon,
+  Folder,
+  FolderOpen,
+  Play,
+  Plus,
+  Save,
+  Square,
+  Trash2,
+} from "lucide-react";
+import { ComposerDialog } from "./service-forms";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import {
+  browseServiceConfig,
+  getServiceConfigFile,
+  getServiceConfigFiles,
   getServiceLogs,
   postForm,
+  putServiceConfigFileEnv,
+  putServiceConfigFileText,
+  type ConfigBrowseEntry,
+  type ConfigBrowseResult,
+  type ConfigFileInfo,
   type LogEntry,
   type ProcessRow,
+  type ServiceEnvEntry,
   type ServiceHealth,
   type ServiceStatus,
   type TimelineEvent,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type Tab = "processes" | "http" | "logs";
+type Tab = "processes" | "http" | "env" | "logs";
 
 export function ServiceDetailPanel({
   serviceName,
@@ -44,6 +67,9 @@ export function ServiceDetailPanel({
             <Badge variant="success" size="small">on</Badge>
           ) : null}
         </TabButton>
+        <TabButton active={tab === "env"} onClick={() => setTab("env")}>
+          Env
+        </TabButton>
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
           Logs
         </TabButton>
@@ -57,6 +83,7 @@ export function ServiceDetailPanel({
           onRefresh={onRefresh}
         />
       ) : null}
+      {tab === "env" ? <EnvTab serviceName={serviceName} /> : null}
       {tab === "logs" ? <LogsTab serviceName={serviceName} /> : null}
     </div>
   );
@@ -303,6 +330,509 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+interface EnvRow extends ServiceEnvEntry {
+  reveal: boolean;
+}
+
+interface LoadedFile {
+  info: ConfigFileInfo;
+  exists: boolean;
+  rows?: EnvRow[];
+  text?: string;
+}
+
+function EnvTab({ serviceName }: { serviceName: string }) {
+  const { error: showError, success: showSuccess } = useToasts();
+  const [files, setFiles] = useState<ConfigFileInfo[]>([]);
+  const [selectedPath, setSelectedPath] = useState<string | undefined>();
+  const [loaded, setLoaded] = useState<LoadedFile | undefined>();
+  const [loadingList, setLoadingList] = useState(true);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const [revealAll, setRevealAll] = useState(false);
+  const [browserOpen, setBrowserOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingList(true);
+    setError(undefined);
+    void (async () => {
+      try {
+        const result = await getServiceConfigFiles(serviceName);
+        if (cancelled) return;
+        setFiles(result.files);
+        if (result.files.length > 0) {
+          setSelectedPath((current) => current ?? result.files[0].path);
+        } else {
+          setSelectedPath(undefined);
+          setLoaded(undefined);
+        }
+      } catch (caught) {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught));
+      } finally {
+        if (!cancelled) setLoadingList(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceName]);
+
+  const loadFile = useCallback(
+    async (path: string) => {
+      setLoadingFile(true);
+      setError(undefined);
+      try {
+        const result = await getServiceConfigFile(serviceName, path);
+        const info: ConfigFileInfo = {
+          path: result.path,
+          relativePath: result.relativePath,
+          format: result.format,
+        };
+        if (result.format === "env") {
+          setLoaded({
+            info,
+            exists: result.exists,
+            rows: result.entries.map((entry) => ({ ...entry, reveal: false })),
+          });
+        } else {
+          setLoaded({
+            info,
+            exists: result.exists,
+            text: result.format === "json" ? prettyJson(result.content) : result.content,
+          });
+        }
+        setDirty(false);
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : String(caught));
+      } finally {
+        setLoadingFile(false);
+      }
+    },
+    [serviceName],
+  );
+
+  useEffect(() => {
+    if (selectedPath) void loadFile(selectedPath);
+  }, [selectedPath, loadFile]);
+
+  function updateRow(index: number, patch: Partial<EnvRow>) {
+    setLoaded((current) => {
+      if (!current?.rows) return current;
+      const rows = current.rows.map((row, idx) => (idx === index ? { ...row, ...patch } : row));
+      return { ...current, rows };
+    });
+    setDirty(true);
+  }
+
+  function addRow() {
+    setLoaded((current) => {
+      if (!current?.rows) return current;
+      return {
+        ...current,
+        rows: [...current.rows, { key: "", value: "", secret: false, reveal: true }],
+      };
+    });
+    setDirty(true);
+  }
+
+  function removeRow(index: number) {
+    setLoaded((current) => {
+      if (!current?.rows) return current;
+      return { ...current, rows: current.rows.filter((_, idx) => idx !== index) };
+    });
+    setDirty(true);
+  }
+
+  function updateText(text: string) {
+    setLoaded((current) => (current ? { ...current, text } : current));
+    setDirty(true);
+  }
+
+  async function save() {
+    if (!loaded) return;
+    setSaving(true);
+    try {
+      if (loaded.info.format === "env" && loaded.rows) {
+        const result = await putServiceConfigFileEnv(
+          serviceName,
+          loaded.info.path,
+          loaded.rows.map((row) => ({ key: row.key.trim(), value: row.value })),
+        );
+        setLoaded({
+          info: { path: result.path, relativePath: result.relativePath, format: result.format },
+          exists: result.exists,
+          rows: result.entries.map((entry) => ({ ...entry, reveal: false })),
+        });
+        showSuccess(`Saved ${result.entries.length} entries to ${result.relativePath}.`);
+      } else if (loaded.text !== undefined) {
+        const result = await putServiceConfigFileText(
+          serviceName,
+          loaded.info.path,
+          loaded.text,
+        );
+        setLoaded({
+          info: { path: result.path, relativePath: result.relativePath, format: result.format },
+          exists: result.exists,
+          text: result.content,
+        });
+        showSuccess(`Saved ${result.relativePath}.`);
+      }
+      setDirty(false);
+    } catch (caught) {
+      showError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function pickFile(relativePath: string) {
+    try {
+      const result = await getServiceConfigFile(serviceName, relativePath);
+      const info: ConfigFileInfo = {
+        path: result.path,
+        relativePath: result.relativePath,
+        format: result.format,
+      };
+      setFiles((current) =>
+        current.some((file) => file.path === info.path) ? current : [...current, info],
+      );
+      setSelectedPath(info.path);
+      setBrowserOpen(false);
+      showSuccess(`Loaded ${info.relativePath}.`);
+    } catch (caught) {
+      showError(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  if (loadingList) {
+    return <div className="text-muted-foreground">Loading…</div>;
+  }
+  if (error && !loaded) {
+    return <div className="text-red-600">{error}</div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground">File:</span>
+          {files.length > 0 ? (
+            <select
+              className="rounded border border-border/60 bg-background px-1.5 py-0.5 font-mono text-xs"
+              onChange={(event) => setSelectedPath(event.target.value)}
+              value={selectedPath ?? ""}
+            >
+              {files.map((file) => (
+                <option key={file.path} value={file.path}>
+                  {file.relativePath} [{file.format}]
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-muted-foreground">none detected</span>
+          )}
+          <Button
+            onClick={() => setBrowserOpen(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <FolderOpen /> Browse files
+          </Button>
+          {loaded ? (
+            <code className="rounded bg-background px-1.5 py-0.5 font-mono text-muted-foreground">
+              {loaded.info.path}
+            </code>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1">
+          {loaded?.info.format === "env" ? (
+            <>
+              <Button onClick={() => setRevealAll((value) => !value)} size="sm" type="button" variant="outline">
+                {revealAll ? <EyeOff /> : <Eye />}
+                {revealAll ? "Hide secrets" : "Reveal secrets"}
+              </Button>
+              <Button onClick={addRow} size="sm" type="button" variant="outline">
+                <Plus /> Add
+              </Button>
+            </>
+          ) : null}
+          <Button disabled={!dirty || saving || !loaded} onClick={save} size="sm" type="button">
+            <Save /> {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
+      {error && !loaded ? (
+        <div className="text-red-600">{error}</div>
+      ) : loaded?.info.format === "env" && loaded.rows ? (
+        <div className={cn(loadingFile && "opacity-60 transition-opacity")}>
+          <EnvTable
+            revealAll={revealAll}
+            rows={loaded.rows}
+            onAdd={addRow}
+            onRemove={removeRow}
+            onUpdate={updateRow}
+          />
+        </div>
+      ) : loaded?.text !== undefined ? (
+        <div className={cn("space-y-1", loadingFile && "opacity-60 transition-opacity")}>
+          {loaded.info.format === "json" ? (
+            <div className="flex justify-end">
+              <Button
+                onClick={() => updateText(prettyJson(loaded.text ?? ""))}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Format JSON
+              </Button>
+            </div>
+          ) : null}
+          <textarea
+            className="min-h-[300px] w-full rounded border border-border/60 bg-background p-2 font-mono text-[11px] leading-relaxed"
+            onChange={(event) => updateText(event.target.value)}
+            spellCheck={false}
+            value={loaded.text}
+          />
+        </div>
+      ) : loadingFile ? (
+        <div className="text-muted-foreground">Loading file…</div>
+      ) : null}
+      {loaded ? (
+        <p className="text-muted-foreground">
+          {loaded.info.format === "env"
+            ? "Comments and blank lines are preserved."
+            : loaded.info.format === "json"
+              ? "JSON is validated on save."
+              : "YAML is saved as raw text."}{" "}
+          The running process won't see changes until you restart it.
+        </p>
+      ) : null}
+      {browserOpen ? (
+        <FileBrowserDialog
+          onClose={() => setBrowserOpen(false)}
+          onPick={pickFile}
+          serviceName={serviceName}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function prettyJson(text: string): string {
+  if (!text.trim()) return text;
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+function FileBrowserDialog({
+  serviceName,
+  onClose,
+  onPick,
+}: {
+  serviceName: string;
+  onClose: () => void;
+  onPick: (relativePath: string) => void;
+}) {
+  const [data, setData] = useState<ConfigBrowseResult | undefined>();
+  const [error, setError] = useState<string | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [path, setPath] = useState<string | undefined>();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(undefined);
+    void (async () => {
+      try {
+        const result = await browseServiceConfig(serviceName, path);
+        if (!cancelled) setData(result);
+      } catch (caught) {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : String(caught));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceName, path]);
+
+  function enter(entry: ConfigBrowseEntry) {
+    if (entry.kind === "directory") {
+      setPath(entry.relativePath);
+      return;
+    }
+    if (!entry.supported) return;
+    onPick(entry.relativePath);
+  }
+
+  function goUp() {
+    if (!data || data.isRoot) return;
+    const rel = data.relativePath;
+    const parent = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
+    setPath(parent || undefined);
+  }
+
+  return (
+    <ComposerDialog
+      icon={<FolderOpen />}
+      onClose={onClose}
+      size="lg"
+      title="Pick a config file"
+    >
+      <div className="flex flex-col gap-2 p-4">
+        <div className="flex items-center gap-2 text-xs">
+          <Button
+            disabled={!data || data.isRoot}
+            onClick={goUp}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <ChevronUp /> Up
+          </Button>
+          <code className="truncate rounded bg-muted px-2 py-1 font-mono">
+            {data?.relativePath || "./"}
+          </code>
+        </div>
+        {error ? (
+          <div className="text-red-600">{error}</div>
+        ) : loading ? (
+          <div className="text-muted-foreground">Loading…</div>
+        ) : !data || data.entries.length === 0 ? (
+          <div className="text-muted-foreground">Empty directory.</div>
+        ) : (
+          <div className="max-h-[50vh] overflow-auto rounded border border-border/60">
+            <ul className="divide-y divide-border/40">
+              {data.entries.map((entry) => {
+                const isDir = entry.kind === "directory";
+                const clickable = isDir || entry.supported;
+                return (
+                  <li key={entry.relativePath}>
+                    <button
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs",
+                        clickable ? "hover:bg-muted" : "cursor-not-allowed text-muted-foreground",
+                      )}
+                      disabled={!clickable}
+                      onClick={() => enter(entry)}
+                      type="button"
+                    >
+                      {isDir ? <Folder size={14} /> : <FileIcon size={14} />}
+                      <span className="flex-1 truncate font-mono">{entry.name}</span>
+                      {!isDir && entry.format ? (
+                        <Badge size="small" variant="secondary">
+                          {entry.format}
+                        </Badge>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Only <code>.env*</code>, <code>appsettings*.json</code>, and{" "}
+          <code>application*.yml</code> can be selected. Other files are shown disabled.
+        </p>
+      </div>
+    </ComposerDialog>
+  );
+}
+
+function EnvTable({
+  rows,
+  revealAll,
+  onAdd,
+  onRemove,
+  onUpdate,
+}: {
+  rows: EnvRow[];
+  revealAll: boolean;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onUpdate: (index: number, patch: Partial<EnvRow>) => void;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="text-muted-foreground">
+        No variables yet.{" "}
+        <button className="underline" onClick={onAdd} type="button">
+          Add one
+        </button>
+        .
+      </div>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full font-mono text-[11px]">
+        <thead className="text-left text-muted-foreground">
+          <tr>
+            <th className="py-1 pr-3">Key</th>
+            <th className="py-1 pr-3">Value</th>
+            <th className="py-1 w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => {
+            const masked = !row.reveal && !revealAll;
+            return (
+              <tr key={index} className="border-t border-border/40">
+                <td className="py-1 pr-3 align-top">
+                  <input
+                    className="w-full rounded border border-border/60 bg-background px-1.5 py-0.5 font-mono"
+                    onChange={(event) => onUpdate(index, { key: event.target.value })}
+                    placeholder="KEY"
+                    spellCheck={false}
+                    value={row.key}
+                  />
+                </td>
+                <td className="py-1 pr-3 align-top">
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="w-full rounded border border-border/60 bg-background px-1.5 py-0.5 font-mono"
+                      onChange={(event) => onUpdate(index, { value: event.target.value })}
+                      spellCheck={false}
+                      type={masked ? "password" : "text"}
+                      value={row.value}
+                    />
+                    <button
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => onUpdate(index, { reveal: !row.reveal })}
+                      title={row.reveal || revealAll ? "Hide" : "Reveal"}
+                      type="button"
+                    >
+                      {row.reveal || revealAll ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </td>
+                <td className="py-1 align-top">
+                  <button
+                    className="text-muted-foreground hover:text-red-600"
+                    onClick={() => onRemove(index)}
+                    type="button"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function LogsTab({ serviceName }: { serviceName: string }) {

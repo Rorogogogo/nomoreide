@@ -411,6 +411,116 @@ export async function getServiceLogs(name: string): Promise<LogEntry[]> {
   return response.logs;
 }
 
+export type ConfigFileFormat = "env" | "json" | "yaml";
+
+export interface ConfigFileInfo {
+  path: string;
+  relativePath: string;
+  format: ConfigFileFormat;
+}
+
+export interface ServiceEnvEntry {
+  key: string;
+  value: string;
+  secret: boolean;
+}
+
+export interface ConfigFileEnvResponse {
+  ok: true;
+  exists: boolean;
+  format: "env";
+  path: string;
+  relativePath: string;
+  entries: ServiceEnvEntry[];
+}
+
+export interface ConfigFileTextResponse {
+  ok: true;
+  exists: boolean;
+  format: "json" | "yaml";
+  path: string;
+  relativePath: string;
+  content: string;
+}
+
+export type ConfigFileResponse = ConfigFileEnvResponse | ConfigFileTextResponse;
+
+export interface ConfigBrowseEntry {
+  name: string;
+  relativePath: string;
+  kind: "directory" | "file";
+  format?: ConfigFileFormat;
+  supported: boolean;
+}
+
+export interface ConfigBrowseResult {
+  ok: true;
+  cwd: string;
+  currentPath: string;
+  relativePath: string;
+  isRoot: boolean;
+  entries: ConfigBrowseEntry[];
+}
+
+export async function browseServiceConfig(
+  name: string,
+  path?: string,
+): Promise<ConfigBrowseResult> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : "";
+  return requestJson<ConfigBrowseResult>(
+    `/api/services/${encodeURIComponent(name)}/config-browse${query}`,
+  );
+}
+
+export async function getServiceConfigFiles(name: string): Promise<{
+  cwd: string;
+  files: ConfigFileInfo[];
+}> {
+  const response = await requestJson<{ ok: true; cwd: string; files: ConfigFileInfo[] }>(
+    `/api/services/${encodeURIComponent(name)}/config-files`,
+  );
+  return { cwd: response.cwd, files: response.files };
+}
+
+export async function getServiceConfigFile(
+  name: string,
+  path: string,
+): Promise<ConfigFileResponse> {
+  return requestJson<ConfigFileResponse>(
+    `/api/services/${encodeURIComponent(name)}/config-file?path=${encodeURIComponent(path)}`,
+  );
+}
+
+export async function putServiceConfigFileEnv(
+  name: string,
+  path: string,
+  entries: { key: string; value: string }[],
+): Promise<ConfigFileEnvResponse> {
+  return requestJson<ConfigFileEnvResponse>(
+    `/api/services/${encodeURIComponent(name)}/config-file?path=${encodeURIComponent(path)}`,
+    {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entries }),
+    },
+  );
+}
+
+export async function putServiceConfigFileText(
+  name: string,
+  path: string,
+  content: string,
+): Promise<ConfigFileTextResponse> {
+  return requestJson<ConfigFileTextResponse>(
+    `/api/services/${encodeURIComponent(name)}/config-file?path=${encodeURIComponent(path)}`,
+    {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+
 export async function postForm(
   url: string,
   values: Record<string, string | number | undefined>,

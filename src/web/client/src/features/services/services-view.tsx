@@ -1,15 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Plus, Radio } from "lucide-react";
+import { Bot, Box, ChevronLeft, ChevronRight, ExternalLink, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
-import { getServiceLogs, type DashboardData, type LogEntry, type ServiceStatus } from "@/lib/api";
+import { type DashboardData, type ServiceStatus } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { AgentContextPanel } from "./agent-context-panel";
 import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
-import { LogSearchInput, LogViewer, logEntryText } from "./log-viewer";
+import { HealthSummary } from "./health-summary";
 import { PortsOverview } from "./ports-overview";
+import { LifecycleActions } from "./service-actions";
+import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
-import { ServiceGroupSection, ServiceRow } from "./service-list";
+import {
+  isServiceOn,
+  PortEditor,
+  ServiceGroupSection,
+  ServiceRow,
+  serviceUrl,
+  StateBadge,
+} from "./service-list";
 
 export function ServicesView({
   data,
@@ -19,13 +31,10 @@ export function ServicesView({
   onRefresh: () => Promise<void>;
 }) {
   const firstService = data.config.services[0]?.name ?? "";
-  const [selectedLogService, setSelectedLogService] = useState(firstService);
-  const [logs, setLogs] = useState<LogEntry[]>(data.logs);
-  const [logQuery, setLogQuery] = useState("");
+  const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
-  const [streamLogs, setStreamLogs] = useState(false);
-  const logPaneRef = useRef<HTMLDivElement>(null);
-  const stickyBottomRef = useRef(true);
+  const [railCollapsed, setRailCollapsed] = useState(true);
+  const [contextOpen, setContextOpen] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
   const {
     error: showErrorToast,
@@ -53,90 +62,20 @@ export function ServicesView({
   );
   const healthByService = data.health ?? {};
   const hasVisibleServices = data.config.bundles.length > 0 || ungroupedServices.length > 0;
-  const normalizedLogQuery = logQuery.trim().toLowerCase();
-  const visibleLogs = useMemo(() => {
-    if (!normalizedLogQuery) return logs;
-    return logs.filter((entry) => logEntryText(entry).toLowerCase().includes(normalizedLogQuery));
-  }, [logs, normalizedLogQuery]);
 
   useEffect(() => {
-    if (!selectedLogService && firstService) {
-      setSelectedLogService(firstService);
+    const stillExists = data.config.services.some((service) => service.name === selectedService);
+    if (!stillExists && firstService) {
+      setSelectedService(firstService);
     }
-  }, [firstService, selectedLogService]);
+  }, [data.config.services, firstService, selectedService]);
 
-  useEffect(() => {
-    if (!selectedLogService) {
-      setLogs([]);
-      return;
-    }
-
-    let active = true;
-    void getServiceLogs(selectedLogService)
-      .then((nextLogs) => {
-        if (active) setLogs(nextLogs);
-      })
-      .catch(() => {
-        if (active) setLogs([]);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedLogService, data.runtime.services]);
-
-  useEffect(() => {
-    if (!streamLogs || !selectedLogService) return;
-
-    let active = true;
-    const load = async () => {
-      try {
-        const nextLogs = await getServiceLogs(selectedLogService);
-        if (active) setLogs(nextLogs);
-      } catch {
-        if (active) setLogs([]);
-      }
-    };
-
-    void load();
-    const interval = window.setInterval(load, 1000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [selectedLogService, streamLogs]);
-
-  useEffect(() => {
-    const pane = logPaneRef.current;
-    if (!pane) return;
-
-    function updateStickiness() {
-      if (!pane) return;
-      const distanceFromBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight;
-      stickyBottomRef.current = distanceFromBottom < 40;
-    }
-
-    updateStickiness();
-    pane.addEventListener("scroll", updateStickiness, { passive: true });
-    return () => pane.removeEventListener("scroll", updateStickiness);
-  }, [selectedLogService]);
-
-  useEffect(() => {
-    if (!streamLogs) return;
-    if (!stickyBottomRef.current) return;
-    const pane = logPaneRef.current;
-    if (pane) {
-      pane.scrollTop = pane.scrollHeight;
-    }
-  }, [streamLogs, visibleLogs]);
-
-  useEffect(() => {
-    stickyBottomRef.current = true;
-    const pane = logPaneRef.current;
-    if (pane) {
-      pane.scrollTop = pane.scrollHeight;
-    }
-  }, [selectedLogService]);
+  const selectedServiceDef = useMemo(
+    () => data.config.services.find((service) => service.name === selectedService),
+    [data.config.services, selectedService],
+  );
+  const selectedStatus = selectedService ? data.runtime.services[selectedService] : undefined;
+  const selectedHealth = selectedService ? healthByService[selectedService] : undefined;
 
   useEffect(() => {
     const nextStates = Object.fromEntries(
@@ -209,99 +148,48 @@ export function ServicesView({
     showSuccessToast,
   ]);
 
-  const logEmptyText = selectedLogService
-    ? normalizedLogQuery
-      ? `No log lines match "${logQuery.trim()}".`
-      : `No logs captured for ${selectedLogService}.`
-    : "No services registered.";
-
-  if (streamLogs) {
-    return (
-      <div className="flex h-full min-h-0 bg-card/85">
-        <Card className="flex min-h-0 min-w-0 flex-1 flex-col rounded-none border-0 bg-transparent">
-          <CardHeader className="shrink-0 border-b border-border px-3 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle>Streaming Logs</CardTitle>
-                <CardDescription className="text-xs">
-                  Polling the selected service every second and pinned to latest output.
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <LogSearchInput value={logQuery} onChange={setLogQuery} />
-                <select
-                  className="h-8 max-w-72 rounded-md border border-border bg-background px-2.5 text-xs"
-                  disabled={!data.config.services.length}
-                  onChange={(event) => setSelectedLogService(event.target.value)}
-                  value={selectedLogService}
-                >
-                  {data.config.services.map((service) => (
-                    <option key={service.name} value={service.name}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  aria-pressed={streamLogs}
-                  className="border-emerald-600 bg-emerald-50 text-emerald-700"
-                  onClick={() => setStreamLogs(false)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <Radio />
-                  Streaming
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="min-h-0 flex-1 p-0">
-            <LogViewer
-              containerRef={logPaneRef}
-              emptyText={logEmptyText}
-              logs={visibleLogs}
-              query={logQuery}
-            />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <>
-      <div className="grid h-full min-h-0 overflow-hidden bg-card/85 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-h-0 min-w-0 overflow-auto">
+      <div
+        className={cn(
+          "grid h-full min-h-0 overflow-hidden bg-card/85",
+          railCollapsed
+            ? "lg:grid-cols-[320px_minmax(0,1fr)]"
+            : "lg:grid-cols-[320px_minmax(0,1fr)_340px]",
+        )}
+      >
+        <div className="min-h-0 min-w-0 overflow-auto border-r border-border">
           <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
             <CardHeader className="border-b border-border px-3 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Services</CardTitle>
-                  <CardDescription className="text-xs">
-                    Grouped services are nested; ungrouped services stay standalone.
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    aria-haspopup="dialog"
-                    onClick={() => setServiceComposer("service")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    <Plus />
-                    Add Service
-                  </Button>
-                  <Button
-                    aria-haspopup="dialog"
-                    onClick={() => setServiceComposer("group")}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    <Box />
-                    Create Group
-                  </Button>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-sm">Services</CardTitle>
+                <div className="flex items-center gap-1">
+                  <Tooltip label="Add service" side="bottom">
+                    <Button
+                      aria-haspopup="dialog"
+                      aria-label="Add service"
+                      className="size-7"
+                      onClick={() => setServiceComposer("service")}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Plus />
+                    </Button>
+                  </Tooltip>
+                  <Tooltip label="Create group" side="left">
+                    <Button
+                      aria-haspopup="dialog"
+                      aria-label="Create group"
+                      className="size-7"
+                      onClick={() => setServiceComposer("group")}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Box />
+                    </Button>
+                  </Tooltip>
                 </div>
               </div>
             </CardHeader>
@@ -321,6 +209,8 @@ export function ServicesView({
                       )}
                       statuses={data.runtime.services}
                       timeline={data.timeline}
+                      selectedService={selectedService}
+                      onSelectService={setSelectedService}
                     />
                   ))}
                   {ungroupedServices.length
@@ -337,7 +227,7 @@ export function ServicesView({
                         if (kindServices.length === 0) return null;
                         return (
                           <div key={key}>
-                            <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+                            <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
                               <span>{label}</span>
                               <span className="text-muted-foreground/80">
                                 {kindServices.length}
@@ -353,6 +243,8 @@ export function ServicesView({
                                   ports={data.ports}
                                   onRefresh={onRefresh}
                                   timeline={data.timeline}
+                                  selected={selectedService === service.name}
+                                  onSelect={() => setSelectedService(service.name)}
                                 />
                               ))}
                             </div>
@@ -367,60 +259,126 @@ export function ServicesView({
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 rounded-none border-0 bg-transparent">
-            <CardHeader className="border-b border-border px-3 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Recent Logs</CardTitle>
-                  <CardDescription className="text-xs">
-                    Updates with dashboard refresh. Use Stream for a full-page live view.
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <LogSearchInput value={logQuery} onChange={setLogQuery} />
-                  <select
-                    className="h-8 max-w-72 rounded-md border border-border bg-background px-2.5 text-xs"
-                    disabled={!data.config.services.length}
-                    onChange={(event) => setSelectedLogService(event.target.value)}
-                    value={selectedLogService}
-                  >
-                    {data.config.services.map((service) => (
-                      <option key={service.name} value={service.name}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    aria-pressed={streamLogs}
-                    disabled={!selectedLogService}
-                    onClick={() => setStreamLogs(true)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    <Radio />
-                    Stream
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="min-w-0 p-0">
-              <LogViewer
-                className="max-h-[320px]"
-                containerRef={logPaneRef}
-                emptyText={logEmptyText}
-                logs={visibleLogs}
-                query={logQuery}
-              />
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="min-h-0 overflow-auto border-l border-border">
-          <PortsOverview ports={data.ports} />
-          <DebugTimeline events={data.timeline ?? []} />
+        <div className="min-h-0 min-w-0 overflow-auto">
+          {selectedServiceDef ? (
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="shrink-0 space-y-2 border-b border-border bg-background/60 px-4 py-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="min-w-0 truncate text-base font-semibold">
+                    {selectedServiceDef.name}
+                  </h2>
+                  <StateBadge state={selectedStatus?.state ?? "stopped"} />
+                  {selectedServiceDef.kind && selectedServiceDef.kind !== "local" ? (
+                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                      {selectedServiceDef.kind}
+                    </span>
+                  ) : null}
+                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                    <PortEditor service={selectedServiceDef} onRefresh={onRefresh} />
+                    {(() => {
+                      const openUrl =
+                        selectedStatus?.url ??
+                        (selectedServiceDef.port ? serviceUrl(selectedServiceDef.port) : undefined);
+                      return openUrl ? (
+                        <Tooltip label={`Open ${openUrl}`}>
+                          <Button
+                            aria-label="Open in browser"
+                            className="size-7"
+                            onClick={() => window.open(openUrl, "_blank", "noopener,noreferrer")}
+                            size="icon"
+                            type="button"
+                            variant="outline"
+                          >
+                            <ExternalLink />
+                          </Button>
+                        </Tooltip>
+                      ) : null;
+                    })()}
+                    {selectedHealth?.agentContext ? (
+                      <Tooltip label="Copy debug context for an AI agent">
+                        <Button
+                          aria-label="Copy agent debug context"
+                          className="size-7"
+                          onClick={() => setContextOpen(true)}
+                          size="icon"
+                          type="button"
+                          variant="outline"
+                        >
+                          <Bot />
+                        </Button>
+                      </Tooltip>
+                    ) : null}
+                    <LifecycleActions
+                      active={isServiceOn(selectedStatus?.state)}
+                      baseUrl={`/api/services/${encodeURIComponent(selectedServiceDef.name)}`}
+                      compact
+                      targetLabel={selectedServiceDef.name}
+                      onRefresh={onRefresh}
+                    />
+                    <Tooltip
+                      label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
+                      side="left"
+                    >
+                      <Button
+                        aria-label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
+                        className="size-7"
+                        onClick={() => setRailCollapsed((current) => !current)}
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      >
+                        {railCollapsed ? <ChevronLeft /> : <ChevronRight />}
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </div>
+                {selectedServiceDef.command ? (
+                  <div className="truncate font-mono text-[11px] text-muted-foreground" title={selectedServiceDef.command}>
+                    $ {selectedServiceDef.command}
+                  </div>
+                ) : null}
+                {selectedServiceDef.cwd ? (
+                  <div className="truncate font-mono text-[11px] text-muted-foreground" title={selectedServiceDef.cwd}>
+                    {selectedServiceDef.cwd}
+                  </div>
+                ) : null}
+                <HealthSummary health={selectedHealth} />
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto">
+                <ServiceDetailPanel
+                  serviceName={selectedServiceDef.name}
+                  status={selectedStatus}
+                  health={selectedHealth}
+                  timeline={data.timeline ?? []}
+                  onRefresh={onRefresh}
+                />
+              </div>
+            </div>
+          ) : (
+            <EmptyState label="Select a service to see details." />
+          )}
         </div>
+
+        {!railCollapsed ? (
+          <div className="min-h-0 overflow-auto border-l border-border">
+            <PortsOverview ports={data.ports} />
+            <DebugTimeline events={data.timeline ?? []} />
+          </div>
+        ) : null}
       </div>
+      {contextOpen && selectedServiceDef && selectedHealth?.agentContext ? (
+        <ComposerDialog
+          icon={<Bot />}
+          onClose={() => setContextOpen(false)}
+          title={`Agent context — ${selectedServiceDef.name}`}
+        >
+          <div className="p-4">
+            <AgentContextPanel context={selectedHealth.agentContext} />
+          </div>
+        </ComposerDialog>
+      ) : null}
       {serviceComposer ? (
         <ComposerDialog
           icon={serviceComposer === "service" ? <Plus /> : <Box />}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ExternalLink, Play, RotateCcw, Square, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import {
   PortConflictResponseError,
@@ -12,12 +13,14 @@ import { ComposerDialog } from "./service-forms";
 export function LifecycleActions({
   active,
   baseUrl,
+  compact = false,
   onRefresh,
   restartAction,
   targetLabel,
 }: {
   active: boolean;
   baseUrl: string;
+  compact?: boolean;
   onRefresh: () => Promise<void>;
   restartAction?: () => Promise<void>;
   targetLabel: string;
@@ -25,6 +28,7 @@ export function LifecycleActions({
   if (!active) {
     return (
       <ActionButton
+        compact={compact}
         intent="start"
         icon={<Play />}
         label="Start"
@@ -38,6 +42,7 @@ export function LifecycleActions({
   return (
     <>
       <ActionButton
+        compact={compact}
         intent="restart"
         icon={<RotateCcw />}
         label="Restart"
@@ -47,6 +52,7 @@ export function LifecycleActions({
         onRefresh={onRefresh}
       />
       <ActionButton
+        compact={compact}
         intent="stop"
         icon={<Square />}
         label="Stop"
@@ -69,6 +75,7 @@ export function actionErrorMessage(
 
 function ActionButton({
   action,
+  compact = false,
   intent = "neutral",
   icon,
   label,
@@ -77,6 +84,7 @@ function ActionButton({
   onRefresh,
 }: {
   action?: () => Promise<void>;
+  compact?: boolean;
   intent?: "neutral" | "restart" | "start" | "stop";
   icon: ReactNode;
   label: string;
@@ -110,18 +118,23 @@ function ActionButton({
     }
   }
 
+  const button = (
+    <Button
+      aria-label={label}
+      className={`${actionButtonClass[intent]} ${compact ? "size-7" : ""}`.trim()}
+      disabled={busy}
+      onClick={() => run()}
+      size={compact ? "icon" : "sm"}
+      variant="outline"
+    >
+      {icon}
+      {compact ? null : label}
+    </Button>
+  );
+
   return (
     <>
-      <Button
-        className={actionButtonClass[intent]}
-        variant="outline"
-        size="sm"
-        disabled={busy}
-        onClick={() => run()}
-      >
-        {icon}
-        {label}
-      </Button>
+      {compact ? <Tooltip label={label}>{button}</Tooltip> : button}
       {conflict ? (
         <PortConflictDialog
           busy={busy}

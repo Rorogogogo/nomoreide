@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Bot, ChevronDown, ExternalLink, Pencil, Save } from "lucide-react";
+import { ChevronDown, Pencil, Play, Save, Square } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,9 @@ import {
   type TimelineEvent,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AgentContextPanel } from "./agent-context-panel";
-import { HealthSummary } from "./health-summary";
+import { Tooltip } from "@/components/ui/tooltip";
 import { ProcessBadge } from "./process-badge";
-import { PortStateBadge } from "./ports-overview";
-import { ServiceDetailPanel } from "./service-detail-panel";
-import { ComposerDialog, GroupForm } from "./service-forms";
+import { GroupForm } from "./service-forms";
 import { LifecycleActions, actionErrorMessage } from "./service-actions";
 
 export function ServiceGroupSection({
@@ -31,6 +28,8 @@ export function ServiceGroupSection({
   health,
   statuses,
   timeline,
+  selectedService,
+  onSelectService,
 }: {
   allServices: DashboardData["config"]["services"];
   group: DashboardData["config"]["bundles"][number];
@@ -40,6 +39,8 @@ export function ServiceGroupSection({
   health: DashboardData["health"];
   statuses: DashboardData["runtime"]["services"];
   timeline: TimelineEvent[];
+  selectedService?: string;
+  onSelectService: (name: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -47,55 +48,48 @@ export function ServiceGroupSection({
 
   return (
     <section>
-      <div className="grid gap-2 bg-muted/35 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="min-w-0">
-          <button
-            className="flex max-w-full items-start gap-2 text-left"
-            onClick={() => setCollapsed((current) => !current)}
-            type="button"
-          >
-            <ChevronDown
-              className={cn(
-                "mt-0.5 size-3.5 shrink-0 text-muted-foreground transition-transform",
-                collapsed && "-rotate-90",
-              )}
-            />
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-2">
-                <Badge appearance="subtle" className="shadow-none" size="small" variant="secondary">
-                  group
-                </Badge>
-                <span className="text-sm font-medium">{group.name}</span>
-                <Badge variant="secondary">{group.services.length}</Badge>
-              </span>
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                {group.services.join(", ")}
-              </span>
-            </span>
-          </button>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex items-center gap-1.5 bg-muted/35 px-3 py-1.5">
+        <button
+          aria-expanded={!collapsed}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          onClick={() => setCollapsed((current) => !current)}
+          type="button"
+        >
+          <ChevronDown
+            className={cn(
+              "size-3.5 shrink-0 text-muted-foreground transition-transform",
+              collapsed && "-rotate-90",
+            )}
+          />
+          <span className="truncate text-sm font-medium">{group.name}</span>
+          <Badge size="small" variant="secondary">
+            {group.services.length}
+          </Badge>
+        </button>
+        <Tooltip label="Edit group">
           <Button
             aria-expanded={editing}
+            aria-label={`Edit ${group.name}`}
+            className="size-7"
             onClick={() => setEditing((current) => !current)}
-            size="sm"
+            size="icon"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             <Pencil />
-            Edit
           </Button>
-          <LifecycleActions
-            active={active}
-            baseUrl={`/api/bundles/${encodeURIComponent(group.name)}`}
-            restartAction={async () => {
-              await postForm(`/api/bundles/${encodeURIComponent(group.name)}/stop`, {});
-              await postForm(`/api/bundles/${encodeURIComponent(group.name)}/start`, {});
-            }}
-            targetLabel={`group ${group.name}`}
-            onRefresh={onRefresh}
-          />
-        </div>
+        </Tooltip>
+        <LifecycleActions
+          active={active}
+          baseUrl={`/api/bundles/${encodeURIComponent(group.name)}`}
+          compact
+          restartAction={async () => {
+            await postForm(`/api/bundles/${encodeURIComponent(group.name)}/stop`, {});
+            await postForm(`/api/bundles/${encodeURIComponent(group.name)}/start`, {});
+          }}
+          targetLabel={`group ${group.name}`}
+          onRefresh={onRefresh}
+        />
       </div>
       {editing ? (
         <div className="border-t border-border bg-background/65 p-3">
@@ -122,6 +116,8 @@ export function ServiceGroupSection({
                 ports={ports}
                 onRefresh={onRefresh}
                 timeline={timeline}
+                selected={selectedService === service.name}
+                onSelect={() => onSelectService(service.name)}
               />
             ))
           ) : (
@@ -138,145 +134,78 @@ export function ServiceGroupSection({
 export function ServiceRow({
   service,
   status,
-  health,
-  ports,
   onRefresh,
-  timeline = [],
+  selected = false,
+  onSelect,
 }: {
   service: DashboardData["config"]["services"][number];
   status?: ServiceStatus;
   health?: ServiceHealth;
-  ports: PortOverview[];
+  ports?: PortOverview[];
   onRefresh: () => Promise<void>;
   timeline?: TimelineEvent[];
+  selected?: boolean;
+  onSelect?: () => void;
 }) {
-  const [contextOpen, setContextOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
   const state = status?.state ?? "stopped";
   const active = isServiceOn(state);
-  const openUrl = status?.url ?? (service.port ? serviceUrl(service.port) : undefined);
-  const configuredPort = service.port
-    ? ports.find((port) => port.port === service.port)
-    : undefined;
-  const detectedPort = portFromUrl(status?.url);
-  const detectedPortOverview = detectedPort
-    ? ports.find((port) => port.port === detectedPort)
-    : undefined;
+  const [busy, setBusy] = useState(false);
+  const { error: showErrorToast } = useToasts();
+
+  async function toggle(event: React.MouseEvent) {
+    event.stopPropagation();
+    setBusy(true);
+    try {
+      const action = active ? "stop" : "start";
+      await postForm(`/api/services/${encodeURIComponent(service.name)}/${action}`, {});
+      await onRefresh();
+    } catch (caught) {
+      showErrorToast(actionErrorMessage(active ? "Stop" : "Start", service.name, caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div>
-    <div className="grid gap-2 px-3 py-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            aria-expanded={expanded}
-            aria-label={expanded ? "Collapse details" : "Expand details"}
-            className="inline-flex shrink-0 items-center text-muted-foreground hover:text-foreground"
-            onClick={() => setExpanded((current) => !current)}
-            type="button"
-          >
-            <ChevronDown
-              className={cn(
-                "size-3.5 transition-transform",
-                expanded ? "" : "-rotate-90",
-              )}
-            />
-          </button>
-          <ProcessBadge command={service.command ?? ""} />
-          <span className="text-sm font-medium">{service.name}</span>
-          <StateBadge state={state} />
-          {service.kind && service.kind !== "local" ? (
-            <Badge variant="outline">{service.kind}</Badge>
-          ) : null}
-          {service.port ? <Badge variant="outline">:{service.port}</Badge> : null}
-          {configuredPort ? <PortStateBadge port={configuredPort} compact /> : null}
-          {detectedPortOverview && detectedPortOverview.port !== service.port ? (
-            <Badge variant="success">actual :{detectedPortOverview.port}</Badge>
-          ) : null}
-        </div>
-        {service.command ? (
-          <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
-            {service.command}
-          </div>
+    <div
+      aria-selected={selected}
+      className={cn(
+        "flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors",
+        selected ? "border-l-2 border-primary bg-muted/70" : "border-l-2 border-transparent hover:bg-muted/30",
+      )}
+      onClick={onSelect}
+      role="option"
+    >
+      <ProcessBadge command={service.command ?? ""} />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{service.name}</div>
+        {service.port ? (
+          <div className="text-[11px] text-muted-foreground">:{service.port}</div>
         ) : null}
-        {service.kind === "docker-compose" ? (
-          <div className="truncate text-[11px] text-muted-foreground">
-            docker compose service: {service.composeService}
-            {service.composeFile ? ` (${service.composeFile})` : ""}
-          </div>
-        ) : null}
-        {service.kind === "ssh" ? (
-          <div className="truncate text-[11px] text-amber-600 dark:text-amber-400">
-            Remote service on {service.host}. Commands run through your local SSH config and SSH agent.
-          </div>
-        ) : null}
-        {service.cwd ? (
-          <div className="truncate text-[11px] text-muted-foreground">{service.cwd}</div>
-        ) : null}
-        <HealthSummary health={health} />
       </div>
-      <div className="flex flex-wrap justify-end gap-1.5">
-        <PortEditor service={service} onRefresh={onRefresh} />
-        {openUrl ? (
-          <Button
-            onClick={() => window.open(openUrl, "_blank", "noopener,noreferrer")}
-            size="sm"
-            type="button"
-            variant="outline"
-            title={openUrl}
-          >
-            <ExternalLink />
-            Open
-          </Button>
-        ) : null}
-        {health?.agentContext ? (
-          <Button
-            onClick={() => setContextOpen(true)}
-            size="sm"
-            title="Copy a paste-ready debug packet for an AI agent"
-            type="button"
-            variant="outline"
-          >
-            <Bot />
-            Context
-          </Button>
-        ) : null}
-        <LifecycleActions
-          active={active}
-          baseUrl={`/api/services/${encodeURIComponent(service.name)}`}
-          targetLabel={service.name}
-          onRefresh={onRefresh}
-        />
-      </div>
-      {contextOpen && health?.agentContext ? (
-        <ComposerDialog
-          icon={<Bot />}
-          onClose={() => setContextOpen(false)}
-          title={`Agent context — ${service.name}`}
+      <StateBadge state={state} />
+      <Tooltip label={active ? "Stop" : "Start"} side="left">
+        <Button
+          aria-label={active ? `Stop ${service.name}` : `Start ${service.name}`}
+          className="size-7"
+          disabled={busy}
+          onClick={toggle}
+          size="icon"
+          type="button"
+          variant="outline"
         >
-          <div className="p-4">
-            <AgentContextPanel context={health.agentContext} />
-          </div>
-        </ComposerDialog>
-      ) : null}
-    </div>
-    {expanded ? (
-      <ServiceDetailPanel
-        serviceName={service.name}
-        status={status}
-        health={health}
-        timeline={timeline}
-        onRefresh={onRefresh}
-      />
-    ) : null}
+          {active ? <Square /> : <Play />}
+        </Button>
+      </Tooltip>
     </div>
   );
 }
 
-function isServiceOn(state: ServiceStatus["state"] | undefined): boolean {
+export function isServiceOn(state: ServiceStatus["state"] | undefined): boolean {
   return state === "running" || state === "starting";
 }
 
-function PortEditor({
+export function PortEditor({
   service,
   onRefresh,
 }: {
@@ -340,7 +269,7 @@ function PortEditor({
   );
 }
 
-function serviceUrl(port: number): string {
+export function serviceUrl(port: number): string {
   return `http://127.0.0.1:${port}`;
 }
 
@@ -354,7 +283,7 @@ function portFromUrl(url: string | undefined): number | undefined {
   }
 }
 
-function StateBadge({ state }: { state: ServiceStatus["state"] }) {
+export function StateBadge({ state }: { state: ServiceStatus["state"] }) {
   return (
     <Badge
       variant={
