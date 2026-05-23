@@ -126,14 +126,15 @@ Persist token usage over time so you can see "this feature cost ~$X / N agent ru
 
 # Expandability / tech debt
 
-## 13. Finish the structural pass (router split already done)
-The web server router was split into a `src/web/routes/` registry (`server.ts` 765 → 123 lines) and the conventions are in CLAUDE.md. Remaining god-files to break up the same way — vertical slices, ~300 lines/file soft cap:
+## 13. Finish the structural pass (router split already done) — ✅ DONE (ROR-13)
+The web server router was split into a `src/web/routes/` registry (`server.ts` 765 → 123 lines) and the conventions are in CLAUDE.md. The remaining god-files were broken up the same way — vertical slices, ~300 lines/file soft cap — all behavior-preserving (tsc + test + build green after each):
 
-- **`src/mcp/tools.ts` (426)** → `mcp/tools/{git,services,agent}.ts`, each a `registerXTools(server, ctx)`; `mcp/server.ts` aggregates. Mirrors the routes registry.
-- **`client/src/lib/api.ts` (594)** → `lib/api/{agent,git,services}.ts` re-exported from `lib/api/index.ts`.
-- **`features/services/service-detail-panel.tsx` (874)** → extract data-fetching into a `use-service-detail.ts` hook; pull sub-sections (logs, config, health, actions) into their own components in the feature folder; leave the panel as layout.
-- **`features/agent/agent-view.tsx` (759)** → split per tab (memory / skills / MCPs / tool-calls / usage) into sub-components + hooks.
-- **`features/services/service-forms.tsx` (564)** and **`features/git/git-graph-view.tsx` (531)** → same treatment.
+- **`src/mcp/tools.ts` (426)** → `mcp/tools/{services,git,agent}.ts` (each a `registerXTools(server, ctx)`) + `tools/context.ts` (shared `ToolContext`, `git()`, `stringify`, recording wrapper) + `tools/index.ts` aggregator. Mirrors the routes registry.
+- **`client/src/lib/api.ts` (594)** → `lib/api/{client,agent,git,services}.ts` re-exported from `lib/api/index.ts`; the `@/lib/api` import path is unchanged.
+- **`features/services/service-detail-panel.tsx` (874 → 85)** → `service-detail/` slice: per-tab components (processes/http/env/logs) + `use-service-env.ts` / `use-service-logs.ts` hooks + `env-table`/`file-browser-dialog`; panel is now layout only.
+- **`features/agent/agent-view.tsx` (759 → 89)** → per-tab components (`overview`/`memory`/`tools`/`activity`) + `usage-card` + `tool-call-feed`.
+- **`features/services/service-forms.tsx` (564 → barrel)** → `service-form/` slice (`composer-dialog`, `service-form` + `use-service-form` hook + `presets` + `service-test-alert`, `group-form`); the old file is now a re-export barrel so importers are untouched.
+- **`features/git/git-graph-view.tsx` (531 → 122)** → `git-graph/` slice (`use-git-graph` hook, `branch-tree`, `commit-list`, `commit-files-list`, `commit-diff-panel`).
 
 Leave large *core* modules (`process-manager.ts` 683, `git-manager.ts` 412) alone unless they keep growing — they're cohesive.
 
