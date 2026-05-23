@@ -105,7 +105,6 @@ export function createUiLifecycleManager(
 
     async close(): Promise<UiLifecycleCloseResult> {
       if (ownedServer) {
-        const url = ownedServer.url;
         await ownedServer.stop();
         ownedServer = null;
         await removeState(statePath);

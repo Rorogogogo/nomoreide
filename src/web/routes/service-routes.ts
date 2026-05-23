@@ -4,6 +4,7 @@ import type { IncomingMessage } from "node:http";
 import type { ConfigStore } from "../../core/config-store.js";
 import {
   browseDirectory,
+  type ConfigFileInfo,
   ConfigFilePathError,
   detectConfigFiles,
   resolveConfigFile,
@@ -160,7 +161,7 @@ export const serviceRoutes: Route[] = [
         sendJson(response, { ok: false, error: "path is required" }, 400);
         return;
       }
-      let file;
+      let file: ConfigFileInfo;
       try {
         file = resolveConfigFile(serviceCwd, requested);
       } catch (error) {

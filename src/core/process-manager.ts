@@ -245,7 +245,7 @@ export class ProcessManager {
 
   private async maybeStartInspector(name: string): Promise<void> {
     const runtime = this.runtimes.get(name);
-    if (!runtime || !runtime.inspectorEnabled || runtime.inspectorHandle) return;
+    if (!runtime?.inspectorEnabled || runtime.inspectorHandle) return;
     const upstreamPort = portFromUrl(runtime.status.url);
     if (!upstreamPort) return;
     const handle = await startHttpInspector({

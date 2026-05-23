@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

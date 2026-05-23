@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type React from "react";
 import { motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";

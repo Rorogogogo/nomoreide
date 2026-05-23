@@ -21,7 +21,7 @@ export function nextChangeDecision({
     return { kind: "hunk", activeHunkIndex: activeHunkIndex + 1 };
   }
 
-  const currentFileIndex = filePaths.findIndex((filePath) => filePath === selectedFile);
+  const currentFileIndex = filePaths.indexOf(selectedFile);
   const nextFilePath = filePaths[currentFileIndex + 1];
   if (!nextFilePath) {
     return { kind: "none" };

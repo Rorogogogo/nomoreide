@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -215,7 +216,7 @@ async function walkLimited(
   depth: number,
 ): Promise<void> {
   if (depth > 4) return;
-  let entries;
+  let entries: Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch {

@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button-1";
@@ -110,7 +110,9 @@ const toastStore = {
   },
 
   notify() {
-    toastStore.listeners.forEach((fn) => fn());
+    toastStore.listeners.forEach((fn) => {
+      fn();
+    });
   },
 };
 
@@ -166,12 +168,16 @@ const ToastContainer = () => {
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    toastStore.toasts.forEach((toast) => toast.pause?.());
+    toastStore.toasts.forEach((toast) => {
+      toast.pause?.();
+    });
   };
 
   const handleMouseLeave = () => {
     setIsHovered(false);
-    toastStore.toasts.forEach((toast) => toast.resume?.());
+    toastStore.toasts.forEach((toast) => {
+      toast.resume?.();
+    });
   };
 
   const visibleToasts = toasts.slice(lastVisibleStart);

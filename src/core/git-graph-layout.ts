@@ -40,7 +40,7 @@ export function assignLanes(commits: GitGraphCommitInput[]): GitGraphLayoutRow[]
   const active: (string | null)[] = [];
 
   for (const commit of commits) {
-    let lane = active.findIndex((h) => h === commit.hash);
+    let lane = active.indexOf(commit.hash);
     if (lane === -1) {
       lane = firstFreeLane(active);
       if (lane === active.length) {

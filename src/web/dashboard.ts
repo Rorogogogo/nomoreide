@@ -1,11 +1,11 @@
-import { ConfigStore } from "../core/config-store.js";
+import type { ConfigStore } from "../core/config-store.js";
 import { GitManager, type GitStatus } from "../core/git-manager.js";
-import { LogStore } from "../core/log-store.js";
+import type { LogStore } from "../core/log-store.js";
 import {
   getPortBindingStatus,
   type HostPortStatus,
 } from "../core/port-utils.js";
-import { ProcessManager } from "../core/process-manager.js";
+import type { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
 import type {
