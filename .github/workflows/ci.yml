@@ -15,8 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # DB Peek uses built-in node:sqlite (Node >=22.5), matching engines.node.
-        node-version: ["22", "24"]
+        # Node 20 is supported; DB Peek's SQLite needs >=22.5 (built-in
+        # node:sqlite) and degrades gracefully on 20 — pg/mysql work everywhere.
+        node-version: ["20", "22", "24"]
 
     steps:
       - uses: actions/checkout@v6

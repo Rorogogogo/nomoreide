@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
 import {
@@ -10,35 +9,45 @@ import {
   maskConnectionUrl,
 } from "../src/core/db-peek.js";
 
-let tempDir: string;
-let dbFile: string;
-let store: ConfigStore;
-let dbPeek: DbPeek;
+// node:sqlite is built-in only on Node >=22.5; skip the SQLite suite below that
+// (the driver itself degrades gracefully — pg/mysql work on Node 20).
+let DatabaseSync: typeof import("node:sqlite").DatabaseSync | undefined;
+try {
+  ({ DatabaseSync } = await import("node:sqlite"));
+} catch {
+  DatabaseSync = undefined;
+}
+const sqliteAvailable = DatabaseSync !== undefined;
 
-beforeEach(async () => {
-  tempDir = await mkdtemp(join(tmpdir(), "nomoreide-dbpeek-"));
-  dbFile = join(tempDir, "app.db");
+describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
+  let tempDir: string;
+  let dbFile: string;
+  let store: ConfigStore;
+  let dbPeek: DbPeek;
 
-  // Seed a SQLite fixture, then close it so DbPeek opens it read-only.
-  const seed = new DatabaseSync(dbFile);
-  seed.exec(
-    `CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL, active INTEGER);
-     INSERT INTO users (email, active) VALUES ('a@x.com', 1), ('b@x.com', 0);
-     CREATE TABLE orders (id INTEGER PRIMARY KEY, total REAL);`,
-  );
-  seed.close();
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "nomoreide-dbpeek-"));
+    dbFile = join(tempDir, "app.db");
 
-  store = new ConfigStore(join(tempDir, "config.json"));
-  await store.registerDatabase({ name: "app", engine: "sqlite", url: dbFile });
-  dbPeek = new DbPeek({ configStore: store });
-});
+    // Seed a SQLite fixture, then close it so DbPeek opens it read-only.
+    const seed = new DatabaseSync!(dbFile);
+    seed.exec(
+      `CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL, active INTEGER);
+       INSERT INTO users (email, active) VALUES ('a@x.com', 1), ('b@x.com', 0);
+       CREATE TABLE orders (id INTEGER PRIMARY KEY, total REAL);`,
+    );
+    seed.close();
 
-afterEach(async () => {
-  await dbPeek.closeAll();
-  await rm(tempDir, { recursive: true, force: true });
-});
+    store = new ConfigStore(join(tempDir, "config.json"));
+    await store.registerDatabase({ name: "app", engine: "sqlite", url: dbFile });
+    dbPeek = new DbPeek({ configStore: store });
+  });
 
-describe("DbPeek (SQLite)", () => {
+  afterEach(async () => {
+    await dbPeek.closeAll();
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
   test("lists registered connections (SQLite path is not masked)", async () => {
     const connections = await dbPeek.listConnections();
     expect(connections).toEqual([{ name: "app", engine: "sqlite", url: dbFile }]);

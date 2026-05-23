@@ -30,7 +30,14 @@ export class SqliteDriver implements DbDriver {
   private async db(): Promise<DatabaseSync> {
     if (!this.dbPromise) {
       this.dbPromise = (async () => {
-        const { DatabaseSync } = await import("node:sqlite");
+        let DatabaseSync: typeof import("node:sqlite").DatabaseSync;
+        try {
+          ({ DatabaseSync } = await import("node:sqlite"));
+        } catch {
+          throw new Error(
+            `SQLite browsing requires Node >=22.5 (uses the built-in node:sqlite module); you're on ${process.version}. Upgrade Node, or use a Postgres/MySQL connection instead.`,
+          );
+        }
         return new DatabaseSync(this.file, { readOnly: true });
       })();
     }
