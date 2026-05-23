@@ -9,16 +9,27 @@ interface LogStoreOptions {
   timelineStore?: TimelineStore;
 }
 
+type LogListener = (entry: LogEntry) => void;
+
 export class LogStore {
   private readonly entriesByService = new Map<string, LogEntry[]>();
   private readonly baseDir: string;
   private readonly maxLinesPerService: number;
   private readonly timelineStore?: TimelineStore;
+  private readonly listeners = new Set<LogListener>();
 
   constructor(options: LogStoreOptions = {}) {
     this.baseDir = options.baseDir ?? ".nomoreide/logs";
     this.maxLinesPerService = options.maxLinesPerService ?? 500;
     this.timelineStore = options.timelineStore;
+  }
+
+  /** Observe every appended line. Returns an unsubscribe fn. */
+  subscribe(listener: LogListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   async append(
@@ -47,8 +58,19 @@ export class LogStore {
     );
 
     await this.appendTimelineEvent(entry);
+    this.emit(entry);
 
     return entry;
+  }
+
+  private emit(entry: LogEntry): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+      } catch {
+        // ignore listener errors
+      }
+    }
   }
 
   read(service: string, limit = this.maxLinesPerService): LogEntry[] {

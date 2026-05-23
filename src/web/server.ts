@@ -5,6 +5,7 @@ import {
   ConfigValidationError,
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
+import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
@@ -46,10 +47,12 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   manager.installShutdownHandlers();
   const cwd = options.cwd ?? process.cwd();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
+  const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
 
   const services: RouteServices = {
     configStore,
     cwd,
+    errorInbox,
     logStore,
     manager,
     timelineStore,
