@@ -100,6 +100,12 @@ export function CommitList({
                   <span className="shrink-0 text-[10px] text-muted-foreground">
                     {commit.author}
                   </span>
+                  <span
+                    className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground/70"
+                    title={new Date(commit.timestamp * 1000).toLocaleString()}
+                  >
+                    {formatRelativeTime(commit.timestamp)}
+                  </span>
                 </button>
               </li>
             ))}
@@ -108,6 +114,22 @@ export function CommitList({
       </div>
     </aside>
   );
+}
+
+/** Compact "time ago" (e.g. 5m, 3h, 2d, 4mo, 1y) from a Unix-seconds timestamp. */
+function formatRelativeTime(timestampSeconds: number): string {
+  if (!timestampSeconds) return "";
+  const seconds = Math.max(0, Math.floor(Date.now() / 1000 - timestampSeconds));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.floor(months / 12)}y`;
 }
 
 function refBadgeClass(kind: GitGraphCommit["refs"][number]["kind"]): string {
