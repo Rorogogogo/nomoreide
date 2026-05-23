@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
-import { type DashboardData, type ServiceStatus } from "@/lib/api";
+import type { DashboardData, ServiceStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AgentContextPanel } from "./agent-context-panel";
 import { DebugTimeline } from "./debug-timeline";

@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
@@ -54,7 +55,7 @@ async function walk(
   results: ConfigFileInfo[],
 ): Promise<void> {
   if (results.length >= MAX_FILES) return;
-  let entries;
+  let entries: Dirent[];
   try {
     entries = await readdir(current, { withFileTypes: true });
   } catch {

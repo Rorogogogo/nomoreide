@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { ChevronDown, Pencil, Play, Save, Square } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -271,16 +271,6 @@ export function PortEditor({
 
 export function serviceUrl(port: number): string {
   return `http://127.0.0.1:${port}`;
-}
-
-function portFromUrl(url: string | undefined): number | undefined {
-  if (!url) return undefined;
-  try {
-    const parsed = new URL(url);
-    return parsed.port ? Number(parsed.port) : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function StateBadge({ state }: { state: ServiceStatus["state"] }) {

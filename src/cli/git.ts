@@ -1,4 +1,4 @@
-import { ConfigStore } from "../core/config-store.js";
+import type { ConfigStore } from "../core/config-store.js";
 import { GitManager } from "../core/git-manager.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";

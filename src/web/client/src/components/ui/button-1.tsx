@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import clsx from "clsx";
 import { Spinner } from "@/components/ui/spinner-1";
 

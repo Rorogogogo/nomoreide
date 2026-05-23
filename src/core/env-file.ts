@@ -38,12 +38,13 @@ export function parseEnvFile(content: string): EnvLine[] {
 }
 
 export function serializeEnvLines(lines: EnvLine[]): string {
-  return lines
+  const body = lines
     .map((line) => {
       if (line.kind === "raw") return line.text;
       return `${line.key}=${quote(line.value, line.quote)}`;
     })
-    .join("\n") + "\n";
+    .join("\n");
+  return `${body}\n`;
 }
 
 export function mergeEntries(existing: EnvLine[], entries: EnvEntry[]): EnvLine[] {
