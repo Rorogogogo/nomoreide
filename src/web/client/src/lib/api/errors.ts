@@ -32,3 +32,14 @@ export async function getErrorIncidents(limit = 100): Promise<ErrorIncident[]> {
 export async function getErrorPrompt(id: number): Promise<ErrorIncidentPrompt> {
   return requestJson<{ ok: true } & ErrorIncidentPrompt>(`/api/errors/${id}/prompt`);
 }
+
+export interface ErrorReproBundle {
+  incidentId: number;
+  markdown: string;
+  savedPath?: string;
+}
+
+export async function getErrorBundle(id: number, save = false): Promise<ErrorReproBundle> {
+  const query = save ? "?save=1" : "";
+  return requestJson<{ ok: true } & ErrorReproBundle>(`/api/errors/${id}/bundle${query}`);
+}

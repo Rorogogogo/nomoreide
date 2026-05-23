@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Check, ClipboardCopy, FileWarning } from "lucide-react";
+import { Check, ClipboardCopy, FileWarning, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
-import { getErrorPrompt, type ErrorIncident } from "@/lib/api";
+import { getErrorBundle, getErrorPrompt, type ErrorIncident } from "@/lib/api";
 
 export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [bundling, setBundling] = useState(false);
 
   async function copyToAgent() {
     setCopying(true);
@@ -22,6 +23,19 @@ export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
       showErrorToast(err instanceof Error ? err.message : String(err));
     } finally {
       setCopying(false);
+    }
+  }
+
+  async function copyReproBundle() {
+    setBundling(true);
+    try {
+      const { markdown } = await getErrorBundle(incident.id);
+      await navigator.clipboard.writeText(markdown);
+      showSuccessToast("Copied repro bundle to clipboard.");
+    } catch (err) {
+      showErrorToast(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBundling(false);
     }
   }
 
@@ -44,10 +58,21 @@ export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
               </Badge>
             ) : null}
           </div>
-          <Button onClick={() => void copyToAgent()} disabled={copying} size="sm">
-            {copied ? <Check /> : <ClipboardCopy />}
-            {copied ? "Copied" : "Copy to agent"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => void copyReproBundle()}
+              disabled={bundling}
+              size="sm"
+              variant="outline"
+            >
+              <Package />
+              {bundling ? "Bundling…" : "Copy repro bundle"}
+            </Button>
+            <Button onClick={() => void copyToAgent()} disabled={copying} size="sm">
+              {copied ? <Check /> : <ClipboardCopy />}
+              {copied ? "Copied" : "Copy to agent"}
+            </Button>
+          </div>
         </div>
         <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
         {incident.file ? (
@@ -70,7 +95,7 @@ export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
         </pre>
         <p className="mt-3 text-[11px] text-muted-foreground">
           "Copy to agent" bundles this excerpt with the affected file's diff and the last 40 log
-          lines.
+          lines. "Copy repro bundle" adds the service's runtime state and masked `.env` for sharing.
         </p>
       </div>
     </div>
