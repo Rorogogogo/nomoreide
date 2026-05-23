@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from "node:path";
 import { z } from "zod";
 import type {
   BundleDefinition,
+  DatabaseConnection,
   NoMoreIdeConfig,
   GitRepositoryDefinition,
   ServiceDefinition,
@@ -60,12 +61,19 @@ const gitRepositorySchema = z.object({
   path: z.string().min(1),
 });
 
+const databaseSchema = z.object({
+  name: z.string().min(1),
+  engine: z.enum(["postgres", "mysql", "sqlite"]),
+  url: z.string().min(1),
+});
+
 const configSchema = z.object({
   version: z.literal(1),
   services: z.array(serviceSchema),
   bundles: z.array(bundleSchema),
   gitRepositories: z.array(gitRepositorySchema).default([]),
   selectedGitRepository: z.string().min(1).optional(),
+  databases: z.array(databaseSchema).default([]),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -73,6 +81,7 @@ const defaultConfig: NoMoreIdeConfig = {
   services: [],
   bundles: [],
   gitRepositories: [],
+  databases: [],
 };
 
 export function defaultGlobalConfigPath(): string {
@@ -161,6 +170,28 @@ export class ConfigStore {
     }
 
     config.selectedGitRepository = name;
+    await this.save(config);
+    return config;
+  }
+
+  async registerDatabase(
+    database: DatabaseConnection,
+  ): Promise<NoMoreIdeConfig> {
+    const parsed = databaseSchema.parse(database);
+    const config = await this.load();
+
+    config.databases = [
+      ...config.databases.filter((item) => item.name !== parsed.name),
+      parsed,
+    ];
+
+    await this.save(config);
+    return config;
+  }
+
+  async removeDatabase(name: string): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.databases = config.databases.filter((item) => item.name !== name);
     await this.save(config);
     return config;
   }

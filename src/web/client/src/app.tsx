@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Bot,
+  Database,
   GitBranch,
   Inbox,
   PanelLeft,
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { AgentView } from "@/features/agent/agent-view";
+import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { GitReviewView } from "@/features/git/git-review-view";
@@ -24,7 +26,7 @@ import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-type Page = "services" | "git" | "agent" | "errors";
+type Page = "services" | "git" | "agent" | "errors" | "database";
 
 export function AppIdentity({ className }: { className?: string }) {
   return (
@@ -44,6 +46,7 @@ export function App() {
   const [page, setPage] = useState<Page>(() => {
     if (window.location.pathname.startsWith("/agent")) return "agent";
     if (window.location.pathname.startsWith("/errors")) return "errors";
+    if (window.location.pathname.startsWith("/database")) return "database";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
   });
@@ -104,7 +107,9 @@ export function App() {
           ? "/agent"
           : page === "errors"
             ? "/errors"
-            : "/";
+            : page === "database"
+              ? "/database"
+              : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -194,6 +199,13 @@ export function App() {
               onClick={() => setPage("errors")}
             />
             <NavButton
+              active={page === "database"}
+              collapsed={sidebarCollapsed}
+              icon={<Database />}
+              label="Database"
+              onClick={() => setPage("database")}
+            />
+            <NavButton
               active={page === "agent"}
               collapsed={sidebarCollapsed}
               icon={<Bot />}
@@ -222,7 +234,9 @@ export function App() {
                       ? "Agent"
                       : page === "errors"
                         ? "Error Inbox"
-                        : "Services"}
+                        : page === "database"
+                          ? "Database"
+                          : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -261,6 +275,7 @@ export function App() {
             ) : null}
             {page === "agent" ? <AgentView /> : null}
             {page === "errors" ? <ErrorInboxView /> : null}
+            {page === "database" ? <DatabaseView /> : null}
           </div>
         </main>
       </div>

@@ -26,17 +26,18 @@ Remaining bonus (now unblocked): #7 test-runner pipeline and #8 repro bundle bot
 ## 3. HTTP Request Inspector — 📋 scoped (ROR-6, backlog)
 Proxy on the service port that records requests/responses; replay, share, or pipe to an agent without Postman/Charles. Groundwork already exists in `src/core/http-inspector.ts` and `POST /api/services/:name/inspector`. Remaining: a `features/services/` inspector panel (request timeline, body view, replay) and a "copy request as agent prompt" action.
 
-## 4. DB Peek
-Lightweight read-only table browser. "Explain this row to the agent" attaches the row + schema to a prompt.
+## 4. DB Peek — ✅ shipped
+Lightweight read-only table browser. "Explain this row to the agent" copies the row + schema into a prompt.
 
-**Driver caveat.** The `pg-mcp` in the ecosystem is the *agent's* tooling, not the app's — the web server can't borrow it. DB Peek needs its own driver bundled in and a connection string from the user. Drivers are per engine, so scope = **Postgres-first** (`pg`); MySQL (`mysql2`), SQLite (`better-sqlite3`) come later, each a new dependency.
+Shipped all three engines at once (not just Postgres) as a standalone **Database** tab — connections live independently of services, with `.env` auto-detect for one-click setup. SQLite uses Node's built-in `node:sqlite` (no native build), so `engines.node` was bumped to `>=22.5`.
 
-**Build:**
-- **Config** — extend the service schema in `config-store.ts` with an optional `database?: { engine: "postgres"; url: string }` (url stored like a secret; masked in API responses).
-- **Core** — `src/core/db-peek.ts`: connect with `pg`, expose `listTables()`, `getColumns(table)`, `sampleRows(table, limit=100)`. **Read-only enforcement**: wrap every query in a read-only transaction (`BEGIN TRANSACTION READ ONLY`) and reject anything but `SELECT`; no raw SQL passthrough in v1.
-- **API** — `GET /api/db/:service/tables`, `GET /api/db/:service/tables/:name/rows?limit=`, `GET /api/db/:service/tables/:name/row/:pk/prompt` (row + schema → agent payload).
-- **UI** — `features/database/db-peek-view.tsx`: table list → grid of sampled rows → "Explain this row to the agent".
-- **Reuses** — masking helpers from the env manager; the same per-service detail layout as Services.
+Done as a vertical slice:
+- **Config** — `databases: { name, engine, url }[]` added to the config schema (`config-store.ts` + `registerDatabase`/`removeDatabase`). For SQLite, `url` is the `.db` file path; for Postgres/MySQL it's the connection string, masked in API responses via `maskConnectionUrl`.
+- **Core** — `src/core/db-peek.ts` (manager: driver cache, env-detection, masking) + `src/core/db/` drivers: `postgres-driver.ts` (`pg`, `BEGIN TRANSACTION READ ONLY`), `mysql-driver.ts` (`mysql2`, `START TRANSACTION READ ONLY`), `sqlite-driver.ts` (`node:sqlite`, opened `readOnly`). Each exposes `listTables`/`sampleRows`/`testConnection`. **No raw SQL** — `sampleRows` only browses tables resolved against the live catalog (identifier-injection guard), `SELECT *` with parameterized `LIMIT`.
+- **API** — `src/web/routes/database-routes.ts`: `GET /api/databases`, `GET /api/databases/detect` (scan service `.env` for DB URLs), `POST /api/databases`, `POST /api/databases/test`, `DELETE /api/databases/:name`, `GET /api/databases/:name/tables`, `GET /api/databases/:name/rows?table=&limit=`.
+- **UI** — `features/database/` (`database-view` master/detail + `use-databases` hooks + `add-connection-dialog` with env-detect chips / paste / engine form + `table-grid` with per-row "Explain to agent") behind a new **Database** sidebar tab.
+- **MCP** — `src/mcp/tools/database.ts`: `nomoreide_list_databases`, `nomoreide_db_tables`, `nomoreide_db_sample` (read-only, scoped to configured connections).
+- **Reuses** — env-file parsing for `.env` detection; the master/detail layout from Error Inbox; `ComposerDialog`.
 
 ## 5. PR Cockpit
 GitHub PR + CI checks for the current branch in one panel: PR state (open/draft/merged), CI status, review state, one-click "copy failing check output to agent".

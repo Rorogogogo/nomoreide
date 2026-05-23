@@ -1,5 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import type { ConfigStore } from "../../core/config-store.js";
+import type { DbPeek } from "../../core/db-peek.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
 import { GitManager } from "../../core/git-manager.js";
 import type { LogStore } from "../../core/log-store.js";
@@ -11,6 +12,7 @@ import type { UiLifecycleManager } from "../../web/ui-lifecycle.js";
 /** Shared stateful services every tool group receives. */
 export interface ToolContext {
   configStore: ConfigStore;
+  dbPeek: DbPeek;
   errorInbox: ErrorInbox;
   logStore: LogStore;
   manager: ProcessManager;
