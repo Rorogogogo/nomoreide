@@ -196,7 +196,7 @@ export function GitGraphView({ branches = [] }: { branches?: GitBranch[] }) {
             ) : null}
           </div>
         </div>
-        <div className="min-h-0 min-w-0 flex-1">
+        <div className="relative min-h-0 min-w-0 flex-1">
           {diffError ? (
             <div className="p-4">
               <Alert variant="destructive">{diffError}</Alert>

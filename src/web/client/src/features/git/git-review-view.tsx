@@ -234,7 +234,7 @@ export function GitReviewView({
               {selectedFile || "Diff"}
             </h2>
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-              <span>Long rows scroll horizontally inside the editor pane.</span>
+              <span>Long rows wrap inside the editor pane.</span>
               {stats.additions || stats.deletions ? (
                 <span className="flex items-center gap-1 font-mono">
                   <span className="text-emerald-700">+{stats.additions}</span>
@@ -271,7 +271,7 @@ export function GitReviewView({
             </Button>
           </div>
         </div>
-        <div className="min-h-0 min-w-0 flex-1">
+        <div className="relative min-h-0 min-w-0 flex-1">
           {diffError ? (
             <div className="p-4">
               <Alert variant="destructive">{diffError}</Alert>

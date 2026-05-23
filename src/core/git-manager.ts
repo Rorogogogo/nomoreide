@@ -343,6 +343,10 @@ export class GitManager {
     try {
       const { stdout, stderr } = await execFileAsync("git", args, {
         cwd: this.cwd,
+        // Data-file diffs/logs (CSV, logs) can exceed Node's 1 MB stdout
+        // default, which otherwise aborts with a maxBuffer error whose partial
+        // stdout gets surfaced to the UI as a raw, unrendered diff.
+        maxBuffer: 256 * 1024 * 1024,
       });
       return stdout || stderr;
     } catch (error) {
