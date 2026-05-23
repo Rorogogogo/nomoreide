@@ -183,10 +183,14 @@ export class TestRunner {
     result: { status: TestRunStatus; message?: string },
   ): void {
     if (result.message) this.append(service, "stderr", result.message);
-    run.status = result.status;
-    run.endedAt = new Date().toISOString();
-    this.children.delete(service);
-    this.emit(service, { type: "status", run });
+    // Emit the terminal status only once all queued log writes have flushed,
+    // so a finished run reflects fully-persisted output (no write races).
+    void this.appendChain.then(() => {
+      run.status = result.status;
+      run.endedAt = new Date().toISOString();
+      this.children.delete(service);
+      this.emit(service, { type: "status", run });
+    });
   }
 
   /** Append to the synthetic test channel, preserving order for the ErrorInbox. */

@@ -32,6 +32,21 @@ export interface ErrorInboxPrompt {
   prompt: string;
 }
 
+/** The raw building blocks behind an incident's prompt — reused by the repro bundle. */
+export interface ErrorInboxContext {
+  incident: ErrorIncident;
+  /** Base service name (any `:test` suffix stripped). */
+  service: string;
+  /** Working directory used for diff/env resolution. */
+  serviceCwd: string;
+  /** Resolved absolute file path used for the diff, if any. */
+  file?: string;
+  /** Git diff of the affected file (empty when none/unavailable). */
+  diff: string;
+  /** Recent log lines from the service. */
+  recentLogs: string[];
+}
+
 interface ErrorInboxOptions {
   logStore: LogStore;
   configStore: ConfigStore;
@@ -193,9 +208,25 @@ export class ErrorInbox {
 
   /** Assemble the copy-to-agent payload for an incident. */
   async buildPrompt(id: number): Promise<ErrorInboxPrompt | null> {
+    const context = await this.context(id);
+    if (!context) return null;
+    return {
+      incident: context.incident,
+      file: context.file,
+      prompt: renderPrompt(context.incident, context.file, context.diff, context.recentLogs),
+    };
+  }
+
+  /**
+   * Gather the raw context for an incident — the affected file, its diff, and
+   * recent service logs — so callers (the prompt, the repro bundle) render their
+   * own markdown without duplicating the gathering logic.
+   */
+  async context(id: number): Promise<ErrorInboxContext | null> {
     const incident = this.byId.get(id);
     if (!incident) return null;
 
+    const service = incident.service.replace(/:test$/, "");
     const serviceCwd = await this.serviceCwd(incident.service);
     const resolvedFile = incident.file
       ? isAbsolute(incident.file)
@@ -216,11 +247,7 @@ export class ErrorInbox {
       .read(incident.service, PROMPT_LOG_LINES)
       .map((entry) => entry.text);
 
-    return {
-      incident,
-      file: resolvedFile,
-      prompt: renderPrompt(incident, resolvedFile, diff, recentLogs),
-    };
+    return { incident, service, serviceCwd, file: resolvedFile, diff, recentLogs };
   }
 
   private async serviceCwd(service: string): Promise<string> {

@@ -8,6 +8,7 @@ import {
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { ReproBundleBuilder } from "../core/repro-bundle.js";
 import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
@@ -50,6 +51,11 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
   const testRunner = new TestRunner({ logStore, configStore, cwd });
+  const reproBundle = new ReproBundleBuilder({
+    errorInbox,
+    manager,
+    reproDir: resolve(cwd, ".nomoreide/repros"),
+  });
 
   const services: RouteServices = {
     configStore,
@@ -57,6 +63,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     errorInbox,
     logStore,
     manager,
+    reproBundle,
     testRunner,
     timelineStore,
     toolCallStore,

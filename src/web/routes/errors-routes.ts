@@ -48,4 +48,22 @@ export const errorRoutes: Route[] = [
       sendJson(response, { ok: true, ...payload });
     },
   ),
+
+  patternRoute(
+    /^\/api\/errors\/(\d+)\/bundle$/,
+    ["id"],
+    async ({ request, response, params, url, reproBundle }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const save = url.searchParams.get("save") === "1";
+      const payload = await reproBundle.build(Number(params.id), { save });
+      if (!payload) {
+        sendJson(response, { ok: false, error: "Incident not found" }, 404);
+        return;
+      }
+      sendJson(response, { ok: true, ...payload });
+    },
+  ),
 ];
