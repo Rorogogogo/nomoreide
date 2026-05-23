@@ -12,9 +12,9 @@ import {
 import {
   NOMOREIDE_TOOL_NAMES,
   registerNoMoreIdeTools,
-} from "./tools.js";
+} from "./tools/index.js";
 
-export { NOMOREIDE_TOOL_NAMES } from "./tools.js";
+export { NOMOREIDE_TOOL_NAMES } from "./tools/index.js";
 
 interface CreateNoMoreIdeMcpServerOptions {
   configPath?: string;
