@@ -5,7 +5,23 @@ import {
   ConfigValidationError,
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { GitManager } from "../core/git-manager.js";
+import {
+  browseDirectory,
+  ConfigFilePathError,
+  detectConfigFiles,
+  resolveConfigFile,
+  validateJson,
+} from "../core/config-files.js";
+import {
+  entriesFromLines,
+  looksSecret,
+  mergeEntries,
+  readEnvFile,
+  writeEnvFile,
+  type EnvEntry,
+} from "../core/env-file.js";
 import { LogStore } from "../core/log-store.js";
 import { PortConflictError, ProcessManager } from "../core/process-manager.js";
 import { TimelineStore } from "../core/timeline-store.js";
@@ -430,6 +446,140 @@ async function routeRequest(options: {
       return;
     }
 
+    const configFilesMatch = url.pathname.match(
+      /^\/api\/services\/([^/]+)\/config-files$/,
+    );
+    if (configFilesMatch) {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(configFilesMatch[1]);
+      const serviceCwd = await getServiceCwd(configStore, name);
+      if (!serviceCwd) {
+        sendJson(
+          response,
+          { ok: false, error: `Service "${name}" has no working directory.` },
+          400,
+        );
+        return;
+      }
+      const files = await detectConfigFiles(serviceCwd);
+      sendJson(response, { ok: true, cwd: serviceCwd, files });
+      return;
+    }
+
+    const browseMatch = url.pathname.match(
+      /^\/api\/services\/([^/]+)\/config-browse$/,
+    );
+    if (browseMatch) {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(browseMatch[1]);
+      const serviceCwd = await getServiceCwd(configStore, name);
+      if (!serviceCwd) {
+        sendJson(
+          response,
+          { ok: false, error: `Service "${name}" has no working directory.` },
+          400,
+        );
+        return;
+      }
+      try {
+        const result = await browseDirectory(serviceCwd, url.searchParams.get("path")?.trim() || undefined);
+        sendJson(response, { ok: true, ...result });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, error instanceof ConfigFilePathError ? 400 : 500);
+      }
+      return;
+    }
+
+    const configFileMatch = url.pathname.match(
+      /^\/api\/services\/([^/]+)\/config-file$/,
+    );
+    if (configFileMatch) {
+      const name = decodeURIComponent(configFileMatch[1]);
+      const serviceCwd = await getServiceCwd(configStore, name);
+      if (!serviceCwd) {
+        sendJson(
+          response,
+          { ok: false, error: `Service "${name}" has no working directory.` },
+          400,
+        );
+        return;
+      }
+      const requested = url.searchParams.get("path")?.trim();
+      if (!requested) {
+        sendJson(response, { ok: false, error: "path is required" }, 400);
+        return;
+      }
+      let file;
+      try {
+        file = resolveConfigFile(serviceCwd, requested);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        sendJson(response, { ok: false, error: message }, error instanceof ConfigFilePathError ? 400 : 500);
+        return;
+      }
+
+      if (request.method === "GET") {
+        if (file.format === "env") {
+          const { exists, lines } = await readEnvFile(file.path);
+          const entries = entriesFromLines(lines).map((entry) => ({
+            key: entry.key,
+            value: entry.value,
+            secret: looksSecret(entry.key),
+          }));
+          sendJson(response, { ok: true, exists, format: file.format, path: file.path, relativePath: file.relativePath, entries });
+          return;
+        }
+        const { content, exists } = await readTextFile(file.path);
+        sendJson(response, { ok: true, exists, format: file.format, path: file.path, relativePath: file.relativePath, content });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        const body = await readJsonBody(request);
+        if (file.format === "env") {
+          const parsed = parseEnvEntries(body);
+          const { lines } = await readEnvFile(file.path);
+          const merged = mergeEntries(lines, parsed);
+          await writeEnvFile(file.path, merged);
+          const entries = entriesFromLines(merged).map((entry) => ({
+            key: entry.key,
+            value: entry.value,
+            secret: looksSecret(entry.key),
+          }));
+          sendJson(response, { ok: true, exists: true, format: file.format, path: file.path, relativePath: file.relativePath, entries });
+          return;
+        }
+        const content = (body as { content?: unknown })?.content;
+        if (typeof content !== "string") {
+          sendJson(response, { ok: false, error: "content must be a string" }, 400);
+          return;
+        }
+        if (file.format === "json") {
+          try {
+            validateJson(content);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            sendJson(response, { ok: false, error: message }, 400);
+            return;
+          }
+        }
+        await mkdir(dirname(file.path), { recursive: true });
+        await writeFile(file.path, content);
+        sendJson(response, { ok: true, exists: true, format: file.format, path: file.path, relativePath: file.relativePath, content });
+        return;
+      }
+
+      sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+      return;
+    }
+
     const inspectorMatch = url.pathname.match(
       /^\/api\/services\/([^/]+)\/inspector$/,
     );
@@ -542,6 +692,71 @@ async function routeRequest(options: {
       { ok: false, error: error instanceof Error ? error.message : String(error) },
       error instanceof ConfigValidationError ? 400 : 500,
     );
+  }
+}
+
+async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const text = Buffer.concat(chunks).toString("utf8");
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Request body must be valid JSON.");
+  }
+}
+
+function parseEnvEntries(body: unknown): EnvEntry[] {
+  if (!body || typeof body !== "object") {
+    throw new Error("entries array is required.");
+  }
+  const raw = (body as { entries?: unknown }).entries;
+  if (!Array.isArray(raw)) {
+    throw new Error("entries must be an array.");
+  }
+  const seen = new Set<string>();
+  const result: EnvEntry[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      throw new Error("each entry must be { key, value }.");
+    }
+    const { key, value } = item as { key?: unknown; value?: unknown };
+    if (typeof key !== "string" || !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(key)) {
+      throw new Error(`invalid env key: ${JSON.stringify(key)}`);
+    }
+    if (typeof value !== "string") {
+      throw new Error(`value for "${key}" must be a string.`);
+    }
+    if (seen.has(key)) {
+      throw new Error(`duplicate env key: ${key}`);
+    }
+    seen.add(key);
+    result.push({ key, value });
+  }
+  return result;
+}
+
+async function getServiceCwd(configStore: ConfigStore, name: string): Promise<string | undefined> {
+  const config = await configStore.load();
+  const service = config.services.find((item) => item.name === name);
+  if (!service) {
+    throw new Error(`Service "${name}" not found.`);
+  }
+  return (service as { cwd?: string }).cwd;
+}
+
+async function readTextFile(path: string): Promise<{ content: string; exists: boolean }> {
+  try {
+    const content = await readFile(path, "utf8");
+    return { content, exists: true };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { content: "", exists: false };
+    }
+    throw error;
   }
 }
 

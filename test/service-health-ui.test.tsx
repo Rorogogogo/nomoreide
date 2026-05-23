@@ -1,11 +1,49 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { ServiceRow } from "../src/web/client/src/features/services/service-list";
 import { ServicesView } from "../src/web/client/src/features/services/services-view";
 import type { DashboardData, ServiceHealth } from "../src/web/client/src/lib/api";
 
+function buildDashboard(health: ServiceHealth): DashboardData {
+  return {
+    ok: true,
+    cwd: "/repo",
+    config: {
+      services: [
+        {
+          name: "frontend",
+          command: "npm run dev",
+          cwd: "/repo/client",
+          port: 5001,
+        },
+      ],
+      bundles: [],
+      gitRepositories: [],
+    },
+    runtime: {
+      services: {
+        frontend: {
+          name: "frontend",
+          state: "running",
+          pid: 10,
+          processTree: health.processTree,
+        },
+      },
+    },
+    ports: [],
+    logs: [],
+    health: { frontend: health },
+    timeline: [],
+    git: {
+      cwd: "/repo",
+      selectedRepository: null,
+      status: null,
+      branches: [],
+    },
+  } as unknown as DashboardData;
+}
+
 describe("service health UI", () => {
-  test("shows solid health, warning reason, process count, CPU, and RAM", () => {
+  test("detail header shows warning, process count, CPU, and RAM", () => {
     const health: ServiceHealth = {
       service: "frontend",
       status: "warning",
@@ -24,23 +62,7 @@ describe("service health UI", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <ServiceRow
-        health={health}
-        onRefresh={async () => undefined}
-        ports={[]}
-        service={{
-          name: "frontend",
-          command: "npm run dev",
-          cwd: "/repo/client",
-          port: 5001,
-        }}
-        status={{
-          name: "frontend",
-          state: "running",
-          pid: 10,
-          processTree: health.processTree,
-        }}
-      />,
+      <ServicesView data={buildDashboard(health)} onRefresh={async () => undefined} />,
     );
 
     expect(markup).toContain("warning");
@@ -71,17 +93,7 @@ describe("service health UI", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <ServiceRow
-        health={health}
-        onRefresh={async () => undefined}
-        ports={[]}
-        service={{
-          name: "frontend",
-          command: "npm run dev",
-          cwd: "/repo/client",
-          port: 5001,
-        }}
-      />,
+      <ServicesView data={buildDashboard(health)} onRefresh={async () => undefined} />,
     );
 
     expect(markup).toContain("0.0% CPU");
@@ -115,9 +127,7 @@ describe("service health UI", () => {
     } as unknown as DashboardData;
 
     expect(() =>
-      renderToStaticMarkup(
-        <ServicesView data={data} onRefresh={async () => undefined} />,
-      ),
+      renderToStaticMarkup(<ServicesView data={data} onRefresh={async () => undefined} />),
     ).not.toThrow();
   });
 });

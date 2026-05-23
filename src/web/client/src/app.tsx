@@ -211,7 +211,12 @@ export function App() {
               {data && page === "git" ? (
                 <RepositorySelector data={data} onRefresh={refresh} />
               ) : null}
-              <Button variant="outline" size="sm" onClick={() => void refresh({ notify: true })}>
+              <Button
+                onClick={() => void refresh({ notify: true })}
+                size="sm"
+                title="Refresh dashboard"
+                variant="outline"
+              >
                 <RefreshCw className={cn(loading && "animate-spin")} />
                 Refresh
               </Button>
