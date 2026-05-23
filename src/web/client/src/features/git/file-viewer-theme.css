@@ -1,0 +1,103 @@
+/* Claude Code CLI light theme — matches VSCode Light+ palette used for
+ * syntax-highlighted code blocks. */
+
+.hljs {
+  color: #000000;
+  background: transparent;
+}
+
+/* Keywords: function, const, let, return, if, for, class, import, export */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-meta-keyword {
+  color: #0000ff;
+}
+
+/* Built-in types and language constants (true, false, null, undefined, this) */
+.hljs-built_in,
+.hljs-symbol {
+  color: #0070c1;
+}
+
+/* Type names, class names */
+.hljs-type,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: #267f99;
+}
+
+/* Function / method names */
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: #795e26;
+}
+
+/* Strings */
+.hljs-string,
+.hljs-template-string,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-attr {
+  color: #a31515;
+}
+
+/* Numbers, regex */
+.hljs-number,
+.hljs-regexp {
+  color: #098658;
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-quote {
+  color: #008000;
+  font-style: italic;
+}
+
+/* Variables, parameters */
+.hljs-variable,
+.hljs-params {
+  color: #001080;
+}
+
+/* HTML/JSX tags and attributes */
+.hljs-tag,
+.hljs-name {
+  color: #800000;
+}
+
+.hljs-attribute {
+  color: #ff0000;
+}
+
+/* Operators, punctuation */
+.hljs-operator,
+.hljs-punctuation {
+  color: #000000;
+}
+
+/* Decorators / annotations / meta */
+.hljs-meta {
+  color: #af00db;
+}
+
+/* Diff additions/deletions inside highlighted blocks */
+.hljs-addition {
+  color: #098658;
+  background-color: #e6ffed;
+}
+
+.hljs-deletion {
+  color: #a31515;
+  background-color: #ffeef0;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
