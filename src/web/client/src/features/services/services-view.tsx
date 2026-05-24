@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Box, ChevronLeft, ChevronRight, ExternalLink, Plus } from "lucide-react";
+import { Bot, Box, ChevronLeft, ChevronRight, ExternalLink, Plus, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import { EmptyState } from "./empty-state";
 import { HealthSummary } from "./health-summary";
 import { PortsOverview } from "./ports-overview";
 import { LifecycleActions } from "./service-actions";
+import { MultiLogView } from "./multi-log-view";
 import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
 import {
@@ -33,6 +34,7 @@ export function ServicesView({
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
+  const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(true);
   const [contextOpen, setContextOpen] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
@@ -164,6 +166,17 @@ export function ServicesView({
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-sm">Services</CardTitle>
                 <div className="flex items-center gap-1">
+                  <Button
+                    aria-haspopup="dialog"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={() => setMultiLogOpen(true)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ScrollText className="size-3.5" />
+                    Logs
+                  </Button>
                   <Tooltip label="Add service" side="bottom">
                     <Button
                       aria-haspopup="dialog"
@@ -400,6 +413,13 @@ export function ServicesView({
             />
           )}
         </ComposerDialog>
+      ) : null}
+      {multiLogOpen ? (
+        <MultiLogView
+          initialService={selectedService || undefined}
+          onClose={() => setMultiLogOpen(false)}
+          services={data.config.services.map((service) => service.name)}
+        />
       ) : null}
     </>
   );

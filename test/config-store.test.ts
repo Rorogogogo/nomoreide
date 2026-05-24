@@ -1,8 +1,12 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
+
+const execFileAsync = promisify(execFile);
 
 let tempDir: string;
 let configPath: string;
@@ -28,6 +32,7 @@ describe("ConfigStore", () => {
       bundles: [],
       gitRepositories: [],
       databases: [],
+      logSources: [],
     });
   });
 
@@ -52,6 +57,26 @@ describe("ConfigStore", () => {
     await store.removeDatabase("shop");
     config = await store.load();
     expect(config.databases).toEqual([]);
+  });
+
+  test("registers and removes log sources of each kind", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerLogSource({ name: "PROD", kind: "ssh", host: "prod", path: "/var/log/app.log" });
+    await store.registerLogSource({ name: "local", kind: "file", path: "/tmp/app.log" });
+    await store.registerLogSource({ name: "journal", kind: "command", command: "journalctl -n 200" });
+
+    let config = await store.load();
+    expect(config.logSources.map((s) => s.name).sort()).toEqual(["PROD", "journal", "local"]);
+
+    await store.removeLogSource("PROD");
+    config = await store.load();
+    expect(config.logSources.map((s) => s.name).sort()).toEqual(["journal", "local"]);
+  });
+
+  test("rejects a log source missing required fields for its kind", async () => {
+    const store = new ConfigStore(configPath);
+    await expect(store.registerLogSource({ name: "bad", kind: "ssh", host: "prod" })).rejects.toThrow();
   });
 
   test("registers a service and persists it", async () => {
@@ -103,10 +128,11 @@ describe("ConfigStore", () => {
 
   test("registers and selects a git repository", async () => {
     const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("app");
 
     await store.registerGitRepository({
       name: "app",
-      path: "/repo/app",
+      path: repoPath,
     });
     await store.selectGitRepository("app");
 
@@ -115,7 +141,7 @@ describe("ConfigStore", () => {
     expect(config.gitRepositories).toEqual([
       {
         name: "app",
-        path: "/repo/app",
+        path: repoPath,
       },
     ]);
     expect(config.selectedGitRepository).toBe("app");
@@ -199,4 +225,39 @@ describe("ConfigStore", () => {
       }),
     ).rejects.toThrow("Please add an absolute path");
   });
+
+  test("rejects absolute git repository paths that are not git worktrees", async () => {
+    const store = new ConfigStore(configPath);
+    const notGitPath = join(tempDir, "not-git");
+    await mkdir(notGitPath);
+
+    await expect(
+      store.registerGitRepository({
+        name: "app",
+        path: notGitPath,
+      }),
+    ).rejects.toThrow("Not a Git repository");
+  });
+
+  test("removes a git repository and clears the selection when needed", async () => {
+    const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("app");
+
+    await store.registerGitRepository({
+      name: "app",
+      path: repoPath,
+    });
+
+    const config = await store.removeGitRepository("app");
+
+    expect(config.gitRepositories).toEqual([]);
+    expect(config.selectedGitRepository).toBeUndefined();
+  });
 });
+
+async function makeGitRepository(name: string): Promise<string> {
+  const repoPath = join(tempDir, name);
+  await mkdir(repoPath);
+  await execFileAsync("git", ["init"], { cwd: repoPath });
+  return repoPath;
+}

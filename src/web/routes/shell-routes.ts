@@ -3,7 +3,14 @@ import { readWebAppShell, sendStaticAsset } from "../static-assets.js";
 import { prefixRoute, type Route } from "./context.js";
 
 /** Paths that serve the SPA shell (client-side routing handles the rest). */
-const shellPaths = new Set(["/", "/git", "/agent", "/errors", "/database"]);
+const shellPaths = new Set([
+  "/",
+  "/git",
+  "/agent",
+  "/errors",
+  "/database",
+  "/terminal",
+]);
 
 /** Static assets and the SPA shell. Registered last so /api/* wins first. */
 export const shellRoutes: Route[] = [

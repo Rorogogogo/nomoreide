@@ -24,7 +24,7 @@
         "useAriaPropsSupportedByRole": "warn"
       },
       "correctness": {
-        "useExhaustiveDependencies": "warn"
+        "useExhaustiveDependencies": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "warn"

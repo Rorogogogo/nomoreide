@@ -96,3 +96,10 @@ export async function getGitDiff(path: string): Promise<string> {
   }
   return response.text();
 }
+
+export async function deleteGitRepository(name: string): Promise<void> {
+  await requestJson<{ ok: true }>(
+    `/api/git/repositories/${encodeURIComponent(name)}`,
+    { method: "DELETE" },
+  );
+}

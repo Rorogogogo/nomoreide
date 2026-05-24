@@ -617,6 +617,66 @@ describe("web server", () => {
     expect(body.error).toContain("Please add an absolute path");
   });
 
+  test("rejects absolute non-git repository paths from the web UI", async () => {
+    const notGitPath = join(tempDir, "not-git");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(notGitPath);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/git/repositories`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "app", path: notGitPath }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("Not a Git repository");
+  });
+
+  test("removes git repositories from the web UI", async () => {
+    const repoA = join(tempDir, "repo-a");
+    const repoB = join(tempDir, "repo-b");
+    const { mkdir, readFile } = await import("node:fs/promises");
+    await mkdir(repoA);
+    await mkdir(repoB);
+    await execFileAsync("git", ["init"], { cwd: repoA });
+    await execFileAsync("git", ["init"], { cwd: repoB });
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    await fetch(`${server.url}/api/git/repositories`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "repo-a", path: repoA }),
+    });
+    await fetch(`${server.url}/api/git/repositories`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ name: "repo-b", path: repoB }),
+    });
+
+    const response = await fetch(`${server.url}/api/git/repositories/repo-b`, {
+      method: "DELETE",
+    });
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+
+    expect(response.status).toBe(200);
+    expect(raw.gitRepositories).toEqual([{ name: "repo-a", path: repoA }]);
+    expect(raw.selectedGitRepository).toBeUndefined();
+  });
+
   test("lists directories for the project explorer", async () => {
     const repoA = join(tempDir, "repo-a");
     const repoB = join(tempDir, "repo-b");

@@ -70,7 +70,7 @@ Git stash-like checkpoints tied to "before agent edit". One-click revert when an
 
 # More ideas
 
-## 7. Test Runner → Error Inbox pipeline
+## 7. Test Runner → Error Inbox pipeline — ✅ shipped (ROR-15)
 Run `npm test` (or a single file) from the UI; pipe failures into the Error Inbox (#2) with a "copy to agent" prompt.
 
 **Build:**
@@ -79,7 +79,7 @@ Run `npm test` (or a single file) from the UI; pipe failures into the Error Inbo
 - **UI** — a "Tests" sub-tab in `service-detail-panel.tsx`: run button, live output, failures linking into the Error Inbox.
 - **Reuses** — `service-tester.ts` pattern, `LogStore`, `error-inbox` detectors from #2.
 
-## 8. "Share my bug" reproduction bundle
+## 8. "Share my bug" reproduction bundle — ✅ shipped (ROR-16)
 Extension of #2: package failing logs + diff in the affected file + service state + masked env into one shareable artifact (clipboard prompt or a `.md` file).
 
 **Build:**
@@ -124,6 +124,17 @@ Persist token usage over time so you can see "this feature cost ~$X / N agent ru
 - **API** — `GET /api/agent/usage/history?since=` (time series), aggregate by day/session.
 - **UI** — a "Usage" sub-tab in `agent-view.tsx`: cumulative tokens + estimated cost chart; optionally attribute to the active git branch (tie-in with #11's `sessionId`).
 - **Reuses** — `usage-info.ts`, the Agent tab, the append-to-`.nomoreide/` logging pattern from `LogStore`.
+
+## 14. Web Terminal (multi-tab) — ✅ shipped
+A real terminal inside the dashboard — full `node-pty` shells over WebSocket, with VS Code-style tabs (add / switch / close).
+
+Done as a vertical slice:
+- **Core** — `src/core/terminal-session.ts` wraps one PTY (start/write/resize/restart/stop + output/state subscriptions, injectable adapter for tests). `src/core/terminal-manager.ts` (`TerminalSessionManager`) owns a `Map<id, TerminalSession>` so several tabs run at once: `list/create/get/ensure/close/disposeAll`.
+- **Server** — a single `ws` upgrade on `/api/terminal/socket?id=` routes each socket to its session (lazily spawned via `ensure`); closing a socket leaves the PTY running so tabs survive browser reloads. REST in `src/web/routes/terminal-routes.ts`: `GET/POST /api/terminal/sessions`, `DELETE /api/terminal/sessions/:id`. Sessions live in `RouteServices.terminalManager`.
+- **UI** — `features/terminal/`: `terminal-view.tsx` is the tab strip (`+` add, `×` close, never drops to zero — last close re-spawns) over one `terminal-pane.tsx` (xterm + fit addon) per session; inactive panes stay mounted-but-hidden so shells/scrollback survive switches. Behind a **Terminal** sidebar tab.
+- **Client API** — `lib/api/terminal.ts` (`listTerminalSessions` / `createTerminalSession` / `closeTerminalSession`).
+- **Reuses** — the `ws` upgrade handling in `server.ts`, the SPA shell route list, `@xterm/xterm` + `@xterm/addon-fit`.
+- Remaining bonus: scrollback replay on reattach (server-side per-session ring buffer), per-tab rename / cwd / shell selection, persisting the tab layout across server restarts.
 
 ---
 

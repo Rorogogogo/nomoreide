@@ -6,6 +6,7 @@ import type { LogStore } from "../../core/log-store.js";
 import type { ProcessManager } from "../../core/process-manager.js";
 import type { ReproBundleBuilder } from "../../core/repro-bundle.js";
 import type { TestRunner } from "../../core/test-runner.js";
+import type { TerminalSessionManagerLike } from "../../core/terminal-manager.js";
 import type { TimelineStore } from "../../core/timeline-store.js";
 import type { ToolCallStore } from "../../core/tool-call-store.js";
 
@@ -19,6 +20,7 @@ export interface RouteServices {
   manager: ProcessManager;
   reproBundle: ReproBundleBuilder;
   testRunner: TestRunner;
+  terminalManager: TerminalSessionManagerLike;
   timelineStore: TimelineStore;
   toolCallStore: ToolCallStore;
 }

@@ -1,14 +1,19 @@
+import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
+import { promisify } from "node:util";
 import { z } from "zod";
 import type {
   BundleDefinition,
   DatabaseConnection,
+  LogSourceDefinition,
   NoMoreIdeConfig,
   GitRepositoryDefinition,
   ServiceDefinition,
 } from "./types.js";
+
+const execFileAsync = promisify(execFile);
 
 const baseServiceSchema = z.object({
   name: z.string().min(1),
@@ -67,6 +72,42 @@ const databaseSchema = z.object({
   url: z.string().min(1),
 });
 
+const logSourceSchema = z
+  .object({
+    name: z.string().min(1),
+    kind: z.enum(["file", "ssh", "command"]),
+    path: z.string().min(1).optional(),
+    host: z.string().min(1).optional(),
+    command: z.string().min(1).optional(),
+    cwd: z.string().min(1).optional(),
+    driver: z.enum(["journald", "docker"]).optional(),
+    unit: z.string().min(1).optional(),
+    container: z.string().min(1).optional(),
+  })
+  .superRefine((source, ctx) => {
+    if (source.driver === "journald") {
+      if (!source.unit) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "journald log source requires a unit." });
+      }
+      return; // driver sources build their own query; kind-based paths don't apply.
+    }
+    if (source.driver === "docker") {
+      if (!source.container) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "docker log source requires a container." });
+      }
+      return;
+    }
+    if (source.kind === "file" && !source.path) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "File log source requires a path." });
+    }
+    if (source.kind === "ssh" && (!source.host || !source.path)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "SSH log source requires host and path." });
+    }
+    if (source.kind === "command" && !source.command) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Command log source requires a command." });
+    }
+  });
+
 const configSchema = z.object({
   version: z.literal(1),
   services: z.array(serviceSchema),
@@ -74,6 +115,7 @@ const configSchema = z.object({
   gitRepositories: z.array(gitRepositorySchema).default([]),
   selectedGitRepository: z.string().min(1).optional(),
   databases: z.array(databaseSchema).default([]),
+  logSources: z.array(logSourceSchema).default([]),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -82,6 +124,7 @@ const defaultConfig: NoMoreIdeConfig = {
   bundles: [],
   gitRepositories: [],
   databases: [],
+  logSources: [],
 };
 
 export function defaultGlobalConfigPath(): string {
@@ -148,6 +191,7 @@ export class ConfigStore {
   ): Promise<NoMoreIdeConfig> {
     const parsedRepository = gitRepositorySchema.parse(repository);
     requireAbsolutePath(parsedRepository.path);
+    await requireGitWorktree(parsedRepository.path);
     const config = await this.load();
 
     config.gitRepositories = [
@@ -157,6 +201,29 @@ export class ConfigStore {
       parsedRepository,
     ];
     config.selectedGitRepository = parsedRepository.name;
+
+    await this.save(config);
+    return config;
+  }
+
+  async removeGitRepository(name: string): Promise<NoMoreIdeConfig> {
+    const repositoryName = name.trim();
+    if (!repositoryName) {
+      throw new ConfigValidationError("repository name is required");
+    }
+
+    const config = await this.load();
+    const nextRepositories = config.gitRepositories.filter(
+      (repository) => repository.name !== repositoryName,
+    );
+    if (nextRepositories.length === config.gitRepositories.length) {
+      throw new Error(`Git repository "${repositoryName}" is not registered.`);
+    }
+
+    config.gitRepositories = nextRepositories;
+    if (config.selectedGitRepository === repositoryName) {
+      delete config.selectedGitRepository;
+    }
 
     await this.save(config);
     return config;
@@ -195,6 +262,26 @@ export class ConfigStore {
     await this.save(config);
     return config;
   }
+
+  async registerLogSource(source: LogSourceDefinition): Promise<NoMoreIdeConfig> {
+    const parsed = logSourceSchema.parse(source);
+    const config = await this.load();
+
+    config.logSources = [
+      ...config.logSources.filter((item) => item.name !== parsed.name),
+      parsed,
+    ];
+
+    await this.save(config);
+    return config;
+  }
+
+  async removeLogSource(name: string): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.logSources = config.logSources.filter((item) => item.name !== name);
+    await this.save(config);
+    return config;
+  }
 }
 
 export class ConfigValidationError extends Error {}
@@ -205,6 +292,23 @@ function requireAbsolutePath(path: string): void {
       "Please add an absolute path. Paths beginning with ~ are not expanded here.",
     );
   }
+}
+
+async function requireGitWorktree(path: string): Promise<void> {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["rev-parse", "--is-inside-work-tree"],
+      { cwd: path },
+    );
+    if (stdout.trim() === "true") return;
+  } catch {
+    // Re-throw a user-facing validation error below.
+  }
+
+  throw new ConfigValidationError(
+    "Not a Git repository. Choose a folder inside a Git worktree.",
+  );
 }
 
 function isMissingFileError(error: unknown): boolean {

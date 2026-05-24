@@ -4,8 +4,10 @@ import { agentRoutes } from "./agent-routes.js";
 import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
+import { logSourceRoutes } from "./log-sources-routes.js";
 import { serviceRoutes } from "./service-routes.js";
 import { shellRoutes } from "./shell-routes.js";
+import { terminalRoutes } from "./terminal-routes.js";
 
 /**
  * All routes in dispatch order. `/api/*` route groups come first; the shell /
@@ -20,7 +22,9 @@ export const routes: Route[] = [
   ...databaseRoutes,
   ...errorRoutes,
   ...gitRoutes,
+  ...logSourceRoutes,
   ...serviceRoutes,
+  ...terminalRoutes,
   ...shellRoutes,
 ];
 

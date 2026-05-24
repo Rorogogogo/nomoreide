@@ -19,7 +19,10 @@ import {
   type EnvEntry,
 } from "../../core/env-file.js";
 import { PortConflictError } from "../../core/process-manager.js";
+import { readLogSource } from "../../core/log-sources.js";
+import { deriveServiceLogSource } from "../../core/service-log-source.js";
 import { testServiceCommand } from "../service-tester.js";
+import { parseLogQuery } from "./log-sources-routes.js";
 import {
   optionalFormValue,
   readForm,
@@ -294,12 +297,33 @@ export const serviceRoutes: Route[] = [
   patternRoute(
     /^\/api\/services\/([^/]+)\/(start|stop|restart|logs)$/,
     ["name", "action"],
-    async ({ request, response, manager, logStore, params }) => {
+    async ({ request, response, manager, logStore, params, url, configStore }) => {
       const name = decodeURIComponent(params.name);
       const action = params.action;
 
       if (request.method === "GET" && action === "logs") {
-        sendJson(response, { ok: true, logs: logStore.read(name, 200) });
+        const query = parseLogQuery(url.searchParams);
+        const hasQuery = Boolean(
+          query.since || query.until || query.grep || query.level || query.before || query.cursor,
+        );
+        // SSH journald/docker services can re-query the host for full history;
+        // derive that backend from the service's own command.
+        const config = await configStore.load();
+        const service = config.services.find((item) => item.name === name);
+        const source = service ? deriveServiceLogSource(service) : null;
+
+        if (hasQuery && source) {
+          try {
+            const logs = await readLogSource(source, query);
+            sendJson(response, { ok: true, logs, queryable: true });
+          } catch (error) {
+            sendJson(response, { ok: false, error: errorMessage(error), queryable: true }, 200);
+          }
+          return;
+        }
+        // No active query (or not queryable): serve the live buffer.
+        const lines = query.lines && query.lines > 0 ? query.lines : 500;
+        sendJson(response, { ok: true, logs: logStore.read(name, lines), queryable: Boolean(source) });
         return;
       }
 

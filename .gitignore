@@ -6,3 +6,5 @@ nomoreide.config.json
 devport.config.json
 .DS_Store
 *.tsbuildinfo
+out/
+video/

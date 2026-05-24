@@ -4,12 +4,14 @@ import {
   Bot,
   Database,
   GitBranch,
+  Heart,
   Inbox,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
   Server,
+  SquareTerminal,
 } from "lucide-react";
 import logoUrl from "@/assets/nomoreide-logo.png";
 import { getDashboard, type DashboardData } from "@/lib/api";
@@ -20,13 +22,113 @@ import { AgentView } from "@/features/agent/agent-view";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
+import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { RepositorySelector } from "@/features/git/repository-selector";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-type Page = "services" | "git" | "agent" | "errors" | "database";
+type Page = "services" | "git" | "agent" | "errors" | "database" | "terminal";
+
+export function sidebarShellClassName(docked = false) {
+  return cn(
+    "group/sidebar hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-5 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
+    docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
+  );
+}
+
+export function navButtonClassName(active: boolean, docked = false) {
+  return cn(
+    "relative grid h-12 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-[15px] font-medium transition-[background-color,color,width] duration-150",
+    docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
+    active
+      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+      : "hover:bg-muted",
+  );
+}
+
+export function navButtonLabelClassName(docked = false, hasBadge = false) {
+  return cn(
+    "min-w-0 overflow-hidden text-left text-current transition duration-150 whitespace-pre",
+    docked
+      ? "translate-x-1 opacity-100"
+      : "opacity-0 group-hover/sidebar:translate-x-1 group-hover/sidebar:opacity-100",
+    hasBadge ? "pr-10" : "pr-3",
+  );
+}
+
+export function navButtonIconClassName(docked = false) {
+  return cn(
+    "flex size-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
+    docked ? "translate-x-0" : "-translate-x-px group-hover/sidebar:translate-x-0",
+  );
+}
+
+export function SidebarCredit({
+  docked,
+  onToggleDock,
+}: {
+  docked: boolean;
+  onToggleDock?: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "mt-auto flex h-10 min-w-0 items-center overflow-hidden border-t border-border/60 text-[11px] text-muted-foreground transition-[height,opacity,width] duration-150",
+        docked
+          ? "w-full justify-start opacity-100"
+          : "w-12 justify-center group-hover/sidebar:w-full group-hover/sidebar:justify-start group-hover/sidebar:opacity-100",
+      )}
+    >
+      <span
+        className={cn(
+          "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-pre transition-[opacity,width] duration-150",
+          docked
+            ? "flex-1 opacity-100"
+            : "w-0 flex-none opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:flex-1 group-hover/sidebar:opacity-100",
+        )}
+      >
+        <span>Made with</span>
+        <Heart
+          aria-label="love"
+          className="size-3 shrink-0 fill-red-500 text-red-500"
+        />
+        <span>by Robert Wang</span>
+        <a
+          aria-label="Robert Wang on LinkedIn"
+          className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#0A66C2]"
+          href="https://www.linkedin.com/in/robert-wang-cs/"
+          rel="noopener noreferrer"
+          target="_blank"
+          title="LinkedIn"
+        >
+          <svg
+            aria-hidden
+            className="size-3 fill-current"
+            role="img"
+            viewBox="0 0 24 24"
+          >
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.063 2.063 0 1 1 0-4.126 2.063 2.063 0 0 1 0 4.126zM7.119 20.452H3.554V9h3.565v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
+          </svg>
+        </a>
+      </span>
+      <button
+        aria-label={docked ? "Undock sidebar" : "Dock sidebar"}
+        aria-pressed={docked}
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-4",
+          docked ? "ml-auto bg-muted text-foreground" : "group-hover/sidebar:ml-auto",
+        )}
+        onClick={onToggleDock}
+        title={docked ? "Undock sidebar" : "Dock sidebar"}
+        type="button"
+      >
+        {docked ? <PanelLeftClose /> : <PanelLeftOpen />}
+      </button>
+    </div>
+  );
+}
 
 export function AppIdentity({ className }: { className?: string }) {
   return (
@@ -47,6 +149,7 @@ export function App() {
     if (window.location.pathname.startsWith("/agent")) return "agent";
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
+    if (window.location.pathname.startsWith("/terminal")) return "terminal";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
   });
@@ -54,8 +157,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    return window.localStorage.getItem("nomoreide:sidebar") === "collapsed";
+  const [sidebarDocked, setSidebarDocked] = useState(() => {
+    return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
   });
 
   const refresh = useCallback(async (options: { notify?: boolean; silent?: boolean } = {}) => {
@@ -109,18 +212,17 @@ export function App() {
             ? "/errors"
             : page === "database"
               ? "/database"
-              : "/";
+              : page === "terminal"
+                ? "/terminal"
+                : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
   }, [page]);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      "nomoreide:sidebar",
-      sidebarCollapsed ? "collapsed" : "expanded",
-    );
-  }, [sidebarCollapsed]);
+    window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
+  }, [sidebarDocked]);
 
   const runningCount = useMemo(
     () =>
@@ -134,85 +236,74 @@ export function App() {
   return (
     <div className="h-screen overflow-hidden">
       <div className="mx-auto flex h-screen max-w-[1500px]">
-        <aside
-          className={cn(
-            "hidden h-screen shrink-0 overflow-auto border-r border-border bg-card/85 px-4 py-5 backdrop-blur transition-[width] duration-200 md:block",
-            sidebarCollapsed ? "w-[76px]" : "w-64",
-          )}
-        >
+        <aside className={sidebarShellClassName(sidebarDocked)}>
           <div
             className={cn(
-              "flex items-center px-2",
-              sidebarCollapsed ? "justify-center" : "gap-3",
+              "grid h-12 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden transition-[width] duration-150",
+              sidebarDocked ? "w-full" : "w-12 group-hover/sidebar:w-full",
             )}
           >
-            <div className="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary">
-              <img
-                alt="NoMoreIDE"
-                className="size-full object-cover"
-                src={logoUrl}
-              />
+            <div className="flex size-12 items-center justify-center">
+              <div className="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary">
+                <img alt="NoMoreIDE" className="size-full object-cover" src={logoUrl} />
+              </div>
             </div>
-            <AppIdentity className={cn(sidebarCollapsed && "hidden")} />
-            <Button
-              aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
-              className={cn("ml-auto", sidebarCollapsed && "hidden")}
-              size="icon"
-              variant="ghost"
-              onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
-            >
-              <PanelLeftClose />
-            </Button>
+            <AppIdentity
+              className={cn(
+                "min-w-0 translate-x-1 overflow-hidden transition-opacity duration-200",
+                sidebarDocked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+              )}
+            />
           </div>
-          <div className={cn("mt-4", !sidebarCollapsed && "hidden")}>
-            <Button
-              aria-label="Expand navigation"
-              className="w-full"
-              size="icon"
-              variant="ghost"
-              onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
-            >
-              <PanelLeftOpen />
-            </Button>
-          </div>
-          <nav className="mt-5 grid gap-1">
+          <nav className="mt-5 grid flex-1 content-start gap-1">
             <NavButton
               active={page === "services"}
               badge={runningCount}
-              collapsed={sidebarCollapsed}
+              docked={sidebarDocked}
               icon={<Server />}
               label="Services"
               onClick={() => setPage("services")}
             />
             <NavButton
               active={page === "git"}
-              collapsed={sidebarCollapsed}
+              docked={sidebarDocked}
               icon={<GitBranch />}
               label="Git Review"
               onClick={() => setPage("git")}
             />
             <NavButton
               active={page === "errors"}
-              collapsed={sidebarCollapsed}
+              docked={sidebarDocked}
               icon={<Inbox />}
               label="Error Inbox"
               onClick={() => setPage("errors")}
             />
             <NavButton
               active={page === "database"}
-              collapsed={sidebarCollapsed}
+              docked={sidebarDocked}
               icon={<Database />}
               label="Database"
               onClick={() => setPage("database")}
             />
             <NavButton
+              active={page === "terminal"}
+              docked={sidebarDocked}
+              icon={<SquareTerminal />}
+              label="Terminal"
+              onClick={() => setPage("terminal")}
+            />
+            <NavButton
               active={page === "agent"}
-              collapsed={sidebarCollapsed}
+              docked={sidebarDocked}
               icon={<Bot />}
               label="Agent"
               onClick={() => setPage("agent")}
             />
           </nav>
+          <SidebarCredit
+            docked={sidebarDocked}
+            onToggleDock={() => setSidebarDocked((docked) => !docked)}
+          />
         </aside>
 
         <main
@@ -232,10 +323,12 @@ export function App() {
                     ? "Git Review"
                     : page === "agent"
                       ? "Agent"
-                      : page === "errors"
-                        ? "Error Inbox"
-                        : page === "database"
-                          ? "Database"
+                    : page === "errors"
+                      ? "Error Inbox"
+                      : page === "database"
+                        ? "Database"
+                        : page === "terminal"
+                          ? "Terminal"
                           : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
@@ -276,6 +369,7 @@ export function App() {
             {page === "agent" ? <AgentView /> : null}
             {page === "errors" ? <ErrorInboxView /> : null}
             {page === "database" ? <DatabaseView /> : null}
+            {page === "terminal" ? <TerminalView /> : null}
           </div>
         </main>
       </div>
@@ -294,14 +388,14 @@ export function App() {
 function NavButton({
   active,
   badge,
-  collapsed,
+  docked,
   icon,
   label,
   onClick,
 }: {
   active: boolean;
   badge?: number;
-  collapsed: boolean;
+  docked: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
@@ -309,14 +403,16 @@ function NavButton({
   return (
     <Button
       aria-label={label}
-      title={collapsed ? label : undefined}
-      className={cn("w-full", collapsed ? "relative justify-center px-0" : "justify-start")}
-      variant={active ? "default" : "ghost"}
+      title={label}
+      className={navButtonClassName(active, docked)}
+      variant="ghost"
       onClick={onClick}
       type="button"
     >
-      <span className={cn(collapsed && "[&_svg]:size-4")}>{icon}</span>
-      <span className={cn("min-w-0 flex-1 text-left", collapsed && "hidden")}>{label}</span>
+      <span className={navButtonIconClassName(docked)}>
+        {icon}
+      </span>
+      <span className={navButtonLabelClassName(docked, badge !== undefined)}>{label}</span>
       {badge !== undefined ? (
         <Badge
           appearance={badge > 0 ? "solid" : "outline"}
@@ -327,8 +423,8 @@ function NavButton({
               : badge > 0
                 ? ""
                 : "border-border bg-background text-muted-foreground",
-            collapsed &&
-              "absolute right-1.5 top-1.5 h-4 min-w-4 rounded-full px-1 text-[10px] leading-none shadow-none",
+            "absolute right-1.5 top-1.5 h-4 min-w-4 rounded-full px-1 text-[10px] leading-none shadow-none group-hover/sidebar:right-2 group-hover/sidebar:top-1/2 group-hover/sidebar:-translate-y-1/2 group-hover/sidebar:text-xs",
+            docked && "right-2 top-1/2 -translate-y-1/2 text-xs",
           )}
           size="small"
           variant={badge > 0 ? "success" : "outline"}
