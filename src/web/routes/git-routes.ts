@@ -1,7 +1,7 @@
 import { GitManager } from "../../core/git-manager.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
 import { readForm, requiredFormValue, sendJson, sendText } from "../http-utils.js";
-import { errorMessage, route, type Route } from "./context.js";
+import { errorMessage, patternRoute, route, type Route } from "./context.js";
 
 /** Read-safe Git operations plus repository registration/selection. */
 export const gitRoutes: Route[] = [
@@ -122,6 +122,22 @@ export const gitRoutes: Route[] = [
     });
     sendJson(response, { ok: true, config });
   }),
+
+  patternRoute(
+    /^\/api\/git\/repositories\/([^/]+)$/,
+    ["name"],
+    async ({ request, response, configStore, params }) => {
+      if (request.method !== "DELETE") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+
+      const config = await configStore.removeGitRepository(
+        decodeURIComponent(params.name),
+      );
+      sendJson(response, { ok: true, config });
+    },
+  ),
 
   route("POST", "/api/git/select", async ({ request, response, configStore }) => {
     const form = await readForm(request);

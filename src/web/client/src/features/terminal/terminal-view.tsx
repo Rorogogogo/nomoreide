@@ -1,0 +1,137 @@
+import { useCallback, useEffect, useState } from "react";
+import { Plus, X } from "lucide-react";
+import {
+  createTerminalSession,
+  closeTerminalSession,
+  listTerminalSessions,
+  type TerminalSessionInfo,
+} from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { TerminalPane } from "./terminal-pane";
+
+/**
+ * The Terminal page: a tab strip over one {@link TerminalPane} per server
+ * session. Tabs are server-persisted, so reloading the browser re-attaches to
+ * every shell that is still running.
+ */
+export function TerminalView() {
+  const [tabs, setTabs] = useState<TerminalSessionInfo[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      let sessions = await listTerminalSessions().catch(() => []);
+      if (sessions.length === 0) {
+        const created = await createTerminalSession().catch(() => null);
+        sessions = created ? [created] : [];
+      }
+      if (cancelled) return;
+      setTabs(sessions);
+      setActiveId(sessions[0]?.id ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const addTab = useCallback(async () => {
+    setBusy(true);
+    try {
+      const created = await createTerminalSession();
+      setTabs((prev) => [...prev, created]);
+      setActiveId(created.id);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const closeTab = useCallback(
+    async (id: string) => {
+      setBusy(true);
+      try {
+        await closeTerminalSession(id);
+        const index = tabs.findIndex((tab) => tab.id === id);
+        const remaining = tabs.filter((tab) => tab.id !== id);
+        if (remaining.length === 0) {
+          const created = await createTerminalSession();
+          setTabs([created]);
+          setActiveId(created.id);
+          return;
+        }
+        setTabs(remaining);
+        if (activeId === id) {
+          const next = remaining[Math.min(index, remaining.length - 1)];
+          setActiveId(next.id);
+        }
+      } finally {
+        setBusy(false);
+      }
+    },
+    [tabs, activeId],
+  );
+
+  return (
+    <section className="flex h-full min-h-0 flex-col bg-[#090909] text-white">
+      <div
+        aria-label="Terminal tabs"
+        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/10 bg-[#111111] px-2 py-1.5"
+        role="tablist"
+      >
+        {tabs.map((tab, index) => (
+          <div
+            key={tab.id}
+            className={cn(
+              "group flex items-center gap-1 rounded-md border border-transparent px-2 py-1 text-xs",
+              tab.id === activeId
+                ? "border-white/15 bg-white/10 text-white"
+                : "text-white/60 hover:bg-white/5",
+            )}
+          >
+            <button
+              aria-selected={tab.id === activeId}
+              className="max-w-[160px] truncate font-medium"
+              onClick={() => setActiveId(tab.id)}
+              role="tab"
+              type="button"
+            >
+              Terminal {index + 1}
+            </button>
+            <button
+              aria-label={`Close Terminal ${index + 1}`}
+              className="rounded p-0.5 text-white/40 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
+              disabled={busy}
+              onClick={() => void closeTab(tab.id)}
+              type="button"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        ))}
+        <button
+          aria-label="New terminal"
+          className="ml-1 rounded-md p-1 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+          disabled={busy}
+          onClick={() => void addTab()}
+          type="button"
+        >
+          <Plus className="size-4" />
+        </button>
+      </div>
+      <div className="relative min-h-0 flex-1">
+        {tabs.length === 0 ? (
+          <div className="flex h-full items-center justify-center font-mono text-[11px] text-white/40">
+            Starting terminal…
+          </div>
+        ) : (
+          tabs.map((tab) => (
+            <div key={tab.id} className="absolute inset-0">
+              <TerminalPane active={tab.id === activeId} sessionId={tab.id} />
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}

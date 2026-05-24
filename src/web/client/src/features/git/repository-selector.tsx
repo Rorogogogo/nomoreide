@@ -1,11 +1,11 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, X } from "lucide-react";
+import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
-import { postForm, type DashboardData } from "@/lib/api";
+import { deleteGitRepository, postForm, type DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { FolderExplorer } from "./folder-explorer";
 import { pathName } from "./path-utils";
@@ -21,12 +21,15 @@ export function RepositorySelector({
   const [path, setPath] = useState(data.git.cwd);
   const [addError, setAddError] = useState<string | null>(null);
   const [browseDialogOpen, setBrowseDialogOpen] = useState(false);
-  const [browseMode, setBrowseMode] = useState<"fill" | "add">("add");
   const [draftPath, setDraftPath] = useState(data.git.cwd);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedRepository = data.git.selectedRepository;
   const selectedName = selectedRepository?.name ?? pathName(data.git.cwd);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const picker = repositoryPickerState({
+    gitCwd: data.git.cwd,
+    typedPath: path,
+  });
 
   useEffect(() => {
     setPath(data.git.cwd);
@@ -84,10 +87,26 @@ export function RepositorySelector({
     }
   }
 
+  async function removeRepository(name: string) {
+    try {
+      await deleteGitRepository(name);
+      await onRefresh();
+      showSuccessToast(`Removed Git project ${name}.`);
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
   async function addRepositoryFromInput(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const ok = await registerPath(path);
     if (ok) setOpen(false);
+  }
+
+  function openRepositoryPicker() {
+    setAddError(null);
+    setDraftPath(picker.selectedPath);
+    setBrowseDialogOpen(true);
   }
 
   return (
@@ -105,12 +124,7 @@ export function RepositorySelector({
       </Button>
       <Button
         aria-label="Add Git project"
-        onClick={() => {
-          setBrowseMode("add");
-          setAddError(null);
-          setDraftPath(data.git.cwd);
-          setBrowseDialogOpen(true);
-        }}
+        onClick={openRepositoryPicker}
         size="sm"
         type="button"
         variant="outline"
@@ -134,25 +148,38 @@ export function RepositorySelector({
                 {data.config.gitRepositories.map((repository) => {
                   const selected = repository.name === selectedRepository?.name;
                   return (
-                    <button
+                    <div
                       className={cn(
-                        "grid w-full grid-cols-[1fr_auto] items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted",
+                        "group grid w-full grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted",
                         selected && "bg-muted/70",
                       )}
                       key={repository.name}
-                      onClick={() => void selectRepository(repository.name)}
-                      type="button"
                     >
-                      <span className="min-w-0">
+                      <button
+                        className="min-w-0 text-left"
+                        onClick={() => void selectRepository(repository.name)}
+                        type="button"
+                      >
                         <span className="block truncate text-sm font-medium leading-tight">
                           {repository.name}
                         </span>
                         <span className="block truncate font-mono text-[10px] leading-tight text-muted-foreground">
                           {repository.path}
                         </span>
-                      </span>
-                      {selected ? <Check className="size-3.5" /> : null}
-                    </button>
+                      </button>
+                      {selected ? <Check className="size-3.5" /> : <span className="size-3.5" />}
+                      <Button
+                        aria-label={`Remove ${repository.name}`}
+                        className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => void removeRepository(repository.name)}
+                        size="icon"
+                        title={`Remove ${repository.name}`}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 className="size-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   );
                 })}
               </div>
@@ -180,14 +207,9 @@ export function RepositorySelector({
                 Add
               </Button>
               <Button
-                aria-label="Browse folders"
+                aria-label="Browse and add Git project"
                 className="h-7 px-2"
-                onClick={() => {
-                  setBrowseMode("fill");
-                  setAddError(null);
-                  setDraftPath(path || data.git.cwd);
-                  setBrowseDialogOpen(true);
-                }}
+                onClick={openRepositoryPicker}
                 size="sm"
                 type="button"
                 variant="outline"
@@ -203,24 +225,18 @@ export function RepositorySelector({
       ) : null}
       {browseDialogOpen ? (
         <FolderPickerDialog
-          confirmLabel={browseMode === "add" ? "Add Git project" : "Use this folder"}
-          errorMessage={browseMode === "add" ? addError : null}
-          initialPath={browseMode === "add" ? data.git.cwd : path || data.git.cwd}
+          confirmLabel={picker.confirmLabel}
+          errorMessage={addError}
+          initialPath={picker.initialPath}
           selectedPath={draftPath}
-          title={browseMode === "add" ? "Add Git Project" : "Choose Git Project Folder"}
+          title="Add Git Project"
           onCancel={() => setBrowseDialogOpen(false)}
           onSelect={setDraftPath}
           onUse={async () => {
-            if (browseMode === "add") {
-              const ok = await registerPath(draftPath);
-              if (ok) {
-                setBrowseDialogOpen(false);
-                setOpen(false);
-              }
-            } else {
-              setPath(draftPath);
-              setAddError(null);
+            const ok = await registerPath(draftPath);
+            if (ok) {
               setBrowseDialogOpen(false);
+              setOpen(false);
             }
           }}
         />
@@ -231,6 +247,19 @@ export function RepositorySelector({
 
 function isAbsolutePath(path: string): boolean {
   return path.startsWith("/");
+}
+
+export function repositoryPickerState({
+  gitCwd,
+}: {
+  gitCwd: string;
+  typedPath: string;
+}): { confirmLabel: string; initialPath: string; selectedPath: string } {
+  return {
+    confirmLabel: "Add Git project",
+    initialPath: gitCwd,
+    selectedPath: gitCwd,
+  };
 }
 
 function FolderPickerDialog({

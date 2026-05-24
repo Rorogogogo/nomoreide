@@ -1,20 +1,88 @@
-import { useServiceLogs } from "./use-service-logs";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Maximize2, Minimize2, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LogConsole } from "./log-console";
 
 export function LogsTab({ serviceName }: { serviceName: string }) {
-  const { logs, error } = useServiceLogs(serviceName);
+  const [query, setQuery] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [hideStdout, setHideStdout] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
-  if (error) {
-    return <div className="text-red-600">{error}</div>;
+  const console = (
+    <LogConsole
+      fill
+      hideStdout={hideStdout}
+      query={query}
+      setHideStdout={setHideStdout}
+      setQuery={setQuery}
+      setStreaming={setStreaming}
+      streaming={streaming}
+      target={{ kind: "service", name: serviceName }}
+      trailing={
+        <Button
+          onClick={() => setFullscreen((value) => !value)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {fullscreen ? <Minimize2 /> : <Maximize2 />}
+          {fullscreen ? "Exit" : "Expand"}
+        </Button>
+      }
+    />
+  );
+
+  if (fullscreen) {
+    return (
+      <LogsOverlay onClose={() => setFullscreen(false)} title={`Logs — ${serviceName}`}>
+        {console}
+      </LogsOverlay>
+    );
   }
-  if (!logs) {
-    return <div className="text-muted-foreground">Loading…</div>;
-  }
-  if (logs.length === 0) {
-    return <div className="text-muted-foreground">No log entries.</div>;
-  }
-  return (
-    <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded bg-background p-2 font-mono text-[11px]">
-      {logs.map((entry) => `${new Date(entry.timestamp).toLocaleTimeString()} [${entry.stream}] ${entry.text}`).join("\n")}
-    </pre>
+  // Give the inline console a real height to fill so the log list doesn't leave
+  // dead space below it; `fill` then stretches the viewer to this box.
+  return <div className="h-[60vh] min-h-[24rem]">{console}</div>;
+}
+
+/** Near-fullscreen portal used by both the single-service and multi-log views. */
+export function LogsOverlay({
+  title,
+  onClose,
+  children,
+  maxWidthClass = "max-w-6xl",
+}: {
+  title: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  maxWidthClass?: string;
+}) {
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] bg-black/40 p-4 sm:p-8" onMouseDown={onClose}>
+      <div
+        aria-modal="true"
+        className={`mx-auto flex h-full ${maxWidthClass} flex-col overflow-hidden rounded-lg border border-border bg-card text-xs shadow-xl`}
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h2>
+          <Button aria-label="Close logs" onClick={onClose} size="icon" type="button" variant="ghost">
+            <X />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 p-3">{children}</div>
+      </div>
+    </div>,
+    document.body,
   );
 }

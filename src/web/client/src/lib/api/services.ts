@@ -1,5 +1,6 @@
 import { postFormForJson, requestJson } from "./client.js";
 import type { GitBranch, GitFileStatus } from "./git.js";
+import type { LogQuery } from "./log-sources.js";
 
 export type ServiceKind = "local" | "docker-compose" | "ssh";
 
@@ -84,6 +85,8 @@ export interface LogEntry {
   stream: "stdout" | "stderr";
   text: string;
   timestamp: string;
+  /** journald cursor (source targets only); used for "load older" paging. */
+  cursor?: string;
 }
 
 export interface ServiceHealth {
@@ -185,11 +188,29 @@ export async function getDirectories(path: string): Promise<DirectoryListing> {
   );
 }
 
-export async function getServiceLogs(name: string): Promise<LogEntry[]> {
-  const response = await requestJson<{ ok: true; logs: LogEntry[] }>(
-    `/api/services/${encodeURIComponent(name)}/logs`,
+export interface ServiceLogsResult {
+  logs: LogEntry[];
+  /** True when the service can re-query its host (ssh journald/docker). */
+  queryable: boolean;
+}
+
+export async function getServiceLogs(
+  name: string,
+  query: LogQuery = {},
+): Promise<ServiceLogsResult> {
+  const params = new URLSearchParams();
+  params.set("lines", String(query.lines ?? 500));
+  if (query.since) params.set("since", query.since);
+  if (query.until) params.set("until", query.until);
+  if (query.grep) params.set("grep", query.grep);
+  if (query.level) params.set("level", query.level);
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.before) params.set("before", query.before);
+
+  const response = await requestJson<{ ok: true; logs: LogEntry[]; queryable?: boolean }>(
+    `/api/services/${encodeURIComponent(name)}/logs?${params.toString()}`,
   );
-  return response.logs;
+  return { logs: response.logs, queryable: Boolean(response.queryable) };
 }
 
 export type ConfigFileFormat = "env" | "json" | "yaml";

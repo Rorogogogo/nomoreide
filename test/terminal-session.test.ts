@@ -1,0 +1,176 @@
+import { describe, expect, test } from "vitest";
+import {
+  TerminalSession,
+  type PtyAdapter,
+  type PtyProcess,
+  type TerminalExit,
+} from "../src/core/terminal-session.js";
+
+class FakePtyProcess implements PtyProcess {
+  readonly writes: string[] = [];
+  readonly sizes: Array<{ cols: number; rows: number }> = [];
+  killed = false;
+  signal?: string;
+  private dataListeners: Array<(data: string) => void> = [];
+  private exitListeners: Array<(exit: TerminalExit) => void> = [];
+
+  constructor(
+    readonly file: string,
+    readonly args: string[],
+    readonly options: {
+      cwd: string;
+      env: NodeJS.ProcessEnv;
+      cols: number;
+      rows: number;
+      name: string;
+    },
+  ) {}
+
+  write(data: string): void {
+    this.writes.push(data);
+  }
+
+  resize(cols: number, rows: number): void {
+    this.sizes.push({ cols, rows });
+  }
+
+  kill(signal?: string): void {
+    this.killed = true;
+    this.signal = signal;
+  }
+
+  onData(callback: (data: string) => void): { dispose(): void } {
+    this.dataListeners.push(callback);
+    return {
+      dispose: () => {
+        this.dataListeners = this.dataListeners.filter((item) => item !== callback);
+      },
+    };
+  }
+
+  onExit(callback: (exit: TerminalExit) => void): { dispose(): void } {
+    this.exitListeners.push(callback);
+    return {
+      dispose: () => {
+        this.exitListeners = this.exitListeners.filter((item) => item !== callback);
+      },
+    };
+  }
+
+  emitData(data: string): void {
+    for (const listener of this.dataListeners) listener(data);
+  }
+
+  emitExit(exit: TerminalExit): void {
+    for (const listener of this.exitListeners) listener(exit);
+  }
+}
+
+class FakePtyAdapter implements PtyAdapter {
+  readonly spawned: FakePtyProcess[] = [];
+
+  get active(): FakePtyProcess | undefined {
+    return this.spawned.at(-1);
+  }
+
+  spawn(
+    file: string,
+    args: string[],
+    options: {
+      cwd: string;
+      env: NodeJS.ProcessEnv;
+      cols: number;
+      rows: number;
+      name: string;
+    },
+  ): PtyProcess {
+    const process = new FakePtyProcess(file, args, options);
+    this.spawned.push(process);
+    return process;
+  }
+}
+
+describe("TerminalSession", () => {
+  test("starts a shell in the configured cwd and emits output", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      shell: "/bin/zsh",
+    });
+    const output: string[] = [];
+    session.onOutput((chunk) => output.push(chunk));
+
+    session.start({ cols: 100, rows: 30 });
+    adapter.active?.emitData("ready");
+
+    expect(adapter.active?.file).toBe("/bin/zsh");
+    expect(adapter.active?.args).toEqual([]);
+    expect(adapter.active?.options.cwd).toBe("/repo");
+    expect(adapter.active?.options.cols).toBe(100);
+    expect(adapter.active?.options.rows).toBe(30);
+    expect(adapter.active?.options.name).toBe("xterm-256color");
+    expect(output).toEqual(["ready"]);
+    expect(session.snapshot()).toMatchObject({
+      cwd: "/repo",
+      state: "running",
+    });
+  });
+
+  test("writes input and resizes the active pty", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      shell: "/bin/zsh",
+    });
+
+    session.start({ cols: 80, rows: 24 });
+    session.write("echo ok\r");
+    session.resize(120, 40);
+
+    expect(adapter.active?.writes).toEqual(["echo ok\r"]);
+    expect(adapter.active?.sizes).toEqual([{ cols: 120, rows: 40 }]);
+    expect(session.snapshot()).toMatchObject({
+      cols: 120,
+      rows: 40,
+      state: "running",
+    });
+  });
+
+  test("restart kills the old pty and creates a new one", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      shell: "/bin/zsh",
+    });
+
+    session.start({ cols: 80, rows: 24 });
+    const first = adapter.active;
+    session.restart({ cols: 90, rows: 25 });
+
+    expect(first?.killed).toBe(true);
+    expect(first?.signal).toBe("SIGHUP");
+    expect(adapter.spawned).toHaveLength(2);
+    expect(adapter.active?.options.cols).toBe(90);
+    expect(adapter.active?.options.rows).toBe(25);
+  });
+
+  test("records exit state from the pty", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      shell: "/bin/zsh",
+    });
+
+    session.start({ cols: 80, rows: 24 });
+    adapter.active?.emitExit({ exitCode: 7 });
+
+    expect(session.snapshot()).toMatchObject({
+      exit: { exitCode: 7 },
+      state: "exited",
+    });
+  });
+});
