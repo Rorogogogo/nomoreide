@@ -10,6 +10,7 @@ import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { ApprovalBroker } from "../core/approval-broker.js";
 import { ReproBundleBuilder } from "../core/repro-bundle.js";
 import {
   TerminalSessionManager,
@@ -71,8 +72,10 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     manager,
     reproDir: resolve(cwd, ".nomoreide/repros"),
   });
+  const agentApprovals = new ApprovalBroker();
 
   const services: RouteServices = {
+    agentApprovals,
     configStore,
     cwd,
     dbPeek,

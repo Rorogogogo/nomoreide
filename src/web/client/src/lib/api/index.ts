@@ -10,6 +10,7 @@ export { PortConflictResponseError, postForm } from "./client.js";
 export type { PortConflictDetail } from "./client.js";
 
 export * from "./agent.js";
+export * from "./agent-chat.js";
 export * from "./database.js";
 export * from "./errors.js";
 export * from "./git.js";

@@ -21,6 +21,10 @@ export const dashboardRoutes: Route[] = [
   }),
 
   route("GET", "/api/fs/directories", async ({ response, url, cwd }) => {
-    sendJson(response, await listDirectories(url.searchParams.get("path")?.trim() || cwd));
+    const includeFiles = url.searchParams.get("files") === "1";
+    sendJson(
+      response,
+      await listDirectories(url.searchParams.get("path")?.trim() || cwd, { includeFiles }),
+    );
   }),
 ];

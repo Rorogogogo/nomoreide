@@ -1,25 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Database,
-  File,
-  FileCode2,
-  FileText,
-  FlaskConical,
-  Folder,
-  FolderOpen,
-  Image,
-  LockKeyhole,
-  Palette,
-  Settings2,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import type { GitFileStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { fileIconKind, type FileIconKind } from "./file-icon-kind";
+import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
+import { FileKindIcon } from "./file-kind-icon";
 
 interface TreeNode {
   name: string;
@@ -69,12 +55,15 @@ export function FileTree({
   selectedFile,
   onSelectFile,
   branch,
+  root,
 }: {
   paths: string[];
   status: GitFileStatus[];
   selectedFile: string;
   onSelectFile: (path: string) => void;
   branch?: string;
+  /** Absolute repo root; lets rows be dragged into the agent dock by path. */
+  root?: string;
 }) {
   const tree = useMemo(() => buildTree(paths), [paths]);
   const statusByPath = useMemo(() => {
@@ -125,6 +114,7 @@ export function FileTree({
               node={node}
               onSelectFile={onSelectFile}
               onToggle={toggle}
+              root={root}
               selectedFile={selectedFile}
               statusByPath={statusByPath}
             />
@@ -141,6 +131,7 @@ function TreeRow({
   node,
   onSelectFile,
   onToggle,
+  root,
   selectedFile,
   statusByPath,
 }: {
@@ -149,11 +140,13 @@ function TreeRow({
   node: TreeNode;
   onSelectFile: (path: string) => void;
   onToggle: (path: string) => void;
+  root?: string;
   selectedFile: string;
   statusByPath: Map<string, GitFileStatus>;
 }) {
   const isOpen = expanded[node.path] ?? false;
   const paddingLeft = 6 + depth * 12;
+  const dragProps = root ? agentPathDragProps(absolutePath(root, node.path)) : {};
 
   if (node.isFile) {
     const fileStatus = statusByPath.get(node.path);
@@ -167,6 +160,7 @@ function TreeRow({
         onClick={() => onSelectFile(node.path)}
         style={{ paddingLeft }}
         type="button"
+        {...dragProps}
       >
         <FileKindIcon path={node.path} />
         <span className="min-w-0 flex-1 truncate">{node.name}</span>
@@ -184,6 +178,7 @@ function TreeRow({
         onClick={() => onToggle(node.path)}
         style={{ paddingLeft }}
         type="button"
+        {...dragProps}
       >
         <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
         <FolderIcon className="size-3.5 shrink-0 text-amber-600" />
@@ -198,6 +193,7 @@ function TreeRow({
               node={child}
               onSelectFile={onSelectFile}
               onToggle={onToggle}
+              root={root}
               selectedFile={selectedFile}
               statusByPath={statusByPath}
             />
@@ -222,34 +218,4 @@ function StatusBadge({ file }: { file: GitFileStatus }) {
     </span>
   );
 }
-
-function FileKindIcon({ path }: { path: string }) {
-  const kind = fileIconKind(path);
-  const Icon = iconByKind[kind];
-  return <Icon className={cn("size-3.5 shrink-0", iconClassByKind[kind])} />;
-}
-
-const iconByKind: Record<FileIconKind, LucideIcon> = {
-  code: FileCode2,
-  config: Settings2,
-  data: Database,
-  document: FileText,
-  generic: File,
-  image: Image,
-  lock: LockKeyhole,
-  style: Palette,
-  test: FlaskConical,
-};
-
-const iconClassByKind: Record<FileIconKind, string> = {
-  code: "text-sky-600",
-  config: "text-zinc-600",
-  data: "text-emerald-700",
-  document: "text-blue-700",
-  generic: "text-muted-foreground",
-  image: "text-fuchsia-700",
-  lock: "text-amber-700",
-  style: "text-rose-700",
-  test: "text-violet-700",
-};
 

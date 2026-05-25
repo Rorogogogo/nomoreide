@@ -139,6 +139,7 @@ export interface ServiceTestResult {
 export interface DirectoryEntry {
   name: string;
   path: string;
+  isDir: boolean;
 }
 
 export interface DirectoryListing {
@@ -215,10 +216,13 @@ export async function removeServiceFromBundle(
   });
 }
 
-export async function getDirectories(path: string): Promise<DirectoryListing> {
-  return requestJson<DirectoryListing>(
-    `/api/fs/directories?path=${encodeURIComponent(path)}`,
-  );
+export async function getDirectories(
+  path: string,
+  { files = false }: { files?: boolean } = {},
+): Promise<DirectoryListing> {
+  const params = new URLSearchParams({ path });
+  if (files) params.set("files", "1");
+  return requestJson<DirectoryListing>(`/api/fs/directories?${params.toString()}`);
 }
 
 export interface ServiceLogsResult {

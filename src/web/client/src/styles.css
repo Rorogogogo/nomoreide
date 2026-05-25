@@ -126,6 +126,17 @@
   box-sizing: border-box;
 }
 
+/* Tailwind v4 Preflight defaults buttons to cursor:default; restore the hand. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a[href],
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}
+
 body {
   margin: 0;
   min-width: 320px;

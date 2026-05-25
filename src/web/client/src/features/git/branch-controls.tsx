@@ -70,7 +70,7 @@ export function BranchControls({
   }
 
   return (
-    <div className="fixed bottom-3 right-4 z-50 flex items-end">
+    <div className="fixed bottom-12 right-4 z-50 flex items-end">
       {open ? (
         <div
           aria-label="Switch Git branch"

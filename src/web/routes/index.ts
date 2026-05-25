@@ -1,6 +1,7 @@
 import type { Route } from "./context.js";
 import { dashboardRoutes } from "./dashboard-routes.js";
 import { agentRoutes } from "./agent-routes.js";
+import { agentChatRoutes } from "./agent-chat-routes.js";
 import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
@@ -19,6 +20,7 @@ import { terminalRoutes } from "./terminal-routes.js";
 export const routes: Route[] = [
   ...dashboardRoutes,
   ...agentRoutes,
+  ...agentChatRoutes,
   ...databaseRoutes,
   ...errorRoutes,
   ...gitRoutes,
