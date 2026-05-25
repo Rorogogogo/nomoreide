@@ -10,8 +10,18 @@ import {
 } from "@/components/ui/card";
 import type { AgentInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { AgentNotice } from "./agent-empty";
+import type { AgentId } from "./agent-types";
 
-export function MemoryTab({ agent }: { agent: AgentInfo }) {
+export function MemoryTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentId }) {
+  if (agentId === "codex") {
+    return (
+      <AgentNotice icon={<Brain className="size-8" />} title="No memory introspection for Codex yet">
+        Project memory and <code className="font-mono">CLAUDE.md</code> reading are
+        Claude-specific. Codex memory support isn&apos;t wired up.
+      </AgentNotice>
+    );
+  }
   return (
     <Card className="min-w-0 rounded-none border-0 bg-transparent">
       <CardHeader className="border-b border-border px-3 py-2">

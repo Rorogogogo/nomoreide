@@ -40,8 +40,7 @@ export function ErrorInboxView() {
             </Badge>
           </div>
           <Badge
-            variant={connected ? "success" : "secondary"}
-            appearance="subtle"
+            variant="outline"
             size="small"
             icon={
               <span

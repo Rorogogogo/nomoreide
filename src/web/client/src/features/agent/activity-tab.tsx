@@ -9,13 +9,15 @@ import {
 } from "@/components/ui/card";
 import type { AgentInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { AgentId } from "./agent-types";
 import { ToolCallFeed } from "./tool-call-feed";
 
-export function ActivityTab({ agent }: { agent: AgentInfo }) {
+export function ActivityTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentId }) {
   return (
     <>
       <ToolCallFeed />
 
+      {agentId !== "claude-code" ? null : (
       <Card className="min-w-0 rounded-none border-0 bg-transparent">
         <CardHeader className="border-b border-border px-3 py-2">
           <div className="flex items-center justify-between gap-2">
@@ -48,7 +50,7 @@ export function ActivityTab({ agent }: { agent: AgentInfo }) {
                         {project.path}
                       </span>
                       {project.current ? (
-                        <Badge variant="success" appearance="subtle" size="small">
+                        <Badge variant="outline" size="small">
                           current
                         </Badge>
                       ) : null}
@@ -75,6 +77,7 @@ export function ActivityTab({ agent }: { agent: AgentInfo }) {
           )}
         </CardContent>
       </Card>
+      )}
     </>
   );
 }

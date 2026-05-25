@@ -55,8 +55,7 @@ export function ToolCallFeed() {
             </Badge>
           </div>
           <Badge
-            variant={connected ? "success" : "secondary"}
-            appearance="subtle"
+            variant="outline"
             size="small"
             icon={
               <span
@@ -86,8 +85,8 @@ export function ToolCallFeed() {
                   <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] text-muted-foreground">
                     <span>{record.durationMs} ms</span>
                     <Badge
-                      variant={record.status === "ok" ? "success" : "danger"}
-                      appearance="subtle"
+                      variant={record.status === "ok" ? "success" : "error"}
+                      appearance="outline"
                       size="small"
                     >
                       {record.status}
