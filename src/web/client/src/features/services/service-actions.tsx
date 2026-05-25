@@ -15,26 +15,33 @@ export function LifecycleActions({
   baseUrl,
   compact = false,
   onRefresh,
+  onStarted,
   restartAction,
+  solidStart = false,
   targetLabel,
 }: {
   active: boolean;
   baseUrl: string;
   compact?: boolean;
   onRefresh: () => Promise<void>;
+  /** Fired after a successful start, so the caller can select the started service. */
+  onStarted?: () => void;
   restartAction?: () => Promise<void>;
+  /** Render the start button as a filled green button (used for groups). */
+  solidStart?: boolean;
   targetLabel: string;
 }) {
   if (!active) {
     return (
       <ActionButton
         compact={compact}
-        intent="start"
+        intent={solidStart ? "startSolid" : "start"}
         icon={<Play />}
         label="Start"
         targetLabel={targetLabel}
         url={`${baseUrl}/start`}
         onRefresh={onRefresh}
+        onSuccess={onStarted}
       />
     );
   }
@@ -82,15 +89,18 @@ function ActionButton({
   targetLabel,
   url,
   onRefresh,
+  onSuccess,
 }: {
   action?: () => Promise<void>;
   compact?: boolean;
-  intent?: "neutral" | "restart" | "start" | "stop";
+  intent?: "neutral" | "restart" | "start" | "startSolid" | "stop";
   icon: ReactNode;
   label: string;
   targetLabel: string;
   url: string;
   onRefresh: () => Promise<void>;
+  /** Fired after the action succeeds (e.g. select the service that was started). */
+  onSuccess?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState<PortConflictDetail | null>(null);
@@ -107,6 +117,7 @@ function ActionButton({
       showSuccessToast(`${label} requested for ${targetLabel}.`);
       await onRefresh();
       setConflict(null);
+      onSuccess?.();
     } catch (caught) {
       if (caught instanceof PortConflictResponseError) {
         setConflict(caught.conflict);
@@ -212,6 +223,9 @@ function PortConflictDialog({
 const actionButtonClass = {
   neutral: "",
   restart: "border-amber-600 bg-amber-600 text-white hover:bg-amber-700",
-  start: "text-emerald-600 hover:bg-emerald-50",
+  // Individual services: plain outline, no color.
+  start: "",
+  // Groups: filled green.
+  startSolid: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
   stop: "border-red-600 bg-red-600 text-white hover:bg-red-700",
-} satisfies Record<"neutral" | "restart" | "start" | "stop", string>;
+} satisfies Record<"neutral" | "restart" | "start" | "startSolid" | "stop", string>;

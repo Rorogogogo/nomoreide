@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { AgentView } from "@/features/agent/agent-view";
+import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
@@ -33,7 +34,7 @@ type Page = "services" | "git" | "agent" | "errors" | "database" | "terminal";
 
 export function sidebarShellClassName(docked = false) {
   return cn(
-    "group/sidebar hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-5 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
+    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-5 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
     docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
   );
 }
@@ -234,8 +235,8 @@ export function App() {
   );
 
   return (
-    <div className="h-screen overflow-hidden">
-      <div className="mx-auto flex h-screen max-w-[1500px]">
+    <div className="h-screen overflow-hidden pb-9">
+      <div className="mx-auto flex h-full max-w-[1500px]">
         <aside className={sidebarShellClassName(sidebarDocked)}>
           <div
             className={cn(
@@ -307,7 +308,7 @@ export function App() {
         </aside>
 
         <main
-          className="flex h-screen min-w-0 flex-1 flex-col px-0 py-0"
+          className="flex h-full min-w-0 flex-1 flex-col px-0 py-0"
         >
           <header
             className={cn(
@@ -381,6 +382,7 @@ export function App() {
           onRefresh={refresh}
         />
       ) : null}
+      <AgentDock onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")} />
     </div>
   );
 }

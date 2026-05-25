@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
+import { setAgentPathData } from "../agent/chat/drag-to-agent";
 import { ProcessBadge } from "./process-badge";
 import { GroupForm } from "./service-forms";
 import { LifecycleActions, actionErrorMessage } from "./service-actions";
@@ -78,7 +79,7 @@ export function ServiceGroupSection({
       <div className="flex items-center gap-1.5 bg-muted/35 px-3 py-1.5">
         <button
           aria-expanded={!collapsed}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
           onClick={() => setCollapsed((current) => !current)}
           type="button"
         >
@@ -114,8 +115,13 @@ export function ServiceGroupSection({
             await postForm(`/api/bundles/${encodeURIComponent(group.name)}/stop`, {});
             await postForm(`/api/bundles/${encodeURIComponent(group.name)}/start`, {});
           }}
+          solidStart
           targetLabel={`group ${group.name}`}
           onRefresh={onRefresh}
+          onStarted={() => {
+            const first = services[0];
+            if (first) onSelectService(first.name);
+          }}
         />
       </div>
       {editing ? (
@@ -184,16 +190,20 @@ export function ServiceRow({
       draggable
       onDragStart={(event) => {
         event.dataTransfer.setData(SERVICE_DRAG_TYPE, service.name);
+        // Also carry the service's directory so it can be dropped into the
+        // agent dock as an absolute path (group drop zones key off the type
+        // above, so the two targets never collide).
+        if (service.cwd) setAgentPathData(event.dataTransfer, service.cwd);
         event.dataTransfer.effectAllowed = "copyMove";
         setDragging(true);
       }}
       onDragEnd={() => setDragging(false)}
       className={cn(
-        "group flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors",
+        "group flex cursor-pointer items-center gap-2 border-l-2 px-3 py-1.5 transition-colors",
         dragging && "opacity-50",
         selected
-          ? "bg-muted/70 ring-2 ring-inset ring-primary"
-          : "hover:bg-muted/30",
+          ? "border-l-primary bg-primary/10"
+          : "border-l-transparent hover:bg-muted",
       )}
       onClick={onSelect}
       role="option"
@@ -215,6 +225,7 @@ export function ServiceRow({
           compact
           targetLabel={service.name}
           onRefresh={onRefresh}
+          onStarted={onSelect}
         />
       </span>
     </div>

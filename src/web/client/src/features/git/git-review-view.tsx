@@ -204,6 +204,7 @@ export function GitReviewView({
             files={data.git.status?.files ?? []}
             selectedFile={selectedFile}
             onSelectFile={selectFile}
+            root={data.git.cwd}
           />
         ) : allFilesError ? (
           <Alert variant="destructive" className="m-3">
@@ -214,6 +215,7 @@ export function GitReviewView({
             branch={data.git.status?.branch || undefined}
             onSelectFile={setSelectedTreeFile}
             paths={allFiles}
+            root={data.git.cwd}
             selectedFile={selectedTreeFile}
             status={data.git.status?.files ?? []}
           />

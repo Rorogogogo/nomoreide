@@ -1,26 +1,13 @@
 import { useMemo, useState } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Database,
-  File,
-  FileCode2,
-  FileText,
-  FlaskConical,
-  GitBranch,
-  Image,
-  LockKeyhole,
-  Palette,
-  Settings2,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { GitFileStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { fileIconKind, type FileIconKind } from "./file-icon-kind";
+import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
+import { FileKindIcon } from "./file-kind-icon";
 
 export function ChangedFilesList({
   branch,
@@ -28,12 +15,15 @@ export function ChangedFilesList({
   files,
   selectedFile,
   onSelectFile,
+  root,
 }: {
   branch?: string;
   error?: string;
   files: GitFileStatus[];
   selectedFile: string;
   onSelectFile: (path: string) => void;
+  /** Absolute repo root; lets rows be dragged into the agent dock by path. */
+  root?: string;
 }) {
   const groups = useMemo(() => groupFiles(files).filter((group) => group.files.length), [files]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<ChangeGroupId, boolean>>({
@@ -70,6 +60,7 @@ export function ChangedFilesList({
                   [group.id]: !current[group.id],
                 }))
               }
+              root={root}
               selectedFile={selectedFile}
             />
           ))
@@ -88,12 +79,14 @@ function ChangeSection({
   group,
   onSelectFile,
   onToggle,
+  root,
   selectedFile,
 }: {
   collapsed: boolean;
   group: ChangeGroup;
   onSelectFile: (path: string) => void;
   onToggle: () => void;
+  root?: string;
   selectedFile: string;
 }) {
   const Chevron = collapsed ? ChevronRight : ChevronDown;
@@ -122,6 +115,7 @@ function ChangeSection({
               group={group.id}
               key={file.path}
               onClick={() => onSelectFile(file.path)}
+              root={root}
             />
           ))}
         </div>
@@ -135,14 +129,17 @@ function FileButton({
   file,
   group,
   onClick,
+  root,
 }: {
   active: boolean;
   file: GitFileStatus;
   group: ChangeGroupId;
   onClick: () => void;
+  root?: string;
 }) {
   const filename = file.path.split("/").pop() || file.path;
   const dir = file.path.split("/").slice(0, -1).join("/");
+  const dragProps = root ? agentPathDragProps(absolutePath(root, file.path)) : {};
   return (
     <Button
       className={cn(
@@ -152,6 +149,7 @@ function FileButton({
       onClick={onClick}
       type="button"
       variant="ghost"
+      {...dragProps}
     >
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-1.5">
@@ -178,18 +176,6 @@ function statusLabel(file: GitFileStatus, group: ChangeGroupId): string {
   if (group === "untracked") return "?";
   if (group === "staged") return file.index.trim();
   return file.workingTree.trim();
-}
-
-function FileKindIcon({ path }: { path: string }) {
-  const kind = fileIconKind(path);
-  const Icon = iconByKind[kind];
-
-  return (
-    <Icon
-      aria-label={`${kind} file`}
-      className={cn("size-3.5 shrink-0", iconClassByKind[kind])}
-    />
-  );
 }
 
 type ChangeGroupId = "staged" | "unstaged" | "untracked";
@@ -227,27 +213,3 @@ function groupFiles(files: GitFileStatus[]): ChangeGroup[] {
     },
   ];
 }
-
-const iconByKind: Record<FileIconKind, LucideIcon> = {
-  code: FileCode2,
-  config: Settings2,
-  data: Database,
-  document: FileText,
-  generic: File,
-  image: Image,
-  lock: LockKeyhole,
-  style: Palette,
-  test: FlaskConical,
-};
-
-const iconClassByKind: Record<FileIconKind, string> = {
-  code: "text-sky-600",
-  config: "text-zinc-600",
-  data: "text-emerald-700",
-  document: "text-blue-700",
-  generic: "text-muted-foreground",
-  image: "text-fuchsia-700",
-  lock: "text-amber-700",
-  style: "text-rose-700",
-  test: "text-violet-700",
-};
