@@ -212,6 +212,6 @@ function PortConflictDialog({
 const actionButtonClass = {
   neutral: "",
   restart: "border-amber-600 bg-amber-600 text-white hover:bg-amber-700",
-  start: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
+  start: "text-emerald-600 hover:bg-emerald-50",
   stop: "border-red-600 bg-red-600 text-white hover:bg-red-700",
 } satisfies Record<"neutral" | "restart" | "start" | "stop", string>;

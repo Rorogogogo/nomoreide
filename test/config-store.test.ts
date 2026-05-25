@@ -107,6 +107,25 @@ describe("ConfigStore", () => {
     expect(raw.services[0].name).toBe("backend");
   });
 
+  test("removes a service and prunes it from bundles", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerService({ name: "db", command: "x", cwd: "/repo" });
+    await store.registerService({ name: "api", command: "y", cwd: "/repo" });
+    await store.registerBundle({ name: "stack", services: ["db", "api"] });
+
+    const config = await store.removeService("db");
+
+    expect(config.services.map((service) => service.name)).toEqual(["api"]);
+    expect(config.bundles).toEqual([{ name: "stack", services: ["api"] }]);
+  });
+
+  test("removeService rejects an unknown service", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(store.removeService("ghost")).rejects.toThrow(/not registered/);
+  });
+
   test("registers a bundle and replaces an existing bundle with the same name", async () => {
     const store = new ConfigStore(configPath);
 

@@ -3,6 +3,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ServiceDefinition } from "@/lib/api";
 import { ProcessBadge } from "../process-badge";
 import { kindOptions, serviceCommandPresets } from "./presets";
 import { ServiceTestAlert } from "./service-test-alert";
@@ -12,12 +13,15 @@ export function ServiceForm({
   cwd,
   onRefresh,
   onSaved,
+  initialService,
 }: {
   cwd: string;
   onRefresh: () => Promise<void>;
   onSaved?: () => void;
+  initialService?: ServiceDefinition;
 }) {
   const {
+    editing,
     kind,
     setKind,
     name,
@@ -40,7 +44,7 @@ export function ServiceForm({
     testing,
     submit,
     testCommand,
-  } = useServiceForm({ cwd, onRefresh, onSaved });
+  } = useServiceForm({ cwd, onRefresh, onSaved, initialService });
 
   const activeKind = kindOptions.find((option) => option.value === kind)!;
   const canTest = kind === "local" && command.trim().length > 0 && formCwd.trim().length > 0;
@@ -59,6 +63,7 @@ export function ServiceForm({
           {kindOptions.map((option) => (
             <Button
               className="justify-center"
+              disabled={editing}
               key={option.value}
               onClick={() => setKind(option.value)}
               size="sm"
@@ -82,9 +87,15 @@ export function ServiceForm({
               name="name"
               onChange={(event) => setName(event.target.value)}
               placeholder="backend"
+              readOnly={editing}
               required
               value={name}
             />
+            {editing ? (
+              <span className="text-[11px] text-muted-foreground">
+                Name is the service key and can't be changed here.
+              </span>
+            ) : null}
           </Label>
           <Label>
             Description
@@ -260,7 +271,7 @@ export function ServiceForm({
             {testing ? "Testing..." : "Test Command"}
           </Button>
         ) : null}
-        <Button type="submit">Add Service</Button>
+        <Button type="submit">{editing ? "Save Service" : "Add Service"}</Button>
       </div>
     </form>
   );
