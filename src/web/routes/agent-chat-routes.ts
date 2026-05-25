@@ -3,28 +3,39 @@ import {
   AgentRuntime,
   approvalsEnabled,
   isAgentAvailable,
+  publicProviderInfo,
+  resolveChatProvider,
   type AgentStreamEvent,
 } from "../../core/agent-runtime.js";
+import { detectAgent } from "../agent-info.js";
 import { sendJson } from "../http-utils.js";
 import { errorMessage, route, type Route } from "./context.js";
 
-/** In-dashboard AI chat: streams a real Claude Code session over SSE. */
+/** In-dashboard AI chat: streams the active agent CLI session over SSE. */
 export const agentChatRoutes: Route[] = [
   route("GET", "/api/agent/chat/status", async ({ response }) => {
+    const detected = await detectAgent();
+    const provider = resolveChatProvider(detected.name);
     sendJson(response, {
       ok: true,
-      configured: await isAgentAvailable(),
-      approvals: approvalsEnabled(),
+      configured: await isAgentAvailable(provider),
+      approvals: approvalsEnabled(provider),
+      provider: publicProviderInfo(provider),
     });
   }),
 
   route("POST", "/api/agent/chat", async (ctx) => {
     const { request, response, cwd, agentApprovals } = ctx;
+    const detected = await detectAgent();
+    const provider = resolveChatProvider(detected.name);
 
-    if (!(await isAgentAvailable())) {
+    if (!(await isAgentAvailable(provider))) {
       sendJson(
         response,
-        { ok: false, error: "Claude Code (`claude`) is not installed or not on PATH." },
+        {
+          ok: false,
+          error: `${provider.label} (\`${provider.commandName}\`) is not installed or not on PATH.`,
+        },
         503,
       );
       return;
@@ -57,7 +68,7 @@ export const agentChatRoutes: Route[] = [
     const host = request.headers.host ?? "127.0.0.1:4317";
     const approvalUrl = `http://${host}/api/agent/chat/approval`;
 
-    const runtime = new AgentRuntime({ cwd });
+    const runtime = new AgentRuntime({ cwd, provider });
     try {
       await runtime.run(payload.message, payload.resumeSessionId, send, {
         signal: controller.signal,

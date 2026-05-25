@@ -73,7 +73,7 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
   return { detected, project, skills, mcpServers, projects };
 }
 
-async function detectAgent(): Promise<AgentInfo["detected"]> {
+export async function detectAgent(): Promise<AgentInfo["detected"]> {
   const env = process.env;
   const signals: string[] = [];
   let name: AgentInfo["detected"]["name"] = "unknown";
