@@ -1,70 +1,8 @@
-import { useEffect, useState } from "react";
-import { Gauge } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { getAgentUsage, type UsageInfo } from "@/lib/api";
+import type { UsageInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
 
-export function UsageCard() {
-  const [usage, setUsage] = useState<UsageInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const load = () => {
-      void getAgentUsage()
-        .then((info) => {
-          if (active) {
-            setUsage(info);
-            setError(null);
-          }
-        })
-        .catch((err: unknown) => {
-          if (active) setError(err instanceof Error ? err.message : String(err));
-        });
-    };
-    load();
-    const interval = window.setInterval(load, 10_000);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  return (
-    <Card className="min-w-0 rounded-none border-0 bg-transparent">
-      <CardHeader className="border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
-          <Gauge className="size-4 text-muted-foreground" />
-          <CardTitle>Token & Cost Usage</CardTitle>
-        </div>
-        <CardDescription className="text-xs">
-          Last-session metrics from <code className="font-mono">~/.claude.json</code> and rate limits scraped from <code className="font-mono">~/.codex/sessions</code>.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-3">
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          {usage?.claude ? <ClaudeUsageBlock usage={usage.claude} /> : null}
-          {usage?.codex ? <CodexUsageBlock usage={usage.codex} /> : null}
-        </div>
-        {!usage?.claude && !usage?.codex && !error ? (
-          <p className="text-xs text-muted-foreground">
-            No usage data yet. Run a session with Claude Code or Codex CLI in this project.
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }) {
+export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }) {
   const totalInput =
     usage.inputTokens + usage.cacheCreationInputTokens + usage.cacheReadInputTokens;
   const cachePct = totalInput > 0 ? (usage.cacheReadInputTokens / totalInput) * 100 : 0;
@@ -144,7 +82,7 @@ function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }
   );
 }
 
-function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex"]> }) {
+export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex"]> }) {
   return (
     <div className="rounded-md border border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">

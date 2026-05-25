@@ -1,4 +1,4 @@
-import { Bot } from "lucide-react";
+import { Gauge } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -8,88 +8,77 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentInfo } from "@/lib/api";
-import {
-  ClaudeLogo,
-  CodexLogo,
-  GeminiLogo,
-  UnknownAgentLogo,
-} from "./agent-logos";
-import { UsageCard } from "./usage-card";
+import type { AgentId } from "./agent-types";
+import { ClaudeLogo, CodexLogo } from "./agent-logos";
+import { ClaudeUsageBlock, CodexUsageBlock } from "./usage-card";
+import { useUsage } from "./use-usage";
 
-type AgentBadgeVariant = "primary" | "secondary" | "success" | "warning";
-
-const AGENT_BADGE: Record<
-  AgentInfo["detected"]["name"],
-  { label: string; variant: AgentBadgeVariant; icon: React.ReactNode }
-> = {
-  "claude-code": {
-    label: "Claude Code",
-    variant: "warning",
-    icon: <ClaudeLogo />,
-  },
-  codex: {
-    label: "OpenAI Codex CLI",
-    variant: "secondary",
-    icon: <CodexLogo />,
-  },
-  gemini: {
-    label: "Gemini CLI",
-    variant: "primary",
-    icon: <GeminiLogo />,
-  },
-  unknown: {
-    label: "Unknown agent",
-    variant: "secondary",
-    icon: <UnknownAgentLogo />,
-  },
+const AGENT_META: Record<AgentId, { label: string; icon: React.ReactNode }> = {
+  "claude-code": { label: "Claude Code", icon: <ClaudeLogo /> },
+  codex: { label: "Codex", icon: <CodexLogo /> },
 };
 
-export function OverviewTab({ agent }: { agent: AgentInfo }) {
-  const badge = AGENT_BADGE[agent.detected.name];
-  return (
-    <>
-      <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
-        <CardHeader className="border-b border-border px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Bot className="size-4 text-muted-foreground" />
-            <CardTitle>Active Agent</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Detected from environment variables and parent process of this MCP server.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant={badge.variant}
-              appearance="subtle"
-              size="medium"
-              icon={badge.icon}
-            >
-              {badge.label}
-            </Badge>
-            {agent.detected.parentProcess ? (
-              <span className="truncate font-mono text-[11px] text-muted-foreground">
-                parent: {agent.detected.parentProcess}
-              </span>
-            ) : null}
-          </div>
-          {agent.detected.signals.length ? (
-            <ul className="space-y-0.5 font-mono text-[11px] text-muted-foreground">
-              {agent.detected.signals.map((signal) => (
-                <li key={signal}>• {signal}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-muted-foreground">No detection signals captured.</p>
-          )}
-          <div className="pt-1 text-[11px] text-muted-foreground">
-            cwd: <span className="font-mono">{agent.project.cwd}</span>
-          </div>
-        </CardContent>
-      </Card>
+export function OverviewTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentId }) {
+  const { usage, error } = useUsage();
+  const isDetected = agent.detected.name === agentId;
+  const meta = AGENT_META[agentId];
+  const isCodex = agentId === "codex";
 
-      <UsageCard />
-    </>
+  return (
+    <Card className="min-w-0 rounded-none border-0 bg-transparent">
+      <CardHeader className="border-b border-border px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Gauge className="size-4 text-muted-foreground" />
+          <CardTitle>{isCodex ? "Rate Limits" : "Token & Cost Usage"}</CardTitle>
+          <Badge variant="outline" size="small" icon={meta.icon}>
+            {meta.label}
+          </Badge>
+          {isDetected ? (
+            <Badge variant="outline" size="small">
+              active session
+            </Badge>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">
+              Not the active agent in this session
+            </span>
+          )}
+        </div>
+        <CardDescription className="truncate text-xs">
+          {isCodex ? (
+            <>
+              Rate-limit windows from <code className="font-mono">~/.codex/sessions</code>
+            </>
+          ) : (
+            <>
+              Last-session metrics from <code className="font-mono">~/.claude.json</code>
+            </>
+          )}
+          {" · "}
+          <span className="font-mono">{agent.project.cwd}</span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-3">
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {isCodex ? (
+          usage?.codex ? (
+            <CodexUsageBlock usage={usage.codex} />
+          ) : !error ? (
+            <EmptyUsage agent="Codex CLI" />
+          ) : null
+        ) : usage?.claude ? (
+          <ClaudeUsageBlock usage={usage.claude} />
+        ) : !error ? (
+          <EmptyUsage agent="Claude Code" />
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyUsage({ agent }: { agent: string }) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      No usage data yet. Run a session with {agent} in this project.
+    </p>
   );
 }
