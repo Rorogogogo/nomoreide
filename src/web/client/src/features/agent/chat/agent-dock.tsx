@@ -16,7 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AgentChatProviderInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { hasAgentPath, readAgentPath } from "./drag-to-agent";
 import { FilePicker } from "./file-picker";
 import {
@@ -33,7 +35,7 @@ import {
  */
 export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void }) {
   const [open, setOpen] = useState(false);
-  const { turns, streaming, error, configured, approvals, send, stop, clear, respond } =
+  const { turns, streaming, error, configured, provider, approvals, send, stop, clear, respond } =
     useAgentChat();
   const [draft, setDraft] = useState("");
   // `dragActive`: a path drag is happening *somewhere* (gentle invite).
@@ -134,8 +136,8 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
       {open ? (
         <>
           <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
-            <Sparkles className="size-4 text-primary" />
-            <span className="text-sm font-medium">Agent</span>
+            <ProviderLogo provider={provider} className="size-4 text-primary" />
+            <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
             {streaming ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> thinking…
@@ -183,7 +185,7 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
 
           <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-3 py-3">
             {turns.length === 0 ? (
-              <EmptyHint configured={configured} />
+              <EmptyHint configured={configured} provider={provider} />
             ) : (
               turns.map((turn) => <TurnView key={turn.id} turn={turn} />)
             )}
@@ -239,8 +241,8 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
                 onKeyDown={onKeyDown}
                 placeholder={
                   configured === false
-                    ? "Claude Code (`claude`) is not installed"
-                    : "Ask Claude Code anything about this project…"
+                    ? `${provider?.label ?? "Agent"} (\`${provider?.commandName ?? "agent"}\`) is not installed`
+                    : `Ask ${provider?.label ?? "the agent"} anything about this project...`
                 }
                 rows={1}
                 value={draft}
@@ -278,8 +280,8 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
             </>
           ) : (
             <>
-              <Sparkles className="size-4 text-primary" />
-              <span>Ask the agent…</span>
+              <ProviderLogo provider={provider} className="size-4 text-primary" />
+              <span>Ask {provider?.label ?? "the agent"}...</span>
               {streaming ? <Loader2 className="size-3.5 animate-spin" /> : null}
               <span className="ml-auto text-xs text-muted-foreground/70">click to expand</span>
             </>
@@ -290,19 +292,37 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
   );
 }
 
-function EmptyHint({ configured }: { configured: boolean | null }) {
+function ProviderLogo({
+  provider,
+  className,
+}: {
+  provider: AgentChatProviderInfo | null;
+  className?: string;
+}) {
+  if (provider?.id === "claude") return <ClaudeLogo className={className} />;
+  if (provider?.id === "codex") return <CodexLogo className={className} />;
+  return <Sparkles className={className} />;
+}
+
+function EmptyHint({
+  configured,
+  provider,
+}: {
+  configured: boolean | null;
+  provider: AgentChatProviderInfo | null;
+}) {
   if (configured === false) {
     return (
       <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        This dock runs the <code className="font-mono">claude</code> CLI. Install Claude Code (and{" "}
-        <code className="font-mono">claude login</code>) so it's on NoMoreIDE's PATH, then reload.
+        This dock runs the <code className="font-mono">{provider?.commandName ?? "agent"}</code>{" "}
+        CLI. {provider?.installHint ?? "Install the active agent CLI, then reload."}
       </div>
     );
   }
   return (
     <div className="text-xs text-muted-foreground">
-      This is real Claude Code, running in your workspace with full tools — e.g. “restart the api
-      and tail its logs”, “what changed in git and why?”, “fix the failing test”.
+      {provider?.intro ??
+        "This is the active agent, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\"."}
     </div>
   );
 }

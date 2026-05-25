@@ -10,12 +10,27 @@ export type AgentStreamEvent =
   | { type: "done"; stopReason: string | null }
   | { type: "error"; message: string };
 
-/** Whether the `claude` CLI is available, and whether tool calls need approval. */
-export async function getAgentChatStatus(): Promise<{ configured: boolean; approvals: boolean }> {
-  const res = await requestJson<{ ok: true; configured: boolean; approvals: boolean }>(
-    "/api/agent/chat/status",
-  );
-  return { configured: res.configured, approvals: res.approvals };
+export interface AgentChatProviderInfo {
+  id: "claude" | "codex";
+  label: string;
+  commandName: string;
+  installHint: string;
+  intro: string;
+}
+
+/** Whether the selected agent CLI is available, and whether tool calls need approval. */
+export async function getAgentChatStatus(): Promise<{
+  configured: boolean;
+  approvals: boolean;
+  provider: AgentChatProviderInfo;
+}> {
+  const res = await requestJson<{
+    ok: true;
+    configured: boolean;
+    approvals: boolean;
+    provider: AgentChatProviderInfo;
+  }>("/api/agent/chat/status");
+  return { configured: res.configured, approvals: res.approvals, provider: res.provider };
 }
 
 /** Answer a pending tool-approval prompt for the given Claude Code session. */

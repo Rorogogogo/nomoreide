@@ -5,15 +5,14 @@ import { join } from "node:path";
 import type { ApprovalBroker } from "./approval-broker.js";
 
 /**
- * In-dashboard AI agent backed by the real Claude Code CLI. We drive the
- * installed `claude` binary in headless streaming mode (`--output-format
- * stream-json`) rather than the Anthropic API directly, so the dock gets the
- * full Claude Code agent — its tools, this project's .mcp.json / CLAUDE.md, and
- * the user's existing Claude Code login (no separate API key).
+ * In-dashboard AI agent backed by the real local agent CLI. NoMoreIDE selects
+ * Claude Code or Codex from the same startup-agent detection used by /agent,
+ * then drives that CLI in a machine-readable headless mode rather than calling
+ * a vendor API directly.
  *
- * Conversation continuity uses Claude Code's own session store: the first turn
- * returns a `session_id`, which the client sends back as `resumeSessionId` on
- * the next turn (`--resume`). The server holds no transcript state.
+ * Conversation continuity uses the selected CLI's own session store: the first
+ * turn returns a session id, which the client sends back as `resumeSessionId` on
+ * the next turn. The server holds no transcript state.
  *
  * Tool permissions: unless NOMOREIDE_AGENT_PERMISSION_MODE=bypassPermissions,
  * the agent runs in `default` mode with a PreToolUse hook on mutating tools.
@@ -21,12 +20,53 @@ import type { ApprovalBroker } from "./approval-broker.js";
  */
 
 const CLAUDE_BIN = process.env.NOMOREIDE_CLAUDE_BIN || "claude";
+const CODEX_BIN = process.env.NOMOREIDE_CODEX_BIN || "codex";
 /** "bypassPermissions" runs fully autonomous (no approval prompts). */
 const PERMISSION_MODE = process.env.NOMOREIDE_AGENT_PERMISSION_MODE || "default";
+const CODEX_APPROVAL_POLICY = process.env.NOMOREIDE_CODEX_APPROVAL_POLICY || "never";
 /** Tools that trigger an approval prompt (mutating / side-effecting ones). */
 const GATED_TOOLS = "Bash|Edit|Write|MultiEdit|NotebookEdit";
 /** Truncate tool-result previews shown in the dock. */
 const PREVIEW_LIMIT = 400;
+
+export type AgentChatProviderId = "claude" | "codex";
+export type DetectedAgentName = "claude-code" | "codex" | "gemini" | "unknown";
+
+export interface AgentChatProvider {
+  id: AgentChatProviderId;
+  label: string;
+  commandName: string;
+  bin: string;
+  installHint: string;
+  intro: string;
+}
+
+export interface AgentInvocation {
+  bin: string;
+  args: string[];
+}
+
+const CLAUDE_PROVIDER: AgentChatProvider = {
+  id: "claude",
+  label: "Claude Code",
+  commandName: "claude",
+  bin: CLAUDE_BIN,
+  installHint:
+    "Install Claude Code (and run `claude login`) so it is on NoMoreIDE's PATH, then reload.",
+  intro:
+    "This is real Claude Code, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\".",
+};
+
+const CODEX_PROVIDER: AgentChatProvider = {
+  id: "codex",
+  label: "Codex",
+  commandName: "codex",
+  bin: CODEX_BIN,
+  installHint:
+    "Install Codex CLI (and run `codex login`) so it is on NoMoreIDE's PATH, then reload.",
+  intro:
+    "This is real Codex CLI, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\".",
+};
 
 /** Streamed back to the route, which forwards each as an SSE event. */
 export type AgentStreamEvent =
@@ -39,8 +79,10 @@ export type AgentStreamEvent =
   | { type: "error"; message: string };
 
 export interface AgentRuntimeDeps {
-  /** Working directory the Claude Code session runs in (the workspace root). */
+  /** Working directory the agent session runs in (the workspace root). */
   cwd: string;
+  /** CLI provider selected from the agent that started NoMoreIDE. */
+  provider?: AgentChatProvider;
 }
 
 export interface AgentRunOptions {
@@ -49,23 +91,75 @@ export interface AgentRunOptions {
   approval?: { broker: ApprovalBroker; url: string };
 }
 
-let availabilityProbe: Promise<boolean> | null = null;
+const availabilityProbes = new Map<AgentChatProviderId, Promise<boolean>>();
 
-/** True when the `claude` CLI is installed and runnable. Memoized. */
-export function isAgentAvailable(): Promise<boolean> {
-  if (!availabilityProbe) {
-    availabilityProbe = new Promise<boolean>((resolve) => {
-      const child = spawn(CLAUDE_BIN, ["--version"], { stdio: "ignore" });
+/** Pick the in-dock chat provider from the same detected-agent signal as /agent. */
+export function resolveChatProvider(detectedName: DetectedAgentName): AgentChatProvider {
+  return detectedName === "codex" ? CODEX_PROVIDER : CLAUDE_PROVIDER;
+}
+
+export function publicProviderInfo(provider: AgentChatProvider) {
+  return {
+    id: provider.id,
+    label: provider.label,
+    commandName: provider.commandName,
+    installHint: provider.installHint,
+    intro: provider.intro,
+  };
+}
+
+/** True when the selected agent CLI is installed and runnable. Memoized. */
+export function isAgentAvailable(
+  provider: AgentChatProvider = CLAUDE_PROVIDER,
+): Promise<boolean> {
+  const existing = availabilityProbes.get(provider.id);
+  if (existing) return existing;
+
+  const probe = new Promise<boolean>((resolve) => {
+    const child = spawn(provider.bin, ["--version"], { stdio: "ignore" });
       child.on("error", () => resolve(false));
       child.on("close", (code) => resolve(code === 0));
-    }).catch(() => false);
-  }
-  return availabilityProbe;
+  }).catch(() => false);
+  availabilityProbes.set(provider.id, probe);
+  return probe;
 }
 
 /** Whether tool calls are gated behind dock approval (vs. fully autonomous). */
-export function approvalsEnabled(): boolean {
-  return PERMISSION_MODE !== "bypassPermissions";
+export function approvalsEnabled(provider: AgentChatProvider = CLAUDE_PROVIDER): boolean {
+  return provider.id === "claude" && PERMISSION_MODE !== "bypassPermissions";
+}
+
+export function buildAgentInvocation(
+  provider: AgentChatProvider,
+  message: string,
+  resumeSessionId: string | undefined,
+  gating: boolean,
+): AgentInvocation {
+  if (provider.id === "codex") {
+    const args = ["-a", CODEX_APPROVAL_POLICY, "exec"];
+    if (resumeSessionId) {
+      args.push("resume", "--json", "--skip-git-repo-check", resumeSessionId, message);
+    } else {
+      args.push("--json", "--skip-git-repo-check", message);
+    }
+    return { bin: provider.bin, args };
+  }
+
+  const args = [
+    "--print",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--include-partial-messages",
+    "--permission-mode",
+    gating ? "default" : PERMISSION_MODE,
+  ];
+  if (gating) {
+    args.push("--settings", approvalSettings());
+  }
+  if (resumeSessionId) args.push("--resume", resumeSessionId);
+  args.push(message);
+  return { bin: provider.bin, args };
 }
 
 export class AgentRuntime {
@@ -82,29 +176,20 @@ export class AgentRuntime {
     options: AgentRunOptions = {},
   ): Promise<void> {
     const { signal, approval } = options;
-    const gating = Boolean(approval) && approvalsEnabled();
+    const provider = this.deps.provider ?? CLAUDE_PROVIDER;
+    const gating = Boolean(approval) && approvalsEnabled(provider);
+    const invocation = buildAgentInvocation(provider, message, resumeSessionId, gating);
 
-    const args = [
-      "--print",
-      "--output-format",
-      "stream-json",
-      "--verbose",
-      "--include-partial-messages",
-      "--permission-mode",
-      gating ? "default" : PERMISSION_MODE,
-    ];
-    if (gating) {
-      args.push("--settings", approvalSettings());
-    }
-    if (resumeSessionId) args.push("--resume", resumeSessionId);
-    args.push(message);
-
-    const env = gating
-      ? { ...process.env, NOMOREIDE_APPROVAL_URL: approval!.url }
+    const env = gating && approval
+      ? { ...process.env, NOMOREIDE_APPROVAL_URL: approval.url }
       : process.env;
 
     await new Promise<void>((resolve) => {
-      const child = spawn(CLAUDE_BIN, args, { cwd: this.deps.cwd, env });
+      const child = spawn(invocation.bin, invocation.args, {
+        cwd: this.deps.cwd,
+        env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
       const toolNames = new Map<string, string>();
       let stdout = "";
       let stderr = "";
@@ -121,10 +206,13 @@ export class AgentRuntime {
       // Bridge the broker's approval requests onto the SSE stream the moment
       // we learn this run's session id.
       const onLine = (line: string) => {
-        const sessionId = handleLine(line, toolNames, onEvent);
-        if (sessionId && gating && !openedSession) {
+        const sessionId =
+          provider.id === "codex"
+            ? handleCodexLine(line, toolNames, onEvent)
+            : handleClaudeLine(line, toolNames, onEvent);
+        if (sessionId && gating && approval && !openedSession) {
           openedSession = sessionId;
-          approval!.broker.openRun(sessionId, (request) =>
+          approval.broker.openRun(sessionId, (request) =>
             onEvent({
               type: "approval_request",
               requestId: request.requestId,
@@ -145,7 +233,7 @@ export class AgentRuntime {
           type: "error",
           message:
             (error as NodeJS.ErrnoException).code === "ENOENT"
-              ? `Could not run "${CLAUDE_BIN}". Install Claude Code or set NOMOREIDE_CLAUDE_BIN.`
+              ? `Could not run "${provider.bin}". ${provider.installHint}`
               : error.message,
         });
         finish();
@@ -175,7 +263,7 @@ export class AgentRuntime {
         if (code !== 0) {
           onEvent({
             type: "error",
-            message: stderr.trim() || `Claude Code exited with code ${code}.`,
+            message: stderr.trim() || `${provider.label} exited with code ${code}.`,
           });
         }
         finish();
@@ -188,7 +276,7 @@ export class AgentRuntime {
  * Parse one NDJSON line from Claude Code's stream-json output, emitting the
  * relevant dock events. Returns the session id when this line is the init event.
  */
-function handleLine(
+export function handleClaudeLine(
   line: string,
   toolNames: Map<string, string>,
   onEvent: (event: AgentStreamEvent) => void,
@@ -246,6 +334,65 @@ function handleLine(
     default:
       return undefined;
   }
+}
+
+/** Parse one JSONL event from `codex exec --json`. */
+export function handleCodexLine(
+  line: string,
+  toolNames: Map<string, string>,
+  onEvent: (event: AgentStreamEvent) => void,
+): string | undefined {
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+
+  if (obj.type === "thread.started" && typeof obj.thread_id === "string") {
+    onEvent({ type: "session", sessionId: obj.thread_id });
+    return obj.thread_id;
+  }
+
+  if (obj.type === "item.started" || obj.type === "item.completed") {
+    const item = obj.item as Record<string, unknown> | undefined;
+    if (!item || typeof item.id !== "string" || typeof item.type !== "string") {
+      return undefined;
+    }
+
+    if (item.type === "command_execution") {
+      const name = "command";
+      toolNames.set(item.id, name);
+      const command = typeof item.command === "string" ? item.command : "";
+      if (obj.type === "item.started") {
+        onEvent({ type: "tool_use", id: item.id, name, input: { command } });
+        return undefined;
+      }
+      onEvent({
+        type: "tool_result",
+        id: item.id,
+        name,
+        preview: previewOf(item.aggregated_output),
+        isError:
+          typeof item.exit_code === "number"
+            ? item.exit_code !== 0
+            : item.status === "failed",
+      });
+      return undefined;
+    }
+
+    if (item.type === "agent_message" && obj.type === "item.completed") {
+      const text = typeof item.text === "string" ? item.text : "";
+      if (text) onEvent({ type: "text", text });
+      return undefined;
+    }
+  }
+
+  if (obj.type === "turn.completed") {
+    onEvent({ type: "done", stopReason: null });
+  }
+
+  return undefined;
 }
 
 interface ContentBlock {

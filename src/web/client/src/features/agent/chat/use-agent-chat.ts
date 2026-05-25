@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { approveAgentTool, getAgentChatStatus, streamAgentChat } from "@/lib/api";
+import {
+  approveAgentTool,
+  type AgentChatProviderInfo,
+  getAgentChatStatus,
+  streamAgentChat,
+} from "@/lib/api";
 
 /** A tool invocation surfaced inline under an assistant turn. */
 export interface ChatToolCall {
@@ -26,21 +31,28 @@ export interface ApprovalPrompt {
 }
 
 let turnCounter = 0;
-const nextId = () => `t${Date.now()}-${(turnCounter += 1)}`;
+const nextId = () => {
+  turnCounter += 1;
+  return `t${Date.now()}-${turnCounter}`;
+};
 
 export function useAgentChat() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [provider, setProvider] = useState<AgentChatProviderInfo | null>(null);
   const [approvals, setApprovals] = useState<ApprovalPrompt[]>([]);
   const abortRef = useRef<AbortController | null>(null);
-  // Claude Code's own session id, returned on the first turn and resumed after.
+  // The selected CLI's own session id, returned on the first turn and resumed after.
   const sessionRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     void getAgentChatStatus()
-      .then((status) => setConfigured(status.configured))
+      .then((status) => {
+        setConfigured(status.configured);
+        setProvider(status.provider);
+      })
       .catch(() => setConfigured(false));
   }, []);
 
@@ -146,5 +158,5 @@ export function useAgentChat() {
     setError(null);
   }, [stop]);
 
-  return { turns, streaming, error, configured, approvals, send, stop, clear, respond };
+  return { turns, streaming, error, configured, provider, approvals, send, stop, clear, respond };
 }
