@@ -1,5 +1,5 @@
-import { type FormEvent, useEffect, useState } from "react";
-import { ChevronDown, Pencil, Play, Save, Square } from "lucide-react";
+import { type DragEvent, type FormEvent, useEffect, useState } from "react";
+import { ChevronDown, Pencil, Save } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   type DashboardData,
   type PortOverview,
   type ServiceHealth,
+  type ServiceKind,
   type ServiceStatus,
   type TimelineEvent,
 } from "@/lib/api";
@@ -30,6 +31,7 @@ export function ServiceGroupSection({
   timeline,
   selectedService,
   onSelectService,
+  onDropService,
 }: {
   allServices: DashboardData["config"]["services"];
   group: DashboardData["config"]["bundles"][number];
@@ -41,13 +43,38 @@ export function ServiceGroupSection({
   timeline: TimelineEvent[];
   selectedService?: string;
   onSelectService: (name: string) => void;
+  onDropService?: (serviceName: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const active = services.some((service) => isServiceOn(statuses[service.name]?.state));
 
+  function handleDragOver(event: DragEvent) {
+    if (!onDropService || !event.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragOver(true);
+  }
+
+  function handleDrop(event: DragEvent) {
+    if (!onDropService) return;
+    event.preventDefault();
+    setDragOver(false);
+    const serviceName = event.dataTransfer.getData(SERVICE_DRAG_TYPE);
+    if (serviceName) onDropService(serviceName);
+  }
+
   return (
-    <section>
+    <section
+      className={cn(
+        "transition-colors",
+        dragOver && "bg-primary/5 outline-dashed outline-2 -outline-offset-2 outline-primary/60",
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center gap-1.5 bg-muted/35 px-3 py-1.5">
         <button
           aria-expanded={!collapsed}
@@ -149,29 +176,24 @@ export function ServiceRow({
 }) {
   const state = status?.state ?? "stopped";
   const active = isServiceOn(state);
-  const [busy, setBusy] = useState(false);
-  const { error: showErrorToast } = useToasts();
-
-  async function toggle(event: React.MouseEvent) {
-    event.stopPropagation();
-    setBusy(true);
-    try {
-      const action = active ? "stop" : "start";
-      await postForm(`/api/services/${encodeURIComponent(service.name)}/${action}`, {});
-      await onRefresh();
-    } catch (caught) {
-      showErrorToast(actionErrorMessage(active ? "Stop" : "Start", service.name, caught));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [dragging, setDragging] = useState(false);
 
   return (
     <div
       aria-selected={selected}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData(SERVICE_DRAG_TYPE, service.name);
+        event.dataTransfer.effectAllowed = "copyMove";
+        setDragging(true);
+      }}
+      onDragEnd={() => setDragging(false)}
       className={cn(
-        "flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors",
-        selected ? "border-l-2 border-primary bg-muted/70" : "border-l-2 border-transparent hover:bg-muted/30",
+        "group flex cursor-pointer items-center gap-2 px-3 py-1.5 transition-colors",
+        dragging && "opacity-50",
+        selected
+          ? "bg-muted/70 ring-2 ring-inset ring-primary"
+          : "hover:bg-muted/30",
       )}
       onClick={onSelect}
       role="option"
@@ -179,25 +201,45 @@ export function ServiceRow({
       <ProcessBadge command={service.command ?? ""} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{service.name}</div>
-        {service.port ? (
-          <div className="text-[11px] text-muted-foreground">:{service.port}</div>
-        ) : null}
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <ServiceKindBadge kind={service.kind} />
+          {service.port ? <span>:{service.port}</span> : null}
+        </div>
       </div>
       <StateBadge state={state} />
-      <Tooltip label={active ? "Stop" : "Start"} side="left">
-        <Button
-          aria-label={active ? `Stop ${service.name}` : `Start ${service.name}`}
-          className="size-7"
-          disabled={busy}
-          onClick={toggle}
-          size="icon"
-          type="button"
-          variant="outline"
-        >
-          {active ? <Square /> : <Play />}
-        </Button>
-      </Tooltip>
+      {/* Stop propagation so acting on a service doesn't also fight row selection. */}
+      <span className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
+        <LifecycleActions
+          active={active}
+          baseUrl={`/api/services/${encodeURIComponent(service.name)}`}
+          compact
+          targetLabel={service.name}
+          onRefresh={onRefresh}
+        />
+      </span>
     </div>
+  );
+}
+
+export const SERVICE_DRAG_TYPE = "application/x-nomoreide-service";
+
+const SERVICE_KIND_META: Record<ServiceKind, { label: string; className: string }> = {
+  local: { label: "local", className: "border-zinc-300 bg-zinc-100 text-zinc-600" },
+  "docker-compose": { label: "docker", className: "border-sky-300 bg-sky-50 text-sky-700" },
+  ssh: { label: "ssh", className: "border-violet-300 bg-violet-50 text-violet-700" },
+};
+
+export function ServiceKindBadge({ kind }: { kind?: ServiceKind }) {
+  const meta = SERVICE_KIND_META[kind ?? "local"] ?? SERVICE_KIND_META.local;
+  return (
+    <span
+      className={cn(
+        "rounded border px-1 py-px text-[9px] font-semibold uppercase leading-none tracking-wide",
+        meta.className,
+      )}
+    >
+      {meta.label}
+    </span>
   );
 }
 

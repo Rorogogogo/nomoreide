@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Box, ChevronLeft, ChevronRight, ExternalLink, Plus, ScrollText } from "lucide-react";
+import {
+  Bot,
+  Box,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Pencil,
+  Plus,
+  ScrollText,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
-import type { DashboardData, ServiceStatus } from "@/lib/api";
+import {
+  addServiceToBundle,
+  deleteService,
+  removeServiceFromBundle,
+  type DashboardData,
+  type ServiceStatus,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AgentContextPanel } from "./agent-context-panel";
 import { DebugTimeline } from "./debug-timeline";
@@ -18,7 +34,9 @@ import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
 import {
   isServiceOn,
   PortEditor,
+  SERVICE_DRAG_TYPE,
   ServiceGroupSection,
+  ServiceKindBadge,
   ServiceRow,
   serviceUrl,
   StateBadge,
@@ -37,6 +55,8 @@ export function ServicesView({
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(true);
   const [contextOpen, setContextOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [ungroupedDragOver, setUngroupedDragOver] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
   const {
     error: showErrorToast,
@@ -78,6 +98,60 @@ export function ServicesView({
   );
   const selectedStatus = selectedService ? data.runtime.services[selectedService] : undefined;
   const selectedHealth = selectedService ? healthByService[selectedService] : undefined;
+
+  async function addToGroup(
+    group: DashboardData["config"]["bundles"][number],
+    serviceName: string,
+  ) {
+    if (group.services.includes(serviceName)) return;
+    try {
+      await addServiceToBundle(group.name, group.services, serviceName);
+      showSuccessToast(`Added ${serviceName} to ${group.name}.`);
+      await onRefresh();
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selectedServiceDef) return;
+    if (isServiceOn(selectedStatus?.state)) {
+      showErrorToast(`Stop ${selectedServiceDef.name} before deleting it.`);
+      return;
+    }
+    if (
+      !window.confirm(
+        `Delete service "${selectedServiceDef.name}"? This removes it from your config.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await deleteService(selectedServiceDef.name);
+      showSuccessToast(`Deleted ${selectedServiceDef.name}.`);
+      await onRefresh();
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  async function removeFromGroups(serviceName: string) {
+    const owningGroups = data.config.bundles.filter((bundle) =>
+      bundle.services.includes(serviceName),
+    );
+    if (owningGroups.length === 0) return;
+    try {
+      for (const group of owningGroups) {
+        await removeServiceFromBundle(group.name, group.services, serviceName);
+      }
+      showMessageToast({
+        text: `Removed ${serviceName} from ${owningGroups.map((group) => group.name).join(", ")}.`,
+      });
+      await onRefresh();
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
 
   useEffect(() => {
     const nextStates = Object.fromEntries(
@@ -177,32 +251,10 @@ export function ServicesView({
                     <ScrollText className="size-3.5" />
                     Logs
                   </Button>
-                  <Tooltip label="Add service" side="bottom">
-                    <Button
-                      aria-haspopup="dialog"
-                      aria-label="Add service"
-                      className="size-7"
-                      onClick={() => setServiceComposer("service")}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Plus />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip label="Create group" side="left">
-                    <Button
-                      aria-haspopup="dialog"
-                      aria-label="Create group"
-                      className="size-7"
-                      onClick={() => setServiceComposer("group")}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Box />
-                    </Button>
-                  </Tooltip>
+                  <AddMenu
+                    onCreateGroup={() => setServiceComposer("group")}
+                    onCreateService={() => setServiceComposer("service")}
+                  />
                 </div>
               </div>
             </CardHeader>
@@ -224,47 +276,53 @@ export function ServicesView({
                       timeline={data.timeline}
                       selectedService={selectedService}
                       onSelectService={setSelectedService}
+                      onDropService={(serviceName) => void addToGroup(group, serviceName)}
                     />
                   ))}
-                  {ungroupedServices.length
-                    ? (
-                        [
-                          { key: "local", label: "Local Services" },
-                          { key: "docker-compose", label: "Docker Compose" },
-                          { key: "ssh", label: "Remote (SSH)" },
-                        ] as const
-                      ).map(({ key, label }) => {
-                        const kindServices = ungroupedServices.filter(
-                          (service) => (service.kind ?? "local") === key,
-                        );
-                        if (kindServices.length === 0) return null;
-                        return (
-                          <div key={key}>
-                            <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                              <span>{label}</span>
-                              <span className="text-muted-foreground/80">
-                                {kindServices.length}
-                              </span>
-                            </div>
-                            <div className="divide-y divide-border">
-                              {kindServices.map((service) => (
-                                <ServiceRow
-                                  key={service.name}
-                                  service={service}
-                                  status={data.runtime.services[service.name]}
-                                  health={healthByService[service.name]}
-                                  ports={data.ports}
-                                  onRefresh={onRefresh}
-                                  timeline={data.timeline}
-                                  selected={selectedService === service.name}
-                                  onSelect={() => setSelectedService(service.name)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })
-                    : null}
+                  {ungroupedServices.length ? (
+                    <div
+                      className={cn(
+                        "transition-colors",
+                        ungroupedDragOver &&
+                          "bg-primary/5 outline-dashed outline-2 -outline-offset-2 outline-primary/60",
+                      )}
+                      onDragOver={(event) => {
+                        if (!event.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) return;
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setUngroupedDragOver(true);
+                      }}
+                      onDragLeave={() => setUngroupedDragOver(false)}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        setUngroupedDragOver(false);
+                        const serviceName = event.dataTransfer.getData(SERVICE_DRAG_TYPE);
+                        if (serviceName) void removeFromGroups(serviceName);
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                        <span>Ungrouped</span>
+                        <span className="text-muted-foreground/80">
+                          {ungroupedServices.length}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {ungroupedServices.map((service) => (
+                          <ServiceRow
+                            key={service.name}
+                            service={service}
+                            status={data.runtime.services[service.name]}
+                            health={healthByService[service.name]}
+                            ports={data.ports}
+                            onRefresh={onRefresh}
+                            timeline={data.timeline}
+                            selected={selectedService === service.name}
+                            onSelect={() => setSelectedService(service.name)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <EmptyState label="No services registered yet." />
@@ -283,11 +341,7 @@ export function ServicesView({
                     {selectedServiceDef.name}
                   </h2>
                   <StateBadge state={selectedStatus?.state ?? "stopped"} />
-                  {selectedServiceDef.kind && selectedServiceDef.kind !== "local" ? (
-                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                      {selectedServiceDef.kind}
-                    </span>
-                  ) : null}
+                  <ServiceKindBadge kind={selectedServiceDef.kind} />
                   <div className="ml-auto flex flex-wrap items-center gap-1.5">
                     <PortEditor service={selectedServiceDef} onRefresh={onRefresh} />
                     {(() => {
@@ -330,6 +384,37 @@ export function ServicesView({
                       targetLabel={selectedServiceDef.name}
                       onRefresh={onRefresh}
                     />
+                    <Tooltip label="Edit service">
+                      <Button
+                        aria-label={`Edit ${selectedServiceDef.name}`}
+                        className="size-7"
+                        onClick={() => setEditOpen(true)}
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                      >
+                        <Pencil />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip
+                      label={
+                        isServiceOn(selectedStatus?.state)
+                          ? "Stop before deleting"
+                          : "Delete service"
+                      }
+                    >
+                      <Button
+                        aria-label={`Delete ${selectedServiceDef.name}`}
+                        className="size-7"
+                        disabled={isServiceOn(selectedStatus?.state)}
+                        onClick={() => void deleteSelected()}
+                        size="icon"
+                        type="button"
+                        variant="outline"
+                      >
+                        <Trash2 className="text-destructive" />
+                      </Button>
+                    </Tooltip>
                     <Tooltip
                       label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
                       side="left"
@@ -392,6 +477,21 @@ export function ServicesView({
           </div>
         </ComposerDialog>
       ) : null}
+      {editOpen && selectedServiceDef ? (
+        <ComposerDialog
+          icon={<Pencil />}
+          onClose={() => setEditOpen(false)}
+          size="lg"
+          title={`Edit Service — ${selectedServiceDef.name}`}
+        >
+          <ServiceForm
+            cwd={data.cwd}
+            initialService={selectedServiceDef}
+            onRefresh={onRefresh}
+            onSaved={() => setEditOpen(false)}
+          />
+        </ComposerDialog>
+      ) : null}
       {serviceComposer ? (
         <ComposerDialog
           icon={serviceComposer === "service" ? <Plus /> : <Box />}
@@ -422,6 +522,75 @@ export function ServicesView({
         />
       ) : null}
     </>
+  );
+}
+
+/** "+" button that opens a small menu to create a service or a group. */
+function AddMenu({
+  onCreateService,
+  onCreateGroup,
+}: {
+  onCreateService: () => void;
+  onCreateGroup: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function choose(action: () => void) {
+    setOpen(false);
+    action();
+  }
+
+  return (
+    <div className="relative">
+      <Tooltip label="Add" side="bottom">
+        <Button
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label="Add service or group"
+          className="size-7"
+          onClick={() => setOpen((current) => !current)}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <Plus />
+        </Button>
+      </Tooltip>
+      {open ? (
+        <>
+          <button
+            aria-hidden
+            className="fixed inset-0 z-[40] cursor-default"
+            onClick={() => setOpen(false)}
+            tabIndex={-1}
+            type="button"
+          />
+          <div
+            className="absolute right-0 z-[50] mt-1 w-44 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
+            role="menu"
+          >
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+              onClick={() => choose(onCreateService)}
+              role="menuitem"
+              type="button"
+            >
+              <Plus />
+              Create Service
+            </button>
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+              onClick={() => choose(onCreateGroup)}
+              role="menuitem"
+              type="button"
+            >
+              <Box />
+              Create Group
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 

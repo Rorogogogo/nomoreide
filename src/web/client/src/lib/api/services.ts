@@ -1,4 +1,4 @@
-import { postFormForJson, requestJson } from "./client.js";
+import { postForm, postFormForJson, requestJson } from "./client.js";
 import type { GitBranch, GitFileStatus } from "./git.js";
 import type { LogQuery } from "./log-sources.js";
 
@@ -180,6 +180,39 @@ export interface DashboardData {
 
 export async function getDashboard(): Promise<DashboardData> {
   return requestJson<DashboardData>("/api/dashboard");
+}
+
+/** Unregister a service. Rejects (409) if it is still running. */
+export async function deleteService(name: string): Promise<void> {
+  await requestJson(`/api/services/${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+/** Add a service to a bundle, preserving its other members. */
+export async function addServiceToBundle(
+  bundleName: string,
+  bundleServices: string[],
+  serviceName: string,
+): Promise<void> {
+  if (bundleServices.includes(serviceName)) return;
+  await postForm("/api/bundles", {
+    name: bundleName,
+    originalName: bundleName,
+    services: [...bundleServices, serviceName].join(","),
+  });
+}
+
+/** Remove a service from a bundle, leaving the rest of the group intact. */
+export async function removeServiceFromBundle(
+  bundleName: string,
+  bundleServices: string[],
+  serviceName: string,
+): Promise<void> {
+  if (!bundleServices.includes(serviceName)) return;
+  await postForm("/api/bundles", {
+    name: bundleName,
+    originalName: bundleName,
+    services: bundleServices.filter((service) => service !== serviceName).join(","),
+  });
 }
 
 export async function getDirectories(path: string): Promise<DirectoryListing> {

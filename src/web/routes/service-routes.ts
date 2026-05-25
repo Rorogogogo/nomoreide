@@ -140,7 +140,8 @@ export const serviceRoutes: Route[] = [
 
   route("POST", "/api/bundles", async ({ request, response, configStore }) => {
     const form = await readForm(request);
-    const services = requiredFormValue(form, "services")
+    // Services may be empty — e.g. dragging the last member out of a group.
+    const services = (optionalFormValue(form, "services") ?? "")
       .split(",")
       .map((service) => service.trim())
       .filter(Boolean);
@@ -382,6 +383,31 @@ export const serviceRoutes: Route[] = [
             ? await manager.stopBundle(name)
             : await manager.restartBundle(name);
       sendJson(response, { ok: true, statuses });
+    },
+  ),
+
+  // Single-segment service path; registered last so exact routes like
+  // `/api/services/test` win first. Only DELETE is handled here.
+  patternRoute(
+    /^\/api\/services\/([^/]+)$/,
+    ["name"],
+    async ({ request, response, manager, configStore, params }) => {
+      if (request.method !== "DELETE") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(params.name);
+      const state = manager.status().services[name]?.state;
+      if (state === "running" || state === "starting") {
+        sendJson(response, { ok: false, error: `Stop "${name}" before deleting it.` }, 409);
+        return;
+      }
+      try {
+        const config = await configStore.removeService(name);
+        sendJson(response, { ok: true, config });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
     },
   ),
 ];

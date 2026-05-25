@@ -3,34 +3,40 @@ import { useToasts } from "@/components/ui/toast";
 import {
   postForm,
   testServiceCommand as testServiceCommandRequest,
+  type ServiceDefinition,
   type ServiceTestResult,
 } from "@/lib/api";
 import { actionErrorMessage } from "../service-actions";
 import type { ServiceKindOption } from "./presets";
 
 /**
- * Owns the Add-Service form's field state, the registration submit, and the
- * "test command" probe. The component is left with pure layout.
+ * Owns the service composer's field state, the registration submit, and the
+ * "test command" probe. The component is left with pure layout. Passing
+ * `initialService` switches the form into edit mode (prefilled, saves over the
+ * existing definition since registration replaces by name).
  */
 export function useServiceForm({
   cwd,
   onRefresh,
   onSaved,
+  initialService,
 }: {
   cwd: string;
   onRefresh: () => Promise<void>;
   onSaved?: () => void;
+  initialService?: ServiceDefinition;
 }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
-  const [kind, setKind] = useState<ServiceKindOption>("local");
-  const [name, setName] = useState("");
-  const [command, setCommand] = useState("");
-  const [formCwd, setFormCwd] = useState(cwd);
-  const [port, setPort] = useState("");
-  const [description, setDescription] = useState("");
-  const [composeFile, setComposeFile] = useState("");
-  const [composeService, setComposeService] = useState("");
-  const [host, setHost] = useState("");
+  const editing = Boolean(initialService);
+  const [kind, setKind] = useState<ServiceKindOption>(initialService?.kind ?? "local");
+  const [name, setName] = useState(initialService?.name ?? "");
+  const [command, setCommand] = useState(initialService?.command ?? "");
+  const [formCwd, setFormCwd] = useState(initialService?.cwd ?? cwd);
+  const [port, setPort] = useState(initialService?.port ? String(initialService.port) : "");
+  const [description, setDescription] = useState(initialService?.description ?? "");
+  const [composeFile, setComposeFile] = useState(initialService?.composeFile ?? "");
+  const [composeService, setComposeService] = useState(initialService?.composeService ?? "");
+  const [host, setHost] = useState(initialService?.host ?? "");
   const [testResult, setTestResult] = useState<ServiceTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -68,12 +74,14 @@ export function useServiceForm({
       if (kind === "ssh") payload.host = host;
 
       await postForm("/api/services", payload);
-      resetForm();
-      showSuccessToast(`${name} added.`);
+      if (!editing) resetForm();
+      showSuccessToast(editing ? `${name} updated.` : `${name} added.`);
       await onRefresh();
       onSaved?.();
     } catch (caught) {
-      showErrorToast(actionErrorMessage("Add service", name || "service", caught));
+      showErrorToast(
+        actionErrorMessage(editing ? "Update service" : "Add service", name || "service", caught),
+      );
     }
   }
 
@@ -100,6 +108,7 @@ export function useServiceForm({
   }
 
   return {
+    editing,
     kind,
     setKind,
     name,

@@ -168,6 +168,30 @@ export class ConfigStore {
     return config;
   }
 
+  async removeService(name: string): Promise<NoMoreIdeConfig> {
+    const serviceName = name.trim();
+    if (!serviceName) {
+      throw new ConfigValidationError("service name is required");
+    }
+
+    const config = await this.load();
+    const nextServices = config.services.filter((item) => item.name !== serviceName);
+    if (nextServices.length === config.services.length) {
+      throw new Error(`Service "${serviceName}" is not registered.`);
+    }
+
+    config.services = nextServices;
+    // Prune the service from any bundles that referenced it (keep empty bundles
+    // intact — the user created them deliberately).
+    config.bundles = config.bundles.map((bundle) => ({
+      ...bundle,
+      services: bundle.services.filter((service) => service !== serviceName),
+    }));
+
+    await this.save(config);
+    return config;
+  }
+
   async registerBundle(
     bundle: BundleDefinition,
     previousName?: string,
