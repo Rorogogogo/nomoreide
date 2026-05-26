@@ -7,6 +7,7 @@ import {
   DbPeek,
   engineFromUrl,
   maskConnectionUrl,
+  mergeStoredPassword,
 } from "../src/core/db-peek.js";
 
 // node:sqlite is built-in only on Node >=22.5; skip the SQLite suite below that
@@ -100,5 +101,39 @@ describe("connection-string helpers", () => {
       "postgres://user:****@host:5432/db",
     );
     expect(maskConnectionUrl("sqlite", "/abs/path/app.db")).toBe("/abs/path/app.db");
+  });
+
+  test("mergeStoredPassword keeps the stored password when an edit omits one", () => {
+    const stored = "postgres://user:secret@host:5432/db";
+    // Edit arrives password-less (the client only had the masked URL).
+    expect(
+      mergeStoredPassword("postgres", "postgres://user@host:5432/db", stored),
+    ).toBe(stored);
+  });
+
+  test("mergeStoredPassword lets a freshly-typed password win", () => {
+    expect(
+      mergeStoredPassword(
+        "postgres",
+        "postgres://user:fresh@host:5432/db",
+        "postgres://user:old@host:5432/db",
+      ),
+    ).toBe("postgres://user:fresh@host:5432/db");
+  });
+
+  test("mergeStoredPassword round-trips a special-character password", () => {
+    const stored = `postgres://user:${encodeURIComponent("p@s/s")}@host:5432/db`;
+    const merged = mergeStoredPassword(
+      "postgres",
+      "postgres://user@host:5432/db",
+      stored,
+    );
+    expect(new URL(merged).password).toBe(encodeURIComponent("p@s/s"));
+  });
+
+  test("mergeStoredPassword leaves SQLite paths untouched", () => {
+    expect(mergeStoredPassword("sqlite", "/new/app.db", "/old/app.db")).toBe(
+      "/new/app.db",
+    );
   });
 });

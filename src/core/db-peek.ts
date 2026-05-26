@@ -58,11 +58,12 @@ export class DbPeek {
     name: string,
     qualifiedName: string,
     limit: number,
+    offset = 0,
   ): Promise<{ engine: DatabaseEngine; table: TableRef } & RowSample> {
     const connection = await this.resolve(name);
     const driver = await this.driverFor(connection);
     const table = await this.resolveTable(driver, qualifiedName);
-    const sample = await driver.sampleRows(table, limit);
+    const sample = await driver.sampleRows(table, limit, offset);
     return { engine: connection.engine, table, ...sample };
   }
 
@@ -167,6 +168,30 @@ export function engineFromUrl(value: string): DatabaseEngine | null {
   }
   if (/\.(db|sqlite|sqlite3)$/i.test(v)) return "sqlite";
   return null;
+}
+
+/**
+ * When editing a connection the client never sees the stored password (it's
+ * masked), so an edit that leaves the password blank arrives password-less.
+ * Splice the previously-stored password back in so it isn't wiped. SQLite has
+ * no password, and a freshly-supplied password always wins.
+ */
+export function mergeStoredPassword(
+  engine: DatabaseEngine,
+  nextUrl: string,
+  existingUrl: string,
+): string {
+  if (engine === "sqlite") return nextUrl;
+  try {
+    const next = new URL(nextUrl);
+    if (next.password) return nextUrl;
+    const existing = new URL(existingUrl);
+    if (!existing.password) return nextUrl;
+    next.password = decodeURIComponent(existing.password);
+    return next.toString();
+  } catch {
+    return nextUrl;
+  }
 }
 
 /** Redact the password from a URL; SQLite paths are returned unchanged. */

@@ -210,6 +210,27 @@ describe("GitManager", () => {
     expect(content.truncated).toBe(false);
   });
 
+  test("rankFilesBySize orders tracked files by line count, longest first", async () => {
+    await writeFile(join(repoDir, "long.ts"), "x\n".repeat(40));
+    await writeFile(join(repoDir, "short.ts"), "y\n".repeat(3));
+    await execGit(["add", "long.ts", "short.ts"]);
+    await execGit(["commit", "-m", "add ranked files"]);
+
+    const ranked = await git.rankFilesBySize();
+    const paths = ranked.map((file) => file.path);
+    expect(paths.indexOf("long.ts")).toBeLessThan(paths.indexOf("short.ts"));
+    expect(ranked.find((file) => file.path === "long.ts")?.lines).toBe(40);
+  });
+
+  test("rankFilesBySize skips binary files", async () => {
+    await writeFile(join(repoDir, "blob.bin"), Buffer.from([0, 1, 2, 0, 3]));
+    await execGit(["add", "blob.bin"]);
+    await execGit(["commit", "-m", "add binary"]);
+
+    const ranked = await git.rankFilesBySize();
+    expect(ranked.some((file) => file.path === "blob.bin")).toBe(false);
+  });
+
   test("readTrackedFile rejects untracked paths", async () => {
     await writeFile(join(repoDir, "untracked.txt"), "hello\n");
     await expect(git.readTrackedFile("untracked.txt")).rejects.toThrow(/not tracked/);

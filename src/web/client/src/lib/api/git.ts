@@ -76,6 +76,20 @@ export async function getGitFiles(): Promise<string[]> {
   return response.files;
 }
 
+export interface FileSizeRank {
+  path: string;
+  lines: number;
+  bytes: number;
+  truncated: boolean;
+}
+
+export async function getFileSizeRanking(): Promise<FileSizeRank[]> {
+  const response = await requestJson<{ ok: true; files: FileSizeRank[] }>(
+    "/api/git/file-sizes",
+  );
+  return response.files;
+}
+
 export async function getGitFile(path: string): Promise<GitFileContent> {
   const response = await requestJson<{ ok: true } & GitFileContent>(
     `/api/git/file?path=${encodeURIComponent(path)}`,

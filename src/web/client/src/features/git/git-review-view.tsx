@@ -9,8 +9,9 @@ import { FileTree } from "./file-tree";
 import { FileViewer } from "./file-viewer";
 import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
+import { LargestFilesView } from "./largest-files-view";
 
-type GitTab = "changes" | "graph";
+type GitTab = "changes" | "graph" | "largest";
 type ChangesMode = "changes" | "all";
 
 export function GitReviewView({
@@ -156,6 +157,13 @@ export function GitReviewView({
     selectFile(selectedTreeFile);
   }
 
+  // Jump from the ranking straight to a file in the All-files viewer.
+  function openFileInViewer(path: string) {
+    setSelectedTreeFile(path);
+    setMode("all");
+    setTab("changes");
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/95 px-3 py-1">
@@ -173,11 +181,20 @@ export function GitReviewView({
         >
           Tree
         </button>
+        <button
+          type="button"
+          className={tabButtonClass(tab === "largest")}
+          onClick={() => setTab("largest")}
+        >
+          Largest files
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
         {tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
+        ) : tab === "largest" ? (
+          <LargestFilesView onOpenFile={openFileInViewer} />
         ) : (
     <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden">

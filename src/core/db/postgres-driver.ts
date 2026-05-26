@@ -3,6 +3,7 @@ import type { DatabaseEngine } from "../types.js";
 import {
   assertSafeIdentifier,
   clampLimit,
+  clampOffset,
   normalizeRow,
   type ColumnInfo,
   type DbDriver,
@@ -78,20 +79,23 @@ export class PostgresDriver implements DbDriver {
     });
   }
 
-  async sampleRows(table: TableRef, limit: number): Promise<RowSample> {
+  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
     const schema = assertSafeIdentifier(table.schema ?? "public");
     const name = assertSafeIdentifier(table.name);
     const max = clampLimit(limit);
+    const skip = clampOffset(offset);
     return this.withReadOnly(async (client) => {
       const columns = await this.columnsFor(client, schema, name);
       const { rows } = await client.query(
-        `SELECT * FROM "${schema}"."${name}" LIMIT $1`,
-        [max],
+        `SELECT * FROM "${schema}"."${name}" LIMIT $1 OFFSET $2`,
+        [max, skip],
       );
       return {
         columns,
         rows: rows.map((row: Record<string, unknown>) => normalizeRow(row)),
         rowCount: rows.length,
+        limit: max,
+        offset: skip,
       };
     });
   }
