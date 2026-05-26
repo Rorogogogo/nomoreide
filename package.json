@@ -50,7 +50,9 @@
     "fastmcp": "^3.0.0",
     "framer-motion": "^12.38.0",
     "highlight.js": "^11.11.1",
+    "js-yaml": "^4.1.1",
     "lucide-react": "^1.16.0",
+    "marked": "^18.0.4",
     "mysql2": "^3.22.3",
     "node-pty": "^1.1.0",
     "pg": "^8.21.0",
@@ -66,6 +68,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.15",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.15.19",
     "@types/pg": "^8.20.0",
     "@types/ws": "^8.18.1",

@@ -1,9 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import hljs from "highlight.js/lib/common";
+import { Code2, Eye } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { getGitFile, type GitFileContent } from "@/lib/api";
+import { MarkdownPreview } from "./visualizers/markdown-preview";
+import { YamlTree } from "./visualizers/yaml-tree";
 import "./file-viewer-theme.css";
+
+type VisualKind = "markdown" | "yaml";
+
+/** Files that support a rendered "Preview" mode alongside the raw source. */
+function visualKindFor(path: string): VisualKind | null {
+  const ext = path.split("/").pop()?.toLowerCase().split(".").pop() ?? "";
+  if (ext === "md" || ext === "mdx" || ext === "markdown") return "markdown";
+  if (ext === "yml" || ext === "yaml") return "yaml";
+  return null;
+}
+
+type ViewMode = "source" | "preview";
 
 function languageFor(path: string): string | null {
   const filename = path.split("/").pop()?.toLowerCase() ?? "";
@@ -113,6 +129,14 @@ export function FileViewer({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const visualKind = useMemo(() => visualKindFor(path), [path]);
+  const [mode, setMode] = useState<ViewMode>("preview");
+
+  // Default to the rendered preview whenever the selected file supports one.
+  useEffect(() => {
+    setMode(visualKind ? "preview" : "source");
+  }, [visualKind]);
+
   useEffect(() => {
     if (!path) {
       setFile(null);
@@ -162,11 +186,45 @@ export function FileViewer({
             {file?.binary ? <span className="text-amber-700">Binary file.</span> : null}
           </div>
         </div>
-        {isModified ? (
-          <Button onClick={onViewDiff} size="sm" type="button" variant="outline">
-            View diff
-          </Button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {visualKind && !file?.binary ? (
+            <div className="flex items-center rounded-md border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setMode("preview")}
+                aria-pressed={mode === "preview"}
+                className={cn(
+                  "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                  mode === "preview"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Eye className="size-3.5" />
+                Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("source")}
+                aria-pressed={mode === "source"}
+                className={cn(
+                  "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
+                  mode === "source"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                <Code2 className="size-3.5" />
+                Source
+              </button>
+            </div>
+          ) : null}
+          {isModified ? (
+            <Button onClick={onViewDiff} size="sm" type="button" variant="outline">
+              View diff
+            </Button>
+          ) : null}
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-zinc-50">
         {error ? (
@@ -180,7 +238,15 @@ export function FileViewer({
             Cannot display binary content.
           </div>
         ) : file ? (
-          <NumberedContent content={file.content} path={path} />
+          visualKind && mode === "preview" ? (
+            visualKind === "markdown" ? (
+              <MarkdownPreview content={file.content} />
+            ) : (
+              <YamlTree content={file.content} />
+            )
+          ) : (
+            <NumberedContent content={file.content} path={path} />
+          )
         ) : null}
       </div>
     </section>
