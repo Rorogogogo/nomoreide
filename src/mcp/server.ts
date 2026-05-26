@@ -5,6 +5,10 @@ import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import {
+  defaultRuntimeRegistryPath,
+  ServiceRegistry,
+} from "../core/service-registry.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
 import {
@@ -56,7 +60,13 @@ export function createNoMoreIdeMcpServer(
     baseDir: logDir,
     timelineStore,
   });
-  const manager = new ProcessManager({ configStore, logStore, timelineStore });
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath(logDir));
+  const manager = new ProcessManager({
+    configStore,
+    logStore,
+    timelineStore,
+    registry,
+  });
   const errorInbox = new ErrorInbox({ logStore, configStore });
   const dbPeek = new DbPeek({ configStore });
   const toolCallStore = new ToolCallStore();

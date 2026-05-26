@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
 import { LogStore } from "../src/core/log-store.js";
 import { PortConflictError, ProcessManager } from "../src/core/process-manager.js";
+import { ServiceRegistry } from "../src/core/service-registry.js";
 import { TimelineStore } from "../src/core/timeline-store.js";
 
 let tempDir: string;
@@ -281,6 +282,77 @@ describe("ProcessManager", () => {
 
     await waitFor(() => !isPidAlive(grandPid));
     expect(isPidAlive(grandPid)).toBe(false);
+  });
+});
+
+describe("ProcessManager cross-session registry", () => {
+  function siblingManager(): ProcessManager {
+    // A second manager in the same project shares the on-disk registry, exactly
+    // like a separate MCP session or the web UI process would.
+    const registry = new ServiceRegistry(join(tempDir, "runtime.json"));
+    return new ProcessManager({
+      configStore: config,
+      logStore: logs,
+      stopTimeoutMs: 50,
+      timelineStore: timeline,
+      registry,
+    });
+  }
+
+  test("a sibling session adopts a running service instead of duplicating it", async () => {
+    const registry = new ServiceRegistry(join(tempDir, "runtime.json"));
+    manager = new ProcessManager({
+      configStore: config,
+      logStore: logs,
+      stopTimeoutMs: 50,
+      timelineStore: timeline,
+      registry,
+    });
+    // No port: the old port-availability guard could not catch this duplicate.
+    await config.registerService({
+      name: "portless",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+
+    const first = await manager.startService("portless");
+    expect(first.state).toBe("running");
+
+    const sibling = siblingManager();
+    const adopted = await sibling.startService("portless");
+
+    expect(adopted.state).toBe("running");
+    expect(adopted.pid).toBe(first.pid); // same process — not a second one
+    expect(sibling.status().services.portless.state).toBe("running");
+  });
+
+  test("a sibling session can stop a service it did not spawn", async () => {
+    const registry = new ServiceRegistry(join(tempDir, "runtime.json"));
+    manager = new ProcessManager({
+      configStore: config,
+      logStore: logs,
+      stopTimeoutMs: 50,
+      timelineStore: timeline,
+      registry,
+    });
+    await config.registerService({
+      name: "shared",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+
+    const started = await manager.startService("shared");
+    expect(isPidAlive(started.pid as number)).toBe(true);
+
+    const sibling = siblingManager();
+    const stopped = await sibling.stopService("shared");
+
+    expect(stopped.state).toBe("stopped");
+    await waitFor(() => !isPidAlive(started.pid as number));
+    expect(isPidAlive(started.pid as number)).toBe(false);
+    expect(sibling.status().services.shared?.state ?? "stopped").not.toBe(
+      "running",
+    );
   });
 });
 
