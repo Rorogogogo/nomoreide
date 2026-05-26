@@ -1,0 +1,149 @@
+/* Rendered-markdown styling for the git file viewer preview mode.
+ * Scoped under .md-preview so it never leaks into the code/source view. */
+
+.md-preview {
+  color: #1f2328;
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.md-preview > *:first-child {
+  margin-top: 0;
+}
+
+.md-preview h1,
+.md-preview h2,
+.md-preview h3,
+.md-preview h4,
+.md-preview h5,
+.md-preview h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.md-preview h1 {
+  font-size: 1.6em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.md-preview h2 {
+  font-size: 1.3em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.md-preview h3 {
+  font-size: 1.1em;
+}
+
+.md-preview h4 {
+  font-size: 1em;
+}
+
+.md-preview p,
+.md-preview ul,
+.md-preview ol,
+.md-preview blockquote,
+.md-preview table,
+.md-preview pre {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+.md-preview ul,
+.md-preview ol {
+  padding-left: 1.6em;
+}
+
+.md-preview li {
+  margin-bottom: 0.25em;
+}
+
+.md-preview li > ul,
+.md-preview li > ol {
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.md-preview a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.md-preview a:hover {
+  text-decoration: underline;
+}
+
+.md-preview blockquote {
+  padding: 0 1em;
+  color: #57606a;
+  border-left: 0.25em solid #d0d7de;
+}
+
+.md-preview code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  background-color: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+}
+
+.md-preview pre {
+  padding: 12px 16px;
+  overflow: auto;
+  font-size: 0.85em;
+  line-height: 1.45;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+}
+
+.md-preview pre code {
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.md-preview table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+}
+
+.md-preview th,
+.md-preview td {
+  padding: 6px 13px;
+  border: 1px solid #d0d7de;
+}
+
+.md-preview th {
+  font-weight: 600;
+  background-color: #f6f8fa;
+}
+
+.md-preview tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+
+.md-preview img {
+  max-width: 100%;
+  box-sizing: content-box;
+}
+
+.md-preview hr {
+  height: 1px;
+  margin: 1.5em 0;
+  background-color: #d0d7de;
+  border: 0;
+}
+
+.md-preview input[type="checkbox"] {
+  margin-right: 0.4em;
+}
