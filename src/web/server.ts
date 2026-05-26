@@ -10,6 +10,10 @@ import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import {
+  defaultRuntimeRegistryPath,
+  ServiceRegistry,
+} from "../core/service-registry.js";
 import { ApprovalBroker } from "../core/approval-broker.js";
 import { ReproBundleBuilder } from "../core/repro-bundle.js";
 import {
@@ -54,11 +58,18 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const timelineStore = new TimelineStore({
     baseDir: timelineBaseDir(options.logDir),
   });
+  const logDir = options.logDir ?? resolve(process.cwd(), ".nomoreide/logs");
   const logStore = new LogStore({
-    baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
+    baseDir: logDir,
     timelineStore,
   });
-  const manager = new ProcessManager({ configStore, logStore, timelineStore });
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath(logDir));
+  const manager = new ProcessManager({
+    configStore,
+    logStore,
+    timelineStore,
+    registry,
+  });
   manager.installShutdownHandlers();
   const cwd = options.cwd ?? process.cwd();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();

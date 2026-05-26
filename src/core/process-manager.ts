@@ -15,6 +15,11 @@ import {
 } from "./http-inspector.js";
 import { getPortHolder, isPortAvailable, type PortHolder } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
+import {
+  isPidAlive,
+  type ServiceRegistry,
+  type ServiceRegistryEntry,
+} from "./service-registry.js";
 import { createSshCommand } from "./ssh-service-runner.js";
 import type { TimelineStore } from "./timeline-store.js";
 import type {
@@ -29,6 +34,13 @@ interface ProcessManagerOptions {
   logStore: LogStore;
   stopTimeoutMs?: number;
   timelineStore?: TimelineStore;
+  /**
+   * Shared cross-session view of running services. When provided, the manager
+   * adopts services started by other sessions instead of spawning duplicates,
+   * and can stop services it did not spawn itself. Omit for an isolated manager
+   * (e.g. in tests) — behavior is then identical to a single-session manager.
+   */
+  registry?: ServiceRegistry;
 }
 
 interface RuntimeService {
@@ -69,12 +81,14 @@ export class ProcessManager {
   private readonly logStore: LogStore;
   private readonly stopTimeoutMs: number;
   private readonly timelineStore?: TimelineStore;
+  private readonly registry?: ServiceRegistry;
 
   constructor(options: ProcessManagerOptions) {
     this.configStore = options.configStore;
     this.logStore = options.logStore;
     this.stopTimeoutMs = options.stopTimeoutMs ?? 3000;
     this.timelineStore = options.timelineStore;
+    this.registry = options.registry;
   }
 
   async startService(
@@ -92,6 +106,14 @@ export class ProcessManager {
 
     if (kind === "docker-compose") {
       return this.startDockerComposeService(name, service);
+    }
+
+    // Another session may already be running this exact service. Adopt its
+    // status instead of spawning a duplicate — this also covers portless
+    // services, where the port check below cannot detect the conflict.
+    const tracked = this.registry?.get(name);
+    if (tracked) {
+      return registryEntryToStatus(tracked);
     }
 
     if (service.port && !(await isPortAvailable(service.port))) {
@@ -122,6 +144,18 @@ export class ProcessManager {
     };
 
     this.runtimes.set(name, runtime);
+    if (child.pid) {
+      this.registry?.record({
+        name,
+        pid: child.pid,
+        pgid: child.pid, // detached spawn → child.pid is the process-group leader
+        port: service.port,
+        kind,
+        host: kind === "ssh" ? service.host : undefined,
+        startedAt: runtime.status.startedAt ?? new Date().toISOString(),
+        ownerPid: process.pid,
+      });
+    }
     void this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
@@ -144,6 +178,7 @@ export class ProcessManager {
         signal,
       };
       runtime.child = undefined;
+      this.registry?.remove(name);
       void this.stopInspector(runtime);
       void this.appendTimeline({
         kind: "service.lifecycle",
@@ -165,6 +200,7 @@ export class ProcessManager {
         exitCode: 1,
         signal: null,
       };
+      this.registry?.remove(name);
       void this.logStore.append(name, "stderr", error.message);
       void this.appendTimeline({
         kind: "service.lifecycle",
@@ -186,6 +222,13 @@ export class ProcessManager {
     }
 
     if (!runtime?.child || runtime.status.state !== "running") {
+      // No live child in this session — a sibling session may own it. If the
+      // registry has a live entry, signal its process group to stop it.
+      const tracked = this.registry?.get(name);
+      if (tracked) {
+        await stopByPid(tracked.pid, tracked.pgid, this.stopTimeoutMs);
+        this.registry?.remove(name);
+      }
       const stopped = { name, state: "stopped" as const };
       this.runtimes.set(name, { status: stopped, stopping: false });
       void this.appendTimeline({
@@ -342,6 +385,9 @@ export class ProcessManager {
       if (!runtime.child || runtime.child.exitCode !== null) continue;
       signalProcessTree(runtime.child, signal);
     }
+    // Drop this session's entries synchronously; the async exit handlers above
+    // may not run before the host process exits.
+    this.registry?.removeOwnedBy(process.pid);
   }
 
   installShutdownHandlers(): () => void {
@@ -370,14 +416,12 @@ export class ProcessManager {
   }
 
   status(): NoMoreIdeStatus {
-    return {
-      services: Object.fromEntries(
-        [...this.runtimes.entries()].map(([name, runtime]) => [
-          name,
-          { ...runtime.status },
-        ]),
-      ),
-    };
+    const services: Record<string, ServiceStatus> = {};
+    for (const [name, runtime] of this.runtimes.entries()) {
+      services[name] = { ...runtime.status };
+    }
+    this.mergeRegistry(services);
+    return { services };
   }
 
   async statusWithResources(): Promise<NoMoreIdeStatus> {
@@ -392,7 +436,29 @@ export class ProcessManager {
       services[name] = status;
     }
 
+    this.mergeRegistry(services);
+    for (const status of Object.values(services)) {
+      if (status.pid && status.state === "running" && !status.processTree) {
+        status.processTree = await readProcessTree(status.pid);
+      }
+    }
+
     return { services };
+  }
+
+  /**
+   * Fold in services started by sibling sessions. A registry entry wins only
+   * when this session has no running view of that service, so a locally-owned
+   * "running" status is never overwritten by the shared snapshot.
+   */
+  private mergeRegistry(services: Record<string, ServiceStatus>): void {
+    if (!this.registry) return;
+    for (const entry of this.registry.list()) {
+      const local = services[entry.name];
+      if (!local || local.state !== "running") {
+        services[entry.name] = registryEntryToStatus(entry);
+      }
+    }
   }
 
   private async startDockerComposeService(
@@ -507,6 +573,7 @@ export class ProcessManager {
             const runtime = this.runtimes.get(service);
             if (runtime) {
               runtime.status = { ...runtime.status, url };
+              this.registry?.update(service, { url });
               void this.maybeStartInspector(service);
             }
             void this.appendTimeline({
@@ -540,6 +607,56 @@ export class ProcessManager {
 
 function resolveKind(service: ServiceDefinition): ServiceKind {
   return service.kind ?? "local";
+}
+
+function registryEntryToStatus(entry: ServiceRegistryEntry): ServiceStatus {
+  return {
+    name: entry.name,
+    state: "running",
+    kind: entry.kind,
+    pid: entry.pid,
+    url: entry.url,
+    host: entry.host,
+    startedAt: entry.startedAt,
+  };
+}
+
+/**
+ * Stop a process by pid when we hold no ChildProcess handle for it (it was
+ * spawned by another session). Signals the whole process group, then escalates
+ * to SIGKILL if it has not exited within the timeout.
+ */
+async function stopByPid(
+  pid: number,
+  pgid: number | undefined,
+  timeoutMs: number,
+): Promise<void> {
+  signalPid(pid, pgid, "SIGTERM");
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!isPidAlive(pid)) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  signalPid(pid, pgid, "SIGKILL");
+}
+
+function signalPid(
+  pid: number,
+  pgid: number | undefined,
+  signal: NodeJS.Signals,
+): void {
+  const group = pgid ?? pid;
+  try {
+    // Negative pid signals the whole process group (detached spawn → pgid===pid).
+    process.kill(-group, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ESRCH") return;
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 function toDockerTarget(
