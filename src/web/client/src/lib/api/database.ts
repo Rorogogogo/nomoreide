@@ -36,6 +36,9 @@ export interface RowSample {
   columns: ColumnInfo[];
   rows: Array<Record<string, unknown>>;
   rowCount: number;
+  /** The page window applied server-side, so the UI can paginate. */
+  limit: number;
+  offset: number;
 }
 
 export async function listDatabases(): Promise<DatabaseConnection[]> {
@@ -87,11 +90,12 @@ export async function getDatabaseRows(
   name: string,
   table: string,
   limit = 100,
+  offset = 0,
 ): Promise<RowSample> {
   return requestJson<{ ok: true } & RowSample>(
     `/api/databases/${encodeURIComponent(name)}/rows?table=${encodeURIComponent(
       table,
-    )}&limit=${limit}`,
+    )}&limit=${limit}&offset=${offset}`,
   );
 }
 

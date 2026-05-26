@@ -32,6 +32,8 @@ export function useDatabases() {
   return { connections, loading, error, refresh };
 }
 
+export const PAGE_SIZES = [50, 100, 500, 1000] as const;
+
 /** Tables for a connection + the sampled rows of the currently selected table. */
 export function useTableBrowser(connection: string | null) {
   const [tables, setTables] = useState<TableRef[]>([]);
@@ -41,6 +43,14 @@ export function useTableBrowser(connection: string | null) {
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingRows, setLoadingRows] = useState(false);
+  const [limit, setLimit] = useState<number>(100);
+  const [offset, setOffset] = useState(0);
+
+  // A new table or connection always starts back at the first page.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on table switch
+  useEffect(() => {
+    setOffset(0);
+  }, [connection, selectedTable]);
 
   // Reset and load tables whenever the connection changes.
   useEffect(() => {
@@ -70,14 +80,14 @@ export function useTableBrowser(connection: string | null) {
     };
   }, [connection]);
 
-  // Load rows whenever the selected table changes.
+  // Load rows whenever the selected table, page size, or offset changes.
   useEffect(() => {
     setSample(null);
     setRowsError(null);
     if (!connection || !selectedTable) return;
     let cancelled = false;
     setLoadingRows(true);
-    getDatabaseRows(connection, selectedTable, 100)
+    getDatabaseRows(connection, selectedTable, limit, offset)
       .then((result) => {
         if (!cancelled) setSample(result);
       })
@@ -91,7 +101,25 @@ export function useTableBrowser(connection: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [connection, selectedTable]);
+  }, [connection, selectedTable, limit, offset]);
+
+  // A full page back implies there may be more; the page size selector resets
+  // to the first page so offsets never dangle past the new window.
+  const canPrev = offset > 0;
+  const canNext = sample ? sample.rowCount === limit : false;
+
+  function changePageSize(next: number) {
+    setLimit(next);
+    setOffset(0);
+  }
+
+  function nextPage() {
+    if (canNext) setOffset((current) => current + limit);
+  }
+
+  function prevPage() {
+    setOffset((current) => Math.max(0, current - limit));
+  }
 
   return {
     tables,
@@ -102,5 +130,12 @@ export function useTableBrowser(connection: string | null) {
     rowsError,
     loadingTables,
     loadingRows,
+    limit,
+    offset,
+    canPrev,
+    canNext,
+    changePageSize,
+    nextPage,
+    prevPage,
   };
 }

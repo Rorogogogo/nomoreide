@@ -38,7 +38,9 @@ export function TableGrid({
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <table className="w-full border-collapse text-left font-mono text-[11px]">
+      {/* w-max lets wide tables exceed the viewport so the container scrolls
+          horizontally; min-w-full keeps narrow tables filling the space. */}
+      <table className="w-max min-w-full border-collapse text-left font-mono text-[11px]">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-border">
             <th className="w-10 px-2 py-2" />

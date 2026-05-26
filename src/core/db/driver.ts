@@ -20,6 +20,9 @@ export interface RowSample {
   rows: Array<Record<string, unknown>>;
   /** Number of rows returned (≤ requested limit). */
   rowCount: number;
+  /** The page window actually applied, echoed back so the UI can paginate. */
+  limit: number;
+  offset: number;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface DbDriver {
   /** Throws if the connection cannot be established. */
   testConnection(): Promise<void>;
   listTables(): Promise<TableRef[]>;
-  sampleRows(table: TableRef, limit: number): Promise<RowSample>;
+  sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample>;
   close(): Promise<void>;
 }
 
@@ -50,6 +53,12 @@ export function assertSafeIdentifier(value: string): string {
 export function clampLimit(limit: number | undefined, fallback = 100): number {
   if (!Number.isFinite(limit) || limit === undefined) return fallback;
   return Math.min(Math.max(Math.trunc(limit), 1), 1000);
+}
+
+/** Clamp a caller-supplied page offset to a non-negative integer. */
+export function clampOffset(offset: number | undefined): number {
+  if (!Number.isFinite(offset) || offset === undefined) return 0;
+  return Math.max(Math.trunc(offset), 0);
 }
 
 /**

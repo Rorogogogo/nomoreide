@@ -3,6 +3,7 @@ import type { DatabaseEngine } from "../types.js";
 import {
   assertSafeIdentifier,
   clampLimit,
+  clampOffset,
   normalizeRow,
   type ColumnInfo,
   type DbDriver,
@@ -75,19 +76,22 @@ export class MysqlDriver implements DbDriver {
     });
   }
 
-  async sampleRows(table: TableRef, limit: number): Promise<RowSample> {
+  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
     const name = assertSafeIdentifier(table.name);
     const max = clampLimit(limit);
+    const skip = clampOffset(offset);
     return this.withReadOnly(async (conn) => {
       const columns = await this.columnsFor(conn, name);
       const [rows] = await conn.query<RowDataPacket[]>(
-        `SELECT * FROM \`${name}\` LIMIT ?`,
-        [max],
+        `SELECT * FROM \`${name}\` LIMIT ? OFFSET ?`,
+        [max, skip],
       );
       return {
         columns,
         rows: rows.map((row) => normalizeRow(row as Record<string, unknown>)),
         rowCount: rows.length,
+        limit: max,
+        offset: skip,
       };
     });
   }

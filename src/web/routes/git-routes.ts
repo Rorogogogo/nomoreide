@@ -37,6 +37,16 @@ export const gitRoutes: Route[] = [
     }
   }),
 
+  route("GET", "/api/git/file-sizes", async ({ response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const files = await new GitManager(gitCwd).rankFilesBySize();
+      sendJson(response, { ok: true, files });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
   route("GET", "/api/git/file", async ({ response, url, configStore, cwd }) => {
     const gitCwd = await selectedGitCwd(configStore, cwd);
     const path = url.searchParams.get("path")?.trim();

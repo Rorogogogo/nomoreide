@@ -1,3 +1,4 @@
+import { mergeStoredPassword } from "../../core/db-peek.js";
 import type { DatabaseEngine } from "../../core/types.js";
 import {
   readForm,
@@ -27,12 +28,18 @@ export const databaseRoutes: Route[] = [
 
   route("POST", "/api/databases", async ({ request, response, configStore }) => {
     const form = await readForm(request);
-    const definition = {
-      name: requiredFormValue(form, "name"),
-      engine: parseEngine(requiredFormValue(form, "engine")),
-      url: requiredFormValue(form, "url"),
-    };
-    const config = await configStore.registerDatabase(definition);
+    const name = requiredFormValue(form, "name");
+    const engine = parseEngine(requiredFormValue(form, "engine"));
+    let url = requiredFormValue(form, "url");
+    // Editing an existing connection: keep the stored password if this save
+    // didn't include one (the client only ever has the masked URL).
+    const existing = (await configStore.load()).databases.find(
+      (db) => db.name === name,
+    );
+    if (existing) {
+      url = mergeStoredPassword(engine, url, existing.url);
+    }
+    const config = await configStore.registerDatabase({ name, engine, url });
     sendJson(response, {
       ok: true,
       databases: config.databases.map((db) => ({
@@ -99,10 +106,13 @@ export const databaseRoutes: Route[] = [
       }
       const limitParam = Number(url.searchParams.get("limit"));
       const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 100;
+      const offsetParam = Number(url.searchParams.get("offset"));
+      const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? offsetParam : 0;
       const sample = await dbPeek.sampleRows(
         decodeURIComponent(params.name),
         table,
         limit,
+        offset,
       );
       sendJson(response, { ok: true, ...sample });
     },

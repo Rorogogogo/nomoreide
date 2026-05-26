@@ -3,6 +3,7 @@ import type { DatabaseEngine } from "../types.js";
 import {
   assertSafeIdentifier,
   clampLimit,
+  clampOffset,
   normalizeRow,
   type ColumnInfo,
   type DbDriver,
@@ -61,9 +62,10 @@ export class SqliteDriver implements DbDriver {
     return rows.map((row) => ({ name: row.name, qualifiedName: row.name }));
   }
 
-  async sampleRows(table: TableRef, limit: number): Promise<RowSample> {
+  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
     const name = assertSafeIdentifier(table.name);
     const max = clampLimit(limit);
+    const skip = clampOffset(offset);
     const db = await this.db();
     const columns = (
       db.prepare(`PRAGMA table_info("${name}")`).all() as unknown as PragmaColumn[]
@@ -74,12 +76,14 @@ export class SqliteDriver implements DbDriver {
       primaryKey: col.pk > 0,
     }));
     const rows = db
-      .prepare(`SELECT * FROM "${name}" LIMIT ?`)
-      .all(max) as Array<Record<string, unknown>>;
+      .prepare(`SELECT * FROM "${name}" LIMIT ? OFFSET ?`)
+      .all(max, skip) as Array<Record<string, unknown>>;
     return {
       columns,
       rows: rows.map((row) => normalizeRow(row)),
       rowCount: rows.length,
+      limit: max,
+      offset: skip,
     };
   }
 

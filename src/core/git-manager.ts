@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { open, readFile, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
@@ -48,6 +48,15 @@ export interface GitBranch {
   current: boolean;
   remote: boolean;
   upstream?: string;
+}
+
+/** One tracked text file's size, for the "largest files" ranking. */
+export interface FileSizeRank {
+  path: string;
+  /** Line count; a lower bound (`truncated: true`) for files past the read cap. */
+  lines: number;
+  bytes: number;
+  truncated: boolean;
 }
 
 export class GitManager {
@@ -199,6 +208,72 @@ export class GitManager {
   async listTrackedFiles(): Promise<string[]> {
     const output = await this.git(["ls-files", "-z"]);
     return output.split("\0").filter((path) => path.length > 0);
+  }
+
+  /**
+   * Rank tracked files by line count, longest first — a maintainability lens.
+   * Stays cheap: `ls-files` already excludes deps/build output, binaries are
+   * skipped, reads are capped, and only a bounded number run concurrently.
+   */
+  async rankFilesBySize(
+    options: { maxBytes?: number; limit?: number; concurrency?: number } = {},
+  ): Promise<FileSizeRank[]> {
+    const maxBytes = options.maxBytes ?? 2_000_000;
+    const concurrency = options.concurrency ?? 16;
+    const files = await this.listTrackedFiles();
+    const ranks: FileSizeRank[] = [];
+
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (cursor < files.length) {
+        const path = files[cursor++];
+        const rank = await this.measureFile(path, maxBytes).catch(() => null);
+        if (rank) ranks.push(rank);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, files.length) }, worker),
+    );
+
+    ranks.sort((a, b) => b.lines - a.lines || b.bytes - a.bytes);
+    return options.limit ? ranks.slice(0, options.limit) : ranks;
+  }
+
+  /** Count lines in one tracked file; returns null for binaries or non-files. */
+  private async measureFile(
+    path: string,
+    maxBytes: number,
+  ): Promise<FileSizeRank | null> {
+    const fullPath = resolveInside(this.cwd, path);
+    const info = await stat(fullPath);
+    if (!info.isFile()) return null;
+
+    const bytes = info.size;
+    const truncated = bytes > maxBytes;
+    let buffer: Buffer;
+    if (truncated) {
+      // Don't load a huge file just to rank it — the first slice is enough.
+      const handle = await open(fullPath, "r");
+      try {
+        buffer = Buffer.alloc(maxBytes);
+        await handle.read(buffer, 0, maxBytes, 0);
+      } finally {
+        await handle.close();
+      }
+    } else {
+      buffer = await readFile(fullPath);
+    }
+
+    if (buffer.includes(0)) return null; // binary
+
+    let lines = 0;
+    for (let i = 0; i < buffer.length; i++) {
+      if (buffer[i] === 10) lines++;
+    }
+    // Count a final line that has no trailing newline.
+    if (buffer.length > 0 && buffer[buffer.length - 1] !== 10) lines++;
+
+    return { path, lines, bytes, truncated };
   }
 
   async readTrackedFile(
