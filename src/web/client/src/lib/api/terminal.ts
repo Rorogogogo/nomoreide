@@ -10,6 +10,8 @@ export interface TerminalSessionInfo {
   rows: number;
   shell: string;
   state: TerminalState;
+  /** Tab label when the session is scoped to a service. */
+  label?: string;
   error?: string;
 }
 
@@ -20,10 +22,20 @@ export async function listTerminalSessions(): Promise<TerminalSessionInfo[]> {
   return res.sessions;
 }
 
-export async function createTerminalSession(): Promise<TerminalSessionInfo> {
+export async function createTerminalSession(
+  opts?: { serviceName?: string },
+): Promise<TerminalSessionInfo> {
   const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
     "/api/terminal/sessions",
-    { method: "POST" },
+    {
+      method: "POST",
+      ...(opts?.serviceName
+        ? {
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ serviceName: opts.serviceName }),
+          }
+        : {}),
+    },
   );
   return res.session;
 }

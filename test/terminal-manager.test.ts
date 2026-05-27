@@ -88,4 +88,43 @@ describe("TerminalSessionManager", () => {
 
     expect(manager.list()).toEqual([]);
   });
+
+  test("createWithId reattaches to the same session instead of duplicating", () => {
+    const { manager, adapters } = makeManager();
+    const first = manager.createWithId("svc:api", { label: "api" });
+    const second = manager.createWithId("svc:api", { label: "api" });
+
+    expect(first.id).toBe("svc:api");
+    expect(second.id).toBe("svc:api");
+    expect(manager.list()).toHaveLength(1);
+    expect(adapters).toHaveLength(1); // spawned once
+  });
+
+  test("detach keeps the session alive so a reopen can reattach", () => {
+    const { manager } = makeManager();
+    manager.ensure("term_x");
+    manager.detach("term_x");
+
+    expect(manager.get("term_x")).toBeDefined();
+  });
+
+  test("an idle session is reaped after the idle timeout", async () => {
+    const adapters: FakePtyAdapter[] = [];
+    const manager = new TerminalSessionManager({
+      cwd: "/repo",
+      idleTimeoutMs: 20,
+      disconnectGraceMs: 0,
+      adapterFactory: () => {
+        const adapter = new FakePtyAdapter();
+        adapters.push(adapter);
+        return adapter;
+      },
+    });
+    manager.ensure("term_idle");
+    expect(manager.get("term_idle")).toBeDefined();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(manager.get("term_idle")).toBeUndefined();
+  });
 });
