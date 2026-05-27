@@ -54,6 +54,26 @@ export async function readForm(
   return new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
 }
 
+/** Read a JSON request body, returning `{}` for an empty or invalid payload. */
+export async function readJson(
+  request: IncomingMessage,
+): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export function requiredFormValue(
   form: URLSearchParams,
   key: string,

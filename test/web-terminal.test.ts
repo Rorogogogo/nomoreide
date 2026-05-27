@@ -6,7 +6,9 @@ import WebSocket from "ws";
 import type {
   TerminalSessionInfo,
   TerminalSessionManagerLike,
+  TerminalSpawnOptions,
 } from "../src/core/terminal-manager.js";
+import { ConfigStore } from "../src/core/config-store.js";
 import type {
   TerminalSize,
   TerminalSnapshot,
@@ -113,6 +115,8 @@ class FakeTerminalSession {
 
 class FakeTerminalManager implements TerminalSessionManagerLike {
   readonly sessions = new Map<string, FakeTerminalSession>();
+  /** Options the most recent `create` call received, for assertions. */
+  lastCreateOptions?: TerminalSpawnOptions;
   private counter = 0;
 
   constructor(private readonly cwd: string) {}
@@ -124,13 +128,34 @@ class FakeTerminalManager implements TerminalSessionManagerLike {
     }));
   }
 
-  create(size: Partial<TerminalSize> = {}): TerminalSessionInfo {
+  create(
+    size: Partial<TerminalSize> = {},
+    options: TerminalSpawnOptions = {},
+  ): TerminalSessionInfo {
+    this.lastCreateOptions = options;
     const id = `term_${++this.counter}`;
-    const session = new FakeTerminalSession(this.cwd);
+    const session = new FakeTerminalSession(options.cwd ?? this.cwd);
     session.start(size);
     this.sessions.set(id, session);
-    return { id, ...session.snapshot() };
+    return { id, ...session.snapshot(), label: options.label };
   }
+
+  createWithId(
+    id: string,
+    options: TerminalSpawnOptions = {},
+  ): TerminalSessionInfo {
+    const existing = this.sessions.get(id);
+    if (existing) return { id, ...existing.snapshot() };
+    this.lastCreateOptions = options;
+    const session = new FakeTerminalSession(options.cwd ?? this.cwd);
+    session.start();
+    this.sessions.set(id, session);
+    return { id, ...session.snapshot(), label: options.label };
+  }
+
+  touch(): void {}
+
+  detach(): void {}
 
   get(id: string): FakeTerminalSession | undefined {
     return this.sessions.get(id);
@@ -329,6 +354,129 @@ describe("web terminal socket", () => {
     );
     expect((await deleted.json()).ok).toBe(true);
     expect(manager.get("term_1")).toBeUndefined();
+  });
+});
+
+describe("service-scoped terminal sessions", () => {
+  test("spawns in the service's cwd with merged env and a label", async () => {
+    const configPath = join(tempDir, "config.json");
+    const serviceCwd = join(tempDir, "api");
+    await new ConfigStore(configPath).registerService({
+      name: "api",
+      command: "npm run dev",
+      cwd: serviceCwd,
+      env: { FOO: "bar" },
+    });
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      configPath,
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const created = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ serviceName: "api" }),
+    });
+
+    expect(created.status).toBe(201);
+    const { session } = (await created.json()) as {
+      session: TerminalSessionInfo;
+    };
+    expect(session.label).toBe("api");
+    expect(manager.lastCreateOptions?.cwd).toBe(serviceCwd);
+    expect(manager.lastCreateOptions?.label).toBe("api");
+    // Inherited env is preserved and the service's vars are layered on top.
+    expect(manager.lastCreateOptions?.env?.FOO).toBe("bar");
+    expect(manager.lastCreateOptions?.env?.PATH).toBe(process.env.PATH);
+  });
+
+  test("reopening a service reuses the same session id", async () => {
+    const configPath = join(tempDir, "config.json");
+    await new ConfigStore(configPath).registerService({
+      name: "api",
+      command: "npm run dev",
+      cwd: tempDir,
+    });
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      configPath,
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const open = () =>
+      fetch(`${server.url}/api/terminal/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ serviceName: "api" }),
+      }).then((res) => res.json() as Promise<{ session: TerminalSessionInfo }>);
+
+    const first = await open();
+    const second = await open();
+
+    expect(first.session.id).toBe("svc:api");
+    expect(second.session.id).toBe("svc:api");
+    expect(manager.sessions.size).toBe(1);
+  });
+
+  test("404s for an unknown service", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      configPath: join(tempDir, "config.json"),
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ serviceName: "ghost" }),
+    });
+
+    expect(res.status).toBe(404);
+    expect(manager.lastCreateOptions).toBeUndefined();
+  });
+
+  test("spawns a docker-compose exec session", async () => {
+    const configPath = join(tempDir, "config.json");
+    await new ConfigStore(configPath).registerService({
+      name: "db",
+      kind: "docker-compose",
+      cwd: tempDir,
+      composeService: "db",
+    });
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      configPath,
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ serviceName: "db" }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions?.shell).toBe("docker");
+    expect(manager.lastCreateOptions?.args).toEqual([
+      "compose",
+      "exec",
+      "db",
+      "sh",
+    ]);
+    expect(manager.lastCreateOptions?.label).toBe("db");
   });
 });
 

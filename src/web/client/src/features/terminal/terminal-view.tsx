@@ -79,7 +79,9 @@ export function TerminalView() {
         className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/10 bg-[#111111] px-2 py-1.5"
         role="tablist"
       >
-        {tabs.map((tab, index) => (
+        {tabs.map((tab, index) => {
+          const name = tab.label ?? `Terminal ${index + 1}`;
+          return (
           <div
             key={tab.id}
             className={cn(
@@ -96,10 +98,10 @@ export function TerminalView() {
               role="tab"
               type="button"
             >
-              Terminal {index + 1}
+              {name}
             </button>
             <button
-              aria-label={`Close Terminal ${index + 1}`}
+              aria-label={`Close ${name}`}
               className="rounded p-0.5 text-white/40 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
               disabled={busy}
               onClick={() => void closeTab(tab.id)}
@@ -108,7 +110,8 @@ export function TerminalView() {
               <X className="size-3" />
             </button>
           </div>
-        ))}
+          );
+        })}
         <button
           aria-label="New terminal"
           className="ml-1 rounded-md p-1 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"

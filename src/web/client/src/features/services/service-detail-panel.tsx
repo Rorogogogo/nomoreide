@@ -6,9 +6,10 @@ import { EnvTab } from "./service-detail/env-tab";
 import { HttpTab } from "./service-detail/http-tab";
 import { LogsTab } from "./service-detail/logs-tab";
 import { ProcessesTab } from "./service-detail/processes-tab";
+import { TerminalTab } from "./service-detail/terminal-tab";
 import { TestsTab } from "./service-detail/tests-tab";
 
-type Tab = "processes" | "http" | "env" | "tests" | "logs";
+type Tab = "processes" | "http" | "env" | "tests" | "logs" | "terminal";
 
 export function ServiceDetailPanel({
   serviceName,
@@ -47,6 +48,9 @@ export function ServiceDetailPanel({
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
           Logs
         </TabButton>
+        <TabButton active={tab === "terminal"} onClick={() => setTab("terminal")}>
+          Terminal
+        </TabButton>
       </div>
       {tab === "processes" ? <ProcessesTab rows={processes} /> : null}
       {tab === "http" ? (
@@ -60,6 +64,13 @@ export function ServiceDetailPanel({
       {tab === "env" ? <EnvTab serviceName={serviceName} /> : null}
       {tab === "tests" ? <TestsTab serviceName={serviceName} /> : null}
       {tab === "logs" ? <LogsTab serviceName={serviceName} /> : null}
+      {/* Kept mounted (hidden when inactive) so the shell survives tab switches;
+          keyed by service so switching services tears down and reopens it. */}
+      <TerminalTab
+        key={serviceName}
+        active={tab === "terminal"}
+        serviceName={serviceName}
+      />
     </div>
   );
 }

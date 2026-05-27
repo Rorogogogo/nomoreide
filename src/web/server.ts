@@ -106,6 +106,11 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
         void routeRequest(services, request, response);
       });
       const terminalSocketServer = createTerminalSocketServer(terminalManager);
+      // When the host process exits (incl. after ProcessManager's signal
+      // handlers re-raise), synchronously kill every PTY — important for
+      // ssh/docker sessions that hold real connections.
+      const disposeTerminalsOnExit = () => terminalManager.disposeAll();
+      process.once("exit", disposeTerminalsOnExit);
       server.on("upgrade", (request, socket, head) => {
         const url = new URL(request.url ?? "/", "http://127.0.0.1");
         if (url.pathname !== "/api/terminal/socket") {
@@ -130,6 +135,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
         port: actualPort,
         url: `http://127.0.0.1:${actualPort}`,
         async stop() {
+          process.removeListener("exit", disposeTerminalsOnExit);
           terminalManager.disposeAll();
           terminalSocketServer.close();
           await manager.stopAll();
@@ -169,6 +175,7 @@ function createTerminalSocketServer(
 
     socket.on("message", (data) => {
       try {
+        terminalManager.touch(id); // client activity resets the idle timer
         handleTerminalSocketMessage(session, data);
       } catch {
         sendTerminalMessage(socket, {
@@ -178,9 +185,12 @@ function createTerminalSocketServer(
       }
     });
     socket.on("close", () => {
-      // Leave the PTY running so the tab survives reloads; only drop listeners.
+      // Leave the PTY running so the tab survives reloads; only drop listeners
+      // and tell the manager this client is gone (it persists the session for
+      // reattach and lets the idle timer reap it if it's truly abandoned).
       outputSubscription.dispose();
       stateSubscription.dispose();
+      terminalManager.detach(id);
     });
   });
   return server;

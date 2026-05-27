@@ -18,6 +18,8 @@ export interface TerminalSnapshot extends TerminalSize {
   cwd: string;
   state: TerminalState;
   shell: string;
+  /** Human label for the tab (e.g. a service name); absent for plain shells. */
+  label?: string;
   exit?: TerminalExit;
   error?: string;
 }
@@ -49,6 +51,9 @@ export interface TerminalSessionOptions {
   cwd: string;
   env?: NodeJS.ProcessEnv;
   shell?: string;
+  /** Args for the spawned program. Empty → a plain interactive shell. */
+  args?: string[];
+  label?: string;
 }
 
 type Listener<T> = (value: T) => void;
@@ -70,6 +75,8 @@ export class TerminalSession implements TerminalSessionLike {
   private readonly cwd: string;
   private readonly env: NodeJS.ProcessEnv;
   private readonly shell: string;
+  private readonly args: string[];
+  private readonly label: string | undefined;
   private cols = 80;
   private rows = 24;
   private exit: TerminalExit | undefined;
@@ -85,6 +92,8 @@ export class TerminalSession implements TerminalSessionLike {
     this.cwd = options.cwd;
     this.env = options.env ?? process.env;
     this.shell = options.shell ?? defaultShell();
+    this.args = options.args ?? [];
+    this.label = options.label;
   }
 
   snapshot(): TerminalSnapshot {
@@ -93,6 +102,7 @@ export class TerminalSession implements TerminalSessionLike {
       cwd: this.cwd,
       error: this.error,
       exit: this.exit,
+      label: this.label,
       rows: this.rows,
       shell: this.shell,
       state: this.state,
@@ -129,7 +139,7 @@ export class TerminalSession implements TerminalSessionLike {
     this.error = undefined;
 
     try {
-      const child = this.adapter.spawn(this.shell, [], {
+      const child = this.adapter.spawn(this.shell, this.args, {
         cols: this.cols,
         cwd: this.cwd,
         env: this.env,

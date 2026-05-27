@@ -142,8 +142,15 @@ export function TerminalPane({ sessionId, active }: TerminalPaneProps) {
     window.addEventListener("resize", sendResize);
     window.setTimeout(sendResize, 0);
 
+    // Refit whenever the container's own size settles or changes (the pane
+    // becoming visible, the panel resizing, fonts loading). Without this the
+    // initial one-shot fit can be off by a row and clip the bottom line.
+    const observer = new ResizeObserver(() => sendResize());
+    observer.observe(containerRef.current);
+
     return () => {
       window.removeEventListener("resize", sendResize);
+      observer.disconnect();
       inputSubscription.dispose();
       socket.close();
       terminal.dispose();
@@ -226,11 +233,15 @@ export function TerminalPane({ sessionId, active }: TerminalPaneProps) {
           </Button>
         </div>
       </div>
+      {/* Padding lives on the wrapper, not on the element xterm mounts into:
+          FitAddon doesn't subtract the mount element's own padding, so padding
+          here would make it provision one row too many and clip the last line. */}
       <div
         aria-label="terminal viewport"
-        className="min-h-0 flex-1 overflow-hidden p-3"
-        ref={containerRef}
-      />
+        className="min-h-0 flex-1 overflow-hidden px-3 py-0.5"
+      >
+        <div className="h-full w-full" ref={containerRef} />
+      </div>
     </section>
   );
 }
