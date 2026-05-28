@@ -237,9 +237,18 @@ export function ServiceRow({
 export const SERVICE_DRAG_TYPE = "application/x-nomoreide-service";
 
 const SERVICE_KIND_META: Record<ServiceKind, { label: string; className: string }> = {
-  local: { label: "local", className: "border-zinc-300 bg-zinc-100 text-zinc-600" },
-  "docker-compose": { label: "docker", className: "border-sky-300 bg-sky-50 text-sky-700" },
-  ssh: { label: "ssh", className: "border-violet-300 bg-violet-50 text-violet-700" },
+  local: {
+    label: "local",
+    className: "border-border bg-muted text-muted-foreground",
+  },
+  "docker-compose": {
+    label: "docker",
+    className: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  },
+  ssh: {
+    label: "ssh",
+    className: "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  },
 };
 
 export function ServiceKindBadge({ kind }: { kind?: ServiceKind }) {

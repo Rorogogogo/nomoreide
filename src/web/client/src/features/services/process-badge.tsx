@@ -31,9 +31,9 @@ export function ProcessBadge({
     <span
       aria-label={`${process.label} process`}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md border bg-white shadow-sm",
+        "inline-flex shrink-0 items-center justify-center rounded-md border bg-card shadow-sm dark:bg-zinc-100",
         compact ? "size-6" : "size-7",
-        icon ? "border-zinc-200" : "border-zinc-300 bg-zinc-100 text-zinc-700",
+        icon ? "border-border" : "border-border bg-muted text-muted-foreground dark:bg-zinc-100 dark:text-zinc-700",
       )}
       style={icon ? { color: `#${icon.hex}` } : undefined}
       title={process.label}

@@ -13,7 +13,6 @@ import {
   Server,
   SquareTerminal,
 } from "lucide-react";
-import logoUrl from "@/assets/nomoreide-logo.png";
 import { getDashboard, type DashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,7 @@ import { GitReviewView } from "@/features/git/git-review-view";
 import { RepositorySelector } from "@/features/git/repository-selector";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 type Page = "services" | "git" | "agent" | "errors" | "database" | "terminal";
@@ -245,8 +245,33 @@ export function App() {
             )}
           >
             <div className="flex size-12 items-center justify-center">
-              <div className="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary">
-                <img alt="NoMoreIDE" className="size-full object-cover" src={logoUrl} />
+              <div className="flex size-9 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground">
+                <svg
+                  aria-label="NoMoreIDE"
+                  className="size-6"
+                  fill="none"
+                  role="img"
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 17C5 13.69 7.69 11 11 11H25L31 17H53C56.31 17 59 19.69 59 23V53C59 56.31 56.31 59 53 59H11C7.69 59 5 56.31 5 53V17Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M22 31L30 39L22 47"
+                    stroke="hsl(var(--primary))"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="4.5"
+                  />
+                  <path
+                    d="M36 47H48"
+                    stroke="hsl(var(--primary))"
+                    strokeLinecap="round"
+                    strokeWidth="4.5"
+                  />
+                </svg>
               </div>
             </div>
             <AppIdentity
@@ -351,6 +376,7 @@ export function App() {
                 <RefreshCw className={cn(loading && "animate-spin")} />
                 Refresh
               </Button>
+              <ThemeToggle />
             </div>
           </header>
 

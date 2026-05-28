@@ -7,7 +7,7 @@ const alertVariants = cva("rounded-lg border p-4 text-sm", {
     variant: {
       default: "border-border bg-card text-card-foreground",
       muted: "border-border bg-muted text-muted-foreground",
-      destructive: "border-red-200 bg-red-50 text-red-700",
+      destructive: "border-destructive/40 bg-destructive/10 text-destructive dark:text-red-300",
     },
   },
   defaultVariants: {
