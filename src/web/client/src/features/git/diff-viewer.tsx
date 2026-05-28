@@ -54,7 +54,7 @@ export function DiffViewer({
     const additions = rows.filter((row) => row.kind === "add").length;
     const deletions = rows.filter((row) => row.kind === "delete").length;
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-white p-6">
+      <div className="absolute inset-0 flex items-center justify-center bg-card p-6">
         <div className="max-w-sm space-y-3 text-center">
           <p className="text-[13px] font-medium text-foreground">
             Diff hidden for this data file
@@ -76,14 +76,14 @@ export function DiffViewer({
   }
 
   return (
-    <div className="absolute inset-0 overflow-auto bg-white text-xs leading-6">
+    <div className="absolute inset-0 overflow-auto bg-card text-xs leading-6 text-foreground">
       <div className="min-w-full font-mono">
         {rows.map((row, index) => (
           <div
             className={cn(
               "grid grid-cols-[3rem_3rem_minmax(0,1fr)]",
-              row.kind === "add" && "bg-emerald-50 text-emerald-800",
-              row.kind === "delete" && "bg-red-50 text-red-800",
+              row.kind === "add" && "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+              row.kind === "delete" && "bg-red-50 text-red-800 dark:bg-red-500/15 dark:text-red-300",
               scrollTargetRowForHunk(rows, index) &&
                 row.hunkIndex === activeHunkIndex &&
                 "outline outline-1 outline-offset-[-1px] outline-primary/35",

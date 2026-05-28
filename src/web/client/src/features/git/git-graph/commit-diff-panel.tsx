@@ -16,7 +16,7 @@ export function CommitDiffPanel({
   diffError: string | null;
 }) {
   return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-white border-b border-border">
+    <section className="flex min-h-0 min-w-0 flex-col bg-card border-b border-border">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
         <div className="min-w-0">
           <h2 className="truncate text-[13px] font-semibold tracking-tight">

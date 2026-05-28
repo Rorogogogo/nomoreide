@@ -44,29 +44,29 @@ export const Badge = ({
 
   const variantStyles = {
     primary: {
-      solid: "bg-[#11111198] text-white border border-transparent",
-      outline: "border-2 border-[#11111198] text-[#11111198]",
-      subtle: "bg-[#11111140] text-[#11111198] border border-transparent",
+      solid: "bg-primary text-primary-foreground border border-transparent",
+      outline: "border-2 border-primary/60 text-foreground",
+      subtle: "bg-primary/15 text-foreground border border-transparent",
     },
     secondary: {
-      solid: "bg-zinc-700 text-white border border-transparent",
-      outline: "border-2 border-zinc-400 text-zinc-800 bg-white",
-      subtle: "bg-zinc-100 text-zinc-800 border border-zinc-300",
+      solid: "bg-secondary text-secondary-foreground border border-transparent",
+      outline: "border-2 border-border text-foreground bg-card",
+      subtle: "bg-muted text-foreground border border-border",
     },
     success: {
       solid: "bg-emerald-600 text-white border border-transparent",
-      outline: "border-2 border-emerald-600 text-emerald-700",
-      subtle: "bg-emerald-100 text-emerald-700 border border-transparent",
+      outline: "border-2 border-emerald-600 text-emerald-700 dark:text-emerald-400",
+      subtle: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-transparent",
     },
     warning: {
       solid: "bg-amber-500 text-white border border-transparent",
-      outline: "border-2 border-amber-500 text-amber-700",
-      subtle: "bg-amber-100 text-amber-700 border border-transparent",
+      outline: "border-2 border-amber-500 text-amber-700 dark:text-amber-400",
+      subtle: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-transparent",
     },
     error: {
       solid: "bg-destructive text-destructive-foreground border border-transparent",
-      outline: "border-2 border-destructive text-destructive",
-      subtle: "bg-destructive/20 text-destructive border border-transparent",
+      outline: "border-2 border-destructive text-destructive dark:text-red-400",
+      subtle: "bg-destructive/20 text-destructive dark:text-red-300 border border-transparent",
     },
   } satisfies Record<Exclude<BadgeVariant, "danger" | "default" | "outline">, Record<BadgeAppearance, string>>;
 
@@ -93,7 +93,6 @@ export const Badge = ({
       transition={{ duration: 0.32, ease: "easeInOut", type: "spring" }}
       whileHover={{
         scale: interactive ? 1.04 : 1,
-        backgroundColor: interactive && normalized === "primary" ? "#111111d1" : undefined,
         transition: {
           duration: 0.2,
           ease: "easeInOut",
@@ -139,7 +138,7 @@ export const Badge = ({
               type: "spring",
             },
           }}
-          className="flex items-center justify-center rounded-md bg-[#11111198] p-1 opacity-70 hover:opacity-100"
+          className="flex items-center justify-center rounded-md bg-foreground/15 p-1 opacity-70 hover:opacity-100"
           onClick={handleRemove}
           type="button"
         >

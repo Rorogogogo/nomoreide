@@ -101,3 +101,80 @@
 .hljs-strong {
   font-weight: 700;
 }
+
+/* Dark mode — VSCode Dark+ palette */
+.dark .hljs {
+  color: #d4d4d4;
+}
+
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-literal,
+.dark .hljs-meta-keyword {
+  color: #569cd6;
+}
+
+.dark .hljs-built_in,
+.dark .hljs-symbol,
+.dark .hljs-type,
+.dark .hljs-title.class_,
+.dark .hljs-class .hljs-title {
+  color: #4ec9b0;
+}
+
+.dark .hljs-title,
+.dark .hljs-title.function_,
+.dark .hljs-section {
+  color: #dcdcaa;
+}
+
+.dark .hljs-string,
+.dark .hljs-template-string,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-attr {
+  color: #ce9178;
+}
+
+.dark .hljs-number,
+.dark .hljs-regexp {
+  color: #b5cea8;
+}
+
+.dark .hljs-comment,
+.dark .hljs-quote {
+  color: #6a9955;
+}
+
+.dark .hljs-variable,
+.dark .hljs-params {
+  color: #9cdcfe;
+}
+
+.dark .hljs-tag,
+.dark .hljs-name {
+  color: #569cd6;
+}
+
+.dark .hljs-attribute {
+  color: #9cdcfe;
+}
+
+.dark .hljs-operator,
+.dark .hljs-punctuation {
+  color: #d4d4d4;
+}
+
+.dark .hljs-meta {
+  color: #c586c0;
+}
+
+.dark .hljs-addition {
+  color: #b5cea8;
+  background-color: rgba(46, 160, 67, 0.15);
+}
+
+.dark .hljs-deletion {
+  color: #f48771;
+  background-color: rgba(248, 81, 73, 0.15);
+}
