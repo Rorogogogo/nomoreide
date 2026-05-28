@@ -11,8 +11,8 @@ import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { LargestFilesView } from "./largest-files-view";
 
-type GitTab = "changes" | "graph" | "largest";
-type ChangesMode = "changes" | "all";
+type GitTab = "changes" | "all" | "graph" | "largest";
+type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
   data,
@@ -43,7 +43,7 @@ export function GitReviewView({
   }, [data.git.status?.files]);
 
   useEffect(() => {
-    if (mode !== "all" || allFiles.length > 0) return;
+    if (tab !== "all" || allFiles.length > 0) return;
     let active = true;
     setAllFilesError(null);
     void getGitFiles()
@@ -56,7 +56,7 @@ export function GitReviewView({
     return () => {
       active = false;
     };
-  }, [mode, allFiles.length]);
+  }, [tab, allFiles.length]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -153,6 +153,7 @@ export function GitReviewView({
 
   function viewDiffForTreeFile() {
     if (!selectedTreeFile) return;
+    setTab("changes");
     setMode("changes");
     selectFile(selectedTreeFile);
   }
@@ -160,8 +161,7 @@ export function GitReviewView({
   // Jump from the ranking straight to a file in the All-files viewer.
   function openFileInViewer(path: string) {
     setSelectedTreeFile(path);
-    setMode("all");
-    setTab("changes");
+    setTab("all");
   }
 
   return (
@@ -173,6 +173,14 @@ export function GitReviewView({
           onClick={() => setTab("changes")}
         >
           Changes
+        </button>
+        <button
+          type="button"
+          aria-label="Open all tracked files"
+          className={tabButtonClass(tab === "all")}
+          onClick={() => setTab("all")}
+        >
+          All files
         </button>
         <button
           type="button"
@@ -195,35 +203,10 @@ export function GitReviewView({
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (
           <LargestFilesView onOpenFile={openFileInViewer} />
-        ) : (
+        ) : tab === "all" ? (
     <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="flex min-h-0 flex-col overflow-hidden">
-        <div className="flex shrink-0 gap-0.5 border-b border-border bg-card/95 p-1">
-          <button
-            className={modeButtonClass(mode === "changes")}
-            onClick={() => setMode("changes")}
-            type="button"
-          >
-            Changes
-          </button>
-          <button
-            className={modeButtonClass(mode === "all")}
-            onClick={() => setMode("all")}
-            type="button"
-          >
-            All files
-          </button>
-        </div>
-        {mode === "changes" ? (
-          <ChangedFilesList
-            branch={data.git.status?.branch || undefined}
-            error={data.git.error}
-            files={data.git.status?.files ?? []}
-            selectedFile={selectedFile}
-            onSelectFile={selectFile}
-            root={data.git.cwd}
-          />
-        ) : allFilesError ? (
+        {allFilesError ? (
           <Alert variant="destructive" className="m-3">
             {allFilesError}
           </Alert>
@@ -238,14 +221,57 @@ export function GitReviewView({
           />
         )}
       </aside>
+      <FileViewer
+        isModified={modifiedPaths.has(selectedTreeFile)}
+        onViewDiff={viewDiffForTreeFile}
+        path={selectedTreeFile}
+      />
+    </div>
+        ) : (
+    <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="flex min-h-0 flex-col overflow-hidden">
+        <div className="flex shrink-0 gap-0.5 border-b border-border bg-card/95 p-1">
+          <button
+            aria-label="Show changed files as a list"
+            className={modeButtonClass(mode === "changes")}
+            onClick={() => setMode("changes")}
+            type="button"
+          >
+            Changes
+          </button>
+          <button
+            aria-label="Show changed files as a tree"
+            className={modeButtonClass(mode === "tree")}
+            onClick={() => setMode("tree")}
+            type="button"
+          >
+            Tree
+          </button>
+        </div>
+        {mode === "changes" ? (
+          <ChangedFilesList
+            branch={data.git.status?.branch || undefined}
+            error={data.git.error}
+            files={data.git.status?.files ?? []}
+            selectedFile={selectedFile}
+            onSelectFile={selectFile}
+            root={data.git.cwd}
+          />
+        ) : (
+          <FileTree
+            branch={data.git.status?.branch || undefined}
+            defaultExpandAll
+            emptyMessage={data.git.error ?? "No changed files."}
+            onSelectFile={selectFile}
+            paths={filePaths}
+            root={data.git.cwd}
+            selectedFile={selectedFile}
+            status={data.git.status?.files ?? []}
+            title="Changes"
+          />
+        )}
+      </aside>
 
-      {mode === "all" ? (
-        <FileViewer
-          isModified={modifiedPaths.has(selectedTreeFile)}
-          onViewDiff={viewDiffForTreeFile}
-          path={selectedTreeFile}
-        />
-      ) : (
       <section className="flex min-h-0 min-w-0 flex-col border-l border-border bg-white">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
           <div className="min-w-0">
@@ -309,7 +335,6 @@ export function GitReviewView({
           )}
         </div>
       </section>
-      )}
     </div>
         )}
       </div>

@@ -7,19 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { AgentInfo } from "@/lib/api";
-import { AgentNotice } from "./agent-empty";
+import type { AgentMcpServer, AgentProfile } from "@/lib/api";
 import type { AgentId } from "./agent-types";
 
-export function ToolsTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentId }) {
-  if (agentId === "codex") {
-    return (
-      <AgentNotice icon={<Plug className="size-8" />} title="No skill/MCP discovery for Codex yet">
-        Skills and MCP servers are read from <code className="font-mono">~/.claude.json</code>.
-        Codex config introspection isn&apos;t wired up.
-      </AgentNotice>
-    );
-  }
+export function ToolsTab({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
   return (
     <div className="grid grid-cols-1 divide-y divide-border xl:grid-cols-2 xl:divide-x xl:divide-y-0">
       <Card className="min-w-0 rounded-none border-0 bg-transparent">
@@ -34,7 +25,9 @@ export function ToolsTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentI
             </Badge>
           </div>
           <CardDescription className="text-xs">
-            User, project, and plugin skills discovered for the active agent.
+            {agentId === "codex"
+              ? "User, project, and system skills discovered for Codex."
+              : "User, project, and plugin skills discovered for the active agent."}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -74,7 +67,11 @@ export function ToolsTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentI
             </Badge>
           </div>
           <CardDescription className="text-xs">
-            From <code className="font-mono">~/.claude.json</code> (user + project scopes).
+            From{" "}
+            <code className="font-mono">
+              {agentId === "codex" ? "~/.codex/config.toml" : "~/.claude.json"}
+            </code>
+            {agentId === "codex" ? "." : " (user + project scopes)."}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -91,7 +88,7 @@ export function ToolsTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentI
                     </Badge>
                   </div>
                   <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-                    {server.command ?? server.url ?? server.type ?? "—"}
+                    {formatMcpServer(server)}
                   </div>
                 </li>
               ))}
@@ -103,4 +100,11 @@ export function ToolsTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentI
       </Card>
     </div>
   );
+}
+
+function formatMcpServer(server: AgentMcpServer): string {
+  if (server.command) {
+    return [server.command, ...(server.args ?? [])].join(" ");
+  }
+  return server.url ?? server.type ?? "-";
 }

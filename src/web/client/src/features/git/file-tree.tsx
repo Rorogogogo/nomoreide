@@ -31,7 +31,7 @@ function buildTree(paths: string[]): TreeNode {
       if (!node) {
         node = { name: part, path: currentPath, children: [], isFile };
         dirMap.set(currentPath, node);
-        dirMap.get(parentPath)!.children.push(node);
+        dirMap.get(parentPath)?.children.push(node);
       }
       parentPath = currentPath;
     }
@@ -49,40 +49,60 @@ function buildTree(paths: string[]): TreeNode {
   return root;
 }
 
+function expandedDirectoryMap(tree: TreeNode, expandAll: boolean): Record<string, boolean> {
+  const out: Record<string, boolean> = { "": true };
+  const visit = (node: TreeNode) => {
+    for (const child of node.children) {
+      if (!child.isFile) {
+        out[child.path] = true;
+        if (expandAll) visit(child);
+      }
+    }
+  };
+  visit(tree);
+  return out;
+}
+
 export function FileTree({
+  defaultExpandAll = false,
   paths,
   status,
   selectedFile,
   onSelectFile,
   branch,
+  emptyMessage = "No tracked files.",
   root,
+  title = "Files",
 }: {
+  defaultExpandAll?: boolean;
   paths: string[];
   status: GitFileStatus[];
   selectedFile: string;
   onSelectFile: (path: string) => void;
   branch?: string;
+  emptyMessage?: string;
   /** Absolute repo root; lets rows be dragged into the agent dock by path. */
   root?: string;
+  title?: string;
 }) {
   const tree = useMemo(() => buildTree(paths), [paths]);
+  const initialExpanded = useMemo(
+    () => expandedDirectoryMap(tree, defaultExpandAll),
+    [defaultExpandAll, tree],
+  );
   const statusByPath = useMemo(() => {
     const map = new Map<string, GitFileStatus>();
     for (const file of status) map.set(file.path, file);
     return map;
   }, [status]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ "": true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(initialExpanded);
   const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
     if (seeded || tree.children.length === 0) return;
-    const out: Record<string, boolean> = { "": true };
-    for (const child of tree.children) {
-      if (!child.isFile) out[child.path] = true;
-    }
-    setExpanded(out);
+    setExpanded(initialExpanded);
     setSeeded(true);
-  }, [seeded, tree.children]);
+  }, [initialExpanded, seeded, tree.children.length]);
 
   function toggle(path: string) {
     setExpanded((current) => ({ ...current, [path]: !current[path] }));
@@ -93,7 +113,7 @@ export function FileTree({
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-2.5 py-1.5">
         <span className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold tracking-tight">
           <Folder className="size-3.5" />
-          <span className="truncate">Files</span>
+          <span className="truncate">{title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {branch ? <Badge variant="outline">{branch}</Badge> : null}
@@ -103,7 +123,7 @@ export function FileTree({
       <div className="min-h-0 flex-1 overflow-auto py-1">
         {tree.children.length === 0 ? (
           <Alert variant="muted" className="m-3 text-center">
-            No tracked files.
+            {emptyMessage}
           </Alert>
         ) : (
           tree.children.map((node) => (
@@ -218,4 +238,3 @@ function StatusBadge({ file }: { file: GitFileStatus }) {
     </span>
   );
 }
-

@@ -402,6 +402,8 @@ function NavButton({
   label: string;
   onClick: () => void;
 }) {
+  // Only render the count badge when there's something to count — a "0" is noise.
+  const showBadge = badge !== undefined && badge > 0;
   return (
     <Button
       aria-label={label}
@@ -414,8 +416,8 @@ function NavButton({
       <span className={navButtonIconClassName(docked)}>
         {icon}
       </span>
-      <span className={navButtonLabelClassName(docked, badge !== undefined)}>{label}</span>
-      {badge !== undefined ? (
+      <span className={navButtonLabelClassName(docked, showBadge)}>{label}</span>
+      {badge !== undefined && badge > 0 ? (
         <Badge
           appearance={badge > 0 ? "solid" : "outline"}
           className={cn(
