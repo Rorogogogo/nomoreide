@@ -24,12 +24,15 @@ export function ServiceDetailPanel({
   timeline: TimelineEvent[];
   onRefresh: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<Tab>("processes");
+  const [tab, setTab] = useState<Tab>("logs");
   const processes = health?.processTree?.processes ?? [];
 
   return (
     <div className="border-t border-border bg-muted/30 px-3 py-2 text-xs">
       <div className="mb-2 flex gap-1">
+        <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
+          Logs
+        </TabButton>
         <TabButton active={tab === "processes"} onClick={() => setTab("processes")}>
           Processes {processes.length ? <Badge variant="secondary" size="small">{processes.length}</Badge> : null}
         </TabButton>
@@ -44,9 +47,6 @@ export function ServiceDetailPanel({
         </TabButton>
         <TabButton active={tab === "tests"} onClick={() => setTab("tests")}>
           Tests
-        </TabButton>
-        <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
-          Logs
         </TabButton>
         <TabButton active={tab === "terminal"} onClick={() => setTab("terminal")}>
           Terminal

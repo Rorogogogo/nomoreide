@@ -24,7 +24,8 @@ export function RepositorySelector({
   const [draftPath, setDraftPath] = useState(data.git.cwd);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedRepository = data.git.selectedRepository;
-  const selectedName = selectedRepository?.name ?? pathName(data.git.cwd);
+  const selectedName = selectedRepository?.name
+    ?? (data.git.cwd ? pathName(data.git.cwd) : "Add Git project");
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const picker = repositoryPickerState({
     gitCwd: data.git.cwd,

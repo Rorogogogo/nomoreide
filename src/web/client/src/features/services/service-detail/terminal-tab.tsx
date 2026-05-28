@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { createTerminalSession } from "@/lib/api";
 import { TerminalPane } from "@/features/terminal/terminal-pane";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LogsOverlay } from "./logs-tab";
 
 /**
  * The service detail "Terminal" tab: a shell scoped to the service — a local
@@ -22,6 +25,7 @@ export function TerminalTab({
 }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -43,6 +47,40 @@ export function TerminalTab({
     };
   }, [active, serviceName]);
 
+  const expandButton = (
+    <Button
+      aria-label={fullscreen ? "Exit fullscreen terminal" : "Expand terminal"}
+      className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+      onClick={() => setFullscreen((value) => !value)}
+      size="sm"
+      type="button"
+      variant="outline"
+    >
+      {fullscreen ? <Minimize2 /> : <Maximize2 />}
+      {fullscreen ? "Exit" : "Expand"}
+    </Button>
+  );
+
+  const body = error ? (
+    <div className="p-3 font-mono text-[11px] text-destructive">
+      Could not open terminal: {error}
+    </div>
+  ) : sessionId ? (
+    <TerminalPane active={active} sessionId={sessionId} toolbarExtra={expandButton} />
+  ) : (
+    <div className="p-3 font-mono text-[11px] text-muted-foreground">
+      Opening terminal…
+    </div>
+  );
+
+  if (fullscreen && active) {
+    return (
+      <LogsOverlay onClose={() => setFullscreen(false)} title={`Terminal — ${serviceName}`}>
+        {body}
+      </LogsOverlay>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -52,17 +90,7 @@ export function TerminalTab({
         !active && "hidden",
       )}
     >
-      {error ? (
-        <div className="p-3 font-mono text-[11px] text-destructive">
-          Could not open terminal: {error}
-        </div>
-      ) : sessionId ? (
-        <TerminalPane active={active} sessionId={sessionId} />
-      ) : (
-        <div className="p-3 font-mono text-[11px] text-muted-foreground">
-          Opening terminal…
-        </div>
-      )}
+      {body}
     </div>
   );
 }

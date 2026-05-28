@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { RotateCcw, Square } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
@@ -27,6 +27,8 @@ interface TerminalPaneProps {
   sessionId: string;
   /** Whether this pane is the visible tab. Hidden panes keep their shell alive. */
   active: boolean;
+  /** Extra buttons rendered next to Restart/Stop in the toolbar. */
+  toolbarExtra?: ReactNode;
 }
 
 /**
@@ -34,7 +36,7 @@ interface TerminalPaneProps {
  * session over a WebSocket. Stays mounted while inactive so its shell and
  * scrollback survive tab switches; it only refits when it becomes visible.
  */
-export function TerminalPane({ sessionId, active }: TerminalPaneProps) {
+export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -231,6 +233,7 @@ export function TerminalPane({ sessionId, active }: TerminalPaneProps) {
             <Square />
             Stop
           </Button>
+          {toolbarExtra}
         </div>
       </div>
       {/* Padding lives on the wrapper, not on the element xterm mounts into:

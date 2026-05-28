@@ -318,18 +318,21 @@ function requireAbsolutePath(path: string): void {
   }
 }
 
-async function requireGitWorktree(path: string): Promise<void> {
+export async function isGitWorktree(path: string): Promise<boolean> {
   try {
     const { stdout } = await execFileAsync(
       "git",
       ["rev-parse", "--is-inside-work-tree"],
       { cwd: path },
     );
-    if (stdout.trim() === "true") return;
+    return stdout.trim() === "true";
   } catch {
-    // Re-throw a user-facing validation error below.
+    return false;
   }
+}
 
+async function requireGitWorktree(path: string): Promise<void> {
+  if (await isGitWorktree(path)) return;
   throw new ConfigValidationError(
     "Not a Git repository. Choose a folder inside a Git worktree.",
   );

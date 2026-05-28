@@ -13,20 +13,20 @@ export const agentRoutes: Route[] = [
     sendJson(response, { ok: true, agent: await buildAgentInfo(cwd) });
   }),
 
-  route("GET", "/api/agent/claude-settings", async ({ response, cwd }) => {
+  route("GET", "/api/agent/claude-settings", async ({ response }) => {
     sendJson(response, {
       ok: true,
-      settings: { coAuthorWithClaude: await getCoAuthorWithClaude(cwd) },
+      settings: { coAuthorWithClaude: await getCoAuthorWithClaude() },
     });
   }),
 
-  route("POST", "/api/agent/claude-settings", async ({ request, response, cwd }) => {
+  route("POST", "/api/agent/claude-settings", async ({ request, response }) => {
     const body = await readJson(request);
     if (typeof body.coAuthorWithClaude !== "boolean") {
       sendJson(response, { ok: false, error: "coAuthorWithClaude must be boolean" }, 400);
       return;
     }
-    const coAuthorWithClaude = await setCoAuthorWithClaude(cwd, body.coAuthorWithClaude);
+    const coAuthorWithClaude = await setCoAuthorWithClaude(body.coAuthorWithClaude);
     sendJson(response, { ok: true, settings: { coAuthorWithClaude } });
   }),
 

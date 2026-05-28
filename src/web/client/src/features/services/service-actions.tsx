@@ -57,6 +57,7 @@ export function LifecycleActions({
         targetLabel={targetLabel}
         url={`${baseUrl}/restart`}
         onRefresh={onRefresh}
+        onSuccess={onStarted}
       />
       <ActionButton
         compact={compact}
