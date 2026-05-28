@@ -90,9 +90,11 @@ export function ServiceGroupSection({
             )}
           />
           <span className="truncate text-sm font-medium">{group.name}</span>
-          <Badge size="small" variant="secondary">
-            {group.services.length}
-          </Badge>
+          {group.services.length ? (
+            <Badge size="small" variant="secondary">
+              {group.services.length}
+            </Badge>
+          ) : null}
         </button>
         <Tooltip label="Edit group">
           <Button

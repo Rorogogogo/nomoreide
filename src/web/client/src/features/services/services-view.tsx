@@ -446,6 +446,10 @@ export function ServicesView({
               </div>
               <div className="min-h-0 flex-1 overflow-auto">
                 <ServiceDetailPanel
+                  // Key by service so switching tears down the panel and
+                  // reopens it on the default (Processes) tab — otherwise the
+                  // previous service's tab/data (e.g. Env) sticks around.
+                  key={selectedServiceDef.name}
                   serviceName={selectedServiceDef.name}
                   status={selectedStatus}
                   health={selectedHealth}

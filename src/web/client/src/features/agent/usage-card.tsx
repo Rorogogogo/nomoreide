@@ -83,13 +83,19 @@ export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["clau
 }
 
 export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex"]> }) {
+  const cachePct = usage.inputTokens > 0 ? (usage.cachedInputTokens / usage.inputTokens) * 100 : 0;
+  const contextPct =
+    usage.contextWindow && usage.contextWindow > 0
+      ? (usage.lastTotalTokens / usage.contextWindow) * 100
+      : 0;
+
   return (
     <div className="rounded-md border border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
           <CodexLogo className="size-3.5 text-foreground" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Codex · rate limits
+            Codex · last session
           </span>
         </div>
         {usage.timestamp ? (
@@ -98,9 +104,48 @@ export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex
           </span>
         ) : null}
       </div>
-      <div className="space-y-2 px-3 py-2">
-        {usage.primary ? <UsageBar label="5h window" window={usage.primary} /> : null}
-        {usage.secondary ? <UsageBar label="Weekly window" window={usage.secondary} /> : null}
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px] sm:grid-cols-4">
+        <Stat label="Input" value={formatTokens(usage.inputTokens)} />
+        <Stat label="Output" value={formatTokens(usage.outputTokens)} />
+        <Stat label="Cache read" value={formatTokens(usage.cachedInputTokens)} />
+        <Stat label="Reasoning" value={formatTokens(usage.reasoningOutputTokens)} />
+        <Stat label="Total" value={formatTokens(usage.totalTokens)} />
+        <Stat label="Last turn" value={formatTokens(usage.lastTotalTokens)} />
+        <Stat label="Context" value={usage.contextWindow ? formatTokens(usage.contextWindow) : "n/a"} />
+        <Stat label="Cost" value="n/a" />
+      </div>
+
+      <div className="space-y-2 border-t border-border px-3 py-2">
+        <MetricBar label="Cache read share of input" value={cachePct} tone="bg-emerald-500" />
+        {usage.contextWindow ? (
+          <MetricBar label="Last turn context share" value={contextPct} tone="bg-sky-500" />
+        ) : null}
+      </div>
+
+      {usage.primary || usage.secondary ? (
+        <div className="space-y-2 border-t border-border px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Rate limits
+          </div>
+          {usage.primary ? <UsageBar label="5h window" window={usage.primary} /> : null}
+          {usage.secondary ? <UsageBar label="Weekly window" window={usage.secondary} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetricBar({ label, value, tone }: { label: string; value: number; tone: string }) {
+  const pct = Math.min(100, Math.max(0, value));
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{label}</span>
+        <span className="font-mono">{pct.toFixed(1)}%</span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full", tone)} style={{ width: `${pct.toFixed(2)}%` }} />
       </div>
     </div>
   );

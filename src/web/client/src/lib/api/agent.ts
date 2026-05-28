@@ -9,7 +9,7 @@ export interface AgentMemoryFile {
 
 export interface AgentSkill {
   name: string;
-  scope: "user" | "project" | "plugin";
+  scope: "user" | "project" | "plugin" | "system";
   path: string;
   description?: string;
 }
@@ -18,6 +18,7 @@ export interface AgentMcpServer {
   name: string;
   scope: "user" | "project";
   command?: string;
+  args?: string[];
   type?: string;
   url?: string;
 }
@@ -30,15 +31,12 @@ export interface AgentProjectEntry {
   mcpServerCount: number;
 }
 
-export interface AgentInfo {
-  detected: {
-    name: "claude-code" | "codex" | "gemini" | "unknown";
-    label: string;
-    signals: string[];
-    parentProcess?: string;
-  };
+export interface AgentProfile {
   project: {
     cwd: string;
+    instructionFilePath?: string;
+    instructionFileName?: string;
+    instructionFilePreview?: string;
     claudeMdPath?: string;
     claudeMdPreview?: string;
     memoryDir?: string;
@@ -47,6 +45,19 @@ export interface AgentInfo {
   skills: AgentSkill[];
   mcpServers: AgentMcpServer[];
   projects: AgentProjectEntry[];
+}
+
+export interface AgentInfo extends AgentProfile {
+  detected: {
+    name: "claude-code" | "codex" | "gemini" | "unknown";
+    label: string;
+    signals: string[];
+    parentProcess?: string;
+  };
+  agents: {
+    "claude-code": AgentProfile;
+    codex: AgentProfile;
+  };
 }
 
 export async function getAgentInfo(): Promise<AgentInfo> {
@@ -112,6 +123,17 @@ export interface CodexRateLimitWindow {
 
 export interface CodexUsage {
   timestamp?: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+  totalTokens: number;
+  lastInputTokens: number;
+  lastCachedInputTokens: number;
+  lastOutputTokens: number;
+  lastReasoningOutputTokens: number;
+  lastTotalTokens: number;
+  contextWindow?: number;
   primary?: CodexRateLimitWindow;
   secondary?: CodexRateLimitWindow;
 }
@@ -124,4 +146,29 @@ export interface UsageInfo {
 export async function getAgentUsage(): Promise<UsageInfo> {
   const response = await requestJson<{ ok: true; usage: UsageInfo }>("/api/agent/usage");
   return response.usage;
+}
+
+export interface ClaudeAgentSettings {
+  coAuthorWithClaude: boolean;
+}
+
+export async function getClaudeAgentSettings(): Promise<ClaudeAgentSettings> {
+  const response = await requestJson<{ ok: true; settings: ClaudeAgentSettings }>(
+    "/api/agent/claude-settings",
+  );
+  return response.settings;
+}
+
+export async function updateClaudeAgentSettings(
+  settings: Partial<ClaudeAgentSettings>,
+): Promise<ClaudeAgentSettings> {
+  const response = await requestJson<{ ok: true; settings: ClaudeAgentSettings }>(
+    "/api/agent/claude-settings",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(settings),
+    },
+  );
+  return response.settings;
 }

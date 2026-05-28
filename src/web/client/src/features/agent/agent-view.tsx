@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Activity, Brain, Gauge, Plug } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { getAgentInfo, type AgentInfo } from "@/lib/api";
+import { getAgentInfo, type AgentInfo, type AgentProfile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ActivityTab } from "./activity-tab";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
@@ -64,6 +64,8 @@ export function AgentView() {
     );
   }
 
+  const activeAgent: AgentProfile = agent.agents?.[agentId] ?? agent;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-card/85">
       <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/90 px-3 py-2">
@@ -115,10 +117,16 @@ export function AgentView() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        {tab === "overview" ? <OverviewTab agent={agent} agentId={agentId} /> : null}
-        {tab === "memory" ? <MemoryTab agent={agent} agentId={agentId} /> : null}
-        {tab === "tools" ? <ToolsTab agent={agent} agentId={agentId} /> : null}
-        {tab === "activity" ? <ActivityTab agent={agent} agentId={agentId} /> : null}
+        {tab === "overview" ? (
+          <OverviewTab
+            agent={activeAgent}
+            agentId={agentId}
+            isDetected={agent.detected.name === agentId}
+          />
+        ) : null}
+        {tab === "memory" ? <MemoryTab agent={activeAgent} agentId={agentId} /> : null}
+        {tab === "tools" ? <ToolsTab agent={activeAgent} agentId={agentId} /> : null}
+        {tab === "activity" ? <ActivityTab agent={activeAgent} agentId={agentId} /> : null}
       </div>
     </div>
   );

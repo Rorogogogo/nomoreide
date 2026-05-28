@@ -44,6 +44,17 @@ export interface CodexRateLimitWindow {
 
 export interface CodexUsage {
   timestamp?: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+  totalTokens: number;
+  lastInputTokens: number;
+  lastCachedInputTokens: number;
+  lastOutputTokens: number;
+  lastReasoningOutputTokens: number;
+  lastTotalTokens: number;
+  contextWindow?: number;
   primary?: CodexRateLimitWindow;
   secondary?: CodexRateLimitWindow;
 }
@@ -55,9 +66,10 @@ export interface UsageInfo {
 
 export async function buildUsageInfo(cwd: string): Promise<UsageInfo> {
   const home = homedir();
+  const codexHome = process.env.CODEX_HOME || join(home, ".codex");
   const [claude, codex] = await Promise.all([
     readClaudeUsage(home, cwd),
-    readCodexUsage(home),
+    readCodexUsage(codexHome),
   ]);
   const result: UsageInfo = {};
   if (claude) result.claude = claude;
@@ -157,8 +169,8 @@ async function readClaudeUsage(home: string, cwd: string): Promise<ClaudeUsage |
   }
 }
 
-async function readCodexUsage(home: string): Promise<CodexUsage | undefined> {
-  const sessionsDir = join(home, ".codex", "sessions");
+async function readCodexUsage(codexHome: string): Promise<CodexUsage | undefined> {
+  const sessionsDir = join(codexHome, "sessions");
   let files: { mtime: number; path: string }[] = [];
   try {
     files = await collectJsonlFiles(sessionsDir);
@@ -174,7 +186,7 @@ async function readCodexUsage(home: string): Promise<CodexUsage | undefined> {
   for (const { path } of files.slice(0, 20)) {
     const lines = await tailLines(path, 2_000_000);
     for (const line of lines) {
-      if (!line.includes("rate_limits")) continue;
+      if (!line.includes("token_count")) continue;
       let event: Record<string, unknown>;
       try {
         event = JSON.parse(line) as Record<string, unknown>;
@@ -183,18 +195,37 @@ async function readCodexUsage(home: string): Promise<CodexUsage | undefined> {
       }
       const payload = (event.payload as Record<string, unknown> | undefined) ?? {};
       if (payload.type !== "token_count") continue;
+      const info = (payload.info as Record<string, unknown> | undefined) ?? {};
       const rateLimits =
         (event.rate_limits as Record<string, unknown> | undefined) ??
         (payload.rate_limits as Record<string, unknown> | undefined);
-      if (!rateLimits) continue;
-      const primary = readWindow(rateLimits.primary);
-      const secondary = readWindow(rateLimits.secondary);
-      if (!primary && !secondary) continue;
+      const primary = rateLimits ? readWindow(rateLimits.primary) : undefined;
+      const secondary = rateLimits ? readWindow(rateLimits.secondary) : undefined;
+      const total = readCodexTokenUsage(info.total_token_usage);
+      const last = readCodexTokenUsage(info.last_token_usage);
+      const contextWindow = toNumber(info.model_context_window);
+      if (!primary && !secondary && !total && !last) continue;
       const timestamp = typeof event.timestamp === "string" ? event.timestamp : "";
       if (!best || timestamp > best.timestamp) {
         best = {
           timestamp,
-          usage: { timestamp: timestamp || undefined, primary, secondary },
+          usage: {
+            timestamp: timestamp || undefined,
+            inputTokens: total?.inputTokens ?? 0,
+            cachedInputTokens: total?.cachedInputTokens ?? 0,
+            outputTokens: total?.outputTokens ?? 0,
+            reasoningOutputTokens: total?.reasoningOutputTokens ?? 0,
+            totalTokens: total?.totalTokens ?? 0,
+            lastInputTokens: last?.inputTokens ?? 0,
+            lastCachedInputTokens: last?.cachedInputTokens ?? 0,
+            lastOutputTokens: last?.outputTokens ?? 0,
+            lastReasoningOutputTokens: last?.reasoningOutputTokens ?? 0,
+            lastTotalTokens: last?.totalTokens ?? 0,
+            contextWindow:
+              Number.isFinite(contextWindow) && contextWindow > 0 ? contextWindow : undefined,
+            primary,
+            secondary,
+          },
         };
       }
     }
@@ -202,6 +233,36 @@ async function readCodexUsage(home: string): Promise<CodexUsage | undefined> {
   }
 
   return best?.usage;
+}
+
+function readCodexTokenUsage(value: unknown):
+  | {
+      inputTokens: number;
+      cachedInputTokens: number;
+      outputTokens: number;
+      reasoningOutputTokens: number;
+      totalTokens: number;
+    }
+  | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const entry = value as Record<string, unknown>;
+  const result = {
+    inputTokens: toNumber(entry.input_tokens),
+    cachedInputTokens: toNumber(entry.cached_input_tokens),
+    outputTokens: toNumber(entry.output_tokens),
+    reasoningOutputTokens: toNumber(entry.reasoning_output_tokens),
+    totalTokens: toNumber(entry.total_tokens),
+  };
+  if (
+    !result.inputTokens &&
+    !result.cachedInputTokens &&
+    !result.outputTokens &&
+    !result.reasoningOutputTokens &&
+    !result.totalTokens
+  ) {
+    return undefined;
+  }
+  return result;
 }
 
 async function collectJsonlFiles(dir: string): Promise<{ mtime: number; path: string }[]> {

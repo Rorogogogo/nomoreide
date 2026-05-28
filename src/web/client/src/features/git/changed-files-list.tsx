@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { GitFileStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
@@ -33,20 +31,18 @@ export function ChangedFilesList({
   });
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-transparent">
-      <CardHeader className="border-b border-border px-2.5 py-1.5">
-        <CardTitle className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <GitBranch className="size-3.5" />
-            <span className="truncate">Changes</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-1.5">
-            {branch ? <Badge variant="outline">{branch}</Badge> : null}
-            <Badge variant="secondary">{files.length}</Badge>
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 overflow-auto p-0">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-2.5 py-1.5">
+        <span className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold tracking-tight">
+          <GitBranch className="size-3.5" />
+          <span className="truncate">Changes</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {branch ? <Badge variant="outline">{branch}</Badge> : null}
+          <Badge variant="secondary">{files.length}</Badge>
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto py-1">
         {groups.length ? (
           groups.map((group) => (
             <ChangeSection
@@ -69,8 +65,8 @@ export function ChangedFilesList({
             {error ?? "No changed files."}
           </Alert>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -94,7 +90,7 @@ function ChangeSection({
   return (
     <section className="border-b border-border last:border-b-0">
       <button
-        className="flex w-full items-center justify-between gap-2 bg-muted/55 px-2.5 py-1 text-left text-[10px] font-semibold uppercase text-muted-foreground hover:bg-muted"
+        className="flex w-full items-center justify-between gap-2 bg-muted/45 px-2 py-0.5 text-left text-[10px] font-semibold uppercase text-muted-foreground hover:bg-muted"
         onClick={onToggle}
         type="button"
       >
@@ -141,26 +137,33 @@ function FileButton({
   const dir = file.path.split("/").slice(0, -1).join("/");
   const dragProps = root ? agentPathDragProps(absolutePath(root, file.path)) : {};
   return (
-    <Button
+    <button
+      aria-label={`Open changed file ${file.path}`}
       className={cn(
-        "grid h-auto w-full grid-cols-[1fr_auto] items-center gap-2 rounded-none border-b border-border px-2.5 py-1.5 text-left",
-        active && "bg-muted",
+        "flex w-full items-center gap-1.5 px-1 py-0.5 text-left text-[12px] hover:bg-muted",
+        active && "bg-muted font-medium",
       )}
       onClick={onClick}
       type="button"
-      variant="ghost"
       {...dragProps}
     >
-      <span className="min-w-0">
-        <span className="flex min-w-0 items-center gap-1.5">
-          <FileKindIcon path={file.path} />
-          <span className="truncate text-[13px] font-medium">{filename}</span>
+      <FileKindIcon path={file.path} />
+      <span className="flex min-w-0 flex-1 items-baseline gap-1.5 truncate">
+        <span data-testid="changed-file-name" className="shrink-0 truncate">
+          {filename}
         </span>
-        {dir ? <span className="block truncate pl-5 text-[10px] text-muted-foreground">{dir}</span> : null}
+        {dir ? (
+          <span
+            data-testid="changed-file-dir"
+            className="min-w-0 truncate text-muted-foreground"
+          >
+            {dir}
+          </span>
+        ) : null}
       </span>
       <span
         className={cn(
-          "w-3.5 shrink-0 text-center font-mono text-[11px] font-semibold",
+          "ml-1 shrink-0 font-mono text-[10px] font-semibold",
           group === "untracked" && "text-amber-700",
           group === "staged" && "text-emerald-700",
           group === "unstaged" && "text-zinc-800",
@@ -168,7 +171,7 @@ function FileButton({
       >
         {statusLabel(file, group)}
       </span>
-    </Button>
+    </button>
   );
 }
 

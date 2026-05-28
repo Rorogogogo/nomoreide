@@ -1,5 +1,7 @@
 import { Gauge } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,7 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { AgentInfo } from "@/lib/api";
+import { useToasts } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import {
+  getClaudeAgentSettings,
+  updateClaudeAgentSettings,
+  type AgentProfile,
+} from "@/lib/api";
 import type { AgentId } from "./agent-types";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
 import { ClaudeUsageBlock, CodexUsageBlock } from "./usage-card";
@@ -18,9 +26,16 @@ const AGENT_META: Record<AgentId, { label: string; icon: React.ReactNode }> = {
   codex: { label: "Codex", icon: <CodexLogo /> },
 };
 
-export function OverviewTab({ agent, agentId }: { agent: AgentInfo; agentId: AgentId }) {
+export function OverviewTab({
+  agent,
+  agentId,
+  isDetected,
+}: {
+  agent: AgentProfile;
+  agentId: AgentId;
+  isDetected: boolean;
+}) {
   const { usage, error } = useUsage();
-  const isDetected = agent.detected.name === agentId;
   const meta = AGENT_META[agentId];
   const isCodex = agentId === "codex";
 
@@ -29,7 +44,7 @@ export function OverviewTab({ agent, agentId }: { agent: AgentInfo; agentId: Age
       <CardHeader className="border-b border-border px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Gauge className="size-4 text-muted-foreground" />
-          <CardTitle>{isCodex ? "Rate Limits" : "Token & Cost Usage"}</CardTitle>
+          <CardTitle>{isCodex ? "Token Usage & Rate Limits" : "Token & Cost Usage"}</CardTitle>
           <Badge variant="outline" size="small" icon={meta.icon}>
             {meta.label}
           </Badge>
@@ -42,11 +57,12 @@ export function OverviewTab({ agent, agentId }: { agent: AgentInfo; agentId: Age
               Not the active agent in this session
             </span>
           )}
+          {!isCodex ? <CoAuthorButton className="ml-auto" /> : null}
         </div>
         <CardDescription className="truncate text-xs">
           {isCodex ? (
             <>
-              Rate-limit windows from <code className="font-mono">~/.codex/sessions</code>
+              Session metrics from <code className="font-mono">~/.codex/sessions</code>
             </>
           ) : (
             <>
@@ -72,6 +88,64 @@ export function OverviewTab({ agent, agentId }: { agent: AgentInfo; agentId: Age
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+function CoAuthorButton({ className }: { className?: string }) {
+  const [enabled, setEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const toasts = useToasts();
+
+  useEffect(() => {
+    let active = true;
+    void getClaudeAgentSettings()
+      .then((s) => active && setEnabled(s.coAuthorWithClaude))
+      .catch(() => {})
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const onToggle = async () => {
+    const next = !enabled;
+    setSaving(true);
+    setEnabled(next);
+    try {
+      const updated = await updateClaudeAgentSettings({ coAuthorWithClaude: next });
+      setEnabled(updated.coAuthorWithClaude);
+      toasts.success(
+        updated.coAuthorWithClaude
+          ? "Claude co-author trailer enabled for commits"
+          : "Claude co-author trailer disabled for commits",
+      );
+    } catch (err) {
+      setEnabled(!next);
+      toasts.error(err instanceof Error ? err.message : "Failed to update setting");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant={enabled ? "default" : "outline"}
+      size="sm"
+      onClick={onToggle}
+      disabled={loading || saving}
+      aria-pressed={enabled}
+      title={
+        enabled
+          ? "Claude will be added as commit co-author. Click to disable."
+          : "Co-author trailer disabled. Click to enable."
+      }
+      className={cn("gap-1.5", className)}
+    >
+      <ClaudeLogo className="size-3.5" />
+      Co-author
+    </Button>
   );
 }
 
