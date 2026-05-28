@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 /**
- * Read/write a single setting in a project-scoped `.claude/settings.json`.
+ * Read/write a single setting in the user-global `~/.claude/settings.json`.
  * Keep this narrow — we only touch the keys the UI exposes, and preserve the
  * rest of the file verbatim so users who hand-edit it don't lose data.
  */
@@ -19,13 +20,13 @@ interface SettingsShape {
   [key: string]: unknown;
 }
 
-function settingsPath(cwd: string): string {
-  return join(cwd, ".claude", "settings.json");
+function settingsPath(): string {
+  return join(homedir(), ".claude", "settings.json");
 }
 
-async function readSettings(cwd: string): Promise<SettingsShape> {
+async function readSettings(): Promise<SettingsShape> {
   try {
-    const raw = await readFile(settingsPath(cwd), "utf8");
+    const raw = await readFile(settingsPath(), "utf8");
     const parsed: unknown = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? (parsed as SettingsShape) : {};
   } catch (error) {
@@ -34,8 +35,8 @@ async function readSettings(cwd: string): Promise<SettingsShape> {
   }
 }
 
-async function writeSettings(cwd: string, settings: SettingsShape): Promise<void> {
-  const path = settingsPath(cwd);
+async function writeSettings(settings: SettingsShape): Promise<void> {
+  const path = settingsPath();
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(settings, null, 2)}\n`);
 }
@@ -45,24 +46,21 @@ async function writeSettings(cwd: string, settings: SettingsShape): Promise<void
  * or missing `attribution` key reads as "on". Only an explicit
  * `{ commit: "", pr: "" }` (or both blank) counts as opted-out.
  */
-export async function getCoAuthorWithClaude(cwd: string): Promise<boolean> {
-  const { attribution } = await readSettings(cwd);
+export async function getCoAuthorWithClaude(): Promise<boolean> {
+  const { attribution } = await readSettings();
   if (!attribution) return true;
   const commit = attribution.commit ?? "";
   const pr = attribution.pr ?? "";
   return !(commit === "" && pr === "");
 }
 
-export async function setCoAuthorWithClaude(
-  cwd: string,
-  enabled: boolean,
-): Promise<boolean> {
-  const settings = await readSettings(cwd);
+export async function setCoAuthorWithClaude(enabled: boolean): Promise<boolean> {
+  const settings = await readSettings();
   if (enabled) {
     delete settings.attribution;
   } else {
     settings.attribution = { commit: "", pr: "" };
   }
-  await writeSettings(cwd, settings);
+  await writeSettings(settings);
   return enabled;
 }

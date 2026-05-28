@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderGit2 } from "lucide-react";
 import { getGitDiff, getGitFiles, type DashboardData } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,10 @@ export function GitReviewView({
     }`;
 
   const modifiedPaths = useMemo(() => new Set(files.map((file) => file.path)), [files]);
+
+  if (!data.git.selectedRepository) {
+    return <NoRepositoryEmptyState />;
+  }
 
   function viewDiffForTreeFile() {
     if (!selectedTreeFile) return;
@@ -337,6 +341,21 @@ export function GitReviewView({
       </section>
     </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function NoRepositoryEmptyState() {
+  return (
+    <div className="flex h-full items-center justify-center p-8 text-center">
+      <div className="max-w-sm">
+        <FolderGit2 className="mx-auto size-8 text-muted-foreground/50" />
+        <p className="mt-3 text-sm font-medium">No Git project registered</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Add a folder that is a Git worktree to review changes, browse files,
+          and inspect history. Use the project picker in the header to add one.
+        </p>
       </div>
     </div>
   );

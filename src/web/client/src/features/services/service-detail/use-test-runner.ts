@@ -18,7 +18,7 @@ export function useTestRunner(serviceName: string) {
   const [lines, setLines] = useState<TestOutputLine[]>([]);
   const [error, setError] = useState<string | undefined>();
   const [starting, setStarting] = useState(false);
-  const runIdRef = useRef<number | undefined>();
+  const runIdRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     runIdRef.current = undefined;

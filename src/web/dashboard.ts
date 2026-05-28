@@ -1,4 +1,5 @@
-import type { ConfigStore } from "../core/config-store.js";
+import { basename } from "node:path";
+import { isGitWorktree, type ConfigStore } from "../core/config-store.js";
 import { GitManager, type GitStatus } from "../core/git-manager.js";
 import type { LogStore } from "../core/log-store.js";
 import {
@@ -22,14 +23,33 @@ export async function buildDashboardPayload(options: {
   manager: ProcessManager;
   timelineStore: TimelineStore;
 }) {
-  const config = await options.configStore.load();
+  let config = await options.configStore.load();
   const firstService = config.services[0]?.name;
-  const selectedGitRepository = getSelectedGitRepository(config);
-  const gitCwd = selectedGitRepository?.path ?? options.cwd;
+  let selectedGitRepository = getSelectedGitRepository(config);
+
+  // If the user has no Git projects registered yet, auto-adopt the process cwd
+  // when it's a real Git worktree. If it isn't, leave the repo unselected so the
+  // UI can show its empty state (matching the Database tab) instead of pointing
+  // at a non-repo folder.
+  if (!selectedGitRepository && config.gitRepositories.length === 0) {
+    if (await isGitWorktree(options.cwd)) {
+      try {
+        config = await options.configStore.registerGitRepository({
+          name: basename(options.cwd) || "repo",
+          path: options.cwd,
+        });
+        selectedGitRepository = getSelectedGitRepository(config);
+      } catch {
+        // Fall through — empty state will be shown.
+      }
+    }
+  }
+
+  const gitCwd = selectedGitRepository?.path ?? "";
   const runtime = await options.manager.statusWithResources();
   const [gitStatus, branches, ports] = await Promise.all([
-    readGitStatus(gitCwd),
-    readGitBranches(gitCwd),
+    gitCwd ? readGitStatus(gitCwd) : Promise.resolve(undefined),
+    gitCwd ? readGitBranches(gitCwd) : Promise.resolve(undefined),
     buildPortOverview(config, runtime.services),
   ]);
   const timeline = options.timelineStore.read(120);
@@ -55,7 +75,11 @@ export async function buildDashboardPayload(options: {
       selectedRepository: selectedGitRepository ?? null,
       status: gitStatus ?? null,
       branches: branches ?? [],
-      error: gitStatus ? undefined : `Not a Git repository: ${gitCwd}`,
+      error: !gitCwd
+        ? undefined
+        : gitStatus
+          ? undefined
+          : `Not a Git repository: ${gitCwd}`,
     },
   };
 }

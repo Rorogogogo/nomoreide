@@ -35,7 +35,7 @@ export async function listLogSources(): Promise<LogSource[]> {
 export async function addLogSource(input: LogSource): Promise<LogSource[]> {
   const res = await postFormForJson<{ ok: true; sources: LogSource[] }>(
     "/api/log-sources",
-    input,
+    input as unknown as Record<string, string | number | undefined>,
   );
   return res.sources;
 }

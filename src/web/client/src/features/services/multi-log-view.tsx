@@ -33,7 +33,7 @@ export function MultiLogView({
       : services[0]
         ? { kind: "service", name: services[0] }
         : undefined;
-    return first ? { 0: first } : {};
+    return first ? { 0: first } : ({} as Record<number, LogTarget>);
   });
   const nextIdRef = useRef(1);
 
