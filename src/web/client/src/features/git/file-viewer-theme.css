@@ -102,6 +102,18 @@
   font-weight: 700;
 }
 
+.nomoreide-code-editor {
+  min-height: 100%;
+}
+
+.nomoreide-code-editor .cm-editor {
+  min-height: 100%;
+}
+
+.nomoreide-code-editor .cm-scroller {
+  min-height: 100%;
+}
+
 /* Dark mode — VSCode Dark+ palette */
 .dark .hljs {
   color: #d4d4d4;

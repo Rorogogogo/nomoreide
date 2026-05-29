@@ -102,6 +102,14 @@ export async function getGitFile(path: string): Promise<GitFileContent> {
   };
 }
 
+export async function updateGitFile(path: string, content: string): Promise<void> {
+  await requestJson<{ ok: true }>("/api/git/file", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path, content }),
+  });
+}
+
 export async function getGitDiff(path: string): Promise<string> {
   const response = await fetch(`/api/git/diff?file=${encodeURIComponent(path)}`);
   if (!response.ok) {

@@ -18,7 +18,7 @@ function buildDashboardData(): DashboardData {
     timeline: [],
     git: {
       cwd: "/repo",
-      selectedRepository: null,
+      selectedRepository: { name: "repo", path: "/repo" },
       branches: [],
       status: {
         branch: "main",

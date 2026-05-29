@@ -65,6 +65,28 @@ export async function getAgentInfo(): Promise<AgentInfo> {
   return response.agent;
 }
 
+export type AgentName = "claude-code" | "codex";
+
+/** Live auth/connection state of an MCP server, as reported by the agent's CLI. */
+export type McpAuthState =
+  | "connected"
+  | "needs-auth"
+  | "no-auth"
+  | "failed"
+  | "unknown";
+
+export interface McpAuthStatus {
+  name: string;
+  state: McpAuthState;
+}
+
+export async function getMcpAuthStatuses(agent: AgentName): Promise<McpAuthStatus[]> {
+  const response = await requestJson<{ ok: true; statuses: McpAuthStatus[] }>(
+    `/api/agent/mcp-status?agent=${encodeURIComponent(agent)}`,
+  );
+  return response.statuses;
+}
+
 export interface ToolCallRecord {
   id: number;
   tool: string;

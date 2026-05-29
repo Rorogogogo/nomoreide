@@ -210,6 +210,27 @@ describe("GitManager", () => {
     expect(content.truncated).toBe(false);
   });
 
+  test("writeTrackedFile updates tracked text files", async () => {
+    await git.writeTrackedFile("README.md", "changed from web\n");
+
+    await expect(readFile(join(repoDir, "README.md"), "utf8")).resolves.toBe(
+      "changed from web\n",
+    );
+    expect(await git.diff("README.md")).toContain("+changed from web");
+  });
+
+  test("writeTrackedFile rejects untracked paths", async () => {
+    await writeFile(join(repoDir, "untracked.txt"), "hello\n");
+
+    await expect(git.writeTrackedFile("untracked.txt", "changed\n")).rejects.toThrow(
+      /not tracked/,
+    );
+  });
+
+  test("writeTrackedFile rejects path traversal", async () => {
+    await expect(git.writeTrackedFile("../escape", "changed\n")).rejects.toThrow();
+  });
+
   test("rankFilesBySize orders tracked files by line count, longest first", async () => {
     await writeFile(join(repoDir, "long.ts"), "x\n".repeat(40));
     await writeFile(join(repoDir, "short.ts"), "y\n".repeat(3));

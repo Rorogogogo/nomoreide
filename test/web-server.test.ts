@@ -1,5 +1,5 @@
 import net from "node:net";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
@@ -112,8 +112,9 @@ describe("web server", () => {
       },
     });
     expect(body.timeline).toEqual([]);
+    // A non-Git cwd is left unselected (empty state), so git.cwd is blank.
     expect(body.git).toMatchObject({
-      cwd: tempDir,
+      cwd: "",
       selectedRepository: null,
     });
   });
@@ -496,6 +497,10 @@ describe("web server", () => {
     });
     await createFile(join(tempDir, "README.md"), "hello\n");
     const configPath = join(tempDir, "nomoreide.config.json");
+    // Auto-adopt persists the repo to configPath, which here lives inside the
+    // worktree; exclude it locally so it doesn't pollute the status assertion
+    // (the real config lives in ~/.config/nomoreide, outside any repo).
+    await writeFile(join(tempDir, ".git", "info", "exclude"), "nomoreide.config.json\n");
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
@@ -512,7 +517,7 @@ describe("web server", () => {
     ]);
   });
 
-  test("returns a clear git unavailable state outside a git repository", async () => {
+  test("returns an empty git state outside a git repository", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({
       configPath,
@@ -525,8 +530,12 @@ describe("web server", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    // No repo registered and cwd isn't a worktree → unselected empty state,
+    // not an error (the UI shows its "no Git project" prompt).
     expect(body.git.status).toBeNull();
-    expect(body.git.error).toContain("Not a Git repository");
+    expect(body.git.cwd).toBe("");
+    expect(body.git.selectedRepository).toBeNull();
+    expect(body.git.error).toBeUndefined();
   });
 
   test("serves the React web app shell from the git route", async () => {
@@ -765,6 +774,30 @@ describe("web server", () => {
     expect(diff).toContain("new file mode");
     expect(diff).toContain("+++ b/new-file.ts");
     expect(diff).toContain("+export const value = 1;");
+  });
+
+  test("updates a tracked git file from the file API", async () => {
+    await initGitRepo(tempDir);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/git/file`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: "README.md", content: "changed from api\n" }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    await expect(readFile(join(tempDir, "README.md"), "utf8")).resolves.toBe(
+      "changed from api\n",
+    );
   });
 
   test("returns git branches in dashboard data", async () => {

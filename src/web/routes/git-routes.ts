@@ -1,6 +1,6 @@
 import { GitManager } from "../../core/git-manager.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
-import { readForm, requiredFormValue, sendJson, sendText } from "../http-utils.js";
+import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 
 /** Read-safe Git operations plus repository registration/selection. */
@@ -59,6 +59,27 @@ export const gitRoutes: Route[] = [
       sendJson(response, { ok: true, ...file });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 404);
+    }
+  }),
+
+  route("PUT", "/api/git/file", async ({ request, response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    const body = await readJson(request);
+    const path = typeof body.path === "string" ? body.path.trim() : "";
+    const content = typeof body.content === "string" ? body.content : null;
+    if (!path) {
+      sendJson(response, { ok: false, error: "path is required" }, 400);
+      return;
+    }
+    if (content === null) {
+      sendJson(response, { ok: false, error: "content is required" }, 400);
+      return;
+    }
+    try {
+      await new GitManager(gitCwd).writeTrackedFile(path, content);
+      sendJson(response, { ok: true });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
     }
   }),
 

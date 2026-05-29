@@ -4,6 +4,7 @@ import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
 import type { LogStore } from "../../core/log-store.js";
+import type { MetricsStore } from "../../core/metrics-store.js";
 import type { ProcessManager } from "../../core/process-manager.js";
 import type { ReproBundleBuilder } from "../../core/repro-bundle.js";
 import type { TestRunner } from "../../core/test-runner.js";
@@ -20,6 +21,7 @@ export interface RouteServices {
   errorInbox: ErrorInbox;
   logStore: LogStore;
   manager: ProcessManager;
+  metricsStore: MetricsStore;
   reproBundle: ReproBundleBuilder;
   testRunner: TestRunner;
   terminalManager: TerminalSessionManagerLike;

@@ -6,6 +6,7 @@ import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
 import { logSourceRoutes } from "./log-sources-routes.js";
+import { metricsRoutes } from "./metrics-routes.js";
 import { serviceRoutes } from "./service-routes.js";
 import { shellRoutes } from "./shell-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
@@ -25,6 +26,7 @@ export const routes: Route[] = [
   ...errorRoutes,
   ...gitRoutes,
   ...logSourceRoutes,
+  ...metricsRoutes,
   ...serviceRoutes,
   ...terminalRoutes,
   ...shellRoutes,

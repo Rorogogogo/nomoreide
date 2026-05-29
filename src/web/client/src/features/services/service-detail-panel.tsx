@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
 import { EnvTab } from "./service-detail/env-tab";
 import { HttpTab } from "./service-detail/http-tab";
 import { LogsTab } from "./service-detail/logs-tab";
+import { MetricsTab } from "./service-detail/metrics-tab";
 import { ProcessesTab } from "./service-detail/processes-tab";
 import { TerminalTab } from "./service-detail/terminal-tab";
 import { TestsTab } from "./service-detail/tests-tab";
 
-type Tab = "processes" | "http" | "env" | "tests" | "logs" | "terminal";
+type Tab = "processes" | "metrics" | "http" | "env" | "tests" | "logs" | "terminal";
 
 export function ServiceDetailPanel({
   serviceName,
@@ -36,6 +37,9 @@ export function ServiceDetailPanel({
         <TabButton active={tab === "processes"} onClick={() => setTab("processes")}>
           Processes {processes.length ? <Badge variant="secondary" size="small">{processes.length}</Badge> : null}
         </TabButton>
+        <TabButton active={tab === "metrics"} onClick={() => setTab("metrics")}>
+          Metrics
+        </TabButton>
         <TabButton active={tab === "http"} onClick={() => setTab("http")}>
           HTTP
           {status?.inspector?.enabled ? (
@@ -53,6 +57,7 @@ export function ServiceDetailPanel({
         </TabButton>
       </div>
       {tab === "processes" ? <ProcessesTab rows={processes} /> : null}
+      {tab === "metrics" ? <MetricsTab serviceName={serviceName} /> : null}
       {tab === "http" ? (
         <HttpTab
           serviceName={serviceName}

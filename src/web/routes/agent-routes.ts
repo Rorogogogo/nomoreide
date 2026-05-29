@@ -2,10 +2,16 @@ import {
   getCoAuthorWithClaude,
   setCoAuthorWithClaude,
 } from "../../core/claude-settings.js";
+import { getMcpAuthStatuses, type AgentName } from "../../core/mcp-auth.js";
 import { buildAgentInfo } from "../agent-info.js";
 import { buildUsageInfo } from "../usage-info.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { route, type Route } from "./context.js";
+
+/** Only two agents carry MCP config; anything else falls back to Claude Code. */
+function parseAgent(value: string | null | undefined): AgentName {
+  return value === "codex" ? "codex" : "claude-code";
+}
 
 /** Agent introspection: identity, token usage, and the live tool-call feed. */
 export const agentRoutes: Route[] = [
@@ -32,6 +38,11 @@ export const agentRoutes: Route[] = [
 
   route("GET", "/api/agent/usage", async ({ response, cwd }) => {
     sendJson(response, { ok: true, usage: await buildUsageInfo(cwd) });
+  }),
+
+  route("GET", "/api/agent/mcp-status", async ({ response, url }) => {
+    const agent = parseAgent(url.searchParams.get("agent"));
+    sendJson(response, { ok: true, statuses: await getMcpAuthStatuses(agent) });
   }),
 
   route("GET", "/api/agent/tool-calls", ({ response, url, toolCallStore }) => {
