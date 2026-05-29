@@ -8,3 +8,5 @@ devport.config.json
 *.tsbuildinfo
 out/
 video/
+.idea/
+.claude/
