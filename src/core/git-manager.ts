@@ -1,4 +1,4 @@
-import { open, readFile, stat } from "node:fs/promises";
+import { open, readFile, stat, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
@@ -299,6 +299,19 @@ export class GitManager {
       binary: false,
       size: buffer.length,
     };
+  }
+
+  async writeTrackedFile(path: string, content: string): Promise<void> {
+    const fullPath = resolveInside(this.cwd, path);
+    const tracked = new Set(await this.listTrackedFiles());
+    if (!tracked.has(path)) {
+      throw new Error("file is not tracked by git");
+    }
+    const current = await readFile(fullPath);
+    if (current.includes(0)) {
+      throw new Error("cannot write binary file");
+    }
+    await writeFile(fullPath, content, "utf8");
   }
 
   async commitDiff(hash: string, path?: string): Promise<string> {

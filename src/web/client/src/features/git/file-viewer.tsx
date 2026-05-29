@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import hljs from "highlight.js/lib/common";
-import { Code2, Eye } from "lucide-react";
+import { Code2, Eye, Pencil, Save, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { getGitFile, type GitFileContent } from "@/lib/api";
+import { getGitFile, type GitFileContent, updateGitFile } from "@/lib/api";
 import { MarkdownPreview } from "./visualizers/markdown-preview";
 import { YamlTree } from "./visualizers/yaml-tree";
 import "./file-viewer-theme.css";
+
+const CodeEditor = lazy(() =>
+  import("./code-editor").then((module) => ({ default: module.CodeEditor })),
+);
 
 type VisualKind = "markdown" | "yaml";
 
@@ -120,21 +125,30 @@ export function FileViewer({
   path,
   isModified,
   onViewDiff,
+  onFileSaved,
 }: {
   path: string;
   isModified: boolean;
   onViewDiff: () => void;
+  onFileSaved?: (path: string) => void;
 }) {
   const [file, setFile] = useState<GitFileContent | null>(null);
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { success: showSuccess, error: showError } = useToasts();
 
   const visualKind = useMemo(() => visualKindFor(path), [path]);
   const [mode, setMode] = useState<ViewMode>("preview");
+  const canEdit = Boolean(file && !file.binary && !file.truncated);
+  const dirty = file ? draft !== file.content : false;
 
   // Default to the rendered preview whenever the selected file supports one.
   useEffect(() => {
     setMode(visualKind ? "preview" : "source");
+    setEditing(false);
   }, [visualKind]);
 
   useEffect(() => {
@@ -145,10 +159,12 @@ export function FileViewer({
     let active = true;
     setLoading(true);
     setError(null);
+    setEditing(false);
     void getGitFile(path)
       .then((next) => {
         if (active) {
           setFile(next);
+          setDraft(next.content);
           setLoading(false);
         }
       })
@@ -162,6 +178,28 @@ export function FileViewer({
       active = false;
     };
   }, [path]);
+
+  async function saveDraft() {
+    if (!path || !file || !dirty || saving) return;
+    setSaving(true);
+    try {
+      await updateGitFile(path, draft);
+      const nextFile = { ...file, content: draft, size: new TextEncoder().encode(draft).length };
+      setFile(nextFile);
+      setEditing(false);
+      showSuccess(`Saved ${path}.`);
+      onFileSaved?.(path);
+    } catch (caught) {
+      showError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancelEdit() {
+    setDraft(file?.content ?? "");
+    setEditing(false);
+  }
 
   if (!path) {
     return (
@@ -224,6 +262,42 @@ export function FileViewer({
               View diff
             </Button>
           ) : null}
+          {editing ? (
+            <>
+              <Button
+                disabled={!dirty || saving}
+                onClick={() => void saveDraft()}
+                size="sm"
+                type="button"
+              >
+                <Save />
+                Apply
+              </Button>
+              <Button
+                disabled={saving}
+                onClick={cancelEdit}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <X />
+                Cancel
+              </Button>
+            </>
+          ) : canEdit ? (
+            <Button
+              onClick={() => {
+                setMode("source");
+                setEditing(true);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Pencil />
+              Edit
+            </Button>
+          ) : null}
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto bg-zinc-50">
@@ -238,7 +312,17 @@ export function FileViewer({
             Cannot display binary content.
           </div>
         ) : file ? (
-          visualKind && mode === "preview" ? (
+          editing ? (
+            <Suspense
+              fallback={
+                <div className="p-4 text-[12px] text-muted-foreground">
+                  Loading editor…
+                </div>
+              }
+            >
+              <CodeEditor path={path} value={draft} onChange={setDraft} />
+            </Suspense>
+          ) : visualKind && mode === "preview" ? (
             visualKind === "markdown" ? (
               <MarkdownPreview content={file.content} />
             ) : (

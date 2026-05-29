@@ -29,18 +29,27 @@ export function GitReviewView({
   const [diffError, setDiffError] = useState<string | null>(null);
   const [activeHunkIndex, setActiveHunkIndex] = useState(0);
   const [pendingNextFilePath, setPendingNextFilePath] = useState<string | null>(null);
-  const files = data.git.status?.files ?? [];
+  const [locallyModifiedPaths, setLocallyModifiedPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const statusFiles = data.git.status?.files ?? [];
+  const files = useMemo(() => {
+    const seen = new Set(statusFiles.map((file) => file.path));
+    const localOnly = [...locallyModifiedPaths]
+      .filter((path) => !seen.has(path))
+      .sort()
+      .map((path) => ({ path, index: " ", workingTree: "M" }));
+    return [...statusFiles, ...localOnly];
+  }, [statusFiles, locallyModifiedPaths]);
   const filePaths = useMemo(() => files.map((file) => file.path), [files]);
   const stats = useMemo(() => diffStats(diff), [diff]);
 
   useEffect(() => {
-    const firstFile = data.git.status?.files[0]?.path ?? "";
+    const firstFile = files[0]?.path ?? "";
     setSelectedFile((current) =>
-      current && data.git.status?.files.some((file) => file.path === current)
-        ? current
-        : firstFile,
+      current && files.some((file) => file.path === current) ? current : firstFile,
     );
-  }, [data.git.status?.files]);
+  }, [files]);
 
   useEffect(() => {
     if (tab !== "all" || allFiles.length > 0) return;
@@ -149,7 +158,11 @@ export function GitReviewView({
         : "text-muted-foreground hover:text-foreground"
     }`;
 
-  const modifiedPaths = useMemo(() => new Set(files.map((file) => file.path)), [files]);
+  const modifiedPaths = useMemo(() => {
+    const paths = new Set(files.map((file) => file.path));
+    for (const path of locallyModifiedPaths) paths.add(path);
+    return paths;
+  }, [files, locallyModifiedPaths]);
 
   if (!data.git.selectedRepository) {
     return <NoRepositoryEmptyState />;
@@ -160,6 +173,14 @@ export function GitReviewView({
     setTab("changes");
     setMode("changes");
     selectFile(selectedTreeFile);
+  }
+
+  function handleTreeFileSaved(path: string) {
+    setLocallyModifiedPaths((current) => new Set(current).add(path));
+    setSelectedTreeFile(path);
+    setTab("changes");
+    setMode("changes");
+    selectFile(path);
   }
 
   // Jump from the ranking straight to a file in the All-files viewer.
@@ -221,12 +242,13 @@ export function GitReviewView({
             paths={allFiles}
             root={data.git.cwd}
             selectedFile={selectedTreeFile}
-            status={data.git.status?.files ?? []}
+            status={files}
           />
         )}
       </aside>
       <FileViewer
         isModified={modifiedPaths.has(selectedTreeFile)}
+        onFileSaved={handleTreeFileSaved}
         onViewDiff={viewDiffForTreeFile}
         path={selectedTreeFile}
       />
@@ -256,7 +278,7 @@ export function GitReviewView({
           <ChangedFilesList
             branch={data.git.status?.branch || undefined}
             error={data.git.error}
-            files={data.git.status?.files ?? []}
+            files={files}
             selectedFile={selectedFile}
             onSelectFile={selectFile}
             root={data.git.cwd}
@@ -270,7 +292,7 @@ export function GitReviewView({
             paths={filePaths}
             root={data.git.cwd}
             selectedFile={selectedFile}
-            status={data.git.status?.files ?? []}
+            status={files}
             title="Changes"
           />
         )}

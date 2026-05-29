@@ -9,6 +9,7 @@ import {
 import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
+import { MetricsStore } from "../core/metrics-store.js";
 import { ProcessManager } from "../core/process-manager.js";
 import {
   defaultRuntimeRegistryPath,
@@ -71,6 +72,8 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     registry,
   });
   manager.installShutdownHandlers();
+  const metricsStore = new MetricsStore({ manager });
+  metricsStore.start();
   const cwd = options.cwd ?? process.cwd();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
@@ -93,6 +96,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     errorInbox,
     logStore,
     manager,
+    metricsStore,
     reproBundle,
     testRunner,
     terminalManager,
@@ -138,6 +142,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
           process.removeListener("exit", disposeTerminalsOnExit);
           terminalManager.disposeAll();
           terminalSocketServer.close();
+          metricsStore.stop();
           await manager.stopAll();
           await new Promise<void>((resolveClose, rejectClose) => {
             server.close((error) => {

@@ -360,6 +360,26 @@ export async function putServiceConfigFileText(
   );
 }
 
+export interface MetricSample {
+  t: number;
+  cpu: number;
+  rss: number;
+}
+
+export interface MetricsSeries {
+  service: string;
+  startedAt?: string;
+  sampleIntervalMs: number;
+  samples: MetricSample[];
+}
+
+export async function getServiceMetrics(name: string): Promise<MetricsSeries> {
+  const response = await requestJson<{ ok: true; metrics: MetricsSeries }>(
+    `/api/services/${encodeURIComponent(name)}/metrics`,
+  );
+  return response.metrics;
+}
+
 export async function testServiceCommand(
   values: Record<string, string | number | undefined>,
 ): Promise<ServiceTestResult> {
