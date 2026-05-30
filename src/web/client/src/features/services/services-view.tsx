@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  GitBranch,
   Pencil,
   Plus,
   ScrollText,
@@ -60,7 +61,7 @@ export function ServicesView({
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
-  const { sendToAgent } = useAgentDock();
+  const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
@@ -274,6 +275,7 @@ export function ServicesView({
                   <AddMenu
                     onCreateGroup={() => setServiceComposer("group")}
                     onCreateService={() => setServiceComposer("service")}
+                    onOnboardRepo={startOnboard}
                     onCreateWithAi={() =>
                       sendToAgent({
                         prompt: SETUP_SERVICE_PROMPT,
@@ -560,10 +562,12 @@ function AddMenu({
   onCreateService,
   onCreateGroup,
   onCreateWithAi,
+  onOnboardRepo,
 }: {
   onCreateService: () => void;
   onCreateGroup: () => void;
   onCreateWithAi: () => void;
+  onOnboardRepo: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -632,6 +636,15 @@ function AddMenu({
             >
               <Box />
               Create Group
+            </button>
+            <button
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+              onClick={() => choose(onOnboardRepo)}
+              role="menuitem"
+              type="button"
+            >
+              <GitBranch />
+              Add from GitHub
             </button>
           </div>
         </>

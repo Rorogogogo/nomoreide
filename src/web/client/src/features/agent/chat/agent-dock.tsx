@@ -5,6 +5,7 @@ import {
   ChevronDown,
   CornerDownLeft,
   Download,
+  GitBranch,
   Loader2,
   PanelTop,
   Paperclip,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { postForm, type AgentChatProviderInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { onboardRepoPrompt } from "../prompts";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { useAgentDock } from "./agent-context";
 import { hasAgentPath, readAgentPath } from "./drag-to-agent";
@@ -60,7 +62,11 @@ export function AgentDock({
     activeSource,
     clearSource,
     focusNonce,
+    sendToAgent,
+    onboarding,
+    setOnboarding,
   } = useAgentDock();
+  const [onboardUrl, setOnboardUrl] = useState("");
   // `dragActive`: a path drag is happening *somewhere* (gentle invite).
   // `dragOver`: the cursor is over the dock specifically (about to drop).
   const [dragActive, setDragActive] = useState(false);
@@ -127,6 +133,20 @@ export function AgentDock({
     setDraft("");
     stickRef.current = true; // sending always snaps the view back to the latest
     await send(text);
+  }
+
+  // Hand a repo URL to the agent to onboard end-to-end. The only manual step is
+  // the URL itself; everything after is pure agent (clone, detect, install, run).
+  function onboardRepo(url: string) {
+    if (!url.trim()) return;
+    setDraft("");
+    setOnboarding(false);
+    setOnboardUrl("");
+    stickRef.current = true;
+    sendToAgent({
+      prompt: onboardRepoPrompt(url),
+      source: { type: "repo-onboard", label: "Onboard repo" },
+    });
   }
 
   // Clicking an agent-offered option just sends it as the next reply.
@@ -259,7 +279,11 @@ export function AgentDock({
             onScroll={onTranscriptScroll}
           >
             {turns.length === 0 ? (
-              <EmptyHint configured={configured} provider={provider} />
+              <EmptyHint
+                configured={configured}
+                provider={provider}
+                onOnboard={() => setOnboarding(true)}
+              />
             ) : (
               turns.map((turn, index) => (
                 <TurnView
@@ -303,6 +327,53 @@ export function AgentDock({
                   insertPath(path);
                 }}
               />
+            ) : null}
+            {/* The one manual step: paste a repo URL. After submit it's pure agent. */}
+            {onboarding ? (
+              <form
+                className="mb-2 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 p-1.5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  onboardRepo(onboardUrl);
+                }}
+              >
+                <GitBranch className="size-4 shrink-0 text-primary" />
+                <input
+                  autoFocus
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  onChange={(event) => setOnboardUrl(event.target.value)}
+                  placeholder="Paste a repo URL — e.g. https://github.com/owner/repo"
+                  value={onboardUrl}
+                />
+                <Button disabled={!onboardUrl.trim()} size="sm" type="submit">
+                  Onboard
+                </Button>
+                <Button
+                  aria-label="Cancel onboarding"
+                  className="size-7"
+                  onClick={() => {
+                    setOnboarding(false);
+                    setOnboardUrl("");
+                  }}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <X />
+                </Button>
+              </form>
+            ) : looksLikeGitUrl(draft) && !streaming ? (
+              <button
+                className="mb-2 flex w-full items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5 text-left text-xs text-primary transition-colors hover:bg-primary/10"
+                onClick={() => onboardRepo(draft)}
+                type="button"
+              >
+                <GitBranch className="size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">
+                  Onboard <span className="font-mono">{draft.trim()}</span> as a service
+                </span>
+                <CornerDownLeft className="size-3.5 shrink-0 opacity-60" />
+              </button>
             ) : null}
             <div className="flex items-end gap-2">
               <Button
@@ -397,9 +468,11 @@ function ProviderLogo({
 function EmptyHint({
   configured,
   provider,
+  onOnboard,
 }: {
   configured: boolean | null;
   provider: AgentChatProviderInfo | null;
+  onOnboard: () => void;
 }) {
   if (configured === false) {
     return (
@@ -410,11 +483,30 @@ function EmptyHint({
     );
   }
   return (
-    <div className="text-xs text-muted-foreground">
-      {provider?.intro ??
-        "This is the active agent, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\"."}
+    <div className="space-y-2 text-xs text-muted-foreground">
+      <p>
+        {provider?.intro ??
+          "This is the active agent, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\"."}
+      </p>
+      <button
+        className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-primary transition-colors hover:bg-primary/10"
+        onClick={onOnboard}
+        type="button"
+      >
+        <GitBranch className="size-3.5" />
+        Onboard a repo from a URL
+      </button>
     </div>
   );
+}
+
+const GIT_URL = /^(?:https?:\/\/|git@|ssh:\/\/)\S+$/i;
+
+/** A pasted line that looks like a clonable Git repo (not just any URL). */
+function looksLikeGitUrl(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.includes("\n") || trimmed.includes(" ") || !GIT_URL.test(trimmed)) return false;
+  return /github\.com|gitlab\.|bitbucket\.|\.git$/i.test(trimmed);
 }
 
 function TurnView({
