@@ -41,7 +41,7 @@ export function LogViewer({
   return (
     <div
       className={cn(
-        "h-full max-w-full overflow-auto font-mono text-[11px] leading-5",
+        "h-full max-w-full overflow-auto bg-background font-mono text-[11px] leading-5 dark:bg-zinc-950",
         className,
       )}
       ref={containerRef}
@@ -51,17 +51,17 @@ export function LogViewer({
         logs.map((entry, index) => (
           <div
             className={cn(
-              "grid min-w-max grid-cols-[168px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5",
+              "grid min-w-max grid-cols-[168px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5 dark:border-zinc-800/80",
               entry.stream === "stderr"
-                ? "bg-red-50/70 text-red-800"
-                : "bg-emerald-50/35 text-zinc-800",
+                ? "bg-red-50/70 text-red-800 dark:bg-red-950/35 dark:text-red-100"
+                : "bg-emerald-50/35 text-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:odd:bg-zinc-900/45",
             )}
             key={`${entry.timestamp}-${entry.stream}-${index}`}
           >
-            <span className="text-muted-foreground">{entry.timestamp}</span>
+            <span className="text-muted-foreground dark:text-zinc-500">{entry.timestamp}</span>
             <span className="whitespace-pre-wrap break-words">
               {entry.stream === "stderr" ? (
-                <span className="mr-2 rounded bg-red-100 px-1 font-semibold uppercase text-red-700">
+                <span className="mr-2 rounded bg-red-100 px-1 font-semibold uppercase text-red-700 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-400/20">
                   stderr
                 </span>
               ) : null}
@@ -97,7 +97,7 @@ function highlightText(text: string, query: string): ReactNode {
     const nextCursor = matchIndex + trimmedQuery.length;
     parts.push(
       <mark
-        className="rounded bg-amber-200 px-0.5 text-amber-950"
+        className="rounded bg-amber-200 px-0.5 text-amber-950 dark:bg-amber-400/20 dark:text-amber-200"
         key={`${matchIndex}-${nextCursor}`}
       >
         {text.slice(matchIndex, nextCursor)}

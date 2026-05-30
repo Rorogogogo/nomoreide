@@ -1,7 +1,10 @@
-import { Bot, KeyRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Braces, Database, FileSpreadsheet, KeyRound } from "lucide-react";
+import { useAgentDock } from "@/features/agent/chat/agent-context";
+import { AiSpark } from "@/features/agent/ai-spark";
+import { buildRowPrompt } from "@/features/agent/prompts";
+import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useToasts } from "@/components/ui/toast";
-import { buildRowPrompt, type RowSample } from "@/lib/api";
+import { type RowSample } from "@/lib/api";
 
 export function TableGrid({
   connection,
@@ -10,22 +13,45 @@ export function TableGrid({
   connection: string;
   sample: RowSample;
 }) {
+  const { sendToAgent } = useAgentDock();
   const { success: showSuccess, error: showError } = useToasts();
+  const columnNames = sample.columns.map((col) => col.name);
 
-  async function explainRow(row: Record<string, unknown>) {
+  // Send the row straight to the dock and stream the answer.
+  function askRow(row: Record<string, unknown>) {
+    sendToAgent({
+      prompt: buildRowPrompt(connection, sample.engine, sample.table, sample.columns, row),
+      source: { type: "database-row", label: `${sample.table} row` },
+      mode: "send",
+    });
+  }
+
+  async function copy(text: string, what: string) {
     try {
-      const prompt = buildRowPrompt(
-        connection,
-        sample.engine,
-        sample.table,
-        sample.columns,
-        row,
-      );
-      await navigator.clipboard.writeText(prompt);
-      showSuccess("Copied row + schema prompt to clipboard.");
+      await navigator.clipboard.writeText(text);
+      showSuccess(`Copied ${what}.`);
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
     }
+  }
+
+  function toCsv(row: Record<string, unknown>) {
+    const esc = (value: unknown) => {
+      const cell = formatCell(value);
+      return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+    };
+    return `${columnNames.join(",")}\n${columnNames.map((name) => esc(row[name])).join(",")}`;
+  }
+
+  function toSqlInsert(row: Record<string, unknown>) {
+    const literal = (value: unknown) => {
+      if (value === null || value === undefined) return "NULL";
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+      return `'${text.replace(/'/g, "''")}'`;
+    };
+    const values = columnNames.map((name) => literal(row[name])).join(", ");
+    return `INSERT INTO ${sample.table} (${columnNames.join(", ")}) VALUES (${values});`;
   }
 
   if (sample.columns.length === 0) {
@@ -43,7 +69,6 @@ export function TableGrid({
       <table className="w-max min-w-full border-collapse text-left font-mono text-[11px]">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-border">
-            <th className="w-10 px-2 py-2" />
             {sample.columns.map((col) => (
               <th
                 key={col.name}
@@ -60,6 +85,8 @@ export function TableGrid({
                 </span>
               </th>
             ))}
+            {/* Trailing action column — AI spark + row actions on the right. */}
+            <th className="w-16 px-2 py-2" />
           </tr>
         </thead>
         <tbody>
@@ -67,18 +94,6 @@ export function TableGrid({
             // Sampled rows have no stable key; index is fine for a read-only view.
             // biome-ignore lint/suspicious/noArrayIndexKey: read-only sample
             <tr key={index} className="group border-b border-border/60 hover:bg-muted/40">
-              <td className="px-2 py-1 align-top">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
-                  title="Explain this row to the agent"
-                  onClick={() => void explainRow(row)}
-                  type="button"
-                >
-                  <Bot className="size-3.5" />
-                </Button>
-              </td>
               {sample.columns.map((col) => (
                 <td
                   key={col.name}
@@ -88,6 +103,31 @@ export function TableGrid({
                   {formatCell(row[col.name])}
                 </td>
               ))}
+              <td className="px-2 py-1 align-top">
+                <div className="flex items-center justify-end gap-0.5">
+                  <AiSpark label="Ask AI about this row" onAsk={() => askRow(row)} />
+                  <OverflowMenu
+                    label="Row actions"
+                    items={[
+                      {
+                        label: "Copy as JSON",
+                        icon: <Braces className="size-3.5" />,
+                        onSelect: () => void copy(JSON.stringify(row, null, 2), "row as JSON"),
+                      },
+                      {
+                        label: "Copy as CSV",
+                        icon: <FileSpreadsheet className="size-3.5" />,
+                        onSelect: () => void copy(toCsv(row), "row as CSV"),
+                      },
+                      {
+                        label: "Copy as SQL INSERT",
+                        icon: <Database className="size-3.5" />,
+                        onSelect: () => void copy(toSqlInsert(row), "INSERT statement"),
+                      },
+                    ]}
+                  />
+                </div>
+              </td>
             </tr>
           ))}
           {sample.rows.length === 0 ? (

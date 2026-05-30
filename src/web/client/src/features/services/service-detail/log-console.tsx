@@ -194,7 +194,7 @@ export function LogConsole({
         ) : (
           <ToggleButton
             active={hideStdout}
-            activeClassName="border-amber-600 bg-amber-50 text-amber-700"
+            activeClassName="border-amber-600 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300"
             onClick={() => setHideStdout(!hideStdout)}
           >
             <Filter />
@@ -203,7 +203,7 @@ export function LogConsole({
         )}
         <ToggleButton
           active={streaming}
-          activeClassName="border-emerald-600 bg-emerald-50 text-emerald-700"
+          activeClassName="border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
           onClick={() => setStreaming(!streaming)}
         >
           <Radio />

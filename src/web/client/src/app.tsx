@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { AgentView } from "@/features/agent/agent-view";
+import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
@@ -145,8 +146,9 @@ export function AppIdentity({ className }: { className?: string }) {
   );
 }
 
-export function App() {
+export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   const [page, setPage] = useState<Page>(() => {
+    if (!syncLocation) return "services";
     if (window.location.pathname.startsWith("/agent")) return "agent";
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
@@ -155,6 +157,8 @@ export function App() {
     return "services";
   });
   const [data, setData] = useState<DashboardData | null>(null);
+  // Set when the dock's "Open" shortcut should jump to a service on the Services page.
+  const [focusService, setFocusService] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
@@ -204,6 +208,7 @@ export function App() {
   }, [page, refresh]);
 
   useEffect(() => {
+    if (!syncLocation) return;
     const path =
       page === "git"
         ? "/git"
@@ -219,7 +224,7 @@ export function App() {
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
-  }, [page]);
+  }, [page, syncLocation]);
 
   useEffect(() => {
     window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
@@ -235,6 +240,7 @@ export function App() {
   );
 
   return (
+    <AgentProvider>
     <div className="h-screen overflow-hidden pb-9">
       <div className="mx-auto flex h-full max-w-[1500px]">
         <aside className={sidebarShellClassName(sidebarDocked)}>
@@ -388,7 +394,12 @@ export function App() {
 
           <div className="min-h-0 flex-1 overflow-hidden">
             {data && page === "services" ? (
-              <ServicesView data={data} onRefresh={refresh} />
+              <ServicesView
+                data={data}
+                onRefresh={refresh}
+                focusService={focusService}
+                onServiceFocused={() => setFocusService(null)}
+              />
             ) : null}
             {data && page === "git" ? (
               <GitReviewView data={data} />
@@ -408,8 +419,16 @@ export function App() {
           onRefresh={refresh}
         />
       ) : null}
-      <AgentDock onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")} />
+      <AgentDock
+        onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")}
+        onOpenService={(name) => {
+          setFocusService(name);
+          setPage("services");
+          void refresh({ silent: true });
+        }}
+      />
     </div>
+    </AgentProvider>
   );
 }
 

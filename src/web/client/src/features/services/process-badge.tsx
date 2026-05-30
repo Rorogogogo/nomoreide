@@ -13,7 +13,7 @@ import {
   siVite,
   siYarn,
   type SimpleIcon,
-} from "simple-icons/icons";
+} from "simple-icons";
 import { cn } from "@/lib/utils";
 import { processKindForCommand, type ProcessKind } from "./process-kind";
 
