@@ -23,6 +23,7 @@ import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
+import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { RepositorySelector } from "@/features/git/repository-selector";
@@ -385,6 +386,17 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <ThemeToggle />
             </div>
           </header>
+
+          {data ? (
+            <RunningStripe
+              data={data}
+              onOpenService={(name) => {
+                setFocusService(name);
+                setPage("services");
+                void refresh({ silent: true });
+              }}
+            />
+          ) : null}
 
           {loading && !data ? (
             <Alert variant="muted">
