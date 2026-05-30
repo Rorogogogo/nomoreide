@@ -31,6 +31,9 @@ import { LifecycleActions } from "./service-actions";
 import { MultiLogView } from "./multi-log-view";
 import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
+import { AgentMark } from "../agent/ai-spark";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { SETUP_SERVICE_PROMPT } from "../agent/prompts";
 import {
   isServiceOn,
   PortEditor,
@@ -45,13 +48,19 @@ import {
 export function ServicesView({
   data,
   onRefresh,
+  focusService,
+  onServiceFocused,
 }: {
   data: DashboardData;
   onRefresh: () => Promise<void>;
+  /** When set (e.g. from the dock's "Open" shortcut), select this service. */
+  focusService?: string | null;
+  onServiceFocused?: () => void;
 }) {
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
+  const { sendToAgent } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(true);
   const [contextOpen, setContextOpen] = useState(false);
@@ -91,6 +100,17 @@ export function ServicesView({
       setSelectedService(firstService);
     }
   }, [data.config.services, firstService, selectedService]);
+
+  // The dock's "Open" shortcut asks us to focus a freshly added service. Wait
+  // until it shows up in the config (registration + the next poll), then select
+  // it and clear the request so manual selection isn't fought afterwards.
+  useEffect(() => {
+    if (!focusService) return;
+    if (data.config.services.some((service) => service.name === focusService)) {
+      setSelectedService(focusService);
+      onServiceFocused?.();
+    }
+  }, [focusService, data.config.services, onServiceFocused]);
 
   const selectedServiceDef = useMemo(
     () => data.config.services.find((service) => service.name === selectedService),
@@ -254,6 +274,12 @@ export function ServicesView({
                   <AddMenu
                     onCreateGroup={() => setServiceComposer("group")}
                     onCreateService={() => setServiceComposer("service")}
+                    onCreateWithAi={() =>
+                      sendToAgent({
+                        prompt: SETUP_SERVICE_PROMPT,
+                        source: { type: "service-setup", label: "Add a service" },
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -533,9 +559,11 @@ export function ServicesView({
 function AddMenu({
   onCreateService,
   onCreateGroup,
+  onCreateWithAi,
 }: {
   onCreateService: () => void;
   onCreateGroup: () => void;
+  onCreateWithAi: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -570,18 +598,32 @@ function AddMenu({
             type="button"
           />
           <div
-            className="absolute right-0 z-[50] mt-1 w-44 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
+            className="absolute right-0 z-[50] mt-1 w-56 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg"
             role="menu"
           >
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
-              onClick={() => choose(onCreateService)}
-              role="menuitem"
-              type="button"
-            >
-              <Plus />
-              Create Service
-            </button>
+            {/* Create Service: the plain form, plus an AI-setup section that
+                emerges as a divided "cut" from the right when the row is hovered. */}
+            <div className="group flex items-stretch">
+              <button
+                className="flex flex-1 items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+                onClick={() => choose(onCreateService)}
+                role="menuitem"
+                type="button"
+              >
+                <Plus />
+                Create Service
+              </button>
+              <button
+                className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
+                onClick={() => choose(onCreateWithAi)}
+                role="menuitem"
+                title="Set up with AI — the agent walks you through it"
+                type="button"
+              >
+                <AgentMark className="size-3.5 shrink-0" />
+                AI
+              </button>
+            </div>
             <button
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
               onClick={() => choose(onCreateGroup)}

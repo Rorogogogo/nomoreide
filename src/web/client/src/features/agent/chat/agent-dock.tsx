@@ -16,28 +16,51 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { AgentChatProviderInfo } from "@/lib/api";
+import { useToasts } from "@/components/ui/toast";
+import { postForm, type AgentChatProviderInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
+import { useAgentDock } from "./agent-context";
 import { hasAgentPath, readAgentPath } from "./drag-to-agent";
 import { FilePicker } from "./file-picker";
-import {
-  type ApprovalPrompt,
-  type ChatToolCall,
-  type ChatTurn,
-  useAgentChat,
-} from "./use-agent-chat";
+import { OptionList, parseAgentMessage, ServiceActions } from "./message-options";
+import { ThinkingIndicator, useSmoothText } from "./streaming-ui";
+import type { ApprovalPrompt, ChatToolCall, ChatTurn } from "./use-agent-chat";
 
 /**
  * Global AI chat dock. Pinned to the bottom of the viewport as a thin bar;
  * clicking expands it to fill the bottom half of the screen. Mounted once at
  * the app root so it's available on every page.
  */
-export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void }) {
-  const [open, setOpen] = useState(false);
-  const { turns, streaming, error, configured, provider, approvals, send, stop, clear, respond } =
-    useAgentChat();
-  const [draft, setDraft] = useState("");
+export function AgentDock({
+  onOpenAgentPage,
+  onOpenService,
+}: {
+  onOpenAgentPage?: () => void;
+  /** Navigate to the Services page and focus a service (for the chat shortcut). */
+  onOpenService?: (name: string) => void;
+}) {
+  const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const {
+    turns,
+    streaming,
+    error,
+    configured,
+    provider,
+    approvals,
+    send,
+    stop,
+    clear,
+    respond,
+    open,
+    setOpen,
+    draft,
+    setDraft,
+    insertPath,
+    activeSource,
+    clearSource,
+    focusNonce,
+  } = useAgentDock();
   // `dragActive`: a path drag is happening *somewhere* (gentle invite).
   // `dragOver`: the cursor is over the dock specifically (about to drop).
   const [dragActive, setDragActive] = useState(false);
@@ -45,17 +68,24 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
   const [pickerOpen, setPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
 
-  // Append an absolute path to the draft (shared by drag-drop and the picker).
-  function insertPath(path: string) {
-    setOpen(true);
-    setDraft((current) => (current.trim() ? `${current.replace(/\s*$/, "")} ${path} ` : `${path} `));
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }
-
+  // Re-focus the input when the dock opens or something stages a draft/path.
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open) requestAnimationFrame(() => inputRef.current?.focus());
+  }, [open, focusNonce]);
+
+  // Collapse the dock when the user interacts anywhere outside it, so the
+  // expanded panel gets out of the way the moment attention moves elsewhere.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (dockRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open, setOpen]);
 
   // Light up the dock the instant a draggable path is picked up anywhere in the
   // app, so the user can see where to aim before reaching the thin bottom bar.
@@ -77,17 +107,42 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
     };
   }, []);
 
-  // Keep the transcript pinned to the latest content while streaming.
+  // Follow new content only while the user is already at the bottom. A plain
+  // scroll listener flips this off the instant they scroll up, so streaming
+  // never fights them — they can read back freely while the agent works.
+  const stickRef = useRef(true);
+  function onTranscriptScroll() {
+    const node = scrollRef.current;
+    if (node) stickRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
+  }
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const node = scrollRef.current;
-    if (node) node.scrollTop = node.scrollHeight;
+    if (node && stickRef.current) node.scrollTop = node.scrollHeight;
   }, [turns, open]);
 
   async function submit() {
     const text = draft;
     setDraft("");
+    stickRef.current = true; // sending always snaps the view back to the latest
     await send(text);
+  }
+
+  // Clicking an agent-offered option just sends it as the next reply.
+  function choose(value: string) {
+    stickRef.current = true;
+    void send(value);
+  }
+
+  // Start a service the agent just registered, straight from the chat.
+  async function startService(name: string) {
+    try {
+      await postForm(`/api/services/${encodeURIComponent(name)}/start`, {});
+      showSuccessToast(`Starting ${name}…`);
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : `Could not start ${name}.`);
+    }
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -123,6 +178,7 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
 
   return (
     <div
+      ref={dockRef}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 flex flex-col border-t border-border bg-card/95 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur transition-[height] duration-200",
         open ? "h-[50vh]" : dragActive ? "h-12" : "h-9",
@@ -138,6 +194,20 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
           <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
             <ProviderLogo provider={provider} className="size-4 text-primary" />
             <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
+            {activeSource ? (
+              <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                <Sparkles className="size-3" />
+                <span className="max-w-40 truncate">{activeSource.label}</span>
+                <button
+                  aria-label="Clear source"
+                  className="opacity-60 hover:opacity-100"
+                  onClick={clearSource}
+                  type="button"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ) : null}
             {streaming ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" /> thinking…
@@ -183,11 +253,25 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
             </div>
           </header>
 
-          <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-3 py-3">
+          <div
+            ref={scrollRef}
+            className="min-h-0 flex-1 space-y-3 overflow-auto px-3 py-3"
+            onScroll={onTranscriptScroll}
+          >
             {turns.length === 0 ? (
               <EmptyHint configured={configured} provider={provider} />
             ) : (
-              turns.map((turn) => <TurnView key={turn.id} turn={turn} />)
+              turns.map((turn, index) => (
+                <TurnView
+                  key={turn.id}
+                  turn={turn}
+                  streaming={streaming && index === turns.length - 1}
+                  isLast={index === turns.length - 1}
+                  onChoose={choose}
+                  onStartService={startService}
+                  onOpenService={onOpenService}
+                />
+              ))
             )}
             {error ? (
               <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
@@ -281,8 +365,14 @@ export function AgentDock({ onOpenAgentPage }: { onOpenAgentPage?: () => void })
           ) : (
             <>
               <ProviderLogo provider={provider} className="size-4 text-primary" />
-              <span>Ask {provider?.label ?? "the agent"}...</span>
-              {streaming ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {streaming ? (
+                <span className="flex items-center gap-2 text-foreground">
+                  <Loader2 className="size-3.5 animate-spin" /> {provider?.label ?? "Agent"} is
+                  thinking…
+                </span>
+              ) : (
+                <span>Ask {provider?.label ?? "the agent"}...</span>
+              )}
               <span className="ml-auto text-xs text-muted-foreground/70">click to expand</span>
             </>
           )}
@@ -327,7 +417,25 @@ function EmptyHint({
   );
 }
 
-function TurnView({ turn }: { turn: ChatTurn }) {
+function TurnView({
+  turn,
+  streaming,
+  isLast,
+  onChoose,
+  onStartService,
+  onOpenService,
+}: {
+  turn: ChatTurn;
+  streaming: boolean;
+  isLast: boolean;
+  onChoose: (value: string) => void;
+  onStartService: (name: string) => void;
+  onOpenService?: (name: string) => void;
+}) {
+  // Smooth the live assistant turn; user turns and finished turns render as-is
+  // (their text arrives complete, so the typewriter has nothing to catch up on).
+  const text = useSmoothText(turn.text);
+
   if (turn.role === "user") {
     return (
       <div className="flex justify-end">
@@ -337,16 +445,27 @@ function TurnView({ turn }: { turn: ChatTurn }) {
       </div>
     );
   }
+
+  // Pull agent-offered choices / service shortcuts out of the prose into UI.
+  const { body, options, service } = parseAgentMessage(text);
   return (
     <div className="space-y-1.5">
       {turn.tools.map((tool) => (
         <ToolCard key={tool.id} tool={tool} />
       ))}
-      {turn.text ? (
+      {body ? (
         <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm">
-          {turn.text}
+          {body}
         </div>
       ) : null}
+      {/* Only the latest turn's options stay clickable (older ones are history). */}
+      {options.length > 0 && isLast && !streaming ? (
+        <OptionList options={options} onChoose={onChoose} />
+      ) : null}
+      {service && !streaming ? (
+        <ServiceActions service={service} onStart={onStartService} onOpen={onOpenService} />
+      ) : null}
+      {streaming && !body ? <ThinkingIndicator /> : null}
     </div>
   );
 }

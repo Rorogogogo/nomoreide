@@ -53,9 +53,12 @@ export function GitGraphView({ branches = [] }: { branches?: GitBranch[] }) {
     if (!match) return;
     setSelectedHash(match.hash);
     const el = rowRefs.current.get(match.hash);
-    if (el) {
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    const scrollContainer = el?.parentElement?.parentElement;
+    if (!el || !scrollContainer) return;
+    scrollContainer.scrollTo({
+      top: Math.max(el.offsetTop - scrollContainer.clientHeight / 2 + el.clientHeight / 2, 0),
+      behavior: "smooth",
+    });
   }
 
   return (

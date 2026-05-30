@@ -30,6 +30,7 @@ export function DiffViewer({
   diff: string;
 }) {
   const rows = visibleDiffRows(diff);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [showAnyway, setShowAnyway] = useState(false);
 
@@ -47,7 +48,12 @@ export function DiffViewer({
   useEffect(() => {
     if (isDataDump && !showAnyway) return;
     const hunk = hunkRefs.current[activeHunkIndex];
-    hunk?.scrollIntoView({ block: "start", behavior: "smooth" });
+    const scrollContainer = scrollContainerRef.current;
+    if (!hunk || !scrollContainer) return;
+    scrollContainer.scrollTo({
+      top: Math.max(hunk.offsetTop - 8, 0),
+      behavior: "smooth",
+    });
   }, [activeHunkIndex, diff, isDataDump, showAnyway]);
 
   if (isDataDump && !showAnyway) {
@@ -76,7 +82,10 @@ export function DiffViewer({
   }
 
   return (
-    <div className="absolute inset-0 overflow-auto bg-card text-xs leading-6 text-foreground">
+    <div
+      className="absolute inset-0 overflow-auto bg-card text-xs leading-6 text-foreground"
+      ref={scrollContainerRef}
+    >
       <div className="min-w-full font-mono">
         {rows.map((row, index) => (
           <div
