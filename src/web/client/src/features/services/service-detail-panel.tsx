@@ -25,7 +25,7 @@ export function ServiceDetailPanel({
   timeline: TimelineEvent[];
   onRefresh: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<Tab>("logs");
+  const [tab, setTab] = useState<Tab>("metrics");
   const processes = health?.processTree?.processes ?? [];
 
   return (
