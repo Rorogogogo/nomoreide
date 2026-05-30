@@ -647,15 +647,34 @@ function logs(service: string): LogEntry[] {
 }
 
 function metrics(service: string) {
+  const sampleIntervalMs = 5000;
+  const count = 48;
+  // Per-service profile so each chart looks distinct and realistic.
+  const profile =
+    service === "api"
+      ? { cpuBase: 6, cpuAmp: 5, rssBase: 190, rssGrowth: 60 }
+      : service === "worker"
+        ? { cpuBase: 3, cpuAmp: 8, rssBase: 96, rssGrowth: 24 }
+        : { cpuBase: 2, cpuAmp: 3, rssBase: 384, rssGrowth: 40 };
+  const seed = service.length * 3 + 1;
   return {
     service,
     startedAt,
-    sampleIntervalMs: 5000,
-    samples: Array.from({ length: 16 }, (_, index) => ({
-      t: Date.now() - (15 - index) * 5000,
-      cpu: 1 + ((index * 7) % 11),
-      rss: 80 + ((index * 13) % 90),
-    })),
+    sampleIntervalMs,
+    samples: Array.from({ length: count }, (_, index) => {
+      const phase = index / count;
+      // Smooth multi-frequency wave + gentle deterministic jitter (no Math.random
+      // so the demo render is stable across reloads).
+      const wave =
+        Math.sin(phase * Math.PI * 4 + seed) * 0.6 +
+        Math.sin(phase * Math.PI * 9 + seed * 2) * 0.4;
+      const jitter = ((index * 7 + seed) % 5) / 5 - 0.5;
+      return {
+        t: Date.now() - (count - 1 - index) * sampleIntervalMs,
+        cpu: Math.max(0.3, profile.cpuBase + profile.cpuAmp * (wave + jitter * 0.4)),
+        rss: profile.rssBase + profile.rssGrowth * phase + profile.rssGrowth * 0.15 * wave,
+      };
+    }),
   };
 }
 

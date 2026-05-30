@@ -21,7 +21,24 @@ function GithubIcon({ className }: { className?: string }) {
   );
 }
 
+const PROMPT_LINES = [
+  "Set up NoMoreIDE for me — an AI-native local dev workbench exposed as an MCP server.",
+  "",
+  "1. Add it as a stdio MCP server that runs `npx -y nomoreide`, using whatever MCP config you support.",
+  "2. Restart yourself if required, then confirm the `nomoreide` tools are connected.",
+  "3. Open the NoMoreIDE dashboard and list my current services so I can start working.",
+];
+
 const AGENT_SETUPS = [
+  {
+    id: "prompt",
+    label: "Any agent (prompt)",
+    description:
+      "Paste this into any AI coding agent — it installs, verifies, and opens NoMoreIDE for you.",
+    language: "prompt",
+    lines: PROMPT_LINES,
+    copyText: PROMPT_LINES.join("\n"),
+  },
   {
     id: "claude",
     label: "Claude Code",
@@ -148,14 +165,15 @@ export function Hero() {
               </h2>
             </div>
             <p className="max-w-lg text-sm leading-6 text-muted-foreground">
-              Copy the command for your agent, restart the agent if needed, then
-              verify the `nomoreide` MCP server is connected.
+              Copy the universal prompt and let your agent wire it up, or grab
+              the exact command for your agent. Then verify the `nomoreide` MCP
+              server is connected.
             </p>
           </div>
 
           <div
             aria-label="MCP setup agent"
-            className="mt-3 grid gap-1 rounded-md bg-muted/50 p-1 sm:grid-cols-3"
+            className="mt-3 grid grid-cols-2 gap-1 rounded-md bg-muted/50 p-1 sm:grid-cols-4"
             role="tablist"
           >
             {AGENT_SETUPS.map((agent) => (
@@ -191,7 +209,10 @@ export function Hero() {
           </div>
 
           <pre
-            className="overflow-x-auto rounded-md border border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed shadow-inner sm:text-sm"
+            className={cn(
+              "overflow-x-auto rounded-md border border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed shadow-inner sm:text-sm",
+              selectedAgent.language === "prompt" && "whitespace-pre-wrap",
+            )}
             role="tabpanel"
           >
             <code>
@@ -200,7 +221,7 @@ export function Hero() {
                   {selectedAgent.language === "shell" ? (
                     <span className="text-muted-foreground">$ </span>
                   ) : null}
-                  {line}
+                  {line === "" ? " " : line}
                 </span>
               ))}
             </code>

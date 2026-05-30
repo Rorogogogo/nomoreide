@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { getServiceMetrics, type MetricsSeries } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { getServiceMetrics, type MetricSample, type MetricsSeries } from "@/lib/api";
 
 export function MetricsTab({ serviceName }: { serviceName: string }) {
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -12,6 +13,7 @@ export function MetricsTab({ serviceName }: { serviceName: string }) {
         const next = await getServiceMetrics(serviceName);
         if (!cancelled) {
           setSeries(next);
+          setNow(Date.now());
           setError(null);
         }
       } catch (err) {
@@ -40,31 +42,60 @@ export function MetricsTab({ serviceName }: { serviceName: string }) {
     );
   }
 
-  const latest = series.samples[series.samples.length - 1];
+  return <MetricsContent series={series} now={now} />;
+}
+
+function MetricsContent({ series, now }: { series: MetricsSeries; now: number }) {
+  const { samples } = series;
+  const cpu = useMemo(() => summarize(samples, (s) => s.cpu), [samples]);
+  const mem = useMemo(() => summarize(samples, (s) => s.rss), [samples]);
+
   const startedAt = series.startedAt ? new Date(series.startedAt) : null;
+  const uptimeMs = startedAt ? now - startedAt.getTime() : null;
+  const windowMs = samples.length > 1 ? samples[samples.length - 1].t - samples[0].t : 0;
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-        <Stat label="CPU" value={`${latest.cpu.toFixed(1)}%`} />
-        <Stat label="RSS" value={`${latest.rss.toFixed(1)} MB`} />
-        <Stat label="Samples" value={String(series.samples.length)} />
-        {startedAt ? (
-          <Stat label="Started" value={startedAt.toLocaleTimeString()} />
-        ) : null}
-      </header>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatCard
+          accent="#22c55e"
+          label="CPU"
+          value={`${cpu.last.toFixed(1)}%`}
+          sub={`peak ${cpu.max.toFixed(1)}% · avg ${cpu.avg.toFixed(1)}%`}
+        />
+        <StatCard
+          accent="#3b82f6"
+          label="Memory"
+          value={formatMb(mem.last)}
+          sub={`peak ${formatMb(mem.max)} · avg ${formatMb(mem.avg)}`}
+        />
+        <StatCard
+          accent="#a855f7"
+          label="Uptime"
+          value={uptimeMs != null ? formatDuration(uptimeMs) : "—"}
+          sub={startedAt ? `since ${startedAt.toLocaleTimeString()}` : "not running"}
+        />
+        <StatCard
+          accent="#f59e0b"
+          label="Samples"
+          value={String(samples.length)}
+          sub={windowMs ? `over ${formatDuration(windowMs)}` : "collecting…"}
+        />
+      </div>
       <Chart
         label="CPU"
-        samples={series.samples}
+        samples={samples}
         pick={(s) => s.cpu}
+        summary={cpu}
         color="#22c55e"
         suffix="%"
         unit="percent"
       />
       <Chart
         label="Memory (RSS)"
-        samples={series.samples}
+        samples={samples}
         pick={(s) => s.rss}
+        summary={mem}
         color="#3b82f6"
         suffix=" MB"
         unit="mb"
@@ -73,13 +104,48 @@ export function MetricsTab({ serviceName }: { serviceName: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+interface Summary {
+  last: number;
+  max: number;
+  min: number;
+  avg: number;
+}
+
+function summarize(samples: MetricSample[], pick: (s: MetricSample) => number): Summary {
+  const values = samples.map(pick);
+  const sum = values.reduce((acc, v) => acc + v, 0);
+  return {
+    last: values[values.length - 1],
+    max: Math.max(...values),
+    min: Math.min(...values),
+    avg: sum / values.length,
+  };
+}
+
+function StatCard({
+  accent,
+  label,
+  value,
+  sub,
+}: {
+  accent: string;
+  label: string;
+  value: string;
+  sub: string;
+}) {
   return (
-    <div className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-mono text-sm">{value}</span>
+    <div className="rounded-lg border border-border bg-card px-3 py-2">
+      <div className="flex items-center gap-1.5">
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: accent }}
+        />
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+      </div>
+      <div className="mt-1 font-mono text-lg leading-none tabular-nums">{value}</div>
+      <div className="mt-1 truncate font-mono text-[10px] text-muted-foreground">{sub}</div>
     </div>
   );
 }
@@ -92,17 +158,23 @@ function Chart({
   label,
   samples,
   pick,
+  summary,
   color,
   suffix,
   unit,
 }: {
   label: string;
-  samples: { t: number; cpu: number; rss: number }[];
-  pick: (s: { t: number; cpu: number; rss: number }) => number;
+  samples: MetricSample[];
+  pick: (s: MetricSample) => number;
+  summary: Summary;
   color: string;
   suffix: string;
   unit: "percent" | "mb";
 }) {
+  const gradientId = useMemo(
+    () => `metric-grad-${unit}-${Math.random().toString(36).slice(2, 8)}`,
+    [unit],
+  );
   const values = samples.map(pick);
   const rawMax = Math.max(...values, unit === "percent" ? 10 : 1);
   const max = niceMax(rawMax);
@@ -119,11 +191,12 @@ function Chart({
   const points = samples.map((s) => `${toX(s.t).toFixed(1)},${toY(pick(s)).toFixed(1)}`);
   const area = `M0,1000 L${points.join(" L")} L1000,1000 Z`;
   const line = `M${points.join(" L")}`;
+  const lastX = toX(lastT);
+  const lastY = toY(summary.last);
+  const avgY = toY(summary.avg);
 
   const yTicks = [1, 0.75, 0.5, 0.25, 0]; // top→bottom
   const xTickCount = 5;
-  const latest = values[values.length - 1];
-  const peak = Math.max(...values);
 
   return (
     <figure className="space-y-1">
@@ -132,11 +205,12 @@ function Chart({
           {label}
         </span>
         <span className="font-mono text-[11px] text-muted-foreground">
-          now <span className="text-foreground">{latest.toFixed(1)}{suffix}</span>
-          <span className="mx-1.5">·</span>peak {peak.toFixed(1)}{suffix}
+          now <span className="text-foreground">{summary.last.toFixed(1)}{suffix}</span>
+          <span className="mx-1.5">·</span>peak {summary.max.toFixed(1)}{suffix}
+          <span className="mx-1.5">·</span>avg {summary.avg.toFixed(1)}{suffix}
         </span>
       </figcaption>
-      <div className="rounded border border-border bg-card p-2">
+      <div className="rounded-lg border border-border bg-card p-2">
         <div className="flex">
           {/* Y-axis labels */}
           <div
@@ -162,6 +236,15 @@ function Chart({
                 }}
               />
             ))}
+            {/* Average reference line */}
+            <div
+              className="pointer-events-none absolute inset-x-0 border-t border-dashed"
+              style={{
+                top: `${(avgY / 1000) * CHART_HEIGHT}px`,
+                borderColor: color,
+                opacity: 0.4,
+              }}
+            />
             <svg
               aria-label={label}
               className="absolute inset-0 h-full w-full"
@@ -169,7 +252,13 @@ function Chart({
               role="img"
               viewBox="0 0 1000 1000"
             >
-              <path d={area} fill={color} fillOpacity={0.18} />
+              <defs>
+                <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <path d={area} fill={`url(#${gradientId})`} />
               <path
                 d={line}
                 fill="none"
@@ -177,8 +266,19 @@ function Chart({
                 strokeWidth={2}
                 vectorEffect="non-scaling-stroke"
                 strokeLinejoin="round"
+                strokeLinecap="round"
               />
             </svg>
+            {/* Live "current value" dot — positioned in HTML so it stays round */}
+            <span
+              className="pointer-events-none absolute z-10 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card"
+              style={{
+                left: `${(lastX / 1000) * 100}%`,
+                top: `${(lastY / 1000) * CHART_HEIGHT}px`,
+                backgroundColor: color,
+                boxShadow: `0 0 0 4px ${color}33`,
+              }}
+            />
           </div>
         </div>
         {/* X-axis labels */}
@@ -227,6 +327,21 @@ function formatTick(value: number, unit: "percent" | "mb"): string {
   if (unit === "percent") return `${value.toFixed(0)}%`;
   if (value >= 1024) return `${(value / 1024).toFixed(1)}G`;
   return `${value.toFixed(0)}M`;
+}
+
+function formatMb(value: number): string {
+  if (value >= 1024) return `${(value / 1024).toFixed(2)} GB`;
+  return `${value.toFixed(0)} MB`;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
 }
 
 function formatRelative(deltaMs: number): string {
