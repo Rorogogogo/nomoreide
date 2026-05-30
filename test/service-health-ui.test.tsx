@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
+import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
 import { ServicesView } from "../src/web/client/src/features/services/services-view";
 import type { DashboardData, ServiceHealth } from "../src/web/client/src/lib/api";
 
@@ -42,6 +43,14 @@ function buildDashboard(health: ServiceHealth): DashboardData {
   } as unknown as DashboardData;
 }
 
+function renderServicesView(data: DashboardData) {
+  return renderToStaticMarkup(
+    <AgentProvider>
+      <ServicesView data={data} onRefresh={async () => undefined} />
+    </AgentProvider>,
+  );
+}
+
 describe("service health UI", () => {
   test("detail header shows warning, process count, CPU, and RAM", () => {
     const health: ServiceHealth = {
@@ -61,9 +70,7 @@ describe("service health UI", () => {
       agentContext: "",
     };
 
-    const markup = renderToStaticMarkup(
-      <ServicesView data={buildDashboard(health)} onRefresh={async () => undefined} />,
-    );
+    const markup = renderServicesView(buildDashboard(health));
 
     expect(markup).toContain("warning");
     expect(markup).toContain("High memory usage");
@@ -92,11 +99,34 @@ describe("service health UI", () => {
       agentContext: "",
     };
 
-    const markup = renderToStaticMarkup(
-      <ServicesView data={buildDashboard(health)} onRefresh={async () => undefined} />,
-    );
+    const markup = renderServicesView(buildDashboard(health));
 
     expect(markup).toContain("0.0% CPU");
+  });
+
+  test("shows the service side rail by default", () => {
+    const health: ServiceHealth = {
+      service: "frontend",
+      status: "healthy",
+      summary: "Service is running without detected warnings.",
+      checkedAt: "2026-05-18T00:00:00.000Z",
+      checks: [],
+      processTree: {
+        rootPid: 10,
+        processCount: 2,
+        cpuPercent: 0,
+        rssMb: 507.7,
+        processes: [],
+      },
+      ports: [],
+      agentContext: "",
+    };
+
+    const markup = renderServicesView(buildDashboard(health));
+
+    expect(markup).toContain("Ports");
+    expect(markup).toContain("Runtime Monitor");
+    expect(markup).toContain("Hide Ports &amp; Timeline");
   });
 
   test("renders services when dashboard health data is missing", () => {
@@ -126,8 +156,6 @@ describe("service health UI", () => {
       },
     } as unknown as DashboardData;
 
-    expect(() =>
-      renderToStaticMarkup(<ServicesView data={data} onRefresh={async () => undefined} />),
-    ).not.toThrow();
+    expect(() => renderServicesView(data)).not.toThrow();
   });
 });

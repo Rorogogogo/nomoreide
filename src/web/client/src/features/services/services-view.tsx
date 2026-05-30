@@ -62,7 +62,7 @@ export function ServicesView({
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
   const { sendToAgent } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
-  const [railCollapsed, setRailCollapsed] = useState(true);
+  const [railCollapsed, setRailCollapsed] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [ungroupedDragOver, setUngroupedDragOver] = useState(false);

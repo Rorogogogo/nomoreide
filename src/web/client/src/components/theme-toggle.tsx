@@ -5,13 +5,13 @@ import { cn } from "@/lib/utils";
 
 type Theme = "light" | "dark";
 
-const STORAGE_KEY = "nomoreide-theme";
+const STORAGE_KEY = "nomoreide-theme-choice";
 
 function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "dark";
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "dark";
 }
 
 function applyTheme(theme: Theme) {

@@ -7,7 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 const packageJson = JSON.parse(
   readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
 ) as { version: string };
-const rootNodeModules = path.resolve(__dirname, "../node_modules");
+const websiteNodeModules = path.resolve(__dirname, "node_modules");
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -17,11 +17,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "../src/web/client/src"),
-      react: path.join(rootNodeModules, "react"),
-      "react-dom": path.join(rootNodeModules, "react-dom"),
-      "react-dom/client": path.join(rootNodeModules, "react-dom/client"),
-      "react/jsx-dev-runtime": path.join(rootNodeModules, "react/jsx-dev-runtime.js"),
-      "react/jsx-runtime": path.join(rootNodeModules, "react/jsx-runtime.js"),
+      react: path.join(websiteNodeModules, "react"),
+      "react-dom": path.join(websiteNodeModules, "react-dom"),
+      "react-dom/client": path.join(websiteNodeModules, "react-dom/client"),
+      "react/jsx-dev-runtime": path.join(websiteNodeModules, "react/jsx-dev-runtime.js"),
+      "react/jsx-runtime": path.join(websiteNodeModules, "react/jsx-runtime.js"),
     },
     dedupe: ["react", "react-dom"],
   },
