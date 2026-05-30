@@ -39,6 +39,11 @@ interface AgentContextValue extends ReturnType<typeof useAgentChat> {
   focusNonce: number;
   /** The one entry point every feature uses to push an action into the dock. */
   sendToAgent: (options: SendToAgentOptions) => { queued: boolean };
+  /** True while the dock is showing its "paste a repo URL" onboard field. */
+  onboarding: boolean;
+  setOnboarding: (value: boolean) => void;
+  /** Open the dock and reveal the single repo-URL field; the agent does the rest. */
+  startOnboard: () => void;
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null);
@@ -55,11 +60,16 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState("");
   const [activeSource, setActiveSource] = useState<AgentSource | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
+  const [onboarding, setOnboarding] = useState(false);
   // Actions fired while a turn is streaming wait here and flush in order.
   const queueRef = useRef<string[]>([]);
 
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const clearSource = useCallback(() => setActiveSource(null), []);
+  const startOnboard = useCallback(() => {
+    setOpen(true);
+    setOnboarding(true);
+  }, []);
 
   const insertPath = useCallback(
     (path: string) => {
@@ -117,6 +127,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     clearSource,
     focusNonce,
     sendToAgent,
+    onboarding,
+    setOnboarding,
+    startOnboard,
   };
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;

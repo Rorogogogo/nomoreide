@@ -8,6 +8,30 @@ const packageJson = JSON.parse(
   readFileSync(path.resolve(__dirname, "../package.json"), "utf8"),
 ) as { version: string };
 const websiteNodeModules = path.resolve(__dirname, "node_modules");
+const browserPackageAliases = [
+  "@codemirror/lang-css",
+  "@codemirror/lang-html",
+  "@codemirror/lang-javascript",
+  "@codemirror/lang-json",
+  "@codemirror/lang-markdown",
+  "@codemirror/lang-yaml",
+  "@codemirror/language",
+  "@codemirror/state",
+  "@lezer/highlight",
+  "@xterm/addon-fit",
+  "@xterm/xterm",
+  "@radix-ui/react-slot",
+  "class-variance-authority",
+  "clsx",
+  "codemirror",
+  "framer-motion",
+  "highlight.js",
+  "js-yaml",
+  "lucide-react",
+  "marked",
+  "simple-icons",
+  "tailwind-merge",
+];
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -17,6 +41,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "../src/web/client/src"),
+      ...Object.fromEntries(
+        browserPackageAliases.map((packageName) => [
+          packageName,
+          path.join(websiteNodeModules, packageName),
+        ]),
+      ),
       react: path.join(websiteNodeModules, "react"),
       "react-dom": path.join(websiteNodeModules, "react-dom"),
       "react-dom/client": path.join(websiteNodeModules, "react-dom/client"),

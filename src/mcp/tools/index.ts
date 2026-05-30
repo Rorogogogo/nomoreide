@@ -5,6 +5,7 @@ import { AGENT_TOOL_NAMES, registerAgentTools } from "./agent.js";
 import { DATABASE_TOOL_NAMES, registerDatabaseTools } from "./database.js";
 import { ERROR_TOOL_NAMES, registerErrorTools } from "./errors.js";
 import { GIT_TOOL_NAMES, registerGitTools } from "./git.js";
+import { ONBOARD_TOOL_NAMES, registerOnboardTools } from "./onboard.js";
 import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 
 /**
@@ -17,6 +18,7 @@ import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
  */
 export const NOMOREIDE_TOOL_NAMES = [
   ...SERVICE_TOOL_NAMES,
+  ...ONBOARD_TOOL_NAMES,
   ...GIT_TOOL_NAMES,
   ...ERROR_TOOL_NAMES,
   ...DATABASE_TOOL_NAMES,
@@ -37,6 +39,7 @@ export function registerNoMoreIdeTools(
     : rawServer;
 
   registerServiceTools(server, ctx);
+  registerOnboardTools(server, ctx);
   registerGitTools(server, ctx);
   registerErrorTools(server, ctx);
   registerDatabaseTools(server, ctx);

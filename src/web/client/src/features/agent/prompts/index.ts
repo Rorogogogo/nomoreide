@@ -5,4 +5,5 @@
  * easy to tweak in one place.
  */
 export { SETUP_SERVICE_PROMPT } from "./service-setup";
+export { onboardRepoPrompt } from "./repo-onboard";
 export { buildRowPrompt } from "./database-row";
