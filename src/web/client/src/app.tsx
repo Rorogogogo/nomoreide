@@ -15,9 +15,14 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import {
+  headerActionClassName,
+  headerActionIconClassName,
+  headerActionLabelClassName,
+} from "@/components/header-action";
 import { AgentView } from "@/features/agent/agent-view";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
@@ -381,26 +386,38 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               {data && page === "git" ? (
                 <RepositorySelector data={data} onRefresh={refresh} />
               ) : null}
-              <Button
-                onClick={() => void refresh({ notify: true })}
-                size="sm"
-                title="Refresh dashboard"
-                variant="outline"
+              <div
+                aria-label="Dashboard quick actions"
+                className="flex items-center gap-1 rounded-lg border border-border bg-background p-1"
+                role="group"
               >
-                <RefreshCw className={cn(loading && "animate-spin")} />
-                Refresh
-              </Button>
-              <ThemeToggle />
-              <a
-                aria-label="Open NoMoreIDE documentation"
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "px-2")}
-                href="https://www.nomoreide.com/docs"
-                rel="noreferrer"
-                target="_blank"
-                title="Open NoMoreIDE documentation"
-              >
-                <BookOpen />
-              </a>
+                <button
+                  aria-label="Refresh dashboard"
+                  className={headerActionClassName()}
+                  onClick={() => void refresh({ notify: true })}
+                  title="Refresh dashboard"
+                  type="button"
+                >
+                  <span className={headerActionIconClassName()}>
+                    <RefreshCw className={cn(loading && "animate-spin")} />
+                  </span>
+                  <span className={headerActionLabelClassName()}>Refresh</span>
+                </button>
+                <ThemeToggle />
+                <a
+                  aria-label="Open NoMoreIDE documentation"
+                  className={headerActionClassName()}
+                  href="https://www.nomoreide.com/docs"
+                  rel="noreferrer"
+                  target="_blank"
+                  title="Open NoMoreIDE documentation"
+                >
+                  <span className={headerActionIconClassName()}>
+                    <BookOpen />
+                  </span>
+                  <span className={headerActionLabelClassName()}>Docs</span>
+                </a>
+              </div>
             </div>
           </header>
 

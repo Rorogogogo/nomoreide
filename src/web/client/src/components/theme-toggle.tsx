@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Moon, Sun } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  headerActionClassName,
+  headerActionIconClassName,
+  headerActionLabelClassName,
+} from "@/components/header-action";
 
 type Theme = "light" | "dark";
 
@@ -76,9 +79,12 @@ export function ThemeToggle() {
       onClick={toggle}
       title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       aria-label="Toggle theme"
-      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "px-2")}
+      className={headerActionClassName()}
     >
-      {theme === "dark" ? <Sun /> : <Moon />}
+      <span className={headerActionIconClassName()}>
+        {theme === "dark" ? <Sun /> : <Moon />}
+      </span>
+      <span className={headerActionLabelClassName()}>Theme</span>
     </button>
   );
 }
