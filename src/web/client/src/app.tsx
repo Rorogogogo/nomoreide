@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Bot,
+  BookOpen,
   Database,
   GitBranch,
   Heart,
@@ -21,6 +22,7 @@ import { AgentView } from "@/features/agent/agent-view";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
+import { DocsView } from "@/features/docs/docs-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
@@ -32,7 +34,14 @@ import { useToasts } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
-type Page = "services" | "git" | "agent" | "errors" | "database" | "terminal";
+type Page =
+  | "services"
+  | "git"
+  | "agent"
+  | "errors"
+  | "database"
+  | "terminal"
+  | "docs";
 
 export function sidebarShellClassName(docked = false) {
   return cn(
@@ -154,6 +163,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
     if (window.location.pathname.startsWith("/terminal")) return "terminal";
+    if (window.location.pathname.startsWith("/docs")) return "docs";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
   });
@@ -221,7 +231,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               ? "/database"
               : page === "terminal"
                 ? "/terminal"
-                : "/";
+                : page === "docs"
+                  ? "/docs"
+                  : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -332,6 +344,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               label="Agent"
               onClick={() => setPage("agent")}
             />
+            <NavButton
+              active={page === "docs"}
+              docked={sidebarDocked}
+              icon={<BookOpen />}
+              label="Docs"
+              onClick={() => setPage("docs")}
+            />
           </nav>
           <SidebarCredit
             docked={sidebarDocked}
@@ -362,7 +381,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                         ? "Database"
                         : page === "terminal"
                           ? "Terminal"
-                          : "Services"}
+                          : page === "docs"
+                            ? "Docs"
+                            : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -420,6 +441,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             {page === "errors" ? <ErrorInboxView /> : null}
             {page === "database" ? <DatabaseView /> : null}
             {page === "terminal" ? <TerminalView /> : null}
+            {page === "docs" ? <DocsView /> : null}
           </div>
         </main>
       </div>
