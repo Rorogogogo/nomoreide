@@ -15,7 +15,7 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { AgentView } from "@/features/agent/agent-view";
@@ -382,21 +382,6 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 <RepositorySelector data={data} onRefresh={refresh} />
               ) : null}
               <Button
-                asChild
-                aria-label="Open NoMoreIDE documentation"
-                size="icon"
-                title="Open NoMoreIDE documentation"
-                variant="outline"
-              >
-                <a
-                  href="https://www.nomoreide.com/docs"
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <BookOpen />
-                </a>
-              </Button>
-              <Button
                 onClick={() => void refresh({ notify: true })}
                 size="sm"
                 title="Refresh dashboard"
@@ -406,6 +391,16 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 Refresh
               </Button>
               <ThemeToggle />
+              <a
+                aria-label="Open NoMoreIDE documentation"
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "px-2")}
+                href="https://www.nomoreide.com/docs"
+                rel="noreferrer"
+                target="_blank"
+                title="Open NoMoreIDE documentation"
+              >
+                <BookOpen />
+              </a>
             </div>
           </header>
 
