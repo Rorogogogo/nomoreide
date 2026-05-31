@@ -5,9 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { deleteDatabase, type DatabaseConnection } from "@/lib/api";
+import {
+  deleteDatabase,
+  type DatabaseConnection,
+  type RowSample,
+  type TableRef,
+} from "@/lib/api";
 import { useAgentDock } from "../agent/chat/agent-context";
-import { DATABASE_SETUP_PROMPT } from "../agent/prompts";
+import { AiSpark } from "../agent/ai-spark";
+import { DATABASE_SETUP_PROMPT, buildTablePrompt } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
 import { ConnectionSelector } from "./connection-selector";
 import { DbAddMenu } from "./db-add-menu";
@@ -107,6 +113,7 @@ export function DatabaseView() {
 }
 
 function ConnectionBrowser({ connection }: { connection: string }) {
+  const { sendToAgent } = useAgentDock();
   const {
     tables,
     selectedTable,
@@ -124,6 +131,27 @@ function ConnectionBrowser({ connection }: { connection: string }) {
     nextPage,
     prevPage,
   } = useTableBrowser(connection);
+
+  // Prefill the dock input with the table's schema so the user can ask away.
+  function askTable(table: RowSample) {
+    sendToAgent({
+      prompt: buildTablePrompt(connection, table.table, {
+        engine: table.engine,
+        columns: table.columns,
+      }),
+      source: { type: "database-table", label: `${table.table.name} table` },
+      mode: "draft",
+    });
+  }
+
+  // Sidebar version: we only know the table name here, so the agent inspects it.
+  function askTableByName(table: TableRef) {
+    sendToAgent({
+      prompt: buildTablePrompt(connection, table),
+      source: { type: "database-table", label: `${table.name} table` },
+      mode: "draft",
+    });
+  }
 
   return (
     <div className="flex h-full min-h-0">
@@ -145,17 +173,27 @@ function ConnectionBrowser({ connection }: { connection: string }) {
         ) : (
           <ul className="min-h-0 flex-1 overflow-auto">
             {tables.map((table) => (
-              <li key={table.qualifiedName}>
+              <li
+                key={table.qualifiedName}
+                className={cn(
+                  "group flex items-center gap-1 pr-1 transition-colors hover:bg-muted/50",
+                  table.qualifiedName === selectedTable && "bg-muted/70",
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => setSelectedTable(table.qualifiedName)}
                   className={cn(
-                    "w-full truncate px-3 py-1.5 text-left font-mono text-[11px] transition-colors hover:bg-muted/50",
-                    table.qualifiedName === selectedTable && "bg-muted/70 font-semibold",
+                    "min-w-0 flex-1 truncate px-3 py-1.5 text-left font-mono text-[11px]",
+                    table.qualifiedName === selectedTable && "font-semibold",
                   )}
                 >
                   {table.qualifiedName}
                 </button>
+                <AiSpark
+                  label={`Ask AI about \`${table.qualifiedName}\``}
+                  onAsk={() => askTableByName(table)}
+                />
               </li>
             ))}
             {!loadingTables && tables.length === 0 ? (
@@ -166,9 +204,17 @@ function ConnectionBrowser({ connection }: { connection: string }) {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <span className="truncate font-mono text-xs font-semibold">
-            {selectedTable ?? "Select a table"}
+        <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+          <span className="flex min-w-0 items-center gap-1">
+            <span className="truncate font-mono text-xs font-semibold">
+              {selectedTable ?? "Select a table"}
+            </span>
+            {sample ? (
+              <AiSpark
+                label={`Ask AI about \`${sample.table.qualifiedName}\``}
+                onAsk={() => askTable(sample)}
+              />
+            ) : null}
           </span>
           {sample ? (
             <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">

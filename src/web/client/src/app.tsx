@@ -24,6 +24,7 @@ import {
   headerActionLabelClassName,
 } from "@/components/header-action";
 import { AgentView } from "@/features/agent/agent-view";
+import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
@@ -417,6 +418,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                   </span>
                   <span className={headerActionLabelClassName()}>Docs</span>
                 </a>
+                {data ? <AiContextAction data={data} /> : null}
               </div>
             </div>
           </header>

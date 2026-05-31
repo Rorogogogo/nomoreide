@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type DragEvent,
@@ -72,6 +73,7 @@ export function AgentDock({
     activeSource,
     clearSource,
     focusNonce,
+    stickNonce,
     sendToAgent,
     onboarding,
     setOnboarding,
@@ -93,16 +95,42 @@ export function AgentDock({
   const dockRef = useRef<HTMLDivElement>(null);
 
   // Re-focus the input when the dock opens or something stages a draft/path.
+  // We poll a few frames because the textarea may mount behind the dock's open
+  // animation, and its controlled value lands a tick after the effect fires —
+  // placing the caret too early would leave it at line 1 instead of the end.
   useEffect(() => {
     if (!open || onboarding) return;
-    requestAnimationFrame(() => {
+    let frame = 0;
+    let tries = 0;
+    const place = () => {
       const input = inputRef.current;
-      if (!input) return;
+      // Wait until the element exists and carries the staged draft.
+      if (!input || (draft && input.value !== draft)) {
+        if (tries++ < 10) frame = requestAnimationFrame(place);
+        return;
+      }
       input.focus();
       const end = input.value.length;
       input.setSelectionRange(end, end);
-    });
+      input.scrollTop = input.scrollHeight;
+    };
+    frame = requestAnimationFrame(place);
+    return () => cancelAnimationFrame(frame);
+    // `draft` is read inside but intentionally excluded from deps: focusNonce
+    // bumps in the same batch as setDraft, so this re-runs with the fresh value
+    // on every staged action — adding draft here would yank the caret to the
+    // end on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, focusNonce, onboarding]);
+
+  // Auto-grow the textarea with its content: reset to the 1-row min, then size
+  // to fit. CSS `max-h-32` caps it and lets it scroll beyond a few lines.
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${input.scrollHeight}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (!open || !onboarding) return;
@@ -155,6 +183,19 @@ export function AgentDock({
     const node = scrollRef.current;
     if (node && stickRef.current) node.scrollTop = node.scrollHeight;
   }, [turns, open]);
+
+  // Any send (dock input or a feature action) re-arms stick-to-bottom and snaps
+  // to the newest turn — even if the user had scrolled up in a long transcript.
+  // rAF waits for the new turn (and the dock's open animation) to lay out first.
+  useEffect(() => {
+    stickRef.current = true;
+    const node = scrollRef.current;
+    if (!node) return;
+    const frame = requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [stickNonce]);
 
   async function submit() {
     const text = draft;
@@ -372,7 +413,7 @@ export function AgentDock({
           </div>
 
           {approvals.length > 0 ? (
-            <div className="shrink-0 space-y-1.5 border-t border-amber-400/40 bg-amber-50/60 px-3 py-2">
+            <div className="shrink-0 space-y-1.5 border-t border-amber-500/25 bg-amber-500/[0.04] px-3 py-2">
               {approvals.map((prompt) => (
                 <ApprovalRow key={prompt.requestId} prompt={prompt} onRespond={respond} />
               ))}
@@ -460,7 +501,7 @@ export function AgentDock({
               </Button>
               <textarea
                 ref={inputRef}
-                className="max-h-32 min-h-8 flex-1 resize-none self-center bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-32 min-h-8 flex-1 resize-none self-center overflow-y-auto bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
                 disabled={configured === false}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={onKeyDown}
@@ -699,28 +740,35 @@ function ApprovalRow({
 }) {
   const arg = toolArgSummary(prompt.input).slice(0, 140);
   return (
-    <div className="flex items-center gap-2 rounded-md border border-amber-400/50 bg-background/80 px-2 py-1.5 text-xs">
-      <ShieldAlert className="size-4 shrink-0 text-amber-600" />
-      <div className="min-w-0 flex-1">
-        <span className="font-mono font-semibold">{prompt.name}</span>
-        {arg ? <span className="ml-1 truncate font-mono text-muted-foreground">{arg}</span> : null}
+    <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <ShieldAlert className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1 leading-tight">
+        <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400/90">
+          Permission needed
+        </div>
+        <div className="truncate font-mono text-[11px]">
+          <span className="font-semibold text-foreground">{prompt.name}</span>
+          {arg ? <span className="ml-1 text-muted-foreground">{arg}</span> : null}
+        </div>
       </div>
       <Button
-        className="h-7"
+        className="h-7 gap-1 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
         onClick={() => onRespond(prompt.requestId, "deny")}
         size="sm"
         type="button"
         variant="outline"
       >
-        <X /> Deny
+        <X className="size-3.5" /> Deny
       </Button>
       <Button
-        className="h-7"
+        className="h-7 gap-1"
         onClick={() => onRespond(prompt.requestId, "allow")}
         size="sm"
         type="button"
       >
-        <Check /> Allow
+        <Check className="size-3.5" /> Allow
       </Button>
     </div>
   );

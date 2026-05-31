@@ -23,6 +23,19 @@ export interface AgentMcpServer {
   url?: string;
 }
 
+export interface AgentPlugin {
+  name: string;
+  marketplace?: string;
+  scope: "user" | "project";
+  version?: string;
+  installPath?: string;
+  description?: string;
+  skills: string[];
+  commands: string[];
+  agents: string[];
+  mcpServers: string[];
+}
+
 export interface AgentProjectEntry {
   path: string;
   current: boolean;
@@ -44,6 +57,7 @@ export interface AgentProfile {
   };
   skills: AgentSkill[];
   mcpServers: AgentMcpServer[];
+  plugins: AgentPlugin[];
   projects: AgentProjectEntry[];
 }
 

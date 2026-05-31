@@ -1,7 +1,11 @@
-import type { MutableRefObject } from "react";
+import { useState, type MutableRefObject } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GitGraphCommit } from "@/lib/api";
+import { AiAskInline } from "../../agent/ai-ask-inline";
+import { AiSpark } from "../../agent/ai-spark";
+import { useAgentDock } from "../../agent/chat/agent-context";
+import { buildCommitPrompt } from "../../agent/prompts";
 import { GitGraphSvgRow } from "../git-graph-svg";
 
 const ROW_HEIGHT = 28;
@@ -25,6 +29,21 @@ export function CommitList({
   onSelect: (hash: string) => void;
   onLoadMore: () => void;
 }) {
+  const { sendToAgent } = useAgentDock();
+  // Which commit row has its inline "what should I do?" field open, if any.
+  const [askingHash, setAskingHash] = useState<string | null>(null);
+
+  // Submit the inline intent straight to the agent (no dock round-trip); the
+  // chat shows a short label while the agent pulls the diff itself via `git show`.
+  function askCommit(commit: GitGraphCommit, input: string) {
+    setAskingHash(null);
+    sendToAgent({
+      prompt: buildCommitPrompt(commit, input),
+      source: { type: "git-commit", label: commit.hash.slice(0, 7) },
+      label: `${commit.hash.slice(0, 7)}: ${input}`,
+    });
+  }
+
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden border-r border-border">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
@@ -65,13 +84,17 @@ export function CommitList({
                   if (el) rowRefs.current.set(commit.hash, el);
                   else rowRefs.current.delete(commit.hash);
                 }}
+                className="group flex flex-col"
               >
+                <div
+                  className={`flex items-center transition-colors hover:bg-muted/60 ${
+                    selectedHash === commit.hash ? "bg-muted" : ""
+                  }`}
+                >
                 <button
                   onClick={() => onSelect(commit.hash)}
                   type="button"
-                  className={`flex w-full items-center gap-2 px-2 py-0.5 text-left transition-colors hover:bg-muted/60 ${
-                    selectedHash === commit.hash ? "bg-muted" : ""
-                  }`}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-2 py-0.5 text-left"
                   style={{ minHeight: ROW_HEIGHT }}
                   title={`${commit.hash}\n${commit.author} <${commit.email}>\n${commit.subject}`}
                 >
@@ -107,6 +130,25 @@ export function CommitList({
                     {formatRelativeTime(commit.timestamp)}
                   </span>
                 </button>
+                <AiSpark
+                  className={`mr-1 shrink-0 ${askingHash === commit.hash ? "opacity-100" : ""}`}
+                  label={`Ask AI about commit ${commit.hash.slice(0, 7)}`}
+                  onAsk={() =>
+                    setAskingHash((current) =>
+                      current === commit.hash ? null : commit.hash,
+                    )
+                  }
+                />
+                </div>
+                {askingHash === commit.hash ? (
+                  <div className="px-2 pb-1.5 pt-0.5">
+                    <AiAskInline
+                      placeholder="What should the agent do with this commit? (explain, summarize, find regressions…)"
+                      onSubmit={(value) => askCommit(commit, value)}
+                      onCancel={() => setAskingHash(null)}
+                    />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

@@ -14,7 +14,7 @@ export function ComposerDialog({
   icon: ReactNode;
   onClose: () => void;
   title: string;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
 }) {
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -34,7 +34,7 @@ export function ComposerDialog({
     >
       <div
         aria-modal="true"
-        className={`flex max-h-[min(760px,calc(100vh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
+        className={`flex max-h-[min(820px,calc(100vh-2rem))] w-full flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl ${size === "xl" ? "max-w-[min(1400px,calc(100vw-2rem))]" : size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >

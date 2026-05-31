@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 export function headerActionClassName(className?: string) {
   return cn(
-    "group/header-action inline-flex h-8 w-8 items-center overflow-hidden rounded-md text-sm font-medium text-muted-foreground transition-[width,background-color,color] duration-200 hover:w-24 hover:bg-muted hover:text-foreground focus-visible:w-24 focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+    "group/header-action inline-flex h-8 w-8 items-center overflow-hidden rounded-md text-sm font-medium text-muted-foreground transition-[width,background-color,color] duration-200 hover:w-24 hover:bg-muted hover:text-foreground focus:w-24 focus:bg-muted focus:text-foreground focus-visible:w-24 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
     className,
   );
 }
@@ -16,7 +16,7 @@ export function headerActionIconClassName(className?: string) {
 
 export function headerActionLabelClassName(className?: string) {
   return cn(
-    "max-w-0 overflow-hidden whitespace-nowrap text-left opacity-0 transition-[max-width,opacity] duration-200 group-hover/header-action:max-w-20 group-hover/header-action:opacity-100 group-focus-visible/header-action:max-w-20 group-focus-visible/header-action:opacity-100",
+    "max-w-0 overflow-hidden whitespace-nowrap text-left opacity-0 transition-[max-width,opacity] duration-200 group-hover/header-action:max-w-20 group-hover/header-action:opacity-100 group-focus/header-action:max-w-20 group-focus/header-action:opacity-100",
     className,
   );
 }

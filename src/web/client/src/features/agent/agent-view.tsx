@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { ActivityTab } from "./activity-tab";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
 import type { AgentId } from "./agent-types";
+import { useAgentDock } from "./chat/agent-context";
+import { ConversationHealth } from "./conversation-health";
 import { MemoryTab } from "./memory-tab";
 import { OverviewTab } from "./overview-tab";
 import { ToolsTab } from "./tools-tab";
@@ -20,7 +22,7 @@ const AGENTS: Array<{ id: AgentId; label: string; icon: React.ReactNode }> = [
 const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "overview", label: "Overview", icon: <Gauge className="size-3.5" /> },
   { id: "memory", label: "Memory", icon: <Brain className="size-3.5" /> },
-  { id: "tools", label: "Skills & MCPs", icon: <Plug className="size-3.5" /> },
+  { id: "tools", label: "Skills, MCPs & Plugins", icon: <Plug className="size-3.5" /> },
   { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
 ];
 
@@ -29,6 +31,7 @@ export function AgentView() {
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
+  const { clear, turns } = useAgentDock();
 
   useEffect(() => {
     let active = true;
@@ -115,6 +118,8 @@ export function AgentView() {
           </button>
         ))}
       </div>
+
+      <ConversationHealth onNewChat={clear} turns={turns} />
 
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "overview" ? (

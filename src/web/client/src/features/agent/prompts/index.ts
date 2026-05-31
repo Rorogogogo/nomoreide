@@ -8,6 +8,26 @@ export { SETUP_SERVICE_PROMPT } from "./service-setup";
 export { DATABASE_SETUP_PROMPT } from "./database-setup";
 export { onboardRepoPrompt } from "./repo-onboard";
 export { buildRowPrompt } from "./database-row";
+export { buildTablePrompt } from "./database-table";
 export { buildLargeFileSplitPrompt } from "./large-file";
+export { buildCommitPrompt } from "./git-commit";
 export { buildGroupServicesPrompt, type GroupableService } from "./group-services";
 export { buildServiceDebugPrompt } from "./service-debug";
+export {
+  buildAiContextLabel,
+  buildAiContextPrompt,
+  emptyAiContextSelection,
+  hasAiContextSelection,
+  type AiContextSelection,
+} from "./ai-context";
+export {
+  buildAddSkillPrompt,
+  buildRemoveSkillPrompt,
+  buildAskSkillPrompt,
+  buildAddMcpPrompt,
+  buildRemoveMcpPrompt,
+  buildAskMcpPrompt,
+  buildAddPluginPrompt,
+  buildRemovePluginPrompt,
+  buildAskPluginPrompt,
+} from "./agent-config";

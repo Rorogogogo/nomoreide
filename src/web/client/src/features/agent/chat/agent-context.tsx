@@ -43,6 +43,8 @@ interface AgentContextValue extends ReturnType<typeof useAgentChat> {
   clearSource: () => void;
   /** Bumped whenever the input should re-focus (draft prefill, path insert). */
   focusNonce: number;
+  /** Bumped whenever the transcript should snap to the newest message (any send). */
+  stickNonce: number;
   /** The one entry point every feature uses to push an action into the dock. */
   sendToAgent: (options: SendToAgentOptions) => { queued: boolean };
   /** True while the dock is showing its "paste a repo URL" onboard field. */
@@ -61,16 +63,28 @@ const AgentContext = createContext<AgentContextValue | null>(null);
  */
 export function AgentProvider({ children }: { children: ReactNode }) {
   const chat = useAgentChat();
-  const { streaming, send } = chat;
+  const { streaming } = chat;
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [activeSource, setActiveSource] = useState<AgentSource | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
+  const [stickNonce, setStickNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   // Actions fired while a turn is streaming wait here and flush in order.
   const queueRef = useRef<Array<{ prompt: string; label?: string }>>([]);
 
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
+  const bumpStick = useCallback(() => setStickNonce((nonce) => nonce + 1), []);
+
+  // Every send routes through here so the transcript reliably snaps to the
+  // newest message — whether it came from the dock input or any feature action.
+  const send = useCallback(
+    (text: string, options?: { label?: string }) => {
+      bumpStick();
+      return chat.send(text, options);
+    },
+    [chat, bumpStick],
+  );
   const clearSource = useCallback(() => setActiveSource(null), []);
   const startOnboard = useCallback(() => {
     setOpen(true);
@@ -99,6 +113,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     ({ prompt, source, mode = "send", label }: SendToAgentOptions) => {
       setOpen(true);
       setActiveSource(source ?? null);
+      // Opening the dock should always reveal the latest turn, even in draft mode.
+      bumpStick();
       if (mode === "draft") {
         setDraft(prompt);
         bumpFocus();
@@ -111,7 +127,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       void send(prompt, { label });
       return { queued: false };
     },
-    [streaming, send, bumpFocus],
+    [streaming, send, bumpFocus, bumpStick],
   );
 
   // Clearing the conversation also drops queued work and the source chip.
@@ -123,6 +139,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   const value: AgentContextValue = {
     ...chat,
+    send,
     clear,
     open,
     setOpen,
@@ -132,6 +149,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     activeSource,
     clearSource,
     focusNonce,
+    stickNonce,
     sendToAgent,
     onboarding,
     setOnboarding,
