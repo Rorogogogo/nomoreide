@@ -8,28 +8,19 @@ const shellRoutesSource = readFileSync(
   resolve(root, "src/web/routes/shell-routes.ts"),
   "utf8",
 );
-const docsViewSource = readFileSync(
-  resolve(root, "src/web/client/src/features/docs/docs-view.tsx"),
-  "utf8",
-);
 
-describe("product docs page", () => {
-  test("adds Docs to the local dashboard navigation and route sync", () => {
-    expect(appSource).toContain('"docs"');
-    expect(appSource).toContain('window.location.pathname.startsWith("/docs")');
-    expect(appSource).toContain('label="Docs"');
-    expect(appSource).toContain("DocsView");
-    expect(appSource).toContain('page === "docs"');
+describe("product docs button", () => {
+  test("adds a simple docs button to the local dashboard header", () => {
+    expect(appSource).toContain('href="https://www.nomoreide.com/docs"');
+    expect(appSource).toContain('title="Open NoMoreIDE documentation"');
+    expect(appSource).toContain("BookOpen");
   });
 
-  test("serves /docs from the local dashboard shell", () => {
-    expect(shellRoutesSource).toContain('"/docs"');
-  });
-
-  test("points users and agents to the public docs and AI-fetchable files", () => {
-    expect(docsViewSource).toContain("https://www.nomoreide.com/docs");
-    expect(docsViewSource).toContain("https://www.nomoreide.com/llms.txt");
-    expect(docsViewSource).toContain("https://www.nomoreide.com/llms-full.txt");
-    expect(docsViewSource).toContain("https://www.nomoreide.com/docs/ai-guide.md");
+  test("does not add a dedicated product docs page or sidebar route", () => {
+    expect(appSource).not.toContain('window.location.pathname.startsWith("/docs")');
+    expect(appSource).not.toContain('label="Docs"');
+    expect(appSource).not.toContain("DocsView");
+    expect(appSource).not.toContain('page === "docs"');
+    expect(shellRoutesSource).not.toContain('"/docs"');
   });
 });
