@@ -5,5 +5,9 @@
  * easy to tweak in one place.
  */
 export { SETUP_SERVICE_PROMPT } from "./service-setup";
+export { DATABASE_SETUP_PROMPT } from "./database-setup";
 export { onboardRepoPrompt } from "./repo-onboard";
 export { buildRowPrompt } from "./database-row";
+export { buildLargeFileSplitPrompt } from "./large-file";
+export { buildGroupServicesPrompt, type GroupableService } from "./group-services";
+export { buildServiceDebugPrompt } from "./service-debug";

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   cloneRepository,
   defaultReposDir,
+  proposeDatabases,
   proposeServices,
   scanRepo,
 } from "../../core/repo-onboard.js";
@@ -20,7 +21,7 @@ export function registerOnboardTools(server: FastMCP, _ctx: ToolContext): void {
   server.addTool({
     name: "nomoreide_onboard_repo",
     description:
-      "Clone a Git repository from a URL and scan it into a structured profile (manifests, Dockerfile/compose, env keys, README excerpt) plus heuristic service proposals (each with an installCommand hint). To onboard a repo end-to-end: call this, pick the best proposal, run its install command in the returned clonePath, then nomoreide_register_service (cwd = clonePath), nomoreide_git_register_repository, and nomoreide_start_service. This tool only clones + analyzes; it does not register, install, or run anything itself.",
+      "Clone a Git repository from a URL and scan it into a structured profile (manifests, Dockerfile/compose, env keys, README excerpt) plus heuristic service proposals (each with an installCommand hint) and database proposals (Postgres/MySQL detected from compose images, each with a ready connection url). To onboard a repo end-to-end: call this, pick the best proposal, run its install command in the returned clonePath, then nomoreide_register_service (cwd = clonePath), nomoreide_git_register_repository, register any detected databases with nomoreide_register_database, and nomoreide_start_service. This tool only clones + analyzes; it does not register, install, or run anything itself.",
     parameters: z.object({
       url: z
         .string()
@@ -31,7 +32,8 @@ export function registerOnboardTools(server: FastMCP, _ctx: ToolContext): void {
       const { clonePath } = await cloneRepository(url, defaultReposDir());
       const profile = await scanRepo(clonePath);
       const proposals = proposeServices(profile);
-      return stringify({ profile, proposals });
+      const databases = proposeDatabases(profile);
+      return stringify({ profile, proposals, databases });
     },
   });
 }

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  ListCollapse,
+  ListTree,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import type { GitFileStatus } from "@/lib/api";
@@ -90,6 +97,8 @@ export function FileTree({
     () => expandedDirectoryMap(tree, defaultExpandAll),
     [defaultExpandAll, tree],
   );
+  const allExpanded = useMemo(() => expandedDirectoryMap(tree, true), [tree]);
+  const directoryCount = Math.max(0, Object.keys(allExpanded).length - 1);
   const statusByPath = useMemo(() => {
     const map = new Map<string, GitFileStatus>();
     for (const file of status) map.set(file.path, file);
@@ -108,6 +117,14 @@ export function FileTree({
     setExpanded((current) => ({ ...current, [path]: !current[path] }));
   }
 
+  function expandAllFolders() {
+    setExpanded(allExpanded);
+  }
+
+  function collapseAllFolders() {
+    setExpanded({ "": true });
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-2.5 py-1.5">
@@ -116,6 +133,28 @@ export function FileTree({
           <span className="truncate">{title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
+          {directoryCount > 0 ? (
+            <span className="flex items-center gap-0.5">
+              <button
+                aria-label="Expand all folders"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                onClick={expandAllFolders}
+                title="Expand all folders"
+                type="button"
+              >
+                <ListTree className="size-3.5" />
+              </button>
+              <button
+                aria-label="Collapse all folders"
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                onClick={collapseAllFolders}
+                title="Collapse all folders"
+                type="button"
+              >
+                <ListCollapse className="size-3.5" />
+              </button>
+            </span>
+          ) : null}
           {branch ? <Badge variant="outline">{branch}</Badge> : null}
           <Badge variant="secondary">{paths.length}</Badge>
         </span>

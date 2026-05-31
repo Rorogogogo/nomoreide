@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
-import { Code2, FileWarning, Loader2, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import {
+  Code2,
+  Copy,
+  FileCode2,
+  FileText,
+  FileWarning,
+  Loader2,
+  MoreHorizontal,
+  RefreshCw,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getFileSizeRanking, type FileSizeRank } from "@/lib/api";
+import { AgentMark } from "../agent/ai-spark";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { absolutePath } from "../agent/chat/drag-to-agent";
+import { buildLargeFileSplitPrompt } from "../agent/prompts";
 
 // Tracks the ~300 line/file soft budget called out in CLAUDE.md.
 const WARN_LINES = 300;
@@ -56,8 +71,10 @@ const TEXT_CLASS: Record<Band, string> = {
  */
 export function LargestFilesView({
   onOpenFile,
+  root,
 }: {
   onOpenFile: (path: string) => void;
+  root: string;
 }) {
   const [files, setFiles] = useState<FileSizeRank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +90,6 @@ export function LargestFilesView({
       .finally(() => setLoading(false));
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => {
     load();
   }, []);
@@ -145,15 +161,18 @@ export function LargestFilesView({
           {visible.map((file, index) => {
             const band = bandFor(file.lines);
             return (
-              <li key={file.path}>
+              <li
+                className="group flex items-center gap-3 px-3 transition-colors hover:bg-muted/50"
+                key={file.path}
+              >
+                <span className="w-6 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
+                  {index + 1}
+                </span>
                 <button
                   type="button"
                   onClick={() => onOpenFile(file.path)}
-                  className="group flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors hover:bg-muted/50"
+                  className="min-w-0 flex-1 py-1.5 text-left"
                 >
-                  <span className="w-6 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
-                    {index + 1}
-                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate font-mono text-[11px]">{file.path}</span>
@@ -170,11 +189,227 @@ export function LargestFilesView({
                     </div>
                   </div>
                 </button>
+                <div className="flex shrink-0 items-center justify-end gap-0.5">
+                  <LargeFileAiMenu file={file} root={root} />
+                  <LargeFileCopyMenu file={file} root={root} />
+                </div>
               </li>
             );
           })}
         </ul>
       )}
     </div>
+  );
+}
+
+function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
+  const { sendToAgent } = useAgentDock();
+  const fullPath = absolutePath(root, file.path);
+  const fileName = file.path.split("/").pop() ?? file.path;
+
+  function askToSplitFile() {
+    sendToAgent({
+      prompt: buildLargeFileSplitPrompt({
+        absolutePath: fullPath,
+        lines: file.lines,
+        relativePath: file.path,
+      }),
+      source: { label: fileName, type: "large-file" },
+      label: `Help me split \`${file.path}\` (${file.lines.toLocaleString()} lines).`,
+      mode: "send",
+    });
+  }
+
+  function draftPathForAgent() {
+    sendToAgent({
+      prompt: fullPath,
+      source: { label: fileName, type: "large-file" },
+      mode: "draft",
+    });
+  }
+
+  return (
+    <LargeFileActionPopover
+      label={`AI actions for ${file.path}`}
+      trigger={<AgentMark className="size-3.5" />}
+    >
+      {(close) => (
+        <>
+          <ActionMenuButton
+            icon={<AgentMark className="size-3.5" />}
+            onSelect={() => {
+              close();
+              askToSplitFile();
+            }}
+          >
+            Ask AI to split this file
+          </ActionMenuButton>
+          <ActionMenuButton
+            icon={<FileCode2 className="size-3.5" />}
+            onSelect={() => {
+              close();
+              draftPathForAgent();
+            }}
+          >
+            Send file path to AI
+          </ActionMenuButton>
+        </>
+      )}
+    </LargeFileActionPopover>
+  );
+}
+
+function LargeFileCopyMenu({ file, root }: { file: FileSizeRank; root: string }) {
+  const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const fullPath = absolutePath(root, file.path);
+  const fileName = file.path.split("/").pop() ?? file.path;
+
+  async function copy(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      showSuccessToast(`Copied ${label}.`);
+    } catch (caught) {
+      showErrorToast(caught instanceof Error ? caught.message : `Could not copy ${label}.`);
+    }
+  }
+
+  return (
+    <LargeFileActionPopover
+      label={`Copy path for ${file.path}`}
+      trigger={
+        <>
+          <MoreHorizontal className="size-3.5" />
+          <span className="sr-only">More actions</span>
+        </>
+      }
+    >
+      {(close) => (
+        <>
+          <ActionMenuButton
+            icon={<FileText className="size-3.5" />}
+            onSelect={() => {
+              close();
+              void copy(fileName, "file name");
+            }}
+          >
+            Copy file name
+          </ActionMenuButton>
+          <ActionMenuButton
+            icon={<Copy className="size-3.5" />}
+            onSelect={() => {
+              close();
+              void copy(file.path, "relative path");
+            }}
+          >
+            Copy relative path
+          </ActionMenuButton>
+          <ActionMenuButton
+            icon={<Copy className="size-3.5" />}
+            onSelect={() => {
+              close();
+              void copy(fullPath, "absolute path");
+            }}
+          >
+            Copy absolute path
+          </ActionMenuButton>
+        </>
+      )}
+    </LargeFileActionPopover>
+  );
+}
+
+function LargeFileActionPopover({
+  children,
+  label,
+  trigger,
+}: {
+  children: (close: () => void) => ReactNode;
+  label: string;
+  trigger: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ right: 0, top: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  function close() {
+    setOpen(false);
+  }
+
+  function toggle() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setCoords({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    setOpen((value) => !value);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      close();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        aria-label={label}
+        className={cn(
+          "flex h-7 min-w-7 shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-muted-foreground opacity-0 transition-all duration-150 hover:bg-muted hover:text-foreground group-hover:opacity-100",
+          open && "bg-muted text-foreground opacity-100",
+        )}
+        onClick={toggle}
+        ref={triggerRef}
+        title={label}
+        type="button"
+      >
+        {trigger}
+      </button>
+      {open
+        ? createPortal(
+            <div
+              className="fixed z-50 w-56 overflow-hidden rounded-md border border-border bg-card p-1 shadow-md"
+              ref={menuRef}
+              style={{ top: coords.top, right: coords.right }}
+            >
+              {children(close)}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+function ActionMenuButton({
+  children,
+  icon,
+  onSelect,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted"
+      onClick={onSelect}
+      type="button"
+    >
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </button>
   );
 }

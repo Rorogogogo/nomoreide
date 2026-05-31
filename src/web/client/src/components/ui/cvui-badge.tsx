@@ -44,29 +44,29 @@ export const Badge = ({
 
   const variantStyles = {
     primary: {
-      solid: "bg-primary text-primary-foreground border border-transparent",
-      outline: "border-2 border-primary/60 text-foreground",
-      subtle: "bg-primary/15 text-foreground border border-transparent",
+      solid: "border border-transparent bg-primary text-primary-foreground dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-100",
+      outline: "border-2 border-primary/60 text-foreground dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-100",
+      subtle: "border border-transparent bg-primary/15 text-foreground dark:border-zinc-700/70 dark:bg-zinc-900/70 dark:text-zinc-200",
     },
     secondary: {
-      solid: "bg-secondary text-secondary-foreground border border-transparent",
-      outline: "border-2 border-border text-foreground bg-card",
-      subtle: "bg-muted text-foreground border border-border",
+      solid: "border border-transparent bg-secondary text-secondary-foreground dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-200",
+      outline: "border-2 border-border bg-card text-foreground dark:border-zinc-700/80 dark:bg-zinc-900/80 dark:text-zinc-200",
+      subtle: "border border-border bg-muted text-foreground dark:border-zinc-700/70 dark:bg-zinc-900/70 dark:text-zinc-200",
     },
     success: {
-      solid: "bg-emerald-600 text-white border border-transparent",
-      outline: "border-2 border-emerald-600 text-emerald-700 dark:text-emerald-400",
-      subtle: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-transparent",
+      solid: "border border-transparent bg-emerald-600 text-white dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300",
+      outline: "border-2 border-emerald-600 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/10 dark:text-emerald-300",
+      subtle: "border border-transparent bg-emerald-500/15 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-500/15 dark:text-emerald-300",
     },
     warning: {
-      solid: "bg-amber-500 text-white border border-transparent",
-      outline: "border-2 border-amber-500 text-amber-700 dark:text-amber-400",
-      subtle: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-transparent",
+      solid: "border border-transparent bg-amber-500 text-white dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300",
+      outline: "border-2 border-amber-500 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-300",
+      subtle: "border border-transparent bg-amber-500/15 text-amber-700 dark:border-amber-400/25 dark:bg-amber-500/15 dark:text-amber-300",
     },
     error: {
-      solid: "bg-destructive text-destructive-foreground border border-transparent",
-      outline: "border-2 border-destructive text-destructive dark:text-red-400",
-      subtle: "bg-destructive/20 text-destructive dark:text-red-300 border border-transparent",
+      solid: "border border-transparent bg-destructive text-destructive-foreground dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-300",
+      outline: "border-2 border-destructive text-destructive dark:border-red-400/40 dark:bg-red-500/10 dark:text-red-300",
+      subtle: "border border-transparent bg-destructive/20 text-destructive dark:border-red-400/25 dark:bg-red-500/15 dark:text-red-300",
     },
   } satisfies Record<Exclude<BadgeVariant, "danger" | "default" | "outline">, Record<BadgeAppearance, string>>;
 

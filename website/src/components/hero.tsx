@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, Copy, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Copy, Sparkles, Star } from "lucide-react";
 import { App as WorkbenchApp } from "@/app";
 import { installWebsiteMockApi } from "../mock-api";
 import { Button } from "./ui/button";
@@ -83,11 +83,45 @@ const AGENT_SETUPS = [
   },
 ];
 
+const GITHUB_REPO_API = "https://api.github.com/repos/Rorogogogo/nomoreide";
+
+function formatStarCount(stars: number) {
+  return new Intl.NumberFormat("en", {
+    maximumFractionDigits: stars >= 1000 ? 1 : 0,
+    notation: stars >= 1000 ? "compact" : "standard",
+  }).format(stars);
+}
+
 export function Hero() {
   const [selectedAgentId, setSelectedAgentId] = useState(AGENT_SETUPS[0].id);
   const [copied, setCopied] = useState(false);
+  const [githubStars, setGithubStars] = useState<number | null>(null);
   const selectedAgent =
     AGENT_SETUPS.find((agent) => agent.id === selectedAgentId) ?? AGENT_SETUPS[0];
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadGithubStars() {
+      try {
+        const response = await fetch(GITHUB_REPO_API, {
+          headers: { Accept: "application/vnd.github+json" },
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+
+        const data = (await response.json()) as { stargazers_count?: unknown };
+        if (typeof data.stargazers_count === "number") {
+          setGithubStars(data.stargazers_count);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+
+    void loadGithubStars();
+    return () => controller.abort();
+  }, []);
 
   const copyInstall = async () => {
     await navigator.clipboard.writeText(selectedAgent.copyText);
@@ -115,14 +149,18 @@ export function Hero() {
             <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
           </a>
 
-          <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold tracking-tight md:text-7xl">
-            Use NoMoreIDE. You need no more IDE.
+          <h1 className="mt-5 max-w-5xl text-balance text-4xl font-semibold tracking-tight md:text-7xl">
+            <span className="block">Use NoMoreIDE.</span>
+            <span className="block">You need no more IDE.</span>
           </h1>
 
-          <p className="mt-5 max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
-            An AI-native development kit for vibe coders: services, logs, Git
-            review, databases, terminals, and agent workflows in one local
-            workbench.
+          <p className="mt-5 max-w-3xl text-pretty text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+            Built for{" "}
+            <span className="text-lg font-semibold text-foreground underline decoration-foreground/25 decoration-4 underline-offset-4 md:text-2xl">
+              vibe coders
+            </span>
+            : one local workbench where your AI agent can run services, read
+            logs, review diffs, inspect data, and keep you in control.
           </p>
 
           <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -132,13 +170,25 @@ export function Hero() {
             <Button asChild size="lg" variant="outline">
               <a href="#mcp-setup">Set up MCP</a>
             </Button>
+            <Button asChild size="lg" variant="outline">
+              <a href="/docs">Read the docs</a>
+            </Button>
             <Button asChild size="lg" variant="ghost">
               <a
                 className="gap-2"
                 href="https://github.com/Rorogogogo/nomoreide"
               >
                 <GithubIcon className="size-4" />
-                GitHub
+                <span>GitHub</span>
+                {githubStars === null ? null : (
+                  <span
+                    aria-label={`${githubStars} GitHub stars`}
+                    className="inline-flex items-center gap-1 text-muted-foreground"
+                  >
+                    <Star className="size-3.5 fill-current" />
+                    {formatStarCount(githubStars)}
+                  </span>
+                )}
               </a>
             </Button>
           </div>

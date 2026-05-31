@@ -21,9 +21,7 @@ export function CTA() {
             </a>
           </Button>
           <Button asChild size="lg" variant="outline">
-            <a href="https://github.com/Rorogogogo/nomoreide#readme">
-              Read the docs
-            </a>
+            <a href="/docs">Read the docs</a>
           </Button>
         </div>
       </div>

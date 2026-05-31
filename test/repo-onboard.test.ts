@@ -6,8 +6,10 @@ import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
   cloneRepository,
+  parseComposeServiceDetails,
   parseComposeServices,
   parseRepoUrl,
+  proposeDatabases,
   proposeServices,
   scanRepo,
   type RepoProfile,
@@ -63,6 +65,101 @@ describe("parseComposeServices", () => {
 
   test("returns empty list for malformed yaml", () => {
     expect(parseComposeServices(":\n  - [")).toEqual([]);
+  });
+});
+
+describe("parseComposeServiceDetails", () => {
+  test("captures image, ports, and a map-form environment", () => {
+    const details = parseComposeServiceDetails(
+      [
+        "services:",
+        "  postgres:",
+        "    image: pgvector/pgvector:pg16",
+        "    ports:",
+        '      - "5433:5432"',
+        "    environment:",
+        "      POSTGRES_DB: pawfectbite",
+        "      POSTGRES_USER: pawfectbite",
+        "      POSTGRES_PASSWORD: pawfectbite",
+      ].join("\n"),
+    );
+    expect(details).toHaveLength(1);
+    expect(details[0]).toMatchObject({
+      name: "postgres",
+      image: "pgvector/pgvector:pg16",
+      ports: ["5433:5432"],
+      environment: {
+        POSTGRES_DB: "pawfectbite",
+        POSTGRES_USER: "pawfectbite",
+        POSTGRES_PASSWORD: "pawfectbite",
+      },
+    });
+  });
+
+  test("captures a KEY=value list-form environment", () => {
+    const [service] = parseComposeServiceDetails(
+      [
+        "services:",
+        "  db:",
+        "    image: mysql:8",
+        "    environment:",
+        "      - MYSQL_DATABASE=shop",
+        "      - MYSQL_USER=app",
+      ].join("\n"),
+    );
+    expect(service.environment).toEqual({ MYSQL_DATABASE: "shop", MYSQL_USER: "app" });
+  });
+});
+
+describe("proposeDatabases", () => {
+  test("builds a Postgres connection on the published host port with env creds", () => {
+    const profile: RepoProfile = {
+      name: "pawfectbite",
+      clonePath: "/tmp/pawfectbite",
+      languages: ["docker"],
+      envKeys: [],
+      docker: {
+        hasDockerfile: false,
+        composeFile: "docker-compose.yml",
+        composeServices: ["postgres"],
+        services: [
+          {
+            name: "postgres",
+            image: "pgvector/pgvector:pg16",
+            ports: ["5433:5432"],
+            environment: {
+              POSTGRES_DB: "pawfectbite",
+              POSTGRES_USER: "pawfectbite",
+              POSTGRES_PASSWORD: "pawfectbite",
+            },
+          },
+        ],
+      },
+    };
+    const [db] = proposeDatabases(profile);
+    expect(db).toMatchObject({
+      name: "pawfectbite-db",
+      engine: "postgres",
+      url: "postgres://pawfectbite:pawfectbite@127.0.0.1:5433/pawfectbite",
+      composeService: "postgres",
+      confidence: "high",
+    });
+  });
+
+  test("ignores non-database compose services", () => {
+    const profile: RepoProfile = {
+      name: "api",
+      clonePath: "/tmp/api",
+      languages: ["docker"],
+      envKeys: [],
+      docker: {
+        hasDockerfile: false,
+        composeFile: "docker-compose.yml",
+        composeServices: ["api"],
+        services: [{ name: "api", image: "node:20", ports: ["3000:3000"], environment: {} }],
+      },
+    };
+    expect(proposeDatabases(profile)).toEqual([]);
   });
 });
 
@@ -136,6 +233,26 @@ describe("proposeServices", () => {
       name: "api",
       composeService: "api",
       confidence: "high",
+    });
+  });
+
+  test("uses the published host port for a docker-compose proposal", () => {
+    const profile: RepoProfile = {
+      name: "shop",
+      clonePath: "/tmp/shop",
+      languages: ["docker"],
+      envKeys: [],
+      docker: {
+        hasDockerfile: false,
+        composeFile: "docker-compose.yml",
+        composeServices: ["web"],
+        services: [{ name: "web", image: "nginx", ports: ["8080:80"], environment: {} }],
+      },
+    };
+    expect(proposeServices(profile)[0]).toMatchObject({
+      kind: "docker-compose",
+      composeService: "web",
+      port: 8080,
     });
   });
 });

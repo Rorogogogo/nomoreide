@@ -201,7 +201,7 @@ export function ServiceRow({
       }}
       onDragEnd={() => setDragging(false)}
       className={cn(
-        "group flex cursor-pointer items-center gap-2 border-l-2 px-3 py-1.5 transition-colors",
+        "group grid cursor-pointer grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-2 border-l-2 px-3 py-1.5 transition-colors",
         dragging && "opacity-50",
         selected
           ? "border-l-primary bg-primary/10"

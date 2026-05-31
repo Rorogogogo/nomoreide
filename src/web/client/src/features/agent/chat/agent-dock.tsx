@@ -1,8 +1,17 @@
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   AlertTriangle,
+  ArrowUp,
   Check,
   ChevronDown,
+  ChevronUp,
   CornerDownLeft,
   Download,
   GitBranch,
@@ -26,6 +35,7 @@ import { useAgentDock } from "./agent-context";
 import { hasAgentPath, readAgentPath } from "./drag-to-agent";
 import { FilePicker } from "./file-picker";
 import { OptionList, parseAgentMessage, ServiceActions } from "./message-options";
+import { ChatMarkdown } from "./chat-markdown";
 import { ThinkingIndicator, useSmoothText } from "./streaming-ui";
 import type { ApprovalPrompt, ChatToolCall, ChatTurn } from "./use-agent-chat";
 
@@ -72,14 +82,32 @@ export function AgentDock({
   const [dragActive, setDragActive] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Drag-to-resize: `dockHeight` is the user-chosen height in px (null = the
+  // default 50vh). `resizing` suppresses the height transition mid-drag so the
+  // edge tracks the cursor 1:1 instead of easing behind it.
+  const [dockHeight, setDockHeight] = useState<number | null>(null);
+  const [resizing, setResizing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const onboardingInputRef = useRef<HTMLInputElement>(null);
   const dockRef = useRef<HTMLDivElement>(null);
 
   // Re-focus the input when the dock opens or something stages a draft/path.
   useEffect(() => {
-    if (open) requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open, focusNonce]);
+    if (!open || onboarding) return;
+    requestAnimationFrame(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      const end = input.value.length;
+      input.setSelectionRange(end, end);
+    });
+  }, [open, focusNonce, onboarding]);
+
+  useEffect(() => {
+    if (!open || !onboarding) return;
+    requestAnimationFrame(() => onboardingInputRef.current?.focus());
+  }, [open, onboarding]);
 
   // Collapse the dock when the user interacts anywhere outside it, so the
   // expanded panel gets out of the way the moment attention moves elsewhere.
@@ -146,6 +174,7 @@ export function AgentDock({
     sendToAgent({
       prompt: onboardRepoPrompt(url),
       source: { type: "repo-onboard", label: "Onboard repo" },
+      label: `Onboard and run this repo: ${url}`,
     });
   }
 
@@ -196,44 +225,77 @@ export function AgentDock({
     insertPath(path);
   }
 
+  // Grab the top edge to resize the dock. The dock is anchored to the bottom, so
+  // its height is `viewport height - cursor Y`; we clamp it to a sane band and
+  // track the pointer until release (pointer capture survives leaving the strip).
+  function onResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!open) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setResizing(true);
+    const minHeight = 160;
+    const maxHeight = window.innerHeight - 48;
+    function onMove(moveEvent: PointerEvent) {
+      const next = window.innerHeight - moveEvent.clientY;
+      setDockHeight(Math.max(minHeight, Math.min(maxHeight, next)));
+    }
+    function onUp() {
+      setResizing(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
   return (
     <div
       ref={dockRef}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 flex flex-col border-t border-border bg-card/95 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur transition-[height] duration-200",
-        open ? "h-[50vh]" : dragActive ? "h-12" : "h-9",
+        "fixed inset-x-0 bottom-0 z-50 flex flex-col border-t border-border bg-card/95 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)] backdrop-blur",
+        resizing ? "select-none" : "transition-[height] duration-200",
+        open ? (dockHeight === null ? "h-[50vh]" : "") : dragActive ? "h-12" : "h-9",
         dragActive && !dragOver && "border-primary/60 bg-primary/5",
         dragOver && "outline-dashed outline-2 -outline-offset-2 outline-primary/70",
       )}
+      style={open && dockHeight !== null ? { height: dockHeight } : undefined}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
       {open ? (
         <>
-          <header className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
-            <ProviderLogo provider={provider} className="size-4 text-primary" />
-            <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
-            {activeSource ? (
-              <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                <Sparkles className="size-3" />
-                <span className="max-w-40 truncate">{activeSource.label}</span>
-                <button
-                  aria-label="Clear source"
-                  className="opacity-60 hover:opacity-100"
-                  onClick={clearSource}
-                  type="button"
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
-            ) : null}
-            {streaming ? (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> thinking…
-              </span>
-            ) : null}
-            <div className="ml-auto flex items-center gap-1">
+          {/* Drag the top edge up/down to resize the dock; double-click to reset. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 -top-1 z-10 h-2 cursor-ns-resize"
+            onDoubleClick={() => setDockHeight(null)}
+            onPointerDown={onResizeStart}
+          />
+          {/* No top bar — the centered column keeps the middle clear, so the
+              status and controls live in the empty left/right gutters instead,
+              giving the conversation the full dock height. The wrapper ignores
+              pointer events so the middle stays grabbable for the resize strip. */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 px-2 pt-1.5">
+            <div className="pointer-events-auto flex items-center gap-2">
+              <ProviderLogo provider={provider} className="size-4 text-primary" />
+              <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
+              {activeSource ? (
+                <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                  <Sparkles className="size-3" />
+                  <span className="max-w-40 truncate">{activeSource.label}</span>
+                  <button
+                    aria-label="Clear source"
+                    className="opacity-60 hover:opacity-100"
+                    onClick={clearSource}
+                    type="button"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ) : null}
+            </div>
+            <div className="pointer-events-auto flex items-center gap-1">
               {onOpenAgentPage ? (
                 <Button
                   aria-label="Open agent page"
@@ -271,38 +333,42 @@ export function AgentDock({
                 <ChevronDown />
               </Button>
             </div>
-          </header>
+          </div>
 
           <div
             ref={scrollRef}
-            className="min-h-0 flex-1 space-y-3 overflow-auto px-3 py-3"
+            className="min-h-0 flex-1 overflow-auto px-3 py-3"
             onScroll={onTranscriptScroll}
           >
-            {turns.length === 0 ? (
-              <EmptyHint
-                configured={configured}
-                provider={provider}
-                onOnboard={() => setOnboarding(true)}
-              />
-            ) : (
-              turns.map((turn, index) => (
-                <TurnView
-                  key={turn.id}
-                  turn={turn}
-                  streaming={streaming && index === turns.length - 1}
-                  isLast={index === turns.length - 1}
-                  onChoose={choose}
-                  onStartService={startService}
-                  onOpenService={onOpenService}
+            {/* Centered reading column so replies wrap at a comfortable width
+                instead of stretching across the full (wide) dock — ChatGPT-style. */}
+            <div className="mx-auto w-full max-w-4xl space-y-3">
+              {turns.length === 0 ? (
+                <EmptyHint
+                  configured={configured}
+                  provider={provider}
+                  onOnboard={() => setOnboarding(true)}
                 />
-              ))
-            )}
-            {error ? (
-              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                <AlertTriangle className="mt-px size-3.5 shrink-0" />
-                <span className="min-w-0 break-words">{error}</span>
-              </div>
-            ) : null}
+              ) : (
+                turns.map((turn, index) => (
+                  <TurnView
+                    key={turn.id}
+                    turn={turn}
+                    streaming={streaming && index === turns.length - 1}
+                    isLast={index === turns.length - 1}
+                    onChoose={choose}
+                    onStartService={startService}
+                    onOpenService={onOpenService}
+                  />
+                ))
+              )}
+              {error ? (
+                <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertTriangle className="mt-px size-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">{error}</span>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {approvals.length > 0 ? (
@@ -315,7 +381,7 @@ export function AgentDock({
 
           <div
             className={cn(
-              "relative shrink-0 border-t border-border p-2 transition-colors",
+              "relative shrink-0 p-2 transition-colors",
               dragActive && "bg-primary/5",
             )}
           >
@@ -328,6 +394,8 @@ export function AgentDock({
                 }}
               />
             ) : null}
+            {/* Match the transcript's reading column so the input lines up with it. */}
+            <div className="mx-auto w-full max-w-4xl">
             {/* The one manual step: paste a repo URL. After submit it's pure agent. */}
             {onboarding ? (
               <form
@@ -339,7 +407,7 @@ export function AgentDock({
               >
                 <GitBranch className="size-4 shrink-0 text-primary" />
                 <input
-                  autoFocus
+                  ref={onboardingInputRef}
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   onChange={(event) => setOnboardUrl(event.target.value)}
                   placeholder="Paste a repo URL — e.g. https://github.com/owner/repo"
@@ -375,22 +443,24 @@ export function AgentDock({
                 <CornerDownLeft className="size-3.5 shrink-0 opacity-60" />
               </button>
             ) : null}
-            <div className="flex items-end gap-2">
+            {/* One unified pill: attach + textarea + circular send, with the
+                whole container reacting to hover/focus instead of three boxes. */}
+            <div className="flex items-end gap-1.5 rounded-2xl border border-border bg-background px-1.5 py-1.5 shadow-sm transition-colors hover:border-foreground/25 focus-within:border-foreground/40 focus-within:ring-1 focus-within:ring-ring">
               <Button
                 aria-label="Attach a file or folder"
-                className="size-9 shrink-0"
+                className="size-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 disabled={configured === false}
                 onClick={() => setPickerOpen(true)}
                 size="icon"
                 title="Attach a file or folder"
                 type="button"
-                variant={pickerOpen ? "secondary" : "outline"}
+                variant={pickerOpen ? "secondary" : "ghost"}
               >
                 <Paperclip />
               </Button>
               <textarea
                 ref={inputRef}
-                className="max-h-32 min-h-9 flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="max-h-32 min-h-8 flex-1 resize-none self-center bg-transparent px-1 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
                 disabled={configured === false}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={onKeyDown}
@@ -403,19 +473,31 @@ export function AgentDock({
                 value={draft}
               />
               {streaming ? (
-                <Button onClick={stop} size="sm" type="button" variant="outline">
-                  <Square /> Stop
+                <Button
+                  aria-label="Stop generating"
+                  className="size-8 shrink-0 rounded-full"
+                  onClick={stop}
+                  size="icon"
+                  title="Stop"
+                  type="button"
+                  variant="secondary"
+                >
+                  <Square className="size-3.5 fill-current" />
                 </Button>
               ) : (
                 <Button
+                  aria-label="Send message"
+                  className="size-8 shrink-0 rounded-full"
                   disabled={!draft.trim() || configured === false}
                   onClick={() => void submit()}
-                  size="sm"
+                  size="icon"
+                  title="Send"
                   type="button"
                 >
-                  Send <CornerDownLeft />
+                  <ArrowUp className="size-4" />
                 </Button>
               )}
+            </div>
             </div>
           </div>
         </>
@@ -509,6 +591,36 @@ function looksLikeGitUrl(text: string): boolean {
   return /github\.com|gitlab\.|bitbucket\.|\.git$/i.test(trimmed);
 }
 
+/**
+ * A user turn. When the turn carries a short `label` (a long preset prompt was
+ * sent), show the label by default with a toggle to reveal the full text —
+ * keeps the conversation tidy without hiding what was actually sent.
+ */
+function UserBubble({ turn }: { turn: ChatTurn }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasPreset = Boolean(turn.label) && turn.label !== turn.text;
+  const shown = hasPreset && !expanded ? (turn.label as string) : turn.text;
+  return (
+    <div className="flex justify-end">
+      <div className="flex max-w-[85%] flex-col items-end gap-0.5">
+        <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-muted px-3.5 py-2 text-sm text-foreground">
+          {shown}
+        </div>
+        {hasPreset ? (
+          <button
+            className="flex items-center gap-0.5 px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setExpanded((value) => !value)}
+            type="button"
+          >
+            {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            {expanded ? "Hide full prompt" : "Show full prompt"}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function TurnView({
   turn,
   streaming,
@@ -529,13 +641,7 @@ function TurnView({
   const text = useSmoothText(turn.text);
 
   if (turn.role === "user") {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary px-3 py-1.5 text-sm text-primary-foreground">
-          {turn.text}
-        </div>
-      </div>
-    );
+    return <UserBubble turn={turn} />;
   }
 
   // Pull agent-offered choices / service shortcuts out of the prose into UI.
@@ -546,8 +652,8 @@ function TurnView({
         <ToolCard key={tool.id} tool={tool} />
       ))}
       {body ? (
-        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-bl-sm bg-muted px-3 py-1.5 text-sm">
-          {body}
+        <div className="break-words px-0.5 text-sm text-foreground">
+          <ChatMarkdown content={body} />
         </div>
       ) : null}
       {/* Only the latest turn's options stay clickable (older ones are history). */}

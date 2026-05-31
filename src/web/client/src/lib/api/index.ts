@@ -15,5 +15,6 @@ export * from "./database.js";
 export * from "./errors.js";
 export * from "./git.js";
 export * from "./log-sources.js";
+export * from "./onboard.js";
 export * from "./services.js";
 export * from "./terminal.js";

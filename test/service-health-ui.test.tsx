@@ -129,6 +129,30 @@ describe("service health UI", () => {
     expect(markup).toContain("Hide Ports &amp; Timeline");
   });
 
+  test("keeps the selected service header compact when the side rail is visible", () => {
+    const health: ServiceHealth = {
+      service: "frontend",
+      status: "healthy",
+      summary: "Service is running without detected warnings.",
+      checkedAt: "2026-05-18T00:00:00.000Z",
+      checks: [],
+      processTree: {
+        rootPid: 10,
+        processCount: 2,
+        cpuPercent: 0,
+        rssMb: 507.7,
+        processes: [],
+      },
+      ports: [],
+      agentContext: "",
+    };
+
+    const markup = renderServicesView(buildDashboard(health));
+
+    expect(markup).not.toContain("Port for frontend");
+    expect(markup).toContain("More actions for frontend");
+  });
+
   test("renders services when dashboard health data is missing", () => {
     const data = {
       ok: true,

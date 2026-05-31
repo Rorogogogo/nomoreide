@@ -480,7 +480,10 @@ function NavButton({
           className={cn(
             "min-w-6 justify-center px-1.5 font-mono shadow-none",
             active
-              ? "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground"
+              ? // Match the active pill (bg-primary/text-primary-foreground), not
+                // the success-green variant. The dark: copies are what actually
+                // override the success variant's own dark: classes in dark mode.
+                "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground dark:border-primary-foreground/40 dark:bg-primary-foreground/15 dark:text-primary-foreground"
               : badge > 0
                 ? ""
                 : "border-border bg-background text-muted-foreground",

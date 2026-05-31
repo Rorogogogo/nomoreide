@@ -7,10 +7,20 @@ const heroSource = readFileSync(resolve(__dirname, "../website/src/components/he
 
 describe("website hero", () => {
   test("leads with the product-first NoMoreIDE message and mock", () => {
-    expect(heroSource).toContain("Use NoMoreIDE. You need no more IDE.");
-    expect(heroSource).toContain("AI-native development kit for vibe coders");
+    expect(heroSource).toContain('<span className="block">Use NoMoreIDE.</span>');
+    expect(heroSource).toContain('<span className="block">You need no more IDE.</span>');
+    expect(heroSource).toContain("Built for");
+    expect(heroSource).toContain("vibe coders");
+    expect(heroSource).toContain("your AI agent can run services, read");
+    expect(heroSource).toContain("logs, review diffs, inspect data");
     expect(heroSource).toContain("Try the live mock");
     expect(heroSource).toContain("<WorkbenchApp syncLocation={false} />");
+  });
+
+  test("loads and displays the current GitHub star count", () => {
+    expect(heroSource).toContain("https://api.github.com/repos/Rorogogogo/nomoreide");
+    expect(heroSource).toContain("stargazers_count");
+    expect(heroSource).toContain("GitHub stars");
   });
 
   test("keeps MCP setup commands on the page", () => {

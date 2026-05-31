@@ -22,6 +22,7 @@ export function TableGrid({
     sendToAgent({
       prompt: buildRowPrompt(connection, sample.engine, sample.table, sample.columns, row),
       source: { type: "database-row", label: `${sample.table} row` },
+      label: `Explain this row from \`${sample.table.qualifiedName}\`.`,
       mode: "send",
     });
   }
