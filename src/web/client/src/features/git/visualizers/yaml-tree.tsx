@@ -11,11 +11,11 @@ function isContainer(value: Json): value is Record<string, Json> | Json[] {
 }
 
 function scalarClass(value: Json): string {
-  if (typeof value === "string") return "text-rose-700";
-  if (typeof value === "number") return "text-emerald-700";
-  if (typeof value === "boolean") return "text-blue-700";
-  if (value === null || value === undefined) return "text-zinc-400 italic";
-  return "text-zinc-800";
+  if (typeof value === "string") return "text-rose-700 dark:text-rose-300";
+  if (typeof value === "number") return "text-emerald-700 dark:text-emerald-300";
+  if (typeof value === "boolean") return "text-blue-700 dark:text-blue-400";
+  if (value === null || value === undefined) return "text-muted-foreground italic";
+  return "text-foreground";
 }
 
 function scalarText(value: Json): string {
@@ -41,7 +41,7 @@ function TreeNode({
   if (!isContainer(value)) {
     return (
       <div className="flex items-baseline gap-2 py-[1px]" style={indent}>
-        <span className="text-zinc-500">{label}:</span>
+        <span className="text-muted-foreground">{label}:</span>
         <span className={cn("whitespace-pre-wrap break-words", scalarClass(value))}>
           {scalarText(value)}
         </span>
@@ -61,16 +61,16 @@ function TreeNode({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center gap-1 py-[1px] text-left hover:bg-zinc-100"
+        className="flex w-full items-center gap-1 py-[1px] text-left hover:bg-muted"
         style={indent}
       >
         {open ? (
-          <ChevronDown className="size-3.5 shrink-0 text-zinc-400" />
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronRight className="size-3.5 shrink-0 text-zinc-400" />
+          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
         )}
-        <span className="font-medium text-zinc-700">{label}</span>
-        <span className="text-zinc-400">{summary}</span>
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-muted-foreground">{summary}</span>
       </button>
       {open
         ? entries.map(([key, child]) => (

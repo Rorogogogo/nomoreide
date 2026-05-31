@@ -147,3 +147,52 @@
 .md-preview input[type="checkbox"] {
   margin-right: 0.4em;
 }
+
+/* Dark mode — align surfaces/borders to the app's warm theme tokens so the
+ * preview blends with the rest of the dashboard instead of GitHub's light palette. */
+.dark .md-preview {
+  color: hsl(var(--foreground));
+}
+
+.dark .md-preview h1,
+.dark .md-preview h2 {
+  border-bottom-color: hsl(var(--border));
+}
+
+.dark .md-preview a {
+  color: #6cb6ff;
+}
+
+.dark .md-preview blockquote {
+  color: hsl(var(--muted-foreground));
+  border-left-color: hsl(var(--border));
+}
+
+.dark .md-preview code {
+  background-color: hsl(var(--muted));
+}
+
+.dark .md-preview pre {
+  background-color: hsl(var(--muted));
+}
+
+.dark .md-preview pre code {
+  background-color: transparent;
+}
+
+.dark .md-preview th,
+.dark .md-preview td {
+  border-color: hsl(var(--border));
+}
+
+.dark .md-preview th {
+  background-color: hsl(var(--muted));
+}
+
+.dark .md-preview tr:nth-child(2n) {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.dark .md-preview hr {
+  background-color: hsl(var(--border));
+}

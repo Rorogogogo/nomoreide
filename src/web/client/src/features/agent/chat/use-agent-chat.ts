@@ -18,6 +18,7 @@ export interface ChatToolCall {
 
 export interface ChatTurn {
   id: string;
+  createdAt: number;
   role: "user" | "assistant";
   text: string;
   /**
@@ -87,13 +88,20 @@ export function useAgentChat() {
 
       const userTurn: ChatTurn = {
         id: nextId(),
+        createdAt: Date.now(),
         role: "user",
         text: trimmed,
         label: options?.label,
         tools: [],
       };
       const assistantId = nextId();
-      const assistantTurn: ChatTurn = { id: assistantId, role: "assistant", text: "", tools: [] };
+      const assistantTurn: ChatTurn = {
+        id: assistantId,
+        createdAt: Date.now(),
+        role: "assistant",
+        text: "",
+        tools: [],
+      };
       setTurns((current) => [...current, userTurn, assistantTurn]);
 
       const patch = (update: (turn: ChatTurn) => ChatTurn) =>

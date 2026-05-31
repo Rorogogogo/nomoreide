@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 import { Badge } from "../src/web/client/src/components/ui/badge";
+import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
 import { CommitList } from "../src/web/client/src/features/git/git-graph/commit-list";
 import { ProcessBadge } from "../src/web/client/src/features/services/process-badge";
 import { ServiceRow } from "../src/web/client/src/features/services/service-list";
@@ -48,16 +49,18 @@ describe("dark badge styles", () => {
 
   test("git ref badges avoid light backgrounds in dark mode", () => {
     const markup = renderToStaticMarkup(
-      <CommitList
-        commits={[buildCommit()]}
-        error={null}
-        loading={false}
-        maxLanes={1}
-        onLoadMore={vi.fn()}
-        onSelect={vi.fn()}
-        rowRefs={rowRefs}
-        selectedHash={null}
-      />,
+      <AgentProvider>
+        <CommitList
+          commits={[buildCommit()]}
+          error={null}
+          loading={false}
+          maxLanes={1}
+          onLoadMore={vi.fn()}
+          onSelect={vi.fn()}
+          rowRefs={rowRefs}
+          selectedHash={null}
+        />
+      </AgentProvider>,
     );
 
     expect(markup).toContain("dark:bg-emerald-500/15");

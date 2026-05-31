@@ -29,6 +29,20 @@ export interface AgentMcpServer {
   url?: string;
 }
 
+export interface AgentPlugin {
+  name: string;
+  marketplace?: string;
+  scope: "user" | "project";
+  version?: string;
+  installPath?: string;
+  description?: string;
+  /** Skills (dirs), slash commands, sub-agents, and MCP servers the plugin ships. */
+  skills: string[];
+  commands: string[];
+  agents: string[];
+  mcpServers: string[];
+}
+
 export interface AgentProjectEntry {
   path: string;
   current: boolean;
@@ -50,6 +64,7 @@ export interface AgentProfile {
   };
   skills: AgentSkill[];
   mcpServers: AgentMcpServer[];
+  plugins: AgentPlugin[];
   projects: AgentProjectEntry[];
 }
 
@@ -76,6 +91,7 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
   const [
     claudeProject,
     claudeSkills,
+    claudePlugins,
     claudeJson,
     codexProject,
     codexSkills,
@@ -84,6 +100,7 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
   ] = await Promise.all([
     collectClaudeProjectMemory(cwd, home),
     collectClaudeSkills(home, cwd),
+    collectClaudePlugins(home),
     readClaudeJson(home),
     collectCodexProjectMemory(cwd, codexHome),
     collectCodexSkills(codexHome, cwd),
@@ -95,12 +112,14 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
     project: claudeProject,
     skills: claudeSkills,
     mcpServers: collectClaudeMcpServers(claudeJson, cwd),
+    plugins: claudePlugins,
     projects: collectClaudeProjects(claudeJson, cwd),
   };
   const codexProfile: AgentProfile = {
     project: codexProject,
     skills: codexSkills,
     mcpServers: collectCodexMcpServers(codexConfig),
+    plugins: [],
     projects: mergeCodexProjects(codexConfig, codexProjects, cwd),
   };
   const activeProfile = detected.name === "codex" ? codexProfile : claudeProfile;
@@ -359,6 +378,105 @@ async function readPluginSkills(pluginsDataDir: string, out: AgentSkill[]): Prom
     }
   } catch {
     // ignore
+  }
+}
+
+interface InstalledPluginsFile {
+  plugins?: Record<
+    string,
+    Array<{ scope?: string; installPath?: string; version?: string }>
+  >;
+}
+
+/**
+ * Claude's plugin registry lives at ~/.claude/plugins/installed_plugins.json,
+ * keyed by "<name>@<marketplace>". Each record points at an `installPath` whose
+ * `skills/`, `commands/`, `agents/`, and `.mcp.json` we enumerate so the UI can
+ * show what each plugin contributes. (Mirrors brainctl's plugin-skill-reader.)
+ */
+async function collectClaudePlugins(home: string): Promise<AgentPlugin[]> {
+  const registryPath = join(home, ".claude", "plugins", "installed_plugins.json");
+  let data: InstalledPluginsFile;
+  try {
+    data = JSON.parse(await readFile(registryPath, "utf8")) as InstalledPluginsFile;
+  } catch {
+    return [];
+  }
+
+  const plugins = await Promise.all(
+    Object.entries(data.plugins ?? {}).map(async ([key, records]) => {
+      const atIndex = key.lastIndexOf("@");
+      const name = atIndex > 0 ? key.slice(0, atIndex) : key;
+      const marketplace = atIndex > 0 ? key.slice(atIndex + 1) : undefined;
+      const record = records?.[0];
+      const installPath = record?.installPath;
+      const [skills, commands, agents, mcpServers, description] = await Promise.all([
+        installPath ? readPluginEntryNames(join(installPath, "skills"), "dir") : [],
+        installPath ? readPluginEntryNames(join(installPath, "commands"), "md") : [],
+        installPath ? readPluginEntryNames(join(installPath, "agents"), "md") : [],
+        installPath ? readPluginMcpKeys(installPath) : [],
+        installPath ? readPluginDescription(installPath) : undefined,
+      ]);
+      return {
+        name,
+        marketplace,
+        scope: record?.scope === "project" ? "project" : "user",
+        version: record?.version,
+        installPath,
+        description,
+        skills,
+        commands,
+        agents,
+        mcpServers,
+      } satisfies AgentPlugin;
+    }),
+  );
+
+  plugins.sort((a, b) => a.name.localeCompare(b.name));
+  return plugins;
+}
+
+/** List a plugin sub-dir's contributions: child directories, or *.md basenames. */
+async function readPluginEntryNames(dir: string, kind: "dir" | "md"): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const names = entries
+      .filter((entry) => {
+        if (entry.name.startsWith(".")) return false;
+        return kind === "dir"
+          ? entry.isDirectory()
+          : entry.isFile() && entry.name.endsWith(".md");
+      })
+      .map((entry) => (kind === "dir" ? entry.name : entry.name.replace(/\.md$/, "")));
+    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
+/** MCP server keys a plugin ships in its bundled `.mcp.json`. */
+async function readPluginMcpKeys(installPath: string): Promise<string[]> {
+  try {
+    const raw = await readFile(join(installPath, ".mcp.json"), "utf8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const servers =
+      parsed.mcpServers && typeof parsed.mcpServers === "object" && !Array.isArray(parsed.mcpServers)
+        ? (parsed.mcpServers as Record<string, unknown>)
+        : parsed;
+    return Object.keys(servers).sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
+async function readPluginDescription(installPath: string): Promise<string | undefined> {
+  const content = await safeReadPreview(join(installPath, ".claude-plugin", "plugin.json"), 4000);
+  if (!content) return undefined;
+  try {
+    const parsed = JSON.parse(content) as { description?: unknown };
+    return typeof parsed.description === "string" ? parsed.description : undefined;
+  } catch {
+    return undefined;
   }
 }
 
