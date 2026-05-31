@@ -439,6 +439,14 @@ function approvalSettings(): string {
   if (!settingsJson) {
     const command = `node ${JSON.stringify(ensureHookScript())}`;
     settingsJson = JSON.stringify({
+      // NoMoreIDE's own MCP tools are read-safe / scoped to registered services,
+      // so auto-allow them. Claude Code has no wildcard for the tool portion of
+      // an MCP rule; the bare server prefix `mcp__nomoreide` allows every tool
+      // from that server. Everything else (Bash/Edit/Write/Read/...) is left to
+      // the PreToolUse hook below — onboarding leans on the structured profile
+      // from `nomoreide_onboard_repo` instead of crawling the repo, so the agent
+      // shouldn't need Read/Glob/Grep at all.
+      permissions: { allow: ["mcp__nomoreide"] },
       hooks: {
         PreToolUse: [{ matcher: GATED_TOOLS, hooks: [{ type: "command", command }] }],
       },
@@ -469,6 +477,13 @@ process.stdin.on("data", (d) => (body += d));
 process.stdin.on("end", () => {
   let input = {};
   try { input = JSON.parse(body); } catch {}
+  // Auto-allow routine, low-risk Bash (diagnostics + dependency installs) so
+  // onboarding doesn't prompt for every step. Anything with shell chaining,
+  // redirection, or command substitution — or outside the safe verb list —
+  // still falls through to the dock for an explicit Allow/Deny.
+  if (input.tool_name === "Bash" && isSafeBash(input.tool_input && input.tool_input.command)) {
+    return decide("allow", "Auto-allowed routine command.");
+  }
   const url = process.env.NOMOREIDE_APPROVAL_URL;
   if (!url) return decide("deny", "Approval channel not configured.");
   let target;
@@ -509,6 +524,14 @@ process.stdin.on("end", () => {
   req.write(payload);
   req.end();
 });
+function isSafeBash(cmd) {
+  if (typeof cmd !== "string") return false;
+  const c = cmd.trim();
+  // Reject anything that chains, redirects, or substitutes — keep it one simple
+  // command so a safe prefix can't smuggle a dangerous tail (e.g. "echo x; rm -rf").
+  if (/[;&|<>$()\\\`]/.test(c)) return false;
+  return /^(echo|pwd|whoami|true|date|ls|node|npm (install|ci|--version|-v)|pnpm (install|--version|-v)|yarn( install| --version| -v)?|bun (install|--version|-v)|pip3? install)\\b/.test(c);
+}
 function decide(permissionDecision, reason) {
   process.stdout.write(
     JSON.stringify({

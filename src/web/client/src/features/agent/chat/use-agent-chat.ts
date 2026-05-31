@@ -20,6 +20,12 @@ export interface ChatTurn {
   id: string;
   role: "user" | "assistant";
   text: string;
+  /**
+   * Short display text for the user bubble when `text` is a long preset prompt.
+   * The full `text` is still what we send to the agent; the bubble just shows
+   * this so the conversation stays readable. Undefined = show `text` verbatim.
+   */
+  label?: string;
   tools: ChatToolCall[];
 }
 
@@ -74,12 +80,18 @@ export function useAgentChat() {
   }, []);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { label?: string }) => {
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
       setError(null);
 
-      const userTurn: ChatTurn = { id: nextId(), role: "user", text: trimmed, tools: [] };
+      const userTurn: ChatTurn = {
+        id: nextId(),
+        role: "user",
+        text: trimmed,
+        label: options?.label,
+        tools: [],
+      };
       const assistantId = nextId();
       const assistantTurn: ChatTurn = { id: assistantId, role: "assistant", text: "", tools: [] };
       setTurns((current) => [...current, userTurn, assistantTurn]);

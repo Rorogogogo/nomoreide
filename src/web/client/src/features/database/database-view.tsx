@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
-import { Database, Loader2, Plus, Table2 } from "lucide-react";
+import { Database, Loader2, Plus, Sparkles, Table2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { deleteDatabase, type DatabaseConnection } from "@/lib/api";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { DATABASE_SETUP_PROMPT } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
 import { ConnectionSelector } from "./connection-selector";
+import { DbAddMenu } from "./db-add-menu";
 import { TableGrid } from "./table-grid";
 import { PAGE_SIZES, useDatabases, useTableBrowser } from "./use-databases";
 
@@ -16,8 +19,17 @@ type Dialog = { mode: "add" } | { mode: "edit"; target: EditTarget } | null;
 export function DatabaseView() {
   const { connections, loading, error, refresh } = useDatabases();
   const { error: showError, success: showSuccess } = useToasts();
+  const { sendToAgent } = useAgentDock();
   const [selected, setSelected] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
+
+  function addWithAi() {
+    sendToAgent({
+      prompt: DATABASE_SETUP_PROMPT,
+      source: { type: "database-setup", label: "Add a database" },
+      label: "Help me connect a database, one step at a time.",
+    });
+  }
 
   // Keep a valid selection as the connection list changes.
   useEffect(() => {
@@ -56,14 +68,17 @@ export function DatabaseView() {
             <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
           ) : null}
         </div>
-        <ConnectionSelector
-          connections={connections}
-          selected={selected}
-          onSelect={setSelected}
-          onAdd={() => setDialog({ mode: "add" })}
-          onEdit={startEdit}
-          onRemove={(name) => void remove(name)}
-        />
+        <div className="flex items-center gap-2">
+          <ConnectionSelector
+            connections={connections}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={() => setDialog({ mode: "add" })}
+            onEdit={startEdit}
+            onRemove={(name) => void remove(name)}
+          />
+          <DbAddMenu onAddManual={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
+        </div>
       </header>
 
       <div className="min-h-0 flex-1">
@@ -76,7 +91,7 @@ export function DatabaseView() {
         ) : selected ? (
           <ConnectionBrowser connection={selected} />
         ) : (
-          <EmptyState onAdd={() => setDialog({ mode: "add" })} />
+          <EmptyState onAdd={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
         )}
       </div>
 
@@ -220,7 +235,7 @@ function ConnectionBrowser({ connection }: { connection: string }) {
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, onAddWithAi }: { onAdd: () => void; onAddWithAi: () => void }) {
   return (
     <div className="flex h-full items-center justify-center p-8 text-center">
       <div className="max-w-sm">
@@ -230,10 +245,16 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
           Add a read-only Postgres, MySQL, or SQLite connection to browse tables and sample rows.
           NoMoreIDE can auto-detect connection strings from your services' <code>.env</code> files.
         </p>
-        <Button className="mt-4" size="sm" onClick={onAdd} type="button">
-          <Plus />
-          Add connection
-        </Button>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Button size="sm" onClick={onAdd} type="button">
+            <Plus />
+            Add connection
+          </Button>
+          <Button size="sm" variant="outline" onClick={onAddWithAi} type="button">
+            <Sparkles />
+            Add with AI
+          </Button>
+        </div>
       </div>
     </div>
   );

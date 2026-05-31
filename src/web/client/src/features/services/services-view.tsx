@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bot,
   Box,
   ChevronLeft,
   ChevronRight,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import {
@@ -23,7 +23,6 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AgentContextPanel } from "./agent-context-panel";
 import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
 import { HealthSummary } from "./health-summary";
@@ -32,15 +31,18 @@ import { LifecycleActions } from "./service-actions";
 import { MultiLogView } from "./multi-log-view";
 import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
+import { OnboardDialog } from "../onboard/onboard-dialog";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
-import { SETUP_SERVICE_PROMPT } from "../agent/prompts";
+import {
+  buildGroupServicesPrompt,
+  buildServiceDebugPrompt,
+  SETUP_SERVICE_PROMPT,
+} from "../agent/prompts";
 import {
   isServiceOn,
-  PortEditor,
   SERVICE_DRAG_TYPE,
   ServiceGroupSection,
-  ServiceKindBadge,
   ServiceRow,
   serviceUrl,
   StateBadge,
@@ -61,10 +63,10 @@ export function ServicesView({
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
+  const [onboardOpen, setOnboardOpen] = useState(false);
   const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [ungroupedDragOver, setUngroupedDragOver] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
@@ -275,11 +277,21 @@ export function ServicesView({
                   <AddMenu
                     onCreateGroup={() => setServiceComposer("group")}
                     onCreateService={() => setServiceComposer("service")}
-                    onOnboardRepo={startOnboard}
+                    onOnboardRepo={() => setOnboardOpen(true)}
+                    onOnboardWithAi={startOnboard}
+                    canGroupWithAi={ungroupedServices.length > 1}
                     onCreateWithAi={() =>
                       sendToAgent({
                         prompt: SETUP_SERVICE_PROMPT,
                         source: { type: "service-setup", label: "Add a service" },
+                        label: "Help me add a new service, one step at a time.",
+                      })
+                    }
+                    onGroupWithAi={() =>
+                      sendToAgent({
+                        prompt: buildGroupServicesPrompt(ungroupedServices),
+                        source: { type: "group-services", label: "Group services" },
+                        label: "Propose how to group my ungrouped services.",
                       })
                     }
                   />
@@ -369,9 +381,7 @@ export function ServicesView({
                     {selectedServiceDef.name}
                   </h2>
                   <StateBadge state={selectedStatus?.state ?? "stopped"} />
-                  <ServiceKindBadge kind={selectedServiceDef.kind} />
-                  <div className="ml-auto flex flex-wrap items-center gap-1.5">
-                    <PortEditor service={selectedServiceDef} onRefresh={onRefresh} />
+                  <div className="ml-auto flex shrink-0 items-center gap-1.5">
                     {(() => {
                       const openUrl =
                         selectedStatus?.url ??
@@ -391,17 +401,26 @@ export function ServicesView({
                         </Tooltip>
                       ) : null;
                     })()}
-                    {selectedHealth?.agentContext ? (
-                      <Tooltip label="Copy debug context for an AI agent">
+                    {selectedHealth?.agentContext && selectedServiceDef ? (
+                      <Tooltip label="Debug this service with AI">
                         <Button
-                          aria-label="Copy agent debug context"
+                          aria-label="Debug this service with AI"
                           className="size-7"
-                          onClick={() => setContextOpen(true)}
+                          onClick={() =>
+                            sendToAgent({
+                              prompt: buildServiceDebugPrompt({
+                                service: selectedServiceDef.name,
+                                context: selectedHealth.agentContext,
+                              }),
+                              source: { type: "service-debug", label: selectedServiceDef.name },
+                              label: `Debug \`${selectedServiceDef.name}\` with its current context.`,
+                            })
+                          }
                           size="icon"
                           type="button"
                           variant="outline"
                         >
-                          <Bot />
+                          <AgentMark className="size-3.5" />
                         </Button>
                       </Tooltip>
                     ) : null}
@@ -412,37 +431,26 @@ export function ServicesView({
                       targetLabel={selectedServiceDef.name}
                       onRefresh={onRefresh}
                     />
-                    <Tooltip label="Edit service">
-                      <Button
-                        aria-label={`Edit ${selectedServiceDef.name}`}
-                        className="size-7"
-                        onClick={() => setEditOpen(true)}
-                        size="icon"
-                        type="button"
-                        variant="outline"
-                      >
-                        <Pencil />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip
-                      label={
-                        isServiceOn(selectedStatus?.state)
-                          ? "Stop before deleting"
-                          : "Delete service"
-                      }
-                    >
-                      <Button
-                        aria-label={`Delete ${selectedServiceDef.name}`}
-                        className="size-7"
-                        disabled={isServiceOn(selectedStatus?.state)}
-                        onClick={() => void deleteSelected()}
-                        size="icon"
-                        type="button"
-                        variant="outline"
-                      >
-                        <Trash2 className="text-destructive" />
-                      </Button>
-                    </Tooltip>
+                    <OverflowMenu
+                      className="size-7 border border-border bg-background opacity-100 hover:border-foreground/30"
+                      items={[
+                        {
+                          icon: <Pencil className="size-3.5" />,
+                          label: "Edit service",
+                          onSelect: () => setEditOpen(true),
+                        },
+                        ...(isServiceOn(selectedStatus?.state)
+                          ? []
+                          : [
+                              {
+                                icon: <Trash2 className="size-3.5 text-destructive" />,
+                                label: "Delete service",
+                                onSelect: () => void deleteSelected(),
+                              },
+                            ]),
+                      ]}
+                      label={`More actions for ${selectedServiceDef.name}`}
+                    />
                     <Tooltip
                       label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
                       side="left"
@@ -498,17 +506,6 @@ export function ServicesView({
           </div>
         ) : null}
       </div>
-      {contextOpen && selectedServiceDef && selectedHealth?.agentContext ? (
-        <ComposerDialog
-          icon={<Bot />}
-          onClose={() => setContextOpen(false)}
-          title={`Agent context — ${selectedServiceDef.name}`}
-        >
-          <div className="p-4">
-            <AgentContextPanel context={selectedHealth.agentContext} />
-          </div>
-        </ComposerDialog>
-      ) : null}
       {editOpen && selectedServiceDef ? (
         <ComposerDialog
           icon={<Pencil />}
@@ -546,6 +543,9 @@ export function ServicesView({
           )}
         </ComposerDialog>
       ) : null}
+      {onboardOpen ? (
+        <OnboardDialog onClose={() => setOnboardOpen(false)} onRefresh={onRefresh} />
+      ) : null}
       {multiLogOpen ? (
         <MultiLogView
           initialService={selectedService || undefined}
@@ -562,12 +562,19 @@ function AddMenu({
   onCreateService,
   onCreateGroup,
   onCreateWithAi,
+  onGroupWithAi,
+  canGroupWithAi,
   onOnboardRepo,
+  onOnboardWithAi,
 }: {
   onCreateService: () => void;
   onCreateGroup: () => void;
   onCreateWithAi: () => void;
+  onGroupWithAi: () => void;
+  /** Only worth offering the AI grouping cut when 2+ services are ungrouped. */
+  canGroupWithAi: boolean;
   onOnboardRepo: () => void;
+  onOnboardWithAi: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -628,24 +635,55 @@ function AddMenu({
                 AI
               </button>
             </div>
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
-              onClick={() => choose(onCreateGroup)}
-              role="menuitem"
-              type="button"
-            >
-              <Box />
-              Create Group
-            </button>
-            <button
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
-              onClick={() => choose(onOnboardRepo)}
-              role="menuitem"
-              type="button"
-            >
-              <GitBranch />
-              Add from GitHub
-            </button>
+            {/* Create Group: the plain form, plus an AI cut that asks the agent
+                to propose groupings for the ungrouped services and group them
+                on confirmation. The cut only appears when there's enough to group. */}
+            <div className="group flex items-stretch">
+              <button
+                className="flex flex-1 items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+                onClick={() => choose(onCreateGroup)}
+                role="menuitem"
+                type="button"
+              >
+                <Box />
+                Create Group
+              </button>
+              {canGroupWithAi ? (
+                <button
+                  className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
+                  onClick={() => choose(onGroupWithAi)}
+                  role="menuitem"
+                  title="Group with AI — the agent proposes groupings for your ungrouped services"
+                  type="button"
+                >
+                  <AgentMark className="size-3.5 shrink-0" />
+                  AI
+                </button>
+              ) : null}
+            </div>
+            {/* Add from GitHub: the structured wizard, plus an AI cut that hands
+                the repo straight to the agent dock (the AI-native path). */}
+            <div className="group flex items-stretch">
+              <button
+                className="flex flex-1 items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+                onClick={() => choose(onOnboardRepo)}
+                role="menuitem"
+                type="button"
+              >
+                <GitBranch />
+                Add from GitHub
+              </button>
+              <button
+                className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
+                onClick={() => choose(onOnboardWithAi)}
+                role="menuitem"
+                title="Onboard with AI — the agent clones, detects and runs it for you"
+                type="button"
+              >
+                <AgentMark className="size-3.5 shrink-0" />
+                AI
+              </button>
+            </div>
           </div>
         </>
       ) : null}

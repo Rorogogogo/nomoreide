@@ -22,4 +22,23 @@ describe("FileTree", () => {
 
     expect(markup).toContain("agent-routes.ts");
   });
+
+  test("renders expand and collapse all controls beside the branch badge", () => {
+    const markup = renderToStaticMarkup(
+      <FileTree
+        branch="main"
+        onSelectFile={() => undefined}
+        paths={["src/web/routes/agent-routes.ts"]}
+        selectedFile="src/web/routes/agent-routes.ts"
+        status={[]}
+        title="Changes"
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Expand all folders"');
+    expect(markup).toContain('aria-label="Collapse all folders"');
+    expect(markup.indexOf('aria-label="Collapse all folders"')).toBeLessThan(
+      markup.indexOf(">main</span>"),
+    );
+  });
 });

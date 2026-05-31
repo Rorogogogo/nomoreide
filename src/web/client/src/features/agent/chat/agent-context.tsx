@@ -24,6 +24,12 @@ interface SendToAgentOptions {
   source?: AgentSource;
   /** "send" auto-sends (queuing if the agent is busy); "draft" prefills and waits. */
   mode?: SendMode;
+  /**
+   * Short text to show in the user bubble instead of the full `prompt`. Use for
+   * long preset prompts so the chat stays readable — the full prompt is still
+   * what gets sent to the agent. Ignored in "draft" mode (the user edits it).
+   */
+  label?: string;
 }
 
 interface AgentContextValue extends ReturnType<typeof useAgentChat> {
@@ -62,7 +68,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [focusNonce, setFocusNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   // Actions fired while a turn is streaming wait here and flush in order.
-  const queueRef = useRef<string[]>([]);
+  const queueRef = useRef<Array<{ prompt: string; label?: string }>>([]);
 
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const clearSource = useCallback(() => setActiveSource(null), []);
@@ -75,7 +81,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     (path: string) => {
       setOpen(true);
       setDraft((current) =>
-        current.trim() ? `${current.replace(/\s*$/, "")} ${path} ` : `${path} `,
+        current.trim() ? `${current.replace(/\s*$/, "")}\n${path}` : path,
       );
       bumpFocus();
     },
@@ -86,11 +92,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (streaming) return;
     const next = queueRef.current.shift();
-    if (next) void send(next);
+    if (next) void send(next.prompt, { label: next.label });
   }, [streaming, send]);
 
   const sendToAgent = useCallback(
-    ({ prompt, source, mode = "send" }: SendToAgentOptions) => {
+    ({ prompt, source, mode = "send", label }: SendToAgentOptions) => {
       setOpen(true);
       setActiveSource(source ?? null);
       if (mode === "draft") {
@@ -99,10 +105,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         return { queued: false };
       }
       if (streaming) {
-        queueRef.current.push(prompt);
+        queueRef.current.push({ prompt, label });
         return { queued: true };
       }
-      void send(prompt);
+      void send(prompt, { label });
       return { queued: false };
     },
     [streaming, send, bumpFocus],

@@ -3,6 +3,9 @@ import { ArrowDown, ArrowUp, FolderGit2 } from "lucide-react";
 import { getGitDiff, getGitFiles, type DashboardData } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { AgentMark } from "../agent/ai-spark";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { absolutePath } from "../agent/chat/drag-to-agent";
 import { DiffViewer, diffStats } from "./diff-viewer";
 import { ChangedFilesList } from "./changed-files-list";
 import { FileTree } from "./file-tree";
@@ -19,6 +22,7 @@ export function GitReviewView({
 }: {
   data: DashboardData;
 }) {
+  const { insertPath } = useAgentDock();
   const [tab, setTab] = useState<GitTab>("changes");
   const [mode, setMode] = useState<ChangesMode>("changes");
   const [selectedFile, setSelectedFile] = useState(data.git.status?.files[0]?.path ?? "");
@@ -189,6 +193,11 @@ export function GitReviewView({
     setTab("all");
   }
 
+  function sendFilePathToAgentInput(path: string) {
+    if (!path) return;
+    insertPath(absolutePath(data.git.cwd, path));
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/95 px-3 py-1">
@@ -227,141 +236,154 @@ export function GitReviewView({
         {tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (
-          <LargestFilesView onOpenFile={openFileInViewer} />
+          <LargestFilesView onOpenFile={openFileInViewer} root={data.git.cwd} />
         ) : tab === "all" ? (
-    <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col overflow-hidden">
-        {allFilesError ? (
-          <Alert variant="destructive" className="m-3">
-            {allFilesError}
-          </Alert>
-        ) : (
-          <FileTree
-            branch={data.git.status?.branch || undefined}
-            onSelectFile={setSelectedTreeFile}
-            paths={allFiles}
-            root={data.git.cwd}
-            selectedFile={selectedTreeFile}
-            status={files}
-          />
-        )}
-      </aside>
-      <FileViewer
-        isModified={modifiedPaths.has(selectedTreeFile)}
-        onFileSaved={handleTreeFileSaved}
-        onViewDiff={viewDiffForTreeFile}
-        path={selectedTreeFile}
-      />
-    </div>
-        ) : (
-    <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col overflow-hidden">
-        <div className="flex shrink-0 gap-0.5 border-b border-border bg-card/95 p-1">
-          <button
-            aria-label="Show changed files as a list"
-            className={modeButtonClass(mode === "changes")}
-            onClick={() => setMode("changes")}
-            type="button"
-          >
-            Changes
-          </button>
-          <button
-            aria-label="Show changed files as a tree"
-            className={modeButtonClass(mode === "tree")}
-            onClick={() => setMode("tree")}
-            type="button"
-          >
-            Tree
-          </button>
-        </div>
-        {mode === "changes" ? (
-          <ChangedFilesList
-            branch={data.git.status?.branch || undefined}
-            error={data.git.error}
-            files={files}
-            selectedFile={selectedFile}
-            onSelectFile={selectFile}
-            root={data.git.cwd}
-          />
-        ) : (
-          <FileTree
-            branch={data.git.status?.branch || undefined}
-            defaultExpandAll
-            emptyMessage={data.git.error ?? "No changed files."}
-            onSelectFile={selectFile}
-            paths={filePaths}
-            root={data.git.cwd}
-            selectedFile={selectedFile}
-            status={files}
-            title="Changes"
-          />
-        )}
-      </aside>
-
-      <section className="flex min-h-0 min-w-0 flex-col border-l border-border bg-card">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
-          <div className="min-w-0">
-            <h2 className="truncate text-[13px] font-semibold tracking-tight">
-              {selectedFile || "Diff"}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-              <span>Long rows wrap inside the editor pane.</span>
-              {stats.additions || stats.deletions ? (
-                <span className="flex items-center gap-1 font-mono">
-                  <span className="text-emerald-700">+{stats.additions}</span>
-                  <span className="text-red-700">-{stats.deletions}</span>
-                </span>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {navigationHint ? (
-              <span className="max-w-72 truncate rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
-                {navigationHint}
-              </span>
-            ) : null}
-            <Button
-              disabled={!selectedFile || !hasPreviousChange}
-              onClick={goToPreviousChange}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <ArrowUp />
-              Previous
-            </Button>
-            <Button
-              disabled={!selectedFile || !hasNextChange}
-              onClick={goToNextChange}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <ArrowDown />
-              Next
-            </Button>
-          </div>
-        </div>
-        <div className="relative min-h-0 min-w-0 flex-1">
-          {diffError ? (
-            <div className="p-4">
-              <Alert variant="destructive">{diffError}</Alert>
-            </div>
-          ) : selectedFile ? (
-            <DiffViewer
-              activeHunkIndex={activeHunkIndex}
-              diff={diff || "No unstaged diff for this file."}
+          <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <aside className="flex min-h-0 flex-col overflow-hidden">
+              {allFilesError ? (
+                <Alert variant="destructive" className="m-3">
+                  {allFilesError}
+                </Alert>
+              ) : (
+                <FileTree
+                  branch={data.git.status?.branch || undefined}
+                  onSelectFile={setSelectedTreeFile}
+                  paths={allFiles}
+                  root={data.git.cwd}
+                  selectedFile={selectedTreeFile}
+                  status={files}
+                />
+              )}
+            </aside>
+            <FileViewer
+              isModified={modifiedPaths.has(selectedTreeFile)}
+              onFileSaved={handleTreeFileSaved}
+              onSendToAi={() => sendFilePathToAgentInput(selectedTreeFile)}
+              onViewDiff={viewDiffForTreeFile}
+              path={selectedTreeFile}
             />
-          ) : (
-            <div className="p-4">
-              <Alert variant="muted" className="border-dashed p-12 text-center">
-                Select a changed file to inspect its diff.
-              </Alert>
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
+          </div>
+        ) : (
+          <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <aside className="flex min-h-0 flex-col overflow-hidden">
+              <div className="flex shrink-0 gap-0.5 border-b border-border bg-card/95 p-1">
+                <button
+                  aria-label="Show changed files as a list"
+                  className={modeButtonClass(mode === "changes")}
+                  onClick={() => setMode("changes")}
+                  type="button"
+                >
+                  Changes
+                </button>
+                <button
+                  aria-label="Show changed files as a tree"
+                  className={modeButtonClass(mode === "tree")}
+                  onClick={() => setMode("tree")}
+                  type="button"
+                >
+                  Tree
+                </button>
+              </div>
+              {mode === "changes" ? (
+                <ChangedFilesList
+                  branch={data.git.status?.branch || undefined}
+                  error={data.git.error}
+                  files={files}
+                  selectedFile={selectedFile}
+                  onSelectFile={selectFile}
+                  root={data.git.cwd}
+                />
+              ) : (
+                <FileTree
+                  branch={data.git.status?.branch || undefined}
+                  defaultExpandAll
+                  emptyMessage={data.git.error ?? "No changed files."}
+                  onSelectFile={selectFile}
+                  paths={filePaths}
+                  root={data.git.cwd}
+                  selectedFile={selectedFile}
+                  status={files}
+                  title="Changes"
+                />
+              )}
+            </aside>
+
+            <section className="flex min-h-0 min-w-0 flex-col border-l border-border bg-card">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
+                <div className="min-w-0">
+                  <h2 className="truncate text-[13px] font-semibold tracking-tight">
+                    {selectedFile || "Diff"}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>Long rows wrap inside the editor pane.</span>
+                    {stats.additions || stats.deletions ? (
+                      <span className="flex items-center gap-1 font-mono">
+                        <span className="text-emerald-700">+{stats.additions}</span>
+                        <span className="text-red-700">-{stats.deletions}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {navigationHint ? (
+                    <span className="max-w-72 truncate rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+                      {navigationHint}
+                    </span>
+                  ) : null}
+                  <Button
+                    disabled={!selectedFile || !hasPreviousChange}
+                    onClick={goToPreviousChange}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ArrowUp />
+                    Previous
+                  </Button>
+                  <Button
+                    disabled={!selectedFile || !hasNextChange}
+                    onClick={goToNextChange}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ArrowDown />
+                    Next
+                  </Button>
+                  <Button
+                    aria-label="Send selected file to AI input"
+                    className="size-8"
+                    disabled={!selectedFile}
+                    onClick={() => sendFilePathToAgentInput(selectedFile)}
+                    size="icon"
+                    title="Send selected file path to AI input"
+                    type="button"
+                    variant="outline"
+                  >
+                    <AgentMark className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="relative min-h-0 min-w-0 flex-1">
+                {diffError ? (
+                  <div className="p-4">
+                    <Alert variant="destructive">{diffError}</Alert>
+                  </div>
+                ) : selectedFile ? (
+                  <DiffViewer
+                    activeHunkIndex={activeHunkIndex}
+                    diff={diff || "No unstaged diff for this file."}
+                  />
+                ) : (
+                  <div className="p-4">
+                    <Alert variant="muted" className="border-dashed p-12 text-center">
+                      Select a changed file to inspect its diff.
+                    </Alert>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         )}
       </div>
     </div>

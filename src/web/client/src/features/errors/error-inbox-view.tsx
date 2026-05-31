@@ -96,7 +96,7 @@ export function ErrorInboxView() {
         </ul>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 min-w-0 flex-1">
         {error ? (
           <div className="p-4">
             <Alert variant="muted" className="border-destructive/40 text-destructive">

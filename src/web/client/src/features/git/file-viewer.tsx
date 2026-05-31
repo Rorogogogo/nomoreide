@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getGitFile, type GitFileContent, updateGitFile } from "@/lib/api";
+import { AgentMark } from "../agent/ai-spark";
 import { MarkdownPreview } from "./visualizers/markdown-preview";
 import { YamlTree } from "./visualizers/yaml-tree";
 import "./file-viewer-theme.css";
@@ -106,13 +107,13 @@ function NumberedContent({ content, path }: { content: string; path: string }) {
       {lines.map((line, index) => (
         <div className="flex" key={index}>
           <span
-            className="shrink-0 select-none border-r border-zinc-200 bg-zinc-100 px-2 text-right text-zinc-400"
+            className="shrink-0 select-none border-r border-zinc-200 bg-zinc-100 px-2 text-right text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
             style={{ minWidth: `calc(${gutterWidth} + 1rem)` }}
           >
             {index + 1}
           </span>
           <span
-            className="hljs whitespace-pre px-3 text-zinc-800"
+            className="hljs whitespace-pre px-3 text-zinc-800 dark:text-zinc-100"
             dangerouslySetInnerHTML={{ __html: line || " " }}
           />
         </div>
@@ -126,11 +127,13 @@ export function FileViewer({
   isModified,
   onViewDiff,
   onFileSaved,
+  onSendToAi,
 }: {
   path: string;
   isModified: boolean;
   onViewDiff: () => void;
   onFileSaved?: (path: string) => void;
+  onSendToAi?: () => void;
 }) {
   const [file, setFile] = useState<GitFileContent | null>(null);
   const [draft, setDraft] = useState("");
@@ -262,6 +265,20 @@ export function FileViewer({
               View diff
             </Button>
           ) : null}
+          {onSendToAi ? (
+            <Button
+              aria-label="Send file to AI input"
+              className="size-8"
+              disabled={!path}
+              onClick={onSendToAi}
+              size="icon"
+              title="Send file path to AI input"
+              type="button"
+              variant="outline"
+            >
+              <AgentMark className="size-4" />
+            </Button>
+          ) : null}
           {editing ? (
             <>
               <Button
@@ -300,7 +317,7 @@ export function FileViewer({
           ) : null}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-zinc-50">
+      <div className="min-h-0 flex-1 overflow-auto bg-zinc-50 dark:bg-zinc-950">
         {error ? (
           <div className="p-4">
             <Alert variant="destructive">{error}</Alert>
