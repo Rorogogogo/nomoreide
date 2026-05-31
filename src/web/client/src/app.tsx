@@ -381,14 +381,19 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               {data && page === "git" ? (
                 <RepositorySelector data={data} onRefresh={refresh} />
               ) : null}
-              <Button asChild size="sm" title="Open NoMoreIDE documentation" variant="outline">
+              <Button
+                asChild
+                aria-label="Open NoMoreIDE documentation"
+                size="icon"
+                title="Open NoMoreIDE documentation"
+                variant="outline"
+              >
                 <a
                   href="https://www.nomoreide.com/docs"
                   rel="noreferrer"
                   target="_blank"
                 >
                   <BookOpen />
-                  Docs
                 </a>
               </Button>
               <Button

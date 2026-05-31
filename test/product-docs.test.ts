@@ -12,8 +12,11 @@ const shellRoutesSource = readFileSync(
 describe("product docs button", () => {
   test("adds a simple docs button to the local dashboard header", () => {
     expect(appSource).toContain('href="https://www.nomoreide.com/docs"');
+    expect(appSource).toContain('aria-label="Open NoMoreIDE documentation"');
     expect(appSource).toContain('title="Open NoMoreIDE documentation"');
+    expect(appSource).toContain('size="icon"');
     expect(appSource).toContain("BookOpen");
+    expect(appSource).not.toContain(">Docs<");
   });
 
   test("does not add a dedicated product docs page or sidebar route", () => {
