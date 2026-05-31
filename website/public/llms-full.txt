@@ -1,0 +1,306 @@
+# NoMoreIDE Full AI Documentation
+
+NoMoreIDE is an AI-native local development workbench for services, logs, Git review, database inspection, terminal access, and MCP workflows. It runs locally and gives humans and AI coding agents one shared control surface.
+
+Human docs: https://www.nomoreide.com/docs
+AI agent guide: https://www.nomoreide.com/docs/ai-guide.md
+GitHub: https://github.com/Rorogogogo/nomoreide
+npm: https://www.npmjs.com/package/nomoreide
+
+## Quick Start
+
+Run directly:
+
+```bash
+npx -y nomoreide
+```
+
+Install globally:
+
+```bash
+npm install -g nomoreide
+```
+
+Build from source:
+
+```bash
+git clone https://github.com/Rorogogogo/nomoreide.git
+cd nomoreide
+npm install
+npm run build
+```
+
+## MCP Setup
+
+Claude Code:
+
+```bash
+claude mcp add --transport stdio nomoreide -- npx -y nomoreide
+```
+
+Codex CLI:
+
+```bash
+codex mcp add nomoreide -- npx -y nomoreide
+```
+
+Gemini CLI:
+
+```json
+{
+  "mcpServers": {
+    "nomoreide": {
+      "command": "npx",
+      "args": ["-y", "nomoreide"]
+    }
+  }
+}
+```
+
+Universal prompt:
+
+```text
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.
+```
+
+Verify with `/mcp`.
+
+## Interfaces
+
+Default MCP server:
+
+```bash
+nomoreide
+```
+
+Terminal UI:
+
+```bash
+nomoreide tui
+```
+
+Web dashboard:
+
+```bash
+nomoreide web
+```
+
+Default dashboard URL:
+
+```text
+http://127.0.0.1:4317
+```
+
+## CLI Reference
+
+Important commands:
+
+```bash
+nomoreide setup
+nomoreide web
+nomoreide tui
+nomoreide list
+nomoreide add service backend --command "npm run dev" --cwd /absolute/path/to/backend --port 3001
+nomoreide add bundle full-stack db backend frontend
+nomoreide start backend
+nomoreide stop backend
+nomoreide restart backend
+nomoreide logs backend
+```
+
+Git commands:
+
+```bash
+nomoreide git status --cwd /path/to/repo
+nomoreide git diff --cwd /path/to/repo
+nomoreide git stage --cwd /path/to/repo src/index.ts
+nomoreide git unstage --cwd /path/to/repo src/index.ts
+nomoreide git commit --cwd /path/to/repo --message "feat: add dashboard"
+nomoreide git log --cwd /path/to/repo
+nomoreide git branch --cwd /path/to/repo
+nomoreide git fetch --cwd /path/to/repo
+nomoreide git switch --cwd /path/to/repo feature/my-work
+nomoreide git create-branch --cwd /path/to/repo feature/new-work
+nomoreide git add-repo app --path /path/to/repo
+nomoreide git select-repo app
+```
+
+## Web Dashboard Guide
+
+Services: register, start, stop, restart, inspect process state, inspect ports, open URLs, and manage bundles.
+
+Logs: read recent stdout and stderr, inspect service context, and use logs for debugging.
+
+Git Review: select repositories, inspect status and diffs, stage explicit files, unstage files, and commit staged changes.
+
+Error Inbox: review deduplicated incidents and generate debugging prompts.
+
+Database: list registered connections, list tables, sample rows, and inspect schema metadata.
+
+Terminal: work close to the local dashboard context.
+
+Agent dock: pass structured UI context to the connected AI agent.
+
+## MCP Tool Reference
+
+Service tools:
+
+```text
+nomoreide_list_services
+nomoreide_register_service
+nomoreide_start_service
+nomoreide_stop_service
+nomoreide_restart_service
+nomoreide_read_logs
+nomoreide_register_bundle
+nomoreide_start_bundle
+nomoreide_stop_bundle
+nomoreide_status
+nomoreide_service_context
+nomoreide_service_health
+nomoreide_timeline
+```
+
+Repo onboarding:
+
+```text
+nomoreide_onboard_repo
+```
+
+Git tools:
+
+```text
+nomoreide_git_status
+nomoreide_git_branches
+nomoreide_git_switch_branch
+nomoreide_git_create_branch
+nomoreide_git_fetch
+nomoreide_git_diff
+nomoreide_git_staged_diff
+nomoreide_git_log
+nomoreide_git_stage
+nomoreide_git_unstage
+nomoreide_git_commit
+nomoreide_git_register_repository
+nomoreide_git_select_repository
+```
+
+Error tools:
+
+```text
+nomoreide_list_errors
+nomoreide_error_prompt
+```
+
+Database tools:
+
+```text
+nomoreide_list_databases
+nomoreide_db_tables
+nomoreide_db_sample
+```
+
+Agent and UI tools:
+
+```text
+nomoreide_open_ui
+nomoreide_close_ui
+```
+
+## Configuration Model
+
+Config path:
+
+```text
+~/.config/nomoreide/config.json
+```
+
+Config sections:
+
+- services: local, Docker Compose, or SSH service definitions.
+- bundles: ordered groups of service names.
+- gitRepositories: named repository paths.
+- selectedGitRepository: active repository for the UI.
+- databases: Postgres, MySQL, or SQLite connections.
+- logSources: file, SSH, command, journald, or Docker log readers.
+
+## Safety Model
+
+NoMoreIDE is designed for safe AI-assisted local development:
+
+- It does not scan or enumerate the whole filesystem.
+- It only works from registered services, repositories, databases, and log sources.
+- It does not kill external processes that it did not start.
+- It reports port conflicts instead of terminating the occupying process.
+- Git tools omit hard reset, clean, force push, and branch deletion.
+- Git staging requires explicit file paths.
+- Database MCP tools are read-only browsing and sampling tools.
+- SSH services rely on the user's local SSH config and agent.
+- Managed service logs are scoped to `.nomoreide/logs/`.
+
+## AI Agent Guide
+
+Recommended session prompt:
+
+```text
+Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git work, inspect status and diffs before staging or committing. Prefer NoMoreIDE tools over ad hoc shell commands when a matching tool exists.
+```
+
+Recommended workflow:
+
+1. Call `nomoreide_list_services`.
+2. Call `nomoreide_status`.
+3. Use `nomoreide_open_ui` if the human wants the dashboard.
+4. For service debugging, call `nomoreide_service_health`, `nomoreide_read_logs`, and `nomoreide_timeline`.
+5. For Git work, call status and diffs before staging or committing.
+6. For database inspection, list databases, list tables, then sample a selected table.
+
+## Troubleshooting
+
+MCP server does not show up: re-run setup, restart the agent, verify with `/mcp`, and confirm `npx -y nomoreide` works.
+
+Node or npx problems: use Node.js 20 or newer, check `node --version`, or install globally with `npm install -g nomoreide`.
+
+Dashboard port conflict: default port is `4317`; start with `nomoreide web --port=4320`.
+
+Service will not start: check absolute `cwd`, command validity, service health, logs, and timeline.
+
+Logs are empty: confirm the service was started by NoMoreIDE and writes to stdout or stderr.
+
+Git repository is not registered: register an absolute Git worktree path.
+
+Database connection fails: verify the URL, network reachability, and credentials.
+
+## Architecture
+
+Core layer: ConfigStore, ProcessManager, LogStore, GitManager, ServiceHealth, TimelineStore, DbPeek, and ErrorInbox.
+
+MCP server: FastMCP stdio server that registers domain tool groups from `src/mcp/tools/`.
+
+Web server: local HTTP server and route registry under `src/web/routes/`.
+
+React dashboard: Vite, React, Tailwind CSS, feature modules under `src/web/client/src/features/`.
+
+CLI and TUI: `src/index.ts` dispatches to MCP, TUI, web, service, and Git commands.
+
+Data flow:
+
+```text
+AI agent -> MCP stdio -> NoMoreIDE tools -> core managers -> managed services, logs, Git, database metadata
+Human -> CLI/TUI/Web dashboard -> same core managers
+```
+
+## Development
+
+```bash
+npm install
+npm run dev
+npm run dev:web
+npm test
+npm run build
+npm --prefix website run build
+```
+
+## Licensing
+
+NoMoreIDE is AGPL-3.0 licensed with a commercial license available. See `LICENSE` and `COMMERCIAL.md`.

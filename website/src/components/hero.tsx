@@ -132,6 +132,9 @@ export function Hero() {
             <Button asChild size="lg" variant="outline">
               <a href="#mcp-setup">Set up MCP</a>
             </Button>
+            <Button asChild size="lg" variant="outline">
+              <a href="/docs">Read the docs</a>
+            </Button>
             <Button asChild size="lg" variant="ghost">
               <a
                 className="gap-2"

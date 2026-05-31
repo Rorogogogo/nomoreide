@@ -7,6 +7,9 @@ export function Footer() {
           AGPL-3.0, commercial license available
         </p>
         <nav className="flex items-center gap-6">
+          <a href="/docs" className="transition hover:text-foreground">
+            Docs
+          </a>
           <a
             href="https://github.com/Rorogogogo/nomoreide"
             className="transition hover:text-foreground"
