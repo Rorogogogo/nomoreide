@@ -33,6 +33,7 @@ describe("ConfigStore", () => {
       gitRepositories: [],
       databases: [],
       logSources: [],
+      githubTokens: [],
     });
   });
 
@@ -271,6 +272,37 @@ describe("ConfigStore", () => {
 
     expect(config.gitRepositories).toEqual([]);
     expect(config.selectedGitRepository).toBeUndefined();
+  });
+
+  test("stores, retrieves, and removes a GitHub token", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setGithubToken("github.com", "ghp_abc123");
+    const config = await store.load();
+    expect(store.getGithubToken(config)).toBe("ghp_abc123");
+    expect(store.getGithubToken(config, "github.com")).toBe("ghp_abc123");
+    expect(store.getGithubToken(config, "github.enterprise.com")).toBeUndefined();
+  });
+
+  test("replaces an existing GitHub token for the same host", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setGithubToken("github.com", "ghp_first");
+    await store.setGithubToken("github.com", "ghp_second");
+    const config = await store.load();
+    expect(config.githubTokens).toHaveLength(1);
+    expect(store.getGithubToken(config)).toBe("ghp_second");
+  });
+
+  test("removes a GitHub token without affecting other hosts", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setGithubToken("github.com", "ghp_public");
+    await store.setGithubToken("github.enterprise.com", "ghp_enterprise");
+    await store.removeGithubToken("github.com");
+    const config = await store.load();
+    expect(store.getGithubToken(config, "github.com")).toBeUndefined();
+    expect(store.getGithubToken(config, "github.enterprise.com")).toBe("ghp_enterprise");
   });
 });
 

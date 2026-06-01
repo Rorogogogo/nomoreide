@@ -409,6 +409,15 @@ export class GitManager {
     return this.git(["fetch", "--prune"]);
   }
 
+  async remoteUrl(remote = "origin"): Promise<string | null> {
+    try {
+      const url = await this.git(["remote", "get-url", remote]);
+      return url.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
   async stage(paths: string[]): Promise<string> {
     requirePaths(paths);
     return this.git(["add", "--", ...paths]);

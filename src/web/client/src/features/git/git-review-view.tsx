@@ -13,8 +13,9 @@ import { FileViewer } from "./file-viewer";
 import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { LargestFilesView } from "./largest-files-view";
+import { GitHubView } from "../github/github-view";
 
-type GitTab = "changes" | "all" | "graph" | "largest";
+type GitTab = "changes" | "all" | "graph" | "largest" | "github";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
@@ -230,10 +231,19 @@ export function GitReviewView({
         >
           Largest files
         </button>
+        <button
+          type="button"
+          className={tabButtonClass(tab === "github")}
+          onClick={() => setTab("github")}
+        >
+          GitHub
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
-        {tab === "graph" ? (
+        {tab === "github" ? (
+          <GitHubView />
+        ) : tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (
           <LargestFilesView onOpenFile={openFileInViewer} root={data.git.cwd} />

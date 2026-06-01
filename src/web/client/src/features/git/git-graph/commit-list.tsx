@@ -7,6 +7,7 @@ import { AiSpark } from "../../agent/ai-spark";
 import { useAgentDock } from "../../agent/chat/agent-context";
 import { buildCommitPrompt } from "../../agent/prompts";
 import { GitGraphSvgRow } from "../git-graph-svg";
+import { CiStatusBadge } from "../../github/ci-status-badge";
 
 const ROW_HEIGHT = 28;
 
@@ -106,8 +107,9 @@ export function CommitList({
                     isMerge={commit.parents.length > 1}
                     height={ROW_HEIGHT}
                   />
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
                     {commit.hash.slice(0, 7)}
+                    <CiStatusBadge sha={commit.hash} />
                   </span>
                   <span className="flex min-w-0 flex-1 items-center gap-1.5">
                     {commit.refs.map((ref) => (

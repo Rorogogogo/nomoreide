@@ -7,6 +7,7 @@ import { z } from "zod";
 import type {
   BundleDefinition,
   DatabaseConnection,
+  GitHubToken,
   LogSourceDefinition,
   NoMoreIdeConfig,
   GitRepositoryDefinition,
@@ -108,6 +109,11 @@ const logSourceSchema = z
     }
   });
 
+const githubTokenSchema = z.object({
+  host: z.string().min(1),
+  token: z.string().min(1),
+});
+
 const configSchema = z.object({
   version: z.literal(1),
   services: z.array(serviceSchema),
@@ -116,6 +122,7 @@ const configSchema = z.object({
   selectedGitRepository: z.string().min(1).optional(),
   databases: z.array(databaseSchema).default([]),
   logSources: z.array(logSourceSchema).default([]),
+  githubTokens: z.array(githubTokenSchema).default([]),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -125,6 +132,7 @@ const defaultConfig: NoMoreIdeConfig = {
   gitRepositories: [],
   databases: [],
   logSources: [],
+  githubTokens: [],
 };
 
 export function defaultGlobalConfigPath(): string {
@@ -305,6 +313,28 @@ export class ConfigStore {
     config.logSources = config.logSources.filter((item) => item.name !== name);
     await this.save(config);
     return config;
+  }
+
+  async setGithubToken(host: string, token: string): Promise<NoMoreIdeConfig> {
+    const parsed = githubTokenSchema.parse({ host: host.trim(), token: token.trim() });
+    const config = await this.load();
+    config.githubTokens = [
+      ...config.githubTokens.filter((t) => t.host !== parsed.host),
+      parsed,
+    ];
+    await this.save(config);
+    return config;
+  }
+
+  async removeGithubToken(host: string): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.githubTokens = config.githubTokens.filter((t) => t.host !== host.trim());
+    await this.save(config);
+    return config;
+  }
+
+  getGithubToken(config: NoMoreIdeConfig, host = "github.com"): string | undefined {
+    return config.githubTokens.find((t) => t.host === host)?.token;
   }
 }
 
