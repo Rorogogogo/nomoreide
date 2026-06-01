@@ -3,13 +3,25 @@ import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../ht
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 import { requireGitHubContext, optionalGitHubContext } from "./github-context.js";
 
+const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code";
+const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
+const GITHUB_SCOPES = "repo workflow read:org";
+
+function getClientId(): string | undefined {
+  return process.env.NOMOREIDE_GITHUB_CLIENT_ID?.trim() || undefined;
+}
+
 export const githubRoutes: Route[] = [
   // --- Token management ---
 
   route("GET", "/api/github/token", async ({ response, configStore }) => {
     const config = await configStore.load();
     const token = configStore.getGithubToken(config);
-    sendJson(response, { ok: true, configured: !!token });
+    sendJson(response, {
+      ok: true,
+      configured: !!token,
+      deviceFlowAvailable: !!getClientId(),
+    });
   }),
 
   route("POST", "/api/github/token", async ({ request, response, configStore }) => {
@@ -36,6 +48,97 @@ export const githubRoutes: Route[] = [
       sendJson(response, { ok: true });
     },
   ),
+
+  // --- OAuth Device Flow ---
+
+  route("POST", "/api/github/oauth/start", async ({ response }) => {
+    const clientId = getClientId();
+    if (!clientId) {
+      sendJson(response, { ok: false, error: "NOMOREIDE_GITHUB_CLIENT_ID is not set." }, 400);
+      return;
+    }
+    try {
+      const res = await fetch(GITHUB_DEVICE_CODE_URL, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: clientId, scope: GITHUB_SCOPES }),
+      });
+      const data = await res.json() as {
+        device_code?: string;
+        user_code?: string;
+        verification_uri?: string;
+        verification_uri_complete?: string;
+        expires_in?: number;
+        interval?: number;
+        error?: string;
+        error_description?: string;
+      };
+      if (data.error) {
+        sendJson(response, { ok: false, error: data.error_description ?? data.error }, 400);
+        return;
+      }
+      sendJson(response, {
+        ok: true,
+        device_code: data.device_code,
+        user_code: data.user_code,
+        verification_uri: data.verification_uri,
+        verification_uri_complete: data.verification_uri_complete,
+        expires_in: data.expires_in ?? 900,
+        interval: data.interval ?? 5,
+      });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+    }
+  }),
+
+  route("POST", "/api/github/oauth/poll", async ({ request, response, configStore }) => {
+    const clientId = getClientId();
+    if (!clientId) {
+      sendJson(response, { ok: false, error: "NOMOREIDE_GITHUB_CLIENT_ID is not set." }, 400);
+      return;
+    }
+    try {
+      const body = await readJson(request);
+      const deviceCode = typeof body.device_code === "string" ? body.device_code : "";
+      if (!deviceCode) {
+        sendJson(response, { ok: false, error: "device_code is required" }, 400);
+        return;
+      }
+      const res = await fetch(GITHUB_ACCESS_TOKEN_URL, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: clientId,
+          device_code: deviceCode,
+          grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+        }),
+      });
+      const data = await res.json() as {
+        access_token?: string;
+        token_type?: string;
+        scope?: string;
+        error?: string;
+        error_description?: string;
+      };
+      if (data.access_token) {
+        await configStore.setGithubToken("github.com", data.access_token);
+        sendJson(response, { ok: true, done: true });
+        return;
+      }
+      // authorization_pending and slow_down are expected — not errors
+      const pending = data.error === "authorization_pending" || data.error === "slow_down";
+      if (pending) {
+        sendJson(response, { ok: true, done: false, slowDown: data.error === "slow_down" });
+        return;
+      }
+      sendJson(response, {
+        ok: false,
+        error: data.error_description ?? data.error ?? "Authorization failed",
+      }, 400);
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+    }
+  }),
 
   // --- Pull Requests ---
 

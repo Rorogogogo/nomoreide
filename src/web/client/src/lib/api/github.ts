@@ -68,10 +68,46 @@ export interface GitHubWorkflowRun {
   event: string;
 }
 
-// --- Token ---
+// --- Token & OAuth ---
 
-export async function getGitHubTokenInfo(): Promise<{ configured: boolean }> {
-  return requestJson<{ ok: true; configured: boolean }>("/api/github/token");
+export interface GitHubTokenInfo {
+  configured: boolean;
+  deviceFlowAvailable: boolean;
+}
+
+export async function getGitHubTokenInfo(): Promise<GitHubTokenInfo> {
+  return requestJson<{ ok: true } & GitHubTokenInfo>("/api/github/token");
+}
+
+export interface GitHubDeviceFlowStart {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  expires_in: number;
+  interval: number;
+}
+
+export async function startGitHubDeviceFlow(): Promise<GitHubDeviceFlowStart> {
+  const res = await requestJson<{ ok: true } & GitHubDeviceFlowStart>(
+    "/api/github/oauth/start",
+    { method: "POST" },
+  );
+  return res;
+}
+
+export async function pollGitHubDeviceFlow(
+  device_code: string,
+): Promise<{ done: boolean; slowDown?: boolean }> {
+  const res = await requestJson<{ ok: true; done: boolean; slowDown?: boolean }>(
+    "/api/github/oauth/poll",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ device_code }),
+    },
+  );
+  return { done: res.done, slowDown: res.slowDown };
 }
 
 export async function setGitHubToken(host: string, token: string): Promise<void> {

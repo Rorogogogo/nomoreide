@@ -15,14 +15,14 @@ import { ActionsView } from "./actions-view";
 type GithubTab = "prs" | "issues" | "actions";
 
 export function GitHubView() {
-  const { configured, loading: tokenLoading, refresh: refreshToken } = useGitHubToken();
+  const { configured, deviceFlowAvailable, loading: tokenLoading, refresh: refreshToken } = useGitHubToken();
 
   if (tokenLoading) {
     return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Loading…</div>;
   }
 
   if (!configured) {
-    return <GitHubTokenSetup onSaved={refreshToken} />;
+    return <GitHubTokenSetup deviceFlowAvailable={deviceFlowAvailable} onSaved={refreshToken} />;
   }
 
   return <GitHubContent />;
