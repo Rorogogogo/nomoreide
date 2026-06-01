@@ -104,6 +104,11 @@ export interface LogQuery {
   before?: string;
 }
 
+export interface GitHubToken {
+  host: string;
+  token: string;
+}
+
 export interface NoMoreIdeConfig {
   version: 1;
   services: ServiceDefinition[];
@@ -112,6 +117,7 @@ export interface NoMoreIdeConfig {
   selectedGitRepository?: string;
   databases: DatabaseConnection[];
   logSources: LogSourceDefinition[];
+  githubTokens: GitHubToken[];
 }
 
 export type ServiceState = "stopped" | "starting" | "running" | "exited";

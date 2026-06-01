@@ -14,6 +14,7 @@ export * from "./agent-chat.js";
 export * from "./database.js";
 export * from "./errors.js";
 export * from "./git.js";
+export * from "./github.js";
 export * from "./log-sources.js";
 export * from "./onboard.js";
 export * from "./services.js";

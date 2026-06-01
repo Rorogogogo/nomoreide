@@ -6,6 +6,7 @@ import { DATABASE_TOOL_NAMES, registerDatabaseTools } from "./database.js";
 import { DOC_TOOL_NAMES, registerDocTools } from "./docs.js";
 import { ERROR_TOOL_NAMES, registerErrorTools } from "./errors.js";
 import { GIT_TOOL_NAMES, registerGitTools } from "./git.js";
+import { GITHUB_TOOL_NAMES, registerGithubTools } from "./github.js";
 import { ONBOARD_TOOL_NAMES, registerOnboardTools } from "./onboard.js";
 import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 
@@ -21,6 +22,7 @@ export const NOMOREIDE_TOOL_NAMES = [
   ...SERVICE_TOOL_NAMES,
   ...ONBOARD_TOOL_NAMES,
   ...GIT_TOOL_NAMES,
+  ...GITHUB_TOOL_NAMES,
   ...ERROR_TOOL_NAMES,
   ...DATABASE_TOOL_NAMES,
   ...DOC_TOOL_NAMES,
@@ -43,6 +45,7 @@ export function registerNoMoreIdeTools(
   registerServiceTools(server, ctx);
   registerOnboardTools(server, ctx);
   registerGitTools(server, ctx);
+  registerGithubTools(server, ctx);
   registerErrorTools(server, ctx);
   registerDatabaseTools(server, ctx);
   registerDocTools(server, ctx);

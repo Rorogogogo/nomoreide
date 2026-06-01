@@ -5,6 +5,7 @@ import { agentChatRoutes } from "./agent-chat-routes.js";
 import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
+import { githubRoutes } from "./github-routes.js";
 import { logSourceRoutes } from "./log-sources-routes.js";
 import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
@@ -25,6 +26,7 @@ export const routes: Route[] = [
   ...agentChatRoutes,
   ...databaseRoutes,
   ...errorRoutes,
+  ...githubRoutes,
   ...gitRoutes,
   ...logSourceRoutes,
   ...metricsRoutes,
