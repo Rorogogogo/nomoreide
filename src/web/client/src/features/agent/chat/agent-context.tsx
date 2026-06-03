@@ -36,6 +36,12 @@ interface SendToAgentOptions {
    * already captured the user's consent. Ignored in "draft" mode.
    */
   autoApprove?: boolean;
+  /**
+   * Send without popping the dock open — the turn runs in the background so it
+   * doesn't pull attention away from whatever the user is looking at (e.g. the
+   * workflow pipeline). Only applies to "send" mode.
+   */
+  background?: boolean;
 }
 
 interface AgentContextValue extends ReturnType<typeof useAgentChat> {
@@ -116,8 +122,9 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   }, [streaming, send]);
 
   const sendToAgent = useCallback(
-    ({ prompt, source, mode = "send", label, autoApprove }: SendToAgentOptions) => {
-      setOpen(true);
+    ({ prompt, source, mode = "send", label, autoApprove, background }: SendToAgentOptions) => {
+      // Background sends (workflow steps) stay out of the way — don't pop the dock.
+      if (!background) setOpen(true);
       setActiveSource(source ?? null);
       // Opening the dock should always reveal the latest turn, even in draft mode.
       bumpStick();

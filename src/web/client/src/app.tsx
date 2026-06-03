@@ -26,6 +26,7 @@ import {
 import { AgentView } from "@/features/agent/agent-view";
 import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
+import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
@@ -255,6 +256,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
 
   return (
     <AgentProvider>
+    <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <div className="h-screen overflow-hidden pb-9">
       <div className="mx-auto flex h-full max-w-[1500px]">
         <aside className={sidebarShellClassName(sidebarDocked)}>
@@ -481,6 +483,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         }}
       />
     </div>
+    </WorkflowRunProvider>
     </AgentProvider>
   );
 }

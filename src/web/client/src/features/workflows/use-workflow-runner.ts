@@ -197,6 +197,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           mode: "send",
           label: step.title,
           autoApprove,
+          background: true,
         });
         await waitForAgentTurn();
         onRefresh?.();

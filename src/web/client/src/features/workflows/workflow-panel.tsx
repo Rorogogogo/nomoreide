@@ -20,8 +20,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
-import { useWorkflowRunner, type RunState, type StepStatus } from "./use-workflow-runner";
+import { useWorkflowRun } from "./workflow-run-context";
+import { type RunState, type StepStatus } from "./use-workflow-runner";
 
 /**
  * The Workflows panel: your own git/GitHub rituals as one-click, gated,
@@ -29,9 +29,8 @@ import { useWorkflowRunner, type RunState, type StepStatus } from "./use-workflo
  * the agent does the work down in the dock while this view shows where the run
  * is and pauses at each gate for your approval.
  */
-export function WorkflowPanel({ onRefresh }: { onRefresh?: () => void }) {
-  const { setOpen } = useAgentDock();
-  const { run, start, approve, skip, stop, dismiss } = useWorkflowRunner(onRefresh);
+export function WorkflowPanel() {
+  const { run, start, approve, skip, stop, dismiss } = useWorkflowRun();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +57,8 @@ export function WorkflowPanel({ onRefresh }: { onRefresh?: () => void }) {
   }, []);
 
   function runWorkflow(workflow: Workflow) {
-    setOpen(true); // surface the dock so the user can watch the agent work
+    // Runs in the background — the pipeline below is where you watch progress,
+    // so we don't pop the dock open and pull attention away.
     void start(workflow, autoApprove);
   }
 

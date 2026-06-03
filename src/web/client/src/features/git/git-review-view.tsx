@@ -286,7 +286,7 @@ export function GitReviewView({
 
       <div className="min-h-0 flex-1">
         {tab === "workflows" ? (
-          <WorkflowPanel onRefresh={onRefresh} />
+          <WorkflowPanel />
         ) : tab === "github" ? (
           <GitHubView />
         ) : tab === "graph" ? (
