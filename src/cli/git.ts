@@ -22,7 +22,13 @@ export async function runGitCli(
 
   if (subcommand === "status") {
     const status = await git.status();
-    stdout(`Branch\t${status.branch || "(detached)"}`);
+    const tracking =
+      status.ahead || status.behind
+        ? ` (${status.ahead ? `↑${status.ahead}` : ""}${status.behind ? `↓${status.behind}` : ""}${
+            status.upstream ? ` vs ${status.upstream}` : ""
+          })`
+        : "";
+    stdout(`Branch\t${status.branch || "(detached)"}${tracking}`);
     for (const file of status.files) {
       stdout(`${file.index}${file.workingTree}\t${file.path}`);
     }

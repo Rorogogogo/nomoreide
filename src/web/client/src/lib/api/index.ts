@@ -19,3 +19,4 @@ export * from "./log-sources.js";
 export * from "./onboard.js";
 export * from "./services.js";
 export * from "./terminal.js";
+export * from "./workflows.js";

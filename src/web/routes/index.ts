@@ -12,6 +12,7 @@ import { onboardRoutes } from "./onboard-routes.js";
 import { serviceRoutes } from "./service-routes.js";
 import { shellRoutes } from "./shell-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
+import { workflowRoutes } from "./workflow-routes.js";
 
 /**
  * All routes in dispatch order. `/api/*` route groups come first; the shell /
@@ -30,6 +31,7 @@ export const routes: Route[] = [
   ...gitRoutes,
   ...logSourceRoutes,
   ...metricsRoutes,
+  ...workflowRoutes,
   ...onboardRoutes,
   ...serviceRoutes,
   ...terminalRoutes,

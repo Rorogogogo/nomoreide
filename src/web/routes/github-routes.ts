@@ -6,9 +6,10 @@ import { requireGitHubContext, optionalGitHubContext } from "./github-context.js
 const GITHUB_DEVICE_CODE_URL = "https://github.com/login/device/code";
 const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_SCOPES = "repo workflow read:org";
+const DEFAULT_GITHUB_CLIENT_ID = "Ov23litfv3LE0LevxlT2";
 
 function getClientId(): string | undefined {
-  return process.env.NOMOREIDE_GITHUB_CLIENT_ID?.trim() || undefined;
+  return process.env.NOMOREIDE_GITHUB_CLIENT_ID?.trim() || DEFAULT_GITHUB_CLIENT_ID;
 }
 
 export const githubRoutes: Route[] = [
@@ -82,7 +83,7 @@ export const githubRoutes: Route[] = [
         device_code: data.device_code,
         user_code: data.user_code,
         verification_uri: data.verification_uri,
-        verification_uri_complete: data.verification_uri_complete,
+        verification_uri_complete: data.verification_uri_complete ?? data.verification_uri,
         expires_in: data.expires_in ?? 900,
         interval: data.interval ?? 5,
       });
@@ -193,6 +194,34 @@ export const githubRoutes: Route[] = [
         const { manager } = await requireGitHubContext(configStore, gitCwd);
         const pr = await manager.getPR(Number(params.number));
         sendJson(response, { ok: true, pr });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/github\/prs\/(\d+)\/merge$/,
+    ["number"],
+    async ({ request, response, configStore, cwd, params }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const gitCwd = await selectedGitCwd(configStore, cwd);
+        const { manager } = await requireGitHubContext(configStore, gitCwd);
+        const body = await readJson(request).catch(() => ({}) as Record<string, unknown>);
+        const requested = typeof body.method === "string" ? body.method : "squash";
+        const method = (["merge", "squash", "rebase"].includes(requested)
+          ? requested
+          : "squash") as "merge" | "squash" | "rebase";
+        const result = await manager.mergePR(Number(params.number), {
+          method,
+          commitTitle: typeof body.commitTitle === "string" ? body.commitTitle : undefined,
+          commitMessage: typeof body.commitMessage === "string" ? body.commitMessage : undefined,
+        });
+        sendJson(response, { ok: true, ...result });
       } catch (error) {
         sendJson(response, { ok: false, error: errorMessage(error) }, 400);
       }
@@ -348,4 +377,23 @@ export const githubRoutes: Route[] = [
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);
     }
   }),
+
+  patternRoute(
+    /^\/api\/github\/runs\/(\d+)\/jobs$/,
+    ["runId"],
+    async ({ request, response, configStore, cwd, params }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const gitCwd = await selectedGitCwd(configStore, cwd);
+        const { manager } = await requireGitHubContext(configStore, gitCwd);
+        const jobs = await manager.listWorkflowRunJobs(Number(params.runId));
+        sendJson(response, { ok: true, jobs });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
 ];

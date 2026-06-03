@@ -68,6 +68,27 @@ export interface GitHubWorkflowRun {
   event: string;
 }
 
+export interface GitHubWorkflowJobStep {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  number: number;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface GitHubWorkflowJob {
+  id: number;
+  run_id: number;
+  html_url: string;
+  status: string;
+  conclusion: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  name: string;
+  steps: GitHubWorkflowJobStep[];
+}
+
 // --- Token & OAuth ---
 
 export interface GitHubTokenInfo {
@@ -161,6 +182,28 @@ export async function createGitHubPR(opts: {
   return res.pr;
 }
 
+export interface MergePRResult {
+  merged: boolean;
+  sha: string;
+  message: string;
+}
+
+/** Merge a PR (squash by default) via the GitHub API — the "Squash & merge" button. */
+export async function mergeGitHubPR(
+  number: number,
+  opts: { method?: "merge" | "squash" | "rebase"; commitTitle?: string; commitMessage?: string } = {},
+): Promise<MergePRResult> {
+  const res = await requestJson<{ ok: true } & MergePRResult>(
+    `/api/github/prs/${number}/merge`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ method: opts.method ?? "squash", ...opts }),
+    },
+  );
+  return { merged: res.merged, sha: res.sha, message: res.message };
+}
+
 // --- Issues ---
 
 export async function listGitHubIssues(state = "open", page = 1): Promise<GitHubIssue[]> {
@@ -219,4 +262,11 @@ export async function listGitHubWorkflowRuns(branch?: string, page = 1): Promise
     `/api/github/runs?${params}`,
   );
   return res.runs;
+}
+
+export async function listGitHubWorkflowRunJobs(runId: number): Promise<GitHubWorkflowJob[]> {
+  const res = await requestJson<{ ok: true; jobs: GitHubWorkflowJob[] }>(
+    `/api/github/runs/${runId}/jobs`,
+  );
+  return res.jobs;
 }

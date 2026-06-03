@@ -14,6 +14,12 @@ export interface GitFileStatus {
 
 export interface GitStatus {
   branch: string;
+  /** Tracked upstream ref (e.g. `origin/main`), if the branch has one. */
+  upstream?: string;
+  /** Commits on the local branch not yet on its upstream. */
+  ahead: number;
+  /** Commits on the upstream not yet pulled into the local branch. */
+  behind: number;
   files: GitFileStatus[];
 }
 
@@ -63,13 +69,17 @@ export class GitManager {
   constructor(private readonly cwd = process.cwd()) {}
 
   async status(): Promise<GitStatus> {
-    const [branch, porcelain] = await Promise.all([
+    const [branch, porcelain, tracking] = await Promise.all([
       this.git(["branch", "--show-current"]),
       this.git(["status", "--porcelain=v1", "--untracked-files=all"]),
+      this.trackingStatus(),
     ]);
 
     return {
       branch: branch.trim(),
+      upstream: tracking.upstream,
+      ahead: tracking.ahead,
+      behind: tracking.behind,
       files: porcelain
         .split("\n")
         .filter(Boolean)
@@ -78,6 +88,47 @@ export class GitManager {
           workingTree: line[1] ?? " ",
           path: line.slice(3),
         })),
+    };
+  }
+
+  /**
+   * How far the current branch is ahead/behind its upstream — the ahead/behind
+   * indicator IDEs show next to the branch name. Returns zeros when there is no
+   * upstream (new or detached branch) instead of throwing.
+   */
+  private async trackingStatus(): Promise<{
+    upstream?: string;
+    ahead: number;
+    behind: number;
+  }> {
+    const upstream = (
+      await this.git([
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{upstream}",
+      ]).catch(() => "")
+    ).trim();
+
+    if (!upstream) {
+      return { ahead: 0, behind: 0 };
+    }
+
+    // `<upstream>...HEAD` with --left-right counts: left = behind, right = ahead.
+    const counts = (
+      await this.git([
+        "rev-list",
+        "--left-right",
+        "--count",
+        `${upstream}...HEAD`,
+      ]).catch(() => "")
+    ).trim();
+
+    const [behind = "0", ahead = "0"] = counts.split(/\s+/);
+    return {
+      upstream,
+      ahead: Number(ahead) || 0,
+      behind: Number(behind) || 0,
     };
   }
 

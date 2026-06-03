@@ -67,6 +67,27 @@ export interface GitHubWorkflowRun {
   event: string;
 }
 
+export interface GitHubWorkflowJobStep {
+  name: string;
+  status: string;
+  conclusion: string | null;
+  number: number;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface GitHubWorkflowJob {
+  id: number;
+  run_id: number;
+  html_url: string;
+  status: string;
+  conclusion: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  name: string;
+  steps: GitHubWorkflowJobStep[];
+}
+
 export class GitHubApiError extends Error {
   constructor(
     message: string,
@@ -136,6 +157,29 @@ export class GitHubManager {
     return normalizePR(data);
   }
 
+  /**
+   * Merge a pull request via the GitHub API. Defaults to a squash merge — the
+   * common "Squash & merge" button behavior. GitHub rejects the call (405) if
+   * the PR isn't mergeable (conflicts, failing required checks, branch
+   * protection), and that message is surfaced to the caller.
+   */
+  async mergePR(
+    number: number,
+    opts: { method?: "merge" | "squash" | "rebase"; commitTitle?: string; commitMessage?: string } = {},
+  ): Promise<{ merged: boolean; sha: string; message: string }> {
+    return this.request<{ merged: boolean; sha: string; message: string }>(
+      `/repos/${this.owner}/${this.repo}/pulls/${number}/merge`,
+      {
+        method: "PUT",
+        body: {
+          merge_method: opts.method ?? "squash",
+          ...(opts.commitTitle ? { commit_title: opts.commitTitle } : {}),
+          ...(opts.commitMessage ? { commit_message: opts.commitMessage } : {}),
+        },
+      },
+    );
+  }
+
   async listIssues(state: "open" | "closed" | "all" = "open", page = 1): Promise<GitHubIssue[]> {
     const data = await this.request<GitHubIssue[]>(
       `/repos/${this.owner}/${this.repo}/issues?state=${state}&per_page=30&page=${page}`,
@@ -196,6 +240,13 @@ export class GitHubManager {
       `/repos/${this.owner}/${this.repo}/actions/runs?${params}`,
     );
     return data.workflow_runs;
+  }
+
+  async listWorkflowRunJobs(runId: number): Promise<GitHubWorkflowJob[]> {
+    const data = await this.request<{ total_count: number; jobs: GitHubWorkflowJob[] }>(
+      `/repos/${this.owner}/${this.repo}/actions/runs/${runId}/jobs?per_page=100`,
+    );
+    return data.jobs;
   }
 
   private async request<T>(path: string, opts?: { method?: string; body?: unknown; accept?: string }): Promise<T> {

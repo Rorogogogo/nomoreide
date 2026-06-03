@@ -1,3 +1,4 @@
+import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
@@ -25,6 +26,16 @@ export const gitRoutes: Route[] = [
       return;
     }
     sendText(response, diff);
+  }),
+
+  route("GET", "/api/git/status", async ({ response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const status = await new GitManager(gitCwd).status();
+      sendJson(response, { ok: true, status });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
   }),
 
   route("GET", "/api/git/files", async ({ response, configStore, cwd }) => {
@@ -129,6 +140,55 @@ export const gitRoutes: Route[] = [
     const gitCwd = await selectedGitCwd(configStore, cwd);
     const output = await new GitManager(gitCwd).fetch();
     sendJson(response, { ok: true, output });
+  }),
+
+  route("POST", "/api/git/commit", async ({ request, response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const form = await readForm(request);
+      const output = await new GitManager(gitCwd).commit(requiredFormValue(form, "message"));
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  route("POST", "/api/git/stage", async ({ request, response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const body = await readJson(request);
+      const paths = Array.isArray(body.paths) ? body.paths.filter((p): p is string => typeof p === "string") : [];
+      const output = await new GitManager(gitCwd).stage(paths);
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  route("POST", "/api/git/unstage", async ({ request, response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const body = await readJson(request);
+      const paths = Array.isArray(body.paths) ? body.paths.filter((p): p is string => typeof p === "string") : [];
+      const output = await new GitManager(gitCwd).unstage(paths);
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  // Write op (reaches the remote) — lives in the guarded GitActions module, not
+  // the read-safe GitManager. The UI confirms before calling this.
+  route("POST", "/api/git/push", async ({ request, response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const form = await readForm(request);
+      const remote = form.get("remote")?.trim() || undefined;
+      const result = await new GitActions(gitCwd).push({ remote });
+      sendJson(response, { ok: true, ...result });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
   }),
 
   route("POST", "/api/git/branches", async ({ request, response, configStore, cwd }) => {

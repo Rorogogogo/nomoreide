@@ -41,7 +41,7 @@ export const agentChatRoutes: Route[] = [
       return;
     }
 
-    let payload: { message: string; resumeSessionId?: string };
+    let payload: { message: string; resumeSessionId?: string; autoApprove?: boolean };
     try {
       payload = parsePayload(await readJsonBody(request));
     } catch (error) {
@@ -73,6 +73,7 @@ export const agentChatRoutes: Route[] = [
       await runtime.run(payload.message, payload.resumeSessionId, send, {
         signal: controller.signal,
         approval: { broker: agentApprovals, url: approvalUrl },
+        autoApprove: payload.autoApprove,
       });
     } catch (error) {
       send({ type: "error", message: errorMessage(error) });
@@ -135,14 +136,20 @@ async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   return JSON.parse(raw);
 }
 
-function parsePayload(body: unknown): { message: string; resumeSessionId?: string } {
+function parsePayload(body: unknown): {
+  message: string;
+  resumeSessionId?: string;
+  autoApprove?: boolean;
+} {
   const message = (body as { message?: unknown })?.message;
   const resumeSessionId = (body as { resumeSessionId?: unknown })?.resumeSessionId;
+  const autoApprove = (body as { autoApprove?: unknown })?.autoApprove;
   if (typeof message !== "string" || !message.trim()) {
     throw new Error("Request must include a non-empty `message` string.");
   }
   return {
     message,
     resumeSessionId: typeof resumeSessionId === "string" ? resumeSessionId : undefined,
+    autoApprove: autoApprove === true,
   };
 }

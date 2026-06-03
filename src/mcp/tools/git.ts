@@ -1,6 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { git, stringify, type ToolContext } from "./context.js";
+import { git, gitActions, stringify, type ToolContext } from "./context.js";
 
 export const GIT_TOOL_NAMES = [
   "nomoreide_git_status",
@@ -14,6 +14,7 @@ export const GIT_TOOL_NAMES = [
   "nomoreide_git_stage",
   "nomoreide_git_unstage",
   "nomoreide_git_commit",
+  "nomoreide_git_push",
   "nomoreide_git_register_repository",
   "nomoreide_git_select_repository",
 ] as const;
@@ -116,6 +117,16 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
       message: z.string().min(1),
     }),
     execute: async ({ cwd, message }) => await git(cwd).commit(message),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_push",
+    description:
+      "Push the current branch to its remote (sets upstream on first push). Write op — does not force-push.",
+    parameters: gitCwdSchema.extend({
+      remote: z.string().min(1).optional().describe("Remote name (default origin)."),
+    }),
+    execute: async ({ cwd, remote }) => stringify(await gitActions(cwd).push({ remote })),
   });
 
   server.addTool({

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import type { GitFileStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
+import { BranchNameBadge } from "./branch-name-badge";
 import { FileKindIcon } from "./file-kind-icon";
 
 interface TreeNode {
@@ -155,7 +156,7 @@ export function FileTree({
               </button>
             </span>
           ) : null}
-          {branch ? <Badge variant="outline">{branch}</Badge> : null}
+          {branch ? <BranchNameBadge branch={branch} /> : null}
           <Badge variant="secondary">{paths.length}</Badge>
         </span>
       </div>

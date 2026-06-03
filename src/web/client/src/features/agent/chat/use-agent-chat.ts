@@ -81,7 +81,7 @@ export function useAgentChat() {
   }, []);
 
   const send = useCallback(
-    async (text: string, options?: { label?: string }) => {
+    async (text: string, options?: { label?: string; autoApprove?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
       setError(null);
@@ -157,6 +157,7 @@ export function useAgentChat() {
             }
           },
           controller.signal,
+          options?.autoApprove,
         );
       } catch (caught) {
         if (!controller.signal.aborted) {

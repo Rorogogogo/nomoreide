@@ -56,11 +56,12 @@ export async function streamAgentChat(
   resumeSessionId: string | undefined,
   onEvent: (event: AgentStreamEvent) => void,
   signal?: AbortSignal,
+  autoApprove?: boolean,
 ): Promise<void> {
   const response = await fetch("/api/agent/chat", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ message, resumeSessionId }),
+    body: JSON.stringify({ message, resumeSessionId, autoApprove }),
     signal,
   });
 

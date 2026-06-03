@@ -1,5 +1,6 @@
 import type { ProcessTreeSummary } from "./process-tree.js";
 import type { PortBindingStatus } from "./port-utils.js";
+import type { Workflow } from "./workflows.js";
 
 export type ServiceKind = "local" | "docker-compose" | "ssh";
 
@@ -118,6 +119,8 @@ export interface NoMoreIdeConfig {
   databases: DatabaseConnection[];
   logSources: LogSourceDefinition[];
   githubTokens: GitHubToken[];
+  /** User-saved git/GitHub workflows (forks/edits of the built-in templates). */
+  workflows: Workflow[];
 }
 
 export type ServiceState = "stopped" | "starting" | "running" | "exited";

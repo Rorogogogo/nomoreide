@@ -1,4 +1,4 @@
-import { requestJson } from "./client.js";
+import { postFormForJson, requestJson } from "./client.js";
 
 export interface GitFileStatus {
   path: string;
@@ -117,6 +117,44 @@ export async function getGitDiff(path: string): Promise<string> {
     throw new Error(body.error || "Unable to load diff");
   }
   return response.text();
+}
+
+/** Stage explicit file paths. */
+export async function gitStage(paths: string[]): Promise<void> {
+  await requestJson<{ ok: true }>("/api/git/stage", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+/** Unstage explicit file paths. */
+export async function gitUnstage(paths: string[]): Promise<void> {
+  await requestJson<{ ok: true }>("/api/git/unstage", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ paths }),
+  });
+}
+
+/** Commit currently staged changes. */
+export async function gitCommit(message: string): Promise<string> {
+  const res = await postFormForJson<{ ok: true; output: string }>("/api/git/commit", {
+    message,
+  });
+  return res.output;
+}
+
+export interface GitPushResult {
+  output: string;
+  branch: string;
+  setUpstream: boolean;
+}
+
+/** Push the current branch to its remote (sets upstream on first push). */
+export async function gitPush(): Promise<GitPushResult> {
+  const res = await postFormForJson<{ ok: true } & GitPushResult>("/api/git/push", {});
+  return { output: res.output, branch: res.branch, setUpstream: res.setUpstream };
 }
 
 export async function deleteGitRepository(name: string): Promise<void> {

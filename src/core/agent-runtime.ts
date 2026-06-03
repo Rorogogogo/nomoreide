@@ -89,6 +89,14 @@ export interface AgentRunOptions {
   signal?: AbortSignal;
   /** When present, gated tools prompt the dock for approval via this broker. */
   approval?: { broker: ApprovalBroker; url: string };
+  /**
+   * Scoped auto-approve for this turn (a workflow step the user already
+   * consented to via a gate). The approval hook then auto-allows Edit/Write and
+   * non-footgun Bash without prompting — but irreversible footguns (`reset
+   * --hard`, force-push, `branch -D`, `rm -rf`, chained/redirected shell) still
+   * fall through to the dock. Has no effect unless approvals are gating.
+   */
+  autoApprove?: boolean;
 }
 
 const availabilityProbes = new Map<AgentChatProviderId, Promise<boolean>>();
@@ -175,13 +183,18 @@ export class AgentRuntime {
     onEvent: (event: AgentStreamEvent) => void,
     options: AgentRunOptions = {},
   ): Promise<void> {
-    const { signal, approval } = options;
+    const { signal, approval, autoApprove } = options;
     const provider = this.deps.provider ?? CLAUDE_PROVIDER;
     const gating = Boolean(approval) && approvalsEnabled(provider);
     const invocation = buildAgentInvocation(provider, message, resumeSessionId, gating);
 
     const env = gating && approval
-      ? { ...process.env, NOMOREIDE_APPROVAL_URL: approval.url }
+      ? {
+          ...process.env,
+          NOMOREIDE_APPROVAL_URL: approval.url,
+          // Scoped auto-approve for a consented workflow step (footguns still prompt).
+          ...(autoApprove ? { NOMOREIDE_AUTO_APPROVE: "1" } : {}),
+        }
       : process.env;
 
     await new Promise<void>((resolve) => {
@@ -431,6 +444,25 @@ function previewOf(content: unknown): string {
   return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}…` : text;
 }
 
+/**
+ * Irreversible / history-rewriting shell that must keep a human in the loop even
+ * inside an auto-approved workflow step. Exported so it's unit-testable; the
+ * approval hook runs this exact function (serialized via `toString()` into
+ * {@link HOOK_SOURCE}). Unknown shapes are treated as risky.
+ */
+export function isDangerousBashCommand(cmd: unknown): boolean {
+  if (typeof cmd !== "string") return true;
+  const c = cmd.trim();
+  return (
+    /\brm\s+-[a-zA-Z]*f/.test(c) ||
+    /\bgit\b.*\breset\b.*--hard/.test(c) ||
+    /\bgit\b.*\bclean\b.*-[a-zA-Z]*f/.test(c) ||
+    /\bgit\b.*\bpush\b.*(--force|-f(\s|$))/.test(c) ||
+    /\bgit\b.*\bbranch\b.*\s-D\b/.test(c) ||
+    />/.test(c)
+  );
+}
+
 let hookPath: string | undefined;
 let settingsJson: string | undefined;
 
@@ -477,12 +509,25 @@ process.stdin.on("data", (d) => (body += d));
 process.stdin.on("end", () => {
   let input = {};
   try { input = JSON.parse(body); } catch {}
+  const cmd = input.tool_input && input.tool_input.command;
   // Auto-allow routine, low-risk Bash (diagnostics + dependency installs) so
   // onboarding doesn't prompt for every step. Anything with shell chaining,
   // redirection, or command substitution — or outside the safe verb list —
   // still falls through to the dock for an explicit Allow/Deny.
-  if (input.tool_name === "Bash" && isSafeBash(input.tool_input && input.tool_input.command)) {
+  if (input.tool_name === "Bash" && isSafeBash(cmd)) {
     return decide("allow", "Auto-allowed routine command.");
+  }
+  // Scoped auto-approve for a consented workflow step: let the agent edit files
+  // and run non-footgun shell without a prompt for each call. Irreversible
+  // footguns (rm -rf, git reset --hard / clean -f / force-push / branch -D, and
+  // output redirection) still fall through to the dock for an explicit Allow.
+  if (process.env.NOMOREIDE_AUTO_APPROVE === "1") {
+    if (input.tool_name !== "Bash") {
+      return decide("allow", "Auto-approved within workflow.");
+    }
+    if (!isDangerousBashCommand(cmd)) {
+      return decide("allow", "Auto-approved within workflow.");
+    }
   }
   const url = process.env.NOMOREIDE_APPROVAL_URL;
   if (!url) return decide("deny", "Approval channel not configured.");
@@ -532,6 +577,7 @@ function isSafeBash(cmd) {
   if (/[;&|<>$()\\\`]/.test(c)) return false;
   return /^(echo|pwd|whoami|true|date|ls|node|npm (install|ci|--version|-v)|pnpm (install|--version|-v)|yarn( install| --version| -v)?|bun (install|--version|-v)|pip3? install)\\b/.test(c);
 }
+${isDangerousBashCommand.toString()}
 function decide(permissionDecision, reason) {
   process.stdout.write(
     JSON.stringify({

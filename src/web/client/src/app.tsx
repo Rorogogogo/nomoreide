@@ -389,7 +389,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               ) : null}
               <div
                 aria-label="Dashboard quick actions"
-                className="flex items-center gap-1 rounded-lg border border-border bg-background p-1"
+                className="flex items-center gap-1 rounded-lg border border-border bg-background p-px"
                 role="group"
               >
                 <button
@@ -450,7 +450,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             ) : null}
             {data && page === "git" ? (
-              <GitReviewView data={data} />
+              <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {page === "agent" ? <AgentView /> : null}
             {page === "errors" ? <ErrorInboxView /> : null}
@@ -461,13 +461,18 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
       </div>
       {data && page === "git" ? (
         <BranchControls
+          ahead={data.git.status?.ahead ?? 0}
+          behind={data.git.status?.behind ?? 0}
           branches={data.git.branches}
           currentBranch={data.git.status?.branch || undefined}
           disabled={!data.git.status}
           onRefresh={refresh}
+          upstream={data.git.status?.upstream}
         />
       ) : null}
       <AgentDock
+        git={data?.git}
+        onGitRefresh={() => void refresh({ silent: true })}
         onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")}
         onOpenService={(name) => {
           setFocusService(name);

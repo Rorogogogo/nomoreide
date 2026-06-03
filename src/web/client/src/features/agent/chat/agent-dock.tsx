@@ -28,8 +28,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
-import { postForm, type AgentChatProviderInfo } from "@/lib/api";
+import { postForm, type AgentChatProviderInfo, type DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { GitSituationBanner } from "../../git/git-situation-banner";
 import { onboardRepoPrompt } from "../prompts";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { useAgentDock } from "./agent-context";
@@ -48,10 +49,16 @@ import type { ApprovalPrompt, ChatToolCall, ChatTurn } from "./use-agent-chat";
 export function AgentDock({
   onOpenAgentPage,
   onOpenService,
+  git,
+  onGitRefresh,
 }: {
   onOpenAgentPage?: () => void;
   /** Navigate to the Services page and focus a service (for the chat shortcut). */
   onOpenService?: (name: string) => void;
+  /** Current git slice of the dashboard — powers the contextual situation strip. */
+  git?: DashboardData["git"];
+  /** Reload dashboard data after a git mutation triggered from the dock. */
+  onGitRefresh?: () => void;
 }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const {
@@ -426,6 +433,7 @@ export function AgentDock({
               dragActive && "bg-primary/5",
             )}
           >
+            {git ? <GitSituationBanner git={git} onRefresh={onGitRefresh} /> : null}
             {pickerOpen ? (
               <FilePicker
                 onClose={() => setPickerOpen(false)}

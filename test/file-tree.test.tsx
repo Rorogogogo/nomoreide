@@ -41,4 +41,22 @@ describe("FileTree", () => {
       markup.indexOf(">main</span>"),
     );
   });
+
+  test("truncates long branch names with a hover title", () => {
+    const longBranch = "xwangrobert/ror-33-ai-native-agent-tools-plugins-workflows";
+    const markup = renderToStaticMarkup(
+      <FileTree
+        branch={longBranch}
+        onSelectFile={() => undefined}
+        paths={["src/web/routes/agent-routes.ts"]}
+        selectedFile="src/web/routes/agent-routes.ts"
+        status={[]}
+        title="Tree"
+      />,
+    );
+
+    expect(markup).toContain(`title="${longBranch}"`);
+    expect(markup).toContain("max-w-40");
+    expect(markup).toContain("truncate");
+  });
 });

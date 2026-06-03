@@ -2,6 +2,7 @@ import type { FastMCP } from "fastmcp";
 import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
+import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
 import type { LogStore } from "../../core/log-store.js";
 import type { ProcessManager } from "../../core/process-manager.js";
@@ -25,6 +26,11 @@ export type RegisterTools = (server: FastMCP, ctx: ToolContext) => void;
 
 export function git(cwd?: string): GitManager {
   return new GitManager(cwd ?? process.cwd());
+}
+
+/** Write-capable Git ops (push) — kept distinct from the read-safe {@link git}. */
+export function gitActions(cwd?: string): GitActions {
+  return new GitActions(cwd ?? process.cwd());
 }
 
 export function stringify(value: unknown): string {

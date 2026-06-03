@@ -30,6 +30,12 @@ interface SendToAgentOptions {
    * what gets sent to the agent. Ignored in "draft" mode (the user edits it).
    */
   label?: string;
+  /**
+   * Scoped auto-approve for this turn — the agent runs Edit/Write and non-footgun
+   * Bash without per-tool prompts. Used by the workflow runner, where a gate has
+   * already captured the user's consent. Ignored in "draft" mode.
+   */
+  autoApprove?: boolean;
 }
 
 interface AgentContextValue extends ReturnType<typeof useAgentChat> {
@@ -71,7 +77,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [stickNonce, setStickNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   // Actions fired while a turn is streaming wait here and flush in order.
-  const queueRef = useRef<Array<{ prompt: string; label?: string }>>([]);
+  const queueRef = useRef<Array<{ prompt: string; label?: string; autoApprove?: boolean }>>([]);
 
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const bumpStick = useCallback(() => setStickNonce((nonce) => nonce + 1), []);
@@ -79,7 +85,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   // Every send routes through here so the transcript reliably snaps to the
   // newest message — whether it came from the dock input or any feature action.
   const send = useCallback(
-    (text: string, options?: { label?: string }) => {
+    (text: string, options?: { label?: string; autoApprove?: boolean }) => {
       bumpStick();
       return chat.send(text, options);
     },
@@ -106,11 +112,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (streaming) return;
     const next = queueRef.current.shift();
-    if (next) void send(next.prompt, { label: next.label });
+    if (next) void send(next.prompt, { label: next.label, autoApprove: next.autoApprove });
   }, [streaming, send]);
 
   const sendToAgent = useCallback(
-    ({ prompt, source, mode = "send", label }: SendToAgentOptions) => {
+    ({ prompt, source, mode = "send", label, autoApprove }: SendToAgentOptions) => {
       setOpen(true);
       setActiveSource(source ?? null);
       // Opening the dock should always reveal the latest turn, even in draft mode.
@@ -121,10 +127,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         return { queued: false };
       }
       if (streaming) {
-        queueRef.current.push({ prompt, label });
+        queueRef.current.push({ prompt, label, autoApprove });
         return { queued: true };
       }
-      void send(prompt, { label });
+      void send(prompt, { label, autoApprove });
       return { queued: false };
     },
     [streaming, send, bumpFocus, bumpStick],

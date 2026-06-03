@@ -100,6 +100,7 @@ function GitHubContent() {
                 diff={prHook.diff}
                 diffError={prHook.diffError}
                 diffLoading={prHook.diffLoading}
+                onMerged={() => prHook.refresh()}
                 pr={prHook.selectedPR}
               />
             </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
-import type { GitHubPR } from "@/lib/api";
+import { ExternalLink, GitMerge, Loader2 } from "lucide-react";
+import { mergeGitHubPR, type GitHubPR } from "@/lib/api";
 import { DiffViewer } from "../git/diff-viewer";
 
 export function PrDetail({
@@ -8,16 +8,39 @@ export function PrDetail({
   diff,
   diffLoading,
   diffError,
+  onMerged,
 }: {
   pr: GitHubPR | null;
   diff: string;
   diffLoading: boolean;
   diffError: string | null;
+  onMerged?: () => void;
 }) {
   const [tab, setTab] = useState<"overview" | "diff">("overview");
+  const [merging, setMerging] = useState(false);
+  const [mergeError, setMergeError] = useState<string | null>(null);
 
   if (!pr) {
     return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Select a pull request</div>;
+  }
+
+  const canMerge = pr.state === "open" && !pr.draft;
+
+  async function squashMerge() {
+    if (!pr || merging) return;
+    if (!window.confirm(`Squash & merge PR #${pr.number} "${pr.title}" into ${pr.base.ref}?`)) {
+      return;
+    }
+    setMerging(true);
+    setMergeError(null);
+    try {
+      await mergeGitHubPR(pr.number, { method: "squash" });
+      onMerged?.();
+    } catch (caught) {
+      setMergeError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setMerging(false);
+    }
   }
 
   const tabClass = (active: boolean) =>
@@ -33,6 +56,18 @@ export function PrDetail({
           <button className={tabClass(tab === "overview")} onClick={() => setTab("overview")} type="button">Overview</button>
           <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">Diff</button>
         </div>
+        {canMerge ? (
+          <button
+            className="flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+            disabled={merging}
+            onClick={() => void squashMerge()}
+            title="Squash & merge this pull request"
+            type="button"
+          >
+            {merging ? <Loader2 className="size-3 animate-spin" /> : <GitMerge className="size-3" />}
+            Squash &amp; merge
+          </button>
+        ) : null}
         <a
           aria-label="Open on GitHub"
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -44,6 +79,11 @@ export function PrDetail({
           <ExternalLink className="size-3.5" />
         </a>
       </div>
+      {mergeError ? (
+        <div className="shrink-0 border-b border-border bg-red-500/10 px-3 py-1.5 text-[11px] text-red-500">
+          {mergeError}
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "overview" ? (

@@ -1,22 +1,37 @@
 import { type FormEvent, useState } from "react";
-import { ChevronDown, GitBranch, GitPullRequestCreate, RefreshCw, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  GitBranch,
+  GitPullRequestCreate,
+  RefreshCw,
+  Upload,
+  X,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { postForm, type GitBranch as GitBranchInfo } from "@/lib/api";
+import { gitPush, postForm, type GitBranch as GitBranchInfo } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function BranchControls({
+  ahead = 0,
+  behind = 0,
   branches,
   currentBranch,
   disabled,
   onRefresh,
+  upstream,
 }: {
+  ahead?: number;
+  behind?: number;
   branches: GitBranchInfo[];
   currentBranch?: string;
   disabled?: boolean;
   onRefresh: () => Promise<void>;
+  upstream?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [newBranch, setNewBranch] = useState("");
@@ -54,6 +69,21 @@ export function BranchControls({
     });
   }
 
+  async function pushBranch() {
+    await runAction("push", async () => {
+      const result = await gitPush();
+      setMessage(
+        result.setUpstream
+          ? `Pushed ${result.branch} and set upstream.`
+          : `Pushed ${result.branch}.`,
+      );
+    });
+  }
+
+  // Offer push when there are local commits to send, or no upstream yet
+  // (a fresh branch). Hidden once the branch is in sync.
+  const canPush = !!currentBranch && (ahead > 0 || (!upstream && behind === 0));
+
   async function createBranch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = newBranch.trim();
@@ -85,6 +115,25 @@ export function BranchControls({
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-1">
+              {canPush ? (
+                <Button
+                  aria-label="Push current branch"
+                  className="gap-1.5 px-2 text-xs"
+                  disabled={disabled || busy !== null}
+                  onClick={() => void pushBranch()}
+                  size="sm"
+                  title={
+                    upstream
+                      ? `Push ${ahead} commit${ahead === 1 ? "" : "s"} to ${upstream}`
+                      : "Push and set upstream"
+                  }
+                  type="button"
+                  variant="default"
+                >
+                  <Upload className={cn("size-3.5", busy === "push" && "animate-pulse")} />
+                  Push{ahead > 0 ? ` ${ahead}` : ""}
+                </Button>
+              ) : null}
               <Button
                 aria-label="Fetch branches"
                 disabled={disabled || busy !== null}
@@ -172,6 +221,29 @@ export function BranchControls({
       >
         <GitBranch className="size-4" />
         <span className="truncate font-mono text-xs">{currentBranch || "No branch"}</span>
+        {currentBranch && (ahead > 0 || behind > 0) ? (
+          <span
+            className="flex items-center gap-1 font-mono text-[11px] tabular-nums"
+            title={
+              upstream
+                ? `${ahead} ahead / ${behind} behind ${upstream}`
+                : `${ahead} ahead / ${behind} behind`
+            }
+          >
+            {behind > 0 ? (
+              <span className="flex items-center">
+                <ArrowDown className="size-3" />
+                {behind}
+              </span>
+            ) : null}
+            {ahead > 0 ? (
+              <span className="flex items-center">
+                <ArrowUp className="size-3" />
+                {ahead}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
       </Button>
     </div>

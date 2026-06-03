@@ -38,6 +38,13 @@ describe("product header action dock", () => {
     expect(headerActionSource).toContain("group-focus/header-action:max-w-20");
   });
 
+  test("keeps the quick-action dock height aligned with small header buttons", () => {
+    expect(appSource).toContain("rounded-lg border border-border bg-background p-px");
+    expect(headerActionSource).toContain("inline-flex h-7 w-7");
+    expect(headerActionSource).toContain("text-xs");
+    expect(headerActionSource).toContain("flex size-7");
+  });
+
   test("adds a global AI context action for services, databases, errors, and git", () => {
     expect(appSource).toContain("<AiContextAction");
     expect(appSource).toContain("data={data}");

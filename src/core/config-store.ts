@@ -13,6 +13,7 @@ import type {
   GitRepositoryDefinition,
   ServiceDefinition,
 } from "./types.js";
+import { workflowSchema, type Workflow } from "./workflows.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -123,6 +124,7 @@ const configSchema = z.object({
   databases: z.array(databaseSchema).default([]),
   logSources: z.array(logSourceSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
+  workflows: z.array(workflowSchema).default([]),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -133,6 +135,7 @@ const defaultConfig: NoMoreIdeConfig = {
   databases: [],
   logSources: [],
   githubTokens: [],
+  workflows: [],
 };
 
 export function defaultGlobalConfigPath(): string {
@@ -335,6 +338,25 @@ export class ConfigStore {
 
   getGithubToken(config: NoMoreIdeConfig, host = "github.com"): string | undefined {
     return config.githubTokens.find((t) => t.host === host)?.token;
+  }
+
+  /** Persist a user-saved/forked workflow (replaces one with the same id). */
+  async saveWorkflow(workflow: Workflow): Promise<NoMoreIdeConfig> {
+    const parsed = workflowSchema.parse(workflow);
+    const config = await this.load();
+    config.workflows = [
+      ...config.workflows.filter((item) => item.id !== parsed.id),
+      parsed,
+    ];
+    await this.save(config);
+    return config;
+  }
+
+  async removeWorkflow(id: string): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.workflows = config.workflows.filter((item) => item.id !== id.trim());
+    await this.save(config);
+    return config;
   }
 }
 

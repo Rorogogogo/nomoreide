@@ -34,6 +34,7 @@ describe("ConfigStore", () => {
       databases: [],
       logSources: [],
       githubTokens: [],
+      workflows: [],
     });
   });
 

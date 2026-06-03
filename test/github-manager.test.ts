@@ -210,6 +210,47 @@ describe("GitHubManager API", () => {
     expect(status.state).toBe("pending");
   });
 
+  test("listWorkflowRunJobs returns jobs with steps", async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      body: {
+        total_count: 1,
+        jobs: [
+          {
+            id: 10,
+            run_id: 99,
+            html_url: "https://github.com/acme/myrepo/actions/runs/99/job/10",
+            status: "completed",
+            conclusion: "success",
+            started_at: "2026-01-01T00:00:00Z",
+            completed_at: "2026-01-01T00:02:00Z",
+            name: "build",
+            steps: [
+              {
+                name: "Checkout",
+                status: "completed",
+                conclusion: "success",
+                number: 1,
+                started_at: "2026-01-01T00:00:00Z",
+                completed_at: "2026-01-01T00:00:10Z",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const jobs = await manager.listWorkflowRunJobs(99);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      id: 10,
+      name: "build",
+      steps: [{ name: "Checkout", conclusion: "success" }],
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/actions/runs/99/jobs");
+  });
+
   test("throws GitHubApiError on non-2xx response", async () => {
     mockFetch({ ok: false, status: 401, body: { message: "Bad credentials" } });
     await expect(manager.listPRs()).rejects.toBeInstanceOf(GitHubApiError);

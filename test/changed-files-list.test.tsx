@@ -23,4 +23,20 @@ describe("ChangedFilesList", () => {
     expect(markup).toContain(">src</span>");
     expect(markup).not.toContain("pl-5 text-[10px]");
   });
+
+  test("truncates long branch names with a hover title", () => {
+    const longBranch = "xwangrobert/ror-33-ai-native-agent-tools-plugins-workflows";
+    const markup = renderToStaticMarkup(
+      <ChangedFilesList
+        branch={longBranch}
+        files={[{ path: "src/app.tsx", index: " ", workingTree: "M" }]}
+        onSelectFile={() => undefined}
+        selectedFile="src/app.tsx"
+      />,
+    );
+
+    expect(markup).toContain(`title="${longBranch}"`);
+    expect(markup).toContain("max-w-40");
+    expect(markup).toContain("truncate");
+  });
 });

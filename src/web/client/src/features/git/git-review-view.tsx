@@ -1,29 +1,41 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, FolderGit2 } from "lucide-react";
-import { getGitDiff, getGitFiles, type DashboardData } from "@/lib/api";
+import {
+  getGitDiff,
+  getGitFiles,
+  gitStage,
+  gitUnstage,
+  type DashboardData,
+} from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { absolutePath } from "../agent/chat/drag-to-agent";
 import { DiffViewer, diffStats } from "./diff-viewer";
-import { ChangedFilesList } from "./changed-files-list";
+import { ChangedFilesList, type StagingHandlers } from "./changed-files-list";
+import { CommitComposer } from "./commit-composer";
 import { FileTree } from "./file-tree";
 import { FileViewer } from "./file-viewer";
 import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { LargestFilesView } from "./largest-files-view";
 import { GitHubView } from "../github/github-view";
+import { WorkflowPanel } from "../workflows/workflow-panel";
 
-type GitTab = "changes" | "all" | "graph" | "largest" | "github";
+type GitTab = "changes" | "all" | "graph" | "largest" | "github" | "workflows";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
   data,
+  onRefresh,
 }: {
   data: DashboardData;
+  /** Reload dashboard data after a staging/commit/push mutation. */
+  onRefresh?: () => void;
 }) {
   const { insertPath } = useAgentDock();
+  const [stagingBusy, setStagingBusy] = useState(false);
   const [tab, setTab] = useState<GitTab>("changes");
   const [mode, setMode] = useState<ChangesMode>("changes");
   const [selectedFile, setSelectedFile] = useState(data.git.status?.files[0]?.path ?? "");
@@ -48,6 +60,28 @@ export function GitReviewView({
   }, [statusFiles, locallyModifiedPaths]);
   const filePaths = useMemo(() => files.map((file) => file.path), [files]);
   const stats = useMemo(() => diffStats(diff), [diff]);
+
+  const runStaging = useCallback(
+    async (action: (paths: string[]) => Promise<void>, paths: string[]) => {
+      if (!paths.length) return;
+      setStagingBusy(true);
+      try {
+        await action(paths);
+        onRefresh?.();
+      } finally {
+        setStagingBusy(false);
+      }
+    },
+    [onRefresh],
+  );
+
+  const staging: StagingHandlers | undefined = onRefresh
+    ? {
+        busy: stagingBusy,
+        onStage: (paths) => void runStaging(gitStage, paths),
+        onUnstage: (paths) => void runStaging(gitUnstage, paths),
+      }
+    : undefined;
 
   useEffect(() => {
     const firstFile = files[0]?.path ?? "";
@@ -238,10 +272,22 @@ export function GitReviewView({
         >
           GitHub
         </button>
+        <button
+          type="button"
+          className={tabButtonClass(tab === "workflows")}
+          onClick={() => setTab("workflows")}
+        >
+          <span className="flex items-center gap-1">
+            <AgentMark className="size-3" />
+            Workflows
+          </span>
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
-        {tab === "github" ? (
+        {tab === "workflows" ? (
+          <WorkflowPanel onRefresh={onRefresh} />
+        ) : tab === "github" ? (
           <GitHubView />
         ) : tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
@@ -302,6 +348,7 @@ export function GitReviewView({
                   selectedFile={selectedFile}
                   onSelectFile={selectFile}
                   root={data.git.cwd}
+                  staging={staging}
                 />
               ) : (
                 <FileTree
@@ -316,6 +363,13 @@ export function GitReviewView({
                   title="Changes"
                 />
               )}
+              {onRefresh && data.git.status ? (
+                <CommitComposer
+                  branch={data.git.status.branch || undefined}
+                  files={files}
+                  onDone={onRefresh}
+                />
+              ) : null}
             </aside>
 
             <section className="flex min-h-0 min-w-0 flex-col border-l border-border bg-card">

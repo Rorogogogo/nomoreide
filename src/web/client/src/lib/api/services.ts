@@ -171,6 +171,9 @@ export interface DashboardData {
     status:
       | {
           branch: string;
+          upstream?: string;
+          ahead: number;
+          behind: number;
           files: GitFileStatus[];
         }
       | null;

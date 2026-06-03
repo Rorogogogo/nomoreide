@@ -14,6 +14,7 @@ export const GITHUB_TOOL_NAMES = [
   "nomoreide_github_get_pr",
   "nomoreide_github_get_pr_diff",
   "nomoreide_github_create_pr",
+  "nomoreide_github_merge_pr",
   "nomoreide_github_list_issues",
   "nomoreide_github_get_issue",
   "nomoreide_github_list_issue_comments",
@@ -122,6 +123,22 @@ export function registerGithubTools(server: FastMCP, ctx: ToolContext): void {
       const { manager } = await buildManager(ctx, cwd);
       const pr: GitHubPR = await manager.createPR({ title, body, head, base, draft });
       return `Created PR #${pr.number}: ${pr.html_url}`;
+    },
+  });
+
+  server.addTool({
+    name: "nomoreide_github_merge_pr",
+    description:
+      "Merge a pull request (squash by default). Fails if GitHub reports the PR is not mergeable (conflicts, failing required checks, branch protection).",
+    parameters: cwdSchema.extend({
+      number: z.number().int().positive().describe("Pull request number."),
+      method: z.enum(["merge", "squash", "rebase"]).default("squash").describe("Merge method."),
+      commitTitle: z.string().optional().describe("Override the merge commit title."),
+      commitMessage: z.string().optional().describe("Override the merge commit body."),
+    }),
+    execute: async ({ cwd, number, method, commitTitle, commitMessage }) => {
+      const { manager } = await buildManager(ctx, cwd);
+      return stringify(await manager.mergePR(number, { method, commitTitle, commitMessage }));
     },
   });
 

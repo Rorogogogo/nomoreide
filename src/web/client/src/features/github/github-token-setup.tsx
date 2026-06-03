@@ -89,8 +89,10 @@ function DeviceFlowPending({
         setFlow(data);
         intervalRef.current = data.interval;
         setStarting(false);
-        // Open the pre-filled verification URL in a new tab
-        window.open(data.verification_uri_complete, "_blank", "noopener,noreferrer");
+        const verificationUrl = data.verification_uri_complete || data.verification_uri;
+        if (verificationUrl) {
+          window.open(verificationUrl, "_blank", "noopener,noreferrer");
+        }
         // Start polling
         scheduleNextPoll(data.device_code, data.interval);
         // Set expiry
@@ -201,7 +203,7 @@ function DeviceFlowPending({
         </div>
         <a
           className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          href={flow?.verification_uri_complete}
+          href={flow?.verification_uri_complete || flow?.verification_uri}
           rel="noopener noreferrer"
           target="_blank"
         >

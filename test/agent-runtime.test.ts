@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import {
   buildAgentInvocation,
   handleCodexLine,
+  isDangerousBashCommand,
   resolveChatProvider,
   type AgentStreamEvent,
 } from "../src/core/agent-runtime.js";
@@ -161,5 +162,39 @@ describe("Codex JSONL parsing", () => {
       { type: "text", text: "Done." },
       { type: "done", stopReason: null },
     ]);
+  });
+});
+
+describe("auto-approve footgun policy (isDangerousBashCommand)", () => {
+  test("keeps irreversible / history-rewriting shell behind the dock", () => {
+    for (const cmd of [
+      "rm -rf node_modules",
+      "git reset --hard HEAD~1",
+      "git clean -fd",
+      "git push --force",
+      "git push -f origin main",
+      "git branch -D feature",
+      "echo secret > .env",
+    ]) {
+      expect(isDangerousBashCommand(cmd), cmd).toBe(true);
+    }
+  });
+
+  test("allows ordinary workflow shell to run unattended", () => {
+    for (const cmd of [
+      "git status",
+      "git add -A",
+      'git commit -m "feat: add workflows"',
+      "git push",
+      "git pull --rebase",
+      "npm test",
+    ]) {
+      expect(isDangerousBashCommand(cmd), cmd).toBe(false);
+    }
+  });
+
+  test("treats a non-string (unknown shape) as risky", () => {
+    expect(isDangerousBashCommand(undefined)).toBe(true);
+    expect(isDangerousBashCommand({ not: "a string" })).toBe(true);
   });
 });

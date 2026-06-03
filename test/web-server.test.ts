@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
 import { createWebServer } from "../src/web/server.js";
 
@@ -19,6 +19,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   await server?.stop();
   await Promise.all(
     portServers.map(
@@ -67,6 +68,72 @@ describe("web server", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       app: "nomoreide",
+    });
+  });
+
+  test("reports GitHub device flow available from bundled OAuth client ID", async () => {
+    const originalClientId = process.env.NOMOREIDE_GITHUB_CLIENT_ID;
+    try {
+      delete process.env.NOMOREIDE_GITHUB_CLIENT_ID;
+      const configPath = join(tempDir, "nomoreide.config.json");
+      server = await createWebServer({
+        configPath,
+        logDir: join(tempDir, "logs"),
+        cwd: tempDir,
+        port: 0,
+      }).start();
+
+      const response = await fetch(`${server.url}/api/github/token`);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({
+        ok: true,
+        configured: false,
+        deviceFlowAvailable: true,
+      });
+    } finally {
+      if (originalClientId === undefined) {
+        delete process.env.NOMOREIDE_GITHUB_CLIENT_ID;
+      } else {
+        process.env.NOMOREIDE_GITHUB_CLIENT_ID = originalClientId;
+      }
+    }
+  });
+
+  test("falls back to verification_uri when GitHub omits verification_uri_complete", async () => {
+    const realFetch = globalThis.fetch;
+    const fetchMock = vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (String(input) === "https://github.com/login/device/code") {
+        return Promise.resolve({
+          json: () => Promise.resolve({
+            device_code: "device-123",
+            user_code: "ABCD-1234",
+            verification_uri: "https://github.com/login/device",
+            expires_in: 900,
+            interval: 5,
+          }),
+        } as Response);
+      }
+      return realFetch(input, init);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/oauth/start`, { method: "POST" });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      verification_uri: "https://github.com/login/device",
+      verification_uri_complete: "https://github.com/login/device",
     });
   });
 

@@ -136,6 +136,40 @@ describe("GitManager", () => {
     }
   });
 
+  test("reports ahead/behind against upstream", async () => {
+    const remoteDir = await mkdtemp(join(tmpdir(), "nomoreide-git-remote-"));
+    try {
+      await execGit(["checkout", "-b", "main"]);
+      await execFileAsync("git", ["init", "--bare"], { cwd: remoteDir });
+      await execGit(["remote", "add", "origin", remoteDir]);
+      await execGit(["push", "-u", "origin", "main"]);
+
+      // In sync with upstream right after pushing.
+      let status = await git.status();
+      expect(status.upstream).toBe("origin/main");
+      expect(status).toMatchObject({ ahead: 0, behind: 0 });
+
+      // Two local commits the remote hasn't seen → ahead by 2.
+      await writeFile(join(repoDir, "ahead-1.txt"), "1\n");
+      await execGit(["add", "ahead-1.txt"]);
+      await execGit(["commit", "-m", "ahead 1"]);
+      await writeFile(join(repoDir, "ahead-2.txt"), "2\n");
+      await execGit(["add", "ahead-2.txt"]);
+      await execGit(["commit", "-m", "ahead 2"]);
+
+      status = await git.status();
+      expect(status).toMatchObject({ ahead: 2, behind: 0 });
+    } finally {
+      await rm(remoteDir, { recursive: true, force: true });
+    }
+  });
+
+  test("reports zero ahead/behind with no upstream", async () => {
+    const status = await git.status();
+    expect(status.upstream).toBeUndefined();
+    expect(status).toMatchObject({ ahead: 0, behind: 0 });
+  });
+
   test("creates and switches branches", async () => {
     await git.createBranch("feature/work");
 
