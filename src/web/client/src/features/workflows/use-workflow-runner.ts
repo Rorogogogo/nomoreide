@@ -25,6 +25,8 @@ export interface RunState {
   /** Index of the step currently being processed. */
   index: number;
   statuses: StepStatus[];
+  /** The agent's reply text for each step (the step's "result"), once it ran. */
+  outputs: string[];
   error: string | null;
   outcome: RunOutcome;
 }
@@ -47,8 +49,15 @@ type GateDecision = "approve" | "skip" | "stop";
  * doesn't hang the run.
  */
 export function useWorkflowRunner(onRefresh?: () => void) {
-  const { sendToAgent, streaming } = useAgentDock();
+  const { sendToAgent, streaming, turns } = useAgentDock();
   const [run, setRun] = useState<RunState | null>(null);
+
+  // Always-fresh view of the dock transcript so the loop can grab a finished
+  // agent turn's text as that step's result.
+  const turnsRef = useRef(turns);
+  useEffect(() => {
+    turnsRef.current = turns;
+  }, [turns]);
 
   const busyRef = useRef(false);
   const stopRef = useRef(false);
@@ -126,14 +135,22 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       stopRef.current = false;
 
       const statuses: StepStatus[] = workflow.steps.map(() => "pending");
+      const outputs: string[] = workflow.steps.map(() => "");
       const patch = (index: number, status: StepStatus, extra?: Partial<RunState>) => {
         statuses[index] = status;
         setRun((prev) =>
-          prev ? { ...prev, index, statuses: [...statuses], ...extra } : prev,
+          prev ? { ...prev, index, statuses: [...statuses], outputs: [...outputs], ...extra } : prev,
         );
       };
 
-      setRun({ workflow, index: 0, statuses: [...statuses], error: null, outcome: "running" });
+      setRun({
+        workflow,
+        index: 0,
+        statuses: [...statuses],
+        outputs: [...outputs],
+        error: null,
+        outcome: "running",
+      });
 
       const halt = (outcome: RunOutcome) => {
         busyRef.current = false;
@@ -183,6 +200,8 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         });
         await waitForAgentTurn();
         onRefresh?.();
+        // The agent's reply is this step's result — capture it for the section.
+        outputs[i] = latestAssistantText(turnsRef.current);
 
         if (step.verify) {
           const ok = await verify(step.verify).catch(() => false);
@@ -222,6 +241,14 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
 function messageOf(caught: unknown): string {
   return caught instanceof Error ? caught.message : String(caught);
+}
+
+/** The most recent assistant reply in the transcript — a finished step's result. */
+function latestAssistantText(turns: ReadonlyArray<{ role: string; text: string }>): string {
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].role === "assistant") return turns[i].text.trim();
+  }
+  return "";
 }
 
 /**

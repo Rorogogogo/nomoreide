@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -265,7 +265,7 @@ function RunView({
 
                 {expanded ? (
                   <div className="border-t border-border px-3 py-2.5 text-[11px] leading-relaxed">
-                    <p className="text-muted-foreground">{sectionDetail(step)}</p>
+                    <StepBody step={step} status={status} output={run.outputs[index]} />
 
                     {isCurrentGate ? (
                       <div className="mt-2.5 flex items-center gap-1.5">
@@ -304,10 +304,72 @@ function statusLabel(status: StepStatus): string {
   return "Queued";
 }
 
-function sectionDetail(step: WorkflowStep): string {
-  if (step.kind === "gate") return step.message;
-  if (step.kind === "agent") return step.prompt;
-  return step.op === "push" ? "Pushes the current branch to its remote." : "Stages and commits all changes.";
+/**
+ * The body of a step section. For an agent step this shows its *result* (the
+ * agent's reply) once it's run — like a GitHub-Actions step log — and falls back
+ * to the task description while it's still pending/running.
+ */
+function StepBody({
+  step,
+  status,
+  output,
+}: {
+  step: WorkflowStep;
+  status: StepStatus;
+  output?: string;
+}) {
+  if (step.kind === "gate") {
+    return <p className="text-muted-foreground">{step.message}</p>;
+  }
+  if (step.kind === "action") {
+    return (
+      <p className="text-muted-foreground">
+        {step.op === "push"
+          ? "Pushes the current branch to its remote."
+          : "Stages and commits all changes."}
+      </p>
+    );
+  }
+
+  // Agent step.
+  const ran = status === "done" || status === "failed" || status === "skipped";
+  if (output) {
+    return (
+      <div>
+        <Label>Result</Label>
+        <div className="whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-[11px] text-foreground">
+          {output}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <Label>{ran ? "Result" : "Task"}</Label>
+      {ran ? (
+        <p className="italic text-muted-foreground">
+          No text reply — see the dock for what the agent did.
+        </p>
+      ) : (
+        <>
+          <p className="text-muted-foreground">{step.prompt}</p>
+          {status === "running" ? (
+            <p className="mt-1.5 flex items-center gap-1 text-muted-foreground/80">
+              <Loader2 className="size-3 animate-spin" /> Working in the dock…
+            </p>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Label({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+      {children}
+    </div>
+  );
 }
 
 function OutcomeBadge({ outcome }: { outcome: RunState["outcome"] }) {
