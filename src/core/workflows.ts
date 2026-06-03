@@ -65,6 +65,21 @@ export type WorkflowStep = z.infer<typeof workflowStepSchema>;
 export type Workflow = z.infer<typeof workflowSchema>;
 
 /**
+ * One lightweight AI pass that writes a real commit message and commits — the
+ * balance the user wanted: a thought-through message like the `commit-push`
+ * skill, but a single pass (no review report, no splitting into many commits).
+ * Shared by the commit-bearing templates.
+ */
+const COMMIT_STEP: WorkflowStep = {
+  kind: "agent",
+  id: "commit",
+  title: "Commit all changes",
+  prompt:
+    "Stage my changes and make ONE commit, in a single pass. Steps: stage the changed files with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`); glance at the staged diff once with `nomoreide_git_staged_diff`; then commit with `nomoreide_git_commit` using a conventional-commit message — a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. One commit only: do NOT split into multiple commits and do NOT write a separate review or analysis. Reply with just the commit message you used.",
+  verify: "committed",
+};
+
+/**
  * The Phase-1 starter set. These are plain data (not hardcoded UI), so the same
  * structure a user authors later can be forked from one of these.
  */
@@ -72,10 +87,10 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
   {
     id: "commit-push",
     name: "Commit & push",
-    description: "Stage everything, commit, and push — no agent, no analysis. Fast and free.",
+    description: "One quick AI pass writes a good commit message and commits, then pushes. No heavy review or multi-commit splitting.",
     builtin: true,
     steps: [
-      { kind: "action", id: "commit", title: "Commit all changes", op: "commit" },
+      COMMIT_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push to the remote?" },
       { kind: "action", id: "push", title: "Push", op: "push" },
     ],
@@ -83,10 +98,10 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
   {
     id: "ship-it",
     name: "Ship it",
-    description: "Commit + push deterministically, then one quick AI turn each to open and squash-merge the PR.",
+    description: "Commit (one AI pass), push, then a quick AI turn each to open and squash-merge the PR.",
     builtin: true,
     steps: [
-      { kind: "action", id: "commit", title: "Commit all changes", op: "commit" },
+      COMMIT_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push and open a PR?" },
       { kind: "action", id: "push", title: "Push", op: "push" },
       {

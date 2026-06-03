@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDashed,
   Loader2,
@@ -158,6 +159,24 @@ function RunView({
   onBack: () => void;
 }) {
   const finished = run.outcome !== "running";
+  // Which sections are expanded. The active step auto-expands (GitHub-Actions
+  // style); gates and failures force open so their controls/errors always show.
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    const step = run.workflow.steps[run.index];
+    const status = run.statuses[run.index];
+    if (step && (status === "running" || status === "waiting")) {
+      setOpen((current) => (current.has(step.id) ? current : new Set(current).add(step.id)));
+    }
+  }, [run.index, run.statuses, run.workflow.steps]);
+  const toggle = (id: string) =>
+    setOpen((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-auto bg-card/85">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
@@ -183,60 +202,112 @@ function RunView({
         </div>
       </div>
 
-      <ol className="space-y-1.5 p-4">
+      <ol className="px-4 py-4">
         {run.workflow.steps.map((step, index) => {
           const status = run.statuses[index];
+          const last = index === run.workflow.steps.length - 1;
           const isCurrentGate = step.kind === "gate" && status === "waiting";
+          const expanded = open.has(step.id) || status === "waiting" || status === "failed";
+          const active = status === "running" || status === "waiting";
           return (
-            <li
-              key={step.id}
-              className={cn(
-                "rounded-lg border px-3 py-2.5 transition-colors",
-                status === "running" || status === "waiting"
-                  ? "border-primary/40 bg-primary/[0.04]"
-                  : status === "failed"
-                    ? "border-destructive/40 bg-destructive/[0.04]"
-                    : "border-border bg-background",
+            <li key={step.id} className="relative pb-3 pl-10 last:pb-0">
+              {/* Rail connector to the next section. */}
+              {last ? null : (
+                <span
+                  aria-hidden
+                  className="absolute bottom-0 left-[19px] top-9 w-px bg-border"
+                />
               )}
-            >
-              <div className="flex items-center gap-2.5">
+              {/* Status node sitting on the rail. */}
+              <span
+                className={cn(
+                  "absolute left-1 top-1 flex size-8 items-center justify-center rounded-full border bg-card",
+                  status === "failed"
+                    ? "border-destructive/50"
+                    : active
+                      ? "border-primary/50"
+                      : status === "done"
+                        ? "border-emerald-500/50"
+                        : "border-border",
+                )}
+              >
                 <StatusIcon status={status} kind={step.kind} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-[12px] font-medium">
-                    <span className="truncate">{stepTitle(step)}</span>
-                    <StepKindBadge kind={step.kind} />
+              </span>
+
+              <section
+                className={cn(
+                  "overflow-hidden rounded-lg border transition-colors",
+                  status === "failed"
+                    ? "border-destructive/40 bg-destructive/[0.03]"
+                    : active
+                      ? "border-primary/40 bg-primary/[0.03]"
+                      : "border-border bg-background",
+                )}
+              >
+                <button
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+                  onClick={() => toggle(step.id)}
+                  type="button"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-medium">
+                    {stepTitle(step)}
+                  </span>
+                  <StepKindBadge kind={step.kind} />
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                    {statusLabel(status)}
+                  </span>
+                  {expanded ? (
+                    <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/60" />
+                  ) : (
+                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+                  )}
+                </button>
+
+                {expanded ? (
+                  <div className="border-t border-border px-3 py-2.5 text-[11px] leading-relaxed">
+                    <p className="text-muted-foreground">{sectionDetail(step)}</p>
+
+                    {isCurrentGate ? (
+                      <div className="mt-2.5 flex items-center gap-1.5">
+                        <Button onClick={onApprove} size="sm" type="button">
+                          <Check className="size-3.5" /> Approve
+                        </Button>
+                        <Button onClick={onSkip} size="sm" type="button" variant="outline">
+                          <SkipForward className="size-3.5" /> Skip
+                        </Button>
+                        <Button onClick={onStop} size="sm" type="button" variant="outline">
+                          <X className="size-3.5" /> Stop
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    {status === "failed" && run.error ? (
+                      <p className="mt-2 text-destructive">{run.error}</p>
+                    ) : null}
                   </div>
-                  {step.kind === "gate" ? (
-                    <p className="text-[11px] text-muted-foreground">{step.message}</p>
-                  ) : step.kind === "agent" ? (
-                    <p className="line-clamp-2 text-[11px] text-muted-foreground">{step.prompt}</p>
-                  ) : null}
-                </div>
-              </div>
-
-              {isCurrentGate ? (
-                <div className="mt-2.5 flex items-center gap-1.5 pl-7">
-                  <Button onClick={onApprove} size="sm" type="button">
-                    <Check className="size-3.5" /> Approve
-                  </Button>
-                  <Button onClick={onSkip} size="sm" type="button" variant="outline">
-                    <SkipForward className="size-3.5" /> Skip
-                  </Button>
-                  <Button onClick={onStop} size="sm" type="button" variant="outline">
-                    <X className="size-3.5" /> Stop
-                  </Button>
-                </div>
-              ) : null}
-
-              {status === "failed" && run.error ? (
-                <p className="mt-1.5 pl-7 text-[11px] text-destructive">{run.error}</p>
-              ) : null}
+                ) : null}
+              </section>
             </li>
           );
         })}
       </ol>
     </div>
   );
+}
+
+function statusLabel(status: StepStatus): string {
+  if (status === "running") return "Running";
+  if (status === "waiting") return "Waiting";
+  if (status === "done") return "Done";
+  if (status === "failed") return "Failed";
+  if (status === "skipped") return "Skipped";
+  return "Queued";
+}
+
+function sectionDetail(step: WorkflowStep): string {
+  if (step.kind === "gate") return step.message;
+  if (step.kind === "agent") return step.prompt;
+  return step.op === "push" ? "Pushes the current branch to its remote." : "Stages and commits all changes.";
 }
 
 function OutcomeBadge({ outcome }: { outcome: RunState["outcome"] }) {
