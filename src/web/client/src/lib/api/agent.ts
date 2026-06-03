@@ -36,6 +36,18 @@ export interface AgentPlugin {
   mcpServers: string[];
 }
 
+export interface AgentHook {
+  id: string;
+  event: string;
+  scope: "user" | "project";
+  settingsPath: string;
+  matcher?: string;
+  type?: string;
+  command?: string;
+  status: "enabled" | "disabled" | "default";
+  trusted?: boolean;
+}
+
 export interface AgentProjectEntry {
   path: string;
   current: boolean;
@@ -58,6 +70,7 @@ export interface AgentProfile {
   skills: AgentSkill[];
   mcpServers: AgentMcpServer[];
   plugins: AgentPlugin[];
+  hooks: AgentHook[];
   projects: AgentProjectEntry[];
 }
 

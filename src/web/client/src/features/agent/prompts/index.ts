@@ -36,4 +36,7 @@ export {
   buildAddPluginPrompt,
   buildRemovePluginPrompt,
   buildAskPluginPrompt,
+  buildAddHookPrompt,
+  buildRemoveHookPrompt,
+  buildAskHookPrompt,
 } from "./agent-config";

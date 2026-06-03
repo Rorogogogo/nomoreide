@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   Check,
@@ -207,7 +208,8 @@ function RunView({
           const status = run.statuses[index];
           const last = index === run.workflow.steps.length - 1;
           const isCurrentGate = step.kind === "gate" && status === "waiting";
-          const expanded = open.has(step.id) || status === "waiting" || status === "failed";
+          const expanded =
+            open.has(step.id) || status === "waiting" || status === "failed" || status === "blocked";
           const active = status === "running" || status === "waiting";
           return (
             <li key={step.id} className="relative pb-3 pl-10 last:pb-0">
@@ -224,11 +226,13 @@ function RunView({
                   "absolute left-1 top-1 flex size-8 items-center justify-center rounded-full border bg-card",
                   status === "failed"
                     ? "border-destructive/50"
-                    : active
-                      ? "border-primary/50"
-                      : status === "done"
-                        ? "border-emerald-500/50"
-                        : "border-border",
+                    : status === "blocked"
+                      ? "border-amber-500/50"
+                      : active
+                        ? "border-primary/50"
+                        : status === "done"
+                          ? "border-emerald-500/50"
+                          : "border-border",
                 )}
               >
                 <StatusIcon status={status} kind={step.kind} />
@@ -239,9 +243,11 @@ function RunView({
                   "overflow-hidden rounded-lg border transition-colors",
                   status === "failed"
                     ? "border-destructive/40 bg-destructive/[0.03]"
-                    : active
-                      ? "border-primary/40 bg-primary/[0.03]"
-                      : "border-border bg-background",
+                    : status === "blocked"
+                      ? "border-amber-500/40 bg-amber-500/[0.04]"
+                      : active
+                        ? "border-primary/40 bg-primary/[0.03]"
+                        : "border-border bg-background",
                 )}
               >
                 <button
@@ -284,6 +290,9 @@ function RunView({
                     {status === "failed" && run.error ? (
                       <p className="mt-2 text-destructive">{run.error}</p>
                     ) : null}
+                    {status === "blocked" && run.error ? (
+                      <p className="mt-2 text-amber-700 dark:text-amber-400">{run.error}</p>
+                    ) : null}
                   </div>
                 ) : null}
               </section>
@@ -299,6 +308,7 @@ function statusLabel(status: StepStatus): string {
   if (status === "running") return "Running";
   if (status === "waiting") return "Waiting";
   if (status === "done") return "Done";
+  if (status === "blocked") return "Needs you";
   if (status === "failed") return "Failed";
   if (status === "skipped") return "Skipped";
   return "Queued";
@@ -378,6 +388,7 @@ function OutcomeBadge({ outcome }: { outcome: RunState["outcome"] }) {
     done: { label: "Done", className: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" },
     stopped: { label: "Stopped", className: "border-border text-muted-foreground" },
     failed: { label: "Failed", className: "border-destructive/40 text-destructive" },
+    blocked: { label: "Needs you", className: "border-amber-500/40 text-amber-700 dark:text-amber-400" },
   } as const;
   const { label, className } = map[outcome];
   return (
@@ -391,6 +402,8 @@ function StatusIcon({ status, kind }: { status: StepStatus; kind: WorkflowStep["
   if (status === "running") return <Loader2 className="size-4 shrink-0 animate-spin text-primary" />;
   if (status === "waiting") return <ShieldQuestion className="size-4 shrink-0 text-primary" />;
   if (status === "done") return <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />;
+  if (status === "blocked")
+    return <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />;
   if (status === "failed") return <AlertTriangle className="size-4 shrink-0 text-destructive" />;
   if (status === "skipped") return <SkipForward className="size-4 shrink-0 text-muted-foreground/60" />;
   // pending

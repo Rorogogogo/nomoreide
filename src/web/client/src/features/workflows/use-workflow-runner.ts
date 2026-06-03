@@ -9,6 +9,7 @@ import {
   type WorkflowStep,
 } from "@/lib/api";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { readStepResult } from "./workflow-result";
 
 export type StepStatus =
   | "pending"
@@ -16,9 +17,19 @@ export type StepStatus =
   | "waiting"
   | "done"
   | "failed"
-  | "skipped";
+  | "skipped"
+  /** The agent couldn't complete the step or is asking for input — the run pauses. */
+  | "blocked";
 
-export type RunOutcome = "running" | "done" | "stopped" | "failed";
+export type RunOutcome = "running" | "done" | "stopped" | "failed" | "blocked";
+
+/**
+ * Appended to every agent step so the agent reports whether it actually finished.
+ * The runner reads the marker (and falls back to phrase detection) instead of
+ * assuming a finished turn means success.
+ */
+const STATUS_HINT =
+  "\n\nWhen you're finished, end your reply with a line that's exactly `WORKFLOW_STATUS: ok` if you completed this step, or `WORKFLOW_STATUS: blocked` followed by a short reason if you could NOT complete it or you need my input. The workflow runner reads this line.";
 
 export interface RunState {
   workflow: Workflow;
@@ -192,7 +203,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         patch(i, "running");
         sawStreamingRef.current = false;
         sendToAgent({
-          prompt: step.prompt,
+          prompt: step.prompt + STATUS_HINT,
           source: { type: "workflow", label: `${workflow.name}: ${step.title}` },
           mode: "send",
           label: step.title,
@@ -201,8 +212,20 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         });
         await waitForAgentTurn();
         onRefresh?.();
-        // The agent's reply is this step's result — capture it for the section.
-        outputs[i] = latestAssistantText(turnsRef.current);
+        // Read the agent's reply: capture it as the step result, and decide
+        // whether it actually succeeded — don't just assume a finished turn means
+        // success. A blocked / question reply pauses the run for the user.
+        const result = readStepResult(latestAssistantText(turnsRef.current));
+        outputs[i] = result.output || "(no reply — see the dock)";
+        if (result.blocked) {
+          patch(i, "blocked", {
+            error: result.reason
+              ? `Paused — ${result.reason}`
+              : "Paused — this step needs your input. Open the dock to reply, then re-run.",
+          });
+          halt("blocked");
+          return;
+        }
 
         if (step.verify) {
           const ok = await verify(step.verify).catch(() => false);

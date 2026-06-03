@@ -43,6 +43,18 @@ export interface AgentPlugin {
   mcpServers: string[];
 }
 
+export interface AgentHook {
+  id: string;
+  event: string;
+  scope: "user" | "project";
+  settingsPath: string;
+  matcher?: string;
+  type?: string;
+  command?: string;
+  status: "enabled" | "disabled" | "default";
+  trusted?: boolean;
+}
+
 export interface AgentProjectEntry {
   path: string;
   current: boolean;
@@ -65,6 +77,7 @@ export interface AgentProfile {
   skills: AgentSkill[];
   mcpServers: AgentMcpServer[];
   plugins: AgentPlugin[];
+  hooks: AgentHook[];
   projects: AgentProjectEntry[];
 }
 
@@ -92,6 +105,7 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
     claudeProject,
     claudeSkills,
     claudePlugins,
+    claudeHooks,
     claudeJson,
     codexProject,
     codexSkills,
@@ -101,18 +115,21 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
     collectClaudeProjectMemory(cwd, home),
     collectClaudeSkills(home, cwd),
     collectClaudePlugins(home),
+    collectClaudeHooks(home, cwd),
     readClaudeJson(home),
     collectCodexProjectMemory(cwd, codexHome),
     collectCodexSkills(codexHome, cwd),
     readCodexConfig(codexHome),
     collectCodexProjects(codexHome, cwd),
   ]);
+  const codexHooks = await collectCodexHooks(codexHome, cwd, codexConfig);
 
   const claudeProfile: AgentProfile = {
     project: claudeProject,
     skills: claudeSkills,
     mcpServers: collectClaudeMcpServers(claudeJson, cwd),
     plugins: claudePlugins,
+    hooks: claudeHooks,
     projects: collectClaudeProjects(claudeJson, cwd),
   };
   const codexProfile: AgentProfile = {
@@ -120,6 +137,7 @@ export async function buildAgentInfo(cwd: string): Promise<AgentInfo> {
     skills: codexSkills,
     mcpServers: collectCodexMcpServers(codexConfig),
     plugins: [],
+    hooks: codexHooks,
     projects: mergeCodexProjects(codexConfig, codexProjects, cwd),
   };
   const activeProfile = detected.name === "codex" ? codexProfile : claudeProfile;
@@ -480,6 +498,96 @@ async function readPluginDescription(installPath: string): Promise<string | unde
   }
 }
 
+async function collectClaudeHooks(home: string, cwd: string): Promise<AgentHook[]> {
+  const hooks = (
+    await Promise.all([
+      readHooksFile(join(home, ".claude", "settings.json"), "user"),
+      readHooksFile(join(home, ".claude", "settings.local.json"), "user"),
+      readHooksFile(join(cwd, ".claude", "settings.json"), "project"),
+      readHooksFile(join(cwd, ".claude", "settings.local.json"), "project"),
+    ])
+  ).flat();
+
+  return sortHooks(hooks);
+}
+
+async function collectCodexHooks(
+  codexHome: string,
+  cwd: string,
+  config: CodexConfigShape,
+): Promise<AgentHook[]> {
+  const hooks = (
+    await Promise.all([
+      readHooksFile(join(codexHome, "hooks.json"), "user"),
+      readHooksFile(join(cwd, ".codex", "hooks.json"), "project"),
+    ])
+  ).flat();
+
+  for (const hook of hooks) {
+    const state = config.hooksState[hook.id] ?? config.hooksState[normalizeHookStateId(hook.id)];
+    hook.status = hookStatus(state);
+    if (state) hook.trusted = typeof state.trusted_hash === "string";
+  }
+
+  return sortHooks(hooks);
+}
+
+function sortHooks(hooks: AgentHook[]): AgentHook[] {
+  hooks.sort((a, b) => {
+    const event = a.event.localeCompare(b.event);
+    if (event !== 0) return event;
+    const matcher = (a.matcher ?? "").localeCompare(b.matcher ?? "");
+    if (matcher !== 0) return matcher;
+    return (a.command ?? "").localeCompare(b.command ?? "");
+  });
+  return hooks;
+}
+
+async function readHooksFile(
+  settingsPath: string,
+  scope: AgentHook["scope"],
+): Promise<AgentHook[]> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(settingsPath, "utf8"));
+  } catch {
+    return [];
+  }
+
+  const root = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  const hooksRoot =
+    root.hooks && typeof root.hooks === "object" && !Array.isArray(root.hooks)
+      ? (root.hooks as Record<string, unknown>)
+      : {};
+  const hooks: AgentHook[] = [];
+
+  for (const [event, rawEntries] of Object.entries(hooksRoot)) {
+    if (!Array.isArray(rawEntries)) continue;
+    for (const [entryIndex, rawEntry] of rawEntries.entries()) {
+      if (!rawEntry || typeof rawEntry !== "object") continue;
+      const entry = rawEntry as Record<string, unknown>;
+      const matcher = typeof entry.matcher === "string" ? entry.matcher : undefined;
+      const rawHooks = Array.isArray(entry.hooks) ? entry.hooks : [];
+      for (const [hookIndex, rawHook] of rawHooks.entries()) {
+        if (!rawHook || typeof rawHook !== "object") continue;
+        const hook = rawHook as Record<string, unknown>;
+        hooks.push({
+          id: `${settingsPath}:${event}:${entryIndex}:${hookIndex}`,
+          event,
+          scope,
+          settingsPath,
+          matcher,
+          type: typeof hook.type === "string" ? hook.type : undefined,
+          command: typeof hook.command === "string" ? hook.command : undefined,
+          status: "default",
+        });
+      }
+    }
+  }
+
+  return hooks;
+}
+
 async function readSkillDescription(skillDir: string): Promise<string | undefined> {
   const skillFile = join(skillDir, "SKILL.md");
   const content = await safeReadPreview(skillFile, 400);
@@ -501,6 +609,7 @@ interface ClaudeJsonShape {
 interface CodexConfigShape {
   mcpServers: Record<string, Record<string, unknown>>;
   projects: Record<string, Record<string, unknown>>;
+  hooksState: Record<string, Record<string, unknown>>;
 }
 
 async function readClaudeJson(home: string): Promise<ClaudeJsonShape | null> {
@@ -571,7 +680,7 @@ function collectClaudeProjects(
 }
 
 async function readCodexConfig(codexHome: string): Promise<CodexConfigShape> {
-  const result: CodexConfigShape = { mcpServers: {}, projects: {} };
+  const result: CodexConfigShape = { mcpServers: {}, projects: {}, hooksState: {} };
   try {
     const raw = await readFile(join(codexHome, "config.toml"), "utf8");
     const sections = parseTomlSections(raw);
@@ -581,12 +690,32 @@ async function readCodexConfig(codexHome: string): Promise<CodexConfigShape> {
         result.mcpServers[parts[1]] = values;
       } else if (parts[0] === "projects" && parts.length === 2) {
         result.projects[parts[1]] = values;
+      } else if (parts[0] === "hooks" && parts[1] === "state" && parts.length === 3) {
+        result.hooksState[parts[2]] = values;
       }
     }
   } catch {
     // Codex config is optional.
   }
   return result;
+}
+
+function normalizeHookStateId(id: string): string {
+  const parts = id.split(":");
+  if (parts.length < 4) return id;
+  const hookIndex = parts.pop();
+  const entryIndex = parts.pop();
+  const event = parts.pop();
+  return `${parts.join(":")}:${camelToSnake(event ?? "").toLowerCase()}:${entryIndex}:${hookIndex}`;
+}
+
+function camelToSnake(value: string): string {
+  return value.replace(/([a-z0-9])([A-Z])/g, "$1_$2");
+}
+
+function hookStatus(state: Record<string, unknown> | undefined): AgentHook["status"] {
+  if (!state || typeof state.enabled !== "boolean") return "default";
+  return state.enabled ? "enabled" : "disabled";
 }
 
 function collectCodexMcpServers(config: CodexConfigShape): AgentMcpServer[] {

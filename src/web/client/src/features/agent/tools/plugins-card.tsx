@@ -49,7 +49,7 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
   }
 
   return (
-    <Card className="min-w-0 rounded-none border-0 border-t border-border bg-transparent xl:border-t">
+    <Card className="min-w-0 rounded-none border-0 border-t border-border bg-transparent lg:border-l lg:border-t-0">
       <CardHeader className="border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -85,9 +85,25 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
         {plugins.length ? (
           <ul className="divide-y divide-border">
             {plugins.map((plugin) => (
-              <li key={`${plugin.name}@${plugin.marketplace ?? ""}`} className="group px-3 py-2">
+              <li
+                key={`${plugin.name}@${plugin.marketplace ?? ""}`}
+                className="group px-3 py-2 hover:bg-muted/40"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-xs font-semibold">{plugin.name}</span>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span
+                      className="min-w-0 truncate font-mono text-xs font-semibold"
+                      title={plugin.name}
+                    >
+                      {plugin.name}
+                    </span>
+                    <RowActions
+                      askLabel={`Ask AI about the ${plugin.name} plugin`}
+                      removeLabel={`Uninstall the ${plugin.name} plugin`}
+                      onAsk={() => ask(plugin)}
+                      onRemove={() => remove(plugin)}
+                    />
+                  </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {plugin.version && plugin.version !== "unknown" ? (
                       <Badge variant="outline" size="small">
@@ -99,16 +115,12 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
                         {plugin.marketplace}
                       </Badge>
                     ) : null}
-                    <RowActions
-                      askLabel={`Ask AI about the ${plugin.name} plugin`}
-                      removeLabel={`Uninstall the ${plugin.name} plugin`}
-                      onAsk={() => ask(plugin)}
-                      onRemove={() => remove(plugin)}
-                    />
                   </div>
                 </div>
                 {plugin.description ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">{plugin.description}</p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground" title={plugin.description}>
+                    {plugin.description}
+                  </p>
                 ) : null}
                 <PluginContributions plugin={plugin} />
               </li>

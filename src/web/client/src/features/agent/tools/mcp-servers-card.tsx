@@ -93,7 +93,7 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
   }
 
   return (
-    <Card className="min-w-0 rounded-none border-0 bg-transparent">
+    <Card className="min-w-0 rounded-none border-0 bg-transparent md:border-l md:border-border">
       <CardHeader className="border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -145,14 +145,18 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
         {servers.length ? (
           <ul className="divide-y divide-border">
             {servers.map((server) => (
-              <li key={`${server.scope}:${server.name}`} className="group px-3 py-2">
+              <li
+                key={`${server.scope}:${server.name}`}
+                className="group px-3 py-2 hover:bg-muted/40"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-xs font-semibold">{server.name}</span>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <AuthStatusBadge state={statuses[server.name]} loading={loading} />
-                    <Badge variant="outline" size="small">
-                      {server.synthetic ? "connector" : server.scope}
-                    </Badge>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span
+                      className="min-w-0 truncate font-mono text-xs font-semibold"
+                      title={server.name}
+                    >
+                      {server.name}
+                    </span>
                     <RowActions
                       askLabel={`Ask AI about the ${server.name} server`}
                       removeLabel={`Remove the ${server.name} server`}
@@ -160,8 +164,17 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
                       onRemove={() => remove(server)}
                     />
                   </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <AuthStatusBadge state={statuses[server.name]} loading={loading} />
+                    <Badge variant="outline" size="small">
+                      {server.synthetic ? "connector" : server.scope}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
+                <div
+                  className="mt-1 truncate font-mono text-[11px] text-muted-foreground"
+                  title={server.synthetic ? "claude.ai managed connector" : formatMcpServer(server)}
+                >
                   {server.synthetic ? "claude.ai managed connector" : formatMcpServer(server)}
                 </div>
               </li>

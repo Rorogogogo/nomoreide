@@ -22,7 +22,7 @@ const AGENTS: Array<{ id: AgentId; label: string; icon: React.ReactNode }> = [
 const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "overview", label: "Overview", icon: <Gauge className="size-3.5" /> },
   { id: "memory", label: "Memory", icon: <Brain className="size-3.5" /> },
-  { id: "tools", label: "Skills, MCPs & Plugins", icon: <Plug className="size-3.5" /> },
+  { id: "tools", label: "Skills, MCPs, Plugins & Hooks", icon: <Plug className="size-3.5" /> },
   { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
 ];
 
@@ -68,6 +68,10 @@ export function AgentView() {
   }
 
   const activeAgent: AgentProfile = agent.agents?.[agentId] ?? agent;
+  const alternateHooks =
+    agentId === "codex"
+      ? { agentLabel: "Claude Code", count: agent.agents["claude-code"].hooks.length }
+      : { agentLabel: "Codex", count: agent.agents.codex.hooks.length };
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-card/85">
@@ -90,7 +94,7 @@ export function AgentView() {
               {entry.icon}
               {entry.label}
               {detected ? (
-                <span className="size-1.5 rounded-full bg-emerald-500" aria-label="active session" />
+                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
               ) : null}
             </button>
           );
@@ -130,7 +134,9 @@ export function AgentView() {
           />
         ) : null}
         {tab === "memory" ? <MemoryTab agent={activeAgent} agentId={agentId} /> : null}
-        {tab === "tools" ? <ToolsTab agent={activeAgent} agentId={agentId} /> : null}
+        {tab === "tools" ? (
+          <ToolsTab agent={activeAgent} agentId={agentId} alternateHooks={alternateHooks} />
+        ) : null}
         {tab === "activity" ? <ActivityTab agent={activeAgent} agentId={agentId} /> : null}
       </div>
     </div>

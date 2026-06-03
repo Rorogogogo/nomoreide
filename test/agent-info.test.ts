@@ -27,6 +27,75 @@ afterEach(async () => {
 });
 
 describe("agent info", () => {
+  test("builds Claude hooks from user and project settings", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "nomoreide-agent-info-"));
+    const home = join(tempDir, "home");
+    const cwd = join(tempDir, "project");
+    const userSettings = join(home, ".claude", "settings.json");
+    const projectSettings = join(cwd, ".claude", "settings.local.json");
+
+    await mkdir(join(home, ".claude"), { recursive: true });
+    await mkdir(join(cwd, ".claude"), { recursive: true });
+    await writeFile(
+      userSettings,
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: "Bash|Write",
+              hooks: [{ type: "command", command: "node ~/.claude/hooks/guard.js" }],
+            },
+          ],
+        },
+      }),
+    );
+    await writeFile(
+      projectSettings,
+      JSON.stringify({
+        hooks: {
+          PostToolUse: [
+            {
+              matcher: "Edit",
+              hooks: [{ type: "command", command: "npm run lint -- --changed" }],
+            },
+          ],
+        },
+      }),
+    );
+
+    process.env.HOME = home;
+    process.env.CLAUDECODE = "1";
+    delete process.env.CODEX_HOME;
+    delete process.env.CODEX_SANDBOX;
+    delete process.env.CODEX_CLI;
+
+    const info = await buildAgentInfo(cwd);
+
+    expect(info.detected.name).toBe("claude-code");
+    expect(info.agents["claude-code"].hooks).toEqual([
+      {
+        id: `${projectSettings}:PostToolUse:0:0`,
+        event: "PostToolUse",
+        scope: "project",
+        settingsPath: projectSettings,
+        matcher: "Edit",
+        type: "command",
+        command: "npm run lint -- --changed",
+        status: "default",
+      },
+      {
+        id: `${userSettings}:PreToolUse:0:0`,
+        event: "PreToolUse",
+        scope: "user",
+        settingsPath: userSettings,
+        matcher: "Bash|Write",
+        type: "command",
+        command: "node ~/.claude/hooks/guard.js",
+        status: "default",
+      },
+    ]);
+  });
+
   test("builds Codex skills, MCP servers, project memory, and recent projects", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "nomoreide-agent-info-"));
     const home = join(tempDir, "home");
@@ -46,6 +115,24 @@ describe("agent info", () => {
     );
     await writeFile(join(cwd, "AGENTS.md"), "Use the project instructions.\n");
     await writeFile(
+      join(codexHome, "hooks.json"),
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              hooks: [{ type: "command", command: "/Users/demo/.codex/notchy/play.sh complete" }],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: "*",
+              hooks: [{ type: "command", command: "/Users/demo/.codex/notchy/play.sh working" }],
+            },
+          ],
+        },
+      }),
+    );
+    await writeFile(
       join(codexHome, "config.toml"),
       [
         `[projects."${cwd}"]`,
@@ -58,6 +145,13 @@ describe("agent info", () => {
         "[mcp_servers.remote]",
         'type = "sse"',
         'url = "https://example.test/mcp"',
+        "",
+        `[hooks.state."${codexHome}/hooks.json:pre_tool_use:0:0"]`,
+        "enabled = false",
+        'trusted_hash = "sha256:abc"',
+        "",
+        `[hooks.state."${codexHome}/hooks.json:stop:0:0"]`,
+        "enabled = true",
       ].join("\n"),
     );
     await writeFile(
@@ -120,6 +214,29 @@ describe("agent info", () => {
         }),
       ]),
     );
+    expect(info.agents.codex.hooks).toEqual([
+      {
+        id: `${codexHome}/hooks.json:PreToolUse:0:0`,
+        event: "PreToolUse",
+        scope: "user",
+        settingsPath: `${codexHome}/hooks.json`,
+        matcher: "*",
+        type: "command",
+        command: "/Users/demo/.codex/notchy/play.sh working",
+        status: "disabled",
+        trusted: true,
+      },
+      {
+        id: `${codexHome}/hooks.json:Stop:0:0`,
+        event: "Stop",
+        scope: "user",
+        settingsPath: `${codexHome}/hooks.json`,
+        type: "command",
+        command: "/Users/demo/.codex/notchy/play.sh complete",
+        status: "enabled",
+        trusted: false,
+      },
+    ]);
     expect(info.agents.codex.projects[0]).toMatchObject({
       path: cwd,
       current: true,

@@ -81,13 +81,18 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
         {agent.skills.length ? (
           <ul className="divide-y divide-border">
             {agent.skills.map((skill) => (
-              <li key={`${skill.scope}:${skill.name}`} className="group px-3 py-2">
+              <li
+                key={`${skill.scope}:${skill.name}`}
+                className="group px-3 py-2 hover:bg-muted/40"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-xs font-semibold">{skill.name}</span>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <Badge variant="outline" size="small">
-                      {skill.scope}
-                    </Badge>
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span
+                      className="min-w-0 truncate font-mono text-xs font-semibold"
+                      title={skill.name}
+                    >
+                      {skill.name}
+                    </span>
                     <RowActions
                       askLabel={`Ask AI about the ${skill.name} skill`}
                       removeLabel={`Remove the ${skill.name} skill`}
@@ -95,9 +100,16 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
                       onRemove={() => remove(skill)}
                     />
                   </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Badge variant="outline" size="small">
+                      {skill.scope}
+                    </Badge>
+                  </div>
                 </div>
                 {skill.description ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">{skill.description}</p>
+                  <p className="mt-1 truncate text-[11px] text-muted-foreground" title={skill.description}>
+                    {skill.description}
+                  </p>
                 ) : null}
               </li>
             ))}

@@ -1,4 +1,4 @@
-import type { AgentMcpServer, AgentPlugin, AgentSkill } from "@/lib/api";
+import type { AgentHook, AgentMcpServer, AgentPlugin, AgentSkill } from "@/lib/api";
 import type { AgentId } from "../agent-types";
 
 /**
@@ -127,6 +127,45 @@ export function buildAskPluginPrompt(plugin: AgentPlugin): string {
     lines.push("", "It contributes —");
     lines.push(...contributes.map((line) => `- ${line}`));
   }
+  lines.push("", "My question: ");
+  return lines.join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
+
+export function buildAddHookPrompt(agentId: AgentId, input: string): string {
+  const location =
+    agentId === "codex"
+      ? "`~/.codex/config.toml` if this Codex version supports hooks"
+      : "`~/.claude/settings.json` (user) or `.claude/settings.json` (project)";
+  return [
+    `Add a hook for ${agentLabel(agentId)} from this:`,
+    "",
+    input,
+    "",
+    `Configure it in ${location}. Pick the correct hook event, matcher, command, and scope from the request, then confirm it appears in the agent tools view.`,
+  ].join("\n");
+}
+
+export function buildRemoveHookPrompt(hook: AgentHook): string {
+  const matcher = hook.matcher ? ` with matcher \`${hook.matcher}\`` : "";
+  const command = hook.command ? ` running \`${hook.command}\`` : "";
+  return [
+    `Remove the ${hook.scope} \`${hook.event}\` hook${matcher}${command}.`,
+    "",
+    `Edit \`${hook.settingsPath}\`, remove only that hook entry, and confirm it no longer appears in the hooks list.`,
+  ].join("\n");
+}
+
+export function buildAskHookPrompt(hook: AgentHook): string {
+  const lines = [
+    `I'm looking at the ${hook.scope} \`${hook.event}\` hook in \`${hook.settingsPath}\`.`,
+  ];
+  if (hook.matcher) lines.push("", `Matcher: \`${hook.matcher}\``);
+  if (hook.type) lines.push(`Type: \`${hook.type}\``);
+  if (hook.command) lines.push(`Command: \`${hook.command}\``);
   lines.push("", "My question: ");
   return lines.join("\n");
 }

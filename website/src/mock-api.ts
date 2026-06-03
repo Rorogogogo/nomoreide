@@ -734,6 +734,32 @@ function agentInfo(): AgentInfo {
       },
     ],
     mcpServers: [{ name: "nomoreide", scope: "project" as const, command: "npx", args: ["-y", "nomoreide"] }],
+    plugins: [
+      {
+        name: "workflow-pack",
+        marketplace: "demo",
+        scope: "user" as const,
+        version: "1.0.0",
+        description: "Mock plugin contributions for the public demo.",
+        skills: ["frontend-design"],
+        commands: ["review"],
+        agents: [],
+        mcpServers: ["nomoreide"],
+      },
+    ],
+    hooks: [
+      {
+        id: "/Users/demo/projects/acme/.claude/settings.json:PreToolUse:0:0",
+        event: "PreToolUse",
+        scope: "project" as const,
+        settingsPath: "/Users/demo/projects/acme/.claude/settings.json",
+        matcher: "Bash|Write",
+        type: "command",
+        command: "node .claude/hooks/guard.js",
+        status: "enabled" as const,
+        trusted: true,
+      },
+    ],
     projects: [
       {
         path: "/Users/demo/projects/acme",
