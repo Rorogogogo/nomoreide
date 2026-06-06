@@ -1,6 +1,6 @@
 # NoMoreIDE Full AI Documentation
 
-NoMoreIDE is an AI-native local development workbench for services, logs, Git review, database inspection, terminal access, and MCP workflows. It runs locally and gives humans and AI coding agents one shared control surface.
+NoMoreIDE is an AI-native local development workbench for services, logs, Git review, GitHub PR/issues/Actions workflows, database inspection, SQL review, terminal access, and MCP workflows. It runs locally and gives humans and AI coding agents one shared control surface.
 
 Human docs: https://www.nomoreide.com/docs
 AI agent guide: https://www.nomoreide.com/docs/ai-guide.md
@@ -60,7 +60,7 @@ Gemini CLI:
 Universal prompt:
 
 ```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
 ```
 
 Verify with `/mcp`.
@@ -131,15 +131,19 @@ Services: register, start, stop, restart, inspect process state, inspect ports, 
 
 Logs: read recent stdout and stderr, inspect service context, and use logs for debugging.
 
-Git Review: select repositories, inspect status and diffs, stage explicit files, unstage files, and commit staged changes.
+Git Review: select repositories, inspect status and diffs, stage explicit files, unstage files, commit staged changes, and inspect commit CI status.
+
+GitHub: connect with a token or OAuth device flow, review PRs, issues, comments, CI status, and GitHub Actions workflow runs. Create PRs/issues or merge PRs only when user intent is explicit.
+
+Workflows: run built-in commit/push/ship templates, author reusable workflows from action steps, agent steps, and human approval gates, and keep blocked/failed run status visible.
 
 Error Inbox: review deduplicated incidents and generate debugging prompts.
 
-Database: list registered connections, list tables, sample rows, and inspect schema metadata.
+Database: list registered connections, list tables, sample rows, inspect schema metadata, run read-only SQL, generate SQL with the agent dock, and use unlock + preview + commit for human-approved writes.
 
 Terminal: work close to the local dashboard context.
 
-Agent dock: pass structured UI context to the connected AI agent.
+Agent dock: pass structured UI context to the connected AI agent; inspect MCP servers, skills, plugins, hooks, usage, and tool-call activity.
 
 ## MCP Tool Reference
 
@@ -198,6 +202,25 @@ Database tools:
 nomoreide_list_databases
 nomoreide_db_tables
 nomoreide_db_sample
+nomoreide_db_query
+```
+
+GitHub tools:
+
+```text
+nomoreide_github_set_token
+nomoreide_github_list_prs
+nomoreide_github_get_pr
+nomoreide_github_get_pr_diff
+nomoreide_github_create_pr
+nomoreide_github_merge_pr
+nomoreide_github_list_issues
+nomoreide_github_get_issue
+nomoreide_github_list_issue_comments
+nomoreide_github_add_issue_comment
+nomoreide_github_create_issue
+nomoreide_github_get_commit_ci
+nomoreide_github_list_workflow_runs
 ```
 
 Agent and UI tools:
@@ -223,6 +246,8 @@ Config sections:
 - selectedGitRepository: active repository for the UI.
 - databases: Postgres, MySQL, or SQLite connections.
 - logSources: file, SSH, command, journald, or Docker log readers.
+- githubTokens: GitHub tokens used for PR, issue, CI, and Actions API access.
+- workflows: user-saved git/GitHub workflows built from action, agent, and gate steps.
 
 ## Safety Model
 
@@ -234,7 +259,9 @@ NoMoreIDE is designed for safe AI-assisted local development:
 - It reports port conflicts instead of terminating the occupying process.
 - Git tools omit hard reset, clean, force push, and branch deletion.
 - Git staging requires explicit file paths.
-- Database MCP tools are read-only browsing and sampling tools.
+- Database MCP tools are read-only. Writes are staged for the human-only SQL console.
+- Database writes require explicit unlock, preview, and commit.
+- GitHub merge/comment/create tools require a configured token and explicit user intent.
 - SSH services rely on the user's local SSH config and agent.
 - Managed service logs are scoped to `.nomoreide/logs/`.
 
@@ -243,7 +270,7 @@ NoMoreIDE is designed for safe AI-assisted local development:
 Recommended session prompt:
 
 ```text
-Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git work, inspect status and diffs before staging or committing. Prefer NoMoreIDE tools over ad hoc shell commands when a matching tool exists.
+Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; stage writes with a sql-write block so the human can review them in the Web UI SQL console.
 ```
 
 Recommended workflow:
@@ -253,7 +280,9 @@ Recommended workflow:
 3. Use `nomoreide_open_ui` if the human wants the dashboard.
 4. For service debugging, call `nomoreide_service_health`, `nomoreide_read_logs`, and `nomoreide_timeline`.
 5. For Git work, call status and diffs before staging or committing.
-6. For database inspection, list databases, list tables, then sample a selected table.
+6. For database inspection, list databases, list tables, sample a selected table, then run read-only SQL when needed.
+7. For database writes, reply with one `sql-write <connection>` fenced block so the Web UI can stage the statement for human unlock, preview, and commit.
+8. For GitHub work, use NoMoreIDE GitHub tools for PRs, issues, comments, CI, and workflow runs.
 
 ## Troubleshooting
 

@@ -24,10 +24,10 @@ const geminiSetup = `{
 }`;
 
 const setupPrompt =
-  "Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.";
+  "Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.";
 
 const sessionPrompt =
-  "Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git work, inspect status and diffs before staging or committing. Prefer NoMoreIDE tools over ad hoc shell commands when a matching tool exists.";
+  "Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; stage writes with a sql-write block so the human can review them in the Web UI SQL console.";
 
 const localServiceCommand = `nomoreide add service backend \\
   --command "npm run dev" \\
@@ -93,6 +93,25 @@ const toolGroups = [
       "nomoreide_list_databases",
       "nomoreide_db_tables",
       "nomoreide_db_sample",
+      "nomoreide_db_query",
+    ],
+  },
+  {
+    title: "GitHub tools",
+    tools: [
+      "nomoreide_github_set_token",
+      "nomoreide_github_list_prs",
+      "nomoreide_github_get_pr",
+      "nomoreide_github_get_pr_diff",
+      "nomoreide_github_create_pr",
+      "nomoreide_github_merge_pr",
+      "nomoreide_github_list_issues",
+      "nomoreide_github_get_issue",
+      "nomoreide_github_list_issue_comments",
+      "nomoreide_github_add_issue_comment",
+      "nomoreide_github_create_issue",
+      "nomoreide_github_get_commit_ci",
+      "nomoreide_github_list_workflow_runs",
     ],
   },
   { title: "Agent and UI tools", tools: ["nomoreide_open_ui", "nomoreide_close_ui"] },
@@ -208,7 +227,7 @@ export function DocsPage() {
               NoMoreIDE gives coding agents and humans a shared local control
               surface. It runs as a stdio MCP server, CLI, TUI, and local web
               dashboard, all backed by the same core service, log, Git, database,
-              and diagnostic modules.
+              GitHub, workflow, and diagnostic modules.
             </p>
             <InfoGrid
               items={[
@@ -304,9 +323,12 @@ nomoreide logs backend`}
                 ["Services", "Register local, Docker Compose, and SSH-backed services; start, stop, restart, and inspect health."],
                 ["Logs", "Read recent stdout and stderr in service context."],
                 ["Git Review", "Inspect status, diffs, staged diffs, branches, history, and commit reviewed staged work."],
+                ["GitHub", "Review PRs, issues, comments, CI status, and GitHub Actions workflow runs from the Git view."],
+                ["Workflows", "Run built-in commit/push/ship flows or author reusable action, agent, and approval-gate workflows."],
                 ["Error Inbox", "Review deduped stack traces and generate debugging prompts."],
-                ["Database", "List connections, inspect tables, and sample rows with read-only tools."],
+                ["Database", "Inspect tables, run read queries, generate SQL, and use unlock + preview + commit for human-approved writes."],
                 ["Terminal", "Keep shell work near service, Git, and agent context."],
+                ["Agent tools", "Inspect MCP servers, skills, plugins, hooks, usage, and recent tool-call activity."],
               ]}
             />
           </Section>
@@ -376,7 +398,9 @@ nomoreide logs backend`}
                 "Port conflicts are reported instead of forcefully resolved.",
                 "Git tools omit hard reset, clean, force push, and branch deletion.",
                 "Git staging requires explicit file paths.",
-                "Database MCP tools are read-only browsing and sampling tools.",
+                "Database MCP tools are read-only; writes are staged for the human-only SQL console.",
+                "Database writes require an explicit unlock and affected-rows preview before commit.",
+                "GitHub merge and comment tools require a configured token and explicit user intent.",
                 "SSH services rely on the user's local SSH config and ssh-agent.",
                 "Managed service logs are scoped to .nomoreide/logs/.",
               ].map((item) => (
@@ -403,7 +427,9 @@ nomoreide logs backend`}
               items={[
                 ["Service debugging", "Call health, logs, and timeline before restart decisions."],
                 ["Git review", "Inspect status and diffs before staging or committing."],
-                ["Database inspection", "List connections, list tables, then sample selected tables."],
+                ["GitHub review", "Check PRs, issues, CI, and workflow runs before merge decisions."],
+                ["Database inspection", "List connections, list tables, sample rows, and keep MCP queries read-only."],
+                ["Database writes", "Return a sql-write block so the Web UI can stage the statement for human preview and commit."],
               ]}
             />
           </Section>

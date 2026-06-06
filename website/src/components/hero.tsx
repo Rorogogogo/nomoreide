@@ -26,7 +26,7 @@ const PROMPT_LINES = [
   "",
   "1. Add it as a stdio MCP server that runs `npx -y nomoreide`, using whatever MCP config you support.",
   "2. Restart yourself if required, then confirm the `nomoreide` tools are connected.",
-  "3. Open the NoMoreIDE dashboard and list my current services so I can start working.",
+  "3. Open the NoMoreIDE Web UI at http://127.0.0.1:4317/ and list my current services so I can start working.",
 ];
 
 const AGENT_SETUPS = [
@@ -216,8 +216,11 @@ export function Hero() {
             </div>
             <p className="max-w-lg text-sm leading-6 text-muted-foreground">
               Copy the universal prompt and let your agent wire it up, or grab
-              the exact command for your agent. Then verify the `nomoreide` MCP
-              server is connected.
+              the exact command for your agent. The Web UI runs locally at{" "}
+              <code className="font-mono text-foreground">
+                http://127.0.0.1:4317/
+              </code>
+              .
             </p>
           </div>
 

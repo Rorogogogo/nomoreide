@@ -1,6 +1,6 @@
 # NoMoreIDE Usage Guide
 
-NoMoreIDE is an AI-native local development workbench for services, logs, Git review, database inspection, terminal access, and MCP workflows. It gives humans and AI coding agents one shared control surface for the local development loop.
+NoMoreIDE is an AI-native local development workbench for services, logs, Git review, GitHub workflows, database inspection, SQL review, terminal access, and MCP workflows. It gives humans and AI coding agents one shared control surface for the local development loop.
 
 ## Overview
 
@@ -68,7 +68,7 @@ Gemini CLI:
 Universal setup prompt:
 
 ```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
 ```
 
 Verify inside the agent:
@@ -216,6 +216,20 @@ Git Review:
 - Inspect status, diffs, staged diffs, branches, and history.
 - Stage and unstage explicit files.
 - Commit staged changes.
+- Check commit CI status when GitHub is connected.
+
+GitHub:
+
+- Connect with a GitHub token or OAuth device flow.
+- Review pull requests, issues, comments, and GitHub Actions workflow runs.
+- Create PRs and issues from local context.
+- Merge pull requests only when the user explicitly asks and required checks pass.
+
+Workflows:
+
+- Use built-in commit/push/ship templates.
+- Author reusable workflows from action steps, agent steps, and human approval gates.
+- Keep workflow run status visible, including blocked or failed agent steps.
 
 Error Inbox:
 
@@ -227,7 +241,10 @@ Database:
 - Register Postgres, MySQL, or SQLite connections.
 - List tables and views.
 - Sample rows and schema metadata for inspection.
-- Use read-only browsing by default.
+- Run read-only SQL queries through MCP and the Web UI.
+- Generate SQL with the agent dock.
+- Keep writes locked by default; unlock a connection, preview affected rows, then commit from the human-only SQL console.
+- When an agent proposes a write, it should stage a `sql-write` block for the Web UI instead of executing the write through MCP.
 
 Terminal:
 
@@ -238,6 +255,7 @@ Agent dock:
 
 - Use the AI-native entry points in the UI to hand structured context to the agent.
 - Keep agent actions visible to the human user.
+- Inspect MCP servers, skills, plugins, hooks, usage, and tool-call activity.
 
 ## MCP Tool Reference
 
@@ -296,6 +314,25 @@ Database tools:
 nomoreide_list_databases
 nomoreide_db_tables
 nomoreide_db_sample
+nomoreide_db_query
+```
+
+GitHub tools:
+
+```text
+nomoreide_github_set_token
+nomoreide_github_list_prs
+nomoreide_github_get_pr
+nomoreide_github_get_pr_diff
+nomoreide_github_create_pr
+nomoreide_github_merge_pr
+nomoreide_github_list_issues
+nomoreide_github_get_issue
+nomoreide_github_list_issue_comments
+nomoreide_github_add_issue_comment
+nomoreide_github_create_issue
+nomoreide_github_get_commit_ci
+nomoreide_github_list_workflow_runs
 ```
 
 Agent and UI tools:
@@ -321,6 +358,8 @@ The config contains:
 - `selectedGitRepository`: the active repository shown by the UI.
 - `databases`: registered Postgres, MySQL, or SQLite connections.
 - `logSources`: named log readers for files, SSH paths, commands, journald, or Docker logs.
+- `githubTokens`: GitHub tokens used for PR, issue, CI, and Actions API access.
+- `workflows`: user-saved git/GitHub workflows built from action, agent, and gate steps.
 
 Service definition example:
 
@@ -354,7 +393,9 @@ NoMoreIDE is designed to be safe for AI-assisted development:
 - It reports port conflicts instead of terminating the occupying process.
 - Git tools omit hard reset, clean, force push, and branch deletion.
 - Git staging requires explicit file paths.
-- Database MCP tools are read-only browsing and sampling tools.
+- Database MCP tools are read-only. Writes are staged for the human-only SQL console.
+- Database writes require explicit unlock, preview, and commit.
+- GitHub merge/comment/create tools require a configured token and explicit user intent.
 - SSH services rely on the user's local SSH config and agent; NoMoreIDE does not store key material.
 - Logs are scoped to `.nomoreide/logs/` for managed services.
 

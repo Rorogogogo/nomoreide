@@ -7,7 +7,7 @@ This guide is written for AI coding agents using NoMoreIDE through MCP.
 Use this prompt when the user asks you to install or connect NoMoreIDE:
 
 ```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
 ```
 
 Agent-specific setup commands:
@@ -41,7 +41,7 @@ Verify the connection with:
 Use this prompt at the beginning of a coding session:
 
 ```text
-Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git work, inspect status and diffs before staging or committing. Prefer NoMoreIDE tools over ad hoc shell commands when a matching tool exists.
+Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; stage writes with a sql-write block so the human can review them in the Web UI SQL console.
 ```
 
 ## Recommended Workflow
@@ -52,7 +52,8 @@ Use NoMoreIDE as the shared local workbench for this session. Start by calling n
 4. Use domain-specific tools for the work:
    - Services: health, logs, timeline, start, stop, restart.
    - Git: status, diff, staged diff, log, branch, stage, unstage, commit.
-   - Database: list connections, list tables, sample rows.
+   - GitHub: PRs, issues, comments, commit CI, and workflow runs.
+   - Database: list connections, list tables, sample rows, read-only SQL query.
    - Errors: list incidents, build a debugging prompt.
 5. Explain the action before mutating service or Git state.
 6. Use focused verification commands and report exact outcomes.
@@ -86,8 +87,37 @@ For database questions:
 1. Call `nomoreide_list_databases`.
 2. Call `nomoreide_db_tables` for the chosen connection.
 3. Call `nomoreide_db_sample` for a specific table.
-4. Treat sampled rows as potentially sensitive user data.
-5. Prefer summaries and schema-aware explanations over copying large row sets.
+4. Use `nomoreide_db_query` only for read-only SELECT-style analysis.
+5. Treat sampled rows as potentially sensitive user data.
+6. Prefer summaries and schema-aware explanations over copying large row sets.
+
+## Database Write Workflow
+
+MCP database tools do not execute writes. If the user asks for an INSERT, UPDATE, DELETE, or DDL statement:
+
+1. Draft exactly one scoped statement.
+2. Return it in a fenced block tagged `sql-write` followed by the connection name.
+3. Do not tell the user to manually copy it into a console.
+4. Let NoMoreIDE render the "Open in SQL console" action.
+5. The human unlocks writes, reviews the affected-rows preview, and commits from the Web UI.
+
+Example:
+
+````text
+```sql-write acme-local
+UPDATE users SET role = 'developer' WHERE id = 'usr_01hx8q9n';
+```
+````
+
+## GitHub Workflow
+
+When GitHub is connected:
+
+1. Use `nomoreide_github_list_prs` and `nomoreide_github_get_pr` to inspect PR state.
+2. Use `nomoreide_github_get_commit_ci` and `nomoreide_github_list_workflow_runs` before merge decisions.
+3. Use issue/comment tools for repo context rather than scraping GitHub pages.
+4. Create or merge PRs only when the user clearly asks.
+5. Report exact PR, issue, CI, or Actions URLs returned by the tools.
 
 ## Safety Rules
 
@@ -96,7 +126,8 @@ For database questions:
 - Do not kill processes that NoMoreIDE did not start.
 - Do not use destructive Git operations.
 - Do not expose secrets from service environment or database rows.
-- Ask before starting, stopping, restarting, staging, or committing when user intent is ambiguous.
+- Do not execute database writes through MCP; stage them for human preview.
+- Ask before starting, stopping, restarting, staging, committing, creating PRs/issues, commenting, or merging when user intent is ambiguous.
 - Keep actions scoped to registered services, repositories, databases, and log sources.
 
 ## Tool Reference
@@ -156,6 +187,25 @@ Database tools:
 nomoreide_list_databases
 nomoreide_db_tables
 nomoreide_db_sample
+nomoreide_db_query
+```
+
+GitHub tools:
+
+```text
+nomoreide_github_set_token
+nomoreide_github_list_prs
+nomoreide_github_get_pr
+nomoreide_github_get_pr_diff
+nomoreide_github_create_pr
+nomoreide_github_merge_pr
+nomoreide_github_list_issues
+nomoreide_github_get_issue
+nomoreide_github_list_issue_comments
+nomoreide_github_add_issue_comment
+nomoreide_github_create_issue
+nomoreide_github_get_commit_ci
+nomoreide_github_list_workflow_runs
 ```
 
 Agent and UI tools:

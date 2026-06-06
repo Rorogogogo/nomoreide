@@ -157,7 +157,10 @@ function buildRepositoriesSection(
   if (!repositoryPaths.length) return null;
   const configured = repositoryOptions(dashboard);
   const currentPath = dashboard.git.selectedRepository?.path ?? dashboard.git.cwd;
-  const files = dashboard.git.status?.files.map((file) => `${file.status}: ${file.path}`) ?? [];
+  const files =
+    dashboard.git.status?.files.map(
+      (file) => `${file.index}${file.workingTree}: ${file.path}`,
+    ) ?? [];
   const repositories = repositoryPaths.map((path) => {
     const repo = configured.find((item) => item.path === path);
     const current = path === currentPath;
