@@ -15,7 +15,7 @@
 
 Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, GitHub workflows, database work, and MCP workflows — no IDE required.
 
-[Quick Start](#quick-start) · [MCP Setup](#-connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
+[MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
 
 </div>
 
@@ -150,69 +150,6 @@ If you prefer to point agents at a locally built binary instead of the published
     }
   }
 }
-```
-
----
-
-## Quick Start
-
-Add NoMoreIDE to your agent as a local MCP server:
-
-```bash
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
-codex mcp add nomoreide -- npx -y nomoreide
-```
-
-For Gemini CLI, add this to `~/.gemini/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "nomoreide": {
-      "command": "npx",
-      "args": ["-y", "nomoreide"]
-    }
-  }
-}
-```
-
-Or print the setup commands from the package:
-
-```bash
-npx -y nomoreide setup
-```
-
-Or paste this prompt into your agent:
-
-```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp.
-```
-
-Verify inside your agent:
-
-```text
-/mcp
-```
-
-Run the local MCP server directly:
-
-```bash
-npx -y nomoreide
-```
-
-Install globally only if you want the `nomoreide` CLI on your PATH:
-
-```bash
-npm install -g nomoreide
-```
-
-Build from source:
-
-```bash
-git clone https://github.com/Rorogogogo/nomoreide.git
-cd nomoreide
-npm install
-npm run build
 ```
 
 ---

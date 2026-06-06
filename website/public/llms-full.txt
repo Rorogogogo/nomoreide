@@ -7,29 +7,6 @@ AI agent guide: https://www.nomoreide.com/docs/ai-guide.md
 GitHub: https://github.com/Rorogogogo/nomoreide
 npm: https://www.npmjs.com/package/nomoreide
 
-## Quick Start
-
-Run directly:
-
-```bash
-npx -y nomoreide
-```
-
-Install globally:
-
-```bash
-npm install -g nomoreide
-```
-
-Build from source:
-
-```bash
-git clone https://github.com/Rorogogogo/nomoreide.git
-cd nomoreide
-npm install
-npm run build
-```
-
 ## MCP Setup
 
 Claude Code:

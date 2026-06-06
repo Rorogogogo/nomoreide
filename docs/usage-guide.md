@@ -13,29 +13,6 @@ NoMoreIDE runs locally. It can be used as:
 
 The core idea is simple: instead of asking an agent to guess what is running, scrape terminal history, or run arbitrary shell commands, NoMoreIDE exposes structured tools for the things agents need most often.
 
-## Quick Start
-
-Run NoMoreIDE directly:
-
-```bash
-npx -y nomoreide
-```
-
-Install globally if you want the `nomoreide` command on your PATH:
-
-```bash
-npm install -g nomoreide
-```
-
-Build from source:
-
-```bash
-git clone https://github.com/Rorogogogo/nomoreide.git
-cd nomoreide
-npm install
-npm run build
-```
-
 ## MCP Setup
 
 NoMoreIDE is usually most useful when connected to an AI coding agent as a local stdio MCP server.

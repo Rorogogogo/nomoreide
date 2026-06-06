@@ -81,18 +81,22 @@ const COMMIT_GATE: WorkflowStep = {
 };
 
 /**
- * One lightweight AI pass that writes a real commit message and commits — the
- * balance the user wanted: a thought-through message like the `commit-push`
- * skill, but a single pass (no review report, no splitting into many commits).
- * Shared by the commit-bearing templates.
+ * One lightweight AI pass that prepares a real commit message before the human
+ * gate. The deterministic commit action then uses the approved message directly.
  */
-const COMMIT_STEP: WorkflowStep = {
+const COMMIT_MESSAGE_STEP: WorkflowStep = {
   kind: "agent",
-  id: "commit",
-  title: "Commit all changes",
+  id: "commit-message",
+  title: "Generate commit message",
   prompt:
-    "Stage my changes and make ONE commit, in a single pass. Steps: stage the changed files with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`); glance at the staged diff once with `nomoreide_git_staged_diff`; then commit with `nomoreide_git_commit` using a conventional-commit message — a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. One commit only: do NOT split into multiple commits and do NOT write a separate review or analysis. Reply with just the commit message you used.",
-  verify: "committed",
+    "Stage my changes with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`), inspect the staged diff once with `nomoreide_git_staged_diff`, then write one conventional-commit message — a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. Do NOT commit. Reply with ONLY the commit message you recommend.",
+};
+
+const COMMIT_ACTION_STEP: WorkflowStep = {
+  kind: "action",
+  id: "commit",
+  title: "Commit with approved message",
+  op: "commit",
 };
 
 /**
@@ -106,8 +110,9 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
     description: "Pause for approval, make one AI-written commit, then pause again before pushing.",
     builtin: true,
     steps: [
+      COMMIT_MESSAGE_STEP,
       { ...COMMIT_GATE },
-      COMMIT_STEP,
+      COMMIT_ACTION_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push to the remote?" },
       { kind: "action", id: "push", title: "Push", op: "push" },
     ],
@@ -118,8 +123,9 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
     description: "Approve the AI commit, push, then use quick AI turns to open and squash-merge the PR.",
     builtin: true,
     steps: [
+      COMMIT_MESSAGE_STEP,
       { ...COMMIT_GATE },
-      COMMIT_STEP,
+      COMMIT_ACTION_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push and open a PR?" },
       { kind: "action", id: "push", title: "Push", op: "push" },
       {

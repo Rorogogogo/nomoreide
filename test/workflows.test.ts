@@ -19,18 +19,24 @@ describe("workflows", () => {
     expect(ids).toEqual(BUILTIN_WORKFLOWS.map((workflow) => workflow.id));
   });
 
-  test("commit-bearing built-ins pause for approval before committing", () => {
+  test("commit-bearing built-ins generate a message before asking to commit", () => {
     for (const id of ["commit-push", "ship-it"]) {
       const workflow = BUILTIN_WORKFLOWS.find((item) => item.id === id);
-      expect(workflow?.steps.slice(0, 2)).toMatchObject([
+      expect(workflow?.steps.slice(0, 3)).toMatchObject([
+        {
+          kind: "agent",
+          id: "commit-message",
+          title: "Generate commit message",
+        },
         {
           kind: "gate",
           id: "gate-commit",
           title: "Approve commit",
         },
         {
-          kind: "agent",
+          kind: "action",
           id: "commit",
+          op: "commit",
         },
       ]);
     }
