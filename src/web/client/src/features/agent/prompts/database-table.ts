@@ -1,4 +1,5 @@
 import type { ColumnInfo, DatabaseEngine, TableRef } from "@/lib/api";
+import { PROMPT_TRAILER, schemaSection } from "./database-shared";
 
 /**
  * Build the "ask about this table" prefill. Drafted into the input (not
@@ -18,20 +19,8 @@ export function buildTablePrompt(
     `I'm looking at the table \`${table.qualifiedName}\` in ${where}.`,
     "",
   ];
-  if (options?.columns?.length) {
-    lines.push("## Table schema");
-    lines.push(
-      options.columns
-        .map(
-          (col) =>
-            `- ${col.name}: ${col.dataType}${col.primaryKey ? " (PK)" : ""}${
-              col.nullable ? "" : " NOT NULL"
-            }`,
-        )
-        .join("\n"),
-    );
-    lines.push("");
-  }
-  lines.push("My question: ");
+  const schema = schemaSection(options?.columns);
+  if (schema) lines.push(schema);
+  lines.push(PROMPT_TRAILER);
   return lines.join("\n");
 }

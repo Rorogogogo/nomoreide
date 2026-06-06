@@ -1,25 +1,39 @@
-import type { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
+import type {
+  Pool,
+  PoolConnection,
+  ResultSetHeader,
+  RowDataPacket,
+} from "mysql2/promise";
 import type { DatabaseEngine } from "../types.js";
 import {
   assertSafeIdentifier,
   clampLimit,
   clampOffset,
+  columnsFromNames,
   normalizeRow,
+  prepareUserQuery,
   type ColumnInfo,
   type DbDriver,
+  type DbWriteDriver,
+  type QueryResult,
   type RowSample,
   type TableRef,
+  type WriteResult,
 } from "./driver.js";
 
 /**
- * MySQL / MariaDB driver. Each operation runs in a `START TRANSACTION READ
- * ONLY` block on a pooled connection, then rolls back.
+ * MySQL / MariaDB driver. Read operations run in a `START TRANSACTION READ
+ * ONLY` block, then roll back. A driver constructed with `{ writable: true }`
+ * (only the DbWrite module does this) exposes the guarded `executeWrite` path.
  */
-export class MysqlDriver implements DbDriver {
+export class MysqlDriver implements DbDriver, DbWriteDriver {
   readonly engine: DatabaseEngine = "mysql";
   private poolPromise: Promise<Pool> | null = null;
+  private readonly writable: boolean;
 
-  constructor(private readonly url: string) {}
+  constructor(private readonly url: string, options: { writable?: boolean } = {}) {
+    this.writable = options.writable ?? false;
+  }
 
   private async pool(): Promise<Pool> {
     if (!this.poolPromise) {
@@ -94,6 +108,63 @@ export class MysqlDriver implements DbDriver {
         offset: skip,
       };
     });
+  }
+
+  async runQuery(sql: string, maxRows: number): Promise<QueryResult> {
+    const statement = prepareUserQuery(sql);
+    const cap = clampLimit(maxRows);
+    return this.withReadOnly(async (conn) => {
+      // Wrap in a derived table so the row cap applies without parsing the SQL;
+      // START TRANSACTION READ ONLY rejects any write regardless.
+      const [rows, fields] = await conn.query<RowDataPacket[]>(
+        `SELECT * FROM (${statement}) AS _nmi_q LIMIT ?`,
+        [cap + 1],
+      );
+      const truncated = rows.length > cap;
+      const capped = truncated ? rows.slice(0, cap) : rows;
+      const names = (fields ?? []).map((field) => field.name);
+      return {
+        columns: columnsFromNames(names),
+        rows: capped.map((row) => normalizeRow(row as Record<string, unknown>)),
+        rowCount: capped.length,
+        truncated,
+      };
+    });
+  }
+
+  async executeWrite(sql: string, commit: boolean): Promise<WriteResult> {
+    if (!this.writable) throw new Error("This connection is read-only.");
+    const statement = prepareUserQuery(sql);
+    const pool = await this.pool();
+    const conn = await pool.getConnection();
+    try {
+      await conn.query("START TRANSACTION");
+      const [result, fields] = await conn.query(statement);
+      await conn.query(commit ? "COMMIT" : "ROLLBACK");
+      // A SELECT yields a row array; DML yields a ResultSetHeader.
+      if (Array.isArray(result)) {
+        const rows = (result as RowDataPacket[]).map((row) =>
+          normalizeRow(row as Record<string, unknown>),
+        );
+        return {
+          affectedRows: rows.length,
+          rows,
+          columns: columnsFromNames((fields ?? []).map((field) => field.name)),
+          committed: commit,
+        };
+      }
+      return {
+        affectedRows: (result as ResultSetHeader).affectedRows ?? 0,
+        rows: [],
+        columns: [],
+        committed: commit,
+      };
+    } catch (error) {
+      await conn.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      conn.release();
+    }
   }
 
   private async columnsFor(

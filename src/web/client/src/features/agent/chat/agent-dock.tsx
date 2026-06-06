@@ -36,7 +36,7 @@ import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { useAgentDock } from "./agent-context";
 import { hasAgentPath, readAgentPath } from "./drag-to-agent";
 import { FilePicker } from "./file-picker";
-import { OptionList, parseAgentMessage, ServiceActions } from "./message-options";
+import { OptionList, parseAgentMessage, ServiceActions, SqlWriteAction } from "./message-options";
 import { ChatMarkdown } from "./chat-markdown";
 import { ThinkingIndicator, useSmoothText } from "./streaming-ui";
 import type { ApprovalPrompt, ChatToolCall, ChatTurn } from "./use-agent-chat";
@@ -49,12 +49,15 @@ import type { ApprovalPrompt, ChatToolCall, ChatTurn } from "./use-agent-chat";
 export function AgentDock({
   onOpenAgentPage,
   onOpenService,
+  onOpenSqlConsole,
   git,
   onGitRefresh,
 }: {
   onOpenAgentPage?: () => void;
   /** Navigate to the Services page and focus a service (for the chat shortcut). */
   onOpenService?: (name: string) => void;
+  /** Stage an agent-drafted write into the Database page's SQL console. */
+  onOpenSqlConsole?: (connection: string, sql: string) => void;
   /** Current git slice of the dashboard — powers the contextual situation strip. */
   git?: DashboardData["git"];
   /** Reload dashboard data after a git mutation triggered from the dock. */
@@ -407,6 +410,7 @@ export function AgentDock({
                     onChoose={choose}
                     onStartService={startService}
                     onOpenService={onOpenService}
+                    onOpenSqlConsole={onOpenSqlConsole}
                   />
                 ))
               )}
@@ -677,6 +681,7 @@ function TurnView({
   onChoose,
   onStartService,
   onOpenService,
+  onOpenSqlConsole,
 }: {
   turn: ChatTurn;
   streaming: boolean;
@@ -684,6 +689,7 @@ function TurnView({
   onChoose: (value: string) => void;
   onStartService: (name: string) => void;
   onOpenService?: (name: string) => void;
+  onOpenSqlConsole?: (connection: string, sql: string) => void;
 }) {
   // Smooth the live assistant turn; user turns and finished turns render as-is
   // (their text arrives complete, so the typewriter has nothing to catch up on).
@@ -693,8 +699,8 @@ function TurnView({
     return <UserBubble turn={turn} />;
   }
 
-  // Pull agent-offered choices / service shortcuts out of the prose into UI.
-  const { body, options, service } = parseAgentMessage(text);
+  // Pull agent-offered choices / service shortcuts / staged writes out of prose.
+  const { body, options, service, sqlWrite } = parseAgentMessage(text);
   return (
     <div className="space-y-1.5">
       {turn.tools.map((tool) => (
@@ -711,6 +717,9 @@ function TurnView({
       ) : null}
       {service && !streaming ? (
         <ServiceActions service={service} onStart={onStartService} onOpen={onOpenService} />
+      ) : null}
+      {sqlWrite && onOpenSqlConsole && !streaming ? (
+        <SqlWriteAction proposal={sqlWrite} onOpen={onOpenSqlConsole} />
       ) : null}
       {streaming && !body ? <ThinkingIndicator /> : null}
     </div>

@@ -21,6 +21,7 @@ import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { LargestFilesView } from "./largest-files-view";
 import { GitHubView } from "../github/github-view";
+import { GitHubLogo } from "../github/github-logo";
 import { WorkflowPanel } from "../workflows/workflow-panel";
 
 type GitTab = "changes" | "all" | "graph" | "largest" | "github" | "workflows";
@@ -270,7 +271,10 @@ export function GitReviewView({
           className={tabButtonClass(tab === "github")}
           onClick={() => setTab("github")}
         >
-          GitHub
+          <span className="flex items-center gap-1">
+            <GitHubLogo className="size-3" />
+            GitHub
+          </span>
         </button>
         <button
           type="button"

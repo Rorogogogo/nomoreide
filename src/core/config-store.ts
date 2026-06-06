@@ -72,6 +72,7 @@ const databaseSchema = z.object({
   name: z.string().min(1),
   engine: z.enum(["postgres", "mysql", "sqlite"]),
   url: z.string().min(1),
+  writeUnlocked: z.boolean().optional(),
 });
 
 const logSourceSchema = z
@@ -294,6 +295,21 @@ export class ConfigStore {
   async removeDatabase(name: string): Promise<NoMoreIdeConfig> {
     const config = await this.load();
     config.databases = config.databases.filter((item) => item.name !== name);
+    await this.save(config);
+    return config;
+  }
+
+  /** Lock or unlock write access for a single connection's SQL console. */
+  async setDatabaseWriteAccess(
+    name: string,
+    unlocked: boolean,
+  ): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    const connection = config.databases.find((item) => item.name === name);
+    if (!connection) {
+      throw new Error(`Database connection "${name}" is not registered.`);
+    }
+    connection.writeUnlocked = unlocked;
     await this.save(config);
     return config;
   }

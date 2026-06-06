@@ -9,6 +9,8 @@ export { DATABASE_SETUP_PROMPT } from "./database-setup";
 export { onboardRepoPrompt } from "./repo-onboard";
 export { buildRowPrompt } from "./database-row";
 export { buildTablePrompt } from "./database-table";
+export { buildGenerateSqlPrompt } from "./database-generate-sql";
+export { buildDebugSqlPrompt } from "./database-debug-sql";
 export { buildLargeFileSplitPrompt } from "./large-file";
 export { buildCommitPrompt } from "./git-commit";
 export { buildCommitMessagePrompt } from "./git-commit-message";

@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
+import { FirstRunGuide } from "./first-run-guide";
 import { HealthSummary } from "./health-summary";
 import { PortsOverview } from "./ports-overview";
 import { LifecycleActions } from "./service-actions";
@@ -247,8 +248,24 @@ export function ServicesView({
     showSuccessToast,
   ]);
 
+  const hasServices = data.config.services.length > 0;
+
   return (
     <>
+      {!hasServices ? (
+        <FirstRunGuide
+          onOnboardRepo={() => setOnboardOpen(true)}
+          onOnboardWithAi={startOnboard}
+          onCreateService={() => setServiceComposer("service")}
+          onCreateWithAi={() =>
+            sendToAgent({
+              prompt: SETUP_SERVICE_PROMPT,
+              source: { type: "service-setup", label: "Add a service" },
+              label: "Help me add a new service, one step at a time.",
+            })
+          }
+        />
+      ) : (
       <div
         className={cn(
           "grid h-full min-h-0 overflow-hidden bg-card/85",
@@ -506,6 +523,7 @@ export function ServicesView({
           </div>
         ) : null}
       </div>
+      )}
       {editOpen && selectedServiceDef ? (
         <ComposerDialog
           icon={<Pencil />}

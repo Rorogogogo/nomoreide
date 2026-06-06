@@ -1,6 +1,11 @@
 import type { ColumnInfo, DatabaseEngine, TableRef } from "@/lib/api";
+import { PROMPT_TRAILER, schemaSection } from "./database-shared";
 
-/** Build the "explain this row to the agent" prompt from already-fetched data. */
+/**
+ * Build the "ask about this row" prefill. Drafted into the dock input (not
+ * auto-sent), so it ends on an open `Your prompt:` line — same as
+ * {@link buildTablePrompt} — to cue the user to type their own question.
+ */
 export function buildRowPrompt(
   connection: string,
   engine: DatabaseEngine,
@@ -8,25 +13,15 @@ export function buildRowPrompt(
   columns: ColumnInfo[],
   row: Record<string, unknown>,
 ): string {
-  const schemaLines = columns
-    .map(
-      (col) =>
-        `- ${col.name}: ${col.dataType}${col.primaryKey ? " (PK)" : ""}${
-          col.nullable ? "" : " NOT NULL"
-        }`,
-    )
-    .join("\n");
   return [
     `I'm looking at a row in my ${engine} database (connection "${connection}", table \`${table.qualifiedName}\`).`,
     "",
-    "## Table schema",
-    schemaLines,
-    "",
+    schemaSection(columns),
     "## Row",
     "```json",
     JSON.stringify(row, null, 2),
     "```",
     "",
-    "Explain what this row represents and anything notable about its values.",
+    PROMPT_TRAILER,
   ].join("\n");
 }

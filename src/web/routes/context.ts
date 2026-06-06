@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ApprovalBroker } from "../../core/approval-broker.js";
 import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
+import type { DbWrite } from "../../core/db-write.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
 import type { LogStore } from "../../core/log-store.js";
 import type { MetricsStore } from "../../core/metrics-store.js";
@@ -18,6 +19,7 @@ export interface RouteServices {
   configStore: ConfigStore;
   cwd: string;
   dbPeek: DbPeek;
+  dbWrite: DbWrite;
   errorInbox: ErrorInbox;
   logStore: LogStore;
   manager: ProcessManager;

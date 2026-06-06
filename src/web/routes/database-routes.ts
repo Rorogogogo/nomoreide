@@ -1,6 +1,7 @@
 import { mergeStoredPassword } from "../../core/db-peek.js";
 import type { DatabaseEngine } from "../../core/types.js";
 import {
+  optionalFormValue,
   readForm,
   requiredFormValue,
   sendJson,
@@ -39,7 +40,13 @@ export const databaseRoutes: Route[] = [
     if (existing) {
       url = mergeStoredPassword(engine, url, existing.url);
     }
-    const config = await configStore.registerDatabase({ name, engine, url });
+    const config = await configStore.registerDatabase({
+      name,
+      engine,
+      url,
+      // Re-registering replaces the entry, so carry the unlock state forward.
+      writeUnlocked: existing?.writeUnlocked,
+    });
     sendJson(response, {
       ok: true,
       databases: config.databases.map((db) => ({
@@ -88,6 +95,87 @@ export const databaseRoutes: Route[] = [
       }
       const tables = await dbPeek.listTables(decodeURIComponent(params.name));
       sendJson(response, { ok: true, tables });
+    },
+  ),
+
+  // Lock / unlock write access for a connection (human-only; never the agent).
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/write-access$/,
+    ["name"],
+    async ({ request, response, params, configStore }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const form = await readForm(request);
+      const unlocked = requiredFormValue(form, "unlocked") === "true";
+      await configStore.setDatabaseWriteAccess(
+        decodeURIComponent(params.name),
+        unlocked,
+      );
+      sendJson(response, { ok: true, writeUnlocked: unlocked });
+    },
+  ),
+
+  // Run a write (preview = rolled-back dry run, commit = persisted). Gated by
+  // the connection's unlock flag inside DbWrite.
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/execute$/,
+    ["name"],
+    async ({ request, response, params, dbWrite }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const form = await readForm(request);
+      const sql = requiredFormValue(form, "sql");
+      const commit = optionalFormValue(form, "mode") === "commit";
+      try {
+        const outcome = await dbWrite.execute(
+          decodeURIComponent(params.name),
+          sql,
+          commit,
+        );
+        sendJson(response, { ok: true, ...outcome });
+      } catch (error) {
+        sendJson(
+          response,
+          { ok: false, error: error instanceof Error ? error.message : String(error) },
+          400,
+        );
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/query$/,
+    ["name"],
+    async ({ request, response, params, dbPeek }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const form = await readForm(request);
+      const sql = requiredFormValue(form, "sql");
+      const limitRaw = optionalFormValue(form, "limit");
+      const limitParam = Number(limitRaw);
+      const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 100;
+      try {
+        const result = await dbPeek.runQuery(
+          decodeURIComponent(params.name),
+          sql,
+          limit,
+        );
+        sendJson(response, { ok: true, ...result });
+      } catch (error) {
+        // Bad SQL / read-only violations are user errors — surface the message
+        // inline rather than as a 500.
+        sendJson(
+          response,
+          { ok: false, error: error instanceof Error ? error.message : String(error) },
+          400,
+        );
+      }
     },
   ),
 

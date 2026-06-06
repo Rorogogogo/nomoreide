@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, GitMerge, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, GitBranch, GitMerge, Loader2, User } from "lucide-react";
 import { mergeGitHubPR, type GitHubPR } from "@/lib/api";
 import { DiffViewer } from "../git/diff-viewer";
 
@@ -85,15 +85,25 @@ export function PrDetail({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        {tab === "overview" ? (
+      {tab === "overview" ? (
+        <div className="min-h-0 flex-1 overflow-auto">
           <div className="space-y-4 p-4">
-            <div className="flex flex-wrap gap-2 text-[12px]">
-              <MetaChip label="State" value={pr.state} />
-              <MetaChip label="Base" value={pr.base.ref} />
-              <MetaChip label="Head" value={pr.head.ref} />
-              <MetaChip label="Author" value={pr.user.login} />
-              <MetaChip label="Created" value={new Date(pr.created_at).toLocaleDateString()} />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
+              <StateBadge pr={pr} />
+              <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-[11px]">
+                <GitBranch className="size-3 shrink-0 text-muted-foreground" />
+                {pr.base.ref}
+                <ArrowLeft className="size-3 shrink-0 text-muted-foreground" />
+                {pr.head.ref}
+              </span>
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <User className="size-3 shrink-0" />
+                {pr.user.login}
+              </span>
+              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                <Calendar className="size-3 shrink-0" />
+                {new Date(pr.created_at).toLocaleDateString()}
+              </span>
             </div>
             {pr.body ? (
               <div className="whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 font-mono text-[12px]">
@@ -103,25 +113,37 @@ export function PrDetail({
               <p className="text-[12px] text-muted-foreground italic">No description provided.</p>
             )}
           </div>
-        ) : diffLoading ? (
-          <div className="p-4 text-[12px] text-muted-foreground">Loading diff…</div>
-        ) : diffError ? (
-          <div className="p-4 text-[12px] text-red-500">{diffError}</div>
-        ) : diff ? (
-          <DiffViewer diff={diff} />
-        ) : (
-          <div className="p-4 text-[12px] text-muted-foreground">No diff available.</div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="relative min-h-0 min-w-0 flex-1">
+          {diffLoading ? (
+            <div className="p-4 text-[12px] text-muted-foreground">Loading diff…</div>
+          ) : diffError ? (
+            <div className="p-4 text-[12px] text-red-500">{diffError}</div>
+          ) : diff ? (
+            <DiffViewer diff={diff} />
+          ) : (
+            <div className="p-4 text-[12px] text-muted-foreground">No diff available.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function MetaChip({ label, value }: { label: string; value: string }) {
+function StateBadge({ pr }: { pr: GitHubPR }) {
+  const { label, cls } =
+    pr.state === "merged"
+      ? { label: "Merged", cls: "border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-400/30 dark:bg-purple-500/15 dark:text-purple-300" }
+      : pr.state === "closed"
+        ? { label: "Closed", cls: "border-red-300 bg-red-100 text-red-800 dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-300" }
+        : pr.draft
+          ? { label: "Draft", cls: "border-border bg-muted text-muted-foreground" }
+          : { label: "Open", cls: "border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300" };
   return (
-    <span className="rounded border border-border bg-muted/50 px-2 py-0.5 text-[11px]">
-      <span className="text-muted-foreground">{label}: </span>
-      <span className="font-medium">{value}</span>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+      {label === "Merged" ? <GitMerge className="size-3" /> : null}
+      {label}
     </span>
   );
 }

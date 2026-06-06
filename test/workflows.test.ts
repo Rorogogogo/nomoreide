@@ -19,6 +19,23 @@ describe("workflows", () => {
     expect(ids).toEqual(BUILTIN_WORKFLOWS.map((workflow) => workflow.id));
   });
 
+  test("commit-bearing built-ins pause for approval before committing", () => {
+    for (const id of ["commit-push", "ship-it"]) {
+      const workflow = BUILTIN_WORKFLOWS.find((item) => item.id === id);
+      expect(workflow?.steps.slice(0, 2)).toMatchObject([
+        {
+          kind: "gate",
+          id: "gate-commit",
+          title: "Approve commit",
+        },
+        {
+          kind: "agent",
+          id: "commit",
+        },
+      ]);
+    }
+  });
+
   test("a stored workflow with a built-in id replaces it (a fork)", () => {
     const fork: Workflow = {
       id: "ship-it",
@@ -52,5 +69,36 @@ describe("workflows", () => {
         steps: [{ kind: "nope", id: "x", title: "x" }],
       }),
     ).toThrow();
+  });
+
+  test("agent steps can persist selected capabilities", () => {
+    const workflow = workflowSchema.parse({
+      id: "review-with-tools",
+      name: "Review with tools",
+      steps: [
+        {
+          kind: "agent",
+          id: "review",
+          title: "Review",
+          prompt: "Review the staged diff.",
+          capabilities: {
+            skills: ["code-review"],
+            mcpServers: ["github"],
+            plugins: ["workflow-pack"],
+            hooks: ["PreToolUse: Bash"],
+          },
+        },
+      ],
+    });
+
+    expect(workflow.steps[0]).toMatchObject({
+      kind: "agent",
+      capabilities: {
+        skills: ["code-review"],
+        mcpServers: ["github"],
+        plugins: ["workflow-pack"],
+        hooks: ["PreToolUse: Bash"],
+      },
+    });
   });
 });

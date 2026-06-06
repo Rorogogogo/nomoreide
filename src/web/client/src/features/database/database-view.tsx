@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Database, Loader2, Plus, Sparkles, Table2 } from "lucide-react";
+import { Database, Loader2, Plus, Sparkles, Table2, Terminal } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,17 +17,41 @@ import { DATABASE_SETUP_PROMPT, buildTablePrompt } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
 import { ConnectionSelector } from "./connection-selector";
 import { DbAddMenu } from "./db-add-menu";
+import { SqlConsole } from "./sql-console";
 import { TableGrid } from "./table-grid";
 import { PAGE_SIZES, useDatabases, useTableBrowser } from "./use-databases";
 
 type Dialog = { mode: "add" } | { mode: "edit"; target: EditTarget } | null;
+type ViewMode = "browse" | "query";
 
-export function DatabaseView() {
+export function DatabaseView({
+  staged,
+  onStageConsumed,
+}: {
+  /** A write the dock agent drafted, routed here to seed the SQL console. */
+  staged?: { connection: string; sql: string; nonce: number } | null;
+  onStageConsumed?: () => void;
+} = {}) {
   const { connections, loading, error, refresh } = useDatabases();
   const { error: showError, success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
   const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<ViewMode>("browse");
   const [dialog, setDialog] = useState<Dialog>(null);
+  // One-shot seed handed to the SQL console when a write is staged from the dock.
+  const [seed, setSeed] = useState<{ sql: string; nonce: number } | null>(null);
+
+  // A staged write from the dock: jump to its connection, flip to the SQL tab,
+  // and hand the statement to the console. Consume it so a later revisit is
+  // clean — the user's edits in the editor then stand on their own.
+  useEffect(() => {
+    if (!staged) return;
+    if (staged.connection) setSelected(staged.connection);
+    setMode("query");
+    setSeed({ sql: staged.sql, nonce: staged.nonce });
+    onStageConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staged?.nonce]);
 
   function addWithAi() {
     sendToAgent({
@@ -75,6 +99,7 @@ export function DatabaseView() {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          {selected ? <ViewModeToggle mode={mode} onChange={setMode} /> : null}
           <ConnectionSelector
             connections={connections}
             selected={selected}
@@ -95,7 +120,20 @@ export function DatabaseView() {
             </Alert>
           </div>
         ) : selected ? (
-          <ConnectionBrowser connection={selected} />
+          mode === "query" ? (
+            <SqlConsole
+              key={selected}
+              connection={selected}
+              engine={connections.find((c) => c.name === selected)?.engine}
+              unlocked={
+                connections.find((c) => c.name === selected)?.writeUnlocked ?? false
+              }
+              seed={seed}
+              onWriteAccessChange={refresh}
+            />
+          ) : (
+            <ConnectionBrowser connection={selected} />
+          )
         ) : (
           <EmptyState onAdd={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
         )}
@@ -108,6 +146,42 @@ export function DatabaseView() {
           onSaved={refresh}
         />
       ) : null}
+    </div>
+  );
+}
+
+function ViewModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: ViewMode;
+  onChange: (mode: ViewMode) => void;
+}) {
+  const options: Array<{ value: ViewMode; label: string; icon: typeof Table2 }> = [
+    { value: "browse", label: "Browse", icon: Table2 },
+    { value: "query", label: "SQL", icon: Terminal },
+  ];
+  return (
+    <div className="flex items-center rounded-md border border-border p-0.5">
+      {options.map((option) => {
+        const Icon = option.icon;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
+              mode === option.value
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="size-3.5" />
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -2,9 +2,23 @@ import { requestJson } from "./client.js";
 import type { GitFileStatus } from "./git.js";
 
 /** Mirrors the server step kinds in `core/workflows.ts`. */
+export interface WorkflowCapabilities {
+  skills?: string[];
+  mcpServers?: string[];
+  plugins?: string[];
+  hooks?: string[];
+}
+
 export type WorkflowStep =
   | { kind: "action"; id: string; title: string; op: "push" | "commit" }
-  | { kind: "agent"; id: string; title: string; prompt: string; verify?: "committed" | "pushed" }
+  | {
+      kind: "agent";
+      id: string;
+      title: string;
+      prompt: string;
+      capabilities?: WorkflowCapabilities;
+      verify?: "committed" | "pushed";
+    }
   | { kind: "gate"; id: string; title: string; message: string };
 
 export interface Workflow {

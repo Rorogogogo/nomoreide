@@ -2,6 +2,7 @@ import { CheckCircle, Circle, ExternalLink, RefreshCw, XCircle } from "lucide-re
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useGitHubActions } from "./hooks/use-github-actions";
+import { LoadMoreButton } from "./load-more-button";
 
 export function ActionsView() {
   const {
@@ -9,9 +10,12 @@ export function ActionsView() {
     selectedRunId,
     jobs,
     loading,
+    loadingMore,
+    hasMore,
     jobsLoading,
     error,
     jobsError,
+    loadMore,
     refresh,
     setSelectedRunId,
   } = useGitHubActions();
@@ -42,7 +46,8 @@ export function ActionsView() {
           <div className="p-4 text-[12px] text-muted-foreground">No workflow runs found.</div>
         ) : (
           <div className="grid h-full min-h-0 grid-cols-[minmax(280px,380px)_minmax(0,1fr)] divide-x divide-border">
-            <ul className="min-h-0 overflow-auto divide-y divide-border">
+            <div className="min-h-0 overflow-auto">
+            <ul className="divide-y divide-border">
               {runs.map((run) => (
                 <li key={run.id}>
                   <button
@@ -65,6 +70,8 @@ export function ActionsView() {
                 </li>
               ))}
             </ul>
+            <LoadMoreButton hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
+            </div>
 
             <RunJobsDetail
               error={jobsError}

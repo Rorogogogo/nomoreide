@@ -6,9 +6,15 @@ import {
   type GitHubPR,
 } from "@/lib/api";
 
+// Mirrors the server's `per_page`; a full page back means there may be more.
+const PAGE_SIZE = 30;
+
 export function useGitHubPRs(state: "open" | "closed" | "all" = "open") {
   const [prs, setPrs] = useState<GitHubPR[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [selectedPR, setSelectedPR] = useState<GitHubPR | null>(null);
@@ -20,10 +26,12 @@ export function useGitHubPRs(state: "open" | "closed" | "all" = "open") {
     let active = true;
     setLoading(true);
     setError(null);
-    void listGitHubPRs(state)
+    setPage(1);
+    void listGitHubPRs(state, 1)
       .then((next) => {
         if (!active) return;
         setPrs(next);
+        setHasMore(next.length === PAGE_SIZE);
         if (next.length > 0 && !next.some((p) => p.number === selectedNumber)) {
           setSelectedNumber(next[0]?.number ?? null);
         }
@@ -68,12 +76,34 @@ export function useGitHubPRs(state: "open" | "closed" | "all" = "open") {
     return () => { active = false; };
   }, [selectedNumber]);
 
+  function loadMore() {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    void listGitHubPRs(state, nextPage)
+      .then((next) => {
+        setPrs((prev) => {
+          const seen = new Set(prev.map((p) => p.number));
+          return [...prev, ...next.filter((p) => !seen.has(p.number))];
+        });
+        setHasMore(next.length === PAGE_SIZE);
+        setPage(nextPage);
+      })
+      .catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)))
+      .finally(() => setLoadingMore(false));
+  }
+
   function refresh() {
     let active = true;
     setLoading(true);
     setError(null);
-    void listGitHubPRs(state)
-      .then((next) => { if (active) setPrs(next); })
+    setPage(1);
+    void listGitHubPRs(state, 1)
+      .then((next) => {
+        if (!active) return;
+        setPrs(next);
+        setHasMore(next.length === PAGE_SIZE);
+      })
       .catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : String(caught)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -82,6 +112,8 @@ export function useGitHubPRs(state: "open" | "closed" | "all" = "open") {
   return {
     prs,
     loading,
+    loadingMore,
+    hasMore,
     error,
     selectedNumber,
     setSelectedNumber,
@@ -89,6 +121,7 @@ export function useGitHubPRs(state: "open" | "closed" | "all" = "open") {
     diff,
     diffLoading,
     diffError,
+    loadMore,
     refresh,
   };
 }

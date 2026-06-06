@@ -174,6 +174,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
   const [focusService, setFocusService] = useState<string | null>(null);
+  // Set when the dock stages an agent-drafted write for the SQL console. The
+  // nonce re-fires the stage even if the same statement is opened twice.
+  const [stagedSql, setStagedSql] = useState<{
+    connection: string;
+    sql: string;
+    nonce: number;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
@@ -456,7 +463,12 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             ) : null}
             {page === "agent" ? <AgentView /> : null}
             {page === "errors" ? <ErrorInboxView /> : null}
-            {page === "database" ? <DatabaseView /> : null}
+            {page === "database" ? (
+              <DatabaseView
+                staged={stagedSql}
+                onStageConsumed={() => setStagedSql(null)}
+              />
+            ) : null}
             {page === "terminal" ? <TerminalView /> : null}
           </div>
         </main>
@@ -480,6 +492,10 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           setFocusService(name);
           setPage("services");
           void refresh({ silent: true });
+        }}
+        onOpenSqlConsole={(connection, sql) => {
+          setStagedSql((prev) => ({ connection, sql, nonce: (prev?.nonce ?? 0) + 1 }));
+          setPage("database");
         }}
       />
     </div>

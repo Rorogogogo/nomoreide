@@ -7,6 +7,7 @@ import {
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
 import { DbPeek } from "../core/db-peek.js";
+import { DbWrite } from "../core/db-write.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { LogStore } from "../core/log-store.js";
 import { MetricsStore } from "../core/metrics-store.js";
@@ -78,6 +79,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
   const dbPeek = new DbPeek({ configStore });
+  const dbWrite = new DbWrite({ configStore });
   const testRunner = new TestRunner({ logStore, configStore, cwd });
   const terminalManager =
     options.terminalManager ?? new TerminalSessionManager({ cwd });
@@ -93,6 +95,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     configStore,
     cwd,
     dbPeek,
+    dbWrite,
     errorInbox,
     logStore,
     manager,

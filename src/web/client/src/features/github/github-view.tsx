@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
+import { GitHubLogo } from "./github-logo";
 import { GitHubTokenSetup } from "./github-token-setup";
 import { PrList } from "./pr-list";
 import { PrDetail } from "./pr-detail";
@@ -37,20 +38,29 @@ function GitHubContent() {
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
 
+  // Segmented-control styling: a muted track with a raised "pill" for the active
+  // item. Deliberately lighter than the page-level black-pill tabs so this reads
+  // as a sub-level inside the GitHub section rather than competing with them.
   const tabButtonClass = (active: boolean) =>
-    `rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-      active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+    `rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
+      active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
     }`;
 
   const stateButtonClass = (active: boolean) =>
-    `rounded px-1.5 py-px text-[10px] transition-colors ${
-      active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+    `rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+      active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
     }`;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
-        <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2">
+        <div className="flex items-center gap-1.5 text-foreground">
+          <GitHubLogo className="size-4" />
+          <span className="text-[12px] font-semibold tracking-tight">GitHub</span>
+        </div>
+        <div className="h-4 w-px bg-border" />
+
+        <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
           <button className={tabButtonClass(tab === "prs")} onClick={() => setTab("prs")} type="button">
             Pull Requests
           </button>
@@ -63,15 +73,17 @@ function GitHubContent() {
         </div>
 
         {tab === "prs" ? (
-          <div className="flex items-center gap-1 ml-auto">
-            <button className={stateButtonClass(prState === "open")} onClick={() => setPrState("open")} type="button">Open</button>
-            <button className={stateButtonClass(prState === "closed")} onClick={() => setPrState("closed")} type="button">Closed</button>
-            <Button className="ml-1" onClick={() => setShowCreatePR(true)} size="sm" type="button" variant="outline">
+          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
+              <button className={stateButtonClass(prState === "open")} onClick={() => setPrState("open")} type="button">Open</button>
+              <button className={stateButtonClass(prState === "closed")} onClick={() => setPrState("closed")} type="button">Closed</button>
+            </div>
+            <Button onClick={() => setShowCreatePR(true)} size="sm" type="button" variant="outline">
               New PR
             </Button>
           </div>
         ) : tab === "issues" ? (
-          <div className="flex items-center gap-1 ml-auto">
+          <div className="ml-auto flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
             <button className={stateButtonClass(issueState === "open")} onClick={() => setIssueState("open")} type="button">Open</button>
             <button className={stateButtonClass(issueState === "closed")} onClick={() => setIssueState("closed")} type="button">Closed</button>
           </div>
@@ -90,39 +102,49 @@ function GitHubContent() {
               <div className="min-h-0 overflow-auto">
                 <PrList
                   error={prHook.error}
+                  hasMore={prHook.hasMore}
                   loading={prHook.loading}
+                  loadingMore={prHook.loadingMore}
+                  onLoadMore={prHook.loadMore}
                   onSelect={prHook.setSelectedNumber}
                   prs={prHook.prs}
                   selectedNumber={prHook.selectedNumber}
                 />
               </div>
-              <PrDetail
-                diff={prHook.diff}
-                diffError={prHook.diffError}
-                diffLoading={prHook.diffLoading}
-                onMerged={() => prHook.refresh()}
-                pr={prHook.selectedPR}
-              />
+              <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                <PrDetail
+                  diff={prHook.diff}
+                  diffError={prHook.diffError}
+                  diffLoading={prHook.diffLoading}
+                  onMerged={() => prHook.refresh()}
+                  pr={prHook.selectedPR}
+                />
+              </div>
             </div>
           ) : tab === "issues" ? (
             <div className="grid h-full min-h-0 grid-cols-2 divide-x divide-border">
               <div className="min-h-0 overflow-auto">
                 <IssueList
                   error={issueHook.error}
+                  hasMore={issueHook.hasMore}
                   issues={issueHook.issues}
                   loading={issueHook.loading}
+                  loadingMore={issueHook.loadingMore}
+                  onLoadMore={issueHook.loadMore}
                   onSelect={issueHook.setSelectedNumber}
                   selectedNumber={issueHook.selectedNumber}
                 />
               </div>
-              <IssueDetail
-                commentError={issueHook.commentError}
-                comments={issueHook.comments}
-                commentsLoading={issueHook.commentsLoading}
-                issue={issueHook.selectedIssue}
-                onAddComment={issueHook.addComment}
-                submitting={issueHook.submitting}
-              />
+              <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                <IssueDetail
+                  commentError={issueHook.commentError}
+                  comments={issueHook.comments}
+                  commentsLoading={issueHook.commentsLoading}
+                  issue={issueHook.selectedIssue}
+                  onAddComment={issueHook.addComment}
+                  submitting={issueHook.submitting}
+                />
+              </div>
             </div>
           ) : (
             <ActionsView />

@@ -7,6 +7,8 @@ export interface DatabaseConnection {
   engine: DatabaseEngine;
   /** Password-masked URL (SQLite paths are returned as-is). */
   url: string;
+  /** Whether the user has unlocked write access for this connection. */
+  writeUnlocked: boolean;
 }
 
 export interface DetectedConnection {
@@ -84,6 +86,60 @@ export async function getDatabaseTables(name: string): Promise<TableRef[]> {
     `/api/databases/${encodeURIComponent(name)}/tables`,
   );
   return res.tables;
+}
+
+export interface QueryResult {
+  engine: DatabaseEngine;
+  columns: ColumnInfo[];
+  rows: Array<Record<string, unknown>>;
+  rowCount: number;
+  /** True when the query produced more rows than the cap. */
+  truncated: boolean;
+}
+
+export async function runDatabaseQuery(
+  name: string,
+  sql: string,
+  limit = 100,
+): Promise<QueryResult> {
+  return postFormForJson<{ ok: true } & QueryResult>(
+    `/api/databases/${encodeURIComponent(name)}/query`,
+    { sql, limit },
+  );
+}
+
+export interface WriteOutcome {
+  engine: DatabaseEngine;
+  /** True when a preview couldn't be run (e.g. MySQL DDL auto-commits). */
+  previewUnavailable: boolean;
+  /** Rows affected/returned — absent when previewUnavailable. */
+  affectedRows?: number;
+  rows?: Array<Record<string, unknown>>;
+  columns?: ColumnInfo[];
+  /** True when the run was committed; false for a rolled-back preview. */
+  committed?: boolean;
+}
+
+/** Lock or unlock write access for a connection's SQL console. */
+export async function setDatabaseWriteAccess(
+  name: string,
+  unlocked: boolean,
+): Promise<void> {
+  await postFormForJson(`/api/databases/${encodeURIComponent(name)}/write-access`, {
+    unlocked: String(unlocked),
+  });
+}
+
+/** Run a write: `preview` rolls back (dry run), `commit` persists. */
+export async function executeDatabaseWrite(
+  name: string,
+  sql: string,
+  mode: "preview" | "commit",
+): Promise<WriteOutcome> {
+  return postFormForJson<{ ok: true } & WriteOutcome>(
+    `/api/databases/${encodeURIComponent(name)}/execute`,
+    { sql, mode },
+  );
 }
 
 export async function getDatabaseRows(

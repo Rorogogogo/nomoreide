@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getGitCommitDiff,
   getGitCommitFiles,
@@ -21,11 +21,22 @@ export function useGitGraph() {
   const [error, setError] = useState<string | null>(null);
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
   const [files, setFiles] = useState<GitFileStatus[]>([]);
+  const [filesLoading, setFilesLoading] = useState(false);
   const [filesError, setFilesError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [diff, setDiff] = useState("");
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
+
+  // Switching commits clears the file/diff selection in one batched update so the
+  // diff effect never fires with the previous commit's file path, and never falls
+  // back to fetching the whole-commit diff (every file at once) while files load.
+  const selectHash = useCallback((hash: string) => {
+    setSelectedHash(hash);
+    setFiles([]);
+    setSelectedFile(null);
+    setDiff("");
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -36,7 +47,7 @@ export function useGitGraph() {
         if (!active) return;
         setCommits(next);
         if (next.length > 0 && !next.some((c) => c.hash === selectedHash)) {
-          setSelectedHash(next[0].hash);
+          selectHash(next[0].hash);
         }
       })
       .catch((caught) => {
@@ -56,10 +67,12 @@ export function useGitGraph() {
     if (!selectedHash) {
       setFiles([]);
       setSelectedFile(null);
+      setFilesLoading(false);
       return;
     }
     let active = true;
     setFilesError(null);
+    setFilesLoading(true);
     void getGitCommitFiles(selectedHash)
       .then((next) => {
         if (!active) return;
@@ -68,6 +81,9 @@ export function useGitGraph() {
       })
       .catch((caught) => {
         if (active) setFilesError(caught instanceof Error ? caught.message : String(caught));
+      })
+      .finally(() => {
+        if (active) setFilesLoading(false);
       });
     return () => {
       active = false;
@@ -75,14 +91,17 @@ export function useGitGraph() {
   }, [selectedHash]);
 
   useEffect(() => {
-    if (!selectedHash) {
+    // Per-file only: wait for a concrete file before fetching. Without a file
+    // `git show <hash>` returns the entire commit diff, which we never display.
+    if (!selectedHash || !selectedFile) {
       setDiff("");
+      setDiffLoading(false);
       return;
     }
     let active = true;
     setDiffError(null);
     setDiffLoading(true);
-    void getGitCommitDiff(selectedHash, selectedFile ?? undefined)
+    void getGitCommitDiff(selectedHash, selectedFile)
       .then((next) => {
         if (active) setDiff(next);
       })
@@ -109,13 +128,15 @@ export function useGitGraph() {
     loading,
     error,
     selectedHash,
-    setSelectedHash,
+    setSelectedHash: selectHash,
     files,
     filesError,
     selectedFile,
     setSelectedFile,
     diff,
-    diffLoading,
+    // While the file list is still resolving there's no file to diff yet — keep the
+    // panel in a loading state instead of flashing the empty "no changes" message.
+    diffLoading: diffLoading || filesLoading,
     diffError,
     maxLanes,
     selectedCommit,

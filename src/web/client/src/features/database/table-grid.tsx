@@ -17,13 +17,13 @@ export function TableGrid({
   const { success: showSuccess, error: showError } = useToasts();
   const columnNames = sample.columns.map((col) => col.name);
 
-  // Send the row straight to the dock and stream the answer.
+  // Draft the row into the dock input — the user reviews and sends it, the same
+  // as the table-level "Ask AI" buttons. Nothing auto-runs.
   function askRow(row: Record<string, unknown>) {
     sendToAgent({
       prompt: buildRowPrompt(connection, sample.engine, sample.table, sample.columns, row),
       source: { type: "database-row", label: `${sample.table} row` },
-      label: `Explain this row from \`${sample.table.qualifiedName}\`.`,
-      mode: "send",
+      mode: "draft",
     });
   }
 
@@ -86,8 +86,9 @@ export function TableGrid({
                 </span>
               </th>
             ))}
-            {/* Trailing action column — AI spark + row actions on the right. */}
-            <th className="w-16 px-2 py-2" />
+            {/* Trailing action column — docked to the right edge so the AI
+                spark + row actions stay visible without scrolling wide tables. */}
+            <th className="sticky right-0 z-20 w-16 border-l border-border bg-card px-2 py-2" />
           </tr>
         </thead>
         <tbody>
@@ -104,8 +105,11 @@ export function TableGrid({
                   {formatCell(row[col.name])}
                 </td>
               ))}
-              <td className="px-2 py-1 align-top">
-                <div className="flex items-center justify-end gap-0.5">
+              {/* Opaque bg-card base stays put so scrolled cells never bleed
+                  through; the hover tint is a pseudo-overlay, not a background
+                  swap, so it can't reintroduce transparency. */}
+              <td className="sticky right-0 z-[1] border-l border-border/60 bg-card px-2 py-1 align-top before:pointer-events-none before:absolute before:inset-0 before:bg-muted/40 before:opacity-0 group-hover:before:opacity-100">
+                <div className="relative z-[1] flex items-center justify-end gap-0.5">
                   <AiSpark label="Ask AI about this row" onAsk={() => askRow(row)} />
                   <OverflowMenu
                     label="Row actions"
@@ -147,7 +151,7 @@ export function TableGrid({
   );
 }
 
-function formatCell(value: unknown): string {
+export function formatCell(value: unknown): string {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);

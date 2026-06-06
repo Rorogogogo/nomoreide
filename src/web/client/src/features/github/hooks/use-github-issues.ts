@@ -8,9 +8,15 @@ import {
   type GitHubIssue,
 } from "@/lib/api";
 
+// Mirrors the server's `per_page`; a full page back means there may be more.
+const PAGE_SIZE = 30;
+
 export function useGitHubIssues(state: "open" | "closed" | "all" = "open") {
   const [issues, setIssues] = useState<GitHubIssue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
@@ -23,10 +29,12 @@ export function useGitHubIssues(state: "open" | "closed" | "all" = "open") {
     let active = true;
     setLoading(true);
     setError(null);
-    void listGitHubIssues(state)
+    setPage(1);
+    void listGitHubIssues(state, 1)
       .then((next) => {
         if (!active) return;
         setIssues(next);
+        setHasMore(next.length === PAGE_SIZE);
         if (next.length > 0 && !next.some((i) => i.number === selectedNumber)) {
           setSelectedNumber(next[0]?.number ?? null);
         }
@@ -77,11 +85,33 @@ export function useGitHubIssues(state: "open" | "closed" | "all" = "open") {
     }
   }
 
+  function loadMore() {
+    if (loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    void listGitHubIssues(state, nextPage)
+      .then((next) => {
+        setIssues((prev) => {
+          const seen = new Set(prev.map((i) => i.number));
+          return [...prev, ...next.filter((i) => !seen.has(i.number))];
+        });
+        setHasMore(next.length === PAGE_SIZE);
+        setPage(nextPage);
+      })
+      .catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)))
+      .finally(() => setLoadingMore(false));
+  }
+
   function refresh() {
     let active = true;
     setLoading(true);
-    void listGitHubIssues(state)
-      .then((next) => { if (active) setIssues(next); })
+    setPage(1);
+    void listGitHubIssues(state, 1)
+      .then((next) => {
+        if (!active) return;
+        setIssues(next);
+        setHasMore(next.length === PAGE_SIZE);
+      })
       .catch(() => { /* silent */ })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -90,6 +120,8 @@ export function useGitHubIssues(state: "open" | "closed" | "all" = "open") {
   return {
     issues,
     loading,
+    loadingMore,
+    hasMore,
     error,
     selectedNumber,
     setSelectedNumber,
@@ -99,6 +131,7 @@ export function useGitHubIssues(state: "open" | "closed" | "all" = "open") {
     commentError,
     submitting,
     addComment,
+    loadMore,
     refresh,
   };
 }

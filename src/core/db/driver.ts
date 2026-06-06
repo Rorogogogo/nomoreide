@@ -25,9 +25,20 @@ export interface RowSample {
   offset: number;
 }
 
+/** Result of running a user-authored read-only query through the SQL console. */
+export interface QueryResult {
+  columns: ColumnInfo[];
+  rows: Array<Record<string, unknown>>;
+  /** Number of rows returned (≤ the row cap). */
+  rowCount: number;
+  /** True when the query produced more rows than the cap; the UI flags it. */
+  truncated: boolean;
+}
+
 /**
  * Read-only access to a single database. Implementations enforce read-only at
- * the connection/transaction level — there is no raw-SQL passthrough.
+ * the connection/transaction level: `runQuery` accepts user SQL but the server
+ * itself rejects any write — there is no write passthrough.
  */
 export interface DbDriver {
   readonly engine: DatabaseEngine;
@@ -35,6 +46,35 @@ export interface DbDriver {
   testConnection(): Promise<void>;
   listTables(): Promise<TableRef[]>;
   sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample>;
+  /** Run an arbitrary SELECT-style statement in a read-only context. */
+  runQuery(sql: string, maxRows: number): Promise<QueryResult>;
+  close(): Promise<void>;
+}
+
+/** Outcome of a write run — previewed (rolled back) or committed. */
+export interface WriteResult {
+  /** Rows the statement affected (INSERT/UPDATE/DELETE) or returned (SELECT). */
+  affectedRows: number;
+  /** Rows produced by a SELECT or RETURNING clause, if any. */
+  rows: Array<Record<string, unknown>>;
+  columns: ColumnInfo[];
+  /** True when committed; false when this was a rolled-back preview. */
+  committed: boolean;
+}
+
+/**
+ * Write-capable view of a database, deliberately separate from `DbDriver` so a
+ * read-only consumer can never reach a write. A writable connection is only
+ * ever constructed by the `DbWrite` module, behind a per-connection unlock.
+ */
+export interface DbWriteDriver {
+  readonly engine: DatabaseEngine;
+  /**
+   * Run a statement inside a read-write transaction. When `commit` is false the
+   * transaction is rolled back, so the caller can preview affected rows without
+   * persisting anything.
+   */
+  executeWrite(sql: string, commit: boolean): Promise<WriteResult>;
   close(): Promise<void>;
 }
 
@@ -59,6 +99,71 @@ export function clampLimit(limit: number | undefined, fallback = 100): number {
 export function clampOffset(offset: number | undefined): number {
   if (!Number.isFinite(offset) || offset === undefined) return 0;
   return Math.max(Math.trunc(offset), 0);
+}
+
+/**
+ * Normalize user SQL before we wrap it in a row-capping subquery: trim and drop
+ * a single trailing semicolon. Drivers run the result inside a read-only
+ * transaction, so a write would be rejected server-side regardless.
+ */
+export function prepareUserQuery(sql: string): string {
+  const trimmed = sql.trim().replace(/;\s*$/, "").trim();
+  if (!trimmed) throw new Error("Query is empty.");
+  return trimmed;
+}
+
+/** The leading keyword of a statement, lowercased (e.g. "select", "delete"). */
+export function leadingKeyword(sql: string): string {
+  return /^\s*([a-z]+)/i.exec(sql)?.[1]?.toLowerCase() ?? "";
+}
+
+/** Statements we treat as reads — routed through the read-only query path. */
+const READ_KEYWORDS = new Set([
+  "select",
+  "show",
+  "explain",
+  "pragma",
+  "describe",
+  "desc",
+]);
+
+/** True for plain read statements; anything else is treated as a write. */
+export function isReadStatement(sql: string): boolean {
+  return READ_KEYWORDS.has(leadingKeyword(sql));
+}
+
+/** DDL implicitly commits on MySQL, so a rolled-back preview can't be trusted. */
+const DDL_KEYWORDS = new Set([
+  "create",
+  "alter",
+  "drop",
+  "truncate",
+  "rename",
+  "grant",
+  "revoke",
+]);
+
+/**
+ * Whether a write can be safely previewed by running it in a transaction and
+ * rolling back. True everywhere except MySQL DDL, which auto-commits — there a
+ * "preview" would actually apply the change, so we refuse to dry-run it.
+ */
+export function canPreviewWrite(engine: DatabaseEngine, sql: string): boolean {
+  if (engine === "mysql" && DDL_KEYWORDS.has(leadingKeyword(sql))) return false;
+  return true;
+}
+
+/**
+ * Query results carry no catalog metadata, so synthesize ColumnInfo from the
+ * result's field names — preserving order even when zero rows come back.
+ */
+export function columnsFromNames(names: string[]): ColumnInfo[] {
+  return names.map((name) => ({
+    name,
+    dataType: "",
+    nullable: true,
+    primaryKey: false,
+  }));
 }
 
 /**

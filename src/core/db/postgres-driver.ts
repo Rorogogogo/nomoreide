@@ -4,22 +4,32 @@ import {
   assertSafeIdentifier,
   clampLimit,
   clampOffset,
+  columnsFromNames,
   normalizeRow,
+  prepareUserQuery,
   type ColumnInfo,
   type DbDriver,
+  type DbWriteDriver,
+  type QueryResult,
   type RowSample,
   type TableRef,
+  type WriteResult,
 } from "./driver.js";
 
 /**
- * Postgres driver. Every statement runs inside a `READ ONLY` transaction, so
- * even a mistaken write would be rejected by the server.
+ * Postgres driver. By default every statement runs inside a `READ ONLY`
+ * transaction so a mistaken write is rejected by the server. A driver
+ * constructed with `{ writable: true }` (only the DbWrite module does this)
+ * opens a read-write pool for the guarded `executeWrite` path.
  */
-export class PostgresDriver implements DbDriver {
+export class PostgresDriver implements DbDriver, DbWriteDriver {
   readonly engine: DatabaseEngine = "postgres";
   private poolPromise: Promise<Pool> | null = null;
+  private readonly writable: boolean;
 
-  constructor(private readonly url: string) {}
+  constructor(private readonly url: string, options: { writable?: boolean } = {}) {
+    this.writable = options.writable ?? false;
+  }
 
   private async pool(): Promise<Pool> {
     if (!this.poolPromise) {
@@ -29,8 +39,9 @@ export class PostgresDriver implements DbDriver {
           connectionString: this.url,
           max: 4,
           connectionTimeoutMillis: 8000,
-          // Belt-and-suspenders: every session defaults to read-only.
-          options: "-c default_transaction_read_only=on",
+          // Belt-and-suspenders: read-only pools default every session to
+          // read-only; writable pools omit it so executeWrite can persist.
+          options: this.writable ? undefined : "-c default_transaction_read_only=on",
         });
       })();
     }
@@ -98,6 +109,56 @@ export class PostgresDriver implements DbDriver {
         offset: skip,
       };
     });
+  }
+
+  async runQuery(sql: string, maxRows: number): Promise<QueryResult> {
+    const statement = prepareUserQuery(sql);
+    const cap = clampLimit(maxRows);
+    return this.withReadOnly(async (client) => {
+      // Wrap in a subquery so we can bound the result set without parsing the
+      // user's SQL; the READ ONLY transaction blocks any write regardless.
+      const result = await client.query(
+        `SELECT * FROM (${statement}) AS _nmi_q LIMIT $1`,
+        [cap + 1],
+      );
+      const truncated = result.rows.length > cap;
+      const rows = (truncated ? result.rows.slice(0, cap) : result.rows).map(
+        (row: Record<string, unknown>) => normalizeRow(row),
+      );
+      return {
+        columns: columnsFromNames(result.fields.map((field) => field.name)),
+        rows,
+        rowCount: rows.length,
+        truncated,
+      };
+    });
+  }
+
+  async executeWrite(sql: string, commit: boolean): Promise<WriteResult> {
+    if (!this.writable) throw new Error("This connection is read-only.");
+    const statement = prepareUserQuery(sql);
+    const pool = await this.pool();
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(statement);
+      // Preview runs roll back so nothing persists; the caller sees the count.
+      await client.query(commit ? "COMMIT" : "ROLLBACK");
+      const rows = (result.rows ?? []).map((row: Record<string, unknown>) =>
+        normalizeRow(row),
+      );
+      return {
+        affectedRows: result.rowCount ?? rows.length,
+        rows,
+        columns: columnsFromNames((result.fields ?? []).map((field) => field.name)),
+        committed: commit,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   private async columnsFor(

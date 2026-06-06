@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+const workflowCapabilitiesSchema = z.object({
+  skills: z.array(z.string().min(1)).optional(),
+  mcpServers: z.array(z.string().min(1)).optional(),
+  plugins: z.array(z.string().min(1)).optional(),
+  hooks: z.array(z.string().min(1)).optional(),
+});
+
 /**
  * User-owned git/GitHub workflows — the AI-native answer to fixed IDE buttons.
  *
@@ -36,6 +43,8 @@ export const workflowStepSchema = z.discriminatedUnion("kind", [
     title: z.string().min(1),
     /** The instruction handed to the dock agent. */
     prompt: z.string().min(1),
+    /** Optional user-selected capabilities the runner adds as prompt guidance. */
+    capabilities: workflowCapabilitiesSchema.optional(),
     /**
      * Real-state check run after the agent's turn before advancing:
      * - `committed` — the working tree is clean (changes were committed).
@@ -64,6 +73,13 @@ export const workflowSchema = z.object({
 export type WorkflowStep = z.infer<typeof workflowStepSchema>;
 export type Workflow = z.infer<typeof workflowSchema>;
 
+const COMMIT_GATE: WorkflowStep = {
+  kind: "gate",
+  id: "gate-commit",
+  title: "Approve commit",
+  message: "Stage the current changes and create one AI-written commit?",
+};
+
 /**
  * One lightweight AI pass that writes a real commit message and commits — the
  * balance the user wanted: a thought-through message like the `commit-push`
@@ -87,9 +103,10 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
   {
     id: "commit-push",
     name: "Commit & push",
-    description: "One quick AI pass writes a good commit message and commits, then pushes. No heavy review or multi-commit splitting.",
+    description: "Pause for approval, make one AI-written commit, then pause again before pushing.",
     builtin: true,
     steps: [
+      { ...COMMIT_GATE },
       COMMIT_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push to the remote?" },
       { kind: "action", id: "push", title: "Push", op: "push" },
@@ -98,9 +115,10 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
   {
     id: "ship-it",
     name: "Ship it",
-    description: "Commit (one AI pass), push, then a quick AI turn each to open and squash-merge the PR.",
+    description: "Approve the AI commit, push, then use quick AI turns to open and squash-merge the PR.",
     builtin: true,
     steps: [
+      { ...COMMIT_GATE },
       COMMIT_STEP,
       { kind: "gate", id: "gate-push", title: "Approve push", message: "Push and open a PR?" },
       { kind: "action", id: "push", title: "Push", op: "push" },

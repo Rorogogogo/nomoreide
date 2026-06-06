@@ -9,6 +9,7 @@ import {
   type WorkflowStep,
 } from "@/lib/api";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { buildAgentWorkflowPrompt } from "./workflow-prompts";
 import { readStepResult } from "./workflow-result";
 
 export type StepStatus =
@@ -203,7 +204,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         patch(i, "running");
         sawStreamingRef.current = false;
         sendToAgent({
-          prompt: step.prompt + STATUS_HINT,
+          prompt: buildAgentWorkflowPrompt(step) + STATUS_HINT,
           source: { type: "workflow", label: `${workflow.name}: ${step.title}` },
           mode: "send",
           label: step.title,

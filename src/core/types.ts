@@ -43,6 +43,11 @@ export interface DatabaseConnection {
   name: string;
   engine: DatabaseEngine;
   url: string;
+  /**
+   * When true the user has explicitly unlocked write access for this
+   * connection's SQL console. Default/absent = read-only (locked).
+   */
+  writeUnlocked?: boolean;
 }
 
 export type LogSourceKind = "file" | "ssh" | "command";

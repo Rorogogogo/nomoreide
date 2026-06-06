@@ -1,18 +1,41 @@
-import { useEffect, useState } from "react";
-import { getCommitCIStatus, type CommitCIStatus } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import type { CommitCIStatus } from "@/lib/api";
+import { fetchCiStatus, getCachedCiStatus } from "./ci-status-cache";
 
 export function CiStatusBadge({ sha }: { sha: string }) {
-  const [status, setStatus] = useState<CommitCIStatus | null>(null);
+  const [status, setStatus] = useState<CommitCIStatus | null>(
+    () => getCachedCiStatus(sha) ?? null,
+  );
+  const anchorRef = useRef<HTMLSpanElement>(null);
 
+  // Defer the fetch until the row scrolls into view — the commit tree mounts
+  // every row at once, so eager fetching would stampede the GitHub API. The
+  // shared cache/queue (fetchCiStatus) then throttles and dedupes the visible
+  // burst. Anything already cached skips the observer entirely.
   useEffect(() => {
+    if (status) return;
+    const el = anchorRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
     let active = true;
-    void getCommitCIStatus(sha)
-      .then((s) => { if (active) setStatus(s); })
-      .catch(() => { /* silent — badge stays absent */ });
-    return () => { active = false; };
-  }, [sha]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        void fetchCiStatus(sha)
+          .then((s) => { if (active) setStatus(s); })
+          .catch(() => { /* silent — badge stays empty */ });
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => { active = false; observer.disconnect(); };
+  }, [sha, status]);
 
-  if (!status || status.state === "unknown" || status.totalCount === 0) return null;
+  if (!status || status.state === "unknown" || status.totalCount === 0) {
+    // Reserve the dot's footprint (transparent) so the observer has a stable
+    // target to watch and resolving a badge doesn't shift the row's layout.
+    return <span ref={anchorRef} aria-hidden className="inline-block size-2 shrink-0" />;
+  }
 
   const dot = ciDotClass(status.state);
   const label = `CI: ${status.state} (${status.totalCount} check${status.totalCount !== 1 ? "s" : ""})`;

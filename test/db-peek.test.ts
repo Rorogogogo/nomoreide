@@ -51,7 +51,9 @@ describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
 
   test("lists registered connections (SQLite path is not masked)", async () => {
     const connections = await dbPeek.listConnections();
-    expect(connections).toEqual([{ name: "app", engine: "sqlite", url: dbFile }]);
+    expect(connections).toEqual([
+      { name: "app", engine: "sqlite", url: dbFile, writeUnlocked: false },
+    ]);
   });
 
   test("lists tables in the database", async () => {
@@ -82,6 +84,45 @@ describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
 
   test("throws for an unregistered connection", async () => {
     await expect(dbPeek.listTables("missing")).rejects.toThrow(/not registered/);
+  });
+
+  test("runs a read-only query and returns rows + columns", async () => {
+    const result = await dbPeek.runQuery(
+      "app",
+      "SELECT email, active FROM users ORDER BY email",
+      100,
+    );
+    expect(result.engine).toBe("sqlite");
+    expect(result.columns.map((c) => c.name)).toEqual(["email", "active"]);
+    expect(result.rows).toEqual([
+      { email: "a@x.com", active: 1 },
+      { email: "b@x.com", active: 0 },
+    ]);
+    expect(result.truncated).toBe(false);
+  });
+
+  test("caps the result set and flags truncation", async () => {
+    const result = await dbPeek.runQuery("app", "SELECT * FROM users", 1);
+    expect(result.rowCount).toBe(1);
+    expect(result.truncated).toBe(true);
+  });
+
+  test("tolerates a trailing semicolon", async () => {
+    const result = await dbPeek.runQuery("app", "SELECT 1 AS n;", 100);
+    expect(result.rows).toEqual([{ n: 1 }]);
+  });
+
+  test("rejects a write — the connection is read-only", async () => {
+    await expect(
+      dbPeek.runQuery("app", "DELETE FROM users", 100),
+    ).rejects.toThrow();
+    // The table is untouched.
+    const after = await dbPeek.sampleRows("app", "users", 100);
+    expect(after.rowCount).toBe(2);
+  });
+
+  test("rejects an empty query", async () => {
+    await expect(dbPeek.runQuery("app", "   ", 100)).rejects.toThrow(/empty/);
   });
 });
 

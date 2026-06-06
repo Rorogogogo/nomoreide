@@ -1,18 +1,25 @@
 import { CircleDot } from "lucide-react";
 import type { GitHubIssue } from "@/lib/api";
+import { LoadMoreButton } from "./load-more-button";
 
 export function IssueList({
   issues,
   loading,
+  loadingMore,
+  hasMore,
   error,
   selectedNumber,
   onSelect,
+  onLoadMore,
 }: {
   issues: GitHubIssue[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   selectedNumber: number | null;
   onSelect: (number: number) => void;
+  onLoadMore: () => void;
 }) {
   if (loading && issues.length === 0) {
     return <div className="p-4 text-[12px] text-muted-foreground">Loading issues…</div>;
@@ -25,7 +32,8 @@ export function IssueList({
   }
 
   return (
-    <ul className="divide-y divide-border">
+    <>
+      <ul className="divide-y divide-border">
       {issues.map((issue) => (
         <li key={issue.number}>
           <button
@@ -62,6 +70,8 @@ export function IssueList({
           </button>
         </li>
       ))}
-    </ul>
+      </ul>
+      <LoadMoreButton hasMore={hasMore} loading={loadingMore} onLoadMore={onLoadMore} />
+    </>
   );
 }

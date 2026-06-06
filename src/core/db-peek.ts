@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { ConfigStore } from "./config-store.js";
 import { readEnvFile, entriesFromLines } from "./env-file.js";
 import type { DatabaseConnection, DatabaseEngine } from "./types.js";
-import type { DbDriver, RowSample, TableRef } from "./db/driver.js";
+import type { DbDriver, QueryResult, RowSample, TableRef } from "./db/driver.js";
 import { MysqlDriver } from "./db/mysql-driver.js";
 import { PostgresDriver } from "./db/postgres-driver.js";
 import { SqliteDriver } from "./db/sqlite-driver.js";
@@ -12,6 +12,8 @@ export interface MaskedConnection {
   engine: DatabaseEngine;
   /** Connection URL with any password redacted (path left intact for SQLite). */
   url: string;
+  /** Whether the user has unlocked write access for this connection. */
+  writeUnlocked: boolean;
 }
 
 /** A DB connection string discovered in a service's `.env` file. */
@@ -46,6 +48,7 @@ export class DbPeek {
       name: connection.name,
       engine: connection.engine,
       url: maskConnectionUrl(connection.engine, connection.url),
+      writeUnlocked: connection.writeUnlocked ?? false,
     }));
   }
 
@@ -65,6 +68,18 @@ export class DbPeek {
     const table = await this.resolveTable(driver, qualifiedName);
     const sample = await driver.sampleRows(table, limit, offset);
     return { engine: connection.engine, table, ...sample };
+  }
+
+  /** Run a user-authored read-only query against a registered connection. */
+  async runQuery(
+    name: string,
+    sql: string,
+    maxRows = 100,
+  ): Promise<{ engine: DatabaseEngine } & QueryResult> {
+    const connection = await this.resolve(name);
+    const driver = await this.driverFor(connection);
+    const result = await driver.runQuery(sql, maxRows);
+    return { engine: connection.engine, ...result };
   }
 
   /** Test an unsaved connection without caching it. */
