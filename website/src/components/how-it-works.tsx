@@ -19,8 +19,8 @@ const STEPS: Step[] = [
   },
   {
     n: "03",
-    title: "Work",
-    body: "Ask your agent to run services, review diffs, tail logs, open the UI, and chain workflows through the NoMoreIDE MCP tools.",
+    title: "Open the Web UI and work",
+    body: "Ask your agent to run services, review diffs, tail logs, and chain workflows through the NoMoreIDE MCP tools. The Web UI runs at http://127.0.0.1:4317/.",
   },
 ];
 

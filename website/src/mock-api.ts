@@ -5,10 +5,17 @@ import type {
   DatabaseConnection,
   ErrorIncident,
   GitGraphCommit,
+  GitHubCheckRun,
+  GitHubComment,
+  GitHubIssue,
+  GitHubPR,
+  GitHubWorkflowJob,
+  GitHubWorkflowRun,
   LogEntry,
   RowSample,
   ServiceStatus,
   TableRef,
+  Workflow,
 } from "@/lib/api";
 
 const startedAt = new Date(Date.now() - 1000 * 60 * 18).toISOString();
@@ -54,6 +61,14 @@ const gitFiles = [
   { path: "src/core/config-store.ts", index: " ", workingTree: "M" },
   { path: "README.md", index: " ", workingTree: "A" },
 ];
+
+const gitStatus = {
+  branch: "feat/website-real-ui-demo",
+  upstream: "origin/feat/website-real-ui-demo",
+  ahead: 2,
+  behind: 0,
+  files: gitFiles,
+};
 
 const diffs: Record<string, string> = {
   "src/features/billing/checkout.tsx": `diff --git a/src/features/billing/checkout.tsx b/src/features/billing/checkout.tsx
@@ -287,6 +302,224 @@ let terminalSessions = [
   },
 ];
 
+let databaseWriteUnlocked = false;
+
+const workflows: Workflow[] = [
+  {
+    id: "commit-push",
+    name: "Commit & push",
+    description: "Pause for approval, make one AI-written commit, then push the branch.",
+    builtin: true,
+    steps: [
+      {
+        kind: "gate",
+        id: "gate-commit",
+        title: "Approve commit",
+        message: "Stage the current changes and create one AI-written commit?",
+      },
+      {
+        kind: "agent",
+        id: "commit",
+        title: "Commit all changes",
+        prompt: "Stage reviewed files, inspect the staged diff, and create one conventional commit.",
+        verify: "committed",
+      },
+      {
+        kind: "gate",
+        id: "gate-push",
+        title: "Approve push",
+        message: "Push to the remote?",
+      },
+      { kind: "action", id: "push", title: "Push", op: "push" },
+    ],
+  },
+  {
+    id: "ship-it",
+    name: "Ship it",
+    description: "Commit, push, open a pull request, then squash-merge after approval.",
+    builtin: true,
+    steps: [
+      {
+        kind: "gate",
+        id: "gate-commit",
+        title: "Approve commit",
+        message: "Commit and open a PR?",
+      },
+      {
+        kind: "agent",
+        id: "commit",
+        title: "Commit all changes",
+        prompt: "Make one AI-written commit from the current diff.",
+        verify: "committed",
+      },
+      { kind: "action", id: "push", title: "Push", op: "push" },
+      {
+        kind: "agent",
+        id: "open-pr",
+        title: "Open a PR",
+        prompt: "Open a GitHub PR for the current branch using the NoMoreIDE GitHub tools.",
+      },
+      {
+        kind: "gate",
+        id: "gate-merge",
+        title: "Approve merge",
+        message: "Squash-merge the pull request?",
+      },
+    ],
+  },
+  {
+    id: "demo-sql-review",
+    name: "Review SQL change",
+    description: "Ask the agent to draft a SQL update, then stage it for the human SQL console.",
+    steps: [
+      {
+        kind: "agent",
+        id: "draft-sql",
+        title: "Draft SQL",
+        prompt: "Draft the SQL update in a sql-write block so the human can preview it before commit.",
+      },
+    ],
+  },
+];
+
+const githubPrs: GitHubPR[] = [
+  {
+    number: 84,
+    title: "feat: add workflow authoring demo",
+    state: "open",
+    body: "Adds workflow composer coverage and a current website mock.",
+    html_url: "https://github.com/acme/web/pull/84",
+    head: { ref: "feat/website-real-ui-demo", sha: "a1b2c3d" },
+    base: { ref: "main" },
+    user: { login: "demo-user" },
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+    merged_at: null,
+    draft: false,
+    mergeable: true,
+  },
+  {
+    number: 79,
+    title: "fix: keep agent workflow runs visible",
+    state: "merged",
+    body: "Hoists active workflow run state so page changes do not hide progress.",
+    html_url: "https://github.com/acme/web/pull/79",
+    head: { ref: "fix/workflow-run-state", sha: "1122334" },
+    base: { ref: "main" },
+    user: { login: "demo-user" },
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    merged_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    draft: false,
+    mergeable: true,
+  },
+];
+
+const githubIssues: GitHubIssue[] = [
+  {
+    number: 32,
+    title: "Document SQL write preview safety",
+    state: "open",
+    body: "Explain unlock, preview, and commit flow for the database SQL console.",
+    html_url: "https://github.com/acme/web/issues/32",
+    user: { login: "demo-user" },
+    labels: [{ name: "docs", color: "2563eb" }],
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
+    comments: 2,
+  },
+  {
+    number: 29,
+    title: "Show failed workflow result in Git banner",
+    state: "open",
+    body: "When a workflow blocks, keep the reason visible in the Git review surface.",
+    html_url: "https://github.com/acme/web/issues/29",
+    user: { login: "qa-demo" },
+    labels: [{ name: "workflow", color: "16a34a" }],
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    comments: 1,
+  },
+];
+
+const githubComments: GitHubComment[] = [
+  {
+    id: 4101,
+    body: "Mock comment: the SQL write docs should mention that MCP database tools remain read-only.",
+    user: { login: "docs-reviewer" },
+    created_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+    html_url: "https://github.com/acme/web/issues/32#issuecomment-4101",
+  },
+];
+
+const githubChecks: GitHubCheckRun[] = [
+  {
+    id: 9001,
+    name: "website build",
+    status: "completed",
+    conclusion: "success",
+    html_url: "https://github.com/acme/web/actions/runs/9001",
+    started_at: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
+    completed_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+  },
+  {
+    id: 9002,
+    name: "typecheck",
+    status: "completed",
+    conclusion: "failure",
+    html_url: "https://github.com/acme/web/actions/runs/9002",
+    started_at: new Date(Date.now() - 1000 * 60 * 13).toISOString(),
+    completed_at: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
+  },
+];
+
+const githubRuns: GitHubWorkflowRun[] = [
+  {
+    id: 9001,
+    name: "CI",
+    status: "completed",
+    conclusion: "failure",
+    html_url: "https://github.com/acme/web/actions/runs/9001",
+    head_sha: "a1b2c3d",
+    head_branch: "feat/website-real-ui-demo",
+    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
+    run_number: 184,
+    event: "pull_request",
+  },
+  {
+    id: 8996,
+    name: "CI",
+    status: "completed",
+    conclusion: "success",
+    html_url: "https://github.com/acme/web/actions/runs/8996",
+    head_sha: "1122334",
+    head_branch: "main",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
+    run_number: 183,
+    event: "push",
+  },
+];
+
+const githubJobs: GitHubWorkflowJob[] = [
+  {
+    id: 9010,
+    run_id: 9001,
+    html_url: "https://github.com/acme/web/actions/runs/9001/job/9010",
+    status: "completed",
+    conclusion: "failure",
+    started_at: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
+    completed_at: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
+    name: "build-and-test",
+    steps: [
+      { name: "Checkout", status: "completed", conclusion: "success", number: 1, started_at: null, completed_at: null },
+      { name: "Install", status: "completed", conclusion: "success", number: 2, started_at: null, completed_at: null },
+      { name: "Typecheck", status: "completed", conclusion: "failure", number: 3, started_at: null, completed_at: null },
+    ],
+  },
+];
+
 export function installWebsiteMockApi() {
   if (typeof window === "undefined") return;
   const currentWindow = window as Window & { __nomoreideWebsiteMockApi?: boolean };
@@ -353,8 +586,88 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     });
   }
   if (path === "/api/git/graph") return json({ ok: true, commits: gitGraph() });
+  if (path === "/api/git/status") return json({ ok: true, status: gitStatus });
   if (path === "/api/git/commit/files") return json({ ok: true, files: gitFiles });
   if (path === "/api/git/commit") return text(Object.values(diffs).join("\n\n"));
+  if (path === "/api/git/push") {
+    return json({
+      ok: true,
+      output: "Pushed feat/website-real-ui-demo to origin.",
+      branch: gitStatus.branch,
+      setUpstream: false,
+    });
+  }
+
+  if (path === "/api/workflows") {
+    if (method === "POST") return json({ ok: true, workflows });
+    return json({ ok: true, workflows });
+  }
+  if (path.match(/^\/api\/workflows\/[^/]+$/)) {
+    return json({ ok: true, workflows });
+  }
+
+  if (path === "/api/github/token") {
+    return json({ ok: true, configured: true, deviceFlowAvailable: true });
+  }
+  if (path.startsWith("/api/github/oauth/")) {
+    return json({ ok: true, done: path.endsWith("/poll") });
+  }
+  if (path === "/api/github/prs") {
+    if (method === "POST") return json({ ok: true, pr: githubPrs[0] });
+    return json({ ok: true, prs: githubPrs });
+  }
+  if (path === "/api/github/issues") {
+    if (method === "POST") return json({ ok: true, issue: githubIssues[0] });
+    return json({ ok: true, issues: githubIssues });
+  }
+  const githubPrDiff = path.match(/^\/api\/github\/prs\/(\d+)\/diff$/);
+  if (githubPrDiff) return text(diffs["src/config/services.json"]);
+  const githubPrMerge = path.match(/^\/api\/github\/prs\/(\d+)\/merge$/);
+  if (githubPrMerge) {
+    return json({
+      ok: true,
+      merged: true,
+      sha: "feed123",
+      message: `Mock merged PR #${githubPrMerge[1]}.`,
+    });
+  }
+  const githubPr = path.match(/^\/api\/github\/prs\/(\d+)$/);
+  if (githubPr) {
+    const number = Number(githubPr[1]);
+    return json({ ok: true, pr: githubPrs.find((pr) => pr.number === number) ?? githubPrs[0] });
+  }
+  const githubIssueComments = path.match(/^\/api\/github\/issues\/(\d+)\/comments$/);
+  if (githubIssueComments) {
+    return json({
+      ok: true,
+      comments: githubComments,
+      comment: githubComments[0],
+    });
+  }
+  const githubIssue = path.match(/^\/api\/github\/issues\/(\d+)$/);
+  if (githubIssue) {
+    const number = Number(githubIssue[1]);
+    return json({
+      ok: true,
+      issue: githubIssues.find((issue) => issue.number === number) ?? githubIssues[0],
+    });
+  }
+  const githubCi = path.match(/^\/api\/github\/ci\/([^/]+)$/);
+  if (githubCi) {
+    return json({
+      ok: true,
+      status: {
+        sha: githubCi[1],
+        state: "failure",
+        totalCount: githubChecks.length,
+        runs: githubChecks,
+      },
+    });
+  }
+  if (path === "/api/github/runs") return json({ ok: true, runs: githubRuns });
+  if (path.match(/^\/api\/github\/runs\/\d+\/jobs$/)) {
+    return json({ ok: true, jobs: githubJobs });
+  }
 
   if (path === "/api/agent") return json({ ok: true, agent: agentInfo() });
   if (path === "/api/agent/chat/status") {
@@ -451,6 +764,37 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
         Number(url.searchParams.get("offset") ?? 0),
       ),
     );
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/query$/)) {
+    return json({
+      ok: true,
+      engine: "postgres",
+      columns: mockDatabaseTables[0].columns,
+      rows: mockDatabaseTables[0].rows,
+      rowCount: mockDatabaseTables[0].rows.length,
+      truncated: false,
+    });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/write-access$/)) {
+    databaseWriteUnlocked = !databaseWriteUnlocked;
+    return json({ ok: true, writeUnlocked: databaseWriteUnlocked });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/execute$/)) {
+    const committed = init?.body instanceof URLSearchParams
+      ? init.body.get("mode") === "commit"
+      : false;
+    return json({
+      ok: true,
+      engine: "postgres",
+      previewUnavailable: false,
+      affectedRows: 1,
+      rows: [{ id: "usr_01hx8q9n", role: "developer" }],
+      columns: [
+        { name: "id", dataType: "uuid", nullable: false, primaryKey: true },
+        { name: "role", dataType: "text", nullable: false, primaryKey: false },
+      ],
+      committed,
+    });
   }
   if (path === "/api/databases/test") return json({ ok: true });
 
@@ -623,7 +967,7 @@ function dashboard(): DashboardData {
     git: {
       cwd: "/Users/demo/projects/acme",
       selectedRepository: { name: "acme", path: "/Users/demo/projects/acme" },
-      status: { branch: "feat/website-real-ui-demo", files: gitFiles },
+      status: gitStatus,
       branches: [
         { name: "feat/website-real-ui-demo", current: true, remote: false },
         { name: "main", current: false, remote: false, upstream: "origin/main" },
@@ -791,6 +1135,7 @@ function databases(): DatabaseConnection[] {
       name: "acme-local",
       engine: "postgres",
       url: "postgres://demo_user:****@localhost:5432/acme",
+      writeUnlocked: databaseWriteUnlocked,
     },
   ];
 }

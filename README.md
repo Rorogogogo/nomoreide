@@ -13,7 +13,7 @@
 [![Node.js ≥20](https://img.shields.io/badge/node-%E2%89%A520-3b82f6?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![MCP Ready](https://img.shields.io/badge/MCP-ready-a855f7?style=flat-square)](https://modelcontextprotocol.io)
 
-Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, and MCP workflows — no IDE required.
+Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, GitHub workflows, database work, and MCP workflows — no IDE required.
 
 [Quick Start](#quick-start) · [MCP Setup](#-connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
 
@@ -23,7 +23,7 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 ## What Is NoMoreIDE?
 
-NoMoreIDE is a lightweight process manager, Git reviewer, log aggregator, and MCP server — all in one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a terminal UI and a local React web dashboard for humans.
+NoMoreIDE is a lightweight process manager, Git reviewer, GitHub workflow surface, database workbench, log aggregator, and MCP server — all in one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a terminal UI and a local React web dashboard for humans.
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -270,6 +270,11 @@ graph TD
 | Git status & diff | ✓ | | ✓ | ✓ |
 | Stage / unstage / commit | ✓ | | ✓ | ✓ |
 | Branch management | ✓ | | ✓ | ✓ |
+| GitHub PRs / issues / Actions | | | ✓ | ✓ |
+| Reusable git/GitHub workflows | | | ✓ | |
+| Database browse and SQL query | | | ✓ | ✓ |
+| Human-approved SQL writes | | | ✓ | |
+| Agent tools, hooks, plugins, usage | | | ✓ | |
 | Safe Git (no force-push, no reset) | ✓ | ✓ | ✓ | ✓ |
 
 ---
@@ -418,6 +423,29 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_git_register_repository` | Register a repo path |
 | `nomoreide_git_select_repository` | Select the active repo |
 
+### Database Tools
+
+| Tool | Description |
+|---|---|
+| `nomoreide_list_databases` | List registered database connections with masked URLs |
+| `nomoreide_db_tables` | List tables and views for a connection |
+| `nomoreide_db_sample` | Sample rows and schema metadata |
+| `nomoreide_db_query` | Run read-only SQL queries; writes are rejected and staged for the Web UI SQL console |
+
+### GitHub Tools
+
+| Tool | Description |
+|---|---|
+| `nomoreide_github_set_token` | Store a GitHub token for API access |
+| `nomoreide_github_list_prs` / `nomoreide_github_get_pr` | Inspect pull requests |
+| `nomoreide_github_get_pr_diff` | Fetch a pull request diff |
+| `nomoreide_github_create_pr` / `nomoreide_github_merge_pr` | Create or merge pull requests with explicit user intent |
+| `nomoreide_github_list_issues` / `nomoreide_github_get_issue` | Inspect issues |
+| `nomoreide_github_list_issue_comments` / `nomoreide_github_add_issue_comment` | Read or add issue and PR comments |
+| `nomoreide_github_create_issue` | Create an issue |
+| `nomoreide_github_get_commit_ci` | Inspect commit check status |
+| `nomoreide_github_list_workflow_runs` | List recent GitHub Actions workflow runs |
+
 ---
 
 ## Example Configurations
@@ -462,7 +490,10 @@ NoMoreIDE is designed to be **safe for AI agents to call without guard rails**:
 - Does not kill processes it did not start
 - Reports port conflicts instead of terminating the occupying process
 - Git tools omit all destructive operations (no `reset --hard`, `clean`, `push --force`, or `branch -D`)
-- Config is scoped to `nomoreide.config.json` in the launch directory
+- Database MCP tools are read-only; writes are staged for the human-only SQL console
+- Database writes require explicit unlock, preview, and commit
+- GitHub create/comment/merge tools require a configured token and explicit user intent
+- Config is scoped to `~/.config/nomoreide/config.json`
 - Logs are written only to `.nomoreide/logs/`
 
 ---

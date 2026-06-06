@@ -1,6 +1,6 @@
 # NoMoreIDE
 
-NoMoreIDE is an AI-native local development workbench for services, logs, Git review, database inspection, terminal access, and MCP workflows.
+NoMoreIDE is an AI-native local development workbench for services, logs, Git review, GitHub PR/issues/Actions workflows, database inspection, SQL review, terminal access, and MCP workflows.
 
 Primary documentation:
 - Human docs: https://www.nomoreide.com/docs
@@ -17,3 +17,4 @@ Gemini MCP server:
 {"mcpServers":{"nomoreide":{"command":"npx","args":["-y","nomoreide"]}}}
 
 Verify inside the agent with /mcp.
+Open the Web UI at http://127.0.0.1:4317/ by default.
