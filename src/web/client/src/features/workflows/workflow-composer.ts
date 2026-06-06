@@ -50,16 +50,16 @@ export function draftWorkflowFromIntent(
   }
 
   if (wantsCommit) {
-    steps.push(gate("gate-commit", "Approve commit", "Create one commit from the current changes?"));
     steps.push(
       agentStep(
-        "commit",
-        "Commit changes",
-        "Stage the appropriate changed files, inspect the staged diff briefly, and create one conventional commit.",
+        "commit-message",
+        "Generate commit message",
+        "Stage the appropriate changed files, inspect the staged diff briefly, and draft one conventional commit message. Do not commit.",
         pickCapabilities(selected, ["skills"]),
-        "committed",
       ),
     );
+    steps.push(gate("gate-commit", "Approve commit", "Commit with this generated message?"));
+    steps.push({ kind: "action", id: "commit", title: "Commit with approved message", op: "commit" });
   }
 
   if (wantsPush) {

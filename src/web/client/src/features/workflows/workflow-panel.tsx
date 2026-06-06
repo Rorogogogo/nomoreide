@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
-  ChevronDown,
   ChevronRight,
   CircleDashed,
   Copy,
@@ -703,26 +702,19 @@ function RunView({
   onBack: () => void;
 }) {
   const finished = run.outcome !== "running";
-  // Which sections are expanded. The active step auto-expands (GitHub-Actions
-  // style); gates and failures force open so their controls/errors always show.
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const [selectedIndex, setSelectedIndex] = useState(run.index);
   useEffect(() => {
-    const step = run.workflow.steps[run.index];
-    const status = run.statuses[run.index];
-    if (step && (status === "running" || status === "waiting")) {
-      setOpen((current) => (current.has(step.id) ? current : new Set(current).add(step.id)));
-    }
-  }, [run.index, run.statuses, run.workflow.steps]);
-  const toggle = (id: string) =>
-    setOpen((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedIndex(run.index);
+  }, [run.index]);
+
+  const selectedStep = run.workflow.steps[selectedIndex] ?? run.workflow.steps[run.index];
+  const selectedStatus = run.statuses[selectedIndex] ?? "pending";
+  const selectedOutput = run.outputs[selectedIndex];
+  const previousOutput = run.outputs[selectedIndex - 1];
+  const isCurrentGate = selectedStep?.kind === "gate" && selectedStatus === "waiting";
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-auto bg-card/85">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
@@ -746,103 +738,127 @@ function RunView({
         </div>
       </div>
 
-      <ol className="px-4 py-4">
-        {run.workflow.steps.map((step, index) => {
-          const status = run.statuses[index];
-          const last = index === run.workflow.steps.length - 1;
-          const isCurrentGate = step.kind === "gate" && status === "waiting";
-          const expanded =
-            open.has(step.id) || status === "waiting" || status === "failed" || status === "blocked";
-          const active = status === "running" || status === "waiting";
-          return (
-            <li key={step.id} className="relative pb-3 pl-10 last:pb-0">
-              {/* Rail connector to the next section. */}
-              {last ? null : (
-                <span
-                  aria-hidden
-                  className="absolute bottom-0 left-[19px] top-9 w-px bg-border"
-                />
+      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+        <aside className="min-h-0 overflow-auto border-b border-border bg-background/55 p-3 lg:border-b-0 lg:border-r">
+          <ol className="space-y-1">
+            {run.workflow.steps.map((step, index) => {
+              const status = run.statuses[index];
+              const active = status === "running" || status === "waiting";
+              const selected = index === selectedIndex;
+              return (
+                <li key={step.id}>
+                  <button
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors",
+                      selected
+                        ? "border-primary/45 bg-primary/[0.06]"
+                        : active
+                          ? "border-primary/30 bg-primary/[0.03]"
+                          : "border-transparent hover:border-border hover:bg-muted/40",
+                    )}
+                    onClick={() => setSelectedIndex(index)}
+                    type="button"
+                  >
+                    <span
+                      className={cn(
+                        "flex size-7 shrink-0 items-center justify-center rounded-full border bg-card",
+                        status === "failed"
+                          ? "border-destructive/50"
+                          : status === "blocked"
+                            ? "border-amber-500/50"
+                            : active
+                              ? "border-primary/50"
+                              : status === "done"
+                                ? "border-emerald-500/50"
+                                : "border-border",
+                      )}
+                    >
+                      <StatusIcon status={status} kind={step.kind} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[12px] font-medium">{stepTitle(step)}</span>
+                      <span className="mt-0.5 flex items-center gap-1.5">
+                        <StepKindBadge kind={step.kind} />
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                          {statusLabel(status)}
+                        </span>
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className={cn(
+                        "size-3.5 shrink-0 text-muted-foreground/50 transition-transform",
+                        selected ? "translate-x-0.5 text-primary" : "",
+                      )}
+                    />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+
+        <main className="min-h-0 overflow-auto p-4">
+          {selectedStep ? (
+            <section
+              className={cn(
+                "min-h-full rounded-lg border bg-background p-4 shadow-sm",
+                selectedStatus === "failed"
+                  ? "border-destructive/40 bg-destructive/[0.03]"
+                  : selectedStatus === "blocked"
+                    ? "border-amber-500/40 bg-amber-500/[0.04]"
+                    : selectedStatus === "running" || selectedStatus === "waiting"
+                      ? "border-primary/40 bg-primary/[0.03]"
+                      : "border-border",
               )}
-              {/* Status node sitting on the rail. */}
-              <span
-                className={cn(
-                  "absolute left-1 top-1 flex size-8 items-center justify-center rounded-full border bg-card",
-                  status === "failed"
-                    ? "border-destructive/50"
-                    : status === "blocked"
-                      ? "border-amber-500/50"
-                      : active
-                        ? "border-primary/50"
-                        : status === "done"
-                          ? "border-emerald-500/50"
-                          : "border-border",
-                )}
-              >
-                <StatusIcon status={status} kind={step.kind} />
-              </span>
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon status={selectedStatus} kind={selectedStep.kind} />
+                    <h3 className="truncate text-[13px] font-semibold">{stepTitle(selectedStep)}</h3>
+                  </div>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <StepKindBadge kind={selectedStep.kind} />
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                      {statusLabel(selectedStatus)}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-              <section
-                className={cn(
-                  "overflow-hidden rounded-lg border transition-colors",
-                  status === "failed"
-                    ? "border-destructive/40 bg-destructive/[0.03]"
-                    : status === "blocked"
-                      ? "border-amber-500/40 bg-amber-500/[0.04]"
-                      : active
-                        ? "border-primary/40 bg-primary/[0.03]"
-                        : "border-border bg-background",
-                )}
-              >
-                <button
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
-                  onClick={() => toggle(step.id)}
-                  type="button"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[12px] font-medium">
-                    {stepTitle(step)}
-                  </span>
-                  <StepKindBadge kind={step.kind} />
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                    {statusLabel(status)}
-                  </span>
-                  {expanded ? (
-                    <ChevronDown className="size-3.5 shrink-0 text-muted-foreground/60" />
-                  ) : (
-                    <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
-                  )}
-                </button>
+              <div className="py-3 text-[11px] leading-relaxed">
+                <StepBody
+                  output={selectedOutput}
+                  previousOutput={previousOutput}
+                  status={selectedStatus}
+                  step={selectedStep}
+                />
 
-                {expanded ? (
-                  <div className="border-t border-border px-3 py-2.5 text-[11px] leading-relaxed">
-                    <StepBody step={step} status={status} output={run.outputs[index]} />
-
-                    {isCurrentGate ? (
-                      <div className="mt-2.5 flex items-center gap-1.5">
-                        <Button onClick={onApprove} size="sm" type="button">
-                          <Check className="size-3.5" /> Approve
-                        </Button>
-                        <Button onClick={onSkip} size="sm" type="button" variant="outline">
-                          <SkipForward className="size-3.5" /> Skip
-                        </Button>
-                        <Button onClick={onStop} size="sm" type="button" variant="outline">
-                          <X className="size-3.5" /> Stop
-                        </Button>
-                      </div>
-                    ) : null}
-
-                    {status === "failed" && run.error ? (
-                      <p className="mt-2 text-destructive">{run.error}</p>
-                    ) : null}
-                    {status === "blocked" && run.error ? (
-                      <p className="mt-2 text-amber-700 dark:text-amber-400">{run.error}</p>
-                    ) : null}
+                {isCurrentGate ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <Button onClick={onApprove} size="sm" type="button">
+                      <Check className="size-3.5" /> Approve
+                    </Button>
+                    <Button onClick={onSkip} size="sm" type="button" variant="outline">
+                      <SkipForward className="size-3.5" /> Skip
+                    </Button>
+                    <Button onClick={onStop} size="sm" type="button" variant="outline">
+                      <X className="size-3.5" /> Stop
+                    </Button>
                   </div>
                 ) : null}
-              </section>
-            </li>
-          );
-        })}
-      </ol>
+
+                {selectedStatus === "failed" && run.error ? (
+                  <p className="mt-3 text-destructive">{run.error}</p>
+                ) : null}
+                {selectedStatus === "blocked" && run.error ? (
+                  <p className="mt-3 text-amber-700 dark:text-amber-400">{run.error}</p>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }
@@ -863,23 +879,38 @@ function statusLabel(status: StepStatus): string {
  * to the task description while it's still pending/running.
  */
 function StepBody({
-  step,
-  status,
   output,
+  previousOutput,
+  status,
+  step,
 }: {
-  step: WorkflowStep;
-  status: StepStatus;
   output?: string;
+  previousOutput?: string;
+  status: StepStatus;
+  step: WorkflowStep;
 }) {
   if (step.kind === "gate") {
-    return <p className="text-muted-foreground">{step.message}</p>;
+    const proposedCommitMessage = step.id === "gate-commit" ? previousOutput?.trim() : "";
+    return (
+      <div>
+        <p className="text-muted-foreground">{step.message}</p>
+        {proposedCommitMessage ? (
+          <div className="mt-3">
+            <Label>Generated commit message</Label>
+            <div className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/50 px-2.5 py-2 font-mono text-[11px] text-foreground">
+              {proposedCommitMessage}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
   }
   if (step.kind === "action") {
     return (
       <p className="text-muted-foreground">
         {step.op === "push"
           ? "Pushes the current branch to its remote."
-          : "Stages and commits all changes."}
+          : "Commits the staged changes with the approved generated message."}
       </p>
     );
   }

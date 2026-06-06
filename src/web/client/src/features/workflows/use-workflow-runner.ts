@@ -122,7 +122,11 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     return true;
   }, []);
 
-  const runAction = useCallback(async (step: Extract<WorkflowStep, { kind: "action" }>) => {
+  const runAction = useCallback(async (
+    step: Extract<WorkflowStep, { kind: "action" }>,
+    index: number,
+    outputs: string[],
+  ) => {
     if (step.op === "push") {
       await gitPush();
       return;
@@ -131,10 +135,10 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       // Deterministic, zero-token commit: stage everything and commit with a
       // generated message. No diff reading, no quality analysis — just commit.
       const status = await getGitStatus();
-      const paths = status.files.map((file) => file.path);
-      if (!paths.length) throw new Error("Nothing to commit — the working tree is clean.");
-      await gitStage(paths);
-      await gitCommit(generateCommitMessage(status.files));
+      if (!status.files.length) throw new Error("Nothing to commit — the working tree is clean.");
+      const paths = pathsToStageForCommitAction(status.files);
+      if (paths.length) await gitStage(paths);
+      await gitCommit(messageForCommitAction(outputs, index, status.files));
       return;
     }
     throw new Error(`Unknown action: ${step.op}`);
@@ -188,7 +192,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         if (step.kind === "action") {
           patch(i, "running");
           try {
-            await runAction(step);
+            await runAction(step, i, outputs);
             patch(i, "done");
             onRefresh?.();
           } catch (caught) {
@@ -281,6 +285,20 @@ function latestAssistantText(turns: ReadonlyArray<{ role: string; text: string }
  * no diff. Names up to three files, then summarizes the rest by count. Quality
  * isn't the goal here; getting the commit made cheaply is.
  */
+export function messageForCommitAction(
+  outputs: string[],
+  index: number,
+  files: GitFileStatus[],
+): string {
+  const previous = outputs[index - 1]?.trim();
+  return previous || generateCommitMessage(files);
+}
+
+export function pathsToStageForCommitAction(files: GitFileStatus[]): string[] {
+  const hasStagedChanges = files.some((file) => file.index.trim() && file.index !== "?");
+  return hasStagedChanges ? [] : files.map((file) => file.path);
+}
+
 function generateCommitMessage(files: GitFileStatus[]): string {
   const names = files.map((file) => file.path.split("/").pop() || file.path);
   if (names.length === 1) return `Update ${names[0]}`;

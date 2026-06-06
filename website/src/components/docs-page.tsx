@@ -119,7 +119,6 @@ const toolGroups = [
 
 const toc = [
   ["overview", "Overview"],
-  ["quick-start", "Quick Start"],
   ["mcp-setup", "MCP Setup"],
   ["interfaces", "Interfaces"],
   ["cli", "CLI"],
@@ -206,7 +205,7 @@ export function DocsPage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Button asChild>
-                <a href="#quick-start">Start setup</a>
+                <a href="#mcp-setup">Set up MCP</a>
               </Button>
               <Button asChild variant="outline">
                 <a href="/docs/ai-guide.md">AI agent guide</a>
@@ -235,23 +234,6 @@ export function DocsPage() {
                 ["For humans", "The dashboard keeps services, logs, diffs, data, and terminal work visible."],
                 ["For teams", "Registered services and repositories make local workflows repeatable."],
               ]}
-            />
-          </Section>
-
-          <Section
-            eyebrow="Install"
-            icon={<Terminal className="size-5" />}
-            id="quick-start"
-            title="Quick Start"
-          >
-            <p>Run NoMoreIDE directly with npx, install it globally, or build it from source.</p>
-            <CodeBlock code="npx -y nomoreide" />
-            <CodeBlock code="npm install -g nomoreide" />
-            <CodeBlock
-              code={`git clone https://github.com/Rorogogogo/nomoreide.git
-cd nomoreide
-npm install
-npm run build`}
             />
           </Section>
 
