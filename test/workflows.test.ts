@@ -22,7 +22,8 @@ describe("workflows", () => {
   test("commit-bearing built-ins generate a message before asking to commit", () => {
     for (const id of ["commit-push", "ship-it"]) {
       const workflow = BUILTIN_WORKFLOWS.find((item) => item.id === id);
-      expect(workflow?.steps.slice(0, 3)).toMatchObject([
+      const steps = id === "ship-it" ? workflow?.steps.slice(1, 4) : workflow?.steps.slice(0, 3);
+      expect(steps).toMatchObject([
         {
           kind: "agent",
           id: "commit-message",
@@ -40,6 +41,16 @@ describe("workflows", () => {
         },
       ]);
     }
+  });
+
+  test("PR built-ins check for a feature branch before committing or pushing", () => {
+    const shipIt = BUILTIN_WORKFLOWS.find((item) => item.id === "ship-it");
+
+    expect(shipIt?.steps[0]).toMatchObject({
+      kind: "action",
+      id: "assert-pr-branch",
+      op: "assert-pr-branch",
+    });
   });
 
   test("a stored workflow with a built-in id replaces it (a fork)", () => {

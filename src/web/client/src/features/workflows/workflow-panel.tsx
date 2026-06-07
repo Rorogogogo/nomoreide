@@ -23,6 +23,7 @@ import {
 import {
   deleteWorkflow,
   getAgentInfo,
+  gitCreateBranch,
   listWorkflows,
   saveWorkflow,
   type AgentInfo,
@@ -41,6 +42,11 @@ import {
   draftWorkflowFromIntent,
   type CapabilityOptions,
 } from "./workflow-composer";
+import {
+  buildPrBranchRecoveryPrompt,
+  buildWorkflowStepDebugPrompt,
+} from "./workflow-prompts";
+import { parseRecommendedBranchName } from "./workflow-result";
 import { useWorkflowRun } from "./workflow-run-context";
 import type { RunState, StepStatus } from "./use-workflow-runner";
 
@@ -57,6 +63,7 @@ export function WorkflowPanel() {
   const [editing, setEditing] = useState<Workflow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewingRun, setViewingRun] = useState(false);
   // Gates are the consent, so skip the agent's per-tool prompts by default —
   // irreversible footguns still surface in the dock regardless of this.
   const [autoApprove, setAutoApprove] = useState(true);
@@ -84,6 +91,7 @@ export function WorkflowPanel() {
   function runWorkflow(workflow: Workflow) {
     // Runs in the background — the pipeline below is where you watch progress,
     // so we don't pop the dock open and pull attention away.
+    setViewingRun(true);
     void start(workflow, autoApprove);
   }
 
@@ -119,14 +127,18 @@ export function WorkflowPanel() {
     });
   }
 
-  if (run) {
+  if (run && viewingRun) {
     return (
       <RunView
         run={run}
         onApprove={approve}
         onSkip={skip}
         onStop={stop}
-        onBack={dismiss}
+        onBack={() => setViewingRun(false)}
+        onRestart={() => {
+          setViewingRun(true);
+          void start(run.workflow, autoApprove);
+        }}
       />
     );
   }
@@ -185,30 +197,82 @@ export function WorkflowPanel() {
           <Loader2 className="mr-2 size-4 animate-spin" /> Loading workflows…
         </div>
       ) : (
-        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-          {workflows.map((workflow) => (
-            <WorkflowCard
-              key={workflow.id}
-              workflow={workflow}
-              onDelete={() => void removeSavedWorkflow(workflow)}
-              onDuplicate={() => duplicateWorkflow(workflow)}
-              onEdit={() => setEditing(workflow)}
-              onRun={() => runWorkflow(workflow)}
+        <>
+          {run ? (
+            <WorkflowRunBanner
+              onClear={dismiss}
+              onView={() => setViewingRun(true)}
+              run={run}
             />
-          ))}
-        </div>
+          ) : null}
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {workflows.map((workflow) => (
+              <WorkflowCard
+                key={workflow.id}
+                lastRun={run?.workflow.id === workflow.id ? run : null}
+                workflow={workflow}
+                onDelete={() => void removeSavedWorkflow(workflow)}
+                onDuplicate={() => duplicateWorkflow(workflow)}
+                onEdit={() => setEditing(workflow)}
+                onRun={() => runWorkflow(workflow)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
 }
 
+function WorkflowRunBanner({
+  onClear,
+  onView,
+  run,
+}: {
+  onClear: () => void;
+  onView: () => void;
+  run: RunState;
+}) {
+  const running = run.outcome === "running";
+  return (
+    <section className="mx-4 mt-4 rounded-md border border-border bg-background p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              {running ? "Workflow running" : "Last workflow"}
+            </span>
+            <OutcomeBadge outcome={run.outcome} />
+          </div>
+          <p className="mt-1 truncate text-[13px] font-medium">{run.workflow.name}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {running ? "Started" : "Ran"} {formatRunTimestamp(run.startedAt)}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button onClick={onView} size="sm" type="button">
+            <Terminal className="size-3.5" /> View run
+          </Button>
+          {!running ? (
+            <Button onClick={onClear} size="sm" type="button" variant="outline">
+              <X className="size-3.5" /> Clear
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function WorkflowCard({
+  lastRun,
   workflow,
   onDelete,
   onDuplicate,
   onEdit,
   onRun,
 }: {
+  lastRun?: RunState | null;
   workflow: Workflow;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -227,6 +291,12 @@ function WorkflowCard({
       </div>
       {workflow.description ? (
         <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{workflow.description}</p>
+      ) : null}
+      {lastRun ? (
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Terminal className="size-3" />
+          {lastRun.outcome === "running" ? "Running now" : `Last run ${formatRunTimestamp(lastRun.startedAt)}`}
+        </p>
       ) : null}
 
       <ol className="mt-2.5 space-y-1">
@@ -694,13 +764,16 @@ function RunView({
   onSkip,
   onStop,
   onBack,
+  onRestart,
 }: {
   run: RunState;
   onApprove: () => void;
   onSkip: () => void;
   onStop: () => void;
   onBack: () => void;
+  onRestart: () => void;
 }) {
+  const { sendToAgent } = useAgentDock();
   const finished = run.outcome !== "running";
   const [selectedIndex, setSelectedIndex] = useState(run.index);
   useEffect(() => {
@@ -712,6 +785,11 @@ function RunView({
   const selectedOutput = run.outputs[selectedIndex];
   const previousOutput = run.outputs[selectedIndex - 1];
   const isCurrentGate = selectedStep?.kind === "gate" && selectedStatus === "waiting";
+  const canDebugSelectedStep = selectedStatus === "failed" || selectedStatus === "blocked";
+  const canRecoverPrBranch =
+    selectedStatus === "blocked" &&
+    selectedStep?.kind === "action" &&
+    selectedStep.op === "assert-pr-branch";
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
@@ -726,15 +804,14 @@ function RunView({
         </div>
         <div className="flex items-center gap-1.5">
           <OutcomeBadge outcome={run.outcome} />
-          {finished ? (
-            <Button onClick={onBack} size="sm" type="button" variant="outline">
-              <ArrowLeft className="size-3.5" /> Workflows
-            </Button>
-          ) : (
+          <Button onClick={onBack} size="sm" type="button" variant="outline">
+            <ArrowLeft className="size-3.5" /> Workflows
+          </Button>
+          {!finished ? (
             <Button onClick={onStop} size="sm" type="button" variant="outline">
               <Square className="size-3.5" /> Stop
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -824,6 +901,45 @@ function RunView({
                     </span>
                   </div>
                 </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {canDebugSelectedStep ? (
+                    <Button
+                      aria-label="Debug this workflow step with AI"
+                      onClick={() =>
+                        sendToAgent({
+                          prompt: buildWorkflowStepDebugPrompt({
+                            workflowName: run.workflow.name,
+                            step: selectedStep,
+                            status: selectedStatus,
+                            error: run.error,
+                            previousOutput,
+                            output: selectedOutput,
+                          }),
+                          source: { type: "workflow-debug", label: selectedStep.title },
+                          mode: "send",
+                          label: `Debug workflow step: ${selectedStep.title}`,
+                          background: true,
+                        })
+                      }
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <AgentMark className="size-3.5" /> Debug with AI
+                    </Button>
+                  ) : null}
+                  {!finished ? (
+                    <Button
+                      aria-label="Stop workflow run from step detail"
+                      onClick={onStop}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <Square className="size-3.5" /> Stop after this step
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               <div className="py-3 text-[11px] leading-relaxed">
@@ -851,6 +967,13 @@ function RunView({
                 {selectedStatus === "failed" && run.error ? (
                   <p className="mt-3 text-destructive">{run.error}</p>
                 ) : null}
+                {canRecoverPrBranch ? (
+                  <PrBranchRecovery
+                    error={run.error}
+                    onRestart={onRestart}
+                    workflowName={run.workflow.name}
+                  />
+                ) : null}
                 {selectedStatus === "blocked" && run.error ? (
                   <p className="mt-3 text-amber-700 dark:text-amber-400">{run.error}</p>
                 ) : null}
@@ -861,6 +984,163 @@ function RunView({
       </div>
     </div>
   );
+}
+
+function PrBranchRecovery({
+  error,
+  onRestart,
+  workflowName,
+}: {
+  error?: string | null;
+  onRestart: () => void;
+  workflowName: string;
+}) {
+  const { sendToAgent, setOpen, streaming, turns } = useAgentDock();
+  const [handoffSent, setHandoffSent] = useState(false);
+  const [handoffTurnCount, setHandoffTurnCount] = useState<number | null>(null);
+  const [creatingBranch, setCreatingBranch] = useState(false);
+  const [createdBranch, setCreatedBranch] = useState<string | null>(null);
+  const [branchError, setBranchError] = useState<string | null>(null);
+  const agentOutput = handoffTurnCount === null ? "" : latestAssistantTextAfter(turns, handoffTurnCount);
+  const recommendedBranch = parseRecommendedBranchName(agentOutput);
+  const branchRecoveryInProgress = handoffSent && !recommendedBranch && streaming;
+
+  function askAgentForBranchName(extraInstruction?: string) {
+    setHandoffTurnCount(turns.length);
+    setBranchError(null);
+    setCreatedBranch(null);
+    sendToAgent({
+      prompt: [
+        buildPrBranchRecoveryPrompt({ workflowName, error }),
+        extraInstruction?.trim() ? extraInstruction.trim() : "",
+      ].filter(Boolean).join("\n\n"),
+      source: { type: "workflow-branch-recovery", label: workflowName },
+      mode: "send",
+      label: `Recommend PR branch for ${workflowName}`,
+      background: true,
+    });
+    setHandoffSent(true);
+  }
+
+  async function createRecommendedBranch() {
+    if (!recommendedBranch) return;
+    setCreatingBranch(true);
+    setBranchError(null);
+    try {
+      await gitCreateBranch(recommendedBranch);
+      setCreatedBranch(recommendedBranch);
+    } catch (caught) {
+      setBranchError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setCreatingBranch(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border bg-muted/35 p-3">
+      <Label>Recover with AI</Label>
+      <p className="mb-2 text-[11px] text-muted-foreground">
+        Let the agent inspect the change and suggest a feature branch. You approve before anything changes.
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button onClick={() => askAgentForBranchName()} size="sm" type="button">
+          <AgentMark className="size-3.5" /> Recommend branch with AI
+        </Button>
+        {createdBranch ? (
+          <Button onClick={onRestart} size="sm" type="button" variant="outline">
+            <Play className="size-3.5" /> Run again
+          </Button>
+        ) : null}
+      </div>
+      {branchRecoveryInProgress ? (
+        <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" /> Choosing a branch name in the background.
+        </p>
+      ) : null}
+      {recommendedBranch ? (
+        <div className="mt-3 rounded-md border border-border bg-background p-2.5">
+          <Label>Recommended branch</Label>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <code className="min-w-0 rounded bg-muted px-2 py-1 font-mono text-[12px] text-foreground">
+              {recommendedBranch}
+            </code>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                disabled={creatingBranch || createdBranch === recommendedBranch}
+                onClick={() => void createRecommendedBranch()}
+                size="sm"
+                type="button"
+              >
+                {creatingBranch ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                Create this branch
+              </Button>
+              <Button
+                disabled={creatingBranch}
+                onClick={() =>
+                  askAgentForBranchName(
+                    "Recommend a different concise branch name. Keep the same output contract with `BRANCH_NAME: <branch-name>`.",
+                  )
+                }
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <AgentMark className="size-3.5" /> Ask for another
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : agentOutput && !branchRecoveryInProgress ? (
+        <div className="mt-3 rounded-md border border-border bg-background p-2.5">
+          <p className="text-[11px] text-muted-foreground">
+            The agent did not return a branch name the workflow could read.
+          </p>
+          <Button
+            className="mt-2"
+            onClick={() =>
+              askAgentForBranchName(
+                "Return only a concise branch suggestion using this exact line: `BRANCH_NAME: <branch-name>`.",
+              )
+            }
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <AgentMark className="size-3.5" /> Ask for another
+          </Button>
+        </div>
+      ) : null}
+      {createdBranch ? (
+        <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-400">
+          Branch created: <code className="font-mono">{createdBranch}</code>. Run the workflow again from here.
+        </p>
+      ) : null}
+      {branchError ? (
+        <p className="mt-2 text-[11px] text-destructive">{branchError}</p>
+      ) : null}
+      {agentOutput ? (
+        <Button
+          className="mt-2"
+          onClick={() => setOpen(true)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <MessageSquarePlus className="size-3.5" /> Open agent
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function latestAssistantTextAfter(
+  turns: ReadonlyArray<{ role: string; text: string }>,
+  startIndex: number,
+): string {
+  for (let i = turns.length - 1; i >= startIndex; i--) {
+    if (turns[i]?.role === "assistant") return turns[i].text.trim();
+  }
+  return "";
 }
 
 function statusLabel(status: StepStatus): string {
@@ -908,9 +1188,7 @@ function StepBody({
   if (step.kind === "action") {
     return (
       <p className="text-muted-foreground">
-        {step.op === "push"
-          ? "Pushes the current branch to its remote."
-          : "Commits the staged changes with the approved generated message."}
+        {actionDescription(step.op)}
       </p>
     );
   }
@@ -1009,7 +1287,7 @@ function normalizeStep(step: WorkflowStep): WorkflowStep {
 function stepBodyText(step: WorkflowStep): string {
   if (step.kind === "gate") return step.message;
   if (step.kind === "agent") return step.prompt;
-  return step.op === "push" ? "Push the current branch to its remote." : "Stage and commit changed files.";
+  return actionDescription(step.op);
 }
 
 function updateStepBody(step: WorkflowStep, value: string): WorkflowStep {
@@ -1020,6 +1298,14 @@ function updateStepBody(step: WorkflowStep, value: string): WorkflowStep {
     op: /\bpush\b/i.test(value) ? "push" : /\bcommit\b/i.test(value) ? "commit" : step.op,
     title: value.trim() || step.title,
   };
+}
+
+function actionDescription(op: Extract<WorkflowStep, { kind: "action" }>["op"]): string {
+  if (op === "assert-pr-branch") {
+    return "Checks that PR workflows are running from a feature branch, not main or master.";
+  }
+  if (op === "push") return "Pushes the current branch to its remote.";
+  return "Commits the staged changes with the approved generated message.";
 }
 
 function normalizeCapabilities(capabilities?: WorkflowCapabilities): WorkflowCapabilities | undefined {
@@ -1073,6 +1359,13 @@ function Label({ children }: { children: ReactNode }) {
       {children}
     </div>
   );
+}
+
+function formatRunTimestamp(timestamp: number): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
 }
 
 function OutcomeBadge({ outcome }: { outcome: RunState["outcome"] }) {

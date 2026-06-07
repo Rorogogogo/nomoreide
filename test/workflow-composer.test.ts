@@ -19,6 +19,7 @@ describe("workflow composer", () => {
 
     expect(workflow.name).toBe("Review, Commit & PR");
     expect(workflow.steps.map((step) => step.kind)).toEqual([
+      "action",
       "gate",
       "agent",
       "agent",
@@ -28,20 +29,25 @@ describe("workflow composer", () => {
       "action",
       "agent",
     ]);
-    expect(workflow.steps[1]).toMatchObject({
-      kind: "agent",
-      capabilities: { skills: ["code-review"] },
+    expect(workflow.steps[0]).toMatchObject({
+      kind: "action",
+      id: "assert-pr-branch",
+      op: "assert-pr-branch",
     });
     expect(workflow.steps[2]).toMatchObject({
       kind: "agent",
+      capabilities: { skills: ["code-review"] },
+    });
+    expect(workflow.steps[3]).toMatchObject({
+      kind: "agent",
       id: "commit-message",
     });
-    expect(workflow.steps[4]).toMatchObject({
+    expect(workflow.steps[5]).toMatchObject({
       kind: "action",
       id: "commit",
       op: "commit",
     });
-    expect(workflow.steps[7]).toMatchObject({
+    expect(workflow.steps[8]).toMatchObject({
       kind: "agent",
       capabilities: { mcpServers: ["github"] },
     });

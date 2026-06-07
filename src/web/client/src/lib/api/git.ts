@@ -157,6 +157,14 @@ export async function gitPush(): Promise<GitPushResult> {
   return { output: res.output, branch: res.branch, setUpstream: res.setUpstream };
 }
 
+/** Create and switch to a new local branch. */
+export async function gitCreateBranch(name: string): Promise<string> {
+  const res = await postFormForJson<{ ok: true; output: string }>("/api/git/branches", {
+    name,
+  });
+  return res.output;
+}
+
 export async function deleteGitRepository(name: string): Promise<void> {
   await requestJson<{ ok: true }>(
     `/api/git/repositories/${encodeURIComponent(name)}`,
