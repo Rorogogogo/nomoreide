@@ -5,6 +5,8 @@
  */
 
 const STATUS_MARKER = /^[ \t>*_-]*WORKFLOW_STATUS:\s*(ok|blocked)\b[ \t]*[—–:-]?[ \t]*(.*)$/im;
+const BRANCH_NAME_MARKER = /^[ \t>*_-]*BRANCH_NAME:\s*`?([A-Za-z0-9][A-Za-z0-9._/-]{0,127})`?\s*$/im;
+const BRANCH_NAME_CANDIDATE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 
 export interface StepResult {
   /** The reply with the status-marker line stripped — what the user sees. */
@@ -38,4 +40,23 @@ export function looksBlocked(text: string): boolean {
   return /\bi can'?t\b|\bcannot\b|\bunable\b|\bnot able\b|\bwon'?t\b|\bwant me to\b|\bdid you mean\b|\bshould i\b|\bneed (?:you|your|more)\b|\binstead of merging\b/i.test(
     text,
   );
+}
+
+export function parseRecommendedBranchName(text: string): string | null {
+  const markerMatch = text.match(BRANCH_NAME_MARKER);
+  if (markerMatch && isUsableBranchName(markerMatch[1])) return markerMatch[1];
+
+  const recommendedSection = text.match(/^#+\s*Recommended branch name\b([\s\S]*)$/im)?.[1] ?? text;
+  for (const match of recommendedSection.matchAll(/`([^`\s]+)`/g)) {
+    const candidate = match[1].trim();
+    if (isUsableBranchName(candidate)) return candidate;
+  }
+  return null;
+}
+
+function isUsableBranchName(value: string): boolean {
+  if (!BRANCH_NAME_CANDIDATE.test(value)) return false;
+  if (value === "main" || value === "master") return false;
+  if (value.includes("..") || value.endsWith(".") || value.endsWith("/")) return false;
+  return true;
 }

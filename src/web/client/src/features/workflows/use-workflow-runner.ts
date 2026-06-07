@@ -5,6 +5,7 @@ import {
   gitPush,
   gitStage,
   type GitFileStatus,
+  type GitStatusSummary,
   type Workflow,
   type WorkflowStep,
 } from "@/lib/api";
@@ -34,6 +35,10 @@ const STATUS_HINT =
 
 export interface RunState {
   workflow: Workflow;
+  /** When this retained run started, used by the workflow list to show recency. */
+  startedAt: number;
+  /** Set when the retained run reaches a terminal outcome. */
+  endedAt?: number;
   /** Index of the step currently being processed. */
   index: number;
   statuses: StepStatus[];
@@ -127,6 +132,10 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     index: number,
     outputs: string[],
   ) => {
+    if (step.op === "assert-pr-branch") {
+      assertPullRequestBranch(await getGitStatus());
+      return;
+    }
     if (step.op === "push") {
       await gitPush();
       return;
@@ -161,6 +170,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       setRun({
         workflow,
+        startedAt: Date.now(),
         index: 0,
         statuses: [...statuses],
         outputs: [...outputs],
@@ -170,7 +180,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       const halt = (outcome: RunOutcome) => {
         busyRef.current = false;
-        setRun((prev) => (prev ? { ...prev, outcome } : prev));
+        setRun((prev) => (prev ? { ...prev, outcome, endedAt: Date.now() } : prev));
       };
 
       for (let i = 0; i < workflow.steps.length; i++) {
@@ -196,6 +206,11 @@ export function useWorkflowRunner(onRefresh?: () => void) {
             patch(i, "done");
             onRefresh?.();
           } catch (caught) {
+            if (step.op === "assert-pr-branch") {
+              patch(i, "blocked", { error: messageOf(caught) });
+              halt("blocked");
+              return;
+            }
             patch(i, "failed", { error: messageOf(caught) });
             halt("failed");
             return;
@@ -297,6 +312,26 @@ export function messageForCommitAction(
 export function pathsToStageForCommitAction(files: GitFileStatus[]): string[] {
   const hasStagedChanges = files.some((file) => file.index.trim() && file.index !== "?");
   return hasStagedChanges ? [] : files.map((file) => file.path);
+}
+
+export function assertPullRequestBranch(status: GitStatusSummary): void {
+  const branch = status.branch.trim();
+  if (!branch) {
+    throw new Error("Create or switch to a feature branch before opening a PR — detached HEAD cannot be used as a PR branch.");
+  }
+  if (!isDefaultBranchName(branch)) return;
+
+  const hasLocalChanges = status.files.length > 0;
+  const nextStep = hasLocalChanges
+    ? "Create or switch to a feature branch before committing these changes."
+    : "Pull the default branch if needed, then create or switch to a feature branch.";
+  throw new Error(
+    `Create or switch to a feature branch before opening a PR. Current branch is ${branch}. ${nextStep}`,
+  );
+}
+
+function isDefaultBranchName(branch: string): boolean {
+  return branch === "main" || branch === "master";
 }
 
 function generateCommitMessage(files: GitFileStatus[]): string {

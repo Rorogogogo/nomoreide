@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { looksBlocked, readStepResult } from "../src/web/client/src/features/workflows/workflow-result.js";
+import {
+  looksBlocked,
+  parseRecommendedBranchName,
+  readStepResult,
+} from "../src/web/client/src/features/workflows/workflow-result.js";
 
 describe("workflow step result", () => {
   test("explicit ok marker → not blocked, marker stripped", () => {
@@ -27,5 +31,27 @@ describe("workflow step result", () => {
   test("a plain success reply is not blocked", () => {
     expect(looksBlocked("Committed all changes: feat: add workflows.")).toBe(false);
     expect(looksBlocked("Pushed origin/main and opened PR #7.")).toBe(false);
+  });
+
+  test("parses a machine-readable branch recommendation", () => {
+    expect(
+      parseRecommendedBranchName(
+        "RATIONALE: This is the branch guard change.\nBRANCH_NAME: feat/workflow-pr-branch-guard",
+      ),
+    ).toBe("feat/workflow-pr-branch-guard");
+  });
+
+  test("parses the branch from a markdown agent recommendation", () => {
+    expect(
+      parseRecommendedBranchName(
+        [
+          "## Recommended branch name",
+          "",
+          "**`feat/workflow-pr-branch-guard`**",
+          "",
+          "It matches the branch recovery plumbing.",
+        ].join("\n"),
+      ),
+    ).toBe("feat/workflow-pr-branch-guard");
   });
 });

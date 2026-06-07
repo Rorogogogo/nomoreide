@@ -26,6 +26,15 @@ export function draftWorkflowFromIntent(
   const wantsPr = /\bpr\b|pull request/.test(lower);
   const selected = matchCapabilities(lower, capabilities);
 
+  if (wantsPr) {
+    steps.push({
+      kind: "action",
+      id: "assert-pr-branch",
+      title: "Check PR branch",
+      op: "assert-pr-branch",
+    });
+  }
+
   if (wantsReview) {
     steps.push(gate("gate-review", "Approve review", "Review the current changes?"));
     steps.push(

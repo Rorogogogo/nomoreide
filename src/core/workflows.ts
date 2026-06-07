@@ -32,10 +32,12 @@ export const workflowStepSchema = z.discriminatedUnion("kind", [
     title: z.string().min(1),
     /**
      * Deterministic op with no inputs — runs straight through the REST API with
-     * zero agent tokens. `commit` stages everything and commits with a generated
-     * message (no diff reading, no quality analysis); `push` pushes the branch.
+     * zero agent tokens. `assert-pr-branch` blocks on default branches before PR
+     * workflows can commit; `commit` stages everything and commits with a
+     * generated message (no diff reading, no quality analysis); `push` pushes
+     * the branch.
      */
-    op: z.enum(["push", "commit"]),
+    op: z.enum(["push", "commit", "assert-pr-branch"]),
   }),
   z.object({
     kind: z.literal("agent"),
@@ -99,6 +101,13 @@ const COMMIT_ACTION_STEP: WorkflowStep = {
   op: "commit",
 };
 
+const ASSERT_PR_BRANCH_STEP: WorkflowStep = {
+  kind: "action",
+  id: "assert-pr-branch",
+  title: "Check PR branch",
+  op: "assert-pr-branch",
+};
+
 /**
  * The Phase-1 starter set. These are plain data (not hardcoded UI), so the same
  * structure a user authors later can be forked from one of these.
@@ -123,6 +132,7 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
     description: "Approve the AI commit, push, then use quick AI turns to open and squash-merge the PR.",
     builtin: true,
     steps: [
+      ASSERT_PR_BRANCH_STEP,
       COMMIT_MESSAGE_STEP,
       { ...COMMIT_GATE },
       COMMIT_ACTION_STEP,
