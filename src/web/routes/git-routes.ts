@@ -191,6 +191,16 @@ export const gitRoutes: Route[] = [
     }
   }),
 
+  route("POST", "/api/git/default-branch/pull", async ({ response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    try {
+      const result = await new GitActions(gitCwd).checkoutDefaultAndPull();
+      sendJson(response, { ok: true, ...result });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
   route("POST", "/api/git/branches", async ({ request, response, configStore, cwd }) => {
     const form = await readForm(request);
     const gitCwd = await selectedGitCwd(configStore, cwd);

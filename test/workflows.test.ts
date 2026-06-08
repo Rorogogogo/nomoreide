@@ -53,6 +53,16 @@ describe("workflows", () => {
     });
   });
 
+  test("PR built-ins switch back to the default branch and pull after merging", () => {
+    const shipIt = BUILTIN_WORKFLOWS.find((item) => item.id === "ship-it");
+
+    expect(shipIt?.steps.at(-1)).toMatchObject({
+      kind: "action",
+      id: "checkout-default-and-pull",
+      op: "checkout-default-and-pull",
+    });
+  });
+
   test("a stored workflow with a built-in id replaces it (a fork)", () => {
     const fork: Workflow = {
       id: "ship-it",

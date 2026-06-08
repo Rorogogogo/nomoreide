@@ -151,10 +151,24 @@ export interface GitPushResult {
   setUpstream: boolean;
 }
 
+export interface GitCheckoutDefaultAndPullResult {
+  output: string;
+  branch: string;
+}
+
 /** Push the current branch to its remote (sets upstream on first push). */
 export async function gitPush(): Promise<GitPushResult> {
   const res = await postFormForJson<{ ok: true } & GitPushResult>("/api/git/push", {});
   return { output: res.output, branch: res.branch, setUpstream: res.setUpstream };
+}
+
+/** Switch back to the default branch and pull latest with fast-forward only. */
+export async function gitCheckoutDefaultAndPull(): Promise<GitCheckoutDefaultAndPullResult> {
+  const res = await postFormForJson<{ ok: true } & GitCheckoutDefaultAndPullResult>(
+    "/api/git/default-branch/pull",
+    {},
+  );
+  return { output: res.output, branch: res.branch };
 }
 
 /** Create and switch to a new local branch. */

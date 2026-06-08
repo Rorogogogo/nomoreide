@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -279,6 +279,10 @@ function WorkflowCard({
   onEdit: () => void;
   onRun: () => void;
 }) {
+  // Steps stay collapsed by default so a wall of cards reads as a clean list;
+  // expand to peek at the pipeline without opening the editor.
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const stepCount = workflow.steps.length;
   return (
     <div className="flex flex-col rounded-lg border border-border bg-background p-3.5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
@@ -299,14 +303,30 @@ function WorkflowCard({
         </p>
       ) : null}
 
-      <ol className="mt-2.5 space-y-1">
-        {workflow.steps.map((step) => (
-          <li key={step.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <StepKindDot kind={step.kind} />
-            <span className="truncate">{stepTitle(step)}</span>
-          </li>
-        ))}
-      </ol>
+      <button
+        aria-expanded={stepsOpen}
+        className="mt-2.5 flex w-full items-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        onClick={() => setStepsOpen((open) => !open)}
+        type="button"
+      >
+        <ChevronRight
+          className={cn("size-3 shrink-0 transition-transform", stepsOpen ? "rotate-90" : "")}
+          aria-hidden
+        />
+        <span>
+          {stepCount} {stepCount === 1 ? "step" : "steps"}
+        </span>
+      </button>
+      {stepsOpen ? (
+        <ol className="mt-1.5 space-y-1">
+          {workflow.steps.map((step) => (
+            <li key={step.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <StepKindDot kind={step.kind} />
+              <span className="truncate">{stepTitle(step)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
 
       <Button className="mt-3 w-full" onClick={onRun} size="sm" type="button">
         <Play className="size-3.5" /> Run
@@ -348,6 +368,9 @@ function WorkflowBuilder({
 }) {
   const [draft, setDraft] = useState<Workflow>(() => structuredClone(initial));
   const [intent, setIntent] = useState(initial.description ?? "");
+  // The canvas is the point — keep the AI-compose controls tucked away by
+  // default so the graph owns the space.
+  const [composeOpen, setComposeOpen] = useState(false);
   const capabilities = capabilityOptions(agent);
   const { sendToAgent } = useAgentDock();
   const saveDisabled = !draft.id.trim() || !draft.name.trim() || draft.steps.length === 0;
@@ -375,6 +398,14 @@ function WorkflowBuilder({
       ...current,
       steps: current.steps.filter((_, i) => i !== index),
     }));
+  }
+
+  function insertStep(index: number, kind: WorkflowStep["kind"]) {
+    setDraft((current) => {
+      const steps = [...current.steps];
+      steps.splice(index, 0, newStep(kind, current.steps));
+      return { ...current, steps };
+    });
   }
 
   function composeDraft(nextIntent = intent) {
@@ -411,17 +442,36 @@ function WorkflowBuilder({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-auto bg-card/85">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
-            <AgentMark className="size-4" /> Workflow Composer
-          </h2>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            Describe the ritual. NoMoreIDE turns it into a gated timeline you can tune.
-          </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <AgentMark className="size-4 shrink-0" />
+          <div className="min-w-0">
+            <input
+              aria-label="Workflow name"
+              className="w-full bg-transparent text-[14px] font-semibold outline-none"
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  name: event.target.value,
+                  id: slugify(event.target.value) || current.id,
+                }))
+              }
+              placeholder="Name your workflow"
+              value={draft.name}
+            />
+            <span className="font-mono text-[10px] text-muted-foreground">{draft.id}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            onClick={() => setComposeOpen((open) => !open)}
+            size="sm"
+            type="button"
+            variant={composeOpen ? "default" : "outline"}
+          >
+            <Sparkles className="size-3.5" /> AI compose
+          </Button>
           <Button onClick={onCancel} size="sm" type="button" variant="outline">
             <ArrowLeft className="size-3.5" /> Back
           </Button>
@@ -431,27 +481,9 @@ function WorkflowBuilder({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        <section className="shrink-0 border-b border-border p-4">
-          <div className="grid gap-3 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]">
-            <div className="rounded-lg border border-border bg-background p-3 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Workflow identity</Label>
-                <span className="font-mono text-[10px] text-muted-foreground">{draft.id}</span>
-              </div>
-              <input
-                className="w-full bg-transparent text-lg font-semibold outline-none"
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    name: event.target.value,
-                    id: slugify(event.target.value) || current.id,
-                  }))
-                }
-                value={draft.name}
-              />
-            </div>
-
+      {composeOpen ? (
+        <section className="shrink-0 border-b border-border bg-muted/20 p-4">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div className="rounded-lg border border-border bg-background p-3 shadow-sm">
               <Label>Describe workflow</Label>
               <textarea
@@ -482,43 +514,138 @@ function WorkflowBuilder({
                 ))}
               </div>
             </div>
-          </div>
-
-          <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.45fr)]">
-            <CapabilityShelf capabilities={capabilities} />
-            <AddStepComposer onAdd={addStepFromIntent} />
+            <div className="grid gap-3">
+              <AddStepComposer onAdd={addStepFromIntent} />
+              <CapabilityShelf capabilities={capabilities} />
+            </div>
           </div>
         </section>
+      ) : null}
 
-        <main className="min-h-0 flex-1 overflow-auto p-4">
+      <main className="min-h-0 flex-1 overflow-auto p-4">
+        <div className="mx-auto max-w-3xl">
+          <StepInserter onInsert={(kind) => insertStep(0, kind)} />
           {draft.steps.length ? (
-            <ol className="mx-auto max-w-6xl space-y-0">
-              {draft.steps.map((step, index) => (
-                <li className="relative pb-5 pl-14 last:pb-0" key={`${step.kind}:${step.id}`}>
-                  <FlowNode index={index} kind={step.kind} />
-                  {index === draft.steps.length - 1 ? null : <FlowConnector />}
-                  <TimelineStepEditor
-                    capabilities={capabilities}
-                    index={index}
-                    isFirst={index === 0}
-                    isLast={index === draft.steps.length - 1}
-                    onMove={moveStep}
-                    onRemove={removeStep}
-                    onUpdate={updateStep}
-                    step={step}
-                  />
-                </li>
-              ))}
-            </ol>
+            draft.steps.map((step, index) => (
+              <Fragment key={`${step.kind}:${step.id}`}>
+                <div className="flex gap-4">
+                  <div className="relative flex w-9 shrink-0 justify-center pt-2">
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border"
+                    />
+                    <NodeBadge index={index} kind={step.kind} />
+                  </div>
+                  <div className="min-w-0 flex-1 pb-1">
+                    <TimelineStepEditor
+                      capabilities={capabilities}
+                      index={index}
+                      isFirst={index === 0}
+                      isLast={index === draft.steps.length - 1}
+                      onMove={moveStep}
+                      onRemove={removeStep}
+                      onUpdate={updateStep}
+                      step={step}
+                    />
+                  </div>
+                </div>
+                <StepInserter onInsert={(kind) => insertStep(index + 1, kind)} />
+              </Fragment>
+            ))
           ) : (
-            <div className="flex h-52 items-center justify-center rounded-lg border border-dashed border-border text-[12px] text-muted-foreground">
-              Add a step to start.
+            <div className="ml-[3.25rem] flex h-24 items-center justify-center rounded-lg border border-dashed border-border text-[12px] text-muted-foreground">
+              Pick a step kind above to start building.
             </div>
           )}
-        </main>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/**
+ * The "+" affordance that lives on the graph rail between nodes. Click it to pick
+ * a step kind and drop a fresh node at that position — this is how a workflow is
+ * built by hand on the canvas.
+ */
+function StepInserter({
+  defaultOpen = false,
+  onInsert,
+}: {
+  defaultOpen?: boolean;
+  onInsert: (kind: WorkflowStep["kind"]) => void;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const kinds: Array<{ kind: WorkflowStep["kind"]; label: string }> = [
+    { kind: "gate", label: "Gate" },
+    { kind: "agent", label: "AI" },
+    { kind: "action", label: "Auto" },
+  ];
+  return (
+    <div className="flex gap-4">
+      <div className="relative flex w-9 shrink-0 justify-center">
+        <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
+        <button
+          aria-label={open ? "Cancel adding step" : "Add step here"}
+          className={cn(
+            "relative z-10 my-1.5 flex size-5 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors",
+            open ? "border-primary/50 text-primary" : "border-border hover:border-primary/50 hover:text-primary",
+          )}
+          onClick={() => setOpen((value) => !value)}
+          type="button"
+        >
+          {open ? <X className="size-3" /> : <Plus className="size-3" />}
+        </button>
+      </div>
+      <div className="flex-1 py-1">
+        {open ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {kinds.map(({ kind, label }) => (
+              <button
+                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                key={kind}
+                onClick={() => {
+                  onInsert(kind);
+                  setOpen(false);
+                }}
+                type="button"
+              >
+                <StepIcon kind={kind} /> {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
+}
+
+function NodeBadge({ index, kind }: { index: number; kind: WorkflowStep["kind"] }) {
+  return (
+    <div className="relative z-10 flex size-9 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+      <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full border border-border bg-background font-mono text-[9px] text-muted-foreground">
+        {index + 1}
+      </span>
+      <StepIcon kind={kind} />
+    </div>
+  );
+}
+
+function newStep(kind: WorkflowStep["kind"], existing: WorkflowStep[]): WorkflowStep {
+  const used = new Set(existing.map((step) => step.id));
+  const id = (base: string) => {
+    let candidate = base;
+    let suffix = 2;
+    while (used.has(candidate)) candidate = `${base}-${suffix++}`;
+    return candidate;
+  };
+  if (kind === "gate") {
+    return { kind: "gate", id: id("gate"), title: "Approve step", message: "Continue?" };
+  }
+  if (kind === "action") {
+    return { kind: "action", id: id("action"), title: "Commit with approved message", op: "commit" };
+  }
+  return { kind: "agent", id: id("step"), title: "AI step", prompt: "" };
 }
 
 function AddStepComposer({ onAdd }: { onAdd: (intent: string) => void }) {
@@ -593,7 +720,6 @@ function TimelineStepEditor({
   onUpdate: (index: number, updater: (step: WorkflowStep) => WorkflowStep) => void;
   step: WorkflowStep;
 }) {
-  const body = stepBodyText(step);
   return (
     <section className="group rounded-lg border border-border bg-background p-3 shadow-sm">
       <div className="flex items-start gap-3">
@@ -608,27 +734,63 @@ function TimelineStepEditor({
               value={step.title}
             />
           </div>
-          <textarea
-            className="mt-2 min-h-16 w-full resize-none bg-transparent text-[12px] leading-relaxed text-muted-foreground outline-none focus:text-foreground"
-            onChange={(event) => {
-              const value = event.target.value;
-              onUpdate(index, (current) => updateStepBody(current, value));
-            }}
-            value={body}
-          />
-          {step.kind === "agent" ? (
-            <CapabilityPicker
-              capabilities={capabilities}
-              selected={step.capabilities}
-              onToggle={(key, value) =>
+          {step.kind === "gate" ? (
+            <textarea
+              className="mt-2 min-h-12 w-full resize-none bg-transparent text-[12px] leading-relaxed text-muted-foreground outline-none focus:text-foreground"
+              onChange={(event) =>
                 onUpdate(index, (current) =>
-                  current.kind === "agent"
-                    ? { ...current, capabilities: toggleCapability(current.capabilities, key, value) }
-                    : current,
+                  current.kind === "gate" ? { ...current, message: event.target.value } : current,
                 )
               }
+              placeholder="Question to ask before continuing…"
+              value={step.message}
             />
-          ) : null}
+          ) : step.kind === "action" ? (
+            <div className="mt-2 space-y-1.5">
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-1 text-[12px] outline-none"
+                onChange={(event) => {
+                  const op = event.target.value as Extract<WorkflowStep, { kind: "action" }>["op"];
+                  onUpdate(index, (current) =>
+                    current.kind === "action" ? { ...current, op } : current,
+                  );
+                }}
+                value={step.op}
+              >
+                <option value="commit">Commit staged changes</option>
+                <option value="push">Push branch</option>
+                <option value="assert-pr-branch">Check PR branch</option>
+                <option value="checkout-default-and-pull">Return to default branch</option>
+              </select>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {actionDescription(step.op)}
+              </p>
+            </div>
+          ) : (
+            <>
+              <textarea
+                className="mt-2 min-h-16 w-full resize-none bg-transparent text-[12px] leading-relaxed text-muted-foreground outline-none focus:text-foreground"
+                onChange={(event) =>
+                  onUpdate(index, (current) =>
+                    current.kind === "agent" ? { ...current, prompt: event.target.value } : current,
+                  )
+                }
+                placeholder="What should the agent do at this step?"
+                value={step.prompt}
+              />
+              <CapabilityPicker
+                capabilities={capabilities}
+                selected={step.capabilities}
+                onToggle={(key, value) =>
+                  onUpdate(index, (current) =>
+                    current.kind === "agent"
+                      ? { ...current, capabilities: toggleCapability(current.capabilities, key, value) }
+                      : current,
+                  )
+                }
+              />
+            </>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100">
           <Button
@@ -655,54 +817,6 @@ function TimelineStepEditor({
         </div>
       </div>
     </section>
-  );
-}
-
-function FlowNode({
-  index,
-  kind,
-}: {
-  index: number;
-  kind: WorkflowStep["kind"];
-}) {
-  return (
-    <div className="absolute left-0 top-2 z-10 flex size-9 items-center justify-center rounded-full border border-border bg-card shadow-sm">
-      <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full border border-border bg-background font-mono text-[9px] text-muted-foreground">
-        {index + 1}
-      </span>
-      <StepIcon kind={kind} />
-    </div>
-  );
-}
-
-function FlowConnector() {
-  return (
-    <svg
-      aria-hidden
-      className="absolute bottom-1 left-[18px] top-12 w-6 overflow-visible text-border"
-      preserveAspectRatio="none"
-      viewBox="0 0 24 100"
-    >
-      <title>Next step connector</title>
-      <line
-        stroke="currentColor"
-        strokeDasharray="4 5"
-        strokeLinecap="round"
-        strokeWidth="2"
-        x1="12"
-        x2="12"
-        y1="0"
-        y2="82"
-      />
-      <path
-        d="M6 78 L12 88 L18 78"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
   );
 }
 
@@ -1284,25 +1398,12 @@ function normalizeStep(step: WorkflowStep): WorkflowStep {
   };
 }
 
-function stepBodyText(step: WorkflowStep): string {
-  if (step.kind === "gate") return step.message;
-  if (step.kind === "agent") return step.prompt;
-  return actionDescription(step.op);
-}
-
-function updateStepBody(step: WorkflowStep, value: string): WorkflowStep {
-  if (step.kind === "gate") return { ...step, message: value };
-  if (step.kind === "agent") return { ...step, prompt: value };
-  return {
-    ...step,
-    op: /\bpush\b/i.test(value) ? "push" : /\bcommit\b/i.test(value) ? "commit" : step.op,
-    title: value.trim() || step.title,
-  };
-}
-
 function actionDescription(op: Extract<WorkflowStep, { kind: "action" }>["op"]): string {
   if (op === "assert-pr-branch") {
     return "Checks that PR workflows are running from a feature branch, not main or master.";
+  }
+  if (op === "checkout-default-and-pull") {
+    return "Switches back to the default branch and pulls the latest changes.";
   }
   if (op === "push") return "Pushes the current branch to its remote.";
   return "Commits the staged changes with the approved generated message.";

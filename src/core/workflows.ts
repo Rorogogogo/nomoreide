@@ -35,9 +35,10 @@ export const workflowStepSchema = z.discriminatedUnion("kind", [
      * zero agent tokens. `assert-pr-branch` blocks on default branches before PR
      * workflows can commit; `commit` stages everything and commits with a
      * generated message (no diff reading, no quality analysis); `push` pushes
-     * the branch.
+     * the branch; `checkout-default-and-pull` returns to the default branch after
+     * a PR workflow and fast-forward pulls it.
      */
-    op: z.enum(["push", "commit", "assert-pr-branch"]),
+    op: z.enum(["push", "commit", "assert-pr-branch", "checkout-default-and-pull"]),
   }),
   z.object({
     kind: z.literal("agent"),
@@ -108,6 +109,13 @@ const ASSERT_PR_BRANCH_STEP: WorkflowStep = {
   op: "assert-pr-branch",
 };
 
+const CHECKOUT_DEFAULT_AND_PULL_STEP: WorkflowStep = {
+  kind: "action",
+  id: "checkout-default-and-pull",
+  title: "Return to default branch",
+  op: "checkout-default-and-pull",
+};
+
 /**
  * The Phase-1 starter set. These are plain data (not hardcoded UI), so the same
  * structure a user authors later can be forked from one of these.
@@ -153,6 +161,7 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
         prompt:
           "Squash-merge the PR you just opened with the `nomoreide_github_merge_pr` tool. Don't analyze anything — just merge. Reply with one line.",
       },
+      CHECKOUT_DEFAULT_AND_PULL_STEP,
     ],
   },
   {

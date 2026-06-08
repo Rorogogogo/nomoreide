@@ -12,6 +12,11 @@ export interface PushResult {
   setUpstream: boolean;
 }
 
+export interface CheckoutDefaultAndPullResult {
+  output: string;
+  branch: string;
+}
+
 /**
  * Write-capable Git operations, kept deliberately separate from the read-safe
  * {@link GitManager}. These reach outward (push) or move refs, so they live in
@@ -51,6 +56,29 @@ export class GitActions {
       : ["push"];
 
     return { output: await this.git(args), branch, setUpstream };
+  }
+
+  async checkoutDefaultAndPull(options: { remote?: string } = {}): Promise<CheckoutDefaultAndPullResult> {
+    const remote = options.remote ?? "origin";
+    const branch = await this.defaultBranch(remote);
+    const switchOutput = await this.git(["switch", branch]);
+    const pullOutput = await this.git(["pull", "--ff-only"]);
+    return {
+      branch,
+      output: [`Switched to ${branch}.`, switchOutput, pullOutput].filter(Boolean).join("\n").trim(),
+    };
+  }
+
+  private async defaultBranch(remote: string): Promise<string> {
+    const remoteHead = (await this.git(["symbolic-ref", "--short", `refs/remotes/${remote}/HEAD`]).catch(() => "")).trim();
+    const fromRemoteHead = remoteHead.startsWith(`${remote}/`) ? remoteHead.slice(remote.length + 1) : remoteHead;
+    if (fromRemoteHead) return fromRemoteHead;
+
+    const branches = await this.git(["branch", "--format=%(refname:short)"]);
+    const names = branches.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (names.includes("main")) return "main";
+    if (names.includes("master")) return "master";
+    throw new Error(`Could not determine default branch for ${remote}.`);
   }
 
   private async git(args: string[]): Promise<string> {

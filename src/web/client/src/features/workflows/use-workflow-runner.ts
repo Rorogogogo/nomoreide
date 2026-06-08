@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getGitStatus,
+  gitCheckoutDefaultAndPull,
   gitCommit,
   gitPush,
   gitStage,
@@ -138,6 +139,10 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     }
     if (step.op === "push") {
       await gitPush();
+      return;
+    }
+    if (step.op === "checkout-default-and-pull") {
+      await gitCheckoutDefaultAndPull();
       return;
     }
     if (step.op === "commit") {

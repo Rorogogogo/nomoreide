@@ -13,4 +13,9 @@ describe("git web API helpers", () => {
     expect(gitApiSource).toContain('"/api/git/branches"');
     expect(gitApiSource).toContain("name");
   });
+
+  test("exposes a helper for switching back to the default branch and pulling", () => {
+    expect(gitApiSource).toContain("export async function gitCheckoutDefaultAndPull");
+    expect(gitApiSource).toContain('"/api/git/default-branch/pull"');
+  });
 });
