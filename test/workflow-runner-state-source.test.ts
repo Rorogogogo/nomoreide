@@ -11,7 +11,8 @@ describe("workflow runner retained run state", () => {
   test("records run start and end timestamps for active and last-run UI", () => {
     expect(runnerSource).toContain("startedAt: number");
     expect(runnerSource).toContain("endedAt?: number");
-    expect(runnerSource).toContain("startedAt: Date.now()");
+    // A fresh start stamps now; a resumed run carries the original start forward.
+    expect(runnerSource).toMatch(/startedAt:[^\n]*Date\.now\(\)/);
     expect(runnerSource).toMatch(/endedAt: Date\.now\(\)/);
   });
 
