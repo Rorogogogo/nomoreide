@@ -23,6 +23,8 @@ export type WorkflowStep =
       prompt: string;
       capabilities?: WorkflowCapabilities;
       verify?: "committed" | "pushed";
+      /** Run in a fresh one-shot session (cheaper; no memory of earlier steps). */
+      isolated?: boolean;
     }
   | { kind: "gate"; id: string; title: string; message: string };
 

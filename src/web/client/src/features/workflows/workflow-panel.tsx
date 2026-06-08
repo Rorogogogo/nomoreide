@@ -57,7 +57,7 @@ import type { RunState, StepStatus } from "./use-workflow-runner";
  * is and pauses at each gate for your approval.
  */
 export function WorkflowPanel() {
-  const { run, start, approve, skip, stop, dismiss } = useWorkflowRun();
+  const { run, start, resume, approve, skip, stop, dismiss } = useWorkflowRun();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const [editing, setEditing] = useState<Workflow | null>(null);
@@ -135,6 +135,10 @@ export function WorkflowPanel() {
         onSkip={skip}
         onStop={stop}
         onBack={() => setViewingRun(false)}
+        onResume={() => {
+          setViewingRun(true);
+          resume(autoApprove);
+        }}
         onRestart={() => {
           setViewingRun(true);
           void start(run.workflow, autoApprove);
@@ -778,6 +782,24 @@ function TimelineStepEditor({
                 placeholder="What should the agent do at this step?"
                 value={step.prompt}
               />
+              <label className="mt-2 flex w-fit items-center gap-1.5 text-[11px] text-muted-foreground">
+                <input
+                  checked={step.isolated ?? false}
+                  className="size-3.5 accent-primary"
+                  onChange={(event) =>
+                    onUpdate(index, (current) =>
+                      current.kind === "agent"
+                        ? { ...current, isolated: event.target.checked }
+                        : current,
+                    )
+                  }
+                  type="checkbox"
+                />
+                Fresh session
+                <span className="text-muted-foreground/60">
+                  — cheaper; this step won't see earlier steps' context.
+                </span>
+              </label>
               <CapabilityPicker
                 capabilities={capabilities}
                 selected={step.capabilities}
@@ -878,6 +900,7 @@ function RunView({
   onSkip,
   onStop,
   onBack,
+  onResume,
   onRestart,
 }: {
   run: RunState;
@@ -885,6 +908,7 @@ function RunView({
   onSkip: () => void;
   onStop: () => void;
   onBack: () => void;
+  onResume: () => void;
   onRestart: () => void;
 }) {
   const { sendToAgent } = useAgentDock();
@@ -1016,6 +1040,16 @@ function RunView({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {finished && canDebugSelectedStep && selectedIndex === run.index && !canRecoverPrBranch ? (
+                    <Button
+                      aria-label="Resume the workflow from this step"
+                      onClick={onResume}
+                      size="sm"
+                      type="button"
+                    >
+                      <Play className="size-3.5" /> Resume workflow
+                    </Button>
+                  ) : null}
                   {canDebugSelectedStep ? (
                     <Button
                       aria-label="Debug this workflow step with AI"
