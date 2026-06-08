@@ -77,6 +77,13 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     turnsRef.current = turns;
   }, [turns]);
 
+  // Always-fresh view of the run so `resume` can read where a paused run stopped
+  // without re-binding the callback on every status patch.
+  const runRef = useRef(run);
+  useEffect(() => {
+    runRef.current = run;
+  }, [run]);
+
   const busyRef = useRef(false);
   const stopRef = useRef(false);
   const gateRef = useRef<((decision: GateDecision) => void) | null>(null);
@@ -158,14 +165,26 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     throw new Error(`Unknown action: ${step.op}`);
   }, []);
 
-  const start = useCallback(
-    async (workflow: Workflow, autoApprove = false) => {
+  // Runs a workflow from `resumeFrom.index` (or 0 for a fresh start), seeding the
+  // already-completed steps' statuses/outputs so a resumed run continues the
+  // pipeline instead of redoing the steps you already passed.
+  const execute = useCallback(
+    async (
+      workflow: Workflow,
+      autoApprove: boolean,
+      resumeFrom?: { index: number; statuses: StepStatus[]; outputs: string[]; startedAt: number },
+    ) => {
       if (busyRef.current) return;
       busyRef.current = true;
       stopRef.current = false;
 
-      const statuses: StepStatus[] = workflow.steps.map(() => "pending");
-      const outputs: string[] = workflow.steps.map(() => "");
+      const startIndex = resumeFrom?.index ?? 0;
+      // Keep finished steps (before the resume point) as-is; reset the rest to
+      // pending so the retried step and everything after it run cleanly.
+      const statuses: StepStatus[] = workflow.steps.map((_, i) =>
+        resumeFrom && i < startIndex ? resumeFrom.statuses[i] ?? "pending" : "pending",
+      );
+      const outputs: string[] = workflow.steps.map((_, i) => resumeFrom?.outputs[i] ?? "");
       const patch = (index: number, status: StepStatus, extra?: Partial<RunState>) => {
         statuses[index] = status;
         setRun((prev) =>
@@ -175,8 +194,8 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       setRun({
         workflow,
-        startedAt: Date.now(),
-        index: 0,
+        startedAt: resumeFrom?.startedAt ?? Date.now(),
+        index: startIndex,
         statuses: [...statuses],
         outputs: [...outputs],
         error: null,
@@ -188,7 +207,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         setRun((prev) => (prev ? { ...prev, outcome, endedAt: Date.now() } : prev));
       };
 
-      for (let i = 0; i < workflow.steps.length; i++) {
+      for (let i = startIndex; i < workflow.steps.length; i++) {
         const step = workflow.steps[i];
 
         if (step.kind === "gate") {
@@ -234,6 +253,9 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           label: step.title,
           autoApprove,
           background: true,
+          // Self-contained steps run in a fresh session so the model isn't
+          // re-fed every prior step's transcript — a big token saving.
+          isolated: step.isolated,
         });
         await waitForAgentTurn();
         onRefresh?.();
@@ -245,8 +267,8 @@ export function useWorkflowRunner(onRefresh?: () => void) {
         if (result.blocked) {
           patch(i, "blocked", {
             error: result.reason
-              ? `Paused — ${result.reason}`
-              : "Paused — this step needs your input. Open the dock to reply, then re-run.",
+              ? `Paused — ${result.reason} Fix it (Debug with AI in the dock if you like), then Resume workflow to retry this step.`
+              : "Paused — this step needs your input. Fix it (Debug with AI in the dock if you like), then Resume workflow to retry this step.",
           });
           halt("blocked");
           return;
@@ -274,6 +296,28 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     [onRefresh, runAction, sendToAgent, verify, waitForAgentTurn, waitForGate],
   );
 
+  const start = useCallback(
+    (workflow: Workflow, autoApprove = false) => execute(workflow, autoApprove),
+    [execute],
+  );
+
+  // Pick a paused (blocked/failed) run back up from the step it stopped on —
+  // after you've fixed the small thing (often via "Debug with AI" in the dock),
+  // this retries that step and continues the rest of the pipeline.
+  const resume = useCallback(
+    (autoApprove = false) => {
+      const prev = runRef.current;
+      if (!prev || prev.outcome === "running" || busyRef.current) return;
+      void execute(prev.workflow, autoApprove, {
+        index: prev.index,
+        statuses: prev.statuses,
+        outputs: prev.outputs,
+        startedAt: prev.startedAt,
+      });
+    },
+    [execute],
+  );
+
   const approve = useCallback(() => gateRef.current?.("approve"), []);
   const skip = useCallback(() => gateRef.current?.("skip"), []);
   const stop = useCallback(() => {
@@ -285,7 +329,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     setRun(null);
   }, []);
 
-  return { run, start, approve, skip, stop, dismiss, isRunning: !!run && run.outcome === "running" };
+  return { run, start, resume, approve, skip, stop, dismiss, isRunning: !!run && run.outcome === "running" };
 }
 
 function messageOf(caught: unknown): string {

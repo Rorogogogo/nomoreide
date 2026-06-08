@@ -42,6 +42,13 @@ interface SendToAgentOptions {
    * workflow pipeline). Only applies to "send" mode.
    */
   background?: boolean;
+  /**
+   * Run this turn in a fresh, one-shot CLI session instead of resuming the dock
+   * thread. The model isn't re-fed the whole prior transcript, so it's much
+   * cheaper — at the cost of no shared memory with earlier turns. Used by
+   * workflow steps that are self-contained (e.g. drafting a commit message).
+   */
+  isolated?: boolean;
 }
 
 interface AgentContextValue extends ReturnType<typeof useAgentChat> {
@@ -83,7 +90,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [stickNonce, setStickNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   // Actions fired while a turn is streaming wait here and flush in order.
-  const queueRef = useRef<Array<{ prompt: string; label?: string; autoApprove?: boolean }>>([]);
+  const queueRef = useRef<Array<{ prompt: string; label?: string; autoApprove?: boolean; isolated?: boolean }>>([]);
 
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const bumpStick = useCallback(() => setStickNonce((nonce) => nonce + 1), []);
@@ -91,7 +98,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   // Every send routes through here so the transcript reliably snaps to the
   // newest message — whether it came from the dock input or any feature action.
   const send = useCallback(
-    (text: string, options?: { label?: string; autoApprove?: boolean }) => {
+    (text: string, options?: { label?: string; autoApprove?: boolean; isolated?: boolean }) => {
       bumpStick();
       return chat.send(text, options);
     },
@@ -118,11 +125,13 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (streaming) return;
     const next = queueRef.current.shift();
-    if (next) void send(next.prompt, { label: next.label, autoApprove: next.autoApprove });
+    if (next) {
+      void send(next.prompt, { label: next.label, autoApprove: next.autoApprove, isolated: next.isolated });
+    }
   }, [streaming, send]);
 
   const sendToAgent = useCallback(
-    ({ prompt, source, mode = "send", label, autoApprove, background }: SendToAgentOptions) => {
+    ({ prompt, source, mode = "send", label, autoApprove, background, isolated }: SendToAgentOptions) => {
       // Background sends (workflow steps) stay out of the way — don't pop the dock.
       if (!background) setOpen(true);
       setActiveSource(source ?? null);
@@ -134,10 +143,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         return { queued: false };
       }
       if (streaming) {
-        queueRef.current.push({ prompt, label, autoApprove });
+        queueRef.current.push({ prompt, label, autoApprove, isolated });
         return { queued: true };
       }
-      void send(prompt, { label, autoApprove });
+      void send(prompt, { label, autoApprove, isolated });
       return { queued: false };
     },
     [streaming, send, bumpFocus, bumpStick],

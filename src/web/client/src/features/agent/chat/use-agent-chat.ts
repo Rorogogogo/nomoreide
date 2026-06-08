@@ -53,6 +53,10 @@ export function useAgentChat() {
   const abortRef = useRef<AbortController | null>(null);
   // The selected CLI's own session id, returned on the first turn and resumed after.
   const sessionRef = useRef<string | undefined>(undefined);
+  // The session id of the turn currently streaming — usually equals `sessionRef`,
+  // but for an isolated (one-shot) turn it's that fresh session instead. Tool
+  // approvals must target this so an isolated step's prompts go to the right CLI.
+  const liveSessionRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     void getAgentChatStatus()
@@ -65,7 +69,7 @@ export function useAgentChat() {
 
   const respond = useCallback(async (requestId: string, decision: "allow" | "deny") => {
     setApprovals((current) => current.filter((prompt) => prompt.requestId !== requestId));
-    const sessionId = sessionRef.current;
+    const sessionId = liveSessionRef.current ?? sessionRef.current;
     if (!sessionId) return;
     try {
       await approveAgentTool(sessionId, requestId, decision);
@@ -81,7 +85,7 @@ export function useAgentChat() {
   }, []);
 
   const send = useCallback(
-    async (text: string, options?: { label?: string; autoApprove?: boolean }) => {
+    async (text: string, options?: { label?: string; autoApprove?: boolean; isolated?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || streaming) return;
       setError(null);
@@ -115,11 +119,16 @@ export function useAgentChat() {
       try {
         await streamAgentChat(
           trimmed,
-          sessionRef.current,
+          // Isolated turns start a fresh CLI session instead of resuming the
+          // dock thread, so the model isn't re-fed the whole prior transcript.
+          options?.isolated ? undefined : sessionRef.current,
           (event) => {
             switch (event.type) {
               case "session":
-                sessionRef.current = event.sessionId;
+                liveSessionRef.current = event.sessionId;
+                // One-shot isolated turns must not become the dock's continuing
+                // thread — keep the main session so later steps still resume it.
+                if (!options?.isolated) sessionRef.current = event.sessionId;
                 break;
               case "text":
                 patch((turn) => ({ ...turn, text: turn.text + event.text }));
@@ -174,6 +183,7 @@ export function useAgentChat() {
   const clear = useCallback(() => {
     stop();
     sessionRef.current = undefined;
+    liveSessionRef.current = undefined;
     setTurns([]);
     setApprovals([]);
     setError(null);

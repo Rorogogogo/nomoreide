@@ -49,6 +49,14 @@ export const workflowStepSchema = z.discriminatedUnion("kind", [
     /** Optional user-selected capabilities the runner adds as prompt guidance. */
     capabilities: workflowCapabilitiesSchema.optional(),
     /**
+     * Run this step in a fresh, one-shot agent session instead of resuming the
+     * dock conversation. Much cheaper — the model isn't re-fed every earlier
+     * step's transcript and tool output — but the step gets no shared memory, so
+     * only set it on self-contained steps (e.g. drafting a commit message, not
+     * "merge the PR you just opened").
+     */
+    isolated: z.boolean().optional(),
+    /**
      * Real-state check run after the agent's turn before advancing:
      * - `committed` — the working tree is clean (changes were committed).
      * - `pushed` — the branch is no longer ahead of its upstream.
@@ -91,6 +99,10 @@ const COMMIT_MESSAGE_STEP: WorkflowStep = {
   kind: "agent",
   id: "commit-message",
   title: "Generate commit message",
+  // Self-contained: it stages, reads its own staged diff, and replies with just
+  // the message (which the commit action consumes). No later step needs its
+  // session, so run it isolated to avoid re-feeding the dock transcript.
+  isolated: true,
   prompt:
     "Stage my changes with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`), inspect the staged diff once with `nomoreide_git_staged_diff`, then write one conventional-commit message — a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. Do NOT commit. Reply with ONLY the commit message you recommend.",
 };
@@ -150,6 +162,9 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
         kind: "agent",
         id: "open-pr",
         title: "Open a PR",
+        // Self-contained: gathers its own commit list, so it needs no prior
+        // session — run it isolated. The merge step below finds the PR itself.
+        isolated: true,
         prompt:
           "Open a PR for the current branch into `main` using the `nomoreide_github_create_pr` tool. Title = the latest commit subject; for the body, list the commits via `nomoreide_git_log`. Do NOT read file diffs. Reply with just the PR number and URL.",
       },
@@ -158,8 +173,11 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
         kind: "agent",
         id: "merge",
         title: "Squash-merge",
+        // Finds the PR by branch rather than relying on the open-pr step's
+        // session, so it can run isolated too.
+        isolated: true,
         prompt:
-          "Squash-merge the PR you just opened with the `nomoreide_github_merge_pr` tool. Don't analyze anything — just merge. Reply with one line.",
+          "Squash-merge the open pull request for the current branch. First call `nomoreide_git_status` for the branch name, then `nomoreide_github_list_prs` to find its open PR, then merge it with `nomoreide_github_merge_pr`. Don't analyze anything else — just find it and merge. Reply with one line.",
       },
       CHECKOUT_DEFAULT_AND_PULL_STEP,
     ],
