@@ -28,6 +28,7 @@ describe("workflow composer", () => {
       "gate",
       "action",
       "agent",
+      "action",
     ]);
     expect(workflow.steps[0]).toMatchObject({
       kind: "action",
@@ -50,6 +51,11 @@ describe("workflow composer", () => {
     expect(workflow.steps[8]).toMatchObject({
       kind: "agent",
       capabilities: { mcpServers: ["github"] },
+    });
+    expect(workflow.steps[9]).toMatchObject({
+      kind: "action",
+      id: "checkout-default-and-pull",
+      op: "checkout-default-and-pull",
     });
   });
 

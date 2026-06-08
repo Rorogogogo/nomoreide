@@ -85,6 +85,12 @@ export function draftWorkflowFromIntent(
         pickCapabilities(selected, ["mcpServers", "plugins"]),
       ),
     );
+    steps.push({
+      kind: "action",
+      id: "checkout-default-and-pull",
+      title: "Return to default branch",
+      op: "checkout-default-and-pull",
+    });
   }
 
   if (!steps.length) {
@@ -115,7 +121,8 @@ export function buildWorkflowAiDraftPrompt(intent: string): string {
     '  "steps": [',
     '    { kind: "gate", id: "gate-id", title: "Approve thing", message: "Question for the user?" },',
     '    { kind: "agent", id: "ai-id", title: "AI task", prompt: "Clear instruction", capabilities: { skills: [], mcpServers: [], plugins: [], hooks: [] }, verify: "committed" },',
-    '    { kind: "action", id: "push", title: "Push", op: "push" }',
+    '    { kind: "action", id: "push", title: "Push", op: "push" },',
+    '    { kind: "action", id: "checkout-default-and-pull", title: "Return to default branch", op: "checkout-default-and-pull" }',
     "  ]",
     "}",
     "",

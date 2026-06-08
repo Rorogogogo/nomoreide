@@ -58,6 +58,20 @@ describe("GitActions.push", () => {
   });
 });
 
+describe("GitActions.checkoutDefaultAndPull", () => {
+  test("switches back to the default branch and fast-forwards it", async () => {
+    const actions = new GitActions(repoDir);
+    await actions.push();
+    await execGit(["checkout", "-b", "feature/work"]);
+
+    const result = await actions.checkoutDefaultAndPull();
+
+    expect(result.branch).toBe("main");
+    expect((await new GitManager(repoDir).status()).branch).toBe("main");
+    expect(result.output).toContain("main");
+  });
+});
+
 async function execGit(args: string[]): Promise<void> {
   await execFileAsync("git", args, { cwd: repoDir });
 }

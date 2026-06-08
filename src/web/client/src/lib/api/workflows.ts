@@ -10,7 +10,12 @@ export interface WorkflowCapabilities {
 }
 
 export type WorkflowStep =
-  | { kind: "action"; id: string; title: string; op: "push" | "commit" | "assert-pr-branch" }
+  | {
+      kind: "action";
+      id: string;
+      title: string;
+      op: "push" | "commit" | "assert-pr-branch" | "checkout-default-and-pull";
+    }
   | {
       kind: "agent";
       id: string;
