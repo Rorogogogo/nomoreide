@@ -4,6 +4,8 @@ export interface ToolCallRecord {
   startedAt: string;
   durationMs: number;
   status: "ok" | "error";
+  /** Agent session this call belongs to (see core/agent-sessions.ts). */
+  sessionId?: string;
   args?: string;
   error?: string;
 }

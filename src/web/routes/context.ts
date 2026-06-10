@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { AgentSessionStore } from "../../core/agent-sessions.js";
 import type { ApprovalBroker } from "../../core/approval-broker.js";
 import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
@@ -16,6 +17,7 @@ import type { ToolCallStore } from "../../core/tool-call-store.js";
 /** Shared stateful services every route handler receives. */
 export interface RouteServices {
   agentApprovals: ApprovalBroker;
+  agentSessions: AgentSessionStore;
   configStore: ConfigStore;
   cwd: string;
   dbPeek: DbPeek;

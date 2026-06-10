@@ -20,11 +20,19 @@ import { FileViewer } from "./file-viewer";
 import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { LargestFilesView } from "./largest-files-view";
+import { SnapshotsView } from "./snapshots/snapshots-view";
 import { GitHubView } from "../github/github-view";
 import { GitHubLogo } from "../github/github-logo";
 import { WorkflowPanel } from "../workflows/workflow-panel";
 
-type GitTab = "changes" | "all" | "graph" | "largest" | "github" | "workflows";
+type GitTab =
+  | "changes"
+  | "all"
+  | "graph"
+  | "largest"
+  | "snapshots"
+  | "github"
+  | "workflows";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
@@ -268,6 +276,13 @@ export function GitReviewView({
         </button>
         <button
           type="button"
+          className={tabButtonClass(tab === "snapshots")}
+          onClick={() => setTab("snapshots")}
+        >
+          Snapshots
+        </button>
+        <button
+          type="button"
           className={tabButtonClass(tab === "github")}
           onClick={() => setTab("github")}
         >
@@ -297,6 +312,8 @@ export function GitReviewView({
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (
           <LargestFilesView onOpenFile={openFileInViewer} root={data.git.cwd} />
+        ) : tab === "snapshots" ? (
+          <SnapshotsView />
         ) : tab === "all" ? (
           <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="flex min-h-0 flex-col overflow-hidden">
