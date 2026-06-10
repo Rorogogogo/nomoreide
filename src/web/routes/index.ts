@@ -11,6 +11,7 @@ import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
 import { serviceRoutes } from "./service-routes.js";
 import { shellRoutes } from "./shell-routes.js";
+import { snapshotRoutes } from "./snapshot-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
 import { workflowRoutes } from "./workflow-routes.js";
 
@@ -34,6 +35,7 @@ export const routes: Route[] = [
   ...workflowRoutes,
   ...onboardRoutes,
   ...serviceRoutes,
+  ...snapshotRoutes,
   ...terminalRoutes,
   ...shellRoutes,
 ];

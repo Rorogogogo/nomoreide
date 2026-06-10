@@ -1,6 +1,7 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { dirname, resolve } from "node:path";
 import WebSocket, { WebSocketServer, type RawData } from "ws";
+import { AgentSessionStore } from "../core/agent-sessions.js";
 import {
   ConfigStore,
   ConfigValidationError,
@@ -89,9 +90,13 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     reproDir: resolve(cwd, ".nomoreide/repros"),
   });
   const agentApprovals = new ApprovalBroker();
+  const agentSessions = new AgentSessionStore(
+    resolve(dirname(resolve(logDir)), "agent-sessions.json"),
+  );
 
   const services: RouteServices = {
     agentApprovals,
+    agentSessions,
     configStore,
     cwd,
     dbPeek,

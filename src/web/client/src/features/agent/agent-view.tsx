@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
-import { Activity, Brain, Gauge, Plug } from "lucide-react";
+import { Activity, Brain, FileDiff, Gauge, Plug } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { getAgentInfo, type AgentInfo, type AgentProfile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ActivityTab } from "./activity-tab";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
 import type { AgentId } from "./agent-types";
+import { ChangesTab } from "./changes-tab";
 import { useAgentDock } from "./chat/agent-context";
 import { ConversationHealth } from "./conversation-health";
 import { MemoryTab } from "./memory-tab";
 import { OverviewTab } from "./overview-tab";
 import { ToolsTab } from "./tools-tab";
 
-type AgentTab = "overview" | "memory" | "tools" | "activity";
+type AgentTab = "overview" | "memory" | "tools" | "activity" | "changes";
 
 const AGENTS: Array<{ id: AgentId; label: string; icon: React.ReactNode }> = [
   { id: "claude-code", label: "Claude Code", icon: <ClaudeLogo className="size-4" /> },
@@ -24,6 +25,7 @@ const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "memory", label: "Memory", icon: <Brain className="size-3.5" /> },
   { id: "tools", label: "Skills, MCPs, Plugins & Hooks", icon: <Plug className="size-3.5" /> },
   { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
+  { id: "changes", label: "Changes", icon: <FileDiff className="size-3.5" /> },
 ];
 
 export function AgentView() {
@@ -138,6 +140,7 @@ export function AgentView() {
           <ToolsTab agent={activeAgent} agentId={agentId} alternateHooks={alternateHooks} />
         ) : null}
         {tab === "activity" ? <ActivityTab agent={activeAgent} agentId={agentId} /> : null}
+        {tab === "changes" ? <ChangesTab /> : null}
       </div>
     </div>
   );

@@ -1,5 +1,9 @@
 import { dirname, resolve } from "node:path";
 import { FastMCP } from "fastmcp";
+import {
+  AgentSessionStore,
+  createAgentSessionTracker,
+} from "../core/agent-sessions.js";
 import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { DbPeek } from "../core/db-peek.js";
 import { ErrorInbox } from "../core/error-inbox.js";
@@ -70,6 +74,12 @@ export function createNoMoreIdeMcpServer(
   const errorInbox = new ErrorInbox({ logStore, configStore });
   const dbPeek = new DbPeek({ configStore });
   const toolCallStore = new ToolCallStore();
+  const agentSessions = createAgentSessionTracker({
+    store: new AgentSessionStore(
+      resolve(dirname(resolve(logDir)), "agent-sessions.json"),
+    ),
+    configStore,
+  });
   const uiLifecycle =
     options.uiLifecycle ??
     createUiLifecycleManager({
@@ -92,6 +102,7 @@ export function createNoMoreIdeMcpServer(
     timelineStore,
     uiLifecycle,
     toolCallStore,
+    agentSessions,
   });
 
   return {
