@@ -2,7 +2,10 @@ import type * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const alertVariants = cva("rounded-lg border p-4 text-sm", {
+const alertVariants = cva(
+  // When an icon is passed as a direct <svg> child, lay the alert out as a
+  // row (icon + content) like shadcn's Alert; plain-text alerts are untouched.
+  "rounded-lg border p-4 text-sm has-[>svg]:flex has-[>svg]:items-start has-[>svg]:gap-2.5 [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0", {
   variants: {
     variant: {
       default: "border-border bg-card text-card-foreground",

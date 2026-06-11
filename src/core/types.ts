@@ -121,6 +121,11 @@ export interface NoMoreIdeConfig {
   bundles: BundleDefinition[];
   gitRepositories: GitRepositoryDefinition[];
   selectedGitRepository?: string;
+  /**
+   * Ordered repo names pinned to the multi-repo board. Undefined means the
+   * board shows every registered repo; an empty array means explicitly cleared.
+   */
+  gitBoardRepositories?: string[];
   databases: DatabaseConnection[];
   logSources: LogSourceDefinition[];
   githubTokens: GitHubToken[];

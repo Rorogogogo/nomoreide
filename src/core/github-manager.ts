@@ -36,6 +36,31 @@ export interface GitHubComment {
   html_url: string;
 }
 
+export interface GitHubPRFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+  blob_url: string;
+}
+
+export interface GitHubPRReview {
+  id: number;
+  state: string;
+  body: string | null;
+  user: { login: string };
+  submitted_at: string | null;
+  html_url: string;
+}
+
+export interface GitHubBranchInfo {
+  name: string;
+  protected: boolean;
+  commit: { sha: string };
+}
+
 export interface GitHubCheckRun {
   id: number;
   name: string;
@@ -88,6 +113,37 @@ export interface GitHubWorkflowJob {
   steps: GitHubWorkflowJobStep[];
 }
 
+export interface GitHubViewer {
+  login: string;
+}
+
+export interface GitHubRepoInfo {
+  full_name: string;
+  html_url: string;
+  default_branch?: string;
+}
+
+export interface GitHubCompareCommit {
+  sha: string;
+  message: string;
+}
+
+export interface GitHubCompareFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+}
+
+export interface GitHubCompareSummary {
+  status: string;
+  aheadBy: number;
+  headSha: string | null;
+  commits: GitHubCompareCommit[];
+  files: GitHubCompareFile[];
+}
+
 export class GitHubApiError extends Error {
   constructor(
     message: string,
@@ -122,6 +178,47 @@ export class GitHubManager {
     return null;
   }
 
+  async viewer(): Promise<GitHubViewer> {
+    return this.request<GitHubViewer>("/user");
+  }
+
+  async repoInfo(): Promise<GitHubRepoInfo> {
+    return this.request<GitHubRepoInfo>(`/repos/${this.owner}/${this.repo}`);
+  }
+
+  async compareBranches(base: string, head: string): Promise<GitHubCompareSummary> {
+    const data = await this.request<RawCompare>(
+      `/repos/${this.owner}/${this.repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
+    );
+    return {
+      status: data.status,
+      aheadBy: data.ahead_by,
+      commits: data.commits.map((commit) => ({
+        sha: commit.sha,
+        message: firstLine(commit.commit.message),
+      })),
+      files: (data.files ?? []).map((file) => ({
+        path: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        changes: file.changes,
+      })),
+      headSha: data.commits.at(-1)?.sha ?? null,
+    };
+  }
+
+  async listBranches(): Promise<GitHubBranchInfo[]> {
+    const data = await this.request<RawBranch[]>(
+      `/repos/${this.owner}/${this.repo}/branches?per_page=100`,
+    );
+    return data.map((branch) => ({
+      name: branch.name,
+      protected: branch.protected,
+      commit: { sha: branch.commit.sha },
+    }));
+  }
+
   async listPRs(state: "open" | "closed" | "all" = "open", page = 1): Promise<GitHubPR[]> {
     const data = await this.request<RawPR[]>(
       `/repos/${this.owner}/${this.repo}/pulls?state=${state}&per_page=30&page=${page}`,
@@ -140,6 +237,27 @@ export class GitHubManager {
     return this.request<string>(
       `/repos/${this.owner}/${this.repo}/pulls/${number}`,
       { accept: "application/vnd.github.diff" },
+    );
+  }
+
+  async listPRFiles(number: number): Promise<GitHubPRFile[]> {
+    const data = await this.request<RawPRFile[]>(
+      `/repos/${this.owner}/${this.repo}/pulls/${number}/files?per_page=100`,
+    );
+    return data.map((file) => ({
+      path: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions,
+      changes: file.changes,
+      patch: file.patch,
+      blob_url: file.blob_url,
+    }));
+  }
+
+  async listPRReviews(number: number): Promise<GitHubPRReview[]> {
+    return this.request<GitHubPRReview[]>(
+      `/repos/${this.owner}/${this.repo}/pulls/${number}/reviews?per_page=100`,
     );
   }
 
@@ -310,6 +428,38 @@ interface RawPR {
   mergeable: boolean | null;
 }
 
+interface RawCompare {
+  status: string;
+  ahead_by: number;
+  commits: Array<{
+    sha: string;
+    commit: { message: string };
+  }>;
+  files?: Array<{
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+  }>;
+}
+
+interface RawPRFile {
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+  blob_url: string;
+}
+
+interface RawBranch {
+  name: string;
+  protected: boolean;
+  commit: { sha: string };
+}
+
 function normalizePR(pr: RawPR): GitHubPR {
   return {
     number: pr.number,
@@ -334,4 +484,8 @@ function deriveState(runs: GitHubCheckRun[]): CommitCIStatus["state"] {
   if (runs.every((r) => r.conclusion === "success" || r.conclusion === "skipped" || r.conclusion === "neutral")) return "success";
   if (runs.some((r) => r.conclusion === "failure" || r.conclusion === "timed_out")) return "failure";
   return "error";
+}
+
+function firstLine(message: string): string {
+  return message.split(/\r?\n/, 1)[0]?.trim() ?? "";
 }

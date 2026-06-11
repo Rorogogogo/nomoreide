@@ -57,6 +57,24 @@ export async function createSnapshot(label: string): Promise<Snapshot> {
   return response.snapshot;
 }
 
+export async function renameSnapshot(sha: string, label: string): Promise<Snapshot> {
+  const response = await requestJson<{ ok: true; snapshot: Snapshot }>(
+    `/api/snapshots/${encodeURIComponent(sha)}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ label }),
+    },
+  );
+  return response.snapshot;
+}
+
+export async function deleteSnapshot(sha: string): Promise<void> {
+  await requestJson<{ ok: true }>(`/api/snapshots/${encodeURIComponent(sha)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function getSnapshotFiles(sha: string): Promise<SnapshotChange[]> {
   const response = await requestJson<{ ok: true; files: SnapshotChange[] }>(
     `/api/snapshots/${encodeURIComponent(sha)}/files`,

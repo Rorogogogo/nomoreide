@@ -1,4 +1,6 @@
-import { selectedGitCwd } from "../dashboard.js";
+import { getSelectedGitRepository, selectedGitCwd } from "../dashboard.js";
+import { GitManager, type GitCompareSummary } from "../../core/git-manager.js";
+import { GitHubApiError, GitHubManager } from "../../core/github-manager.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 import { requireGitHubContext, optionalGitHubContext } from "./github-context.js";
@@ -8,8 +10,175 @@ const GITHUB_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_SCOPES = "repo workflow read:org";
 const DEFAULT_GITHUB_CLIENT_ID = "Ov23litfv3LE0LevxlT2";
 
+interface PRTemplateCompare {
+  base: string;
+  head: string;
+  aheadBy: number;
+  headSha: string | null;
+  commits: Array<{ sha: string; message: string }>;
+  files: Array<{
+    path: string;
+    status: string;
+    additions?: number;
+    deletions?: number;
+    changes?: number;
+  }>;
+  ciStatus?: Awaited<ReturnType<GitHubManager["getCommitChecks"]>>;
+}
+
 function getClientId(): string | undefined {
   return process.env.NOMOREIDE_GITHUB_CLIENT_ID?.trim() || DEFAULT_GITHUB_CLIENT_ID;
+}
+
+async function buildPRTemplate(gitCwd: string, manager: GitHubManager) {
+  const git = new GitManager(gitCwd);
+  const warnings: string[] = [];
+  const status = await git.status().catch((error) => {
+    warnings.push(`Could not read local Git status: ${errorMessage(error)}`);
+    return null;
+  });
+  const repository = await manager.repoInfo().catch((error) => {
+    warnings.push(`Could not read GitHub repository metadata: ${errorMessage(error)}`);
+    return null;
+  });
+
+  const head = status?.branch ?? "";
+  if (!head) {
+    warnings.push("Current branch could not be detected. Enter the head branch manually.");
+  }
+
+  const base = repository?.default_branch ?? inferBaseFromUpstream(status?.upstream) ?? "main";
+  let compare: PRTemplateCompare = {
+    base,
+    head,
+    aheadBy: 0,
+    headSha: null,
+    commits: [],
+    files: [],
+  };
+
+  if (base && head && base !== head) {
+    compare = await readCompareSummary({ git, manager, base, head, warnings });
+  } else if (head && base === head) {
+    warnings.push("The current branch matches the base branch. Choose a feature branch before creating a PR.");
+  }
+
+  if (compare.headSha) {
+    const ciStatus = await manager.getCommitChecks(compare.headSha).catch((error) => {
+      warnings.push(`Could not read head CI status: ${errorMessage(error)}`);
+      return null;
+    });
+    if (ciStatus) {
+      compare = { ...compare, ciStatus };
+    }
+  }
+
+  return {
+    repository,
+    currentBranch: head || null,
+    suggestedBase: base,
+    base,
+    head,
+    title: suggestPRTitle(head, compare.commits),
+    body: suggestPRBody(compare),
+    draft: false,
+    compare,
+    warnings,
+  };
+}
+
+async function readCompareSummary({
+  git,
+  manager,
+  base,
+  head,
+  warnings,
+}: {
+  git: GitManager;
+  manager: GitHubManager;
+  base: string;
+  head: string;
+  warnings: string[];
+}): Promise<PRTemplateCompare> {
+  try {
+    const compare = await manager.compareBranches(base, head);
+    return {
+      base,
+      head,
+      aheadBy: compare.aheadBy,
+      headSha: compare.headSha,
+      commits: compare.commits,
+      files: compare.files,
+    };
+  } catch (error) {
+    warnings.push(`Could not compare pushed GitHub branches: ${errorMessage(error)}`);
+  }
+
+  for (const ref of [base, `origin/${base}`]) {
+    try {
+      return fromLocalCompare(base, head, await git.compareWithBase(ref));
+    } catch (error) {
+      if (ref === `origin/${base}`) {
+        warnings.push(`Could not compare local branch with ${base}: ${errorMessage(error)}`);
+      }
+    }
+  }
+
+  return { base, head, aheadBy: 0, headSha: null, commits: [], files: [] };
+}
+
+function fromLocalCompare(base: string, head: string, compare: GitCompareSummary): PRTemplateCompare {
+  return {
+    base,
+    head,
+    aheadBy: compare.aheadBy,
+    headSha: compare.headSha,
+    commits: compare.commits,
+    files: compare.files,
+  };
+}
+
+function inferBaseFromUpstream(upstream: string | undefined): string | undefined {
+  if (!upstream) return undefined;
+  return upstream.replace(/^origin\//, "") || undefined;
+}
+
+function suggestPRTitle(head: string, commits: Array<{ message: string }>): string {
+  const latest = commits.at(-1)?.message.trim();
+  if (latest) return latest;
+  return branchTitle(head);
+}
+
+function branchTitle(head: string): string {
+  const leaf = head.split("/").filter(Boolean).at(-1) ?? head;
+  return leaf
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^\w/, (char) => char.toUpperCase());
+}
+
+function suggestPRBody(compare: PRTemplateCompare): string {
+  const lines: string[] = [];
+  if (compare.commits.length > 0) {
+    lines.push("## Commits");
+    for (const commit of compare.commits.slice(-10)) {
+      lines.push(`- ${commit.message}`);
+    }
+  }
+
+  if (compare.files.length > 0) {
+    if (lines.length > 0) lines.push("");
+    lines.push("## Changed files");
+    for (const file of compare.files.slice(0, 20)) {
+      lines.push(`- ${file.status} ${file.path}`);
+    }
+    if (compare.files.length > 20) {
+      lines.push(`- ${compare.files.length - 20} more files`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export const githubRoutes: Route[] = [
@@ -18,11 +187,35 @@ export const githubRoutes: Route[] = [
   route("GET", "/api/github/token", async ({ response, configStore }) => {
     const config = await configStore.load();
     const token = configStore.getGithubToken(config);
-    sendJson(response, {
+    const base = {
       ok: true,
       configured: !!token,
       deviceFlowAvailable: !!getClientId(),
-    });
+    };
+
+    if (!token) {
+      sendJson(response, { ...base, status: "not_configured" });
+      return;
+    }
+
+    try {
+      const selectedRepository = getSelectedGitRepository(config);
+      if (selectedRepository) {
+        const context = await requireGitHubContext(configStore, selectedRepository.path);
+        const repository = await context.manager.repoInfo();
+        sendJson(response, { ...base, status: "connected", repository });
+        return;
+      }
+
+      const user = await new GitHubManager(token, "", "").viewer();
+      sendJson(response, { ...base, status: "connected", user });
+    } catch (error) {
+      const status =
+        error instanceof GitHubApiError && (error.status === 401 || error.status === 403)
+          ? "auth_error"
+          : "connection_error";
+      sendJson(response, { ...base, status, error: errorMessage(error) });
+    }
   }),
 
   route("POST", "/api/github/token", async ({ request, response, configStore }) => {
@@ -141,6 +334,27 @@ export const githubRoutes: Route[] = [
     }
   }),
 
+  route("GET", "/api/github/branches", async ({ response, configStore, cwd }) => {
+    try {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const { manager } = await requireGitHubContext(configStore, gitCwd);
+      const [repository, branches, status] = await Promise.all([
+        manager.repoInfo(),
+        manager.listBranches(),
+        new GitManager(gitCwd).status().catch(() => null),
+      ]);
+      sendJson(response, {
+        ok: true,
+        repository,
+        defaultBranch: repository.default_branch ?? null,
+        currentBranch: status?.branch || null,
+        branches,
+      });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
   // --- Pull Requests ---
 
   route("GET", "/api/github/prs", async ({ response, url, configStore, cwd }) => {
@@ -151,6 +365,17 @@ export const githubRoutes: Route[] = [
       const page = Number(url.searchParams.get("page")) || 1;
       const prs = await manager.listPRs(state, page);
       sendJson(response, { ok: true, prs });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  route("GET", "/api/github/pr-template", async ({ response, configStore, cwd }) => {
+    try {
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const { manager } = await requireGitHubContext(configStore, gitCwd);
+      const template = await buildPRTemplate(gitCwd, manager);
+      sendJson(response, { ok: true, template });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);
     }
@@ -222,6 +447,35 @@ export const githubRoutes: Route[] = [
           commitMessage: typeof body.commitMessage === "string" ? body.commitMessage : undefined,
         });
         sendJson(response, { ok: true, ...result });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/github\/prs\/(\d+)\/review$/,
+    ["number"],
+    async ({ request, response, configStore, cwd, params }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const gitCwd = await selectedGitCwd(configStore, cwd);
+        const { manager } = await requireGitHubContext(configStore, gitCwd);
+        const number = Number(params.number);
+        const pr = await manager.getPR(number);
+        const [files, reviews, comments, checks] = await Promise.all([
+          manager.listPRFiles(number),
+          manager.listPRReviews(number),
+          manager.listIssueComments(number),
+          manager.getCommitChecks(pr.head.sha),
+        ]);
+        sendJson(response, {
+          ok: true,
+          cockpit: { pr, files, reviews, comments, checks },
+        });
       } catch (error) {
         sendJson(response, { ok: false, error: errorMessage(error) }, 400);
       }

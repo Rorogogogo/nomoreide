@@ -12,11 +12,14 @@ export function CommitComposer({
   branch,
   files,
   onDone,
+  repo,
 }: {
   branch?: string;
   files: GitFileStatus[];
   /** Refresh the dashboard so the file list / ahead-behind reflect the commit. */
   onDone: () => void;
+  /** Scope the commit/push to a named board repository (board columns). */
+  repo?: string;
 }) {
   const { sendToAgent } = useAgentDock();
   const [message, setMessage] = useState("");
@@ -37,9 +40,9 @@ export function CommitComposer({
     setError(null);
     setDone(null);
     try {
-      await gitCommit(message.trim());
+      await gitCommit(message.trim(), repo);
       if (push) {
-        const result = await gitPush();
+        const result = await gitPush(repo);
         setDone(`Committed and pushed ${result.branch}.`);
       } else {
         setDone("Committed staged changes.");

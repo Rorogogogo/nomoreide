@@ -66,16 +66,16 @@ function fileStatusClass(status: string): string {
   const letter = status.trim().toUpperCase();
   switch (letter) {
     case "A":
-      return `${base} bg-emerald-100 text-emerald-800`;
+      return `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300`;
     case "D":
-      return `${base} bg-red-100 text-red-800`;
+      return `${base} bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300`;
     case "M":
-      return `${base} bg-amber-100 text-amber-800`;
+      return `${base} bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300`;
     case "R":
-      return `${base} bg-blue-100 text-blue-800`;
+      return `${base} bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300`;
     case "C":
-      return `${base} bg-indigo-100 text-indigo-800`;
+      return `${base} bg-indigo-100 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-300`;
     default:
-      return `${base} bg-slate-100 text-slate-700`;
+      return `${base} bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300`;
   }
 }

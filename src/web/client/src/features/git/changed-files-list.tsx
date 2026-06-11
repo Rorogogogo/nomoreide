@@ -214,9 +214,9 @@ function FileButton({
       <span
         className={cn(
           "ml-1 shrink-0 font-mono text-[10px] font-semibold",
-          group === "untracked" && "text-amber-700",
-          group === "staged" && "text-emerald-700",
-          group === "unstaged" && "text-zinc-800",
+          group === "untracked" && "text-amber-700 dark:text-amber-400",
+          group === "staged" && "text-emerald-700 dark:text-emerald-400",
+          group === "unstaged" && "text-zinc-800 dark:text-zinc-300",
         )}
       >
         {statusLabel(file, group)}

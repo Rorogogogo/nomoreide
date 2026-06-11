@@ -19,19 +19,18 @@ import { FileTree } from "./file-tree";
 import { FileViewer } from "./file-viewer";
 import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
+import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
-import { GitHubView } from "../github/github-view";
-import { GitHubLogo } from "../github/github-logo";
 import { WorkflowPanel } from "../workflows/workflow-panel";
 
 type GitTab =
   | "changes"
+  | "board"
   | "all"
   | "graph"
   | "largest"
   | "snapshots"
-  | "github"
   | "workflows";
 type ChangesMode = "changes" | "tree";
 
@@ -254,6 +253,14 @@ export function GitReviewView({
         </button>
         <button
           type="button"
+          aria-label="Show changed files across all repositories"
+          className={tabButtonClass(tab === "board")}
+          onClick={() => setTab("board")}
+        >
+          Board
+        </button>
+        <button
+          type="button"
           aria-label="Open all tracked files"
           className={tabButtonClass(tab === "all")}
           onClick={() => setTab("all")}
@@ -283,16 +290,6 @@ export function GitReviewView({
         </button>
         <button
           type="button"
-          className={tabButtonClass(tab === "github")}
-          onClick={() => setTab("github")}
-        >
-          <span className="flex items-center gap-1">
-            <GitHubLogo className="size-3" />
-            GitHub
-          </span>
-        </button>
-        <button
-          type="button"
           className={tabButtonClass(tab === "workflows")}
           onClick={() => setTab("workflows")}
         >
@@ -306,8 +303,8 @@ export function GitReviewView({
       <div className="min-h-0 flex-1">
         {tab === "workflows" ? (
           <WorkflowPanel />
-        ) : tab === "github" ? (
-          <GitHubView />
+        ) : tab === "board" ? (
+          <MultiRepoBoard currentRepoPath={data.git.cwd} />
         ) : tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (

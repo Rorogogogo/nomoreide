@@ -6,6 +6,7 @@ import { prefixRoute, type Route } from "./context.js";
 const shellPaths = new Set([
   "/",
   "/git",
+  "/github",
   "/agent",
   "/errors",
   "/database",

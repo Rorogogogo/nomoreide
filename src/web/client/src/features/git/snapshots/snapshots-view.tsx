@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { Camera, History, RotateCcw } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import { Camera, Check, CircleAlert, History, Pencil, RotateCcw, Trash2, X } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   createSnapshot,
+  deleteSnapshot,
   getSnapshotDiff,
   getSnapshotFiles,
   listSnapshots,
+  renameSnapshot,
   restoreSnapshot,
   type Snapshot,
   type SnapshotChange,
@@ -56,6 +58,35 @@ export function SnapshotsView() {
     }
   }
 
+  async function handleRename(sha: string, label: string) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const renamed = await renameSnapshot(sha, label);
+      await refresh();
+      setSelectedSha(renamed.sha);
+      setNotice(`Snapshot renamed to “${renamed.label}”.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(sha: string) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await deleteSnapshot(sha);
+      await refresh();
+      setNotice(`Snapshot ${sha.slice(0, 7)} deleted.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleRestore(sha: string) {
     setBusy(true);
     setNotice(null);
@@ -94,7 +125,11 @@ export function SnapshotsView() {
         <div className="min-h-0 flex-1 overflow-auto">
           {error ? (
             <Alert variant="destructive" className="m-3">
-              {error}
+              <CircleAlert />
+              <div className="min-w-0">
+                <AlertTitle>Couldn’t load snapshots</AlertTitle>
+                <AlertDescription className="break-words">{error}</AlertDescription>
+              </div>
             </Alert>
           ) : snapshots.length === 0 ? (
             <Alert variant="muted" className="m-3 border-dashed">
@@ -104,26 +139,15 @@ export function SnapshotsView() {
           ) : (
             <ul>
               {snapshots.map((snapshot) => (
-                <li key={snapshot.ref}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSha(snapshot.sha)}
-                    className={cn(
-                      "w-full border-b border-border/60 px-3 py-2 text-left transition-colors",
-                      snapshot.sha === selectedSha
-                        ? "bg-background"
-                        : "hover:bg-muted/50",
-                    )}
-                  >
-                    <span className="block truncate text-xs font-medium">
-                      {snapshot.label}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span className="font-mono">{snapshot.sha.slice(0, 7)}</span>
-                      <span>{new Date(snapshot.createdAt).toLocaleString()}</span>
-                    </span>
-                  </button>
-                </li>
+                <SnapshotRow
+                  busy={busy}
+                  key={snapshot.ref}
+                  onDelete={handleDelete}
+                  onRename={handleRename}
+                  onSelect={setSelectedSha}
+                  selected={snapshot.sha === selectedSha}
+                  snapshot={snapshot}
+                />
               ))}
             </ul>
           )}
@@ -147,6 +171,136 @@ export function SnapshotsView() {
         )}
       </section>
     </div>
+  );
+}
+
+/** A single snapshot in the sidebar: select, inline-rename, or delete. */
+function SnapshotRow({
+  busy,
+  onDelete,
+  onRename,
+  onSelect,
+  selected,
+  snapshot,
+}: {
+  busy: boolean;
+  onDelete: (sha: string) => Promise<void>;
+  onRename: (sha: string, label: string) => Promise<void>;
+  onSelect: (sha: string) => void;
+  selected: boolean;
+  snapshot: Snapshot;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(snapshot.label);
+  const [confirming, setConfirming] = useState(false);
+
+  function startEditing() {
+    setDraft(snapshot.label);
+    setEditing(true);
+  }
+
+  function commitRename() {
+    const label = draft.trim();
+    setEditing(false);
+    if (label && label !== snapshot.label) void onRename(snapshot.sha, label);
+  }
+
+  return (
+    <li
+      className={cn(
+        "group relative border-b border-border/60 transition-colors",
+        selected ? "bg-background" : "hover:bg-muted/50",
+      )}
+    >
+      {editing ? (
+        <div className="flex items-center gap-1.5 px-3 py-2">
+          <input
+            ref={(node) => node?.focus()}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commitRename();
+              if (event.key === "Escape") setEditing(false);
+            }}
+            className="min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-xs"
+            aria-label="Snapshot label"
+          />
+          <Button disabled={busy} onClick={commitRename} size="icon-sm" type="button" variant="ghost">
+            <Check className="size-3.5" />
+          </Button>
+          <Button onClick={() => setEditing(false)} size="icon-sm" type="button" variant="ghost">
+            <X className="size-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => onSelect(snapshot.sha)}
+            className="w-full px-3 py-2 pr-16 text-left"
+          >
+            <span className="block truncate text-xs font-medium">{snapshot.label}</span>
+            <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="font-mono">{snapshot.sha.slice(0, 7)}</span>
+              <span>{new Date(snapshot.createdAt).toLocaleString()}</span>
+            </span>
+          </button>
+          <div className="absolute right-2 top-1.5 flex items-center gap-0.5">
+            {confirming ? (
+              <>
+                <Button
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirming(false);
+                    void onDelete(snapshot.sha);
+                  }}
+                  size="icon-sm"
+                  title="Confirm delete"
+                  type="button"
+                  variant="ghost"
+                  className="text-red-600 hover:text-red-600"
+                >
+                  <Check className="size-3.5" />
+                </Button>
+                <Button
+                  onClick={() => setConfirming(false)}
+                  size="icon-sm"
+                  title="Cancel"
+                  type="button"
+                  variant="ghost"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </>
+            ) : (
+              <span className="hidden items-center gap-0.5 group-hover:flex">
+                <Button
+                  disabled={busy}
+                  onClick={startEditing}
+                  size="icon-sm"
+                  title="Rename snapshot"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  disabled={busy}
+                  onClick={() => setConfirming(true)}
+                  size="icon-sm"
+                  title="Delete snapshot"
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-red-600"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </li>
   );
 }
 
@@ -283,7 +437,13 @@ export function ChangedFilesWithDiff({
   if (error) {
     return (
       <div className="p-4">
-        <Alert variant="destructive">{error}</Alert>
+        <Alert variant="destructive">
+          <CircleAlert />
+          <div className="min-w-0">
+            <AlertTitle>Couldn’t load this snapshot</AlertTitle>
+            <AlertDescription className="break-words">{error}</AlertDescription>
+          </div>
+        </Alert>
       </div>
     );
   }

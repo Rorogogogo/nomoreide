@@ -53,6 +53,25 @@ describe("web server", () => {
     expect(html).not.toContain("<h2>Services</h2>");
   });
 
+  test("serves the React web app shell from the GitHub route", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/github`);
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(html).toContain('<div id="root"></div>');
+    expect(html).toContain('type="module"');
+    expect(html).not.toBe("Not found");
+  });
+
   test("serves a NoMoreIDE health endpoint for UI discovery", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({
@@ -91,6 +110,7 @@ describe("web server", () => {
         ok: true,
         configured: false,
         deviceFlowAvailable: true,
+        status: "not_configured",
       });
     } finally {
       if (originalClientId === undefined) {
@@ -99,6 +119,175 @@ describe("web server", () => {
         process.env.NOMOREIDE_GITHUB_CLIENT_ID = originalClientId;
       }
     }
+  });
+
+  test("reports configured GitHub token as connected when validation succeeds", async () => {
+    const realFetch = globalThis.fetch;
+    const fetchMock = vi.fn(
+      (
+        input: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1],
+      ) => {
+        if (String(input) === "https://api.github.com/user") {
+          expect(init?.headers).toMatchObject({
+            Authorization: "Bearer good-token",
+          });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ login: "octocat" }),
+          } as Response);
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "good-token");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/token`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      configured: true,
+      status: "connected",
+      user: { login: "octocat" },
+    });
+  });
+
+  test("reports configured GitHub token auth failure", async () => {
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (
+          input: Parameters<typeof fetch>[0],
+          init?: Parameters<typeof fetch>[1],
+        ) => {
+          if (String(input) !== "https://api.github.com/user") {
+            return realFetch(input, init);
+          }
+          return Promise.resolve({
+          ok: false,
+          status: 401,
+          statusText: "Unauthorized",
+          json: () => Promise.resolve({ message: "Bad credentials" }),
+          } as Response);
+        },
+      ),
+    );
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "bad-token");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/token`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      configured: true,
+      status: "auth_error",
+      error: "Bad credentials",
+    });
+  });
+
+  test("reports configured GitHub token connection failure", async () => {
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (
+          input: Parameters<typeof fetch>[0],
+          init?: Parameters<typeof fetch>[1],
+        ) => {
+          if (String(input) !== "https://api.github.com/user") {
+            return realFetch(input, init);
+          }
+          return Promise.reject(new Error("network down"));
+        },
+      ),
+    );
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "token");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/token`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      configured: true,
+      status: "connection_error",
+      error: "network down",
+    });
+  });
+
+  test("reports connection failure when selected repository has no GitHub remote", async () => {
+    const repo = join(tempDir, "repo-without-remote");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(repo);
+    await initGitRepo(repo);
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (
+          input: Parameters<typeof fetch>[0],
+          init?: Parameters<typeof fetch>[1],
+        ) => {
+          if (String(input) !== "https://api.github.com/user") {
+            return realFetch(input, init);
+          }
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ login: "octocat" }),
+          } as Response);
+        },
+      ),
+    );
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "token");
+    await config.registerGitRepository({ name: "local", path: repo });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/token`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      configured: true,
+      status: "connection_error",
+      error: "No git remote 'origin' found.",
+    });
   });
 
   test("falls back to verification_uri when GitHub omits verification_uri_complete", async () => {
@@ -134,6 +323,265 @@ describe("web server", () => {
       ok: true,
       verification_uri: "https://github.com/login/device",
       verification_uri_complete: "https://github.com/login/device",
+    });
+  });
+
+  test("builds a GitHub PR template from the selected repository branch", async () => {
+    const repo = join(tempDir, "repo-with-pr-branch");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(repo);
+    await initGitRepo(repo);
+    await execFileAsync("git", ["checkout", "-b", "feature/pr-assistant"], { cwd: repo });
+    await createFile(join(repo, "assistant.txt"), "assistant\n");
+    await execFileAsync("git", ["add", "assistant.txt"], { cwd: repo });
+    await execFileAsync("git", ["commit", "-m", "Add branch to PR assistant"], { cwd: repo });
+    await execFileAsync("git", ["remote", "add", "origin", "https://github.com/acme/nomoreide.git"], { cwd: repo });
+
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const url = String(input);
+        if (url === "https://api.github.com/repos/acme/nomoreide") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              full_name: "acme/nomoreide",
+              html_url: "https://github.com/acme/nomoreide",
+              default_branch: "main",
+            }),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/compare/main...feature%2Fpr-assistant") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              ahead_by: 1,
+              status: "ahead",
+              commits: [
+                { sha: "abc1234", commit: { message: "Add branch to PR assistant" } },
+              ],
+              files: [
+                { filename: "assistant.txt", status: "added", additions: 1, deletions: 0, changes: 1 },
+              ],
+            }),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/commits/abc1234/check-runs?per_page=100") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              total_count: 1,
+              check_runs: [
+                { id: 1, name: "build", status: "completed", conclusion: "success", html_url: "", started_at: null, completed_at: null },
+              ],
+            }),
+          } as Response);
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "token");
+    await config.registerGitRepository({ name: "repo", path: repo });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/pr-template`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      template: {
+        repository: { full_name: "acme/nomoreide" },
+        base: "main",
+        head: "feature/pr-assistant",
+        title: "Add branch to PR assistant",
+        compare: {
+          aheadBy: 1,
+          files: [{ path: "assistant.txt", status: "added" }],
+          ciStatus: { state: "success", totalCount: 1 },
+        },
+      },
+    });
+    expect(body.template.body).toContain("Add branch to PR assistant");
+    expect(body.template.body).toContain("assistant.txt");
+  });
+
+  test("returns PR review cockpit data for a selected repository pull request", async () => {
+    const repo = join(tempDir, "repo-with-pr-cockpit");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(repo);
+    await initGitRepo(repo);
+    await execFileAsync("git", ["remote", "add", "origin", "https://github.com/acme/nomoreide.git"], { cwd: repo });
+
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const url = String(input);
+        if (url.startsWith("https://api.github.com/")) {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              number: 42,
+              title: "Review cockpit",
+              state: "open",
+              body: "Details",
+              html_url: "https://github.com/acme/nomoreide/pull/42",
+              head: { ref: "feature/review", sha: "abc1234" },
+              base: { ref: "main" },
+              user: { login: "dev" },
+              created_at: "2026-06-11T00:00:00Z",
+              updated_at: "2026-06-11T00:00:00Z",
+              merged_at: null,
+              draft: false,
+              mergeable: true,
+            }),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42/files?per_page=100") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([
+              { filename: "src/review.ts", status: "modified", additions: 4, deletions: 1, changes: 5, patch: "@@", blob_url: "https://github.com/acme/nomoreide/blob/abc/src/review.ts" },
+            ]),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42/reviews?per_page=100") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([
+              { id: 9, state: "CHANGES_REQUESTED", body: "Needs tests", user: { login: "reviewer" }, submitted_at: "2026-06-11T01:00:00Z", html_url: "https://github.com/acme/nomoreide/pull/42#pullrequestreview-9" },
+            ]),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/issues/42/comments?per_page=100") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([
+              { id: 7, body: "One note", user: { login: "commenter" }, created_at: "2026-06-11T02:00:00Z", html_url: "https://github.com/acme/nomoreide/pull/42#issuecomment-7" },
+            ]),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/commits/abc1234/check-runs?per_page=100") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              total_count: 1,
+              check_runs: [
+                { id: 2, name: "CI", status: "completed", conclusion: "failure", html_url: "https://github.com/acme/nomoreide/actions/runs/2", started_at: null, completed_at: null },
+              ],
+            }),
+          } as Response);
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "token");
+    await config.registerGitRepository({ name: "repo", path: repo });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/prs/42/review`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      cockpit: {
+        pr: { number: 42, mergeable: true },
+        files: [{ path: "src/review.ts", status: "modified" }],
+        reviews: [{ state: "CHANGES_REQUESTED", user: { login: "reviewer" } }],
+        comments: [{ body: "One note" }],
+        checks: {
+          state: "failure",
+          runs: [{ name: "CI", html_url: "https://github.com/acme/nomoreide/actions/runs/2" }],
+        },
+      },
+    });
+  });
+
+  test("returns GitHub branches with selected repository context", async () => {
+    const repo = join(tempDir, "repo-with-github-branches");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(repo);
+    await initGitRepo(repo);
+    await execFileAsync("git", ["checkout", "-b", "feature/work"], { cwd: repo });
+    await execFileAsync("git", ["remote", "add", "origin", "https://github.com/acme/nomoreide.git"], { cwd: repo });
+
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const url = String(input);
+        if (url === "https://api.github.com/repos/acme/nomoreide") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              full_name: "acme/nomoreide",
+              html_url: "https://github.com/acme/nomoreide",
+              default_branch: "main",
+            }),
+          } as Response);
+        }
+        if (url === "https://api.github.com/repos/acme/nomoreide/branches?per_page=100") {
+          expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([
+              { name: "main", protected: true, commit: { sha: "abc1234" } },
+              { name: "feature/work", protected: false, commit: { sha: "def5678" } },
+            ]),
+          } as Response);
+        }
+        return realFetch(input, init);
+      }),
+    );
+
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.setGithubToken("github.com", "token");
+    await config.registerGitRepository({ name: "repo", path: repo });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/branches`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      ok: true,
+      repository: { full_name: "acme/nomoreide" },
+      defaultBranch: "main",
+      currentBranch: "feature/work",
+      branches: [
+        { name: "main", protected: true, commit: { sha: "abc1234" } },
+        { name: "feature/work", protected: false, commit: { sha: "def5678" } },
+      ],
     });
   });
 
@@ -943,6 +1391,194 @@ describe("web server", () => {
       current: false,
       remote: true,
     });
+  });
+
+  test("reports changed files across every repository for the board", async () => {
+    const repoA = join(tempDir, "repo-a");
+    const repoB = join(tempDir, "repo-b");
+    const missing = join(tempDir, "repo-missing");
+    const { mkdir } = await import("node:fs/promises");
+    await Promise.all([mkdir(repoA), mkdir(repoB), mkdir(missing)]);
+    await initGitRepo(repoA);
+    await initGitRepo(repoB);
+    await initGitRepo(missing);
+    // Dirty repo-a only; leave repo-b clean.
+    await createFile(join(repoA, "changed.txt"), "changed\n");
+    // Register repo-missing then delete its directory so status fails for it.
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    for (const [name, path] of [
+      ["repo-a", repoA],
+      ["repo-b", repoB],
+      ["repo-missing", missing],
+    ] as const) {
+      await fetch(`${server.url}/api/git/repositories`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ name, path }),
+      });
+    }
+    await rm(missing, { recursive: true, force: true });
+
+    const response = await fetch(`${server.url}/api/git/overview`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    const byName = Object.fromEntries(
+      body.repos.map((repo: { name: string }) => [repo.name, repo]),
+    );
+    expect(byName["repo-a"].files).toEqual([
+      { index: "?", workingTree: "?", path: "changed.txt" },
+    ]);
+    expect(byName["repo-b"].files).toEqual([]);
+    // A broken repo surfaces as a per-column error, not a failed response.
+    expect(byName["repo-missing"].error).toBeTruthy();
+    expect(byName["repo-missing"].files).toEqual([]);
+  });
+
+  test("persists and reports the curated board order, dropping stale names", async () => {
+    const repoA = join(tempDir, "repo-a");
+    const repoB = join(tempDir, "repo-b");
+    const { mkdir } = await import("node:fs/promises");
+    await Promise.all([mkdir(repoA), mkdir(repoB)]);
+    await initGitRepo(repoA);
+    await initGitRepo(repoB);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    for (const [name, path] of [
+      ["repo-a", repoA],
+      ["repo-b", repoB],
+    ] as const) {
+      await fetch(`${server.url}/api/git/repositories`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ name, path }),
+      });
+    }
+
+    // Never curated → overview defaults to the first repos (both, here).
+    const initial = await (await fetch(`${server.url}/api/git/overview`)).json();
+    expect(initial.board).toEqual(["repo-a", "repo-b"]);
+
+    // Curate: reorder and include a stale name that must be filtered out.
+    const put = await fetch(`${server.url}/api/git/board`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ names: ["repo-b", "ghost", "repo-a"] }),
+    });
+    const putBody = await put.json();
+    expect(put.status).toBe(200);
+    expect(putBody.board).toEqual(["repo-b", "repo-a"]);
+
+    const after = await (await fetch(`${server.url}/api/git/overview`)).json();
+    expect(after.board).toEqual(["repo-b", "repo-a"]);
+
+    // Explicitly empty board stays empty (not re-defaulted to all repos).
+    await fetch(`${server.url}/api/git/board`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ names: [] }),
+    });
+    const cleared = await (await fetch(`${server.url}/api/git/overview`)).json();
+    expect(cleared.board).toEqual([]);
+  });
+
+  test("defaults the board to the first four repos and caps the stored list at five", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    const names = ["r1", "r2", "r3", "r4", "r5", "r6"];
+    const paths = names.map((name) => join(tempDir, name));
+    // A bare `git init` is enough to register; skip commits to keep the suite light.
+    for (const path of paths) {
+      await mkdir(path);
+      await execFileAsync("git", ["init"], { cwd: path });
+    }
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    for (let i = 0; i < names.length; i++) {
+      await fetch(`${server.url}/api/git/repositories`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ name: names[i], path: paths[i] }),
+      });
+    }
+
+    // Never curated: 6 repos registered, board defaults to the first 4.
+    const initial = await (await fetch(`${server.url}/api/git/overview`)).json();
+    expect(initial.repos).toHaveLength(6);
+    expect(initial.board).toEqual(["r1", "r2", "r3", "r4"]);
+
+    // Trying to pin all 6 is capped at 5 (extras dropped, order preserved).
+    const put = await fetch(`${server.url}/api/git/board`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ names }),
+    });
+    const putBody = await put.json();
+    expect(putBody.board).toEqual(["r1", "r2", "r3", "r4", "r5"]);
+
+    const after = await (await fetch(`${server.url}/api/git/overview`)).json();
+    expect(after.board).toEqual(["r1", "r2", "r3", "r4", "r5"]);
+  });
+
+  test("scopes the diff endpoint to a named repository", async () => {
+    const repoA = join(tempDir, "repo-a");
+    const repoB = join(tempDir, "repo-b");
+    const { mkdir } = await import("node:fs/promises");
+    await Promise.all([mkdir(repoA), mkdir(repoB)]);
+    await initGitRepo(repoA);
+    await initGitRepo(repoB);
+    await createFile(join(repoB, "only-b.txt"), "b content\n");
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    for (const [name, path] of [
+      ["repo-a", repoA],
+      ["repo-b", repoB],
+    ] as const) {
+      await fetch(`${server.url}/api/git/repositories`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ name, path }),
+      });
+    }
+    // repo-a is selected (first registered); ask for repo-b's diff explicitly.
+    const response = await fetch(
+      `${server.url}/api/git/diff?file=only-b.txt&repo=repo-b`,
+    );
+    const diff = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(diff).toContain("only-b.txt");
+    expect(diff).toContain("b content");
+
+    const unknown = await fetch(
+      `${server.url}/api/git/diff?file=only-b.txt&repo=nope`,
+    );
+    expect(unknown.status).toBe(404);
   });
 });
 

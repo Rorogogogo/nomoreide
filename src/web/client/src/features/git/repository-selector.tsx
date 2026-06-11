@@ -263,7 +263,7 @@ export function repositoryPickerState({
   };
 }
 
-function FolderPickerDialog({
+export function FolderPickerDialog({
   confirmLabel = "Use this folder",
   errorMessage,
   initialPath,

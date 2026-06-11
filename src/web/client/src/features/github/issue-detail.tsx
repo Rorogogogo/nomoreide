@@ -3,6 +3,7 @@ import { ExternalLink } from "lucide-react";
 import type { GitHubComment, GitHubIssue } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { IssueLabelSwatch } from "./issue-label-swatch";
 
 export function IssueDetail({
   issue,
@@ -50,23 +51,17 @@ export function IssueDetail({
 
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="space-y-3 p-4">
-          <div className="flex flex-wrap gap-2 text-[12px]">
-            <span className="rounded border border-border bg-muted/50 px-2 py-0.5 text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
+            <span className="text-[11px]">
               <span className="text-muted-foreground">Author: </span>
               <span className="font-medium">{issue.user.login}</span>
             </span>
-            <span className="rounded border border-border bg-muted/50 px-2 py-0.5 text-[11px]">
+            <span className="text-[11px]">
               <span className="text-muted-foreground">Opened: </span>
               <span className="font-medium">{new Date(issue.created_at).toLocaleDateString()}</span>
             </span>
             {issue.labels.map((label) => (
-              <span
-                key={label.name}
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-                style={{ backgroundColor: `#${label.color}` }}
-              >
-                {label.name}
-              </span>
+              <IssueLabelSwatch key={label.name} label={label} />
             ))}
           </div>
 

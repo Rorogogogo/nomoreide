@@ -268,10 +268,10 @@ function StatusBadge({ file }: { file: GitFileStatus }) {
   if (!letter) return null;
   const tone =
     file.index.trim() && !file.workingTree.trim()
-      ? "text-emerald-700"
+      ? "text-emerald-700 dark:text-emerald-400"
       : letter === "?"
-        ? "text-amber-700"
-        : "text-zinc-700";
+        ? "text-amber-700 dark:text-amber-400"
+        : "text-zinc-700 dark:text-zinc-300";
   return (
     <span className={cn("ml-1 shrink-0 font-mono text-[10px] font-semibold", tone)}>
       {letter}

@@ -43,6 +43,40 @@ export const snapshotRoutes: Route[] = [
   }),
 
   patternRoute(
+    /^\/api\/snapshots\/([^/]+)$/,
+    ["sha"],
+    async ({ request, response, configStore, cwd, params }) => {
+      if (request.method !== "DELETE" && request.method !== "PATCH") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      if (!validSha(params.sha)) {
+        sendJson(response, { ok: false, error: "Invalid snapshot sha" }, 400);
+        return;
+      }
+      const gitCwd = await selectedGitCwd(configStore, cwd);
+      const manager = new SnapshotManager(gitCwd);
+      try {
+        if (request.method === "DELETE") {
+          await manager.delete(params.sha);
+          sendJson(response, { ok: true });
+          return;
+        }
+        const body = await readJson(request);
+        const label = typeof body.label === "string" ? body.label.trim() : "";
+        if (!label) {
+          sendJson(response, { ok: false, error: "A label is required" }, 400);
+          return;
+        }
+        const snapshot = await manager.rename(params.sha, label);
+        sendJson(response, { ok: true, snapshot });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
+
+  patternRoute(
     /^\/api\/snapshots\/([^/]+)\/files$/,
     ["sha"],
     async ({ request, response, configStore, cwd, params }) => {
