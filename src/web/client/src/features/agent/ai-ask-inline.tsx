@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,11 @@ export function AiAskInline({
     const trimmed = value.trim();
     if (trimmed) onSubmit(trimmed);
   };
+  // Focus on mount via callback ref: the field only renders after an explicit
+  // "ask" action, so moving focus into it is the expected behavior.
+  const focusOnMount = useCallback((node: HTMLInputElement | null) => {
+    node?.focus();
+  }, []);
   return (
     <form
       className={cn(
@@ -38,9 +43,8 @@ export function AiAskInline({
       }}
     >
       <AiSpark className="size-5 opacity-100" label="Send to the agent" onAsk={submit} />
-      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
       <input
-        autoFocus
+        ref={focusOnMount}
         className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
