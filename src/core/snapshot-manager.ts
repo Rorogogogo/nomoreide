@@ -110,11 +110,7 @@ export class SnapshotManager {
   }
 
   async restore(sha: string): Promise<RestoreResult> {
-    const snapshots = await this.list();
-    const target = snapshots.find((snapshot) => snapshot.sha === sha);
-    if (!target) {
-      throw new Error(`Not a nomoreide snapshot: ${sha}`);
-    }
+    const target = await this.find(sha);
 
     const preRestore = await this.snapshot(`pre-restore (${target.label})`);
     // Everything that differs between the snapshot and the just-captured
@@ -147,6 +143,42 @@ export class SnapshotManager {
     return { preRestore, restoredFiles, deletedPaths };
   }
 
+  /** Permanently drop a single snapshot ref (the commit object is left to gc). */
+  async delete(sha: string): Promise<void> {
+    const target = await this.find(sha);
+    // Compare-and-swap on the old value so we never delete a moved ref.
+    await this.git(["update-ref", "-d", target.ref, sha]);
+  }
+
+  /**
+   * Relabel a snapshot. Commit objects are immutable, so this rewrites the
+   * commit message onto a new object (preserving tree, parent, and original
+   * dates) and repoints the same ref at it; the ref name is left as-is.
+   */
+  async rename(sha: string, label: string): Promise<Snapshot> {
+    const target = await this.find(sha);
+    const cleaned = label.trim() || "snapshot";
+    const tree = (await this.git(["rev-parse", `${sha}^{tree}`])).trim();
+    const parents = (await this.git(["rev-list", "--parents", "-n", "1", sha]))
+      .trim()
+      .split(/\s+/)
+      .slice(1);
+    const authorDate = (await this.git(["show", "-s", "--format=%aI", sha])).trim();
+    const committerDate = (await this.git(["show", "-s", "--format=%cI", sha])).trim();
+    const commitArgs = ["commit-tree", tree, "-m", cleaned];
+    for (const parent of parents) commitArgs.push("-p", parent);
+    const newSha = (
+      await this.git(commitArgs, {
+        ...SNAPSHOT_IDENTITY,
+        GIT_AUTHOR_DATE: authorDate,
+        GIT_COMMITTER_DATE: committerDate,
+      })
+    ).trim();
+    // CAS the ref from the old object to the relabeled one.
+    await this.git(["update-ref", target.ref, newSha, sha]);
+    return { sha: newSha, ref: target.ref, label: cleaned, createdAt: target.createdAt };
+  }
+
   /** Drop snapshots beyond the newest `keep`; returns how many were removed. */
   async prune(keep = 50): Promise<number> {
     const snapshots = await this.list();
@@ -155,6 +187,15 @@ export class SnapshotManager {
       await this.git(["update-ref", "-d", snapshot.ref]);
     }
     return stale.length;
+  }
+
+  /** Resolve a sha to its snapshot, refusing anything outside the namespace. */
+  private async find(sha: string): Promise<Snapshot> {
+    const target = (await this.list()).find((snapshot) => snapshot.sha === sha);
+    if (!target) {
+      throw new Error(`Not a nomoreide snapshot: ${sha}`);
+    }
+    return target;
   }
 
   /**

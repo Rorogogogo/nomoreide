@@ -34,6 +34,8 @@ import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
+import { GitHubView } from "@/features/github/github-view";
+import { GitHubLogo } from "@/features/github/github-logo";
 import { RepositorySelector } from "@/features/git/repository-selector";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
@@ -43,6 +45,7 @@ import { cn } from "@/lib/utils";
 type Page =
   | "services"
   | "git"
+  | "github"
   | "agent"
   | "errors"
   | "database"
@@ -164,6 +167,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
     if (window.location.pathname.startsWith("/terminal")) return "terminal";
+    if (window.location.pathname.startsWith("/github")) return "github";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
   });
@@ -230,15 +234,17 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     const path =
       page === "git"
         ? "/git"
-        : page === "agent"
-          ? "/agent"
-          : page === "errors"
-            ? "/errors"
-            : page === "database"
-              ? "/database"
-              : page === "terminal"
-                ? "/terminal"
-                : "/";
+        : page === "github"
+          ? "/github"
+          : page === "agent"
+            ? "/agent"
+            : page === "errors"
+              ? "/errors"
+              : page === "database"
+                ? "/database"
+                : page === "terminal"
+                  ? "/terminal"
+                  : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -256,6 +262,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         : 0,
     [data],
   );
+  const githubPageKey =
+    data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
 
   return (
     <AgentProvider>
@@ -323,6 +331,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               onClick={() => setPage("git")}
             />
             <NavButton
+              active={page === "github"}
+              docked={sidebarDocked}
+              icon={<GitHubLogo />}
+              label="GitHub"
+              onClick={() => setPage("github")}
+            />
+            <NavButton
               active={page === "errors"}
               docked={sidebarDocked}
               icon={<Inbox />}
@@ -372,15 +387,17 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 <h1 className="text-lg font-semibold tracking-tight">
                   {page === "git"
                     ? "Git Review"
-                    : page === "agent"
-                      ? "Agent"
-                    : page === "errors"
-                      ? "Error Inbox"
-                      : page === "database"
-                        ? "Database"
-                        : page === "terminal"
-                          ? "Terminal"
-                          : "Services"}
+                    : page === "github"
+                      ? "GitHub"
+                      : page === "agent"
+                        ? "Agent"
+                      : page === "errors"
+                        ? "Error Inbox"
+                        : page === "database"
+                          ? "Database"
+                          : page === "terminal"
+                            ? "Terminal"
+                            : "Services"}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -389,7 +406,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             </div>
             <div className="flex items-center gap-2">
               {error ? <Badge variant="danger">{error}</Badge> : null}
-              {data && page === "git" ? (
+              {data && (page === "git" || page === "github") ? (
                 <RepositorySelector data={data} onRefresh={refresh} />
               ) : null}
               <div
@@ -457,6 +474,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             {data && page === "git" ? (
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
+            {page === "github" ? <GitHubView key={githubPageKey} /> : null}
             {page === "agent" ? <AgentView /> : null}
             {page === "errors" ? <ErrorInboxView /> : null}
             {page === "database" ? (

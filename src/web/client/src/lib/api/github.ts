@@ -37,6 +37,38 @@ export interface GitHubComment {
   html_url: string;
 }
 
+export interface GitHubPRFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+  blob_url: string;
+}
+
+export interface GitHubPRReview {
+  id: number;
+  state: string;
+  body: string | null;
+  user: { login: string };
+  submitted_at: string | null;
+  html_url: string;
+}
+
+export interface GitHubBranchInfo {
+  name: string;
+  protected: boolean;
+  commit: { sha: string };
+}
+
+export interface GitHubBranchesPayload {
+  repository: { full_name: string; html_url: string; default_branch?: string };
+  defaultBranch: string | null;
+  currentBranch: string | null;
+  branches: GitHubBranchInfo[];
+}
+
 export interface GitHubCheckRun {
   id: number;
   name: string;
@@ -52,6 +84,48 @@ export interface CommitCIStatus {
   state: "pending" | "success" | "failure" | "error" | "unknown";
   totalCount: number;
   runs: GitHubCheckRun[];
+}
+
+export interface GitHubPRTemplateFile {
+  path: string;
+  status: string;
+  additions?: number;
+  deletions?: number;
+  changes?: number;
+}
+
+export interface GitHubPRTemplateCommit {
+  sha: string;
+  message: string;
+}
+
+export interface GitHubPRTemplate {
+  repository: { full_name: string; html_url: string; default_branch?: string } | null;
+  currentBranch: string | null;
+  suggestedBase: string;
+  base: string;
+  head: string;
+  title: string;
+  body: string;
+  draft: boolean;
+  compare: {
+    base: string;
+    head: string;
+    aheadBy: number;
+    headSha: string | null;
+    commits: GitHubPRTemplateCommit[];
+    files: GitHubPRTemplateFile[];
+    ciStatus?: CommitCIStatus;
+  };
+  warnings: string[];
+}
+
+export interface GitHubPRReviewCockpit {
+  pr: GitHubPR;
+  files: GitHubPRFile[];
+  reviews: GitHubPRReview[];
+  comments: GitHubComment[];
+  checks: CommitCIStatus;
 }
 
 export interface GitHubWorkflowRun {
@@ -91,9 +165,20 @@ export interface GitHubWorkflowJob {
 
 // --- Token & OAuth ---
 
+export type GitHubConnectionStatus =
+  | "checking"
+  | "not_configured"
+  | "connected"
+  | "auth_error"
+  | "connection_error";
+
 export interface GitHubTokenInfo {
   configured: boolean;
   deviceFlowAvailable: boolean;
+  status: Exclude<GitHubConnectionStatus, "checking">;
+  error?: string;
+  user?: { login: string };
+  repository?: { full_name: string; html_url: string };
 }
 
 export async function getGitHubTokenInfo(): Promise<GitHubTokenInfo> {
@@ -144,6 +229,18 @@ export async function removeGitHubToken(host: string): Promise<void> {
   await requestJson(`/api/github/token/${encodeURIComponent(host)}`, { method: "DELETE" });
 }
 
+// --- Branches ---
+
+export async function listGitHubBranches(): Promise<GitHubBranchesPayload> {
+  const res = await requestJson<{ ok: true } & GitHubBranchesPayload>("/api/github/branches");
+  return {
+    repository: res.repository,
+    defaultBranch: res.defaultBranch,
+    currentBranch: res.currentBranch,
+    branches: res.branches,
+  };
+}
+
 // --- Pull Requests ---
 
 export async function listGitHubPRs(state = "open", page = 1): Promise<GitHubPR[]> {
@@ -165,6 +262,18 @@ export async function getGitHubPRDiff(number: number): Promise<string> {
     throw new Error(body.error || "Unable to load PR diff");
   }
   return response.text();
+}
+
+export async function getGitHubPRReviewCockpit(number: number): Promise<GitHubPRReviewCockpit> {
+  const res = await requestJson<{ ok: true; cockpit: GitHubPRReviewCockpit }>(
+    `/api/github/prs/${number}/review`,
+  );
+  return res.cockpit;
+}
+
+export async function getGitHubPRTemplate(): Promise<GitHubPRTemplate> {
+  const res = await requestJson<{ ok: true; template: GitHubPRTemplate }>("/api/github/pr-template");
+  return res.template;
 }
 
 export async function createGitHubPR(opts: {

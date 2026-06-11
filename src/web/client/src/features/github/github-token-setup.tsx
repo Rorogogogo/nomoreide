@@ -13,12 +13,17 @@ type SetupMode = "choose" | "device-pending" | "pat";
 
 export function GitHubTokenSetup({
   deviceFlowAvailable,
+  initialMode,
   onSaved,
 }: {
   deviceFlowAvailable: boolean;
+  initialMode?: SetupMode;
   onSaved: () => void;
 }) {
-  const [mode, setMode] = useState<SetupMode>(deviceFlowAvailable ? "choose" : "pat");
+  const [mode, setMode] = useState<SetupMode>(() => {
+    if (initialMode === "device-pending" && !deviceFlowAvailable) return "pat";
+    return initialMode ?? (deviceFlowAvailable ? "choose" : "pat");
+  });
 
   if (mode === "device-pending") {
     return <DeviceFlowPending onSuccess={onSaved} onCancel={() => setMode("choose")} />;

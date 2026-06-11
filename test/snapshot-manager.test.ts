@@ -128,6 +128,57 @@ describe("SnapshotManager.restore", () => {
   });
 });
 
+describe("SnapshotManager.rename", () => {
+  test("relabels a snapshot, preserving its content and creation time", async () => {
+    const manager = new SnapshotManager(repoDir);
+    await writeFile(join(repoDir, "work.txt"), "wip\n");
+    const original = await manager.snapshot("old label");
+
+    const createdAtBefore = (await manager.list())[0].createdAt;
+    const renamed = await manager.rename(original.sha, "new label");
+
+    expect(renamed.label).toBe("new label");
+    expect(renamed.ref).toBe(original.ref);
+    expect(renamed.sha).not.toBe(original.sha);
+    // Same tree → the working-tree diff is unchanged after the relabel.
+    const oldTree = await execGit(["rev-parse", `${original.sha}^{tree}`]);
+    const newTree = await execGit(["rev-parse", `${renamed.sha}^{tree}`]);
+    expect(newTree).toBe(oldTree);
+
+    const snapshots = await manager.list();
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].label).toBe("new label");
+    // Original dates preserved → list shows the same creation time as before.
+    expect(snapshots[0].createdAt).toBe(createdAtBefore);
+  });
+
+  test("refuses shas outside the snapshot namespace", async () => {
+    const manager = new SnapshotManager(repoDir);
+    const head = (await execGit(["rev-parse", "HEAD"])).trim();
+    await expect(manager.rename(head, "x")).rejects.toThrow(/Not a nomoreide snapshot/);
+  });
+});
+
+describe("SnapshotManager.delete", () => {
+  test("removes a single snapshot ref", async () => {
+    const manager = new SnapshotManager(repoDir);
+    const first = await manager.snapshot("first");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const second = await manager.snapshot("second");
+
+    await manager.delete(first.sha);
+
+    const remaining = await manager.list();
+    expect(remaining.map((entry) => entry.sha)).toEqual([second.sha]);
+  });
+
+  test("refuses shas outside the snapshot namespace", async () => {
+    const manager = new SnapshotManager(repoDir);
+    const head = (await execGit(["rev-parse", "HEAD"])).trim();
+    await expect(manager.delete(head)).rejects.toThrow(/Not a nomoreide snapshot/);
+  });
+});
+
 describe("SnapshotManager.prune", () => {
   test("keeps only the newest N snapshots", async () => {
     const manager = new SnapshotManager(repoDir);

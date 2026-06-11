@@ -1,5 +1,6 @@
 import { CircleDot } from "lucide-react";
 import type { GitHubIssue } from "@/lib/api";
+import { IssueLabelSwatch } from "./issue-label-swatch";
 import { LoadMoreButton } from "./load-more-button";
 
 export function IssueList({
@@ -55,15 +56,9 @@ export function IssueList({
               </span>
             </span>
             {issue.labels.length > 0 ? (
-              <span className="flex shrink-0 flex-wrap gap-1">
+              <span className="flex max-w-40 shrink-0 flex-wrap justify-end gap-x-2 gap-y-0.5">
                 {issue.labels.slice(0, 3).map((label) => (
-                  <span
-                    key={label.name}
-                    className="rounded-full px-1.5 py-px text-[10px] font-medium text-white"
-                    style={{ backgroundColor: `#${label.color}` }}
-                  >
-                    {label.name}
-                  </span>
+                  <IssueLabelSwatch key={label.name} label={label} />
                 ))}
               </span>
             ) : null}

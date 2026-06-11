@@ -251,6 +251,150 @@ describe("GitHubManager API", () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/actions/runs/99/jobs");
   });
 
+  test("repoInfo exposes the repository default branch", async () => {
+    mockFetch({
+      ok: true,
+      body: {
+        full_name: "acme/myrepo",
+        html_url: "https://github.com/acme/myrepo",
+        default_branch: "trunk",
+      },
+    });
+
+    const info = await manager.repoInfo();
+
+    expect(info.default_branch).toBe("trunk");
+  });
+
+  test("compareBranches returns normalized ahead commits and changed files", async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      body: {
+        ahead_by: 2,
+        status: "ahead",
+        commits: [
+          { sha: "abc111", commit: { message: "first change\n\nbody" } },
+          { sha: "abc222", commit: { message: "second change" } },
+        ],
+        files: [
+          { filename: "src/a.ts", status: "modified", additions: 3, deletions: 1, changes: 4 },
+          { filename: "src/b.ts", status: "added", additions: 8, deletions: 0, changes: 8 },
+        ],
+      },
+    });
+
+    const compare = await manager.compareBranches("main", "feature/work");
+
+    expect(compare).toMatchObject({
+      aheadBy: 2,
+      status: "ahead",
+      commits: [
+        { sha: "abc111", message: "first change" },
+        { sha: "abc222", message: "second change" },
+      ],
+      files: [
+        { path: "src/a.ts", status: "modified", additions: 3, deletions: 1 },
+        { path: "src/b.ts", status: "added", additions: 8, deletions: 0 },
+      ],
+      headSha: "abc222",
+    });
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/compare/main...feature%2Fwork");
+  });
+
+  test("listPRFiles returns normalized pull request changed files", async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      body: [
+        {
+          filename: "src/review.ts",
+          status: "modified",
+          additions: 12,
+          deletions: 3,
+          changes: 15,
+          patch: "@@ -1 +1 @@",
+          blob_url: "https://github.com/acme/myrepo/blob/abc/src/review.ts",
+        },
+      ],
+    });
+
+    const files = await manager.listPRFiles(42);
+
+    expect(files).toEqual([
+      {
+        path: "src/review.ts",
+        status: "modified",
+        additions: 12,
+        deletions: 3,
+        changes: 15,
+        patch: "@@ -1 +1 @@",
+        blob_url: "https://github.com/acme/myrepo/blob/abc/src/review.ts",
+      },
+    ]);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/pulls/42/files");
+  });
+
+  test("listPRReviews returns review states and reviewers", async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      body: [
+        {
+          id: 10,
+          state: "APPROVED",
+          body: "Looks good",
+          user: { login: "reviewer" },
+          submitted_at: "2026-06-11T00:00:00Z",
+          html_url: "https://github.com/acme/myrepo/pull/42#pullrequestreview-10",
+        },
+      ],
+    });
+
+    const reviews = await manager.listPRReviews(42);
+
+    expect(reviews).toEqual([
+      {
+        id: 10,
+        state: "APPROVED",
+        body: "Looks good",
+        user: { login: "reviewer" },
+        submitted_at: "2026-06-11T00:00:00Z",
+        html_url: "https://github.com/acme/myrepo/pull/42#pullrequestreview-10",
+      },
+    ]);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/pulls/42/reviews");
+  });
+
+  test("listBranches returns normalized repository branches", async () => {
+    const fetchMock = mockFetch({
+      ok: true,
+      body: [
+        {
+          name: "main",
+          protected: true,
+          commit: {
+            sha: "abc1234",
+            url: "https://api.github.com/repos/acme/myrepo/commits/abc1234",
+          },
+        },
+        {
+          name: "feature/work",
+          protected: false,
+          commit: {
+            sha: "def5678",
+            url: "https://api.github.com/repos/acme/myrepo/commits/def5678",
+          },
+        },
+      ],
+    });
+
+    const branches = await manager.listBranches();
+
+    expect(branches).toEqual([
+      { name: "main", protected: true, commit: { sha: "abc1234" } },
+      { name: "feature/work", protected: false, commit: { sha: "def5678" } },
+    ]);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/branches?per_page=100");
+  });
+
   test("throws GitHubApiError on non-2xx response", async () => {
     mockFetch({ ok: false, status: 401, body: { message: "Bad credentials" } });
     await expect(manager.listPRs()).rejects.toBeInstanceOf(GitHubApiError);

@@ -28,6 +28,23 @@ export interface GitLogEntry {
   subject: string;
 }
 
+export interface GitCompareCommit {
+  sha: string;
+  message: string;
+}
+
+export interface GitCompareFile {
+  path: string;
+  status: string;
+}
+
+export interface GitCompareSummary {
+  aheadBy: number;
+  headSha: string;
+  commits: GitCompareCommit[];
+  files: GitCompareFile[];
+}
+
 export type GitGraphRefKind = "head" | "branch" | "remote" | "tag";
 
 export interface GitGraphRef {
@@ -170,6 +187,30 @@ export class GitManager {
         const [hash = "", subject = ""] = line.split("\t");
         return { hash, subject };
       });
+  }
+
+  async compareWithBase(baseRef: string): Promise<GitCompareSummary> {
+    const base = requireName(baseRef, "base branch");
+    const [headSha, count, logOutput, filesOutput] = await Promise.all([
+      this.git(["rev-parse", "HEAD"]),
+      this.git(["rev-list", "--count", `${base}..HEAD`]),
+      this.git(["log", "--reverse", "--pretty=format:%H%x09%s", `${base}..HEAD`]),
+      this.git(["diff", "--name-status", "-z", `${base}...HEAD`]),
+    ]);
+
+    return {
+      aheadBy: Number(count.trim()) || 0,
+      headSha: headSha.trim(),
+      commits: logOutput
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const [sha = "", message = ""] = line.split("\t");
+          return { sha, message };
+        })
+        .filter((commit) => commit.sha),
+      files: parseNameStatus(filesOutput),
+    };
   }
 
   async graph(limit = 200): Promise<GitGraphCommit[]> {
@@ -551,6 +592,26 @@ function requirePaths(paths: string[]): void {
   if (paths.length === 0 || paths.some((path) => !path.trim())) {
     throw new Error("at least one file path is required");
   }
+}
+
+function parseNameStatus(output: string): GitCompareFile[] {
+  const tokens = output.split("\0").filter(Boolean);
+  const files: GitCompareFile[] = [];
+  let index = 0;
+  while (index < tokens.length) {
+    const status = tokens[index] ?? "";
+    const letter = (status[0] ?? "").toUpperCase();
+    if (letter === "R" || letter === "C") {
+      const path = tokens[index + 2];
+      if (path) files.push({ path, status: letter });
+      index += 3;
+      continue;
+    }
+    const path = tokens[index + 1];
+    if (path) files.push({ path, status: letter || status });
+    index += 2;
+  }
+  return files;
 }
 
 function isExecError(

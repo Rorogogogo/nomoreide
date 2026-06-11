@@ -1,10 +1,16 @@
-import { CheckCircle, Circle, ExternalLink, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useGitHubActions } from "./hooks/use-github-actions";
 import { LoadMoreButton } from "./load-more-button";
 
-export function ActionsView() {
+export function ActionsView({
+  branch,
+  onClearBranch,
+}: {
+  branch?: string;
+  onClearBranch?: () => void;
+}) {
   const {
     runs,
     selectedRunId,
@@ -18,20 +24,33 @@ export function ActionsView() {
     loadMore,
     refresh,
     setSelectedRunId,
-  } = useGitHubActions();
+  } = useGitHubActions(branch);
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-        <h2 className="text-[13px] font-semibold">Workflow Runs</h2>
-        <Button
-          disabled={loading}
-          onClick={() => void refresh()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold">Workflow Runs</h2>
+          {branch ? (
+            <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="shrink-0">Filtered to</span>
+              <span className="min-w-0 truncate font-mono">{branch}</span>
+              {onClearBranch ? (
+                <button
+                  aria-label="Clear branch filter"
+                  className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={onClearBranch}
+                  title="Clear branch filter"
+                  type="button"
+                >
+                  <X className="size-3" />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <Button disabled={loading} onClick={() => void refresh()} size="sm" type="button" variant="outline">
           <RefreshCw className={`mr-1 size-3.5 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
@@ -65,7 +84,7 @@ export function ActionsView() {
                         {new Date(run.created_at).toLocaleDateString()}
                       </span>
                     </span>
-                    <RunConclusionBadge run={run} />
+                    <RunConclusionStatus run={run} />
                   </button>
                 </li>
               ))}
@@ -99,18 +118,19 @@ function RunStatusIcon({ run }: { run: GitHubWorkflowRun }) {
   return <Circle className="size-4 shrink-0 text-zinc-400" />;
 }
 
-function RunConclusionBadge({ run }: { run: GitHubWorkflowRun }) {
+function RunConclusionStatus({ run }: { run: GitHubWorkflowRun }) {
   const label = run.status === "completed" ? (run.conclusion ?? "completed") : run.status;
   const colorClass =
     label === "success"
-      ? "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+      ? "bg-emerald-500"
       : label === "failure" || label === "timed_out"
-        ? "border-red-200 bg-red-100 text-red-800 dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-300"
+        ? "bg-red-500"
         : label === "in_progress" || label === "queued"
-          ? "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300"
-          : "border-border bg-muted/50 text-muted-foreground";
+          ? "bg-amber-500"
+          : "bg-muted-foreground";
   return (
-    <span className={`shrink-0 rounded border px-1.5 py-px text-[10px] font-medium ${colorClass}`}>
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+      <span className={`size-1.5 rounded-full ${colorClass}`} />
       {label}
     </span>
   );

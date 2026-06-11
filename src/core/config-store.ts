@@ -68,6 +68,9 @@ const gitRepositorySchema = z.object({
   path: z.string().min(1),
 });
 
+/** Upper bound on board-pinned repos, mirroring the web UI's 5-column cap. */
+const MAX_BOARD_REPOSITORIES = 5;
+
 const databaseSchema = z.object({
   name: z.string().min(1),
   engine: z.enum(["postgres", "mysql", "sqlite"]),
@@ -122,6 +125,12 @@ const configSchema = z.object({
   bundles: z.array(bundleSchema),
   gitRepositories: z.array(gitRepositorySchema).default([]),
   selectedGitRepository: z.string().min(1).optional(),
+  /**
+   * Ordered names of repositories pinned to the multi-repo board. Undefined
+   * means "never curated" → the board shows every registered repo; an empty
+   * array means the user has explicitly cleared the board.
+   */
+  gitBoardRepositories: z.array(z.string().min(1)).optional(),
   databases: z.array(databaseSchema).default([]),
   logSources: z.array(logSourceSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
@@ -261,6 +270,27 @@ export class ConfigStore {
       delete config.selectedGitRepository;
     }
 
+    await this.save(config);
+    return config;
+  }
+
+  /**
+   * Persist the ordered set of repositories pinned to the board. Names are
+   * filtered to those still registered, de-duped (order preserved), and capped
+   * at {@link MAX_BOARD_REPOSITORIES} so a stale, repeated, or overflowing list
+   * from the client can never corrupt the board or strand repos off-screen.
+   */
+  async setGitBoardRepositories(names: string[]): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    const registered = new Set(config.gitRepositories.map((repo) => repo.name));
+    const seen = new Set<string>();
+    config.gitBoardRepositories = names
+      .filter((name) => {
+        if (!registered.has(name) || seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      })
+      .slice(0, MAX_BOARD_REPOSITORIES);
     await this.save(config);
     return config;
   }

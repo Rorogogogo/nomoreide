@@ -170,6 +170,30 @@ describe("GitManager", () => {
     expect(status).toMatchObject({ ahead: 0, behind: 0 });
   });
 
+  test("compares the current branch against a local base ref", async () => {
+    await execGit(["checkout", "-b", "main"]);
+    await execGit(["checkout", "-b", "feature/pr-assistant"]);
+    await writeFile(join(repoDir, "assistant.txt"), "draft\n");
+    await execGit(["add", "assistant.txt"]);
+    await execGit(["commit", "-m", "Add PR assistant"]);
+    await writeFile(join(repoDir, "README.md"), "updated\n");
+    await execGit(["add", "README.md"]);
+    await execGit(["commit", "-m", "Update README"]);
+
+    const compare = await git.compareWithBase("main");
+
+    expect(compare.aheadBy).toBe(2);
+    expect(compare.headSha).toMatch(/^[0-9a-f]{40}$/);
+    expect(compare.commits.map((commit) => commit.message)).toEqual([
+      "Add PR assistant",
+      "Update README",
+    ]);
+    expect(compare.files.map((file) => file.path).sort()).toEqual([
+      "README.md",
+      "assistant.txt",
+    ]);
+  });
+
   test("creates and switches branches", async () => {
     await git.createBranch("feature/work");
 
