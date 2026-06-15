@@ -1,0 +1,29 @@
+use tauri::State;
+use serde::{Deserialize, Serialize};
+use crate::AppState;
+use crate::core::config::Config;
+use crate::core::process_manager::ServiceStatus;
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardData {
+    pub config: Config,
+    pub runtime: RuntimeData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeData {
+    pub services: Vec<ServiceStatus>,
+}
+
+#[tauri::command]
+pub async fn get_dashboard(state: State<'_, AppState>) -> Result<DashboardData, String> {
+    let config = state.config_store.load().await.map_err(|e| e.to_string())?;
+    let services = state.process_manager.status();
+
+    Ok(DashboardData {
+        config,
+        runtime: RuntimeData { services },
+    })
+}

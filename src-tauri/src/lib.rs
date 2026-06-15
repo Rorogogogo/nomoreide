@@ -1,19 +1,32 @@
-use std::sync::{Arc, Mutex};
+mod core;
+mod commands;
+
+use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, RunEvent, State, WindowEvent,
 };
-use tauri_plugin_shell::ShellExt;
 
-struct AppState {
-    server_child: Arc<Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
+use core::config::ConfigStore;
+use core::log_store::LogStore;
+use core::process_manager::ProcessManager;
+use commands::terminal::TerminalManager;
+
+// ---------------------------------------------------------------------------
+// Shared application state
+// ---------------------------------------------------------------------------
+
+pub struct AppState {
+    pub config_store: ConfigStore,
+    pub log_store: LogStore,
+    pub process_manager: ProcessManager,
+    pub terminal_manager: TerminalManager,
 }
 
-#[tauri::command]
-fn get_server_url() -> String {
-    "http://127.0.0.1:4317".to_string()
-}
+// ---------------------------------------------------------------------------
+// System tray
+// ---------------------------------------------------------------------------
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -31,9 +44,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                     let _ = win.set_focus();
                 }
             }
-            "quit" => {
-                app.exit(0);
-            }
+            "quit" => app.exit(0),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -54,53 +65,27 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-fn spawn_server(app: &AppHandle, state: &AppState) {
-    // In dev mode the Vite dev server and `nomoreide web` are started externally.
-    // In release mode we look for `node` on PATH and run `dist/index.js web`.
-    if cfg!(debug_assertions) {
-        return;
-    }
-
-    let app_dir = app
-        .path()
-        .resource_dir()
-        .expect("could not resolve resource dir");
-    let server_script = app_dir.join("dist").join("index.js");
-
-    if !server_script.exists() {
-        eprintln!(
-            "[nomoreide] server script not found at {}",
-            server_script.display()
-        );
-        return;
-    }
-
-    let shell = app.shell();
-    match shell
-        .command("node")
-        .args([server_script.to_string_lossy().as_ref(), "web"])
-        .spawn()
-    {
-        Ok((_rx, child)) => {
-            *state.server_child.lock().unwrap() = Some(child);
-            eprintln!("[nomoreide] web server started");
-        }
-        Err(e) => {
-            eprintln!("[nomoreide] failed to start web server: {e}");
-        }
-    }
-}
-
-fn kill_server(state: &AppState) {
-    if let Some(child) = state.server_child.lock().unwrap().take() {
-        let _ = child.kill();
-        eprintln!("[nomoreide] web server stopped");
-    }
-}
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
 
 pub fn run() {
+    let config_path = ConfigStore::default_path();
+
+    // Log dir: <project>/.nomoreide/logs — fall back to home if no project
+    let log_dir = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".nomoreide")
+        .join("logs");
+
+    let log_store = LogStore::new(log_dir);
+    let process_manager = ProcessManager::new(log_store.clone());
+
     let state = AppState {
-        server_child: Arc::new(Mutex::new(None)),
+        config_store: ConfigStore::new(config_path),
+        log_store,
+        process_manager,
+        terminal_manager: TerminalManager::new(),
     };
 
     tauri::Builder::default()
@@ -109,15 +94,82 @@ pub fn run() {
         .manage(state)
         .setup(|app| {
             build_tray(app.handle())?;
-
-            let state: State<AppState> = app.state();
-            spawn_server(app.handle(), &state);
-
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_server_url])
+        .invoke_handler(tauri::generate_handler![
+            // config
+            commands::config::get_config,
+            commands::config::register_service,
+            commands::config::remove_service,
+            commands::config::register_bundle,
+            commands::config::register_git_repository,
+            commands::config::remove_git_repository,
+            commands::config::select_git_repository,
+            commands::config::set_git_board_repositories,
+            commands::config::register_database,
+            commands::config::remove_database,
+            commands::config::set_database_write_access,
+            commands::config::set_github_token,
+            commands::config::remove_github_token,
+            // dashboard
+            commands::dashboard::get_dashboard,
+            // services
+            commands::services::list_services,
+            commands::services::start_service,
+            commands::services::stop_service,
+            commands::services::restart_service,
+            commands::services::start_bundle,
+            commands::services::stop_bundle,
+            // git
+            commands::git::git_status,
+            commands::git::git_diff,
+            commands::git::git_graph,
+            commands::git::git_commit_diff,
+            commands::git::git_commit_files,
+            commands::git::git_stage,
+            commands::git::git_unstage,
+            commands::git::git_commit,
+            commands::git::git_push,
+            commands::git::git_fetch,
+            commands::git::git_create_branch,
+            commands::git::git_switch_branch,
+            commands::git::git_branches,
+            commands::git::git_pull_default,
+            commands::git::git_list_files,
+            commands::git::git_read_file,
+            commands::git::git_write_file,
+            // logs
+            commands::logs::get_logs,
+            // terminal
+            commands::terminal::list_terminal_sessions,
+            commands::terminal::create_terminal_session,
+            commands::terminal::write_terminal_input,
+            commands::terminal::resize_terminal,
+            commands::terminal::close_terminal_session,
+            // database
+            commands::database::list_databases,
+            commands::database::query_database,
+            commands::database::execute_database,
+            commands::database::list_tables,
+            // github
+            commands::github::get_github_token_status,
+            commands::github::list_pull_requests,
+            commands::github::get_pull_request,
+            commands::github::create_pull_request,
+            commands::github::list_issues,
+            commands::github::github_oauth_start,
+            commands::github::github_oauth_poll,
+            // snapshots
+            commands::snapshots::create_snapshot,
+            commands::snapshots::list_snapshots,
+            commands::snapshots::restore_snapshot,
+            commands::snapshots::delete_snapshot,
+            // workflows
+            commands::workflows::list_workflows,
+            commands::workflows::save_workflow,
+            commands::workflows::delete_workflow,
+        ])
         .on_window_event(|window, event| {
-            // Minimise to tray instead of closing on macOS / Windows.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap();
                 api.prevent_close();
@@ -128,7 +180,7 @@ pub fn run() {
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 let state: State<AppState> = app.state();
-                kill_server(&state);
+                state.process_manager.kill_all();
             }
         });
 }
