@@ -1,4 +1,15 @@
 import { requestJson } from "./client.js";
+import {
+  isTauri,
+  tauri_listTerminalSessions,
+  tauri_createTerminalSession,
+  tauri_closeTerminalSession,
+  tauri_writeTerminalInput,
+  tauri_resizeTerminal,
+  tauri_onTerminalOutput,
+} from "./tauri-bridge.js";
+
+export { tauri_writeTerminalInput, tauri_resizeTerminal, tauri_onTerminalOutput };
 
 export type TerminalState = "idle" | "running" | "exited" | "error";
 
@@ -16,6 +27,7 @@ export interface TerminalSessionInfo {
 }
 
 export async function listTerminalSessions(): Promise<TerminalSessionInfo[]> {
+  if (isTauri()) return tauri_listTerminalSessions() as Promise<TerminalSessionInfo[]>;
   const res = await requestJson<{ ok: true; sessions: TerminalSessionInfo[] }>(
     "/api/terminal/sessions",
   );
@@ -25,6 +37,7 @@ export async function listTerminalSessions(): Promise<TerminalSessionInfo[]> {
 export async function createTerminalSession(
   opts?: { serviceName?: string },
 ): Promise<TerminalSessionInfo> {
+  if (isTauri()) return tauri_createTerminalSession(opts) as Promise<TerminalSessionInfo>;
   const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
     "/api/terminal/sessions",
     {
@@ -41,6 +54,7 @@ export async function createTerminalSession(
 }
 
 export async function closeTerminalSession(id: string): Promise<void> {
+  if (isTauri()) return tauri_closeTerminalSession(id);
   await requestJson(`/api/terminal/sessions/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
