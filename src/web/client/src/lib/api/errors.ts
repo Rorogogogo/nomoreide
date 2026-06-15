@@ -1,4 +1,5 @@
 import { requestJson } from "./client.js";
+import { isTauri } from "./tauri-bridge.js";
 
 export type IncidentLevel = "error" | "warning";
 
@@ -22,7 +23,9 @@ export interface ErrorIncidentPrompt {
   prompt: string;
 }
 
+/** Error tracking is a Node.js server feature; returns empty in desktop mode. */
 export async function getErrorIncidents(limit = 100): Promise<ErrorIncident[]> {
+  if (isTauri()) return [];
   const response = await requestJson<{ ok: true; incidents: ErrorIncident[] }>(
     `/api/errors?limit=${limit}`,
   );

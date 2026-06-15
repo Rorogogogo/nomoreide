@@ -287,12 +287,12 @@ impl GitManager {
 }
 
 async fn detect_default_branch(cwd: &str) -> String {
-    let out = Command::new("git")
-        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
-        .current_dir(cwd)
-        .output()
+    git(cwd, &["symbolic-ref", "refs/remotes/origin/HEAD"])
         .await
-        .unwrap_or_default();
-    let raw = String::from_utf8_lossy(&out.stdout);
-    raw.trim().split('/').last().unwrap_or("main").to_string()
+        .unwrap_or_default()
+        .trim()
+        .split('/')
+        .last()
+        .unwrap_or("main")
+        .to_string()
 }

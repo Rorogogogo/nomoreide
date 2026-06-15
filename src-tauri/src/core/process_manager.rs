@@ -167,7 +167,7 @@ impl ProcessManager {
         let cwd = def.cwd.as_deref().ok_or_else(|| anyhow!("Docker service missing cwd"))?;
         let svc = def.compose_service.as_deref().ok_or_else(|| anyhow!("Missing composeService"))?;
 
-        let mut args = vec!["up", "--no-build", svc];
+        let args = vec!["up", "--no-build", svc];
         let child = Command::new("docker-compose")
             .args(&args)
             .current_dir(cwd)

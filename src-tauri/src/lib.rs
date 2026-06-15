@@ -97,6 +97,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // agent chat
+            commands::agent_chat::get_agent_chat_status,
+            commands::agent_chat::start_agent_chat,
+            // onboard
+            commands::onboard::scan_repo_url,
+            commands::onboard::run_install_command,
             // config
             commands::config::get_config,
             commands::config::register_service,
@@ -111,6 +117,8 @@ pub fn run() {
             commands::config::set_database_write_access,
             commands::config::set_github_token,
             commands::config::remove_github_token,
+            commands::config::register_log_source,
+            commands::config::remove_log_source,
             // dashboard
             commands::dashboard::get_dashboard,
             // services
@@ -138,6 +146,7 @@ pub fn run() {
             commands::git::git_list_files,
             commands::git::git_read_file,
             commands::git::git_write_file,
+            commands::git::get_github_repo,
             // logs
             commands::logs::get_logs,
             // terminal
@@ -156,7 +165,21 @@ pub fn run() {
             commands::github::list_pull_requests,
             commands::github::get_pull_request,
             commands::github::create_pull_request,
+            commands::github::get_pr_diff,
+            commands::github::list_pr_files,
+            commands::github::list_pr_reviews,
+            commands::github::list_pr_comments,
+            commands::github::merge_pull_request,
             commands::github::list_issues,
+            commands::github::get_github_issue,
+            commands::github::list_issue_comments,
+            commands::github::add_issue_comment,
+            commands::github::create_github_issue,
+            commands::github::list_github_branches,
+            commands::github::get_github_repo_info,
+            commands::github::list_commit_check_runs,
+            commands::github::list_workflow_runs,
+            commands::github::list_workflow_run_jobs,
             commands::github::github_oauth_start,
             commands::github::github_oauth_poll,
             // snapshots
@@ -164,6 +187,8 @@ pub fn run() {
             commands::snapshots::list_snapshots,
             commands::snapshots::restore_snapshot,
             commands::snapshots::delete_snapshot,
+            commands::snapshots::get_snapshot_files,
+            commands::snapshots::get_snapshot_diff,
             // workflows
             commands::workflows::list_workflows,
             commands::workflows::save_workflow,

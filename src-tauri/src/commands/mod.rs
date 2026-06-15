@@ -1,9 +1,11 @@
+pub mod agent_chat;
 pub mod config;
 pub mod dashboard;
 pub mod database;
 pub mod git;
 pub mod github;
 pub mod logs;
+pub mod onboard;
 pub mod services;
 pub mod snapshots;
 pub mod terminal;

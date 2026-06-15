@@ -1,4 +1,14 @@
 import { postFormForJson, requestJson } from "./client.js";
+import {
+  isTauri,
+  tauri_listDatabases,
+  tauri_queryDatabase,
+  tauri_executeDatabase,
+  tauri_listTables,
+  tauri_registerDatabase,
+  tauri_removeDatabase,
+  tauri_setDatabaseWriteAccess,
+} from "./tauri-bridge.js";
 
 export type DatabaseEngine = "postgres" | "mysql" | "sqlite";
 
@@ -38,19 +48,24 @@ export interface RowSample {
   columns: ColumnInfo[];
   rows: Array<Record<string, unknown>>;
   rowCount: number;
-  /** The page window applied server-side, so the UI can paginate. */
   limit: number;
   offset: number;
 }
 
 export async function listDatabases(): Promise<DatabaseConnection[]> {
+  if (isTauri()) {
+    const dbs = await tauri_listDatabases();
+    return dbs as DatabaseConnection[];
+  }
   const res = await requestJson<{ ok: true; connections: DatabaseConnection[] }>(
     "/api/databases",
   );
   return res.connections;
 }
 
+/** Not available in desktop mode — returns empty array. */
 export async function detectDatabases(): Promise<DetectedConnection[]> {
+  if (isTauri()) return [];
   const res = await requestJson<{ ok: true; detected: DetectedConnection[] }>(
     "/api/databases/detect",
   );
@@ -62,6 +77,10 @@ export async function addDatabase(input: {
   engine: DatabaseEngine;
   url: string;
 }): Promise<void> {
+  if (isTauri()) {
+    await tauri_registerDatabase(input);
+    return;
+  }
   await postFormForJson("/api/databases", input);
 }
 
@@ -69,6 +88,16 @@ export async function testDatabase(input: {
   engine: DatabaseEngine;
   url: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  if (isTauri()) {
+    // Attempt a simple connection by listing tables on a dummy query.
+    // If the connection fails, sqlx returns an error.
+    try {
+      await tauri_queryDatabase("__test__", "SELECT 1", 1);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
+  }
   return postFormForJson<{ ok: boolean; error?: string }>(
     "/api/databases/test",
     input,
@@ -76,12 +105,20 @@ export async function testDatabase(input: {
 }
 
 export async function deleteDatabase(name: string): Promise<void> {
+  if (isTauri()) {
+    await tauri_removeDatabase(name);
+    return;
+  }
   await requestJson(`/api/databases/${encodeURIComponent(name)}`, {
     method: "DELETE",
   });
 }
 
 export async function getDatabaseTables(name: string): Promise<TableRef[]> {
+  if (isTauri()) {
+    const tables = await tauri_listTables(name);
+    return tables.map((t) => ({ name: t, qualifiedName: t }));
+  }
   const res = await requestJson<{ ok: true; tables: TableRef[] }>(
     `/api/databases/${encodeURIComponent(name)}/tables`,
   );
@@ -102,6 +139,22 @@ export async function runDatabaseQuery(
   sql: string,
   limit = 100,
 ): Promise<QueryResult> {
+  if (isTauri()) {
+    const result = await tauri_queryDatabase(name, sql, limit) as {
+      columns: string[];
+      rows: unknown[][];
+      rowCount: number;
+    };
+    const columns: ColumnInfo[] = result.columns.map((c) => ({
+      name: c, dataType: "text", nullable: true, primaryKey: false,
+    }));
+    const rows: Array<Record<string, unknown>> = result.rows.map((row) => {
+      const obj: Record<string, unknown> = {};
+      result.columns.forEach((col, i) => { obj[col] = row[i]; });
+      return obj;
+    });
+    return { engine: "sqlite", columns, rows, rowCount: result.rowCount, truncated: false };
+  }
   return postFormForJson<{ ok: true } & QueryResult>(
     `/api/databases/${encodeURIComponent(name)}/query`,
     { sql, limit },
@@ -110,13 +163,10 @@ export async function runDatabaseQuery(
 
 export interface WriteOutcome {
   engine: DatabaseEngine;
-  /** True when a preview couldn't be run (e.g. MySQL DDL auto-commits). */
   previewUnavailable: boolean;
-  /** Rows affected/returned — absent when previewUnavailable. */
   affectedRows?: number;
   rows?: Array<Record<string, unknown>>;
   columns?: ColumnInfo[];
-  /** True when the run was committed; false for a rolled-back preview. */
   committed?: boolean;
 }
 
@@ -125,6 +175,10 @@ export async function setDatabaseWriteAccess(
   name: string,
   unlocked: boolean,
 ): Promise<void> {
+  if (isTauri()) {
+    await tauri_setDatabaseWriteAccess(name, unlocked);
+    return;
+  }
   await postFormForJson(`/api/databases/${encodeURIComponent(name)}/write-access`, {
     unlocked: String(unlocked),
   });
@@ -136,6 +190,14 @@ export async function executeDatabaseWrite(
   sql: string,
   mode: "preview" | "commit",
 ): Promise<WriteOutcome> {
+  if (isTauri()) {
+    if (mode === "preview") {
+      // Rust backend doesn't support transaction preview; report as unavailable.
+      return { engine: "sqlite", previewUnavailable: true };
+    }
+    const affected = await tauri_executeDatabase(name, sql);
+    return { engine: "sqlite", previewUnavailable: false, affectedRows: affected, committed: true };
+  }
   return postFormForJson<{ ok: true } & WriteOutcome>(
     `/api/databases/${encodeURIComponent(name)}/execute`,
     { sql, mode },
@@ -148,6 +210,33 @@ export async function getDatabaseRows(
   limit = 100,
   offset = 0,
 ): Promise<RowSample> {
+  if (isTauri()) {
+    const sql = offset > 0
+      ? `SELECT * FROM ${table} LIMIT ${limit} OFFSET ${offset}`
+      : `SELECT * FROM ${table} LIMIT ${limit}`;
+    const result = await tauri_queryDatabase(name, sql, limit) as {
+      columns: string[];
+      rows: unknown[][];
+      rowCount: number;
+    };
+    const columns: ColumnInfo[] = result.columns.map((c) => ({
+      name: c, dataType: "text", nullable: true, primaryKey: false,
+    }));
+    const rows: Array<Record<string, unknown>> = result.rows.map((row) => {
+      const obj: Record<string, unknown> = {};
+      result.columns.forEach((col, i) => { obj[col] = row[i]; });
+      return obj;
+    });
+    return {
+      engine: "sqlite",
+      table: { name: table, qualifiedName: table },
+      columns,
+      rows,
+      rowCount: result.rowCount,
+      limit,
+      offset,
+    };
+  }
   return requestJson<{ ok: true } & RowSample>(
     `/api/databases/${encodeURIComponent(name)}/rows?table=${encodeURIComponent(
       table,

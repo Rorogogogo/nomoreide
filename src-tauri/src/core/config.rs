@@ -284,6 +284,21 @@ impl ConfigStore {
             .map(|t| t.token.as_str())
     }
 
+    pub async fn register_log_source(&self, source: LogSourceDef) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.log_sources.retain(|s| s.name != source.name);
+        config.log_sources.push(source);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn remove_log_source(&self, name: &str) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.log_sources.retain(|s| s.name != name);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
     pub async fn save_workflow(&self, workflow: serde_json::Value) -> Result<Config> {
         let mut config = self.load().await?;
         let id = workflow.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();

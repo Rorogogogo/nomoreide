@@ -1,4 +1,5 @@
 import { requestJson } from "./client.js";
+import { isTauri } from "./tauri-bridge.js";
 
 export interface AgentMemoryFile {
   path: string;
@@ -87,7 +88,24 @@ export interface AgentInfo extends AgentProfile {
   };
 }
 
+const _emptyProfile: AgentProfile = {
+  project: { cwd: "", memoryFiles: [] },
+  skills: [],
+  mcpServers: [],
+  plugins: [],
+  hooks: [],
+  projects: [],
+};
+
+/** Agent CLI introspection is not available in desktop mode; returns an empty profile. */
 export async function getAgentInfo(): Promise<AgentInfo> {
+  if (isTauri()) {
+    return {
+      ..._emptyProfile,
+      detected: { name: "unknown", label: "Desktop mode", signals: [] },
+      agents: { "claude-code": _emptyProfile, codex: _emptyProfile },
+    };
+  }
   const response = await requestJson<{ ok: true; agent: AgentInfo }>("/api/agent");
   return response.agent;
 }
@@ -193,6 +211,7 @@ export interface UsageInfo {
 }
 
 export async function getAgentUsage(): Promise<UsageInfo> {
+  if (isTauri()) return {};
   const response = await requestJson<{ ok: true; usage: UsageInfo }>("/api/agent/usage");
   return response.usage;
 }

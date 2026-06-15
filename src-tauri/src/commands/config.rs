@@ -104,3 +104,19 @@ pub async fn remove_github_token(
 ) -> Result<Config, String> {
     state.config_store.remove_github_token(&host).await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn register_log_source(
+    state: State<'_, AppState>,
+    source: LogSourceDef,
+) -> Result<Config, String> {
+    state.config_store.register_log_source(source).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remove_log_source(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<Config, String> {
+    state.config_store.remove_log_source(&name).await.map_err(|e| e.to_string())
+}

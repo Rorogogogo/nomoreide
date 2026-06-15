@@ -1,5 +1,11 @@
 import { postFormForJson, requestJson } from "./client.js";
 import type { LogEntry } from "./services.js";
+import {
+  isTauri,
+  tauri_listLogSources,
+  tauri_registerLogSource,
+  tauri_removeLogSource,
+} from "./tauri-bridge.js";
 
 export type LogSourceKind = "file" | "ssh" | "command";
 export type LogDriver = "journald" | "docker";
@@ -28,11 +34,19 @@ export interface LogQuery {
 }
 
 export async function listLogSources(): Promise<LogSource[]> {
+  if (isTauri()) {
+    const sources = await tauri_listLogSources();
+    return (sources ?? []) as LogSource[];
+  }
   const res = await requestJson<{ ok: true; sources: LogSource[] }>("/api/log-sources");
   return res.sources;
 }
 
 export async function addLogSource(input: LogSource): Promise<LogSource[]> {
+  if (isTauri()) {
+    await tauri_registerLogSource(input as unknown as Record<string, unknown>);
+    return listLogSources();
+  }
   const res = await postFormForJson<{ ok: true; sources: LogSource[] }>(
     "/api/log-sources",
     input as unknown as Record<string, string | number | undefined>,
@@ -41,13 +55,19 @@ export async function addLogSource(input: LogSource): Promise<LogSource[]> {
 }
 
 export async function deleteLogSource(name: string): Promise<void> {
+  if (isTauri()) {
+    await tauri_removeLogSource(name);
+    return;
+  }
   await requestJson(`/api/log-sources/${encodeURIComponent(name)}`, { method: "DELETE" });
 }
 
+/** Log streaming for external sources is not implemented in desktop mode; returns empty. */
 export async function getLogSourceLogs(
   name: string,
   query: LogQuery = {},
 ): Promise<LogEntry[]> {
+  if (isTauri()) return [];
   const params = new URLSearchParams();
   params.set("lines", String(query.lines ?? 500));
   if (query.since) params.set("since", query.since);

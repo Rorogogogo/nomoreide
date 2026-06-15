@@ -1,6 +1,6 @@
 import { requestJson } from "./client.js";
 import type { GitFileStatus } from "./git.js";
-import { isTauri, tauri_listWorkflows, tauri_saveWorkflow, tauri_deleteWorkflow } from "./tauri-bridge.js";
+import { isTauri, tauri_listWorkflows, tauri_saveWorkflow, tauri_deleteWorkflow, tauri_gitStatus } from "./tauri-bridge.js";
 
 /** Mirrors the server step kinds in `core/workflows.ts`. */
 export interface WorkflowCapabilities {
@@ -72,6 +72,10 @@ export async function deleteWorkflow(id: string): Promise<Workflow[]> {
 
 /** Fresh git status — used by the runner to verify an agent step's real effect. */
 export async function getGitStatus(): Promise<GitStatusSummary> {
+  if (isTauri()) {
+    const s = await tauri_gitStatus();
+    return { branch: s.branch, upstream: s.upstream ?? undefined, ahead: s.ahead, behind: s.behind, files: s.files };
+  }
   const res = await requestJson<{ ok: true; status: GitStatusSummary }>("/api/git/status");
   return res.status;
 }

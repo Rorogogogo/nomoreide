@@ -71,21 +71,19 @@ impl LogStore {
     }
 
     pub fn append(&self, entry: LogEntry) {
-        let listeners = {
+        {
             let mut inner = self.inner.write().unwrap();
             let buf = inner.buffers.entry(entry.service.clone()).or_default();
             buf.push(entry.clone());
             if buf.len() > MAX_LINES {
                 buf.drain(0..buf.len() - MAX_LINES);
             }
-            inner.listeners.iter().map(|l| l(entry.clone())).count();
-            // Return clone of entry for async disk write below
-            entry.clone()
-        };
-        drop(listeners); // just to silence unused
+            for listener in &inner.listeners {
+                listener(entry.clone());
+            }
+        } // lock released here
 
         let log_dir = self.log_dir.clone();
-        let entry = entry;
         tokio::spawn(async move {
             let _ = append_to_disk(&log_dir, &entry).await;
         });

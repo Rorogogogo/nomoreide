@@ -1,8 +1,8 @@
 use tauri::State;
+use chrono;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use crate::AppState;
-use crate::core::git_manager::GitManager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,6 +10,13 @@ pub struct Snapshot {
     pub sha: String,
     pub label: Option<String>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotChange {
+    pub status: String,
+    pub path: String,
 }
 
 /// Create a snapshot (stash-like: git stash with a label)
@@ -126,6 +133,61 @@ pub async fn delete_snapshot(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn get_snapshot_files(
+    state: State<'_, AppState>,
+    sha: String,
+    repo: Option<String>,
+) -> Result<Vec<SnapshotChange>, String> {
+    let config = state.config_store.load().await.map_err(|e| e.to_string())?;
+    let cwd = resolve_cwd(&config, repo.as_deref())?;
+
+    let out = Command::new("git")
+        .args(["diff", "--name-status", &sha])
+        .current_dir(&cwd)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let files = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|line| {
+            let mut parts = line.splitn(2, '\t');
+            let status = parts.next().unwrap_or("M").to_string();
+            let path = parts.next().unwrap_or("").to_string();
+            SnapshotChange { status, path }
+        })
+        .collect();
+
+    Ok(files)
+}
+
+#[tauri::command]
+pub async fn get_snapshot_diff(
+    state: State<'_, AppState>,
+    sha: String,
+    path: Option<String>,
+    repo: Option<String>,
+) -> Result<String, String> {
+    let config = state.config_store.load().await.map_err(|e| e.to_string())?;
+    let cwd = resolve_cwd(&config, repo.as_deref())?;
+
+    let mut args: Vec<&str> = vec!["diff", &sha];
+    if path.is_some() { args.push("--"); }
+    let path_ref: Option<String> = path;
+    if let Some(ref p) = path_ref { args.push(p.as_str()); }
+
+    let out = Command::new("git")
+        .args(&args)
+        .current_dir(&cwd)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
 fn resolve_cwd(config: &crate::core::config::Config, repo: Option<&str>) -> Result<String, String> {
     if let Some(name) = repo {
         return config.git_repositories.iter()
@@ -142,5 +204,3 @@ fn resolve_cwd(config: &crate::core::config::Config, repo: Option<&str>) -> Resu
         .map(|r| r.path.clone())
         .ok_or_else(|| "No git repository configured".to_string())
 }
-
-use chrono;
