@@ -1,7 +1,7 @@
 use tauri::State;
 use tokio::process::Command;
 use crate::AppState;
-use crate::core::git_manager::{GitManager, GitStatus, GitCommit, GitBranch};
+use crate::core::git_manager::{GitManager, GitStatus, GitCommit, GitBranch, GitFileStatus, FileSizeRank};
 
 async fn resolve_cwd(state: &AppState, repo: Option<String>) -> Result<String, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
@@ -77,7 +77,7 @@ pub async fn git_commit_files(
     state: State<'_, AppState>,
     hash: String,
     repo: Option<String>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<GitFileStatus>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::commit_files(&cwd, &hash).await.map_err(|e| e.to_string())
 }
@@ -176,6 +176,15 @@ pub async fn git_list_files(
 ) -> Result<Vec<String>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::list_tracked_files(&cwd).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_file_sizes(
+    state: State<'_, AppState>,
+    repo: Option<String>,
+) -> Result<Vec<FileSizeRank>, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::rank_files_by_size(&cwd).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

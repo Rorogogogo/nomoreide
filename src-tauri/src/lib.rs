@@ -2,11 +2,7 @@ mod core;
 mod commands;
 
 use std::path::PathBuf;
-use tauri::{
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, RunEvent, State, WindowEvent,
-};
+use tauri::{Manager, RunEvent, State, WindowEvent};
 
 use core::config::ConfigStore;
 use core::log_store::LogStore;
@@ -22,47 +18,6 @@ pub struct AppState {
     pub log_store: LogStore,
     pub process_manager: ProcessManager,
     pub terminal_manager: TerminalManager,
-}
-
-// ---------------------------------------------------------------------------
-// System tray
-// ---------------------------------------------------------------------------
-
-fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit NoMoreIDE", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &quit])?;
-
-    TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
-        .menu(&menu)
-        .tooltip("NoMoreIDE")
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show" => {
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
-            }
-            "quit" => app.exit(0),
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click {
-                button: MouseButton::Left,
-                button_state: MouseButtonState::Up,
-                ..
-            } = event
-            {
-                let app = tray.app_handle();
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                }
-            }
-        })
-        .build(app)?;
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -92,10 +47,6 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .manage(state)
-        .setup(|app| {
-            build_tray(app.handle())?;
-            Ok(())
-        })
         .invoke_handler(tauri::generate_handler![
             // agent chat
             commands::agent_chat::get_agent_chat_status,
@@ -144,6 +95,7 @@ pub fn run() {
             commands::git::git_branches,
             commands::git::git_pull_default,
             commands::git::git_list_files,
+            commands::git::git_file_sizes,
             commands::git::git_read_file,
             commands::git::git_write_file,
             commands::git::get_github_repo,
@@ -195,9 +147,10 @@ pub fn run() {
             commands::workflows::delete_workflow,
         ])
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                window.hide().unwrap();
-                api.prevent_close();
+            // No tray icon, so a hidden window would be unrecoverable — quit the
+            // app on close instead. RunEvent::Exit below still kills child procs.
+            if let WindowEvent::CloseRequested { .. } = event {
+                window.app_handle().exit(0);
             }
         })
         .build(tauri::generate_context!())
