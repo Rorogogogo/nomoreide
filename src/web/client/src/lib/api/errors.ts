@@ -1,48 +1,23 @@
-import { requestJson } from "./client.js";
+/**
+ * Errors API entry point. Picks the backend implementation once at module load
+ * (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as the
+ * named functions the rest of the app already imports. Adding/altering an error
+ * endpoint means editing the {@link ErrorsApi} interface plus both implementations
+ * — never a per-function `if (isTauri())` branch.
+ */
 import { isTauri } from "./tauri-bridge.js";
+import type { ErrorsApi } from "./errors-api.js";
+import { httpErrorsApi } from "./errors-http.js";
+import { tauriErrorsApi } from "./errors-tauri.js";
 
-export type IncidentLevel = "error" | "warning";
+const api: ErrorsApi = isTauri() ? tauriErrorsApi : httpErrorsApi;
 
-export interface ErrorIncident {
-  id: number;
-  service: string;
-  level: IncidentLevel;
-  signature: string;
-  title: string;
-  file?: string;
-  line?: number;
-  firstSeen: string;
-  lastSeen: string;
-  count: number;
-  logExcerpt: string[];
-}
+export const { getErrorIncidents, getErrorPrompt, getErrorBundle } = api;
 
-export interface ErrorIncidentPrompt {
-  incident: ErrorIncident;
-  file?: string;
-  prompt: string;
-}
-
-/** Error tracking is a Node.js server feature; returns empty in desktop mode. */
-export async function getErrorIncidents(limit = 100): Promise<ErrorIncident[]> {
-  if (isTauri()) return [];
-  const response = await requestJson<{ ok: true; incidents: ErrorIncident[] }>(
-    `/api/errors?limit=${limit}`,
-  );
-  return response.incidents;
-}
-
-export async function getErrorPrompt(id: number): Promise<ErrorIncidentPrompt> {
-  return requestJson<{ ok: true } & ErrorIncidentPrompt>(`/api/errors/${id}/prompt`);
-}
-
-export interface ErrorReproBundle {
-  incidentId: number;
-  markdown: string;
-  savedPath?: string;
-}
-
-export async function getErrorBundle(id: number, save = false): Promise<ErrorReproBundle> {
-  const query = save ? "?save=1" : "";
-  return requestJson<{ ok: true } & ErrorReproBundle>(`/api/errors/${id}/bundle${query}`);
-}
+export type {
+  ErrorsApi,
+  IncidentLevel,
+  ErrorIncident,
+  ErrorIncidentPrompt,
+  ErrorReproBundle,
+} from "./errors-api.js";

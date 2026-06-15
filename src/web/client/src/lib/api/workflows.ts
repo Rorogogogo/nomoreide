@@ -1,81 +1,22 @@
-import { requestJson } from "./client.js";
-import type { GitFileStatus } from "./git.js";
-import { isTauri, tauri_listWorkflows, tauri_saveWorkflow, tauri_deleteWorkflow, tauri_gitStatus } from "./tauri-bridge.js";
+/**
+ * Workflows API entry point. Picks the backend implementation once at module
+ * load (`isTauri()` → Rust core, else Node HTTP) and re-exports its methods as
+ * the named functions the rest of the app already imports — never a per-function
+ * `if (isTauri())` branch.
+ */
+import { isTauri } from "./tauri-bridge.js";
+import type { WorkflowsApi } from "./workflows-api.js";
+import { httpWorkflowsApi } from "./workflows-http.js";
+import { tauriWorkflowsApi } from "./workflows-tauri.js";
 
-/** Mirrors the server step kinds in `core/workflows.ts`. */
-export interface WorkflowCapabilities {
-  skills?: string[];
-  mcpServers?: string[];
-  plugins?: string[];
-  hooks?: string[];
-}
+const api: WorkflowsApi = isTauri() ? tauriWorkflowsApi : httpWorkflowsApi;
 
-export type WorkflowStep =
-  | {
-      kind: "action";
-      id: string;
-      title: string;
-      op: "push" | "commit" | "assert-pr-branch" | "checkout-default-and-pull";
-    }
-  | {
-      kind: "agent";
-      id: string;
-      title: string;
-      prompt: string;
-      capabilities?: WorkflowCapabilities;
-      verify?: "committed" | "pushed";
-      /** Run in a fresh one-shot session (cheaper; no memory of earlier steps). */
-      isolated?: boolean;
-    }
-  | { kind: "gate"; id: string; title: string; message: string };
+export const { listWorkflows, saveWorkflow, deleteWorkflow, getGitStatus } = api;
 
-export interface Workflow {
-  id: string;
-  name: string;
-  description?: string;
-  builtin?: boolean;
-  steps: WorkflowStep[];
-}
-
-export interface GitStatusSummary {
-  branch: string;
-  upstream?: string;
-  ahead: number;
-  behind: number;
-  files: GitFileStatus[];
-}
-
-export async function listWorkflows(): Promise<Workflow[]> {
-  if (isTauri()) return tauri_listWorkflows() as Promise<Workflow[]>;
-  const res = await requestJson<{ ok: true; workflows: Workflow[] }>("/api/workflows");
-  return res.workflows;
-}
-
-export async function saveWorkflow(workflow: Workflow): Promise<Workflow[]> {
-  if (isTauri()) return tauri_saveWorkflow(workflow) as Promise<Workflow[]>;
-  const res = await requestJson<{ ok: true; workflows: Workflow[] }>("/api/workflows", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(workflow),
-  });
-  return res.workflows;
-}
-
-export async function deleteWorkflow(id: string): Promise<Workflow[]> {
-  if (isTauri()) return tauri_deleteWorkflow(id) as Promise<Workflow[]>;
-  const res = await requestJson<{ ok: true; workflows: Workflow[] }>(
-    `/api/workflows/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
-  );
-  return res.workflows;
-}
-
-/** Fresh git status — used by the runner to verify an agent step's real effect. */
-export async function getGitStatus(): Promise<GitStatusSummary> {
-  if (isTauri()) {
-    const s = await tauri_gitStatus();
-    return { branch: s.branch, upstream: s.upstream ?? undefined, ahead: s.ahead, behind: s.behind, files: s.files };
-  }
-  const res = await requestJson<{ ok: true; status: GitStatusSummary }>("/api/git/status");
-  return res.status;
-}
+export type {
+  WorkflowsApi,
+  WorkflowCapabilities,
+  WorkflowStep,
+  Workflow,
+  GitStatusSummary,
+} from "./workflows-api.js";
