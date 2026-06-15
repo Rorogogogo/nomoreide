@@ -4,10 +4,18 @@
 declare global {
   interface Window {
     __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
   }
 }
 
-export const isTauri = (): boolean => typeof window !== "undefined" && Boolean(window.__TAURI__);
+// Tauri v2 only injects `window.__TAURI__` when `withGlobalTauri` is enabled,
+// which we keep off. The internals object (`window.__TAURI_INTERNALS__`) is
+// always present inside a Tauri webview, so detect on that and fall back to the
+// global for safety. Without this, every api call wrongly takes the HTTP branch
+// (there's no Node server in the desktop app) and the whole UI renders empty.
+export const isTauri = (): boolean =>
+  typeof window !== "undefined" &&
+  (Boolean(window.__TAURI_INTERNALS__) || Boolean(window.__TAURI__));
 
 type TauriWindowModule = {
   getCurrentWindow: () => {
