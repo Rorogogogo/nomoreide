@@ -46,6 +46,16 @@ pub struct GitBranch {
     pub is_remote: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSizeRank {
+    pub path: String,
+    /// Line count; a lower bound (`truncated: true`) for files past the read cap.
+    pub lines: usize,
+    pub bytes: u64,
+    pub truncated: bool,
+}
+
 // ---------------------------------------------------------------------------
 // Runner helpers
 // ---------------------------------------------------------------------------
@@ -182,8 +192,40 @@ impl GitManager {
         git(cwd, &args).await
     }
 
-    pub async fn commit_files(cwd: &str, hash: &str) -> Result<Vec<String>> {
-        git_lines(cwd, &["diff-tree", "--no-commit-id", "-r", "--name-only", hash]).await
+    pub async fn commit_files(cwd: &str, hash: &str) -> Result<Vec<GitFileStatus>> {
+        // NUL-separated name-status, matching the Node GitManager. The UI needs
+        // the change letter (A/M/D/R/C) per file, not just paths — without it
+        // `file.index` is undefined client-side and the commit file list crashes.
+        let raw = git(cwd, &["show", "--name-status", "--format=", "-z", hash]).await?;
+        let tokens: Vec<&str> = raw.split('\0').filter(|t| !t.is_empty()).collect();
+
+        let mut files = Vec::new();
+        let mut i = 0;
+        while i < tokens.len() {
+            let letter = tokens[i].chars().next().unwrap_or(' ').to_ascii_uppercase();
+            if letter == 'R' || letter == 'C' {
+                // rename/copy: STATUS \0 OLD \0 NEW
+                if let Some(new_path) = tokens.get(i + 2) {
+                    files.push(GitFileStatus {
+                        path: new_path.to_string(),
+                        index: letter.to_string(),
+                        working_tree: " ".to_string(),
+                    });
+                }
+                i += 3;
+            } else {
+                // regular: STATUS \0 PATH
+                if let Some(path) = tokens.get(i + 1) {
+                    files.push(GitFileStatus {
+                        path: path.to_string(),
+                        index: letter.to_string(),
+                        working_tree: " ".to_string(),
+                    });
+                }
+                i += 2;
+            }
+        }
+        Ok(files)
     }
 
     pub async fn stage(cwd: &str, paths: &[String]) -> Result<()> {
@@ -284,6 +326,47 @@ impl GitManager {
         let out = Command::new("git").args(["pull", "--ff-only"]).current_dir(cwd).output().await?;
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
+
+    /// Rank tracked files by line count (then bytes), skipping binaries. Mirrors
+    /// the Node `rankFilesBySize`: files past `MAX_BYTES` are measured from a
+    /// capped read and flagged `truncated`.
+    pub async fn rank_files_by_size(cwd: &str) -> Result<Vec<FileSizeRank>> {
+        const MAX_BYTES: u64 = 2_000_000;
+        let files = Self::list_tracked_files(cwd).await?;
+        let mut ranks: Vec<FileSizeRank> = Vec::new();
+
+        for path in files {
+            let full = Path::new(cwd).join(&path);
+            let Ok(meta) = tokio::fs::metadata(&full).await else { continue };
+            if !meta.is_file() { continue; }
+
+            let bytes = meta.len();
+            let truncated = bytes > MAX_BYTES;
+            let read_len = if truncated { MAX_BYTES as usize } else { bytes as usize };
+
+            let Ok(buf) = read_capped(&full, read_len).await else { continue };
+            if buf.contains(&0) { continue; } // binary
+
+            let mut lines = buf.iter().filter(|&&b| b == b'\n').count();
+            // Count a final line that has no trailing newline.
+            if !buf.is_empty() && *buf.last().unwrap() != b'\n' { lines += 1; }
+
+            ranks.push(FileSizeRank { path, lines, bytes, truncated });
+        }
+
+        ranks.sort_by(|a, b| b.lines.cmp(&a.lines).then(b.bytes.cmp(&a.bytes)));
+        Ok(ranks)
+    }
+}
+
+/// Read at most `len` bytes from the start of a file (reads fully up to the cap;
+/// a single `read` can return short).
+async fn read_capped(path: &Path, len: usize) -> Result<Vec<u8>> {
+    use tokio::io::AsyncReadExt;
+    let file = tokio::fs::File::open(path).await?;
+    let mut buf = Vec::new();
+    file.take(len as u64).read_to_end(&mut buf).await?;
+    Ok(buf)
 }
 
 async fn detect_default_branch(cwd: &str) -> String {

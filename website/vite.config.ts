@@ -21,6 +21,7 @@ const browserPackageAliases = [
   "@xterm/addon-fit",
   "@xterm/xterm",
   "@radix-ui/react-slot",
+  "@tauri-apps/api",
   "class-variance-authority",
   "clsx",
   "codemirror",

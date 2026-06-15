@@ -236,7 +236,25 @@ export interface RustGitStatus {
 
 export async function tauri_getDashboard() {
   const raw = await tauriInvoke<RustDashboardData>("get_dashboard");
-  return adaptDashboard(raw);
+  const dash = adaptDashboard(raw);
+
+  // The Rust `get_dashboard` payload carries config + service runtime only — it
+  // has no git block. Fill it here from the selected repo via the bridged git
+  // commands; otherwise the desktop git view is permanently stuck on its empty
+  // state and never reacts to switching repositories.
+  const repos = (raw.config.gitRepositories ?? []) as Array<{ name: string; path: string }>;
+  const selectedName = raw.config.selectedGitRepository;
+  const selected = selectedName ? repos.find((r) => r.name === selectedName) ?? null : null;
+  if (!selected) return dash;
+
+  const [status, branches] = await Promise.all([
+    tauri_gitStatus().catch(() => null),
+    tauri_gitBranches().catch(() => []),
+  ]);
+  return {
+    ...dash,
+    git: { cwd: selected.path, selectedRepository: selected, status, branches },
+  };
 }
 
 export async function tauri_startService(name: string) {
@@ -344,6 +362,16 @@ export async function tauri_gitPullDefault(repo?: string) {
 
 export async function tauri_gitListFiles(repo?: string) {
   return tauriInvoke<string[]>("git_list_files", { repo: repo ?? null });
+}
+
+export async function tauri_gitFileSizes(repo?: string) {
+  return tauriInvoke<Array<{ path: string; lines: number; bytes: number; truncated: boolean }>>(
+    "git_file_sizes", { repo: repo ?? null },
+  );
+}
+
+export async function tauri_selectGitRepository(name: string) {
+  await tauriInvoke("select_git_repository", { name });
 }
 
 export async function tauri_gitReadFile(path: string, repo?: string) {

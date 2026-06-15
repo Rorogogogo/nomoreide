@@ -9,6 +9,59 @@ use tokio::time::{sleep, Duration};
 use super::config::ServiceDef;
 use super::log_store::{LogEntry, LogStore};
 
+/// A macOS app launched from Finder/Dock inherits only a minimal PATH
+/// (`/usr/bin:/bin:/usr/sbin:/sbin`), so Homebrew/nvm/pnpm tools like `npm` and
+/// `node` aren't found and services silently fail to spawn — even though they
+/// work when the app is started from a terminal (which has the full shell PATH).
+/// Resolve a usable PATH once: the user's login-shell PATH plus common dev bin
+/// dirs as a safety net. Cached for the process lifetime.
+fn service_path() -> String {
+    use std::sync::OnceLock;
+    static CACHED: OnceLock<String> = OnceLock::new();
+    CACHED
+        .get_or_init(|| {
+            let mut dirs: Vec<String> = Vec::new();
+
+            // 1. The user's login-shell PATH — the faithful source of truth.
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+            if let Ok(out) = std::process::Command::new(&shell)
+                .args(["-lc", "printf %s \"$PATH\""])
+                .output()
+            {
+                if out.status.success() {
+                    let p = String::from_utf8_lossy(&out.stdout);
+                    dirs.extend(p.trim().split(':').filter(|s| !s.is_empty()).map(String::from));
+                }
+            }
+
+            // 2. Common dev locations as a safety net (covers Homebrew/cargo/pnpm).
+            if let Ok(home) = std::env::var("HOME") {
+                dirs.push(format!("{home}/.local/bin"));
+                dirs.push(format!("{home}/.cargo/bin"));
+                dirs.push(format!("{home}/Library/pnpm"));
+            }
+            for d in [
+                "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin",
+                "/usr/bin", "/bin", "/usr/sbin", "/sbin",
+            ] {
+                dirs.push(d.to_string());
+            }
+
+            // 3. Whatever PATH we already have, last.
+            if let Ok(p) = std::env::var("PATH") {
+                dirs.extend(p.split(':').filter(|s| !s.is_empty()).map(String::from));
+            }
+
+            // Dedup, preserving first-seen order.
+            let mut seen = std::collections::HashSet::new();
+            dirs.into_iter()
+                .filter(|d| seen.insert(d.clone()))
+                .collect::<Vec<_>>()
+                .join(":")
+        })
+        .clone()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum ServiceState {
@@ -95,6 +148,7 @@ impl ProcessManager {
         let mut cmd = Command::new("sh");
         cmd.arg("-c").arg(command)
             .current_dir(cwd)
+            .env("PATH", service_path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(false);
@@ -110,10 +164,15 @@ impl ProcessManager {
         let stderr = child.stderr.take();
 
         {
+            // Mark Running immediately on a successful spawn, matching the Node
+            // ProcessManager. The previous "Starting until first stdout line"
+            // scheme left quiet services (no early output) stuck on Starting
+            // forever, so the UI never showed them as running. URL detection
+            // below still upgrades the status with a detected URL when one prints.
             let mut procs = self.processes.lock().unwrap();
             procs.insert(def.name.clone(), ManagedProcess {
                 child,
-                state: ServiceState::Starting,
+                state: ServiceState::Running,
                 exit_code: None,
                 url: None,
             });
@@ -128,19 +187,11 @@ impl ProcessManager {
             tokio::spawn(async move {
                 let mut lines = BufReader::new(out).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
-                    // Detect readiness URL from common patterns
+                    // Detect readiness URL from common patterns and attach it.
                     if let Some(url) = detect_url(&line, port) {
                         let mut p = procs.lock().unwrap();
                         if let Some(proc) = p.get_mut(&name) {
-                            proc.state = ServiceState::Running;
                             proc.url = Some(url);
-                        }
-                    } else {
-                        let mut p = procs.lock().unwrap();
-                        if let Some(proc) = p.get_mut(&name) {
-                            if proc.state == ServiceState::Starting {
-                                proc.state = ServiceState::Running;
-                            }
                         }
                     }
                     store.append(LogEntry::new(&name, "stdout", &line));
@@ -171,6 +222,7 @@ impl ProcessManager {
         let child = Command::new("docker-compose")
             .args(&args)
             .current_dir(cwd)
+            .env("PATH", service_path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
@@ -193,6 +245,7 @@ impl ProcessManager {
         let remote_cmd = format!("cd {cwd} && {command}");
         let child = Command::new("ssh")
             .args([host, &remote_cmd])
+            .env("PATH", service_path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;

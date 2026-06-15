@@ -5,7 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
-import { deleteGitRepository, postForm, type DashboardData } from "@/lib/api";
+import {
+  deleteGitRepository,
+  registerGitRepository,
+  selectGitRepository,
+  type DashboardData,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { FolderExplorer } from "./folder-explorer";
 import { pathName } from "./path-utils";
@@ -56,7 +61,7 @@ export function RepositorySelector({
 
   async function selectRepository(name: string) {
     try {
-      await postForm("/api/git/select", { name });
+      await selectGitRepository(name);
       setOpen(false);
       await onRefresh();
       showSuccessToast(`Switched to ${name}.`);
@@ -75,7 +80,7 @@ export function RepositorySelector({
     }
     try {
       const repoName = pathName(trimmed);
-      await postForm("/api/git/repositories", { name: repoName, path: trimmed });
+      await registerGitRepository(repoName, trimmed);
       setAddError(null);
       await onRefresh();
       showSuccessToast(`Added Git project ${repoName}.`);
