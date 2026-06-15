@@ -1,4 +1,5 @@
 import { requestJson } from "./client.js";
+import { isTauri } from "./tauri-bridge.js";
 
 export type OnboardConfidence = "high" | "medium" | "low";
 
@@ -58,6 +59,7 @@ const JSON_HEADERS = { "content-type": "application/json" };
 
 /** Clone + scan a repo URL and return its profile plus heuristic proposals. */
 export async function scanRepo(url: string): Promise<OnboardScanResult> {
+  if (isTauri()) throw new Error("Repo scanning is not available in desktop mode");
   const body = await requestJson<{
     profile: OnboardProfile;
     proposals: OnboardProposal[];
@@ -76,6 +78,7 @@ export async function registerOnboarded(
   start: boolean,
   database?: OnboardDatabaseProposal,
 ): Promise<void> {
+  if (isTauri()) throw new Error("Repo onboarding is not available in desktop mode");
   const payload = database
     ? { name: database.name, engine: database.engine, url: database.url }
     : undefined;
@@ -100,6 +103,10 @@ export async function streamInstall(
   params: { clonePath: string; command: string },
   handlers: InstallStreamHandlers,
 ): Promise<void> {
+  if (isTauri()) {
+    handlers.onError("Install streaming is not available in desktop mode");
+    return;
+  }
   const response = await fetch("/api/onboard/install/stream", {
     method: "POST",
     headers: JSON_HEADERS,

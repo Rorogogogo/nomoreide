@@ -1,4 +1,5 @@
 import { requestJson } from "./client.js";
+import { isTauri } from "./tauri-bridge.js";
 
 /** Mirror of the server's AgentStreamEvent (core/agent-runtime.ts). */
 export type AgentStreamEvent =
@@ -24,6 +25,13 @@ export async function getAgentChatStatus(): Promise<{
   approvals: boolean;
   provider: AgentChatProviderInfo;
 }> {
+  if (isTauri()) {
+    return {
+      configured: false,
+      approvals: false,
+      provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
+    };
+  }
   const res = await requestJson<{
     ok: true;
     configured: boolean;
@@ -39,6 +47,7 @@ export async function approveAgentTool(
   requestId: string,
   decision: "allow" | "deny",
 ): Promise<void> {
+  if (isTauri()) return;
   await requestJson("/api/agent/chat/approve", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -58,6 +67,11 @@ export async function streamAgentChat(
   signal?: AbortSignal,
   autoApprove?: boolean,
 ): Promise<void> {
+  if (isTauri()) {
+    onEvent({ type: "error", message: "Agent chat is not available in desktop mode" });
+    onEvent({ type: "done", stopReason: "error" });
+    return;
+  }
   const response = await fetch("/api/agent/chat", {
     method: "POST",
     headers: { "content-type": "application/json" },
