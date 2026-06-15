@@ -1,4 +1,17 @@
 import { requestJson } from "./client.js";
+import {
+  isTauri,
+  tauri_getGithubTokenStatus,
+  tauri_setGithubToken,
+  tauri_removeGithubToken,
+  tauri_getGithubRepo,
+  tauri_listPullRequests,
+  tauri_listIssues,
+  tauri_getPullRequest,
+  tauri_createPullRequest,
+  tauri_githubOAuthStart,
+  tauri_githubOAuthPoll,
+} from "./tauri-bridge.js";
 
 export interface GitHubPR {
   number: number;
@@ -182,6 +195,14 @@ export interface GitHubTokenInfo {
 }
 
 export async function getGitHubTokenInfo(): Promise<GitHubTokenInfo> {
+  if (isTauri()) {
+    const raw = await tauri_getGithubTokenStatus() as { configured: boolean; host?: string };
+    return {
+      configured: raw.configured,
+      deviceFlowAvailable: true,
+      status: raw.configured ? "connected" : "not_configured",
+    };
+  }
   return requestJson<{ ok: true } & GitHubTokenInfo>("/api/github/token");
 }
 
@@ -195,6 +216,10 @@ export interface GitHubDeviceFlowStart {
 }
 
 export async function startGitHubDeviceFlow(): Promise<GitHubDeviceFlowStart> {
+  if (isTauri()) {
+    const res = await tauri_githubOAuthStart("Iv23liCxW0Mv0KJP1Svr"); // public device flow client id
+    return res as GitHubDeviceFlowStart;
+  }
   const res = await requestJson<{ ok: true } & GitHubDeviceFlowStart>(
     "/api/github/oauth/start",
     { method: "POST" },
@@ -205,6 +230,17 @@ export async function startGitHubDeviceFlow(): Promise<GitHubDeviceFlowStart> {
 export async function pollGitHubDeviceFlow(
   device_code: string,
 ): Promise<{ done: boolean; slowDown?: boolean }> {
+  if (isTauri()) {
+    const res = await tauri_githubOAuthPoll("Iv23liCxW0Mv0KJP1Svr", device_code) as {
+      access_token?: string; token_type?: string; error?: string;
+    };
+    if (res.access_token) {
+      // Store the token via the Rust backend
+      await tauri_setGithubToken("github.com", res.access_token);
+      return { done: true };
+    }
+    return { done: false, slowDown: res.error === "slow_down" };
+  }
   const res = await requestJson<{ ok: true; done: boolean; slowDown?: boolean }>(
     "/api/github/oauth/poll",
     {
@@ -217,6 +253,7 @@ export async function pollGitHubDeviceFlow(
 }
 
 export async function setGitHubToken(host: string, token: string): Promise<void> {
+  if (isTauri()) { await tauri_setGithubToken(host, token); return; }
   const body = new URLSearchParams({ host, token });
   await requestJson("/api/github/token", {
     method: "POST",
@@ -226,6 +263,7 @@ export async function setGitHubToken(host: string, token: string): Promise<void>
 }
 
 export async function removeGitHubToken(host: string): Promise<void> {
+  if (isTauri()) { await tauri_removeGithubToken(host); return; }
   await requestJson(`/api/github/token/${encodeURIComponent(host)}`, { method: "DELETE" });
 }
 
@@ -244,6 +282,11 @@ export async function listGitHubBranches(): Promise<GitHubBranchesPayload> {
 // --- Pull Requests ---
 
 export async function listGitHubPRs(state = "open", page = 1): Promise<GitHubPR[]> {
+  if (isTauri()) {
+    const [owner, repo] = await tauri_getGithubRepo();
+    const prs = await tauri_listPullRequests(owner, repo, state);
+    return (prs as GitHubPR[]).slice((page - 1) * 50, page * 50);
+  }
   const res = await requestJson<{ ok: true; prs: GitHubPR[] }>(
     `/api/github/prs?state=${state}&page=${page}`,
   );
@@ -251,6 +294,10 @@ export async function listGitHubPRs(state = "open", page = 1): Promise<GitHubPR[
 }
 
 export async function getGitHubPR(number: number): Promise<GitHubPR> {
+  if (isTauri()) {
+    const [owner, repo] = await tauri_getGithubRepo();
+    return tauri_getPullRequest(owner, repo, number) as Promise<GitHubPR>;
+  }
   const res = await requestJson<{ ok: true; pr: GitHubPR }>(`/api/github/prs/${number}`);
   return res.pr;
 }
@@ -283,6 +330,17 @@ export async function createGitHubPR(opts: {
   base: string;
   draft?: boolean;
 }): Promise<GitHubPR> {
+  if (isTauri()) {
+    const [owner, repo] = await tauri_getGithubRepo();
+    return tauri_createPullRequest({
+      owner, repo,
+      title: opts.title,
+      body: opts.body ?? "",
+      head: opts.head,
+      base: opts.base,
+      draft: opts.draft,
+    }) as Promise<GitHubPR>;
+  }
   const res = await requestJson<{ ok: true; pr: GitHubPR }>("/api/github/prs", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -316,6 +374,11 @@ export async function mergeGitHubPR(
 // --- Issues ---
 
 export async function listGitHubIssues(state = "open", page = 1): Promise<GitHubIssue[]> {
+  if (isTauri()) {
+    const [owner, repo] = await tauri_getGithubRepo();
+    const issues = await tauri_listIssues(owner, repo, state);
+    return (issues as GitHubIssue[]).slice((page - 1) * 50, page * 50);
+  }
   const res = await requestJson<{ ok: true; issues: GitHubIssue[] }>(
     `/api/github/issues?state=${state}&page=${page}`,
   );

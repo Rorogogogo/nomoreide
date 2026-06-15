@@ -118,7 +118,74 @@ export interface RustGitCommit {
   parents: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Git-graph lane layout
+// ---------------------------------------------------------------------------
+// Assigns lane numbers following the same topology git uses for --graph output.
+// `openSlots[i]` is the hash of the commit that will next occupy lane i.
+
+function computeLanes(commits: RustGitCommit[]): Array<{
+  lane: number;
+  laneCount: number;
+  edges: Array<{ fromLane: number; toLane: number; parentHash: string; kind: string }>;
+  throughLanes: number[];
+}> {
+  const openSlots: (string | null)[] = [];
+
+  return commits.map((commit) => {
+    // Find this commit's lane (claimed by a prior iteration's parent assignment).
+    let lane = openSlots.indexOf(commit.hash);
+    if (lane === -1) {
+      lane = openSlots.indexOf(null);
+      if (lane === -1) { lane = openSlots.length; openSlots.push(null); }
+    }
+    openSlots[lane] = null; // release slot
+
+    const edges: Array<{ fromLane: number; toLane: number; parentHash: string; kind: string }> = [];
+
+    for (let pi = 0; pi < commit.parents.length; pi++) {
+      const parentHash = commit.parents[pi];
+      const existingSlot = openSlots.indexOf(parentHash);
+
+      if (existingSlot !== -1) {
+        // Parent already claimed by another path — draw converging edge.
+        const kind = existingSlot === lane ? "straight" : "merge";
+        edges.push({ fromLane: lane, toLane: existingSlot, parentHash, kind });
+        continue;
+      }
+
+      // Claim a slot for this parent.
+      let parentSlot: number;
+      if (pi === 0) {
+        // First parent keeps this lane (straight line).
+        parentSlot = lane;
+        openSlots[lane] = parentHash;
+        edges.push({ fromLane: lane, toLane: lane, parentHash, kind: "straight" });
+      } else {
+        // Additional parents branch off to a new lane.
+        parentSlot = openSlots.indexOf(null);
+        if (parentSlot === -1) { parentSlot = openSlots.length; openSlots.push(parentHash); }
+        else { openSlots[parentSlot] = parentHash; }
+        edges.push({ fromLane: lane, toLane: parentSlot, parentHash, kind: "branch" });
+      }
+    }
+
+    // Lanes with active commits that pass through (or alongside) this row.
+    const throughLanes = openSlots
+      .map((h, i) => (h !== null && i !== lane ? i : -1))
+      .filter((i) => i !== -1);
+
+    const laneCount = openSlots.reduce(
+      (max, h, i) => (h !== null ? Math.max(max, i + 1) : max),
+      lane + 1,
+    );
+
+    return { lane, laneCount, edges, throughLanes };
+  });
+}
+
 export function adaptGitGraph(commits: RustGitCommit[]) {
+  const lanes = computeLanes(commits);
   return commits.map((c, i) => ({
     hash: c.hash,
     parents: c.parents,
@@ -132,12 +199,10 @@ export function adaptGitGraph(commits: RustGitCommit[]) {
           : r.startsWith("origin/") || r.includes("/") ? "remote" as const
           : "branch" as const,
     })),
-    // Lane layout is a complex graph algorithm — for now assign monotonically.
-    // A proper lane-layout pass can be added as a follow-up.
-    lane: 0,
-    laneCount: 1,
-    edges: [],
-    throughLanes: [],
+    lane: lanes[i].lane,
+    laneCount: lanes[i].laneCount,
+    edges: lanes[i].edges,
+    throughLanes: lanes[i].throughLanes,
   }));
 }
 
@@ -303,10 +368,50 @@ export async function tauri_setGitBoard(names: string[]) {
   return names;
 }
 
+/** Multi-repo overview: calls git_status for each registered repo in parallel. */
+export async function tauri_gitOverview() {
+  const raw = await tauriInvoke<RustDashboardData>("get_dashboard");
+  const repos = raw.config.gitRepositories as Array<{ name: string; path: string }>;
+  const boardNames = raw.config.gitBoardRepositories;
+
+  const settled = await Promise.allSettled(
+    repos.map(async (r) => {
+      const status = await tauriInvoke<RustGitStatus>("git_status", { repo: r.name });
+      return { name: r.name, path: r.path, branch: status.branch,
+               ahead: status.ahead, behind: status.behind, files: status.files };
+    }),
+  );
+
+  const resultRepos = settled.map((result, i) =>
+    result.status === "fulfilled"
+      ? result.value
+      : { name: repos[i].name, path: repos[i].path, branch: "", ahead: 0,
+          behind: 0, files: [], error: String((result as PromiseRejectedResult).reason) },
+  );
+
+  return {
+    repos: resultRepos,
+    board: boardNames ?? repos.map((r) => r.name),
+  };
+}
+
 // ---- GitHub ----
 
 export async function tauri_getGithubTokenStatus() {
   return tauriInvoke<unknown>("get_github_token_status");
+}
+
+export async function tauri_setGithubToken(host: string, token: string) {
+  await tauriInvoke("set_github_token", { host, token });
+}
+
+export async function tauri_removeGithubToken(host: string) {
+  await tauriInvoke("remove_github_token", { host });
+}
+
+/** Returns [owner, repo] from the selected repository's origin remote. */
+export async function tauri_getGithubRepo(repo?: string): Promise<[string, string]> {
+  return tauriInvoke<[string, string]>("get_github_repo", { repo: repo ?? null });
 }
 
 export async function tauri_listPullRequests(owner: string, repo: string, state?: string) {
@@ -315,6 +420,25 @@ export async function tauri_listPullRequests(owner: string, repo: string, state?
 
 export async function tauri_listIssues(owner: string, repo: string, state?: string) {
   return tauriInvoke<unknown>("list_issues", { owner, repo, stateFilter: state ?? "open" });
+}
+
+export async function tauri_getPullRequest(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("get_pull_request", { owner, repo, number });
+}
+
+export async function tauri_createPullRequest(opts: {
+  owner: string; repo: string; title: string; body: string;
+  head: string; base: string; draft?: boolean;
+}) {
+  return tauriInvoke<unknown>("create_pull_request", opts);
+}
+
+export async function tauri_githubOAuthStart(clientId: string) {
+  return tauriInvoke<unknown>("github_oauth_start", { clientId });
+}
+
+export async function tauri_githubOAuthPoll(clientId: string, deviceCode: string) {
+  return tauriInvoke<unknown>("github_oauth_poll", { clientId, deviceCode });
 }
 
 // ---- Database ----
@@ -333,6 +457,35 @@ export async function tauri_executeDatabase(name: string, sql: string) {
 
 export async function tauri_listTables(name: string) {
   return tauriInvoke<string[]>("list_tables", { name });
+}
+
+export async function tauri_registerDatabase(db: {
+  name: string; engine: string; url: string;
+}) {
+  await tauriInvoke("register_database", { db });
+}
+
+export async function tauri_removeDatabase(name: string) {
+  await tauriInvoke("remove_database", { name });
+}
+
+export async function tauri_setDatabaseWriteAccess(name: string, unlocked: boolean) {
+  await tauriInvoke("set_database_write_access", { name, unlocked });
+}
+
+// ---- Log Sources ----
+
+export async function tauri_listLogSources() {
+  const config = await tauriInvoke<{ logSources: unknown[] }>("get_config");
+  return config.logSources;
+}
+
+export async function tauri_registerLogSource(source: Record<string, unknown>) {
+  await tauriInvoke("register_log_source", { source });
+}
+
+export async function tauri_removeLogSource(name: string) {
+  await tauriInvoke("remove_log_source", { name });
 }
 
 // ---- Snapshots ----

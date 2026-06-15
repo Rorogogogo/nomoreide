@@ -1,4 +1,5 @@
 use tauri::State;
+use tokio::process::Command;
 use crate::AppState;
 use crate::core::git_manager::{GitManager, GitStatus, GitCommit, GitBranch};
 
@@ -196,4 +197,47 @@ pub async fn git_write_file(
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::write_file(&cwd, &path, &content).await.map_err(|e| e.to_string())
+}
+
+/// Parse `owner` and `repo` from the git remote URL of the selected repository.
+/// Handles HTTPS (`https://github.com/owner/repo.git`) and SSH (`git@github.com:owner/repo.git`).
+#[tauri::command]
+pub async fn get_github_repo(
+    state: State<'_, AppState>,
+    repo: Option<String>,
+) -> Result<(String, String), String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    let out = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(&cwd)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    parse_github_owner_repo(&raw)
+        .ok_or_else(|| format!("Cannot parse GitHub owner/repo from remote URL: {raw}"))
+}
+
+fn parse_github_owner_repo(url: &str) -> Option<(String, String)> {
+    let trimmed = url.trim().trim_end_matches(".git");
+    // SSH: git@github.com:owner/repo
+    if let Some(rest) = trimmed.strip_prefix("git@github.com:") {
+        let mut parts = rest.splitn(2, '/');
+        return Some((parts.next()?.to_string(), parts.next()?.to_string()));
+    }
+    // HTTPS: https://github.com/owner/repo  (also handles enterprise hosts)
+    if let Some(after_host) = trimmed
+        .strip_prefix("https://")
+        .or_else(|| trimmed.strip_prefix("http://"))
+    {
+        // after_host = "github.com/owner/repo" or "ghe.company.com/owner/repo"
+        let mut segments = after_host.splitn(3, '/');
+        segments.next(); // host
+        let owner = segments.next()?.to_string();
+        let repo  = segments.next()?.to_string();
+        if !owner.is_empty() && !repo.is_empty() {
+            return Some((owner, repo));
+        }
+    }
+    None
 }

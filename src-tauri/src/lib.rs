@@ -111,6 +111,8 @@ pub fn run() {
             commands::config::set_database_write_access,
             commands::config::set_github_token,
             commands::config::remove_github_token,
+            commands::config::register_log_source,
+            commands::config::remove_log_source,
             // dashboard
             commands::dashboard::get_dashboard,
             // services
@@ -138,6 +140,7 @@ pub fn run() {
             commands::git::git_list_files,
             commands::git::git_read_file,
             commands::git::git_write_file,
+            commands::git::get_github_repo,
             // logs
             commands::logs::get_logs,
             // terminal

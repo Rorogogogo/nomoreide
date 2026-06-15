@@ -1,6 +1,6 @@
 use tauri::State;
 use crate::AppState;
-use crate::core::config::{Config, ServiceDef, BundleDef, GitRepoDef, DatabaseDef};
+use crate::core::config::{Config, ServiceDef, BundleDef, GitRepoDef, DatabaseDef, LogSourceDef};
 
 #[tauri::command]
 pub async fn get_config(state: State<'_, AppState>) -> Result<Config, String> {
@@ -103,4 +103,20 @@ pub async fn remove_github_token(
     host: String,
 ) -> Result<Config, String> {
     state.config_store.remove_github_token(&host).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn register_log_source(
+    state: State<'_, AppState>,
+    source: LogSourceDef,
+) -> Result<Config, String> {
+    state.config_store.register_log_source(source).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn remove_log_source(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<Config, String> {
+    state.config_store.remove_log_source(&name).await.map_err(|e| e.to_string())
 }

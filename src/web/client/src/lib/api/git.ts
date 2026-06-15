@@ -18,6 +18,7 @@ import {
   tauri_deleteGitRepository,
   tauri_setGitBoard,
   tauri_gitFetch,
+  tauri_gitOverview,
 } from "./tauri-bridge.js";
 
 export interface GitFileStatus {
@@ -170,9 +171,7 @@ export interface GitOverview {
 /** Changed files across every registered repository plus the board ordering. */
 export async function getGitOverview(): Promise<GitOverview> {
   if (isTauri()) {
-    // In Tauri mode, build a lightweight overview from the config + per-repo status.
-    // Full multi-repo aggregation is a follow-up; return an empty board for now.
-    return { repos: [], board: [] };
+    return tauri_gitOverview() as Promise<GitOverview>;
   }
   const response = await requestJson<{ ok: true } & Partial<GitOverview>>(
     "/api/git/overview",
