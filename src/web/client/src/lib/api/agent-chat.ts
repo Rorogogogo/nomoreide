@@ -1,5 +1,13 @@
 import { requestJson } from "./client.js";
-import { isTauri } from "./tauri-bridge.js";
+import {
+  isTauri,
+  tauriListen,
+  tauri_getAgentChatStatus,
+  tauri_startAgentChat,
+} from "./tauri-bridge.js";
+
+// Tracks which CLI is available so streamAgentChat can pass the right provider.
+let _tauriProvider = "claude";
 
 /** Mirror of the server's AgentStreamEvent (core/agent-runtime.ts). */
 export type AgentStreamEvent =
@@ -26,11 +34,10 @@ export async function getAgentChatStatus(): Promise<{
   provider: AgentChatProviderInfo;
 }> {
   if (isTauri()) {
-    return {
-      configured: false,
-      approvals: false,
-      provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
-    };
+    const raw = await tauri_getAgentChatStatus();
+    const status = raw as { configured: boolean; approvals: boolean; provider: AgentChatProviderInfo };
+    _tauriProvider = status.provider?.id ?? "claude";
+    return status;
   }
   const res = await requestJson<{
     ok: true;
@@ -68,9 +75,45 @@ export async function streamAgentChat(
   autoApprove?: boolean,
 ): Promise<void> {
   if (isTauri()) {
-    onEvent({ type: "error", message: "Agent chat is not available in desktop mode" });
-    onEvent({ type: "done", stopReason: "error" });
-    return;
+    let unlisten: (() => void) | undefined;
+    let done = false;
+    return new Promise<void>((resolve) => {
+      (async () => {
+        unlisten = await tauriListen("agent-chat-event", (payload) => {
+          if (done) return;
+          const event = payload as AgentStreamEvent;
+          onEvent(event);
+          if (event.type === "done" || event.type === "error") {
+            done = true;
+            unlisten?.();
+            resolve();
+          }
+        });
+
+        if (signal?.aborted) {
+          done = true; unlisten?.(); resolve(); return;
+        }
+        signal?.addEventListener("abort", () => {
+          if (!done) { done = true; unlisten?.(); resolve(); }
+        });
+
+        try {
+          await tauri_startAgentChat(message, resumeSessionId, _tauriProvider);
+        } catch (e) {
+          done = true; unlisten?.();
+          onEvent({ type: "error", message: String(e) });
+          onEvent({ type: "done", stopReason: "error" });
+          resolve();
+        }
+      })().catch((e) => {
+        if (!done) {
+          done = true; unlisten?.();
+          onEvent({ type: "error", message: String(e) });
+          onEvent({ type: "done", stopReason: "error" });
+          resolve();
+        }
+      });
+    });
   }
   const response = await fetch("/api/agent/chat", {
     method: "POST",

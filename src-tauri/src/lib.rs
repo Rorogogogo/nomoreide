@@ -97,6 +97,12 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // agent chat
+            commands::agent_chat::get_agent_chat_status,
+            commands::agent_chat::start_agent_chat,
+            // onboard
+            commands::onboard::scan_repo_url,
+            commands::onboard::run_install_command,
             // config
             commands::config::get_config,
             commands::config::register_service,

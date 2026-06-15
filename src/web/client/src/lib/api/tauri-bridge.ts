@@ -594,6 +594,30 @@ export async function tauri_deleteWorkflow(id: string) {
   return tauriInvoke<unknown[]>("delete_workflow", { id });
 }
 
+// ---- Agent Chat ----
+
+export async function tauri_getAgentChatStatus() {
+  return tauriInvoke<{ configured: boolean; approvals: boolean; provider: unknown }>("get_agent_chat_status");
+}
+
+export async function tauri_startAgentChat(message: string, resumeSessionId?: string, provider?: string) {
+  await tauriInvoke("start_agent_chat", {
+    message,
+    resumeSessionId: resumeSessionId ?? null,
+    provider: provider ?? null,
+  });
+}
+
+// ---- Onboard ----
+
+export async function tauri_scanRepoUrl(url: string) {
+  return tauriInvoke<unknown>("scan_repo_url", { url });
+}
+
+export async function tauri_runInstallCommand(cwd: string, command: string) {
+  await tauriInvoke("run_install_command", { cwd, command });
+}
+
 // ---- Terminal ----
 
 export async function tauri_listTerminalSessions() {

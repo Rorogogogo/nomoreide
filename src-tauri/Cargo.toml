@@ -27,6 +27,7 @@ reqwest = { version = "0.12", features = ["json", "stream"] }
 regex = "1"
 portable-pty = "0.8"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "sqlite", "json"] }
+urlencoding = "2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

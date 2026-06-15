@@ -1,5 +1,14 @@
 import { requestJson } from "./client.js";
-import { isTauri } from "./tauri-bridge.js";
+import {
+  isTauri,
+  tauriListen,
+  tauri_scanRepoUrl,
+  tauri_runInstallCommand,
+  tauri_registerService,
+  tauri_registerGitRepository,
+  tauri_registerDatabase,
+  tauri_startService,
+} from "./tauri-bridge.js";
 
 export type OnboardConfidence = "high" | "medium" | "low";
 
@@ -59,7 +68,7 @@ const JSON_HEADERS = { "content-type": "application/json" };
 
 /** Clone + scan a repo URL and return its profile plus heuristic proposals. */
 export async function scanRepo(url: string): Promise<OnboardScanResult> {
-  if (isTauri()) throw new Error("Repo scanning is not available in desktop mode");
+  if (isTauri()) return tauri_scanRepoUrl(url) as Promise<OnboardScanResult>;
   const body = await requestJson<{
     profile: OnboardProfile;
     proposals: OnboardProposal[];
@@ -78,7 +87,23 @@ export async function registerOnboarded(
   start: boolean,
   database?: OnboardDatabaseProposal,
 ): Promise<void> {
-  if (isTauri()) throw new Error("Repo onboarding is not available in desktop mode");
+  if (isTauri()) {
+    await tauri_registerGitRepository({ name: proposal.name, path: proposal.cwd });
+    await tauri_registerService({
+      name: proposal.name,
+      kind: proposal.kind,
+      command: proposal.command ?? null,
+      cwd: proposal.cwd,
+      port: proposal.port ?? null,
+      composeFile: proposal.composeFile ?? null,
+      composeService: proposal.composeService ?? null,
+    });
+    if (database) {
+      await tauri_registerDatabase({ name: database.name, engine: database.engine, url: database.url });
+    }
+    if (start) await tauri_startService(proposal.name);
+    return;
+  }
   const payload = database
     ? { name: database.name, engine: database.engine, url: database.url }
     : undefined;
@@ -104,7 +129,31 @@ export async function streamInstall(
   handlers: InstallStreamHandlers,
 ): Promise<void> {
   if (isTauri()) {
-    handlers.onError("Install streaming is not available in desktop mode");
+    let unlisten: (() => void) | undefined;
+    unlisten = await tauriListen("install-output", (payload) => {
+      const evt = payload as {
+        type: string;
+        stream?: "stdout" | "stderr";
+        text?: string;
+        exitCode?: number | null;
+        message?: string;
+      };
+      if (evt.type === "line") {
+        handlers.onLine({ stream: evt.stream ?? "stdout", text: evt.text ?? "" });
+      } else if (evt.type === "done") {
+        unlisten?.();
+        handlers.onDone(evt.exitCode ?? null);
+      } else if (evt.type === "error") {
+        unlisten?.();
+        handlers.onError(evt.message ?? "Install failed");
+      }
+    });
+    try {
+      await tauri_runInstallCommand(params.clonePath, params.command);
+    } catch (e) {
+      unlisten?.();
+      handlers.onError(String(e));
+    }
     return;
   }
   const response = await fetch("/api/onboard/install/stream", {
