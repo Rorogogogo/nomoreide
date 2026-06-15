@@ -1,61 +1,22 @@
-import { requestJson } from "./client.js";
-import {
-  isTauri,
-  tauri_listTerminalSessions,
-  tauri_createTerminalSession,
-  tauri_closeTerminalSession,
+/**
+ * Terminal API entry point. Picks the backend implementation once at module load
+ * (`isTauri()` → Rust core, else Node HTTP) for session lifecycle, and re-exports
+ * the bridge helpers the terminal component uses for live I/O — never a
+ * per-function `if (isTauri())` branch.
+ */
+import { isTauri } from "./tauri-bridge.js";
+import type { TerminalApi } from "./terminal-api.js";
+import { httpTerminalApi } from "./terminal-http.js";
+import { tauriTerminalApi } from "./terminal-tauri.js";
+
+export {
   tauri_writeTerminalInput,
   tauri_resizeTerminal,
   tauri_onTerminalOutput,
 } from "./tauri-bridge.js";
 
-export { tauri_writeTerminalInput, tauri_resizeTerminal, tauri_onTerminalOutput };
+const api: TerminalApi = isTauri() ? tauriTerminalApi : httpTerminalApi;
 
-export type TerminalState = "idle" | "running" | "exited" | "error";
+export const { listTerminalSessions, createTerminalSession, closeTerminalSession } = api;
 
-/** One terminal tab as tracked by the server's session manager. */
-export interface TerminalSessionInfo {
-  id: string;
-  cwd: string;
-  cols: number;
-  rows: number;
-  shell: string;
-  state: TerminalState;
-  /** Tab label when the session is scoped to a service. */
-  label?: string;
-  error?: string;
-}
-
-export async function listTerminalSessions(): Promise<TerminalSessionInfo[]> {
-  if (isTauri()) return tauri_listTerminalSessions() as Promise<TerminalSessionInfo[]>;
-  const res = await requestJson<{ ok: true; sessions: TerminalSessionInfo[] }>(
-    "/api/terminal/sessions",
-  );
-  return res.sessions;
-}
-
-export async function createTerminalSession(
-  opts?: { serviceName?: string },
-): Promise<TerminalSessionInfo> {
-  if (isTauri()) return tauri_createTerminalSession(opts) as Promise<TerminalSessionInfo>;
-  const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
-    "/api/terminal/sessions",
-    {
-      method: "POST",
-      ...(opts?.serviceName
-        ? {
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ serviceName: opts.serviceName }),
-          }
-        : {}),
-    },
-  );
-  return res.session;
-}
-
-export async function closeTerminalSession(id: string): Promise<void> {
-  if (isTauri()) return tauri_closeTerminalSession(id);
-  await requestJson(`/api/terminal/sessions/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
-}
+export type { TerminalApi, TerminalState, TerminalSessionInfo } from "./terminal-api.js";

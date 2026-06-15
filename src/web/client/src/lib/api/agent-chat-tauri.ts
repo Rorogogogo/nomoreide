@@ -1,0 +1,72 @@
+/** Rust-core implementation of {@link AgentChatApi}, over Tauri `invoke()` (desktop). */
+import {
+  tauriListen,
+  tauri_getAgentChatStatus,
+  tauri_startAgentChat,
+} from "./tauri-bridge.js";
+import type {
+  AgentChatApi,
+  AgentChatProviderInfo,
+  AgentStreamEvent,
+} from "./agent-chat-api.js";
+
+// Tracks which CLI is available so streamAgentChat can pass the right provider.
+let _tauriProvider = "claude";
+
+export const tauriAgentChatApi: AgentChatApi = {
+  async getAgentChatStatus() {
+    const raw = await tauri_getAgentChatStatus();
+    const status = raw as {
+      configured: boolean;
+      approvals: boolean;
+      provider: AgentChatProviderInfo;
+    };
+    _tauriProvider = status.provider?.id ?? "claude";
+    return status;
+  },
+
+  // Desktop runs the agent unattended; tool approval is a no-op.
+  approveAgentTool: async () => {},
+
+  streamAgentChat(message, resumeSessionId, onEvent, signal) {
+    let unlisten: (() => void) | undefined;
+    let done = false;
+    return new Promise<void>((resolve) => {
+      (async () => {
+        unlisten = await tauriListen("agent-chat-event", (payload) => {
+          if (done) return;
+          const event = payload as AgentStreamEvent;
+          onEvent(event);
+          if (event.type === "done" || event.type === "error") {
+            done = true;
+            unlisten?.();
+            resolve();
+          }
+        });
+
+        if (signal?.aborted) {
+          done = true; unlisten?.(); resolve(); return;
+        }
+        signal?.addEventListener("abort", () => {
+          if (!done) { done = true; unlisten?.(); resolve(); }
+        });
+
+        try {
+          await tauri_startAgentChat(message, resumeSessionId, _tauriProvider);
+        } catch (e) {
+          done = true; unlisten?.();
+          onEvent({ type: "error", message: String(e) });
+          onEvent({ type: "done", stopReason: "error" });
+          resolve();
+        }
+      })().catch((e) => {
+        if (!done) {
+          done = true; unlisten?.();
+          onEvent({ type: "error", message: String(e) });
+          onEvent({ type: "done", stopReason: "error" });
+          resolve();
+        }
+      });
+    });
+  },
+};
