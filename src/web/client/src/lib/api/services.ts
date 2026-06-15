@@ -200,6 +200,31 @@ export async function getDashboard(): Promise<DashboardData> {
   return requestJson<DashboardData>("/api/dashboard");
 }
 
+export async function startService(name: string): Promise<void> {
+  if (isTauri()) return tauri_startService(name);
+  await requestJson(`/api/services/${encodeURIComponent(name)}/start`, { method: "POST" });
+}
+
+export async function stopService(name: string): Promise<void> {
+  if (isTauri()) return tauri_stopService(name);
+  await requestJson(`/api/services/${encodeURIComponent(name)}/stop`, { method: "POST" });
+}
+
+export async function restartService(name: string): Promise<void> {
+  if (isTauri()) return tauri_restartService(name);
+  await requestJson(`/api/services/${encodeURIComponent(name)}/restart`, { method: "POST" });
+}
+
+export async function startBundle(name: string): Promise<void> {
+  if (isTauri()) return tauri_startBundle(name);
+  await requestJson(`/api/bundles/${encodeURIComponent(name)}/start`, { method: "POST" });
+}
+
+export async function stopBundle(name: string): Promise<void> {
+  if (isTauri()) return tauri_stopBundle(name);
+  await requestJson(`/api/bundles/${encodeURIComponent(name)}/stop`, { method: "POST" });
+}
+
 /** Unregister a service. Rejects (409) if it is still running. */
 export async function deleteService(name: string): Promise<void> {
   if (isTauri()) return tauri_deleteService(name);
@@ -213,10 +238,15 @@ export async function addServiceToBundle(
   serviceName: string,
 ): Promise<void> {
   if (bundleServices.includes(serviceName)) return;
+  const newServices = [...bundleServices, serviceName];
+  if (isTauri()) {
+    await tauri_registerBundle({ name: bundleName, services: newServices });
+    return;
+  }
   await postForm("/api/bundles", {
     name: bundleName,
     originalName: bundleName,
-    services: [...bundleServices, serviceName].join(","),
+    services: newServices.join(","),
   });
 }
 
@@ -227,10 +257,15 @@ export async function removeServiceFromBundle(
   serviceName: string,
 ): Promise<void> {
   if (!bundleServices.includes(serviceName)) return;
+  const newServices = bundleServices.filter((service) => service !== serviceName);
+  if (isTauri()) {
+    await tauri_registerBundle({ name: bundleName, services: newServices });
+    return;
+  }
   await postForm("/api/bundles", {
     name: bundleName,
     originalName: bundleName,
-    services: bundleServices.filter((service) => service !== serviceName).join(","),
+    services: newServices.join(","),
   });
 }
 

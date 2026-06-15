@@ -15,9 +15,10 @@ import {
   tauri_gitPullDefault,
   tauri_gitCreateBranch,
   tauri_gitBranches,
+  tauri_gitSwitchBranch,
+  tauri_gitFetch,
   tauri_deleteGitRepository,
   tauri_setGitBoard,
-  tauri_gitFetch,
   tauri_gitOverview,
 } from "./tauri-bridge.js";
 
@@ -260,6 +261,27 @@ export async function gitCreateBranch(name: string): Promise<string> {
     name,
   });
   return res.output;
+}
+
+export async function gitBranches(repo?: string): Promise<GitBranch[]> {
+  if (isTauri()) return tauri_gitBranches(repo) as Promise<GitBranch[]>;
+  const res = await requestJson<{ ok: true; branches: GitBranch[] }>("/api/git/branches");
+  return res.branches;
+}
+
+export async function gitFetch(repo?: string): Promise<string> {
+  if (isTauri()) return tauri_gitFetch(repo) as Promise<string>;
+  const res = await requestJson<{ ok: true; output: string }>("/api/git/fetch", { method: "POST" });
+  return res.output;
+}
+
+export async function gitSwitchBranch(name: string, repo?: string): Promise<void> {
+  if (isTauri()) return tauri_gitSwitchBranch(name, repo);
+  await requestJson<{ ok: true }>("/api/git/branches/switch", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(repo ? { name, repo } : { name }),
+  });
 }
 
 export async function deleteGitRepository(name: string): Promise<void> {

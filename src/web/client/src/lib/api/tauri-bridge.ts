@@ -441,6 +441,72 @@ export async function tauri_githubOAuthPoll(clientId: string, deviceCode: string
   return tauriInvoke<unknown>("github_oauth_poll", { clientId, deviceCode });
 }
 
+export async function tauri_getPrDiff(owner: string, repo: string, number: number) {
+  return tauriInvoke<string>("get_pr_diff", { owner, repo, number });
+}
+
+export async function tauri_listPrFiles(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_files", { owner, repo, number });
+}
+
+export async function tauri_listPrReviews(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_reviews", { owner, repo, number });
+}
+
+export async function tauri_listPrComments(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_comments", { owner, repo, number });
+}
+
+export async function tauri_mergePullRequest(
+  owner: string, repo: string, number: number,
+  opts: { method?: string; commitTitle?: string; commitMessage?: string } = {},
+) {
+  return tauriInvoke<unknown>("merge_pull_request", {
+    owner, repo, number,
+    method: opts.method ?? null,
+    commitTitle: opts.commitTitle ?? null,
+    commitMessage: opts.commitMessage ?? null,
+  });
+}
+
+export async function tauri_getGithubIssue(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("get_github_issue", { owner, repo, number });
+}
+
+export async function tauri_listIssueComments(owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_issue_comments", { owner, repo, number });
+}
+
+export async function tauri_addIssueComment(owner: string, repo: string, number: number, body: string) {
+  return tauriInvoke<unknown>("add_issue_comment", { owner, repo, number, body });
+}
+
+export async function tauri_createGithubIssue(owner: string, repo: string, title: string, body?: string) {
+  return tauriInvoke<unknown>("create_github_issue", { owner, repo, title, body: body ?? null });
+}
+
+export async function tauri_listGithubBranches(owner: string, repo: string) {
+  return tauriInvoke<unknown>("list_github_branches", { owner, repo });
+}
+
+export async function tauri_getGithubRepoInfo(owner: string, repo: string) {
+  return tauriInvoke<unknown>("get_github_repo_info", { owner, repo });
+}
+
+export async function tauri_listCommitCheckRuns(owner: string, repo: string, sha: string) {
+  return tauriInvoke<unknown>("list_commit_check_runs", { owner, repo, sha });
+}
+
+export async function tauri_listWorkflowRuns(owner: string, repo: string, branch?: string, page?: number) {
+  return tauriInvoke<unknown>("list_workflow_runs", {
+    owner, repo, branch: branch ?? null, page: page ?? null,
+  });
+}
+
+export async function tauri_listWorkflowRunJobs(owner: string, repo: string, runId: number) {
+  return tauriInvoke<unknown>("list_workflow_run_jobs", { owner, repo, runId });
+}
+
 // ---- Database ----
 
 export async function tauri_listDatabases() {
