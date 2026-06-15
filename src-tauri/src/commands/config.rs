@@ -1,6 +1,6 @@
 use tauri::State;
 use crate::AppState;
-use crate::core::config::{Config, ServiceDef, BundleDef, GitRepoDef, DatabaseDef, LogSourceDef};
+use crate::core::config::{Config, ServiceDef, BundleDef, GitRepoDef, DatabaseDef};
 
 #[tauri::command]
 pub async fn get_config(state: State<'_, AppState>) -> Result<Config, String> {

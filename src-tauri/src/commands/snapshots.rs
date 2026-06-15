@@ -1,8 +1,8 @@
 use tauri::State;
+use chrono;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use crate::AppState;
-use crate::core::git_manager::GitManager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -142,5 +142,3 @@ fn resolve_cwd(config: &crate::core::config::Config, repo: Option<&str>) -> Resu
         .map(|r| r.path.clone())
         .ok_or_else(|| "No git repository configured".to_string())
 }
-
-use chrono;

@@ -1,5 +1,4 @@
 use tauri::State;
-use serde::{Deserialize, Serialize};
 use crate::AppState;
 use crate::core::git_manager::{GitManager, GitStatus, GitCommit, GitBranch};
 

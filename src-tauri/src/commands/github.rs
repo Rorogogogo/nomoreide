@@ -1,5 +1,5 @@
+use reqwest;
 use tauri::State;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::AppState;
 
@@ -38,16 +38,10 @@ async fn gh_post(token: &str, host: &str, path: &str, body: Value) -> Result<Val
     resp.json::<Value>().await.map_err(|e| e.to_string())
 }
 
-fn get_token_and_host(state: &AppState, config: &crate::core::config::Config) -> Result<(String, String, String), String> {
+fn get_token_and_host(config: &crate::core::config::Config) -> Result<(String, String), String> {
     let token_def = config.github_tokens.first()
         .ok_or("No GitHub token configured")?;
-    Ok((token_def.token.clone(), token_def.host.clone(), String::new()))
-}
-
-fn get_repo(config: &crate::core::config::Config) -> Result<String, String> {
-    // Try to read repo from selected git repository's remote
-    // For now, return error if not deterministic — the frontend should pass it
-    Err("GitHub repo not yet auto-detected; pass owner/repo explicitly".to_string())
+    Ok((token_def.token.clone(), token_def.host.clone()))
 }
 
 #[tauri::command]
@@ -70,7 +64,7 @@ pub async fn list_pull_requests(
     state_filter: Option<String>,
 ) -> Result<Value, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let (token, host, _) = get_token_and_host(&state, &config)?;
+    let (token, host) = get_token_and_host(&config)?;
     let st = state_filter.as_deref().unwrap_or("open");
     gh_get(&token, &host, &format!("/repos/{owner}/{repo}/pulls?state={st}&per_page=50")).await
 }
@@ -83,7 +77,7 @@ pub async fn get_pull_request(
     number: u64,
 ) -> Result<Value, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let (token, host, _) = get_token_and_host(&state, &config)?;
+    let (token, host) = get_token_and_host(&config)?;
     gh_get(&token, &host, &format!("/repos/{owner}/{repo}/pulls/{number}")).await
 }
 
@@ -99,7 +93,7 @@ pub async fn create_pull_request(
     draft: Option<bool>,
 ) -> Result<Value, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let (token, host, _) = get_token_and_host(&state, &config)?;
+    let (token, host) = get_token_and_host(&config)?;
     gh_post(&token, &host, &format!("/repos/{owner}/{repo}/pulls"), serde_json::json!({
         "title": title, "body": body, "head": head, "base": base,
         "draft": draft.unwrap_or(false),
@@ -114,14 +108,14 @@ pub async fn list_issues(
     state_filter: Option<String>,
 ) -> Result<Value, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let (token, host, _) = get_token_and_host(&state, &config)?;
+    let (token, host) = get_token_and_host(&config)?;
     let st = state_filter.as_deref().unwrap_or("open");
     gh_get(&token, &host, &format!("/repos/{owner}/{repo}/issues?state={st}&per_page=50")).await
 }
 
 #[tauri::command]
 pub async fn github_oauth_start(
-    state: State<'_, AppState>,
+    _state: State<'_, AppState>,
     client_id: String,
 ) -> Result<Value, String> {
     let client = reqwest::Client::new();
@@ -136,7 +130,7 @@ pub async fn github_oauth_start(
 
 #[tauri::command]
 pub async fn github_oauth_poll(
-    state: State<'_, AppState>,
+    _state: State<'_, AppState>,
     client_id: String,
     device_code: String,
 ) -> Result<Value, String> {
@@ -153,5 +147,3 @@ pub async fn github_oauth_poll(
         .map_err(|e| e.to_string())?;
     resp.json::<Value>().await.map_err(|e| e.to_string())
 }
-
-use reqwest;

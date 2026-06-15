@@ -1,6 +1,6 @@
 use tauri::State;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use crate::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -14,7 +14,7 @@ pub struct QueryResult {
 pub async fn list_databases(state: State<'_, AppState>) -> Result<Vec<Value>, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
     Ok(config.databases.iter()
-        .map(|d| serde_json::json!({
+        .map(|d| json!({
             "name": d.name,
             "engine": d.engine,
             "writeUnlocked": d.write_unlocked.unwrap_or(false),
@@ -101,24 +101,53 @@ async fn list_db_tables(engine: &str, url: &str) -> Result<Vec<String>, String> 
     };
     let result = run_query(engine, url, sql).await?;
     Ok(result.rows.into_iter()
-        .filter_map(|row| row.into_iter().next().and_then(|v| v.as_str().map(str::to_string)))
+        .filter_map(|row| row.into_iter().next().and_then(|v| match v {
+            Value::String(s) => Some(s),
+            _ => None,
+        }))
         .collect())
 }
 
+// ---------------------------------------------------------------------------
+// Postgres
+// ---------------------------------------------------------------------------
+
 async fn query_postgres(url: &str, sql: &str) -> Result<QueryResult, String> {
     use sqlx::postgres::PgPool;
-    use sqlx::Row;
+    use sqlx::{Column, Row, TypeInfo};
+
     let pool = PgPool::connect(url).await.map_err(|e| e.to_string())?;
     let rows = sqlx::query(sql).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+
     if rows.is_empty() {
         return Ok(QueryResult { columns: vec![], rows: vec![], row_count: 0 });
     }
+
     let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
     let result_rows: Vec<Vec<Value>> = rows.iter().map(|row| {
-        columns.iter().enumerate().map(|(i, _)| {
-            row.try_get::<Value, _>(i).unwrap_or(Value::Null)
+        (0..columns.len()).map(|i| {
+            let type_name = row.column(i).type_info().name().to_uppercase();
+            match type_name.as_str() {
+                "BOOL" => row.try_get::<Option<bool>, _>(i)
+                    .ok().flatten().map(Value::Bool).unwrap_or(Value::Null),
+                "INT2" | "SMALLINT" | "SMALLSERIAL" => row.try_get::<Option<i16>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "INT4" | "INT" | "INTEGER" | "SERIAL" => row.try_get::<Option<i32>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "INT8" | "BIGINT" | "BIGSERIAL" => row.try_get::<Option<i64>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "FLOAT4" | "REAL" => row.try_get::<Option<f32>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "FLOAT8" | "DOUBLE PRECISION" => row.try_get::<Option<f64>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "JSONB" | "JSON" => row.try_get::<Option<Value>, _>(i)
+                    .ok().flatten().unwrap_or(Value::Null),
+                _ => row.try_get::<Option<String>, _>(i)
+                    .ok().flatten().map(Value::String).unwrap_or(Value::Null),
+            }
         }).collect()
     }).collect();
+
     let count = result_rows.len();
     Ok(QueryResult { columns, rows: result_rows, row_count: count })
 }
@@ -130,20 +159,40 @@ async fn execute_postgres(url: &str, sql: &str) -> Result<u64, String> {
     Ok(result.rows_affected())
 }
 
+// ---------------------------------------------------------------------------
+// SQLite
+// ---------------------------------------------------------------------------
+
 async fn query_sqlite(url: &str, sql: &str) -> Result<QueryResult, String> {
     use sqlx::sqlite::SqlitePool;
-    use sqlx::Row;
+    use sqlx::{Column, Row, TypeInfo};
+
     let pool = SqlitePool::connect(url).await.map_err(|e| e.to_string())?;
     let rows = sqlx::query(sql).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+
     if rows.is_empty() {
         return Ok(QueryResult { columns: vec![], rows: vec![], row_count: 0 });
     }
+
     let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
     let result_rows: Vec<Vec<Value>> = rows.iter().map(|row| {
-        columns.iter().enumerate().map(|(i, _)| {
-            row.try_get::<Value, _>(i).unwrap_or(Value::Null)
+        (0..columns.len()).map(|i| {
+            let type_name = row.column(i).type_info().name().to_uppercase();
+            match type_name.as_str() {
+                "INTEGER" | "INT" => row.try_get::<Option<i64>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "REAL" => row.try_get::<Option<f64>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "BLOB" => row.try_get::<Option<Vec<u8>>, _>(i)
+                    .ok().flatten()
+                    .map(|v| Value::String(format!("<blob {} bytes>", v.len())))
+                    .unwrap_or(Value::Null),
+                _ => row.try_get::<Option<String>, _>(i)
+                    .ok().flatten().map(Value::String).unwrap_or(Value::Null),
+            }
         }).collect()
     }).collect();
+
     let count = result_rows.len();
     Ok(QueryResult { columns, rows: result_rows, row_count: count })
 }
@@ -155,20 +204,50 @@ async fn execute_sqlite(url: &str, sql: &str) -> Result<u64, String> {
     Ok(result.rows_affected())
 }
 
+// ---------------------------------------------------------------------------
+// MySQL
+// ---------------------------------------------------------------------------
+
 async fn query_mysql(url: &str, sql: &str) -> Result<QueryResult, String> {
     use sqlx::mysql::MySqlPool;
-    use sqlx::Row;
+    use sqlx::{Column, Row, TypeInfo};
+
     let pool = MySqlPool::connect(url).await.map_err(|e| e.to_string())?;
     let rows = sqlx::query(sql).fetch_all(&pool).await.map_err(|e| e.to_string())?;
+
     if rows.is_empty() {
         return Ok(QueryResult { columns: vec![], rows: vec![], row_count: 0 });
     }
+
     let columns: Vec<String> = rows[0].columns().iter().map(|c| c.name().to_string()).collect();
     let result_rows: Vec<Vec<Value>> = rows.iter().map(|row| {
-        columns.iter().enumerate().map(|(i, _)| {
-            row.try_get::<Value, _>(i).unwrap_or(Value::Null)
+        (0..columns.len()).map(|i| {
+            let type_name = row.column(i).type_info().name().to_uppercase();
+            match type_name.as_str() {
+                "BOOLEAN" | "TINYINT(1)" => row.try_get::<Option<bool>, _>(i)
+                    .ok().flatten().map(Value::Bool).unwrap_or(Value::Null),
+                "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => {
+                    row.try_get::<Option<i64>, _>(i)
+                        .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null)
+                }
+                "FLOAT" => row.try_get::<Option<f32>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "DOUBLE" => row.try_get::<Option<f64>, _>(i)
+                    .ok().flatten().map(|v| json!(v)).unwrap_or(Value::Null),
+                "JSON" => row.try_get::<Option<Value>, _>(i)
+                    .ok().flatten().unwrap_or(Value::Null),
+                "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "TINYBLOB" => {
+                    row.try_get::<Option<Vec<u8>>, _>(i)
+                        .ok().flatten()
+                        .map(|v| Value::String(format!("<blob {} bytes>", v.len())))
+                        .unwrap_or(Value::Null)
+                }
+                _ => row.try_get::<Option<String>, _>(i)
+                    .ok().flatten().map(Value::String).unwrap_or(Value::Null),
+            }
         }).collect()
     }).collect();
+
     let count = result_rows.len();
     Ok(QueryResult { columns, rows: result_rows, row_count: count })
 }
