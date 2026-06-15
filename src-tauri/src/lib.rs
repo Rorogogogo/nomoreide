@@ -181,6 +181,8 @@ pub fn run() {
             commands::snapshots::list_snapshots,
             commands::snapshots::restore_snapshot,
             commands::snapshots::delete_snapshot,
+            commands::snapshots::get_snapshot_files,
+            commands::snapshots::get_snapshot_diff,
             // workflows
             commands::workflows::list_workflows,
             commands::workflows::save_workflow,

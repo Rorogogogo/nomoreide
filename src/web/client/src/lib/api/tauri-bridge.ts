@@ -572,6 +572,14 @@ export async function tauri_deleteSnapshot(sha: string, repo?: string) {
   await tauriInvoke("delete_snapshot", { sha, repo: repo ?? null });
 }
 
+export async function tauri_getSnapshotFiles(sha: string, repo?: string) {
+  return tauriInvoke<unknown[]>("get_snapshot_files", { sha, repo: repo ?? null });
+}
+
+export async function tauri_getSnapshotDiff(sha: string, path?: string, repo?: string) {
+  return tauriInvoke<string>("get_snapshot_diff", { sha, path: path ?? null, repo: repo ?? null });
+}
+
 // ---- Workflows ----
 
 export async function tauri_listWorkflows() {

@@ -1,5 +1,13 @@
 import { requestJson } from "./client.js";
-import { isTauri, tauri_listSnapshots, tauri_createSnapshot, tauri_restoreSnapshot, tauri_deleteSnapshot } from "./tauri-bridge.js";
+import {
+  isTauri,
+  tauri_listSnapshots,
+  tauri_createSnapshot,
+  tauri_restoreSnapshot,
+  tauri_deleteSnapshot,
+  tauri_getSnapshotFiles,
+  tauri_getSnapshotDiff,
+} from "./tauri-bridge.js";
 
 export interface Snapshot {
   sha: string;
@@ -61,6 +69,10 @@ export async function createSnapshot(label: string): Promise<Snapshot> {
 }
 
 export async function renameSnapshot(sha: string, label: string): Promise<Snapshot> {
+  if (isTauri()) {
+    // Git stash messages are immutable; rename is not supported in desktop mode.
+    throw new Error("Snapshot rename is not supported in desktop mode");
+  }
   const response = await requestJson<{ ok: true; snapshot: Snapshot }>(
     `/api/snapshots/${encodeURIComponent(sha)}`,
     {
@@ -80,6 +92,7 @@ export async function deleteSnapshot(sha: string): Promise<void> {
 }
 
 export async function getSnapshotFiles(sha: string): Promise<SnapshotChange[]> {
+  if (isTauri()) return tauri_getSnapshotFiles(sha) as Promise<SnapshotChange[]>;
   const response = await requestJson<{ ok: true; files: SnapshotChange[] }>(
     `/api/snapshots/${encodeURIComponent(sha)}/files`,
   );
@@ -87,6 +100,7 @@ export async function getSnapshotFiles(sha: string): Promise<SnapshotChange[]> {
 }
 
 export async function getSnapshotDiff(sha: string, path?: string): Promise<string> {
+  if (isTauri()) return tauri_getSnapshotDiff(sha, path);
   const params = path ? `?path=${encodeURIComponent(path)}` : "";
   return requestText(`/api/snapshots/${encodeURIComponent(sha)}/diff${params}`);
 }
@@ -100,6 +114,7 @@ export async function restoreSnapshot(sha: string): Promise<RestoreResult> {
 }
 
 export async function listChangeSets(): Promise<AgentChangeSession[]> {
+  if (isTauri()) return [];
   const response = await requestJson<{ ok: true; sessions: AgentChangeSession[] }>(
     "/api/agent/change-sets",
   );
@@ -109,6 +124,7 @@ export async function listChangeSets(): Promise<AgentChangeSession[]> {
 export async function getChangeSet(
   id: string,
 ): Promise<{ session: AgentChangeSession; files: SnapshotChange[] }> {
+  if (isTauri()) throw new Error("Agent change sets are not available in desktop mode");
   return requestJson<{
     ok: true;
     session: AgentChangeSession;
@@ -117,11 +133,13 @@ export async function getChangeSet(
 }
 
 export async function getChangeSetDiff(id: string, path?: string): Promise<string> {
+  if (isTauri()) return "";
   const params = path ? `?path=${encodeURIComponent(path)}` : "";
   return requestText(`/api/agent/change-sets/${encodeURIComponent(id)}/diff${params}`);
 }
 
 export async function restoreChangeSet(id: string): Promise<RestoreResult> {
+  if (isTauri()) throw new Error("Agent change sets are not available in desktop mode");
   return requestJson<RestoreResult & { ok: true }>(
     `/api/agent/change-sets/${encodeURIComponent(id)}/restore`,
     { method: "POST" },
