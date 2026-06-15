@@ -13,6 +13,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-muted",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        success: "bg-emerald-600 text-white hover:bg-emerald-700",
       },
       size: {
         default: "h-9 px-3",

@@ -3,9 +3,12 @@ import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
 
 export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["claude"]> }) {
-  const totalInput =
-    usage.inputTokens + usage.cacheCreationInputTokens + usage.cacheReadInputTokens;
-  const cachePct = totalInput > 0 ? (usage.cacheReadInputTokens / totalInput) * 100 : 0;
+  const segments: TokenSegment[] = [
+    { label: "Cache read", value: usage.cacheReadInputTokens, className: "bg-emerald-500" },
+    { label: "Cache create", value: usage.cacheCreationInputTokens, className: "bg-teal-400" },
+    { label: "Fresh input", value: usage.inputTokens, className: "bg-amber-500" },
+    { label: "Output", value: usage.outputTokens, className: "bg-violet-500" },
+  ];
   return (
     <div className="rounded-md border border-border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
@@ -25,7 +28,9 @@ export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["clau
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px] sm:grid-cols-4">
+      <TokenBar segments={segments} />
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-[11px] sm:grid-cols-4">
         <Stat label="Input" value={formatTokens(usage.inputTokens)} />
         <Stat label="Output" value={formatTokens(usage.outputTokens)} />
         <Stat label="Cache read" value={formatTokens(usage.cacheReadInputTokens)} />
@@ -34,19 +39,6 @@ export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["clau
         <Stat label="Lines −" value={String(usage.linesRemoved)} />
         <Stat label="Wall" value={formatDuration(usage.durationMs)} />
         <Stat label="API" value={formatDuration(usage.apiDurationMs)} />
-      </div>
-
-      <div className="border-t border-border px-3 py-2">
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Cache read share of input</span>
-          <span className="font-mono">{cachePct.toFixed(1)}%</span>
-        </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-emerald-500"
-            style={{ width: `${Math.min(100, cachePct).toFixed(2)}%` }}
-          />
-        </div>
       </div>
 
       {usage.fiveHour || usage.weekly ? (
@@ -83,11 +75,16 @@ export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["clau
 }
 
 export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex"]> }) {
-  const cachePct = usage.inputTokens > 0 ? (usage.cachedInputTokens / usage.inputTokens) * 100 : 0;
   const contextPct =
     usage.contextWindow && usage.contextWindow > 0
       ? (usage.lastTotalTokens / usage.contextWindow) * 100
       : 0;
+  const segments: TokenSegment[] = [
+    { label: "Cache read", value: usage.cachedInputTokens, className: "bg-emerald-500" },
+    { label: "Fresh input", value: Math.max(0, usage.inputTokens - usage.cachedInputTokens), className: "bg-amber-500" },
+    { label: "Output", value: usage.outputTokens, className: "bg-violet-500" },
+    { label: "Reasoning", value: usage.reasoningOutputTokens, className: "bg-sky-500" },
+  ];
 
   return (
     <div className="rounded-md border border-border">
@@ -105,7 +102,9 @@ export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex
         ) : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 px-3 py-2 text-[11px] sm:grid-cols-4">
+      <TokenBar segments={segments} />
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-[11px] sm:grid-cols-4">
         <Stat label="Input" value={formatTokens(usage.inputTokens)} />
         <Stat label="Output" value={formatTokens(usage.outputTokens)} />
         <Stat label="Cache read" value={formatTokens(usage.cachedInputTokens)} />
@@ -116,12 +115,11 @@ export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex
         <Stat label="Cost" value="n/a" />
       </div>
 
-      <div className="space-y-2 border-t border-border px-3 py-2">
-        <MetricBar label="Cache read share of input" value={cachePct} tone="bg-emerald-500" />
-        {usage.contextWindow ? (
+      {usage.contextWindow ? (
+        <div className="border-t border-border px-3 py-2">
           <MetricBar label="Last turn context share" value={contextPct} tone="bg-sky-500" />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {usage.primary || usage.secondary ? (
         <div className="space-y-2 border-t border-border px-3 py-2">
@@ -132,6 +130,61 @@ export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex
           {usage.secondary ? <UsageBar label="Weekly window" window={usage.secondary} /> : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+interface TokenSegment {
+  label: string;
+  value: number;
+  /** Tailwind background class for this slice + its legend swatch. */
+  className: string;
+}
+
+/**
+ * Hero token-composition viz: one stacked bar showing how the session's tokens
+ * split across cache reads / cache creates / fresh input / output, with a legend
+ * carrying each slice's share. Makes cache efficiency (cheap reads vs fresh
+ * input) and output weight readable at a glance — the numeric breakdown lives in
+ * the Stat grid below.
+ */
+function TokenBar({ segments }: { segments: TokenSegment[] }) {
+  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+  const inputTotal = segments
+    .filter((segment) => segment.label !== "Output")
+    .reduce((sum, segment) => sum + segment.value, 0);
+  const outputTotal = total - inputTotal;
+  return (
+    <div className="px-3 py-2.5">
+      <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+        <span className="font-semibold">Tokens</span>
+        <span className="font-mono normal-case">
+          {formatTokens(inputTotal)} in · {formatTokens(outputTotal)} out
+        </span>
+      </div>
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label="Token composition">
+        {segments.map((segment) =>
+          total > 0 && segment.value > 0 ? (
+            <div
+              className={cn("h-full", segment.className)}
+              key={segment.label}
+              style={{ width: `${((segment.value / total) * 100).toFixed(2)}%` }}
+              title={`${segment.label}: ${formatTokens(segment.value)} (${((segment.value / total) * 100).toFixed(1)}%)`}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
+        {segments.map((segment) => (
+          <div className="flex items-center gap-1.5 text-[11px]" key={segment.label}>
+            <span className={cn("size-2 shrink-0 rounded-sm", segment.className)} />
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{segment.label}</span>
+            <span className="shrink-0 font-mono text-foreground">
+              {total > 0 ? ((segment.value / total) * 100).toFixed(0) : "0"}%
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

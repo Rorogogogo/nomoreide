@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { GitBranch } from "@/lib/api";
+import { useRegisterRefresh } from "@/components/refresh-registry";
 import { BranchTreeSection, buildBranchTree } from "./git-graph/branch-tree";
 import { CommitDiffPanel } from "./git-graph/commit-diff-panel";
 import { CommitFilesList } from "./git-graph/commit-files-list";
@@ -23,7 +24,9 @@ export function GitGraphView({ branches = [] }: { branches?: GitBranch[] }) {
     maxLanes,
     selectedCommit,
     loadMore,
+    refresh,
   } = useGitGraph();
+  useRegisterRefresh(refresh);
   const [branchQuery, setBranchQuery] = useState("");
 
   const filteredBranches = useMemo(() => {

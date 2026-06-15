@@ -1,8 +1,23 @@
+import { useState } from "react";
 import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useRegisterRefresh } from "@/components/refresh-registry";
+import { AiAskInline } from "../agent/ai-ask-inline";
+import { AgentMark, AiSpark } from "../agent/ai-spark";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { buildFixRunPrompt } from "../agent/prompts";
 import { useGitHubActions } from "./hooks/use-github-actions";
 import { LoadMoreButton } from "./load-more-button";
+
+/** A finished run that didn't succeed — the rows that get an AI "fix" affordance. */
+function isFailedRun(run: GitHubWorkflowRun): boolean {
+  return (
+    run.conclusion === "failure" ||
+    run.conclusion === "timed_out" ||
+    run.conclusion === "cancelled"
+  );
+}
 
 export function ActionsView({
   branch,
@@ -23,9 +38,27 @@ export function ActionsView({
     jobsError,
     loadMore,
     refresh,
+    syncLatest,
     setSelectedRunId,
   } = useGitHubActions(branch);
+  // Header/poll refresh syncs in place (no pagination reset); the in-panel
+  // button below still does an explicit full reload.
+  useRegisterRefresh(syncLatest);
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
+  const { sendToAgent } = useAgentDock();
+  // Which failed run has its inline "what should I do?" field open, if any.
+  const [askingRunId, setAskingRunId] = useState<number | null>(null);
+
+  // Send the fix request straight to the dock; the agent pulls the failing logs
+  // itself via `gh run view --log-failed`. No input → the default "fix it" task.
+  function askRun(run: GitHubWorkflowRun, input?: string) {
+    setAskingRunId(null);
+    sendToAgent({
+      prompt: buildFixRunPrompt(run, input),
+      source: { type: "github-run", label: `Run #${run.run_number}` },
+      label: `Run #${run.run_number}: ${input ?? "fix failing run"}`,
+    });
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -68,24 +101,46 @@ export function ActionsView({
             <div className="min-h-0 overflow-auto">
             <ul className="divide-y divide-border">
               {runs.map((run) => (
-                <li key={run.id}>
-                  <button
-                    className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 ${
+                <li className="group flex flex-col" key={run.id}>
+                  <div
+                    className={`flex items-center transition-colors hover:bg-muted/60 ${
                       run.id === selectedRunId ? "bg-muted/70" : ""
                     }`}
-                    onClick={() => setSelectedRunId(run.id)}
-                    type="button"
                   >
-                    <RunStatusIcon run={run} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium">{run.name}</span>
-                      <span className="block text-[11px] text-muted-foreground">
-                        #{run.run_number} · {run.head_branch} · {run.event} ·{" "}
-                        {new Date(run.created_at).toLocaleDateString()}
+                    <button
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                      onClick={() => setSelectedRunId(run.id)}
+                      type="button"
+                    >
+                      <RunStatusIcon run={run} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">{run.name}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          #{run.run_number} · {run.head_branch} · {run.event} ·{" "}
+                          {new Date(run.created_at).toLocaleDateString()}
+                        </span>
                       </span>
-                    </span>
-                    <RunConclusionStatus run={run} />
-                  </button>
+                      <RunConclusionStatus run={run} />
+                    </button>
+                    {isFailedRun(run) ? (
+                      <AiSpark
+                        className={`mr-2 shrink-0 ${askingRunId === run.id ? "opacity-100" : ""}`}
+                        label={`Fix failing run #${run.run_number} with AI`}
+                        onAsk={() =>
+                          setAskingRunId((current) => (current === run.id ? null : run.id))
+                        }
+                      />
+                    ) : null}
+                  </div>
+                  {askingRunId === run.id ? (
+                    <div className="px-3 pb-2 pt-0.5">
+                      <AiAskInline
+                        onCancel={() => setAskingRunId(null)}
+                        onSubmit={(value) => askRun(run, value)}
+                        placeholder="What should the agent do? (fix it, explain the failure, find the broken step…)"
+                      />
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -96,6 +151,7 @@ export function ActionsView({
               error={jobsError}
               jobs={jobs}
               loading={jobsLoading}
+              onFix={(run) => askRun(run)}
               run={selectedRun}
             />
           </div>
@@ -141,11 +197,13 @@ function RunJobsDetail({
   jobs,
   loading,
   error,
+  onFix,
 }: {
   run: GitHubWorkflowRun | null;
   jobs: GitHubWorkflowJob[];
   loading: boolean;
   error: string | null;
+  onFix: (run: GitHubWorkflowRun) => void;
 }) {
   if (!run) {
     return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Select a workflow run</div>;
@@ -160,6 +218,19 @@ function RunJobsDetail({
             Run #{run.run_number} · {run.head_branch} · {run.head_sha.slice(0, 7)}
           </span>
         </span>
+        {isFailedRun(run) ? (
+          <Button
+            className="shrink-0 gap-1"
+            onClick={() => onFix(run)}
+            size="sm"
+            title="Send this failing run to the agent to investigate and fix"
+            type="button"
+            variant="outline"
+          >
+            <AgentMark className="size-3.5" />
+            Fix with AI
+          </Button>
+        ) : null}
         <a
           aria-label="Open run on GitHub"
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

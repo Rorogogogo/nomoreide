@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import type { ServiceHealth, ServiceStatus, TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { usePersistentState } from "@/lib/use-persistent-state";
 import { EnvTab } from "./service-detail/env-tab";
 import { HttpTab } from "./service-detail/http-tab";
 import { LogsTab } from "./service-detail/logs-tab";
@@ -25,7 +25,8 @@ export function ServiceDetailPanel({
   timeline: TimelineEvent[];
   onRefresh: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<Tab>("metrics");
+  // Sticky so reopening a service lands on the tab you last used.
+  const [tab, setTab] = usePersistentState<Tab>("service-detail:tab", "metrics");
   const processes = health?.processTree?.processes ?? [];
 
   return (

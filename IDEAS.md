@@ -23,8 +23,8 @@ Done as a vertical slice:
 
 Remaining bonus (now unblocked): #7 test-runner pipeline and #8 repro bundle both build on these incidents.
 
-## 3. HTTP Request Inspector — 📋 scoped (ROR-6, backlog)
-Proxy on the service port that records requests/responses; replay, share, or pipe to an agent without Postman/Charles. Groundwork already exists in `src/core/http-inspector.ts` and `POST /api/services/:name/inspector`. Remaining: a `features/services/` inspector panel (request timeline, body view, replay) and a "copy request as agent prompt" action.
+## 3. HTTP Request Inspector — ✅ shipped (ROR-6)
+Proxy on the service port that records requests/responses; replay, share, or pipe to an agent without Postman/Charles. Core in `src/core/http-inspector.ts` + `POST /api/services/:name/inspector`; the UI panel landed as `features/services/service-detail/http-tab.tsx` (request timeline, body view, replay).
 
 ## 4. DB Peek — ✅ shipped
 Lightweight read-only table browser. "Explain this row to the agent" copies the row + schema into a prompt.
@@ -39,8 +39,12 @@ Done as a vertical slice:
 - **MCP** — `src/mcp/tools/database.ts`: `nomoreide_list_databases`, `nomoreide_db_tables`, `nomoreide_db_sample` (read-only, scoped to configured connections).
 - **Reuses** — env-file parsing for `.env` detection; the master/detail layout from Error Inbox; `ComposerDialog`.
 
-## 5. PR Cockpit
+## 5. PR Cockpit — ✅ shipped
 GitHub PR + CI checks for the current branch in one panel: PR state (open/draft/merged), CI status, review state, one-click "copy failing check output to agent".
+
+Shipped as a standalone **GitHub** view — `core/github-manager.ts` + `web/routes/github-routes.ts` + MCP `mcp/tools/github.ts` (PR/issue lists, CI badges, actions/workflow runs, create/merge PR, issue comments) + `features/github/` (PR/issue detail, branches, actions). Token via `nomoreide_github_set_token` / `gh` CLI fallback. Markdown rendering + comment composer were being polished as of ROR-40.
+
+*Original GitHub-first plan for reference:*
 
 **GitHub-first.** Most users live on GitHub, so ship that as the MVP. The app reaches GitHub with its own credential — **reuse the local `gh` CLI** if present (zero-config: `gh pr view --json ...`, `gh pr checks`), fall back to a token in config.
 
@@ -52,8 +56,12 @@ GitHub PR + CI checks for the current branch in one panel: PR state (open/draft/
 
 *Later, opt-in:* Linear issue context for the branch. The app has **no Linear integration today** (only the agent's MCP does), so this needs the app to store its own Linear API token first. Until then, the branch name already encodes the issue ID — deep-link to linear.app without pulling data live.
 
-## 6. Snapshot / Restore
+## 6. Snapshot / Restore — ✅ shipped (ROR-39)
 Git stash-like checkpoints tied to "before agent edit". One-click revert when an AI change goes sideways — no `git reflog` puzzle.
+
+Shipped with #11 as one slice: `core/snapshot-manager.ts` (temp `GIT_INDEX_FILE`, private `refs/nomoreide/snapshots/*`, reversible restore that also deletes post-snapshot additions) + `core/agent-sessions.ts` (auto-snapshots before a session's first tool call) + `routes/snapshot-routes.ts` + read-only MCP `nomoreide_snapshots_list`/`nomoreide_snapshot_create` (no restore tool — human-only) + Git→Snapshots tab.
+
+*Original design for reference:*
 
 **Design risk:** restore is a destructive write, but `GitManager` is deliberately read-safe (no `reset --hard`/`clean`/`force-push`). Resolve by always snapshotting the current state *before* a restore, so the undo is itself reversible.
 
@@ -88,8 +96,8 @@ Extension of #2: package failing logs + diff in the affected file + service stat
 - **UI** — a "Copy repro bundle" button next to "Copy to agent" on each Error Inbox entry; optional "save to `.nomoreide/repros/`".
 - **Reuses** — everything from #2 plus `ProcessManager` status and env masking. Build right after #2.
 
-## 9. Service dependency / startup order
-Declare "API depends on DB", auto-start in order, show a health graph.
+## 9. Service dependency / startup order — 📋 OPEN (next candidate)
+Declare "API depends on DB", auto-start in order, show a health graph. *Confirmed unbuilt: no `dependsOn` in the service schema as of 2026-06-13.* Cleanest standalone win of the leftovers — all the pieces (bundles, `ProcessManager`, `service-health.ts`, `process-tree.ts`) already exist.
 
 **Build:**
 - **Config** — add `dependsOn?: string[]` to the service schema in `config-store.ts`.
@@ -98,8 +106,8 @@ Declare "API depends on DB", auto-start in order, show a health graph.
 - **UI** — a small dependency/health graph in the Services view (reuse the SVG approach from `git-graph-svg.tsx`).
 - **Reuses** — bundles, `ProcessManager`, `service-health.ts`.
 
-## 10. Resource usage per service
-Mini-`htop`: CPU/memory per managed process.
+## 10. Resource usage per service — ✅ shipped
+Mini-`htop`: CPU/memory per managed process. Shipped as `core/metrics-store.ts` + `web/routes/metrics-routes.ts` (CPU/RSS polling over the process tree with rolling history).
 
 **Build:**
 - **Core** — `src/core/resource-monitor.ts`: poll CPU/RSS for each spawned PID (and children — `process-tree.ts` already walks the tree) on an interval; keep a short rolling history per service.
@@ -107,8 +115,8 @@ Mini-`htop`: CPU/memory per managed process.
 - **UI** — CPU/mem chips + a tiny sparkline in `service-list.tsx` / `service-detail-panel.tsx`.
 - **Reuses** — PIDs from `ProcessManager`, `process-tree.ts` for child aggregation. (Cross-platform sampling is the only real work — consider `pidusage`.)
 
-## 11. Agent change-set — "what did the AI touch this session"
-Group file edits by agent session and show them as a reviewable set. AI-native differentiator.
+## 11. Agent change-set — "what did the AI touch this session" — ✅ shipped (ROR-39)
+Group file edits by agent session and show them as a reviewable set. AI-native differentiator. Shipped alongside #6: change-sets are `git diff <session-snapshot>` (NoMoreIDE's MCP never sees the agent's Edit/Write calls) surfaced in an Agent→Changes tab.
 
 **Build:**
 - **Core** — extend `tool-call-store.ts`: `ToolCallRecord` already captures tool calls; tag each with a `sessionId` and, for file-writing tools (Edit/Write), record the touched path. Add `changeSetForSession(id)` → list of files + which tool/when.
@@ -116,8 +124,8 @@ Group file edits by agent session and show them as a reviewable set. AI-native d
 - **UI** — a "Changes" sub-tab in `agent-view.tsx`: session list → file list → diff, with a "Restore to before this session" button wired to #6.
 - **Reuses** — `ToolCallStore` + its SSE stream, `GitManager.diff`, snapshot refs from #6.
 
-## 12. Agent cost / run history
-Persist token usage over time so you can see "this feature cost ~$X / N agent runs."
+## 12. Agent cost / run history — 📋 OPEN
+Persist token usage over time so you can see "this feature cost ~$X / N agent runs." *Confirmed unbuilt: live usage renders in `usage-card.tsx`, but there is no `core/usage-history.ts` and no `/api/agent/usage/history` route as of 2026-06-13.*
 
 **Build:**
 - **Core** — `usage-info.ts` already reads live Claude + Codex token/rate-limit data (`buildUsageInfo`). Add `src/core/usage-history.ts`: snapshot `UsageInfo` deltas to an append-only file at `.nomoreide/usage-history.jsonl` (timestamp, model, tokens, est. cost). Apply a simple per-model price table to estimate `$`.
@@ -151,6 +159,33 @@ The web server router was split into a `src/web/routes/` registry (`server.ts` 7
 - **`features/git/git-graph-view.tsx` (531 → 122)** → `git-graph/` slice (`use-git-graph` hook, `branch-tree`, `commit-list`, `commit-files-list`, `commit-diff-panel`).
 
 Leave large *core* modules (`process-manager.ts` 683, `git-manager.ts` 412) alone unless they keep growing — they're cohesive.
+
+---
+
+# Net-new ideas (beyond the original list)
+
+Most of the original roadmap has shipped. These are fresh, high-leverage additions that fit the existing architecture. Added 2026-06-13.
+
+## 15. Error → Fix loop (closes the AI-native circle) — ⭐ highest impact
+Today Error Inbox (#2), repro bundle (#8), change-set review (#11), and snapshot/restore (#6) are *separate* features the user manually chains. Wire them into one loop: a **"Fix with agent"** button on an incident hands the repro bundle to an agent run, then surfaces the result as a ROR-39 change-set with one-click restore if it goes sideways. Turns the toolbox from a set of copy-to-clipboard buttons into a closed loop — the real differentiator.
+
+**Build:**
+- **Core** — orchestration in a new `core/fix-loop.ts` (or extend `agent-runtime.ts`): take an incident id → build repro bundle → kick an agent session (auto-snapshot already fires via `agent-sessions.ts`) → on completion, resolve the change-set for that session.
+- **API** — `POST /api/errors/:id/fix` → returns the agent `sessionId`; the existing change-set + snapshot endpoints carry the review/restore.
+- **UI** — "Fix with agent" on each Error Inbox incident; on finish, deep-link to the Agent→Changes tab for that session.
+- **Reuses** — `repro-bundle.ts`, `agent-runtime.ts` + `agent-sessions.ts`, `snapshot-manager.ts`, change-set endpoints.
+
+## 16. Event-driven workflow triggers
+Workflows are user-run today. Let them fire on events the app already detects — a new Error Inbox incident, a CI failure (`github_get_commit_ci`), or a service crash from `ProcessManager`. Small core addition on top of the existing workflow runner.
+
+**Build:**
+- **Core** — an event→workflow binding table (config schema + `core/workflows.ts` hook); subscribe to `ErrorInbox`, `github-manager`, and `ProcessManager` emitters; debounce/dedupe so one crash-storm doesn't fan out.
+- **API** — CRUD for triggers under the existing workflow routes; surface fired-trigger history.
+- **UI** — a "Triggers" section in `features/workflows/`: bind an event + filter → workflow.
+- **Reuses** — `workflows.ts` runner, the SSE/subscribe patterns already in Error Inbox and metrics.
+
+## 17. Inject env into a running process (the #1 leftover bonus)
+Env Manager (#1) edits `.env` but requires restart-and-pray. Pushing updated vars into a live process closes that gap. Small, satisfying win — scoped to processes NoMoreIDE spawned (the existing safety boundary).
 
 ---
 

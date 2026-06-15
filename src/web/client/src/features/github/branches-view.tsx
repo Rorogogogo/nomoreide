@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GitBranch, GitPullRequest, PlayCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { listGitHubBranches, type GitHubBranchInfo, type GitHubBranchesPayload } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useRegisterRefresh } from "@/components/refresh-registry";
 
 export function BranchesView({
   onCreatePR,
@@ -32,6 +33,9 @@ export function BranchesView({
   }
 
   useEffect(refresh, []);
+  useRegisterRefresh(() => {
+    refresh();
+  });
 
   const branches = useMemo(() => {
     const items = payload?.branches ?? [];
