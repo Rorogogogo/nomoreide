@@ -9,6 +9,9 @@ import {
 } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
+import { useRegisterRefresh } from "@/components/refresh-registry";
+import { usePersistentState } from "@/lib/use-persistent-state";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
@@ -28,11 +31,7 @@ export function GitHubView() {
 
   let content: React.ReactNode;
   if (token.loading || token.status === "checking") {
-    content = (
-      <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">
-        Loading…
-      </div>
-    );
+    content = <Loading fill label="Loading…" />;
   } else if (token.status === "not_configured") {
     content = (
       <GitHubTokenSetup
@@ -114,9 +113,16 @@ function GitHubConnectionRecovery({
 }
 
 function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) {
-  const [tab, setTab] = useState<GithubTab>("prs");
-  const [prState, setPrState] = useState<"open" | "closed">("open");
-  const [issueState, setIssueState] = useState<"open" | "closed">("open");
+  // Sticky so returning to GitHub lands on the tab you left, not back on PRs.
+  const [tab, setTab] = usePersistentState<GithubTab>("github:tab", "prs");
+  const [prState, setPrState] = usePersistentState<"open" | "closed">(
+    "github:pr-state",
+    "open",
+  );
+  const [issueState, setIssueState] = usePersistentState<"open" | "closed">(
+    "github:issue-state",
+    "open",
+  );
   const [createPRHead, setCreatePRHead] = useState<string | null>(null);
   const [actionsBranch, setActionsBranch] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -124,6 +130,14 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
 
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
+
+  // Header Refresh reloads the active tab's data. Branches/Actions own their
+  // own hooks in nested components, so those tabs register from there.
+  useRegisterRefresh(() => {
+    if (tab === "prs") prHook.refresh();
+    else if (tab === "issues") issueHook.refresh();
+    else token.refresh();
+  });
 
   const tabButtonClass = (active: boolean) =>
     `rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
@@ -168,9 +182,9 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
 
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <GitHubConnectionIdentity token={token} />
-          <Button onClick={token.refresh} size="sm" type="button" variant="outline">
+          <Button onClick={token.refresh} size="sm" title="Re-check the GitHub connection" type="button" variant="outline">
             <RefreshCw />
-            Refresh
+            Reconnect
           </Button>
           <Button
             disabled={disconnecting}
@@ -221,7 +235,7 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden">
           {tab === "prs" ? (
-            <div className="grid h-full min-h-0 grid-cols-2 divide-x divide-border">
+            <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,2fr)] divide-x divide-border">
               <div className="min-h-0 overflow-auto">
                 <PrList
                   error={prHook.error}
@@ -245,7 +259,7 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
               </div>
             </div>
           ) : tab === "issues" ? (
-            <div className="grid h-full min-h-0 grid-cols-2 divide-x divide-border">
+            <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,2fr)] divide-x divide-border">
               <div className="min-h-0 overflow-auto">
                 <IssueList
                   error={issueHook.error}

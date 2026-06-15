@@ -20,6 +20,9 @@ export {
   buildFixCiPrompt,
 } from "./git-situation";
 export { buildGroupServicesPrompt, type GroupableService } from "./group-services";
+export { buildPrAskPrompt, buildPrFileAskPrompt } from "./github-pr";
+export { buildIssueAskPrompt } from "./github-issue";
+export { buildFixRunPrompt } from "./github-action";
 export { buildServiceDebugPrompt } from "./service-debug";
 export {
   buildAiContextLabel,

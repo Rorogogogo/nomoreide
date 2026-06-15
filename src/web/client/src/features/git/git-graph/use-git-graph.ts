@@ -17,6 +17,8 @@ const DEFAULT_LIMIT = 200;
 export function useGitGraph() {
   const [commits, setCommits] = useState<GitGraphCommit[]>([]);
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  // Bumped to force a re-fetch of the commit list without changing the limit.
+  const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedHash, setSelectedHash] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function useGitGraph() {
     };
     // selectedHash intentionally not in deps — we only want to seed it on first/refresh load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [limit]);
+  }, [limit, reloadKey]);
 
   useEffect(() => {
     if (!selectedHash) {
@@ -141,5 +143,6 @@ export function useGitGraph() {
     maxLanes,
     selectedCommit,
     loadMore: () => setLimit((n) => n + DEFAULT_LIMIT),
+    refresh: () => setReloadKey((n) => n + 1),
   };
 }

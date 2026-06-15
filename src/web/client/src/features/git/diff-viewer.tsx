@@ -116,6 +116,53 @@ export function DiffViewer({
   );
 }
 
+export interface FileDiff {
+  path: string;
+  diff: string;
+  additions: number;
+  deletions: number;
+}
+
+/**
+ * Splits a multi-file diff into one chunk per file, keyed on the `diff --git`
+ * headers. A combined PR diff renders as one gapless blob otherwise (the viewer
+ * strips file headers), so the PR Diff tab uses this to drive a per-file list.
+ */
+export function splitDiffByFile(diff: string): FileDiff[] {
+  const files: FileDiff[] = [];
+  let current: string[] | null = null;
+
+  const flush = () => {
+    if (!current) return;
+    const chunk = current.join("\n");
+    const stats = diffStats(chunk);
+    files.push({
+      path: pathFromDiffHeader(current[0]),
+      diff: chunk,
+      additions: stats.additions,
+      deletions: stats.deletions,
+    });
+    current = null;
+  };
+
+  for (const line of diff.split("\n")) {
+    if (line.startsWith("diff --git ")) {
+      flush();
+      current = [line];
+    } else if (current) {
+      current.push(line);
+    }
+  }
+  flush();
+  return files;
+}
+
+function pathFromDiffHeader(header: string): string {
+  // `diff --git a/<old> b/<new>` — prefer the new path (handles renames).
+  const match = /^diff --git a\/(.+?) b\/(.+)$/.exec(header);
+  return match ? match[2] : header.replace(/^diff --git /, "");
+}
+
 export function diffStats(diff: string): DiffStats {
   return diff.split("\n").reduce<DiffStats>(
     (stats, line) => {

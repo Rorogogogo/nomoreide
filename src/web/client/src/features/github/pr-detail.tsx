@@ -1,12 +1,21 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, Calendar, CheckCircle, Circle, ExternalLink, FileText, GitBranch, GitMerge, Loader2, MessageSquare, User, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Calendar, CheckCircle, ChevronDown, ChevronRight, Circle, ExternalLink, FileText, GitBranch, GitMerge, MessageSquare, User, XCircle } from "lucide-react";
 import {
   getGitHubPRReviewCockpit,
   mergeGitHubPR,
   type GitHubPR,
   type GitHubPRReviewCockpit,
 } from "@/lib/api";
-import { DiffViewer } from "../git/diff-viewer";
+import { DiffViewer, splitDiffByFile, type FileDiff } from "../git/diff-viewer";
+import { MarkdownBody } from "./markdown-body";
+import { AiAskInline } from "../agent/ai-ask-inline";
+import { AiSpark } from "../agent/ai-spark";
+import { useAgentDock } from "../agent/chat/agent-context";
+import { buildPrAskPrompt, buildPrFileAskPrompt } from "../agent/prompts";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Loading, Spinner } from "@/components/ui/loading";
+import { cn } from "@/lib/utils";
 
 export function PrDetail({
   pr,
@@ -27,8 +36,47 @@ export function PrDetail({
   const [cockpitError, setCockpitError] = useState<string | null>(null);
   const [merging, setMerging] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
+  const [confirmingMerge, setConfirmingMerge] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
+  const { sendToAgent } = useAgentDock();
+
+  const fileDiffs = useMemo(() => splitDiffByFile(diff), [diff]);
+
+  // Keep a valid file selected as the diff changes (PR switch, refresh).
+  useEffect(() => {
+    setSelectedFile((current) =>
+      current && fileDiffs.some((file) => file.path === current)
+        ? current
+        : fileDiffs[0]?.path ?? null,
+    );
+  }, [fileDiffs]);
+
+  const activeFileDiff =
+    fileDiffs.find((file) => file.path === selectedFile) ?? fileDiffs[0] ?? null;
+
+  // Jump from a Review-tab file row straight to that file's diff.
+  function openFileDiff(path: string) {
+    setSelectedFile(path);
+    setTab("diff");
+  }
+
+  // Send the inline intent straight to the dock; the agent pulls the diff itself
+  // via `gh pr diff` so the transcript stays light. A path scopes it to one file.
+  function askAgent(input: string, path?: string) {
+    if (!pr) return;
+    setAsking(false);
+    sendToAgent({
+      prompt: path
+        ? buildPrFileAskPrompt(pr, path, input)
+        : buildPrAskPrompt(pr, input),
+      source: { type: "github-pr", label: `PR #${pr.number}${path ? ` · ${basename(path)}` : ""}` },
+      label: `PR #${pr.number}${path ? ` (${basename(path)})` : ""}: ${input}`,
+    });
+  }
 
   useEffect(() => {
+    setAsking(false);
     if (!pr) {
       setCockpit(null);
       return;
@@ -57,16 +105,15 @@ export function PrDetail({
 
   async function squashMerge() {
     if (!pr || merging) return;
-    if (!window.confirm(`Squash & merge PR #${pr.number} "${pr.title}" into ${pr.base.ref}?`)) {
-      return;
-    }
     setMerging(true);
     setMergeError(null);
     try {
       await mergeGitHubPR(pr.number, { method: "squash" });
+      setConfirmingMerge(false);
       onMerged?.();
     } catch (caught) {
       setMergeError(caught instanceof Error ? caught.message : String(caught));
+      setConfirmingMerge(false);
     } finally {
       setMerging(false);
     }
@@ -79,23 +126,30 @@ export function PrDetail({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+      <div className="group flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{pr.title}</span>
+        <AiSpark
+          className={cn("shrink-0", asking && "opacity-100")}
+          label={`Ask AI about PR #${pr.number}`}
+          onAsk={() => setAsking((open) => !open)}
+        />
         <div className="flex shrink-0 items-center gap-1">
           <button className={tabClass(tab === "cockpit")} onClick={() => setTab("cockpit")} type="button">Review</button>
           <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">Diff</button>
         </div>
         {canMerge ? (
-          <button
-            className="flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
+          <Button
+            className="shrink-0"
             disabled={merging}
-            onClick={() => void squashMerge()}
+            onClick={() => setConfirmingMerge(true)}
+            size="sm"
             title="Squash & merge this pull request"
             type="button"
+            variant="success"
           >
-            {merging ? <Loader2 className="size-3 animate-spin" /> : <GitMerge className="size-3" />}
+            <GitMerge />
             Squash &amp; merge
-          </button>
+          </Button>
         ) : null}
         <a
           aria-label="Open on GitHub"
@@ -114,28 +168,72 @@ export function PrDetail({
         </div>
       ) : null}
 
+      {asking ? (
+        <div className="shrink-0 border-b border-border px-3 py-1.5">
+          <AiAskInline
+            placeholder="What should the agent do with this PR? (review, summarize, find regressions…)"
+            onSubmit={(value) => askAgent(value)}
+            onCancel={() => setAsking(false)}
+          />
+        </div>
+      ) : null}
+
       {tab === "cockpit" ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <PRReviewCockpit
             cockpit={cockpit}
             error={cockpitError}
             loading={cockpitLoading}
+            onOpenFile={openFileDiff}
             pr={pr}
           />
         </div>
-      ) : (
-        <div className="relative min-h-0 min-w-0 flex-1">
-          {diffLoading ? (
-            <div className="p-4 text-[12px] text-muted-foreground">Loading diff…</div>
-          ) : diffError ? (
-            <div className="p-4 text-[12px] text-red-500">{diffError}</div>
-          ) : diff ? (
-            <DiffViewer diff={diff} />
-          ) : (
-            <div className="p-4 text-[12px] text-muted-foreground">No diff available.</div>
-          )}
+      ) : diffLoading ? (
+        <Loading className="flex-1" label="Loading diff…" />
+      ) : diffError ? (
+        <div className="p-4 text-[12px] text-red-500">{diffError}</div>
+      ) : fileDiffs.length ? (
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <FileDiffList
+            files={fileDiffs}
+            onAsk={(path, input) => askAgent(input, path)}
+            onSelect={setSelectedFile}
+            selected={activeFileDiff?.path ?? null}
+          />
+          <div className="relative min-h-0 min-w-0 flex-1">
+            {activeFileDiff ? <DiffViewer diff={activeFileDiff.diff} /> : null}
+          </div>
         </div>
+      ) : (
+        <div className="p-4 text-[12px] text-muted-foreground">No diff available.</div>
       )}
+
+      {confirmingMerge ? (
+        <ConfirmDialog
+          confirmLabel={
+            merging ? (
+              <>
+                <Spinner size="sm" /> Merging…
+              </>
+            ) : (
+              "Squash & merge"
+            )
+          }
+          icon={<GitMerge />}
+          loading={merging}
+          message={
+            <>
+              Squash &amp; merge PR <span className="font-mono">#{pr.number}</span>{" "}
+              <span className="font-medium text-foreground">{pr.title}</span> into{" "}
+              <span className="font-mono">{pr.base.ref}</span>?
+            </>
+          }
+          onCancel={() => setConfirmingMerge(false)}
+          onConfirm={() => void squashMerge()}
+          title="Squash & merge"
+          tone="success"
+        />
+      ) : null}
     </div>
   );
 }
@@ -145,12 +243,15 @@ function PRReviewCockpit({
   cockpit,
   loading,
   error,
+  onOpenFile,
 }: {
   pr: GitHubPR;
   cockpit: GitHubPRReviewCockpit | null;
   loading: boolean;
   error: string | null;
+  onOpenFile: (path: string) => void;
 }) {
+  const [filesOpen, setFilesOpen] = useState(false);
   const activePR = cockpit?.pr ?? pr;
   const files = cockpit?.files ?? [];
   const reviews = cockpit?.reviews ?? [];
@@ -183,7 +284,7 @@ function PRReviewCockpit({
           {error}
         </div>
       ) : null}
-      {loading ? <p className="text-[12px] text-muted-foreground">Loading review cockpit...</p> : null}
+      {loading ? <Loading className="justify-start" label="Loading review cockpit…" /> : null}
 
       <div className="grid gap-2 md:grid-cols-4">
         <CockpitMetric title="Merge readiness" value={mergeReadiness(activePR, checks)} tone={mergeTone(activePR, checks)} />
@@ -213,23 +314,42 @@ function PRReviewCockpit({
       ) : null}
 
       <section className="rounded-md border border-border bg-muted/25 p-3">
-        <div className="mb-2 flex items-center gap-2 text-[12px] font-medium">
+        <button
+          className="flex w-full items-center gap-2 text-[12px] font-medium"
+          onClick={() => setFilesOpen((open) => !open)}
+          type="button"
+        >
+          {filesOpen ? (
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="size-3.5 text-muted-foreground" />
+          )}
           <FileText className="size-3.5 text-muted-foreground" />
           Changed files
-        </div>
-        {files.length ? (
-          <ul className="divide-y divide-border">
+          {files.length ? (
+            <span className="font-mono text-[11px] text-muted-foreground">({files.length})</span>
+          ) : null}
+        </button>
+        {!filesOpen ? null : files.length ? (
+          <ul className="mt-2 divide-y divide-border">
             {files.slice(0, 12).map((file) => (
-              <li className="flex items-center gap-2 py-1.5 text-[12px]" key={file.path}>
-                <span className="w-16 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">{file.status}</span>
-                <span className="min-w-0 flex-1 truncate font-mono">{file.path}</span>
-                <span className="shrink-0 font-mono text-[11px] text-emerald-600">+{file.additions}</span>
-                <span className="shrink-0 font-mono text-[11px] text-red-500">-{file.deletions}</span>
+              <li key={file.path}>
+                <button
+                  className="flex w-full items-center gap-2 py-1.5 text-left text-[12px] transition-colors hover:text-foreground"
+                  onClick={() => onOpenFile(file.path)}
+                  title={`View diff for ${file.path}`}
+                  type="button"
+                >
+                  <span className="w-16 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">{file.status}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono">{file.path}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-emerald-600">+{file.additions}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-red-500">-{file.deletions}</span>
+                </button>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-[12px] text-muted-foreground">No changed file metadata available.</p>
+          <p className="mt-2 text-[12px] text-muted-foreground">No changed file metadata available.</p>
         )}
       </section>
 
@@ -263,14 +383,81 @@ function PRReviewCockpit({
       </section>
 
       {activePR.body ? (
-        <div className="whitespace-pre-wrap rounded-md border border-border bg-muted/25 p-3 font-mono text-[12px]">
-          {activePR.body}
-        </div>
+        <MarkdownBody body={activePR.body} />
       ) : (
         <p className="text-[12px] italic text-muted-foreground">No description provided.</p>
       )}
     </div>
   );
+}
+
+/** Changed-file sidebar for the Diff tab; selecting a file shows only its diff. */
+function FileDiffList({
+  files,
+  selected,
+  onSelect,
+  onAsk,
+}: {
+  files: FileDiff[];
+  selected: string | null;
+  onSelect: (path: string) => void;
+  onAsk: (path: string, input: string) => void;
+}) {
+  const [askingPath, setAskingPath] = useState<string | null>(null);
+  return (
+    <div className="w-44 shrink-0 overflow-y-auto border-r border-border bg-card/60">
+      <ul className="py-1">
+        {files.map((file) => (
+          <li className="group flex flex-col" key={file.path}>
+            <div
+              className={cn(
+                "flex items-center transition-colors",
+                file.path === selected ? "bg-muted" : "hover:bg-muted/60",
+              )}
+            >
+              <button
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px]",
+                  file.path === selected ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
+                )}
+                onClick={() => onSelect(file.path)}
+                title={file.path}
+                type="button"
+              >
+                <span className="min-w-0 flex-1 truncate font-mono">{basename(file.path)}</span>
+                <span className="shrink-0 font-mono text-[10px] text-emerald-600">+{file.additions}</span>
+                <span className="shrink-0 font-mono text-[10px] text-red-500">-{file.deletions}</span>
+              </button>
+              <AiSpark
+                className={cn("mr-1 shrink-0", askingPath === file.path && "opacity-100")}
+                label={`Ask AI about ${basename(file.path)}`}
+                onAsk={() =>
+                  setAskingPath((current) => (current === file.path ? null : file.path))
+                }
+              />
+            </div>
+            {askingPath === file.path ? (
+              <div className="px-2 pb-1.5 pt-0.5">
+                <AiAskInline
+                  placeholder="What about this file? (review, explain, find bugs…)"
+                  onSubmit={(value) => {
+                    setAskingPath(null);
+                    onAsk(file.path, value);
+                  }}
+                  onCancel={() => setAskingPath(null)}
+                />
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function basename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
 }
 
 function CockpitMetric({

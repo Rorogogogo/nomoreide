@@ -4,7 +4,9 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
+import { useRegisterRefresh } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
+import { usePersistentState } from "@/lib/use-persistent-state";
 import {
   deleteDatabase,
   type DatabaseConnection,
@@ -33,10 +35,15 @@ export function DatabaseView({
   onStageConsumed?: () => void;
 } = {}) {
   const { connections, loading, error, refresh } = useDatabases();
+  useRegisterRefresh(refresh);
   const { error: showError, success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
-  const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<ViewMode>("browse");
+  // Sticky so returning to Database keeps your connection and Browse/SQL choice.
+  const [selected, setSelected] = usePersistentState<string | null>(
+    "database:selected",
+    null,
+  );
+  const [mode, setMode] = usePersistentState<ViewMode>("database:mode", "browse");
   const [dialog, setDialog] = useState<Dialog>(null);
   // One-shot seed handed to the SQL console when a write is staged from the dock.
   const [seed, setSeed] = useState<{ sql: string; nonce: number } | null>(null);
@@ -61,18 +68,18 @@ export function DatabaseView({
     });
   }
 
-  // Keep a valid selection as the connection list changes.
+  // Keep a valid selection as the connection list changes. The persisted name
+  // may point at a connection that's since been removed (or not yet loaded), so
+  // fall back to the first available one.
   useEffect(() => {
     if (connections.length === 0) {
-      setSelected(null);
+      if (selected !== null) setSelected(null);
       return;
     }
-    setSelected((current) =>
-      current && connections.some((c) => c.name === current)
-        ? current
-        : connections[0].name,
-    );
-  }, [connections]);
+    if (!selected || !connections.some((c) => c.name === selected)) {
+      setSelected(connections[0].name);
+    }
+  }, [connections, selected, setSelected]);
 
   async function remove(name: string) {
     try {

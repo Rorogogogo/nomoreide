@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   listGitHubWorkflowRunJobs,
   listGitHubWorkflowRuns,
@@ -8,6 +8,31 @@ import {
 
 // Mirrors the server's `per_page`; a full page back means there may be more.
 const PAGE_SIZE = 30;
+// While a run is queued/in-progress we poll this fast so the run status *and*
+// its job/step detail feel live, instead of looking frozen until completion.
+const ACTIVE_POLL_MS = 4000;
+
+function isLive(run: GitHubWorkflowRun): boolean {
+  return run.status === "in_progress" || run.status === "queued";
+}
+
+/**
+ * Non-destructive merge of a fresh page-1 fetch into the runs already on screen:
+ * updates the status/conclusion of runs we still have, prepends brand-new ones,
+ * and leaves older paged-in history intact. Used by the silent sync so a poll
+ * (or the header Refresh) never collapses pagination back to page 1.
+ */
+function mergeRuns(
+  prev: GitHubWorkflowRun[],
+  fresh: GitHubWorkflowRun[],
+): GitHubWorkflowRun[] {
+  if (prev.length === 0) return fresh;
+  const freshById = new Map(fresh.map((run) => [run.id, run]));
+  const seen = new Set(prev.map((run) => run.id));
+  const brandNew = fresh.filter((run) => !seen.has(run.id));
+  const updated = prev.map((run) => freshById.get(run.id) ?? run);
+  return [...brandNew, ...updated];
+}
 
 export function useGitHubActions(branch?: string) {
   const [runs, setRuns] = useState<GitHubWorkflowRun[]>([]);
@@ -56,6 +81,20 @@ export function useGitHubActions(branch?: string) {
       .finally(() => setLoadingMore(false));
   }
 
+  // Silent refresh: reload the latest runs and the selected run's jobs without
+  // toggling any spinner or resetting pagination. Drives both the header Refresh
+  // and the live poll below, so the job/step detail keeps up with a running pipeline.
+  const syncLatest = useCallback(() => {
+    void listGitHubWorkflowRuns(branch, 1)
+      .then((next) => setRuns((prev) => mergeRuns(prev, next)))
+      .catch(() => { /* transient; the next tick (or manual refresh) retries */ });
+    if (selectedRunId) {
+      void listGitHubWorkflowRunJobs(selectedRunId)
+        .then((next) => setJobs(next))
+        .catch(() => { /* keep the last good jobs view */ });
+    }
+  }, [branch, selectedRunId]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [branch]);
 
@@ -84,6 +123,18 @@ export function useGitHubActions(branch?: string) {
     return () => { active = false; };
   }, [selectedRunId]);
 
+  // Poll fast only while something is actually running, and only when the tab is
+  // visible. It stops on its own once every run reaches a terminal state, so an
+  // idle Actions view falls back to the slower whole-dashboard refresh.
+  const hasLiveRun = runs.some(isLive);
+  useEffect(() => {
+    if (!hasLiveRun) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") syncLatest();
+    }, ACTIVE_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [hasLiveRun, syncLatest]);
+
   return {
     runs,
     selectedRunId,
@@ -96,6 +147,7 @@ export function useGitHubActions(branch?: string) {
     jobsError,
     loadMore,
     refresh: load,
+    syncLatest,
     setSelectedRunId,
   };
 }

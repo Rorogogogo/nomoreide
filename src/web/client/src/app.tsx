@@ -40,6 +40,10 @@ import { RepositorySelector } from "@/features/git/repository-selector";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  RefreshRegistryProvider,
+  useRefreshRegistry,
+} from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
 
@@ -189,6 +193,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
   });
 
+  const refreshRegistry = useRefreshRegistry();
+
   const refresh = useCallback(async (options: { notify?: boolean; silent?: boolean } = {}) => {
     if (!options.silent) {
       setLoading(true);
@@ -208,6 +214,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     }
   }, [showErrorToast, showSuccessToast]);
 
+  // Header Refresh: reload the shared dashboard state *and* whatever the active
+  // page fetches on its own (GitHub, Database, commit graph), so it always
+  // refreshes what the user is looking at — not just the services/git overview.
+  const refreshAll = useCallback(() => {
+    void refresh({ notify: true });
+    void refreshRegistry.runActive();
+  }, [refresh, refreshRegistry]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -215,7 +229,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   useEffect(() => {
     function refreshIfVisible() {
       if (document.visibilityState === "visible") {
+        // Reload the shared dashboard payload *and* whatever the active page
+        // fetches itself (git graph, database, GitHub) so the poll keeps the
+        // on-screen view current, not just the services/git overview. The agent
+        // page deliberately registers no handler — a live conversation should
+        // never be reloaded out from under the user.
         void refresh({ silent: true });
+        void refreshRegistry.runActive();
       }
     }
 
@@ -228,7 +248,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
       window.removeEventListener("focus", refreshIfVisible);
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
-  }, [page, refresh]);
+    // `runActive` is a stable callback; depending on the registry object (a
+    // fresh literal each render) would needlessly re-arm the interval.
+  }, [page, refresh, refreshRegistry.runActive]);
 
   useEffect(() => {
     if (!syncLocation) return;
@@ -268,6 +290,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
 
   return (
     <AgentProvider>
+    <RefreshRegistryProvider value={refreshRegistry}>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <div className="flex flex-col h-screen overflow-hidden">
     <TauriTitleBar />
@@ -418,10 +441,10 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 role="toolbar"
               >
                 <button
-                  aria-label="Refresh dashboard"
+                  aria-label="Refresh"
                   className={headerActionClassName()}
-                  onClick={() => void refresh({ notify: true })}
-                  title="Refresh dashboard"
+                  onClick={refreshAll}
+                  title="Refresh this page"
                   type="button"
                 >
                   <span className={headerActionIconClassName()}>
@@ -518,6 +541,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     </div>
     </div>
     </WorkflowRunProvider>
+    </RefreshRegistryProvider>
     </AgentProvider>
   );
 }
