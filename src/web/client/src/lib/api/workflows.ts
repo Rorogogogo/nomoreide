@@ -1,5 +1,6 @@
 import { requestJson } from "./client.js";
 import type { GitFileStatus } from "./git.js";
+import { isTauri, tauri_listWorkflows, tauri_saveWorkflow, tauri_deleteWorkflow } from "./tauri-bridge.js";
 
 /** Mirrors the server step kinds in `core/workflows.ts`. */
 export interface WorkflowCapabilities {
@@ -45,11 +46,13 @@ export interface GitStatusSummary {
 }
 
 export async function listWorkflows(): Promise<Workflow[]> {
+  if (isTauri()) return tauri_listWorkflows() as Promise<Workflow[]>;
   const res = await requestJson<{ ok: true; workflows: Workflow[] }>("/api/workflows");
   return res.workflows;
 }
 
 export async function saveWorkflow(workflow: Workflow): Promise<Workflow[]> {
+  if (isTauri()) return tauri_saveWorkflow(workflow) as Promise<Workflow[]>;
   const res = await requestJson<{ ok: true; workflows: Workflow[] }>("/api/workflows", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -59,6 +62,7 @@ export async function saveWorkflow(workflow: Workflow): Promise<Workflow[]> {
 }
 
 export async function deleteWorkflow(id: string): Promise<Workflow[]> {
+  if (isTauri()) return tauri_deleteWorkflow(id) as Promise<Workflow[]>;
   const res = await requestJson<{ ok: true; workflows: Workflow[] }>(
     `/api/workflows/${encodeURIComponent(id)}`,
     { method: "DELETE" },

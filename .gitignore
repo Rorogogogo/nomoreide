@@ -10,3 +10,6 @@ out/
 video/
 .idea/
 .claude/
+
+# Tauri / Rust build artifacts
+src-tauri/target/

@@ -1,6 +1,19 @@
 import { postForm, postFormForJson, requestJson } from "./client.js";
 import type { GitBranch, GitFileStatus } from "./git.js";
 import type { LogQuery } from "./log-sources.js";
+import {
+  isTauri,
+  tauri_getDashboard,
+  tauri_startService,
+  tauri_stopService,
+  tauri_restartService,
+  tauri_startBundle,
+  tauri_stopBundle,
+  tauri_deleteService,
+  tauri_registerService,
+  tauri_registerBundle,
+  tauri_getServiceLogs,
+} from "./tauri-bridge.js";
 
 export type ServiceKind = "local" | "docker-compose" | "ssh";
 
@@ -183,11 +196,13 @@ export interface DashboardData {
 }
 
 export async function getDashboard(): Promise<DashboardData> {
+  if (isTauri()) return tauri_getDashboard() as Promise<DashboardData>;
   return requestJson<DashboardData>("/api/dashboard");
 }
 
 /** Unregister a service. Rejects (409) if it is still running. */
 export async function deleteService(name: string): Promise<void> {
+  if (isTauri()) return tauri_deleteService(name);
   await requestJson(`/api/services/${encodeURIComponent(name)}`, { method: "DELETE" });
 }
 
@@ -238,6 +253,7 @@ export async function getServiceLogs(
   name: string,
   query: LogQuery = {},
 ): Promise<ServiceLogsResult> {
+  if (isTauri()) return tauri_getServiceLogs(name, query.lines) as Promise<ServiceLogsResult>;
   const params = new URLSearchParams();
   params.set("lines", String(query.lines ?? 500));
   if (query.since) params.set("since", query.since);

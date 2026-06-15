@@ -1,4 +1,5 @@
 import { requestJson } from "./client.js";
+import { isTauri, tauri_listSnapshots, tauri_createSnapshot, tauri_restoreSnapshot, tauri_deleteSnapshot } from "./tauri-bridge.js";
 
 export interface Snapshot {
   sha: string;
@@ -39,6 +40,7 @@ async function requestText(url: string): Promise<string> {
 }
 
 export async function listSnapshots(): Promise<Snapshot[]> {
+  if (isTauri()) return tauri_listSnapshots() as Promise<Snapshot[]>;
   const response = await requestJson<{ ok: true; snapshots: Snapshot[] }>(
     "/api/snapshots",
   );
@@ -46,6 +48,7 @@ export async function listSnapshots(): Promise<Snapshot[]> {
 }
 
 export async function createSnapshot(label: string): Promise<Snapshot> {
+  if (isTauri()) return tauri_createSnapshot(label) as Promise<Snapshot>;
   const response = await requestJson<{ ok: true; snapshot: Snapshot }>(
     "/api/snapshots",
     {
@@ -70,6 +73,7 @@ export async function renameSnapshot(sha: string, label: string): Promise<Snapsh
 }
 
 export async function deleteSnapshot(sha: string): Promise<void> {
+  if (isTauri()) return tauri_deleteSnapshot(sha);
   await requestJson<{ ok: true }>(`/api/snapshots/${encodeURIComponent(sha)}`, {
     method: "DELETE",
   });
@@ -88,6 +92,7 @@ export async function getSnapshotDiff(sha: string, path?: string): Promise<strin
 }
 
 export async function restoreSnapshot(sha: string): Promise<RestoreResult> {
+  if (isTauri()) { await tauri_restoreSnapshot(sha); return { ok: true } as RestoreResult; }
   return requestJson<RestoreResult & { ok: true }>(
     `/api/snapshots/${encodeURIComponent(sha)}/restore`,
     { method: "POST" },

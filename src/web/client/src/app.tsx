@@ -41,6 +41,7 @@ import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
+import { TauriTitleBar } from "@/components/tauri-titlebar";
 
 type Page =
   | "services"
@@ -268,7 +269,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   return (
     <AgentProvider>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
-    <div className="h-screen overflow-hidden pb-9">
+    <div className="flex flex-col h-screen overflow-hidden">
+    <TauriTitleBar />
+    <div className="flex-1 overflow-hidden pb-9">
       <div className="mx-auto flex h-full max-w-[1500px]">
         <aside className={sidebarShellClassName(sidebarDocked)}>
           <div
@@ -512,6 +515,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           setPage("database");
         }}
       />
+    </div>
     </div>
     </WorkflowRunProvider>
     </AgentProvider>
