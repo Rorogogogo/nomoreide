@@ -113,10 +113,8 @@ export function ServiceGroupSection({
           active={active}
           baseUrl={`/api/bundles/${encodeURIComponent(group.name)}`}
           compact
-          restartAction={async () => {
-            await postForm(`/api/bundles/${encodeURIComponent(group.name)}/stop`, {});
-            await postForm(`/api/bundles/${encodeURIComponent(group.name)}/start`, {});
-          }}
+          resourceKind="bundle"
+          resourceName={group.name}
           solidStart
           targetLabel={`group ${group.name}`}
           onRefresh={onRefresh}
@@ -225,6 +223,8 @@ export function ServiceRow({
           active={active}
           baseUrl={`/api/services/${encodeURIComponent(service.name)}`}
           compact
+          resourceKind="service"
+          resourceName={service.name}
           targetLabel={service.name}
           onRefresh={onRefresh}
           onStarted={onSelect}

@@ -2,15 +2,17 @@
 import {
   tauriListen,
   tauri_getAgentChatStatus,
+  tauri_setChatProvider,
   tauri_startAgentChat,
 } from "./tauri-bridge.js";
 import type {
   AgentChatApi,
   AgentChatProviderInfo,
+  AgentChatProviderOption,
   AgentStreamEvent,
 } from "./agent-chat-api.js";
 
-// Tracks which CLI is available so streamAgentChat can pass the right provider.
+// The saved/default provider, used when a turn doesn't override it explicitly.
 let _tauriProvider = "claude";
 
 export const tauriAgentChatApi: AgentChatApi = {
@@ -20,15 +22,23 @@ export const tauriAgentChatApi: AgentChatApi = {
       configured: boolean;
       approvals: boolean;
       provider: AgentChatProviderInfo;
+      providers: AgentChatProviderOption[];
     };
     _tauriProvider = status.provider?.id ?? "claude";
-    return status;
+    return { ...status, providers: status.providers ?? [] };
+  },
+
+  async setChatProvider(provider) {
+    const raw = await tauri_setChatProvider(provider);
+    const selected = (raw as AgentChatProviderInfo) ?? null;
+    _tauriProvider = selected?.id ?? provider;
+    return selected ?? ({ id: provider } as AgentChatProviderInfo);
   },
 
   // Desktop runs the agent unattended; tool approval is a no-op.
   approveAgentTool: async () => {},
 
-  streamAgentChat(message, resumeSessionId, onEvent, signal) {
+  streamAgentChat(message, resumeSessionId, onEvent, signal, _autoApprove, provider) {
     let unlisten: (() => void) | undefined;
     let done = false;
     return new Promise<void>((resolve) => {
@@ -52,7 +62,7 @@ export const tauriAgentChatApi: AgentChatApi = {
         });
 
         try {
-          await tauri_startAgentChat(message, resumeSessionId, _tauriProvider);
+          await tauri_startAgentChat(message, resumeSessionId, provider ?? _tauriProvider);
         } catch (e) {
           done = true; unlisten?.();
           onEvent({ type: "error", message: String(e) });

@@ -13,10 +13,23 @@ export {
   tauri_writeTerminalInput,
   tauri_resizeTerminal,
   tauri_onTerminalOutput,
+  tauri_startTerminalStream,
 } from "./tauri-bridge.js";
 
-const api: TerminalApi = isTauri() ? tauriTerminalApi : httpTerminalApi;
+function terminalApi(): TerminalApi {
+  return isTauri() ? tauriTerminalApi : httpTerminalApi;
+}
 
-export const { listTerminalSessions, createTerminalSession, closeTerminalSession } = api;
+export function listTerminalSessions() {
+  return terminalApi().listTerminalSessions();
+}
+
+export function createTerminalSession(opts?: { serviceName?: string }) {
+  return terminalApi().createTerminalSession(opts);
+}
+
+export function closeTerminalSession(id: string) {
+  return terminalApi().closeTerminalSession(id);
+}
 
 export type { TerminalApi, TerminalState, TerminalSessionInfo } from "./terminal-api.js";

@@ -22,15 +22,25 @@ export interface AgentChatProviderInfo {
   intro: string;
 }
 
+/** A selectable provider plus whether its CLI is installed/runnable. */
+export interface AgentChatProviderOption extends AgentChatProviderInfo {
+  configured: boolean;
+}
+
 export interface AgentChatStatus {
   configured: boolean;
   approvals: boolean;
+  /** The currently selected provider (saved choice, else detected default). */
   provider: AgentChatProviderInfo;
+  /** Every provider the user can switch between, with install state. */
+  providers: AgentChatProviderOption[];
 }
 
 export interface AgentChatApi {
   /** Whether the selected agent CLI is available, and whether tool calls need approval. */
   getAgentChatStatus(): Promise<AgentChatStatus>;
+  /** Persist which provider the dock chat drives; returns the now-selected one. */
+  setChatProvider(provider: AgentChatProviderInfo["id"]): Promise<AgentChatProviderInfo>;
   /** Answer a pending tool-approval prompt for the given session. */
   approveAgentTool(
     sessionId: string,
@@ -39,8 +49,9 @@ export interface AgentChatApi {
   ): Promise<void>;
   /**
    * Send one user message and stream events back. `resumeSessionId` continues a
-   * prior session. Calls `onEvent` for each parsed event; resolves when the
-   * stream ends. Pass `signal` to cancel.
+   * prior session. `provider` overrides the saved choice for this turn. Calls
+   * `onEvent` for each parsed event; resolves when the stream ends. Pass `signal`
+   * to cancel.
    */
   streamAgentChat(
     message: string,
@@ -48,5 +59,6 @@ export interface AgentChatApi {
     onEvent: (event: AgentStreamEvent) => void,
     signal?: AbortSignal,
     autoApprove?: boolean,
+    provider?: AgentChatProviderInfo["id"],
   ): Promise<void>;
 }

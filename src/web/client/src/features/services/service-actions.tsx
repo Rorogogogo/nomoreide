@@ -6,9 +6,41 @@ import { useToasts } from "@/components/ui/toast";
 import {
   PortConflictResponseError,
   postForm,
+  restartService,
+  startBundle,
+  startService,
+  stopBundle,
+  stopService,
   type PortConflictDetail,
 } from "@/lib/api";
+import { openExternal } from "@/lib/tauri";
 import { ComposerDialog } from "./service-forms";
+
+type LifecycleOp = "start" | "stop" | "restart";
+export type ResourceKind = "service" | "bundle";
+
+/**
+ * Run a lifecycle op through the API seam (`startService` / `startBundle` / …)
+ * so it works on both backends. The previous code POSTed straight to
+ * `/api/…/start`, which 404s in the desktop app (no Node server). Bundles have
+ * no restart endpoint, so we stop-then-start them.
+ */
+async function performLifecycle(
+  op: LifecycleOp,
+  kind: ResourceKind,
+  name: string,
+): Promise<void> {
+  if (kind === "bundle") {
+    if (op === "start") return startBundle(name);
+    if (op === "stop") return stopBundle(name);
+    await stopBundle(name);
+    await startBundle(name);
+    return;
+  }
+  if (op === "start") return startService(name);
+  if (op === "stop") return stopService(name);
+  return restartService(name);
+}
 
 export function LifecycleActions({
   active,
@@ -16,17 +48,20 @@ export function LifecycleActions({
   compact = false,
   onRefresh,
   onStarted,
-  restartAction,
+  resourceKind,
+  resourceName,
   solidStart = false,
   targetLabel,
 }: {
   active: boolean;
+  /** HTTP base (`/api/services/x`); used only for the web-only port-conflict retry. */
   baseUrl: string;
   compact?: boolean;
   onRefresh: () => Promise<void>;
   /** Fired after a successful start, so the caller can select the started service. */
   onStarted?: () => void;
-  restartAction?: () => Promise<void>;
+  resourceKind: ResourceKind;
+  resourceName: string;
   /** Render the start button as a filled green button (used for groups). */
   solidStart?: boolean;
   targetLabel: string;
@@ -34,12 +69,15 @@ export function LifecycleActions({
   if (!active) {
     return (
       <ActionButton
+        baseUrl={baseUrl}
         compact={compact}
         intent={solidStart ? "startSolid" : "start"}
         icon={<Play />}
         label="Start"
+        op="start"
+        resourceKind={resourceKind}
+        resourceName={resourceName}
         targetLabel={targetLabel}
-        url={`${baseUrl}/start`}
         onRefresh={onRefresh}
         onSuccess={onStarted}
       />
@@ -49,23 +87,28 @@ export function LifecycleActions({
   return (
     <>
       <ActionButton
+        baseUrl={baseUrl}
         compact={compact}
         intent="restart"
         icon={<RotateCcw />}
         label="Restart"
-        action={restartAction}
+        op="restart"
+        resourceKind={resourceKind}
+        resourceName={resourceName}
         targetLabel={targetLabel}
-        url={`${baseUrl}/restart`}
         onRefresh={onRefresh}
         onSuccess={onStarted}
       />
       <ActionButton
+        baseUrl={baseUrl}
         compact={compact}
         intent="stop"
         icon={<Square />}
         label="Stop"
+        op="stop"
+        resourceKind={resourceKind}
+        resourceName={resourceName}
         targetLabel={targetLabel}
-        url={`${baseUrl}/stop`}
         onRefresh={onRefresh}
       />
     </>
@@ -82,23 +125,27 @@ export function actionErrorMessage(
 }
 
 function ActionButton({
-  action,
+  baseUrl,
   compact = false,
   intent = "neutral",
   icon,
   label,
+  op,
+  resourceKind,
+  resourceName,
   targetLabel,
-  url,
   onRefresh,
   onSuccess,
 }: {
-  action?: () => Promise<void>;
+  baseUrl: string;
   compact?: boolean;
   intent?: "neutral" | "restart" | "start" | "startSolid" | "stop";
   icon: ReactNode;
   label: string;
+  op: LifecycleOp;
+  resourceKind: ResourceKind;
+  resourceName: string;
   targetLabel: string;
-  url: string;
   onRefresh: () => Promise<void>;
   /** Fired after the action succeeds (e.g. select the service that was started). */
   onSuccess?: () => void;
@@ -107,13 +154,16 @@ function ActionButton({
   const [conflict, setConflict] = useState<PortConflictDetail | null>(null);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
 
-  async function run(values: Record<string, string> = {}) {
+  async function run(killHolder = false) {
     setBusy(true);
     try {
-      if (action) {
-        await action();
+      if (killHolder) {
+        // Port conflicts are a Node-backend concept; force the holder kill via
+        // the HTTP endpoint (the Rust backend does no port pre-check, so this
+        // path is web-only and never reached in the desktop app).
+        await postForm(`${baseUrl}/start`, { strategy: "killHolder" });
       } else {
-        await postForm(url, values);
+        await performLifecycle(op, resourceKind, resourceName);
       }
       showSuccessToast(`${label} requested for ${targetLabel}.`);
       await onRefresh();
@@ -152,7 +202,7 @@ function ActionButton({
           busy={busy}
           conflict={conflict}
           onCancel={() => setConflict(null)}
-          onKillAndStart={() => run({ strategy: "killHolder" })}
+          onKillAndStart={() => run(true)}
           targetLabel={targetLabel}
         />
       ) : null}
@@ -197,7 +247,7 @@ function PortConflictDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => window.open(browserUrl, "_blank", "noopener,noreferrer")}
+            onClick={() => void openExternal(browserUrl)}
             size="sm"
             type="button"
             variant="outline"

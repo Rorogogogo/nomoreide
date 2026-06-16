@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod agent_chat;
 pub mod config;
 pub mod dashboard;
@@ -8,5 +9,6 @@ pub mod logs;
 pub mod onboard;
 pub mod services;
 pub mod snapshots;
+pub mod system;
 pub mod terminal;
 pub mod workflows;

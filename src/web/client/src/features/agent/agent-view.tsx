@@ -15,9 +15,17 @@ import { ToolsTab } from "./tools-tab";
 
 type AgentTab = "overview" | "memory" | "tools" | "activity" | "changes";
 
-const AGENTS: Array<{ id: AgentId; label: string; icon: React.ReactNode }> = [
-  { id: "claude-code", label: "Claude Code", icon: <ClaudeLogo className="size-4" /> },
-  { id: "codex", label: "Codex", icon: <CodexLogo className="size-4" /> },
+type ChatProviderId = "claude" | "codex";
+
+const AGENTS: Array<{
+  id: AgentId;
+  /** The chat-provider id this profile maps to (the dock spawns this CLI). */
+  chatId: ChatProviderId;
+  label: string;
+  icon: React.ReactNode;
+}> = [
+  { id: "claude-code", chatId: "claude", label: "Claude Code", icon: <ClaudeLogo className="size-4" /> },
+  { id: "codex", chatId: "codex", label: "Codex", icon: <CodexLogo className="size-4" /> },
 ];
 
 const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
@@ -33,7 +41,20 @@ export function AgentView() {
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
-  const { clear, turns } = useAgentDock();
+  const { clear, turns, provider: chatProvider, providers, selectProvider } = useAgentDock();
+
+  // Selecting an agent here views its profile *and* makes it the dock's chat
+  // provider — this toggle is the app-wide "which agent am I using" control.
+  function chooseAgent(id: AgentId, chatId: ChatProviderId) {
+    setAgentId(id);
+    if (chatProvider?.id !== chatId) void selectProvider(chatId);
+  }
+
+  // Reflect the active chat provider once it loads (falls back to detection).
+  useEffect(() => {
+    if (!chatProvider) return;
+    setAgentId(chatProvider.id === "codex" ? "codex" : "claude-code");
+  }, [chatProvider]);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +62,6 @@ export function AgentView() {
       .then((info) => {
         if (!active) return;
         setAgent(info);
-        if (info.detected.name === "codex") setAgentId("codex");
       })
       .catch((err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : String(err));
@@ -81,22 +101,43 @@ export function AgentView() {
         {AGENTS.map((entry) => {
           const selected = agentId === entry.id;
           const detected = agent.detected.name === entry.id;
+          const activeForChat = chatProvider?.id === entry.chatId;
+          // Unknown (older backend that doesn't report `providers`) → assume
+          // available so the control still works.
+          const option = providers.find((candidate) => candidate.id === entry.chatId);
+          const installed = option?.configured ?? true;
           return (
             <button
               key={entry.id}
               type="button"
-              onClick={() => setAgentId(entry.id)}
+              onClick={() => chooseAgent(entry.id, entry.chatId)}
+              title={
+                installed
+                  ? `Use ${entry.label} for chat`
+                  : `${entry.label} CLI isn't installed`
+              }
               className={cn(
                 "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                 selected
                   ? "border-border bg-background text-foreground shadow-sm"
                   : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                !installed && "opacity-60",
               )}
             >
               {entry.icon}
               {entry.label}
-              {detected ? (
-                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+              {activeForChat ? (
+                <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
+                  In use
+                </span>
+              ) : detected ? (
+                <span
+                  className="size-1.5 rounded-full bg-emerald-500"
+                  title="Detected agent"
+                  aria-hidden
+                />
+              ) : !installed ? (
+                <span className="text-[10px] font-normal text-muted-foreground">not installed</span>
               ) : null}
             </button>
           );

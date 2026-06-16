@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { postForm, type ServiceStatus, type TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { openExternal } from "@/lib/tauri";
 
 interface HttpRow {
   id: string;
@@ -110,7 +111,7 @@ export function HttpTab({
               <Copy /> Copy
             </Button>
             <Button
-              onClick={() => window.open(inspectUrl, "_blank", "noopener,noreferrer")}
+              onClick={() => void openExternal(inspectUrl)}
               size="sm"
               type="button"
               variant="outline"

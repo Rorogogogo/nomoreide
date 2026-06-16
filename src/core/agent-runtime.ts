@@ -46,7 +46,7 @@ export interface AgentInvocation {
   args: string[];
 }
 
-const CLAUDE_PROVIDER: AgentChatProvider = {
+export const CLAUDE_PROVIDER: AgentChatProvider = {
   id: "claude",
   label: "Claude Code",
   commandName: "claude",
@@ -57,7 +57,7 @@ const CLAUDE_PROVIDER: AgentChatProvider = {
     "This is real Claude Code, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\".",
 };
 
-const CODEX_PROVIDER: AgentChatProvider = {
+export const CODEX_PROVIDER: AgentChatProvider = {
   id: "codex",
   label: "Codex",
   commandName: "codex",
@@ -101,9 +101,27 @@ export interface AgentRunOptions {
 
 const availabilityProbes = new Map<AgentChatProviderId, Promise<boolean>>();
 
-/** Pick the in-dock chat provider from the same detected-agent signal as /agent. */
-export function resolveChatProvider(detectedName: DetectedAgentName): AgentChatProvider {
-  return detectedName === "codex" ? CODEX_PROVIDER : CLAUDE_PROVIDER;
+/** Every selectable chat provider, in display order. */
+export const CHAT_PROVIDERS: readonly AgentChatProvider[] = [CLAUDE_PROVIDER, CODEX_PROVIDER];
+
+/** Look up a provider by its id; undefined for unknown ids. */
+export function providerById(id: string | undefined): AgentChatProvider | undefined {
+  return CHAT_PROVIDERS.find((provider) => provider.id === id);
+}
+
+/**
+ * Pick the in-dock chat provider. An explicit user choice (`preferredId`, saved
+ * in config) wins; otherwise fall back to the startup-agent detection that the
+ * MCP-launched flow relies on; otherwise Claude.
+ */
+export function resolveChatProvider(
+  detectedName: DetectedAgentName,
+  preferredId?: string,
+): AgentChatProvider {
+  return (
+    providerById(preferredId) ??
+    (detectedName === "codex" ? CODEX_PROVIDER : CLAUDE_PROVIDER)
+  );
 }
 
 export function publicProviderInfo(provider: AgentChatProvider) {

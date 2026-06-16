@@ -116,6 +116,10 @@ pub struct Config {
     pub github_tokens: Vec<GithubTokenDef>,
     #[serde(default)]
     pub workflows: Vec<serde_json::Value>,
+    /// Which CLI the in-dock agent chat drives ("claude" | "codex"). None = never
+    /// chosen → fall back to detection. Shares the `chatProvider` key with Node.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chat_provider: Option<String>,
 }
 
 impl Default for Config {
@@ -131,6 +135,7 @@ impl Default for Config {
             log_sources: vec![],
             github_tokens: vec![],
             workflows: vec![],
+            chat_provider: None,
         }
     }
 }
@@ -226,6 +231,13 @@ impl ConfigStore {
     pub async fn select_git_repository(&self, name: Option<String>) -> Result<Config> {
         let mut config = self.load().await?;
         config.selected_git_repository = name;
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn set_chat_provider(&self, provider: String) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.chat_provider = Some(provider);
         self.save(&config).await?;
         Ok(config)
     }

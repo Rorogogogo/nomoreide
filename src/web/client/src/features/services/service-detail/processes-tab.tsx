@@ -1,9 +1,21 @@
 import type { ProcessRow } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export function ProcessesTab({ rows }: { rows: ProcessRow[] }) {
+export function ProcessesTab({
+  rows,
+  running,
+}: {
+  rows: ProcessRow[];
+  running?: boolean;
+}) {
   if (rows.length === 0) {
-    return <div className="text-muted-foreground">No process tree (service not running).</div>;
+    return (
+      <div className="text-muted-foreground">
+        {running
+          ? "No process tree available for this running service."
+          : "No process tree (service not running)."}
+      </div>
+    );
   }
   const sorted = [...rows].sort((a, b) => b.cpuPercent - a.cpuPercent);
   const pidSet = new Set(rows.map((row) => row.pid));

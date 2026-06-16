@@ -15,7 +15,7 @@ use super::log_store::{LogEntry, LogStore};
 /// work when the app is started from a terminal (which has the full shell PATH).
 /// Resolve a usable PATH once: the user's login-shell PATH plus common dev bin
 /// dirs as a safety net. Cached for the process lifetime.
-fn service_path() -> String {
+pub(crate) fn service_path() -> String {
     use std::sync::OnceLock;
     static CACHED: OnceLock<String> = OnceLock::new();
     CACHED
@@ -77,12 +77,14 @@ pub struct ServiceStatus {
     pub name: String,
     pub state: ServiceState,
     pub pid: Option<u32>,
+    pub pgid: Option<u32>,
     pub exit_code: Option<i32>,
     pub url: Option<String>,
 }
 
 struct ManagedProcess {
     child: Child,
+    pgid: Option<u32>,
     state: ServiceState,
     exit_code: Option<i32>,
     url: Option<String>,
@@ -107,6 +109,7 @@ impl ProcessManager {
             name: name.clone(),
             state: p.state.clone(),
             pid: p.child.id(),
+            pgid: p.pgid,
             exit_code: p.exit_code,
             url: p.url.clone(),
         }).collect()
@@ -118,9 +121,15 @@ impl ProcessManager {
             name: name.to_string(),
             state: p.state.clone(),
             pid: p.child.id(),
+            pgid: p.pgid,
             exit_code: p.exit_code,
             url: p.url.clone(),
         })
+    }
+
+    pub fn service_process_ids(&self, name: &str) -> Option<(Option<u32>, Option<u32>)> {
+        let procs = self.processes.lock().unwrap();
+        procs.get(name).map(|p| (p.child.id(), p.pgid))
     }
 
     pub async fn start_service(&self, def: &ServiceDef) -> Result<()> {
@@ -152,6 +161,7 @@ impl ProcessManager {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(false);
+        configure_managed_process(&mut cmd);
 
         if let Some(env) = &def.env {
             for (k, v) in env {
@@ -160,6 +170,7 @@ impl ProcessManager {
         }
 
         let mut child = cmd.spawn()?;
+        let pgid = child.id();
         let stdout = child.stdout.take();
         let stderr = child.stderr.take();
 
@@ -172,6 +183,7 @@ impl ProcessManager {
             let mut procs = self.processes.lock().unwrap();
             procs.insert(def.name.clone(), ManagedProcess {
                 child,
+                pgid,
                 state: ServiceState::Running,
                 exit_code: None,
                 url: None,
@@ -219,17 +231,20 @@ impl ProcessManager {
         let svc = def.compose_service.as_deref().ok_or_else(|| anyhow!("Missing composeService"))?;
 
         let args = vec!["up", "--no-build", svc];
-        let child = Command::new("docker-compose")
-            .args(&args)
+        let mut cmd = Command::new("docker-compose");
+        cmd.args(&args)
             .current_dir(cwd)
             .env("PATH", service_path())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+        configure_managed_process(&mut cmd);
+        let child = cmd.spawn()?;
+        let pgid = child.id();
 
         let mut procs = self.processes.lock().unwrap();
         procs.insert(def.name.clone(), ManagedProcess {
             child,
+            pgid,
             state: ServiceState::Running,
             exit_code: None,
             url: None,
@@ -243,16 +258,19 @@ impl ProcessManager {
         let cwd = def.cwd.as_deref().unwrap_or("~");
 
         let remote_cmd = format!("cd {cwd} && {command}");
-        let child = Command::new("ssh")
-            .args([host, &remote_cmd])
+        let mut cmd = Command::new("ssh");
+        cmd.args([host, &remote_cmd])
             .env("PATH", service_path())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+        configure_managed_process(&mut cmd);
+        let child = cmd.spawn()?;
+        let pgid = child.id();
 
         let mut procs = self.processes.lock().unwrap();
         procs.insert(def.name.clone(), ManagedProcess {
             child,
+            pgid,
             state: ServiceState::Running,
             exit_code: None,
             url: None,
@@ -266,8 +284,8 @@ impl ProcessManager {
             proc.state = ServiceState::Stopping;
             // Send SIGTERM first
             #[cfg(unix)]
-            if let Some(pid) = proc.child.id() {
-                unsafe { libc::kill(pid as i32, libc::SIGTERM) };
+            if let Some(pgid) = proc.pgid.or_else(|| proc.child.id()) {
+                unsafe { libc::kill(-(pgid as i32), libc::SIGTERM) };
             }
             #[cfg(not(unix))]
             proc.child.start_kill().ok();
@@ -282,6 +300,11 @@ impl ProcessManager {
             let mut p = procs.lock().unwrap();
             if let Some(proc) = p.get_mut(&name) {
                 if proc.state == ServiceState::Stopping {
+                    #[cfg(unix)]
+                    if let Some(pgid) = proc.pgid.or_else(|| proc.child.id()) {
+                        unsafe { libc::kill(-(pgid as i32), libc::SIGKILL) };
+                    }
+                    #[cfg(not(unix))]
                     proc.child.start_kill().ok();
                     proc.state = ServiceState::Stopped;
                 }
@@ -300,11 +323,24 @@ impl ProcessManager {
     pub fn kill_all(&self) {
         let mut procs = self.processes.lock().unwrap();
         for (_, proc) in procs.iter_mut() {
+            #[cfg(unix)]
+            if let Some(pgid) = proc.pgid.or_else(|| proc.child.id()) {
+                unsafe { libc::kill(-(pgid as i32), libc::SIGTERM) };
+            }
+            #[cfg(not(unix))]
             proc.child.start_kill().ok();
             proc.state = ServiceState::Stopped;
         }
     }
 }
+
+#[cfg(unix)]
+fn configure_managed_process(cmd: &mut Command) {
+    cmd.process_group(0);
+}
+
+#[cfg(not(unix))]
+fn configure_managed_process(_cmd: &mut Command) {}
 
 fn detect_url(line: &str, port: Option<u16>) -> Option<String> {
     // Match "http://localhost:3000" or "Local: http://localhost:3000"

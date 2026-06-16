@@ -3,6 +3,7 @@ import { requestJson } from "./client.js";
 import type {
   AgentChatApi,
   AgentChatProviderInfo,
+  AgentChatProviderOption,
   AgentStreamEvent,
 } from "./agent-chat-api.js";
 
@@ -13,8 +14,26 @@ export const httpAgentChatApi: AgentChatApi = {
       configured: boolean;
       approvals: boolean;
       provider: AgentChatProviderInfo;
+      providers: AgentChatProviderOption[];
     }>("/api/agent/chat/status");
-    return { configured: res.configured, approvals: res.approvals, provider: res.provider };
+    return {
+      configured: res.configured,
+      approvals: res.approvals,
+      provider: res.provider,
+      providers: res.providers ?? [],
+    };
+  },
+
+  async setChatProvider(provider) {
+    const res = await requestJson<{ ok: true; provider: AgentChatProviderInfo }>(
+      "/api/agent/chat/provider",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider }),
+      },
+    );
+    return res.provider;
   },
 
   async approveAgentTool(sessionId, requestId, decision) {
@@ -25,11 +44,11 @@ export const httpAgentChatApi: AgentChatApi = {
     });
   },
 
-  async streamAgentChat(message, resumeSessionId, onEvent, signal, autoApprove) {
+  async streamAgentChat(message, resumeSessionId, onEvent, signal, autoApprove, provider) {
     const response = await fetch("/api/agent/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message, resumeSessionId, autoApprove }),
+      body: JSON.stringify({ message, resumeSessionId, autoApprove, provider }),
       signal,
     });
 

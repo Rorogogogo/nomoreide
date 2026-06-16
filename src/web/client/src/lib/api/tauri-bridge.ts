@@ -44,7 +44,7 @@ export async function tauriListen(
 
 export interface RustServiceStatus {
   name: string;
-  state: "Stopped" | "Starting" | "Running" | "Stopping";
+  state: "stopped" | "starting" | "running" | "stopping" | "Stopped" | "Starting" | "Running" | "Stopping";
   pid: number | null;
   exitCode: number | null;
   url: string | null;
@@ -68,10 +68,15 @@ export interface RustDashboardData {
   };
 }
 
+interface RustServiceDefinition {
+  name?: unknown;
+}
+
 function adaptServiceStatus(s: RustServiceStatus) {
+  const state = s.state.toLowerCase();
   return {
     name: s.name,
-    state: s.state.toLowerCase() as "stopped" | "starting" | "running",
+    state: state === "stopping" ? "stopped" : state as "stopped" | "starting" | "running",
     pid: s.pid ?? undefined,
     exitCode: s.exitCode ?? null,
     url: s.url ?? undefined,
@@ -82,6 +87,16 @@ export function adaptDashboard(raw: RustDashboardData) {
   const servicesRecord: Record<string, ReturnType<typeof adaptServiceStatus>> = {};
   for (const s of raw.runtime.services) {
     servicesRecord[s.name] = adaptServiceStatus(s);
+  }
+  for (const service of raw.config.services as RustServiceDefinition[]) {
+    if (typeof service.name !== "string" || servicesRecord[service.name]) continue;
+    servicesRecord[service.name] = {
+      name: service.name,
+      state: "stopped",
+      pid: undefined,
+      exitCode: null,
+      url: undefined,
+    };
   }
   return {
     ok: true as const,
@@ -234,9 +249,45 @@ export interface RustGitStatus {
 
 // ---- Dashboard / Services ----
 
+interface RustProcessTreeSummary {
+  rootPid: number;
+  processCount: number;
+  cpuPercent: number;
+  rssMb: number;
+  processes: Array<{ pid: number; ppid: number; cpuPercent: number; rssMb: number; command: string }>;
+}
+
+export async function tauri_serviceProcesses(name: string) {
+  return tauriInvoke<RustProcessTreeSummary | null>("service_processes", { name });
+}
+
 export async function tauri_getDashboard() {
   const raw = await tauriInvoke<RustDashboardData>("get_dashboard");
   const dash = adaptDashboard(raw);
+
+  // The Rust backend has no full health engine, but the service-detail
+  // "Processes" tab reads its rows from `health[name].processTree`. Fetch a
+  // process tree for each running service and stitch a minimal health record
+  // so the tab populates instead of reading "service not running".
+  const running = raw.runtime.services.filter((s) => s.state.toLowerCase() === "running");
+  const health: Record<string, unknown> = {};
+  await Promise.all(
+    running.map(async (s) => {
+      const tree = await tauri_serviceProcesses(s.name).catch(() => null);
+      if (!tree) return;
+      health[s.name] = {
+        service: s.name,
+        status: "unknown",
+        summary: "",
+        checkedAt: new Date().toISOString(),
+        checks: [],
+        processTree: tree,
+        ports: [],
+        agentContext: "",
+      };
+    }),
+  );
+  dash.health = health as typeof dash.health;
 
   // The Rust `get_dashboard` payload carries config + service runtime only — it
   // has no git block. Fill it here from the selected repo via the bridged git
@@ -622,10 +673,25 @@ export async function tauri_deleteWorkflow(id: string) {
   return tauriInvoke<unknown[]>("delete_workflow", { id });
 }
 
+// ---- Agent introspection ----
+
+export async function tauri_getAgentInfo() {
+  return tauriInvoke<unknown>("get_agent_info");
+}
+
 // ---- Agent Chat ----
 
 export async function tauri_getAgentChatStatus() {
-  return tauriInvoke<{ configured: boolean; approvals: boolean; provider: unknown }>("get_agent_chat_status");
+  return tauriInvoke<{
+    configured: boolean;
+    approvals: boolean;
+    provider: unknown;
+    providers: unknown[];
+  }>("get_agent_chat_status");
+}
+
+export async function tauri_setChatProvider(provider: string) {
+  return tauriInvoke<unknown>("set_chat_provider", { provider });
 }
 
 export async function tauri_startAgentChat(message: string, resumeSessionId?: string, provider?: string) {
@@ -649,18 +715,35 @@ export async function tauri_runInstallCommand(cwd: string, command: string) {
 // ---- Terminal ----
 
 export async function tauri_listTerminalSessions() {
-  return tauriInvoke<unknown[]>("list_terminal_sessions");
+  const sessions = await tauriInvoke<Array<{ id: string; serviceName?: string | null }>>(
+    "list_terminal_sessions",
+  );
+  return sessions.map((session) => ({
+    ...session,
+    serviceName: session.serviceName ?? undefined,
+    label: session.serviceName ?? undefined,
+  }));
 }
 
 export async function tauri_createTerminalSession(opts?: { serviceName?: string; cwd?: string }) {
-  return tauriInvoke<{ id: string; serviceName: string | null }>("create_terminal_session", {
+  const session = await tauriInvoke<{ id: string; serviceName: string | null }>("create_terminal_session", {
     serviceName: opts?.serviceName ?? null,
     cwd: opts?.cwd ?? null,
   });
+  return {
+    ...session,
+    serviceName: session.serviceName ?? undefined,
+    label: session.serviceName ?? undefined,
+  };
 }
 
 export async function tauri_writeTerminalInput(id: string, data: string) {
   await tauriInvoke("write_terminal_input", { id, data });
+}
+
+/** Flush buffered startup output and switch the PTY to live emission. */
+export async function tauri_startTerminalStream(id: string) {
+  await tauriInvoke("start_terminal_stream", { id });
 }
 
 export async function tauri_resizeTerminal(id: string, cols: number, rows: number) {

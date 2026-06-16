@@ -131,6 +131,11 @@ export interface NoMoreIdeConfig {
   githubTokens: GitHubToken[];
   /** User-saved git/GitHub workflows (forks/edits of the built-in templates). */
   workflows: Workflow[];
+  /**
+   * Which CLI the in-dock agent chat drives. Undefined = never chosen → fall
+   * back to startup-agent detection.
+   */
+  chatProvider?: "claude" | "codex";
 }
 
 export type ServiceState = "stopped" | "starting" | "running" | "exited";

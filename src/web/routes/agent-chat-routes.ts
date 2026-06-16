@@ -2,7 +2,9 @@ import type { IncomingMessage } from "node:http";
 import {
   AgentRuntime,
   approvalsEnabled,
+  CHAT_PROVIDERS,
   isAgentAvailable,
+  providerById,
   publicProviderInfo,
   resolveChatProvider,
   type AgentStreamEvent,
@@ -13,21 +15,66 @@ import { errorMessage, route, type Route } from "./context.js";
 
 /** In-dashboard AI chat: streams the active agent CLI session over SSE. */
 export const agentChatRoutes: Route[] = [
-  route("GET", "/api/agent/chat/status", async ({ response }) => {
-    const detected = await detectAgent();
-    const provider = resolveChatProvider(detected.name);
+  route("GET", "/api/agent/chat/status", async ({ response, configStore }) => {
+    const [detected, config] = await Promise.all([detectAgent(), configStore.load()]);
+    const provider = resolveChatProvider(detected.name, config.chatProvider);
+    // Probe every provider so the dock can show which CLIs are installed and let
+    // the user switch to an available one (e.g. when the active one is limited).
+    const providers = await Promise.all(
+      CHAT_PROVIDERS.map(async (candidate) => ({
+        ...publicProviderInfo(candidate),
+        configured: await isAgentAvailable(candidate),
+      })),
+    );
     sendJson(response, {
       ok: true,
       configured: await isAgentAvailable(provider),
       approvals: approvalsEnabled(provider),
       provider: publicProviderInfo(provider),
+      providers,
     });
   }),
 
+  // Persist the user's provider choice so it sticks across CLI/web/desktop.
+  route("POST", "/api/agent/chat/provider", async ({ request, response, configStore }) => {
+    let body: { provider?: unknown };
+    try {
+      body = (await readJsonBody(request)) as typeof body;
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      return;
+    }
+    const provider = providerById(typeof body.provider === "string" ? body.provider : undefined);
+    if (!provider) {
+      sendJson(response, { ok: false, error: "Unknown chat provider." }, 400);
+      return;
+    }
+    await configStore.setChatProvider(provider.id);
+    sendJson(response, { ok: true, provider: publicProviderInfo(provider) });
+  }),
+
   route("POST", "/api/agent/chat", async (ctx) => {
-    const { request, response, cwd, agentApprovals } = ctx;
-    const detected = await detectAgent();
-    const provider = resolveChatProvider(detected.name);
+    const { request, response, cwd, agentApprovals, configStore } = ctx;
+
+    let payload: {
+      message: string;
+      resumeSessionId?: string;
+      autoApprove?: boolean;
+      provider?: string;
+    };
+    try {
+      payload = parsePayload(await readJsonBody(request));
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      return;
+    }
+
+    // The turn's provider wins; else the saved choice; else startup detection.
+    const config = await configStore.load();
+    const provider = resolveChatProvider(
+      (await detectAgent()).name,
+      payload.provider ?? config.chatProvider,
+    );
 
     if (!(await isAgentAvailable(provider))) {
       sendJson(
@@ -38,14 +85,6 @@ export const agentChatRoutes: Route[] = [
         },
         503,
       );
-      return;
-    }
-
-    let payload: { message: string; resumeSessionId?: string; autoApprove?: boolean };
-    try {
-      payload = parsePayload(await readJsonBody(request));
-    } catch (error) {
-      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
       return;
     }
 
@@ -140,10 +179,12 @@ function parsePayload(body: unknown): {
   message: string;
   resumeSessionId?: string;
   autoApprove?: boolean;
+  provider?: string;
 } {
   const message = (body as { message?: unknown })?.message;
   const resumeSessionId = (body as { resumeSessionId?: unknown })?.resumeSessionId;
   const autoApprove = (body as { autoApprove?: unknown })?.autoApprove;
+  const provider = (body as { provider?: unknown })?.provider;
   if (typeof message !== "string" || !message.trim()) {
     throw new Error("Request must include a non-empty `message` string.");
   }
@@ -151,5 +192,6 @@ function parsePayload(body: unknown): {
     message,
     resumeSessionId: typeof resumeSessionId === "string" ? resumeSessionId : undefined,
     autoApprove: autoApprove === true,
+    provider: typeof provider === "string" ? provider : undefined,
   };
 }
