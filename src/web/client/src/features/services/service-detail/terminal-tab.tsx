@@ -27,24 +27,35 @@ export function TerminalTab({
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const startedRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  // Reset on (re)mount so React StrictMode's mount→cleanup→remount cycle can't
+  // leave this stuck at `false`. `startedRef` guards the open against re-runs,
+  // so the StrictMode remount won't relaunch the request — meaning the original
+  // in-flight `createTerminalSession` is the only one that resolves. If its
+  // result were discarded (because cleanup flipped this to `false`), the tab
+  // would freeze forever on "Opening terminal…".
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!active || startedRef.current) return;
     startedRef.current = true;
-    let cancelled = false;
     void (async () => {
       try {
         const session = await createTerminalSession({ serviceName });
-        if (!cancelled) setSessionId(session.id);
+        if (mountedRef.current) setSessionId(session.id);
       } catch (caught) {
-        if (!cancelled) {
+        if (mountedRef.current) {
           setError(caught instanceof Error ? caught.message : String(caught));
+          startedRef.current = false;
         }
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [active, serviceName]);
 
   const expandButton = (

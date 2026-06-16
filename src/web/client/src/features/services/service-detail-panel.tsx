@@ -57,7 +57,9 @@ export function ServiceDetailPanel({
           Terminal
         </TabButton>
       </div>
-      {tab === "processes" ? <ProcessesTab rows={processes} /> : null}
+      {tab === "processes" ? (
+        <ProcessesTab rows={processes} running={status?.state === "running"} />
+      ) : null}
       {tab === "metrics" ? <MetricsTab serviceName={serviceName} /> : null}
       {tab === "http" ? (
         <HttpTab

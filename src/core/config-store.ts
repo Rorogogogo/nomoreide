@@ -135,6 +135,12 @@ const configSchema = z.object({
   logSources: z.array(logSourceSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
   workflows: z.array(workflowSchema).default([]),
+  /**
+   * Which CLI the in-dock agent chat drives. Undefined = "never chosen" → fall
+   * back to startup-agent detection. Set explicitly when the user picks/switches
+   * providers, so the choice sticks across CLI/web/desktop.
+   */
+  chatProvider: z.enum(["claude", "codex"]).optional(),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -303,6 +309,14 @@ export class ConfigStore {
     }
 
     config.selectedGitRepository = name;
+    await this.save(config);
+    return config;
+  }
+
+  /** Persist which agent CLI the in-dock chat drives. */
+  async setChatProvider(provider: "claude" | "codex"): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.chatProvider = provider;
     await this.save(config);
     return config;
   }

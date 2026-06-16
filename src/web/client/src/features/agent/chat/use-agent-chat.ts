@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   approveAgentTool,
   type AgentChatProviderInfo,
+  type AgentChatProviderOption,
   getAgentChatStatus,
+  setChatProvider as setChatProviderApi,
   streamAgentChat,
 } from "@/lib/api";
 
@@ -43,13 +45,23 @@ const nextId = () => {
   return `t${Date.now()}-${turnCounter}`;
 };
 
+/** Minimal provider info for optimistic switching when the backend hasn't reported one. */
+function fallbackProviderInfo(id: AgentChatProviderInfo["id"]): AgentChatProviderInfo {
+  return id === "codex"
+    ? { id, label: "Codex", commandName: "codex", installHint: "", intro: "" }
+    : { id, label: "Claude Code", commandName: "claude", installHint: "", intro: "" };
+}
+
 export function useAgentChat() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [provider, setProvider] = useState<AgentChatProviderInfo | null>(null);
+  const [providers, setProviders] = useState<AgentChatProviderOption[]>([]);
   const [approvals, setApprovals] = useState<ApprovalPrompt[]>([]);
+  // Read inside `send` without re-creating the callback each time it switches.
+  const providerRef = useRef<AgentChatProviderInfo["id"] | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
   // The selected CLI's own session id, returned on the first turn and resumed after.
   const sessionRef = useRef<string | undefined>(undefined);
@@ -63,9 +75,31 @@ export function useAgentChat() {
       .then((status) => {
         setConfigured(status.configured);
         setProvider(status.provider);
+        setProviders(status.providers);
+        providerRef.current = status.provider?.id;
       })
       .catch(() => setConfigured(false));
   }, []);
+
+  // Switch the active provider and persist it. Optimistic: reflect the choice
+  // immediately so the UI toggles even against an older backend that doesn't
+  // report `providers` or accept the persist call — then reconcile from it.
+  const selectProvider = useCallback(
+    async (id: AgentChatProviderInfo["id"]) => {
+      const option = providers.find((candidate) => candidate.id === id);
+      setProvider(option ?? fallbackProviderInfo(id));
+      providerRef.current = id;
+      if (option) setConfigured(option.configured);
+      try {
+        const selected = await setChatProviderApi(id);
+        setProvider(selected);
+        providerRef.current = selected.id;
+      } catch {
+        // Persisting failed — the in-memory choice still drives this session.
+      }
+    },
+    [providers],
+  );
 
   const respond = useCallback(async (requestId: string, decision: "allow" | "deny") => {
     setApprovals((current) => current.filter((prompt) => prompt.requestId !== requestId));
@@ -167,6 +201,7 @@ export function useAgentChat() {
           },
           controller.signal,
           options?.autoApprove,
+          providerRef.current,
         );
       } catch (caught) {
         if (!controller.signal.aborted) {
@@ -189,5 +224,18 @@ export function useAgentChat() {
     setError(null);
   }, [stop]);
 
-  return { turns, streaming, error, configured, provider, approvals, send, stop, clear, respond };
+  return {
+    turns,
+    streaming,
+    error,
+    configured,
+    provider,
+    providers,
+    selectProvider,
+    approvals,
+    send,
+    stop,
+    clear,
+    respond,
+  };
 }

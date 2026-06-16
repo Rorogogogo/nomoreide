@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { openExternal } from "@/lib/tauri";
 
 type SetupMode = "choose" | "device-pending" | "pat";
 
@@ -96,7 +97,7 @@ function DeviceFlowPending({
         setStarting(false);
         const verificationUrl = data.verification_uri_complete || data.verification_uri;
         if (verificationUrl) {
-          window.open(verificationUrl, "_blank", "noopener,noreferrer");
+          void openExternal(verificationUrl);
         }
         // Start polling
         scheduleNextPoll(data.device_code, data.interval);

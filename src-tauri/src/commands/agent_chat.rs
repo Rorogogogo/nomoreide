@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::process::Stdio;
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -8,57 +9,105 @@ use crate::AppState;
 
 const PREVIEW_LIMIT: usize = 400;
 
+/// Every selectable chat provider, in display order.
+const PROVIDER_IDS: [&str; 2] = ["claude", "codex"];
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+
+/// Public metadata for one chat provider (mirrors Node's `publicProviderInfo`).
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderInfo {
+    pub id: String,
+    pub label: String,
+    pub command_name: String,
+    pub install_hint: String,
+    pub intro: String,
+}
+
+/// Static metadata for a known provider id (`claude` | `codex`); defaults to
+/// Claude for anything else so callers always get a sane shape.
+pub fn provider_info(id: &str) -> ProviderInfo {
+    if id == "codex" {
+        ProviderInfo {
+            id: "codex".into(),
+            label: "Codex".into(),
+            command_name: "codex".into(),
+            install_hint: "Install Codex CLI and run `codex login` so it is on PATH, then reload."
+                .into(),
+            intro: "Codex is running in your workspace with full tools.".into(),
+        }
+    } else {
+        ProviderInfo {
+            id: "claude".into(),
+            label: "Claude Code".into(),
+            command_name: "claude".into(),
+            install_hint: "Install Claude Code and run `claude login` so it is on PATH, then reload."
+                .into(),
+            intro: "Claude Code is running in your workspace with full tools — e.g. \"restart the api\", \"what changed in git?\", \"fix the failing test\".".into(),
+        }
+    }
+}
+
+/// Whether a provider's CLI is installed and runnable.
+async fn provider_available(id: &str) -> bool {
+    Command::new(id)
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 // ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn get_agent_chat_status() -> Result<Value, String> {
-    let claude_ok = Command::new("claude").arg("--version")
-        .stdout(Stdio::null()).stderr(Stdio::null())
-        .status().await.map(|s| s.success()).unwrap_or(false);
+pub async fn get_agent_chat_status(state: State<'_, AppState>) -> Result<Value, String> {
+    let saved = state
+        .config_store
+        .load()
+        .await
+        .ok()
+        .and_then(|c| c.chat_provider)
+        .filter(|id| PROVIDER_IDS.contains(&id.as_str()));
 
-    let codex_ok = !claude_ok && Command::new("codex").arg("--version")
-        .stdout(Stdio::null()).stderr(Stdio::null())
-        .status().await.map(|s| s.success()).unwrap_or(false);
-
-    if claude_ok {
-        Ok(json!({
-            "configured": true,
-            "approvals": false,
-            "provider": {
-                "id": "claude",
-                "label": "Claude Code",
-                "commandName": "claude",
-                "installHint": "",
-                "intro": "Claude Code is running in your workspace with full tools — e.g. \"restart the api\", \"what changed in git?\", \"fix the failing test\"."
-            }
-        }))
-    } else if codex_ok {
-        Ok(json!({
-            "configured": true,
-            "approvals": false,
-            "provider": {
-                "id": "codex",
-                "label": "Codex",
-                "commandName": "codex",
-                "installHint": "",
-                "intro": "Codex is running in your workspace with full tools."
-            }
-        }))
-    } else {
-        Ok(json!({
-            "configured": false,
-            "approvals": false,
-            "provider": {
-                "id": "claude",
-                "label": "Claude Code",
-                "commandName": "claude",
-                "installHint": "Install Claude Code and run `claude login` so it is on PATH, then reload.",
-                "intro": ""
-            }
-        }))
+    // Probe every provider so the dock can show install state and let the user
+    // switch to an available CLI (e.g. when the active one is rate-limited).
+    let mut providers: Vec<Value> = Vec::with_capacity(PROVIDER_IDS.len());
+    let mut available: Vec<(&str, bool)> = Vec::new();
+    for id in PROVIDER_IDS {
+        let ok = provider_available(id).await;
+        available.push((id, ok));
+        let info = provider_info(id);
+        let mut entry = serde_json::to_value(&info).unwrap_or_else(|_| json!({}));
+        entry["configured"] = json!(ok);
+        providers.push(entry);
     }
+
+    // Selected = saved choice, else the first installed CLI, else Claude.
+    let selected_id = saved
+        .as_deref()
+        .or_else(|| available.iter().find(|(_, ok)| *ok).map(|(id, _)| *id))
+        .unwrap_or("claude")
+        .to_string();
+    let selected_ok = available
+        .iter()
+        .find(|(id, _)| *id == selected_id)
+        .map(|(_, ok)| *ok)
+        .unwrap_or(false);
+
+    Ok(json!({
+        "configured": selected_ok,
+        "approvals": false,
+        "provider": provider_info(&selected_id),
+        "providers": providers,
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +132,10 @@ pub async fn start_agent_chat(
             std::env::current_dir().unwrap_or_default().to_string_lossy().into_owned()
         });
 
-    let provider = provider.as_deref().unwrap_or("claude");
+    // Turn override wins; else the saved choice; else Claude.
+    let provider = provider
+        .or_else(|| config.chat_provider.clone())
+        .unwrap_or_else(|| "claude".to_string());
     let is_codex = provider == "codex";
     let bin = if is_codex { "codex" } else { "claude" };
     let args = if is_codex {

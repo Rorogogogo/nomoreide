@@ -5,6 +5,13 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  tauri_onTerminalOutput,
+  tauri_resizeTerminal,
+  tauri_startTerminalStream,
+  tauri_writeTerminalInput,
+} from "@/lib/api";
+import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 type TerminalConnectionState = "connecting" | "running" | "exited" | "error";
@@ -45,14 +52,23 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
   const [connectionState, setConnectionState] =
     useState<TerminalConnectionState>("connecting");
   const [detail, setDetail] = useState("Opening shell");
+  // Desktop (Tauri) drives the shell through the Rust PTY (invoke + events);
+  // the web build talks to the Node terminal server over a WebSocket. The
+  // desktop app has no Node server, so the socket path can never connect there.
+  const tauriMode = isTauri();
 
   const sendResize = useCallback(() => {
-    const socket = socketRef.current;
     const fit = fitRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN || !fit) return;
+    if (!fit) return;
     fit.fit();
     const dimensions = fit.proposeDimensions();
     if (!dimensions) return;
+    if (tauriMode) {
+      void tauri_resizeTerminal(sessionId, dimensions.cols, dimensions.rows);
+      return;
+    }
+    const socket = socketRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
     socket.send(
       JSON.stringify({
         cols: dimensions.cols,
@@ -60,7 +76,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
         type: "resize",
       }),
     );
-  }, []);
+  }, [tauriMode, sessionId]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -100,46 +116,91 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
     terminalRef.current = terminal;
     fitRef.current = fit;
 
-    const socket = new WebSocket(terminalSocketUrl(sessionId));
-    socketRef.current = socket;
+    // Wire the live I/O transport. Both branches install a terminal input
+    // subscription and stream output back into xterm; cleanup is unified below.
+    let cleanupTransport: () => void;
 
-    const inputSubscription = terminal.onData((data) => {
-      if (socket.readyState !== WebSocket.OPEN) return;
-      socket.send(JSON.stringify({ data, type: "input" }));
-    });
+    if (tauriMode) {
+      let unlisten: (() => void) | null = null;
+      let disposed = false;
+      const inputSubscription = terminal.onData((data) => {
+        void tauri_writeTerminalInput(sessionId, data);
+      });
+      void tauri_onTerminalOutput(sessionId, (data) => terminal.write(data)).then(
+        (off) => {
+          // The session may have unmounted before `listen` resolved.
+          if (disposed) {
+            off();
+            return;
+          }
+          unlisten = off;
+          setConnectionState("running");
+          setDetail("Shell connected");
+          // Now that the listener is live, release the PTY's buffered startup
+          // output (the initial shell prompt) so the terminal shows immediately
+          // instead of looking dead until the first keystroke.
+          void tauri_startTerminalStream(sessionId);
+          sendResize();
+        },
+        (caught) => {
+          if (disposed) return;
+          setConnectionState("error");
+          setDetail(caught instanceof Error ? caught.message : String(caught));
+        },
+      );
+      cleanupTransport = () => {
+        disposed = true;
+        inputSubscription.dispose();
+        unlisten?.();
+      };
+    } else {
+      const socket = new WebSocket(terminalSocketUrl(sessionId));
+      socketRef.current = socket;
 
-    socket.addEventListener("open", () => {
-      setConnectionState("running");
-      setDetail("Shell connected");
-      sendResize();
-    });
+      const inputSubscription = terminal.onData((data) => {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        socket.send(JSON.stringify({ data, type: "input" }));
+      });
 
-    socket.addEventListener("message", (event) => {
-      const message = parseServerMessage(event.data);
-      if (!message) return;
-      if (message.type === "output") {
-        terminal.write(message.data);
-        return;
-      }
-      if (message.type === "error") {
+      socket.addEventListener("open", () => {
+        setConnectionState("running");
+        setDetail("Shell connected");
+        sendResize();
+      });
+
+      socket.addEventListener("message", (event) => {
+        const message = parseServerMessage(event.data);
+        if (!message) return;
+        if (message.type === "output") {
+          terminal.write(message.data);
+          return;
+        }
+        if (message.type === "error") {
+          setConnectionState("error");
+          setDetail(message.error);
+          return;
+        }
+        setConnectionState(message.state === "idle" ? "connecting" : message.state);
+        if (message.cwd) setCwd(message.cwd);
+        setDetail(message.error ?? message.shell ?? "Shell connected");
+      });
+
+      socket.addEventListener("close", () => {
+        setConnectionState((state) => (state === "exited" ? state : "exited"));
+        setDetail("Socket closed");
+      });
+
+      socket.addEventListener("error", () => {
         setConnectionState("error");
-        setDetail(message.error);
-        return;
-      }
-      setConnectionState(message.state === "idle" ? "connecting" : message.state);
-      if (message.cwd) setCwd(message.cwd);
-      setDetail(message.error ?? message.shell ?? "Shell connected");
-    });
+        setDetail("Terminal socket error");
+      });
 
-    socket.addEventListener("close", () => {
-      setConnectionState((state) => (state === "exited" ? state : "exited"));
-      setDetail("Socket closed");
-    });
-
-    socket.addEventListener("error", () => {
-      setConnectionState("error");
-      setDetail("Terminal socket error");
-    });
+      cleanupTransport = () => {
+        inputSubscription.dispose();
+        socket.close();
+        socketRef.current = null;
+      };
+    }
 
     window.addEventListener("resize", sendResize);
     window.setTimeout(sendResize, 0);
@@ -153,14 +214,12 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
     return () => {
       window.removeEventListener("resize", sendResize);
       observer.disconnect();
-      inputSubscription.dispose();
-      socket.close();
+      cleanupTransport();
       terminal.dispose();
-      socketRef.current = null;
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [sessionId, sendResize]);
+  }, [sessionId, sendResize, tauriMode]);
 
   // A hidden pane has zero size, so xterm can't fit. Refit + focus on reveal.
   useEffect(() => {
@@ -173,6 +232,9 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
   }, [active, sendResize]);
 
   const sendControl = useCallback((message: Record<string, unknown>) => {
+    // Restart/Stop are control messages the Node terminal server understands.
+    // The Rust PTY has no equivalent yet, so they no-op in the desktop app.
+    if (tauriMode) return;
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     const dimensions = fitRef.current?.proposeDimensions();
@@ -183,7 +245,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
         ...message,
       }),
     );
-  }, []);
+  }, [tauriMode]);
 
   return (
     <section

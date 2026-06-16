@@ -48,9 +48,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
+            // agent introspection
+            commands::agent::get_agent_info,
             // agent chat
             commands::agent_chat::get_agent_chat_status,
             commands::agent_chat::start_agent_chat,
+            commands::config::set_chat_provider,
             // onboard
             commands::onboard::scan_repo_url,
             commands::onboard::run_install_command,
@@ -70,10 +73,13 @@ pub fn run() {
             commands::config::remove_github_token,
             commands::config::register_log_source,
             commands::config::remove_log_source,
+            // system
+            commands::system::open_external,
             // dashboard
             commands::dashboard::get_dashboard,
             // services
             commands::services::list_services,
+            commands::services::service_processes,
             commands::services::start_service,
             commands::services::stop_service,
             commands::services::restart_service,
@@ -104,6 +110,7 @@ pub fn run() {
             // terminal
             commands::terminal::list_terminal_sessions,
             commands::terminal::create_terminal_session,
+            commands::terminal::start_terminal_stream,
             commands::terminal::write_terminal_input,
             commands::terminal::resize_terminal,
             commands::terminal::close_terminal_session,

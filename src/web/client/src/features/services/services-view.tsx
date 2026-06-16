@@ -23,6 +23,7 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { openExternal } from "@/lib/tauri";
 import { DebugTimeline } from "./debug-timeline";
 import { EmptyState } from "./empty-state";
 import { FirstRunGuide } from "./first-run-guide";
@@ -408,7 +409,7 @@ export function ServicesView({
                           <Button
                             aria-label="Open in browser"
                             className="size-7"
-                            onClick={() => window.open(openUrl, "_blank", "noopener,noreferrer")}
+                            onClick={() => void openExternal(openUrl)}
                             size="icon"
                             type="button"
                             variant="outline"
@@ -445,6 +446,8 @@ export function ServicesView({
                       active={isServiceOn(selectedStatus?.state)}
                       baseUrl={`/api/services/${encodeURIComponent(selectedServiceDef.name)}`}
                       compact
+                      resourceKind="service"
+                      resourceName={selectedServiceDef.name}
                       targetLabel={selectedServiceDef.name}
                       onRefresh={onRefresh}
                     />

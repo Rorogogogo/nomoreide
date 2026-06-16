@@ -64,6 +64,18 @@ pub async fn set_git_board_repositories(
 }
 
 #[tauri::command]
+pub async fn set_chat_provider(
+    state: State<'_, AppState>,
+    provider: String,
+) -> Result<crate::commands::agent_chat::ProviderInfo, String> {
+    if provider != "claude" && provider != "codex" {
+        return Err(format!("Unknown chat provider: {provider}"));
+    }
+    state.config_store.set_chat_provider(provider.clone()).await.map_err(|e| e.to_string())?;
+    Ok(crate::commands::agent_chat::provider_info(&provider))
+}
+
+#[tauri::command]
 pub async fn register_database(
     state: State<'_, AppState>,
     db: DatabaseDef,

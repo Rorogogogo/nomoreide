@@ -55,3 +55,22 @@ export async function startDragging(): Promise<void> {
   const m = await windowModule();
   await m?.getCurrentWindow().startDragging();
 }
+
+/**
+ * Open a URL in the system default browser. In a Tauri webview `window.open`
+ * is swallowed (it tries to navigate the webview or no-ops), so route external
+ * links through the Rust `open_external` command instead; the web build keeps
+ * using `window.open`.
+ */
+export async function openExternal(url: string): Promise<void> {
+  if (isTauri()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_external", { url });
+      return;
+    } catch {
+      // Fall through to window.open if the command is unavailable.
+    }
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}

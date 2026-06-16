@@ -28,7 +28,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
-import { postForm, type AgentChatProviderInfo, type DashboardData } from "@/lib/api";
+import {
+  startService as startServiceApi,
+  type AgentChatProviderInfo,
+  type AgentChatProviderOption,
+  type DashboardData,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { GitSituationBanner } from "../../git/git-situation-banner";
 import { onboardRepoPrompt } from "../prompts";
@@ -70,6 +75,8 @@ export function AgentDock({
     error,
     configured,
     provider,
+    providers,
+    selectProvider,
     approvals,
     send,
     stop,
@@ -238,7 +245,7 @@ export function AgentDock({
   // Start a service the agent just registered, straight from the chat.
   async function startService(name: string) {
     try {
-      await postForm(`/api/services/${encodeURIComponent(name)}/start`, {});
+      await startServiceApi(name);
       showSuccessToast(`Starting ${name}…`);
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : `Could not start ${name}.`);
@@ -329,8 +336,12 @@ export function AgentDock({
               pointer events so the middle stays grabbable for the resize strip. */}
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 px-2 pt-1.5">
             <div className="pointer-events-auto flex items-center gap-2">
-              <ProviderLogo provider={provider} className="size-4 text-primary" />
-              <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
+              <ProviderSwitcher
+                provider={provider}
+                providers={providers}
+                onSelect={selectProvider}
+                disabled={streaming}
+              />
               {activeSource ? (
                 <span className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
                   <Sparkles className="size-3" />
@@ -598,6 +609,103 @@ function ProviderLogo({
   if (provider?.id === "claude") return <ClaudeLogo className={className} />;
   if (provider?.id === "codex") return <CodexLogo className={className} />;
   return <Sparkles className={className} />;
+}
+
+/**
+ * The dock header's agent picker. Shows the active provider; clicking opens a
+ * menu to switch CLIs — installed ones are selectable, missing ones are greyed
+ * with their install hint. The choice persists (see useAgentChat.selectProvider)
+ * so a rate-limited agent can be swapped out without losing it on reload.
+ */
+function ProviderSwitcher({
+  provider,
+  providers,
+  onSelect,
+  disabled,
+}: {
+  provider: AgentChatProviderInfo | null;
+  providers: AgentChatProviderOption[];
+  onSelect: (id: AgentChatProviderInfo["id"]) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  // With only one (or no) known provider there's nothing to switch to — render
+  // a plain label so the header stays quiet until a second CLI is available.
+  if (providers.length < 2) {
+    return (
+      <span className="flex items-center gap-2">
+        <ProviderLogo provider={provider} className="size-4 text-primary" />
+        <span className="text-sm font-medium">{provider?.label ?? "Agent"}</span>
+      </span>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled}
+        onClick={() => setOpen((value) => !value)}
+        title={disabled ? "Finish the current message to switch agents" : "Switch agent"}
+        type="button"
+      >
+        <ProviderLogo provider={provider} className="size-4 text-primary" />
+        <span>{provider?.label ?? "Agent"}</span>
+        <ChevronDown className="size-3 opacity-60" />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-full z-30 mt-1 min-w-52 overflow-hidden rounded-lg border border-border bg-card p-1 shadow-lg">
+          {providers.map((candidate) => {
+            const active = candidate.id === provider?.id;
+            return (
+              <button
+                className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                disabled={!candidate.configured}
+                key={candidate.id}
+                onClick={() => {
+                  setOpen(false);
+                  if (!active) onSelect(candidate.id);
+                }}
+                type="button"
+              >
+                <ProviderLogo
+                  provider={candidate}
+                  className="mt-0.5 size-4 shrink-0 text-primary"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    {candidate.label}
+                    {!candidate.configured ? (
+                      <span className="rounded bg-muted px-1 py-px text-[10px] font-normal text-muted-foreground">
+                        not installed
+                      </span>
+                    ) : null}
+                  </span>
+                  {!candidate.configured && candidate.installHint ? (
+                    <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                      {candidate.installHint}
+                    </span>
+                  ) : null}
+                </span>
+                {active ? <Check className="mt-0.5 size-3.5 shrink-0 text-primary" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function EmptyHint({
