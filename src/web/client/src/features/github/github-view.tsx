@@ -131,12 +131,14 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
 
-  // Header Refresh reloads the active tab's data. Branches/Actions own their
-  // own hooks in nested components, so those tabs register from there.
+  // Header Refresh / the 5s dashboard poll reloads the active tab's data.
+  // Branches/Actions own their own hooks in nested components and register
+  // their own handler from there, so we deliberately do nothing for them here.
+  // (Re-validating the token on every poll would flip the whole view to
+  // "checking" every 5s — the disturbing flicker on the Actions tab.)
   useRegisterRefresh(() => {
     if (tab === "prs") prHook.refresh();
     else if (tab === "issues") issueHook.refresh();
-    else token.refresh();
   });
 
   const tabButtonClass = (active: boolean) =>

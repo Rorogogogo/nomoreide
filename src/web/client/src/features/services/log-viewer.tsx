@@ -51,14 +51,16 @@ export function LogViewer({
         logs.map((entry, index) => (
           <div
             className={cn(
-              "grid min-w-max grid-cols-[168px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5 dark:border-zinc-800/80",
+              "grid min-w-max grid-cols-[88px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5 dark:border-zinc-800/80",
               entry.stream === "stderr"
                 ? "bg-red-50/70 text-red-800 dark:bg-red-950/35 dark:text-red-100"
                 : "bg-emerald-50/35 text-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:odd:bg-zinc-900/45",
             )}
             key={`${entry.timestamp}-${entry.stream}-${index}`}
           >
-            <span className="text-muted-foreground dark:text-zinc-500">{entry.timestamp}</span>
+            <span className="text-muted-foreground dark:text-zinc-500" title={entry.timestamp}>
+              {formatLogTime(entry.timestamp)}
+            </span>
             <span className="whitespace-pre-wrap break-words">
               {entry.stream === "stderr" ? (
                 <span className="mr-2 rounded bg-red-100 px-1 font-semibold uppercase text-red-700 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-400/20">
@@ -74,6 +76,18 @@ export function LogViewer({
       )}
     </div>
   );
+}
+
+/**
+ * Compact a full ISO timestamp down to `HH:MM:SS.mmm` for the log gutter. The
+ * date and microsecond precision are noise when scanning a live tail (and the
+ * full value stays available via the cell's title tooltip + search). Falls back
+ * to the raw string if it isn't a parseable timestamp.
+ */
+function formatLogTime(timestamp: string): string {
+  const match = /T(\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?/.exec(timestamp);
+  if (!match) return timestamp;
+  return match[2] ? `${match[1]}.${match[2]}` : match[1];
 }
 
 export function logEntryText(entry: LogEntry): string {

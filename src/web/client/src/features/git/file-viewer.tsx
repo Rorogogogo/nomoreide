@@ -317,7 +317,7 @@ export function FileViewer({
           ) : null}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto bg-zinc-50 dark:bg-zinc-950">
+      <div className="min-h-0 flex-1 overflow-auto bg-card">
         {error ? (
           <div className="p-4">
             <Alert variant="destructive">{error}</Alert>

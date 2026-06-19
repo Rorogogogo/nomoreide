@@ -216,7 +216,7 @@ export function ServiceRow({
           {service.port ? <span>:{service.port}</span> : null}
         </div>
       </div>
-      <StateBadge state={state} />
+      <StateDot state={state} />
       {/* Stop propagation so acting on a service doesn't also fight row selection. */}
       <span className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
         <LifecycleActions
@@ -335,6 +335,27 @@ export function PortEditor({
 
 export function serviceUrl(port: number): string {
   return `http://127.0.0.1:${port}`;
+}
+
+const STATE_DOT_META: Record<ServiceStatus["state"], { className: string; pulse?: boolean }> = {
+  running: { className: "bg-emerald-500" },
+  starting: { className: "bg-amber-500", pulse: true },
+  exited: { className: "bg-red-500" },
+  stopped: { className: "bg-muted-foreground/40" },
+};
+
+// Compact status indicator for dense list rows — the word version (StateBadge)
+// repeats what the Start/Stop button already conveys and eats a whole column.
+export function StateDot({ state }: { state: ServiceStatus["state"] }) {
+  const meta = STATE_DOT_META[state] ?? STATE_DOT_META.stopped;
+  return (
+    <span className="relative flex size-2.5 items-center justify-center" title={state}>
+      {meta.pulse && (
+        <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-60", meta.className)} />
+      )}
+      <span className={cn("relative inline-flex size-2 rounded-full", meta.className)} />
+    </span>
+  );
 }
 
 export function StateBadge({ state }: { state: ServiceStatus["state"] }) {

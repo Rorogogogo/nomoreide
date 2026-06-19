@@ -16,6 +16,23 @@ function isLive(run: GitHubWorkflowRun): boolean {
   return run.status === "in_progress" || run.status === "queued";
 }
 
+// Signatures of just the fields that drive the UI, so a poll that returns
+// identical data can short-circuit the state update and avoid re-rendering the
+// runs list / job-step detail every few seconds (the "keeps refreshing" flicker).
+function runsSignature(runs: GitHubWorkflowRun[]): string {
+  return runs.map((run) => `${run.id}:${run.status}:${run.conclusion}`).join("|");
+}
+
+function jobsSignature(jobs: GitHubWorkflowJob[]): string {
+  return jobs
+    .map(
+      (job) =>
+        `${job.id}:${job.status}:${job.conclusion}:` +
+        job.steps.map((step) => `${step.number}:${step.status}:${step.conclusion}`).join(","),
+    )
+    .join("|");
+}
+
 /**
  * Non-destructive merge of a fresh page-1 fetch into the runs already on screen:
  * updates the status/conclusion of runs we still have, prepends brand-new ones,
@@ -86,11 +103,19 @@ export function useGitHubActions(branch?: string) {
   // and the live poll below, so the job/step detail keeps up with a running pipeline.
   const syncLatest = useCallback(() => {
     void listGitHubWorkflowRuns(branch, 1)
-      .then((next) => setRuns((prev) => mergeRuns(prev, next)))
+      .then((next) =>
+        setRuns((prev) => {
+          const merged = mergeRuns(prev, next);
+          // Keep the old reference when nothing changed so React skips the re-render.
+          return runsSignature(prev) === runsSignature(merged) ? prev : merged;
+        }),
+      )
       .catch(() => { /* transient; the next tick (or manual refresh) retries */ });
     if (selectedRunId) {
       void listGitHubWorkflowRunJobs(selectedRunId)
-        .then((next) => setJobs(next))
+        .then((next) =>
+          setJobs((prev) => (jobsSignature(prev) === jobsSignature(next) ? prev : next)),
+        )
         .catch(() => { /* keep the last good jobs view */ });
     }
   }, [branch, selectedRunId]);
