@@ -4,7 +4,6 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   tauri_onTerminalOutput,
   tauri_resizeTerminal,
@@ -15,6 +14,15 @@ import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
 type TerminalConnectionState = "connecting" | "running" | "exited" | "error";
+
+// Status is conveyed by a single dot (the word badge ate space and duplicated
+// what the Restart/Stop buttons already imply); the full state stays in the title.
+const TERMINAL_DOT: Record<TerminalConnectionState, string> = {
+  connecting: "bg-amber-500",
+  running: "bg-emerald-500",
+  exited: "bg-muted-foreground/40",
+  error: "bg-red-500",
+};
 
 type ServerMessage =
   | {
@@ -257,43 +265,39 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#111111] px-4 py-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Badge
-              className={cn(
-                "border-white/15 bg-white/10 text-white shadow-none",
-                connectionState === "running" && "border-emerald-400/35 text-emerald-200",
-                connectionState === "error" && "border-red-400/35 text-red-200",
+            <span className="relative flex size-2.5 shrink-0 items-center justify-center" title={connectionState}>
+              {connectionState === "connecting" && (
+                <span className={cn("absolute inline-flex size-full animate-ping rounded-full opacity-60", TERMINAL_DOT[connectionState])} />
               )}
-              variant="outline"
-            >
-              {connectionState}
-            </Badge>
+              <span className={cn("relative inline-flex size-2 rounded-full", TERMINAL_DOT[connectionState])} />
+            </span>
             <span className="truncate font-mono text-[11px] text-white/55">
               {cwd} · {detail}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             aria-label="Restart terminal"
-            className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-            size="sm"
-            variant="outline"
+            className="text-white/60 hover:bg-white/10 hover:text-white"
+            size="icon-sm"
+            variant="ghost"
             onClick={() => sendControl({ type: "restart" })}
+            title="Restart terminal"
             type="button"
           >
             <RotateCcw />
-            Restart
           </Button>
           <Button
             aria-label="Stop terminal"
-            className="border-white/15 bg-white/5 text-white hover:bg-white/10"
-            size="sm"
-            variant="outline"
+            className="text-white/60 hover:bg-white/10 hover:text-white"
+            size="icon-sm"
+            variant="ghost"
             onClick={() => sendControl({ type: "stop" })}
+            title="Stop terminal"
             type="button"
           >
             <Square />
-            Stop
           </Button>
           {toolbarExtra}
         </div>

@@ -22,13 +22,15 @@ export function LogsTab({ serviceName }: { serviceName: string }) {
       target={{ kind: "service", name: serviceName }}
       trailing={
         <Button
+          aria-label={fullscreen ? "Exit fullscreen logs" : "Expand logs"}
+          className="text-muted-foreground hover:text-foreground"
           onClick={() => setFullscreen((value) => !value)}
-          size="sm"
+          size="icon-sm"
+          title={fullscreen ? "Exit fullscreen" : "Expand"}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           {fullscreen ? <Minimize2 /> : <Maximize2 />}
-          {fullscreen ? "Exit" : "Expand"}
         </Button>
       }
     />

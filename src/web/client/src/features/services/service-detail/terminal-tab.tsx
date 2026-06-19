@@ -61,14 +61,14 @@ export function TerminalTab({
   const expandButton = (
     <Button
       aria-label={fullscreen ? "Exit fullscreen terminal" : "Expand terminal"}
-      className="border-white/15 bg-white/5 text-white hover:bg-white/10"
+      className="text-white/60 hover:bg-white/10 hover:text-white"
       onClick={() => setFullscreen((value) => !value)}
-      size="sm"
+      size="icon-sm"
+      title={fullscreen ? "Exit fullscreen" : "Expand"}
       type="button"
-      variant="outline"
+      variant="ghost"
     >
       {fullscreen ? <Minimize2 /> : <Maximize2 />}
-      {fullscreen ? "Exit" : "Expand"}
     </Button>
   );
 

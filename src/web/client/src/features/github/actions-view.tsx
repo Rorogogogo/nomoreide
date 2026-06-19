@@ -3,6 +3,7 @@ import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useRegisterRefresh } from "@/components/refresh-registry";
+import { formatRelativeTime } from "@/lib/utils";
 import { AiAskInline } from "../agent/ai-ask-inline";
 import { AgentMark, AiSpark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -117,7 +118,9 @@ export function ActionsView({
                         <span className="block truncate text-[13px] font-medium">{run.name}</span>
                         <span className="block text-[11px] text-muted-foreground">
                           #{run.run_number} · {run.head_branch} · {run.event} ·{" "}
-                          {new Date(run.created_at).toLocaleDateString()}
+                          <span title={new Date(run.created_at).toLocaleString()}>
+                            {formatRelativeTime(run.created_at)}
+                          </span>
                         </span>
                       </span>
                       <RunConclusionStatus run={run} />
