@@ -9,6 +9,7 @@ import {
   Plus,
   ScrollText,
   Trash2,
+  Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { openExternal } from "@/lib/tauri";
 import { DebugTimeline } from "./debug-timeline";
+import { DependencyGraph } from "./dependency-graph";
 import { EmptyState } from "./empty-state";
 import { FirstRunGuide } from "./first-run-guide";
 import { HealthSummary } from "./health-summary";
@@ -68,6 +70,7 @@ export function ServicesView({
   const [onboardOpen, setOnboardOpen] = useState(false);
   const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [ungroupedDragOver, setUngroupedDragOver] = useState(false);
@@ -95,6 +98,14 @@ export function ServicesView({
   const ungroupedServices = useMemo(
     () => data.config.services.filter((service) => !groupedServiceNames.has(service.name)),
     [data.config.services, groupedServiceNames],
+  );
+  const serviceNames = useMemo(
+    () => data.config.services.map((service) => service.name),
+    [data.config.services],
+  );
+  const hasDependencies = useMemo(
+    () => data.config.services.some((service) => (service.dependsOn?.length ?? 0) > 0),
+    [data.config.services],
   );
   const healthByService = data.health ?? {};
   const hasVisibleServices = data.config.bundles.length > 0 || ungroupedServices.length > 0;
@@ -281,6 +292,17 @@ export function ServicesView({
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-sm">Services</CardTitle>
                 <div className="flex items-center gap-1">
+                  <Button
+                    aria-haspopup="dialog"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={() => setGraphOpen(true)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <Workflow className="size-3.5" />
+                    Graph
+                  </Button>
                   <Button
                     aria-haspopup="dialog"
                     className="h-7 gap-1.5 px-2 text-xs"
@@ -537,6 +559,7 @@ export function ServicesView({
           <ServiceForm
             cwd={data.cwd}
             initialService={selectedServiceDef}
+            availableServices={serviceNames}
             onRefresh={onRefresh}
             onSaved={() => setEditOpen(false)}
           />
@@ -552,6 +575,7 @@ export function ServicesView({
           {serviceComposer === "service" ? (
             <ServiceForm
               cwd={data.cwd}
+              availableServices={serviceNames}
               onRefresh={onRefresh}
               onSaved={() => setServiceComposer(null)}
             />
@@ -573,6 +597,24 @@ export function ServicesView({
           onClose={() => setMultiLogOpen(false)}
           services={data.config.services.map((service) => service.name)}
         />
+      ) : null}
+      {graphOpen ? (
+        <ComposerDialog
+          icon={<Workflow />}
+          onClose={() => setGraphOpen(false)}
+          size="lg"
+          title="Service Dependency Graph"
+        >
+          <DependencyGraph
+            statuses={data.runtime.services}
+            health={healthByService}
+            hasDependencies={hasDependencies}
+            onSelectService={(name) => {
+              setSelectedService(name);
+              setGraphOpen(false);
+            }}
+          />
+        </ComposerDialog>
       ) : null}
     </>
   );

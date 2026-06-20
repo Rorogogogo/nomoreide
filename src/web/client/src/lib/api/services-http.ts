@@ -10,6 +10,7 @@ import type {
   DirectoryListing,
   LogEntry,
   MetricsSeries,
+  ServiceGraph,
   ServiceTestResult,
   ServicesApi,
 } from "./services-api.js";
@@ -17,6 +18,13 @@ import type {
 export const httpServicesApi: ServicesApi = {
   getDashboard() {
     return requestJson<DashboardData>("/api/dashboard");
+  },
+
+  async getServiceGraph() {
+    const response = await requestJson<{ ok: true; graph: ServiceGraph }>(
+      "/api/services/graph",
+    );
+    return response.graph;
   },
 
   async startService(name) {

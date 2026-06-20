@@ -23,6 +23,8 @@ const baseServiceSchema = z.object({
   description: z.string().optional(),
   /** Command used by the Test Runner; defaults to `npm test` when absent. */
   test: z.string().min(1).optional(),
+  /** Services that must be running/healthy before this one (bundle start order). */
+  dependsOn: z.array(z.string().min(1)).optional(),
 });
 
 const localServiceSchema = baseServiceSchema.extend({

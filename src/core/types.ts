@@ -11,6 +11,11 @@ export interface ServiceDefinition {
   description?: string;
   /** Test Runner command; defaults to `npm test` when absent. */
   test?: string;
+  /**
+   * Names of services that must be started (and healthy) before this one, used
+   * to order `startBundle`. Self/unknown references are ignored at start time.
+   */
+  dependsOn?: string[];
   // local + ssh
   command?: string;
   cwd?: string;

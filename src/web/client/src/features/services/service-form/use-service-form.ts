@@ -37,6 +37,7 @@ export function useServiceForm({
   const [composeFile, setComposeFile] = useState(initialService?.composeFile ?? "");
   const [composeService, setComposeService] = useState(initialService?.composeService ?? "");
   const [host, setHost] = useState(initialService?.host ?? "");
+  const [dependsOn, setDependsOn] = useState<string[]>(initialService?.dependsOn ?? []);
   const [testResult, setTestResult] = useState<ServiceTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -53,6 +54,7 @@ export function useServiceForm({
     setComposeFile("");
     setComposeService("");
     setHost("");
+    setDependsOn([]);
     setTestResult(null);
   }
 
@@ -72,6 +74,8 @@ export function useServiceForm({
         payload.composeService = composeService;
       }
       if (kind === "ssh") payload.host = host;
+      // Joined here; the server splits, trims, and drops self/blank references.
+      payload.dependsOn = dependsOn.filter((dep) => dep !== name).join(",");
 
       await postForm("/api/services", payload);
       if (!editing) resetForm();
@@ -127,6 +131,8 @@ export function useServiceForm({
     setComposeService,
     host,
     setHost,
+    dependsOn,
+    setDependsOn,
     testResult,
     testing,
     submit,
