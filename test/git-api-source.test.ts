@@ -2,20 +2,22 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const gitApiSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/lib/api/git.ts"),
-  "utf8",
-);
+// Post transport-seam refactor the helpers are re-exported from the `git.ts`
+// barrel and implemented (with their endpoints) in the HTTP backend.
+const apiDir = resolve(__dirname, "../src/web/client/src/lib/api");
+const gitBarrel = readFileSync(resolve(apiDir, "git.ts"), "utf8");
+const gitHttp = readFileSync(resolve(apiDir, "git-http.ts"), "utf8");
 
 describe("git web API helpers", () => {
   test("exposes branch creation helper for create-and-checkout flows", () => {
-    expect(gitApiSource).toContain("export async function gitCreateBranch");
-    expect(gitApiSource).toContain('"/api/git/branches"');
-    expect(gitApiSource).toContain("name");
+    expect(gitBarrel).toContain("gitCreateBranch");
+    expect(gitHttp).toContain("gitCreateBranch");
+    expect(gitHttp).toContain('"/api/git/branches"');
   });
 
   test("exposes a helper for switching back to the default branch and pulling", () => {
-    expect(gitApiSource).toContain("export async function gitCheckoutDefaultAndPull");
-    expect(gitApiSource).toContain('"/api/git/default-branch/pull"');
+    expect(gitBarrel).toContain("gitCheckoutDefaultAndPull");
+    expect(gitHttp).toContain("gitCheckoutDefaultAndPull");
+    expect(gitHttp).toContain('"/api/git/default-branch/pull"');
   });
 });

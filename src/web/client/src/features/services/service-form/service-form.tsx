@@ -14,11 +14,14 @@ export function ServiceForm({
   onRefresh,
   onSaved,
   initialService,
+  availableServices = [],
 }: {
   cwd: string;
   onRefresh: () => Promise<void>;
   onSaved?: () => void;
   initialService?: ServiceDefinition;
+  /** Other registered service names, offered as start-order dependencies. */
+  availableServices?: string[];
 }) {
   const {
     editing,
@@ -40,6 +43,8 @@ export function ServiceForm({
     setComposeService,
     host,
     setHost,
+    dependsOn,
+    setDependsOn,
     testResult,
     testing,
     submit,
@@ -47,6 +52,14 @@ export function ServiceForm({
   } = useServiceForm({ cwd, onRefresh, onSaved, initialService });
 
   const activeKind = kindOptions.find((option) => option.value === kind)!;
+  // Can't depend on itself; everything else registered is fair game.
+  const dependencyChoices = availableServices.filter((service) => service !== name);
+  const toggleDependency = (service: string) =>
+    setDependsOn((current) =>
+      current.includes(service)
+        ? current.filter((item) => item !== service)
+        : [...current, service],
+    );
   const canTest = kind === "local" && command.trim().length > 0 && formCwd.trim().length > 0;
 
   const sectionClass =
@@ -253,6 +266,30 @@ export function ServiceForm({
               <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
             </div>
           </Alert>
+        </fieldset>
+      ) : null}
+
+      {dependencyChoices.length > 0 ? (
+        <fieldset className={`${sectionClass} sm:col-span-2`}>
+          <legend className={legendClass}>Step 5 · Dependencies (optional)</legend>
+          <p className="text-[11px] text-muted-foreground">
+            When this service runs as part of a group, the selected services start
+            first — and NoMoreIDE waits for each to come up before this one.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {dependencyChoices.map((service) => (
+              <Button
+                className="h-7 px-2.5 text-xs"
+                key={service}
+                onClick={() => toggleDependency(service)}
+                size="sm"
+                type="button"
+                variant={dependsOn.includes(service) ? "default" : "outline"}
+              >
+                {service}
+              </Button>
+            ))}
+          </div>
         </fieldset>
       ) : null}
 

@@ -19,6 +19,7 @@ import {
   type EnvEntry,
 } from "../../core/env-file.js";
 import { PortConflictError } from "../../core/process-manager.js";
+import { buildServiceGraph } from "../../core/service-graph.js";
 import { readLogSource } from "../../core/log-sources.js";
 import { deriveServiceLogSource } from "../../core/service-log-source.js";
 import { testServiceCommand } from "../service-tester.js";
@@ -43,6 +44,12 @@ export const serviceRoutes: Route[] = [
       | "ssh";
     const name = requiredFormValue(form, "name");
     const description = optionalFormValue(form, "description");
+    // Comma-separated list from the form; drop blanks and a self-reference.
+    const dependsOn = (optionalFormValue(form, "dependsOn") ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0 && value !== name);
+    const dependsOnField = dependsOn.length > 0 ? { dependsOn } : {};
 
     const definition =
       kind === "docker-compose"
@@ -54,6 +61,7 @@ export const serviceRoutes: Route[] = [
             composeService: requiredFormValue(form, "composeService"),
             port,
             description,
+            ...dependsOnField,
           }
         : kind === "ssh"
           ? {
@@ -64,6 +72,7 @@ export const serviceRoutes: Route[] = [
               command: requiredFormValue(form, "command"),
               port,
               description,
+              ...dependsOnField,
             }
           : {
               name,
@@ -71,10 +80,18 @@ export const serviceRoutes: Route[] = [
               cwd: requiredFormValue(form, "cwd"),
               port,
               description,
+              ...dependsOnField,
             };
 
     const config = await configStore.registerService(definition);
     sendJson(response, { ok: true, config });
+  }),
+
+  route("GET", "/api/services/graph", async ({ response, configStore }) => {
+    // Structural dependency graph only — the UI overlays live state/health from
+    // the dashboard data it already holds, so this stays a cheap config read.
+    const config = await configStore.load();
+    sendJson(response, { ok: true, graph: buildServiceGraph(config.services) });
   }),
 
   route("POST", "/api/services/test", async ({ request, response }) => {

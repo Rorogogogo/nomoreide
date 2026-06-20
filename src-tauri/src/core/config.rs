@@ -27,6 +27,10 @@ pub struct ServiceDef {
     pub env: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub test: Option<String>,
+    /// Services that must start before this one (bundle start order). Preserved
+    /// on round-trip; ordering itself is enforced by the Node backend today.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depends_on: Option<Vec<String>>,
     // docker-compose fields
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compose_file: Option<String>,

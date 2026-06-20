@@ -18,6 +18,7 @@ export interface ServiceDefinition {
   port?: number;
   description?: string;
   test?: string;
+  dependsOn?: string[];
   composeFile?: string;
   composeService?: string;
   host?: string;
@@ -278,8 +279,27 @@ export interface TestRunEvent {
   line?: { stream: "stdout" | "stderr"; text: string };
 }
 
+export interface ServiceGraphNode {
+  name: string;
+  /** Declared deps that resolve to a registered service. */
+  dependsOn: string[];
+  /** Declared deps with no matching service (rendered as a warning). */
+  missing: string[];
+}
+
+export interface ServiceGraph {
+  nodes: ServiceGraphNode[];
+  edges: Array<{ from: string; to: string }>;
+  /** Topological start order (deps first); empty when a cycle blocks sorting. */
+  order: string[];
+  /** Distinct cycles detected in the graph (empty when acyclic). */
+  cycles: string[][];
+}
+
 export interface ServicesApi {
   getDashboard(): Promise<DashboardData>;
+  /** Structural service dependency graph (nodes/edges/order/cycles). */
+  getServiceGraph(): Promise<ServiceGraph>;
   startService(name: string): Promise<void>;
   stopService(name: string): Promise<void>;
   restartService(name: string): Promise<void>;

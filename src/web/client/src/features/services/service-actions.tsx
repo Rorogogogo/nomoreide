@@ -7,7 +7,7 @@ import {
   PortConflictResponseError,
   postForm,
   restartService,
-  startBundle,
+  startBundleProgressive,
   startService,
   stopBundle,
   stopService,
@@ -29,12 +29,16 @@ async function performLifecycle(
   op: LifecycleOp,
   kind: ResourceKind,
   name: string,
+  /** Called after each service in a bundle starts, so the UI can refresh live. */
+  onProgress?: () => Promise<void>,
 ): Promise<void> {
   if (kind === "bundle") {
-    if (op === "start") return startBundle(name);
+    // Progressive start so services appear one-by-one (deps first) instead of
+    // all flipping to "running" when the whole sequence finishes.
+    if (op === "start") return startBundleProgressive(name, () => onProgress?.());
     if (op === "stop") return stopBundle(name);
     await stopBundle(name);
-    await startBundle(name);
+    await startBundleProgressive(name, () => onProgress?.());
     return;
   }
   if (op === "start") return startService(name);
@@ -163,7 +167,8 @@ function ActionButton({
         // path is web-only and never reached in the desktop app).
         await postForm(`${baseUrl}/start`, { strategy: "killHolder" });
       } else {
-        await performLifecycle(op, resourceKind, resourceName);
+        // Refresh after each service so a bundle start lights up progressively.
+        await performLifecycle(op, resourceKind, resourceName, () => onRefresh());
       }
       showSuccessToast(`${label} requested for ${targetLabel}.`);
       await onRefresh();

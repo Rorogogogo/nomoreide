@@ -15,6 +15,7 @@ import {
 } from "./http-inspector.js";
 import { getPortHolder, isPortAvailable, type PortHolder } from "./port-utils.js";
 import { readProcessTree } from "./process-tree.js";
+import { resolveStartOrder } from "./service-graph.js";
 import {
   isPidAlive,
   type ServiceRegistry,
@@ -349,9 +350,20 @@ export class ProcessManager {
 
   async startBundle(name: string): Promise<ServiceStatus[]> {
     const bundle = await this.getBundle(name);
+    const config = await this.configStore.load();
+    // Topologically order the bundle (and any transitive deps it declares) so
+    // dependencies come up before dependents. Throws DependencyCycleError on a
+    // cycle, surfacing a clear message instead of a half-started bundle.
+    const order = resolveStartOrder(config.services, bundle.services);
+    const byName = new Map(config.services.map((service) => [service.name, service]));
     const statuses: ServiceStatus[] = [];
 
-    for (const serviceName of bundle.services) {
+    for (const serviceName of order) {
+      // Each declared dependency precedes this service in `order` and is thus
+      // already started; wait for it to report ready before the dependent.
+      for (const dep of byName.get(serviceName)?.dependsOn ?? []) {
+        if (byName.has(dep)) await this.waitForServiceReady(dep);
+      }
       statuses.push(await this.startService(serviceName));
     }
 
@@ -360,13 +372,57 @@ export class ProcessManager {
 
   async stopBundle(name: string): Promise<ServiceStatus[]> {
     const bundle = await this.getBundle(name);
+    const order = await this.safeStopOrder(bundle);
     const statuses: ServiceStatus[] = [];
 
-    for (const serviceName of bundle.services.slice().reverse()) {
+    // Reverse dependency order: stop dependents before the services they need.
+    for (const serviceName of order.reverse()) {
       statuses.push(await this.stopService(serviceName));
     }
 
     return statuses;
+  }
+
+  /**
+   * Stop order scoped to the bundle's own members, in dependency order so we
+   * can reverse it. Falls back to declaration order if a cycle makes a topo
+   * sort impossible — stopping must never throw the way a start can.
+   */
+  private async safeStopOrder(bundle: BundleDefinition): Promise<string[]> {
+    try {
+      const config = await this.configStore.load();
+      const resolved = resolveStartOrder(config.services, bundle.services);
+      const inBundle = new Set(bundle.services);
+      return resolved.filter((serviceName) => inBundle.has(serviceName));
+    } catch {
+      return bundle.services.slice();
+    }
+  }
+
+  /**
+   * Wait until a dependency looks ready before starting services that depend on
+   * it. A service with a port is "ready" once that port is bound; portless
+   * services have no probe, so we return immediately. Times out (warning, not
+   * error) so a slow/never-binding dependency can't wedge a bundle start.
+   */
+  private async waitForServiceReady(name: string, timeoutMs = 15000): Promise<void> {
+    const service = await this.getService(name).catch(() => undefined);
+    if (!service?.port) return;
+
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (this.runtimes.get(name)?.status.state === "exited") return;
+      if (!(await isPortAvailable(service.port))) return; // port bound → ready
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    void this.appendTimeline({
+      kind: "service.health",
+      service: name,
+      severity: "warning",
+      title: `${name} did not become ready in ${Math.round(timeoutMs / 1000)}s`,
+      detail: `Port ${service.port} never came up; starting dependents anyway.`,
+    });
   }
 
   async restartBundle(name: string): Promise<ServiceStatus[]> {
