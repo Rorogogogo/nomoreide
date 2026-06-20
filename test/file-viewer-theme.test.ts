@@ -9,7 +9,9 @@ const fileViewerSource = readFileSync(
 
 describe("file viewer theme", () => {
   test("keeps the tracked-file source view dark in dark mode", () => {
-    expect(fileViewerSource).toContain("dark:bg-zinc-950");
+    // The container now uses the `bg-card` theme token (dark in dark mode);
+    // the gutter/code keep explicit zinc accents.
+    expect(fileViewerSource).toContain("bg-card");
     expect(fileViewerSource).toContain("dark:bg-zinc-900");
     expect(fileViewerSource).toContain("dark:border-zinc-800");
     expect(fileViewerSource).toContain("dark:text-zinc-100");

@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 
-const apiSource = readFileSync("src/web/client/src/lib/api/github.ts", "utf8");
+// The connection-status type lives in the seam's API contract module after the
+// transport-seam refactor (the `github.ts` barrel only re-exports it).
+const apiSource = readFileSync("src/web/client/src/lib/api/github-api.ts", "utf8");
 const hookSource = readFileSync(
   "src/web/client/src/features/github/hooks/use-github-token.ts",
   "utf8",
