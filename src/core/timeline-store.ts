@@ -8,14 +8,23 @@ interface TimelineStoreOptions {
   maxEvents?: number;
 }
 
+type TimelineListener = (event: TimelineEvent) => void;
+
 export class TimelineStore {
   private readonly events: TimelineEvent[] = [];
   private readonly baseDir: string;
   private readonly maxEvents: number;
+  private readonly listeners = new Set<TimelineListener>();
 
   constructor(options: TimelineStoreOptions = {}) {
     this.baseDir = options.baseDir ?? ".nomoreide";
     this.maxEvents = options.maxEvents ?? 500;
+  }
+
+  /** Notified after each appended event — the central app event bus. */
+  subscribe(listener: TimelineListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   async append(
@@ -36,6 +45,7 @@ export class TimelineStore {
       `${JSON.stringify(completeEvent)}\n`,
     );
 
+    for (const listener of this.listeners) listener(completeEvent);
     return completeEvent;
   }
 

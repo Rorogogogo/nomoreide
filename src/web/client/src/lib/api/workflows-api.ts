@@ -39,6 +39,30 @@ export interface Workflow {
   steps: WorkflowStep[];
 }
 
+/** Mirrors `core/workflow-triggers.ts`. */
+export type TriggerEvent = "error-incident" | "service-crash";
+
+export interface WorkflowTrigger {
+  id: string;
+  workflowId: string;
+  event: TriggerEvent;
+  enabled: boolean;
+  filter?: string;
+  autoRun: boolean;
+}
+
+/** A fired trigger waiting for the client runner to pick it up. */
+export interface PendingRun {
+  id: string;
+  triggerId: string;
+  workflowId: string;
+  event: TriggerEvent;
+  summary: string;
+  signature: string;
+  autoRun: boolean;
+  createdAt: string;
+}
+
 export interface GitStatusSummary {
   branch: string;
   upstream?: string;
@@ -53,4 +77,9 @@ export interface WorkflowsApi {
   deleteWorkflow(id: string): Promise<Workflow[]>;
   /** Fresh git status — used by the runner to verify an agent step's real effect. */
   getGitStatus(): Promise<GitStatusSummary>;
+  listWorkflowTriggers(): Promise<WorkflowTrigger[]>;
+  saveWorkflowTrigger(trigger: WorkflowTrigger): Promise<WorkflowTrigger[]>;
+  deleteWorkflowTrigger(id: string): Promise<WorkflowTrigger[]>;
+  listPendingRuns(): Promise<PendingRun[]>;
+  ackPendingRun(id: string): Promise<void>;
 }

@@ -96,8 +96,8 @@ Extension of #2: package failing logs + diff in the affected file + service stat
 - **UI** — a "Copy repro bundle" button next to "Copy to agent" on each Error Inbox entry; optional "save to `.nomoreide/repros/`".
 - **Reuses** — everything from #2 plus `ProcessManager` status and env masking. Build right after #2.
 
-## 9. Service dependency / startup order — 📋 OPEN (next candidate)
-Declare "API depends on DB", auto-start in order, show a health graph. *Confirmed unbuilt: no `dependsOn` in the service schema as of 2026-06-13.* Cleanest standalone win of the leftovers — all the pieces (bundles, `ProcessManager`, `service-health.ts`, `process-tree.ts`) already exist.
+## 9. Service dependency / startup order — ✅ shipped
+Declare "API depends on DB", auto-start in order, show a health graph. Shipped: `dependsOn?: string[]` on the service schema (`config-store.ts` + `types.ts`) + `core/service-graph.ts` (topological sort, cycle detection, edge enumeration) consumed by `process-manager.ts` on bundle start (waits on each dependency's health probe before starting dependents).
 
 **Build:**
 - **Config** — add `dependsOn?: string[]` to the service schema in `config-store.ts`.
@@ -177,14 +177,16 @@ Today Error Inbox (#2), repro bundle (#8), change-set review (#11), and snapshot
 - **UI** — "Fix with agent" on each Error Inbox incident; on finish, deep-link to the Agent→Changes tab for that session.
 - **Reuses** — `repro-bundle.ts`, `agent-runtime.ts` + `agent-sessions.ts`, `snapshot-manager.ts`, change-set endpoints.
 
-## 16. Event-driven workflow triggers
-Workflows are user-run today. Let them fire on events the app already detects — a new Error Inbox incident, a CI failure (`github_get_commit_ci`), or a service crash from `ProcessManager`. Small core addition on top of the existing workflow runner.
+## 16. Event-driven workflow triggers — ✅ shipped
+Workflows are user-run today. Let them fire on events the app already detects — a new Error Inbox incident or a service crash. Because the workflow **runner lives client-side** (agent steps run through the dock), the server can't run a triggered workflow itself; instead a fired trigger enqueues a **pending run** that the open dashboard drains and drives through the existing client runner (the "pending-run queue" model). Runs survive until a browser claims them, so an event detected while no tab is open isn't lost.
 
-**Build:**
-- **Core** — an event→workflow binding table (config schema + `core/workflows.ts` hook); subscribe to `ErrorInbox`, `github-manager`, and `ProcessManager` emitters; debounce/dedupe so one crash-storm doesn't fan out.
-- **API** — CRUD for triggers under the existing workflow routes; surface fired-trigger history.
-- **UI** — a "Triggers" section in `features/workflows/`: bind an event + filter → workflow.
-- **Reuses** — `workflows.ts` runner, the SSE/subscribe patterns already in Error Inbox and metrics.
+Done as a vertical slice:
+- **Core** — `core/workflow-triggers.ts` (`WorkflowTriggerManager`): subscribes to `ErrorInbox.subscribe` (error incidents) and a new `TimelineStore.subscribe` (service crashes = `service.lifecycle` events with `severity: "error"`), matches enabled `workflowTriggers` (config schema + `saveWorkflowTrigger`/`removeWorkflowTrigger` in `config-store.ts`), debounces a burst by `triggerId:cause` signature, and pushes a `PendingRun` onto a ring buffer with a subscribe emitter.
+- **API** — `web/routes/workflow-trigger-routes.ts`: CRUD (`GET/POST /api/workflow-triggers`, `DELETE /:id`), pending queue (`GET .../pending`, SSE `GET .../pending/stream`, `POST .../pending/:id/ack`). `triggerManager` lives in `RouteServices`.
+- **UI** — `features/workflows/`: `workflow-trigger-context.tsx` (app-root provider that streams the queue, **auto-runs** `autoRun` triggers through `useWorkflowRun`, exposes the rest) + `triggers-section.tsx` (bind event + filter + workflow, toggle/delete, one-click "Run" of queued runs) mounted in the Workflows panel.
+- **Client API** — trigger methods added to the Workflows seam (`workflows-{api,http,tauri}.ts`); Tauri stub is inert (web/MCP feature).
+- **Tests** — `test/workflow-triggers.test.ts` (8) green.
+- Remaining bonus: a CI-failure source (poll `github_get_commit_ci`) and fired-trigger history — both slot onto the same queue.
 
 ## 17. Inject env into a running process (the #1 leftover bonus) — ✅ shipped
 Env Manager (#1) edits `.env` but requires restart-and-pray. Pushing updated vars into a live process closes that gap. Small, satisfying win — scoped to processes NoMoreIDE spawned (the existing safety boundary).

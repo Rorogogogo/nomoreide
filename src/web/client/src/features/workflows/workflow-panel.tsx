@@ -47,6 +47,7 @@ import {
   buildWorkflowStepDebugPrompt,
 } from "./workflow-prompts";
 import { parseRecommendedBranchName } from "./workflow-result";
+import { TriggersSection } from "./triggers-section";
 import { useWorkflowRun } from "./workflow-run-context";
 import type { RunState, StepStatus } from "./use-workflow-runner";
 
@@ -222,6 +223,7 @@ export function WorkflowPanel() {
               />
             ))}
           </div>
+          <TriggersSection workflows={workflows} />
         </>
       )}
     </div>

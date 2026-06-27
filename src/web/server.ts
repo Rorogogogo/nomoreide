@@ -33,6 +33,7 @@ import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
 import { UsageHistory } from "../core/usage-history.js";
+import { WorkflowTriggerManager } from "../core/workflow-triggers.js";
 import { buildUsageInfo } from "./usage-info.js";
 import { selectedGitCwd } from "./dashboard.js";
 import { sendHtml, sendJson } from "./http-utils.js";
@@ -109,6 +110,14 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     agentSessions,
     resolveRepoPath: () => selectedGitCwd(configStore, cwd),
   });
+  // Event-driven workflow triggers (IDEAS #16): subscribe to error incidents +
+  // service crashes and enqueue pending runs the client runner drains.
+  const triggerManager = new WorkflowTriggerManager({
+    configStore,
+    errorInbox,
+    timelineStore,
+  });
+  triggerManager.start();
 
   const services: RouteServices = {
     agentApprovals,
@@ -127,6 +136,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     terminalManager,
     timelineStore,
     toolCallStore,
+    triggerManager,
     usageHistory,
   };
 

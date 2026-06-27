@@ -15,6 +15,7 @@ import type { TerminalSessionManagerLike } from "../../core/terminal-manager.js"
 import type { TimelineStore } from "../../core/timeline-store.js";
 import type { ToolCallStore } from "../../core/tool-call-store.js";
 import type { UsageHistory } from "../../core/usage-history.js";
+import type { WorkflowTriggerManager } from "../../core/workflow-triggers.js";
 
 /** Shared stateful services every route handler receives. */
 export interface RouteServices {
@@ -34,6 +35,7 @@ export interface RouteServices {
   terminalManager: TerminalSessionManagerLike;
   timelineStore: TimelineStore;
   toolCallStore: ToolCallStore;
+  triggerManager: WorkflowTriggerManager;
   usageHistory: UsageHistory;
 }
 

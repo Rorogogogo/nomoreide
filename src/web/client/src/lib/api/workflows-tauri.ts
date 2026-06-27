@@ -21,4 +21,11 @@ export const tauriWorkflowsApi: WorkflowsApi = {
       files: s.files,
     };
   },
+  // Event-driven triggers are a web/MCP feature (server-side event bus + SSE
+  // queue); the desktop core has no equivalent yet, so these are inert here.
+  listWorkflowTriggers: async () => [],
+  saveWorkflowTrigger: async () => [],
+  deleteWorkflowTrigger: async () => [],
+  listPendingRuns: async () => [],
+  ackPendingRun: async () => {},
 };
