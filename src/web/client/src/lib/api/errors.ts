@@ -12,7 +12,7 @@ import { tauriErrorsApi } from "./errors-tauri.js";
 
 const api: ErrorsApi = isTauri() ? tauriErrorsApi : httpErrorsApi;
 
-export const { getErrorIncidents, getErrorPrompt, getErrorBundle } = api;
+export const { getErrorIncidents, getErrorPrompt, getErrorBundle, startFix } = api;
 
 export type {
   ErrorsApi,
@@ -20,4 +20,5 @@ export type {
   ErrorIncident,
   ErrorIncidentPrompt,
   ErrorReproBundle,
+  FixPreparation,
 } from "./errors-api.js";

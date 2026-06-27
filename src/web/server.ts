@@ -10,6 +10,7 @@ import {
 import { DbPeek } from "../core/db-peek.js";
 import { DbWrite } from "../core/db-write.js";
 import { ErrorInbox } from "../core/error-inbox.js";
+import { FixLoop } from "../core/fix-loop.js";
 import { LogStore } from "../core/log-store.js";
 import { MetricsStore } from "../core/metrics-store.js";
 import { ProcessManager } from "../core/process-manager.js";
@@ -31,6 +32,7 @@ import type {
 import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
+import { selectedGitCwd } from "./dashboard.js";
 import { sendHtml, sendJson } from "./http-utils.js";
 import { routes, type RouteServices } from "./routes/index.js";
 import { errorMessage } from "./routes/context.js";
@@ -93,6 +95,13 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const agentSessions = new AgentSessionStore(
     resolve(dirname(resolve(logDir)), "agent-sessions.json"),
   );
+  // Error → Fix loop: snapshots the working tree of the *selected* repo (where
+  // the in-dock agent edits) before handing the repro bundle to the agent.
+  const fixLoop = new FixLoop({
+    reproBundle,
+    agentSessions,
+    resolveRepoPath: () => selectedGitCwd(configStore, cwd),
+  });
 
   const services: RouteServices = {
     agentApprovals,
@@ -102,6 +111,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     dbPeek,
     dbWrite,
     errorInbox,
+    fixLoop,
     logStore,
     manager,
     metricsStore,

@@ -5,6 +5,7 @@ import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { DbWrite } from "../../core/db-write.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
+import type { FixLoop } from "../../core/fix-loop.js";
 import type { LogStore } from "../../core/log-store.js";
 import type { MetricsStore } from "../../core/metrics-store.js";
 import type { ProcessManager } from "../../core/process-manager.js";
@@ -23,6 +24,7 @@ export interface RouteServices {
   dbPeek: DbPeek;
   dbWrite: DbWrite;
   errorInbox: ErrorInbox;
+  fixLoop: FixLoop;
   logStore: LogStore;
   manager: ProcessManager;
   metricsStore: MetricsStore;

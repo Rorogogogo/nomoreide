@@ -1,5 +1,5 @@
 import { sendJson } from "../http-utils.js";
-import { patternRoute, route, type Route } from "./context.js";
+import { errorMessage, patternRoute, route, type Route } from "./context.js";
 
 /** Error Inbox: deduped error/stack-trace incidents + copy-to-agent prompts. */
 export const errorRoutes: Route[] = [
@@ -64,6 +64,30 @@ export const errorRoutes: Route[] = [
         return;
       }
       sendJson(response, { ok: true, ...payload });
+    },
+  ),
+
+  // Error → Fix loop: snapshot the working tree, record an agent session, and
+  // return the repro-bundle fix prompt. The client then runs the prompt in the
+  // dock; the agent's edits surface as the recorded session's change-set.
+  patternRoute(
+    /^\/api\/errors\/(\d+)\/fix$/,
+    ["id"],
+    async ({ request, response, params, fixLoop }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const prep = await fixLoop.prepare(Number(params.id));
+        if (!prep) {
+          sendJson(response, { ok: false, error: "Incident not found" }, 404);
+          return;
+        }
+        sendJson(response, { ok: true, ...prep });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
     },
   ),
 ];

@@ -6,7 +6,12 @@ import { cn } from "@/lib/utils";
 import { IncidentDetail } from "./incident-detail";
 import { useErrorIncidents } from "./use-error-incidents";
 
-export function ErrorInboxView() {
+export function ErrorInboxView({
+  onReviewChanges,
+}: {
+  /** Deep-link to Agent → Changes for a fix run's recorded session. */
+  onReviewChanges?: (sessionId: string) => void;
+} = {}) {
   const { incidents, connected, error } = useErrorIncidents();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -104,7 +109,7 @@ export function ErrorInboxView() {
             </Alert>
           </div>
         ) : selected ? (
-          <IncidentDetail incident={selected} />
+          <IncidentDetail incident={selected} onReviewChanges={onReviewChanges} />
         ) : (
           <div className="flex h-full items-center justify-center p-8 text-center">
             <div className="max-w-sm">

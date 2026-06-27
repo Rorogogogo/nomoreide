@@ -186,6 +186,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     sql: string;
     nonce: number;
   } | null>(null);
+  // Bumped when an Error Inbox fix asks to review its change-set, so the Agent
+  // page opens its Changes tab (which auto-selects the newest session).
+  const [changesFocusNonce, setChangesFocusNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
@@ -501,8 +504,15 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {page === "github" ? <GitHubView key={githubPageKey} /> : null}
-            {page === "agent" ? <AgentView /> : null}
-            {page === "errors" ? <ErrorInboxView /> : null}
+            {page === "agent" ? <AgentView focusChanges={changesFocusNonce} /> : null}
+            {page === "errors" ? (
+              <ErrorInboxView
+                onReviewChanges={() => {
+                  setChangesFocusNonce((nonce) => nonce + 1);
+                  setPage("agent");
+                }}
+              />
+            ) : null}
             {page === "database" ? (
               <DatabaseView
                 staged={stagedSql}

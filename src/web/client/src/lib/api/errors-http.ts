@@ -5,6 +5,7 @@ import type {
   ErrorIncidentPrompt,
   ErrorReproBundle,
   ErrorsApi,
+  FixPreparation,
 } from "./errors-api.js";
 
 export const httpErrorsApi: ErrorsApi = {
@@ -22,5 +23,11 @@ export const httpErrorsApi: ErrorsApi = {
   getErrorBundle(id, save = false) {
     const query = save ? "?save=1" : "";
     return requestJson<{ ok: true } & ErrorReproBundle>(`/api/errors/${id}/bundle${query}`);
+  },
+
+  startFix(id) {
+    return requestJson<{ ok: true } & FixPreparation>(`/api/errors/${id}/fix`, {
+      method: "POST",
+    });
   },
 };
