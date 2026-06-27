@@ -34,6 +34,7 @@
     "dev:web": "vite --host 127.0.0.1",
     "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
+    "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "video:render": "npm --prefix video run render",
