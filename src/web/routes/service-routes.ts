@@ -18,6 +18,7 @@ import {
   writeEnvFile,
   type EnvEntry,
 } from "../../core/env-file.js";
+import { computeRuntimeEnvStatus } from "../../core/env-runtime.js";
 import { PortConflictError } from "../../core/process-manager.js";
 import { buildServiceGraph } from "../../core/service-graph.js";
 import { readLogSource } from "../../core/log-sources.js";
@@ -293,6 +294,30 @@ export const serviceRoutes: Route[] = [
       }
 
       sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/services\/([^/]+)\/env\/runtime$/,
+    ["name"],
+    async ({ request, response, manager, configStore, params }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(params.name);
+      const serviceCwd = await getServiceCwd(configStore, name);
+      if (!serviceCwd) {
+        sendJson(response, { ok: false, error: `Service "${name}" has no working directory.` }, 400);
+        return;
+      }
+      const status = manager.status().services[name];
+      const runtime = await computeRuntimeEnvStatus({
+        cwd: serviceCwd,
+        running: status?.state === "running",
+        startedAt: status?.startedAt,
+      });
+      sendJson(response, { ok: true, runtime });
     },
   ),
 

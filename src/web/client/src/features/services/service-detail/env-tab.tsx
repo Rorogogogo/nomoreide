@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Eye, EyeOff, FolderOpen, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { EnvRuntimeBanner } from "./env-runtime-banner";
 import { EnvTable } from "./env-table";
 import { FileBrowserDialog } from "./file-browser-dialog";
+import { useServiceEnvRuntime } from "./use-service-env-runtime";
 import { prettyJson, useServiceEnv } from "./use-service-env";
 
 export function EnvTab({ serviceName }: { serviceName: string }) {
@@ -24,8 +26,14 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
     save,
     pickFile,
   } = useServiceEnv(serviceName);
+  const envRuntime = useServiceEnvRuntime(serviceName);
   const [revealAll, setRevealAll] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+
+  async function saveAndRecheck() {
+    await save();
+    await envRuntime.refresh();
+  }
 
   if (loadingList) {
     return <div className="text-muted-foreground">Loading…</div>;
@@ -36,6 +44,11 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
 
   return (
     <div className="space-y-2">
+      <EnvRuntimeBanner
+        onReload={() => void envRuntime.reload()}
+        reloading={envRuntime.reloading}
+        runtime={envRuntime.runtime}
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground">File:</span>
@@ -80,7 +93,12 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
               </Button>
             </>
           ) : null}
-          <Button disabled={!dirty || saving || !loaded} onClick={save} size="sm" type="button">
+          <Button
+            disabled={!dirty || saving || !loaded}
+            onClick={() => void saveAndRecheck()}
+            size="sm"
+            type="button"
+          >
             <Save /> {saving ? "Saving…" : "Save"}
           </Button>
         </div>

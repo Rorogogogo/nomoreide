@@ -279,6 +279,22 @@ export interface TestRunEvent {
   line?: { stream: "stdout" | "stderr"; text: string };
 }
 
+export interface StaleConfigFile {
+  relativePath: string;
+  path: string;
+  format: ConfigFileFormat;
+  modifiedAt: string;
+}
+
+export interface RuntimeEnvStatus {
+  running: boolean;
+  startedAt?: string;
+  /** Config files modified after the service started (most-recent first). */
+  staleFiles: StaleConfigFile[];
+  /** True when a running process is using an out-of-date configuration. */
+  stale: boolean;
+}
+
 export interface ServiceGraphNode {
   name: string;
   /** Declared deps that resolve to a registered service. */
@@ -324,6 +340,11 @@ export interface ServicesApi {
     path: string,
     content: string,
   ): Promise<ConfigFileTextResponse>;
+  /**
+   * Whether a running service's config files were edited after it started, so
+   * the live process is using stale values (a reload is needed to apply them).
+   */
+  getServiceEnvRuntime(name: string): Promise<RuntimeEnvStatus>;
   getServiceMetrics(name: string): Promise<MetricsSeries>;
   testServiceCommand(
     values: Record<string, string | number | undefined>,
