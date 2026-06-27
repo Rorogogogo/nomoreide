@@ -14,6 +14,7 @@ import type {
   ServiceDefinition,
 } from "./types.js";
 import { workflowSchema, type Workflow } from "./workflows.js";
+import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -137,6 +138,8 @@ const configSchema = z.object({
   logSources: z.array(logSourceSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
   workflows: z.array(workflowSchema).default([]),
+  /** Event→workflow bindings that auto-fire workflows (IDEAS #16). */
+  workflowTriggers: z.array(workflowTriggerSchema).default([]),
   /**
    * Which CLI the in-dock agent chat drives. Undefined = "never chosen" → fall
    * back to startup-agent detection. Set explicitly when the user picks/switches
@@ -154,6 +157,7 @@ const defaultConfig: NoMoreIdeConfig = {
   logSources: [],
   githubTokens: [],
   workflows: [],
+  workflowTriggers: [],
 };
 
 export function defaultGlobalConfigPath(): string {
@@ -417,6 +421,27 @@ export class ConfigStore {
   async removeWorkflow(id: string): Promise<NoMoreIdeConfig> {
     const config = await this.load();
     config.workflows = config.workflows.filter((item) => item.id !== id.trim());
+    await this.save(config);
+    return config;
+  }
+
+  /** Persist an event→workflow trigger (replaces one with the same id). */
+  async saveWorkflowTrigger(trigger: WorkflowTrigger): Promise<NoMoreIdeConfig> {
+    const parsed = workflowTriggerSchema.parse(trigger);
+    const config = await this.load();
+    config.workflowTriggers = [
+      ...config.workflowTriggers.filter((item) => item.id !== parsed.id),
+      parsed,
+    ];
+    await this.save(config);
+    return config;
+  }
+
+  async removeWorkflowTrigger(id: string): Promise<NoMoreIdeConfig> {
+    const config = await this.load();
+    config.workflowTriggers = config.workflowTriggers.filter(
+      (item) => item.id !== id.trim(),
+    );
     await this.save(config);
     return config;
   }

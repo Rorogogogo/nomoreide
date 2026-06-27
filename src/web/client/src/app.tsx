@@ -27,6 +27,7 @@ import { AgentView } from "@/features/agent/agent-view";
 import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
+import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
 import { AgentDock } from "@/features/agent/chat/agent-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
@@ -295,6 +296,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     <AgentProvider>
     <RefreshRegistryProvider value={refreshRegistry}>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
+    <WorkflowTriggerProvider>
     <div className="flex flex-col h-screen overflow-hidden">
     <TauriTitleBar />
     <div className="flex-1 overflow-hidden pb-9">
@@ -550,6 +552,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
       />
     </div>
     </div>
+    </WorkflowTriggerProvider>
     </WorkflowRunProvider>
     </RefreshRegistryProvider>
     </AgentProvider>

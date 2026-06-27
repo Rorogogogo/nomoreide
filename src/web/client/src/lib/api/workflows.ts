@@ -11,7 +11,17 @@ import { tauriWorkflowsApi } from "./workflows-tauri.js";
 
 const api: WorkflowsApi = isTauri() ? tauriWorkflowsApi : httpWorkflowsApi;
 
-export const { listWorkflows, saveWorkflow, deleteWorkflow, getGitStatus } = api;
+export const {
+  listWorkflows,
+  saveWorkflow,
+  deleteWorkflow,
+  getGitStatus,
+  listWorkflowTriggers,
+  saveWorkflowTrigger,
+  deleteWorkflowTrigger,
+  listPendingRuns,
+  ackPendingRun,
+} = api;
 
 export type {
   WorkflowsApi,
@@ -19,4 +29,7 @@ export type {
   WorkflowStep,
   Workflow,
   GitStatusSummary,
+  TriggerEvent,
+  WorkflowTrigger,
+  PendingRun,
 } from "./workflows-api.js";
