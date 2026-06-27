@@ -138,7 +138,7 @@ export function Hero() {
     <section className="relative overflow-hidden">
       <BackgroundDecor />
 
-      <div className="relative mx-auto max-w-7xl px-4 pt-16 pb-12 sm:px-6 md:pt-20 md:pb-16">
+      <div className="relative mx-auto max-w-7xl px-4 pt-8 pb-10 sm:px-6 md:pt-10 md:pb-12">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           <a
             className="group inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:border-foreground/30 hover:text-foreground"
@@ -149,21 +149,21 @@ export function Hero() {
             <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
           </a>
 
-          <h1 className="mt-5 max-w-5xl text-balance text-4xl font-semibold tracking-tight md:text-7xl">
+          <h1 className="mt-4 max-w-5xl text-balance text-4xl font-semibold tracking-tight md:text-6xl">
             <span className="block">Use NoMoreIDE.</span>
             <span className="block">You need no more IDE.</span>
           </h1>
 
-          <p className="mt-5 max-w-3xl text-pretty text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
+          <p className="mt-4 max-w-2xl text-pretty text-base leading-7 text-muted-foreground md:text-lg">
             Built for{" "}
-            <span className="text-lg font-semibold text-foreground underline decoration-foreground/25 decoration-4 underline-offset-4 md:text-2xl">
+            <span className="font-semibold text-foreground underline decoration-foreground/25 decoration-4 underline-offset-4">
               vibe coders
             </span>
             : one local workbench where your AI agent can run services, read
             logs, review diffs, inspect data, and keep you in control.
           </p>
 
-          <div className="mt-8 flex flex-col items-center gap-4">
+          <div className="mt-6 flex flex-col items-center gap-3">
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Two ways to run it
             </p>
@@ -218,7 +218,7 @@ export function Hero() {
         </div>
 
         <div
-          className="website-real-demo relative mt-10 h-[560px] overflow-hidden rounded-lg border border-border bg-background shadow-2xl md:h-[680px]"
+          className="website-real-demo relative mt-7 h-[560px] overflow-hidden rounded-lg border border-border bg-background shadow-2xl md:h-[680px]"
           id="hero-demo"
         >
           <WorkbenchApp syncLocation={false} />
