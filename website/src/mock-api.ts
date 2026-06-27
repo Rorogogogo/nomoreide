@@ -382,6 +382,9 @@ const workflows: Workflow[] = [
   },
 ];
 
+// No live event bus in the website demo, so there are no configured triggers.
+const workflowTriggers: never[] = [];
+
 const githubPrs: GitHubPR[] = [
   {
     number: 84,
@@ -604,6 +607,22 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path.match(/^\/api\/workflows\/[^/]+$/)) {
     return json({ ok: true, workflows });
+  }
+
+  // Event-driven workflow triggers (IDEAS #16). The demo has no live event
+  // bus, so triggers/pending start empty — but the shapes must match so the
+  // app-root WorkflowTriggerProvider doesn't choke on a missing array.
+  if (path === "/api/workflow-triggers") {
+    return json({ ok: true, triggers: workflowTriggers });
+  }
+  if (path === "/api/workflow-triggers/pending") {
+    return json({ ok: true, pending: [] });
+  }
+  if (path.match(/^\/api\/workflow-triggers\/pending\/[^/]+\/ack$/)) {
+    return json({ ok: true });
+  }
+  if (path.match(/^\/api\/workflow-triggers\/[^/]+$/)) {
+    return json({ ok: true, triggers: workflowTriggers });
   }
 
   if (path === "/api/github/token") {

@@ -67,9 +67,12 @@ export function WorkflowTriggerProvider({ children }: { children: ReactNode }) {
       listPendingRuns().catch(() => [] as PendingRun[]),
     ]).then(([nextTriggers, nextWorkflows, nextPending]) => {
       if (!active) return;
-      setTriggers(nextTriggers);
-      setWorkflows(nextWorkflows);
-      setPending(nextPending);
+      // A backend that answers 200 with an unexpected shape (e.g. the website
+      // mock) can yield `undefined` here; never let a non-array reach the
+      // spread in the auto-run effect, which would white-screen the app root.
+      setTriggers(Array.isArray(nextTriggers) ? nextTriggers : []);
+      setWorkflows(Array.isArray(nextWorkflows) ? nextWorkflows : []);
+      setPending(Array.isArray(nextPending) ? nextPending : []);
     });
 
     const source = new EventSource("/api/workflow-triggers/pending/stream");
