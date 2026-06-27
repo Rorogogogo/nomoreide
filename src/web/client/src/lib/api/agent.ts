@@ -17,6 +17,7 @@ export const {
   getMcpAuthStatuses,
   getRecentToolCalls,
   getAgentUsage,
+  getAgentUsageHistory,
   getClaudeAgentSettings,
   updateClaudeAgentSettings,
 } = api;
@@ -41,5 +42,10 @@ export type {
   CodexRateLimitWindow,
   CodexUsage,
   UsageInfo,
+  UsageSource,
+  UsageHistoryEntry,
+  UsageDayBucket,
+  UsageHistorySummary,
+  UsageHistoryResult,
   ClaudeAgentSettings,
 } from "./agent-api.js";

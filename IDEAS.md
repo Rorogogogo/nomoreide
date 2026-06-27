@@ -124,8 +124,10 @@ Group file edits by agent session and show them as a reviewable set. AI-native d
 - **UI** — a "Changes" sub-tab in `agent-view.tsx`: session list → file list → diff, with a "Restore to before this session" button wired to #6.
 - **Reuses** — `ToolCallStore` + its SSE stream, `GitManager.diff`, snapshot refs from #6.
 
-## 12. Agent cost / run history — 📋 OPEN
-Persist token usage over time so you can see "this feature cost ~$X / N agent runs." *Confirmed unbuilt: live usage renders in `usage-card.tsx`, but there is no `core/usage-history.ts` and no `/api/agent/usage/history` route as of 2026-06-13.*
+## 12. Agent cost / run history — ✅ shipped
+Persist token usage over time so you can see "this feature cost ~$X / N agent runs."
+
+Done as a vertical slice: `core/usage-history.ts` (`UsageHistory` appends de-duped snapshots to `.nomoreide/usage-history.jsonl`; Claude's real per-session `costUSD` groups by session id → "cost/runs", Codex is recorded token-only with no honest per-run price) + an always-on server-side sampler in `server.ts` (warmup at 5s, then every 30s, both unref'd, piggybacking `buildUsageInfo`) + `GET /api/agent/usage/history?since=` (entries + aggregate summary) + agent API seam `getAgentUsageHistory` (http real; tauri returns an empty summary) + a **Usage** sub-tab in `agent-view.tsx` (`usage-history-tab.tsx` + `use-usage-history.ts`): total cost / runs / tokens headline + a per-day cost bar chart. `test/usage-history.test.ts` (5) green. No MCP tool (UI-focused, like metrics).
 
 **Build:**
 - **Core** — `usage-info.ts` already reads live Claude + Codex token/rate-limit data (`buildUsageInfo`). Add `src/core/usage-history.ts`: snapshot `UsageInfo` deltas to an append-only file at `.nomoreide/usage-history.jsonl` (timestamp, model, tokens, est. cost). Apply a simple per-model price table to estimate `$`.

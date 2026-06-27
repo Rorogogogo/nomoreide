@@ -40,6 +40,15 @@ export const agentRoutes: Route[] = [
     sendJson(response, { ok: true, usage: await buildUsageInfo(cwd) });
   }),
 
+  route("GET", "/api/agent/usage/history", async ({ response, url, usageHistory }) => {
+    const since = url.searchParams.get("since") ?? undefined;
+    const [entries, summary] = await Promise.all([
+      usageHistory.list({ since }),
+      usageHistory.summary({ since }),
+    ]);
+    sendJson(response, { ok: true, entries, summary });
+  }),
+
   route("GET", "/api/agent/mcp-status", async ({ response, url }) => {
     const agent = parseAgent(url.searchParams.get("agent"));
     sendJson(response, { ok: true, statuses: await getMcpAuthStatuses(agent) });

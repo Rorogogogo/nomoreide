@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Brain, FileDiff, Gauge, Plug } from "lucide-react";
+import { Activity, Brain, DollarSign, FileDiff, Gauge, Plug } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { getAgentInfo, type AgentInfo, type AgentProfile } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,9 @@ import { ConversationHealth } from "./conversation-health";
 import { MemoryTab } from "./memory-tab";
 import { OverviewTab } from "./overview-tab";
 import { ToolsTab } from "./tools-tab";
+import { UsageHistoryTab } from "./usage-history-tab";
 
-type AgentTab = "overview" | "memory" | "tools" | "activity" | "changes";
+type AgentTab = "overview" | "memory" | "tools" | "activity" | "changes" | "usage";
 
 type ChatProviderId = "claude" | "codex";
 
@@ -34,6 +35,7 @@ const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "tools", label: "Skills, MCPs, Plugins & Hooks", icon: <Plug className="size-3.5" /> },
   { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
   { id: "changes", label: "Changes", icon: <FileDiff className="size-3.5" /> },
+  { id: "usage", label: "Usage", icon: <DollarSign className="size-3.5" /> },
 ];
 
 export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
@@ -188,6 +190,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
         ) : null}
         {tab === "activity" ? <ActivityTab agent={activeAgent} agentId={agentId} /> : null}
         {tab === "changes" ? <ChangesTab /> : null}
+        {tab === "usage" ? <UsageHistoryTab /> : null}
       </div>
     </div>
   );

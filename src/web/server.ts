@@ -32,6 +32,8 @@ import type {
 import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
 import { ToolCallStore } from "../core/tool-call-store.js";
+import { UsageHistory } from "../core/usage-history.js";
+import { buildUsageInfo } from "./usage-info.js";
 import { selectedGitCwd } from "./dashboard.js";
 import { sendHtml, sendJson } from "./http-utils.js";
 import { routes, type RouteServices } from "./routes/index.js";
@@ -95,6 +97,11 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const agentSessions = new AgentSessionStore(
     resolve(dirname(resolve(logDir)), "agent-sessions.json"),
   );
+  // Persist token/cost over time. A sampler (below) feeds the latest reading in;
+  // the store de-dupes so an idle agent doesn't grow the file each tick.
+  const usageHistory = new UsageHistory({
+    filePath: resolve(dirname(resolve(logDir)), "usage-history.jsonl"),
+  });
   // Error → Fix loop: snapshots the working tree of the *selected* repo (where
   // the in-dock agent edits) before handing the repro bundle to the agent.
   const fixLoop = new FixLoop({
@@ -120,7 +127,21 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     terminalManager,
     timelineStore,
     toolCallStore,
+    usageHistory,
   };
+
+  // Always-on usage sampler: record the current reading shortly after start and
+  // every 30s after, so history accrues whether or not anyone is viewing the
+  // Usage tab. Both timers are unref'd (never keep the process alive) and the
+  // first sample is deferred so short-lived runs don't write a stray file.
+  const recordUsage = () =>
+    void buildUsageInfo(cwd)
+      .then((usage) => usageHistory.record(usage))
+      .catch(() => {});
+  const usageWarmup = setTimeout(recordUsage, 5_000);
+  usageWarmup.unref?.();
+  const usageSampler = setInterval(recordUsage, 30_000);
+  usageSampler.unref?.();
 
   return {
     async start() {
@@ -160,6 +181,8 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
           process.removeListener("exit", disposeTerminalsOnExit);
           terminalManager.disposeAll();
           terminalSocketServer.close();
+          clearTimeout(usageWarmup);
+          clearInterval(usageSampler);
           metricsStore.stop();
           await manager.stopAll();
           await new Promise<void>((resolveClose, rejectClose) => {
