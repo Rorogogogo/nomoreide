@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Folder, Loader2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getDirectories, type DirectoryListing } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ export function FolderExplorer({
   selectedPath: string;
 }) {
   const [browsePath, setBrowsePath] = useState(initialPath);
+  const [pathDraft, setPathDraft] = useState(initialPath);
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,11 @@ export function FolderExplorer({
   useEffect(() => {
     setBrowsePath(initialPath);
   }, [initialPath]);
+
+  // Keep the editable field in sync with the resolved location after a jump.
+  useEffect(() => {
+    if (listing) setPathDraft(listing.path);
+  }, [listing]);
 
   useEffect(() => {
     let active = true;
@@ -61,10 +68,21 @@ export function FolderExplorer({
             <ChevronDown className="rotate-90" />
           </Button>
         ) : null}
-        <div className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
-          {listing?.path ?? browsePath}
-        </div>
-        {loading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : null}
+        <Input
+          aria-label="Folder path"
+          className="h-7 min-w-0 flex-1 font-mono text-xs"
+          onChange={(event) => setPathDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              const next = pathDraft.trim();
+              if (next) setBrowsePath(next);
+            }
+          }}
+          spellCheck={false}
+          value={pathDraft}
+        />
+        {loading ? <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" /> : null}
       </div>
       <div className="max-h-56 overflow-auto p-1">
         {error ? (
