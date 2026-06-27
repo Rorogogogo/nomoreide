@@ -1,29 +1,41 @@
 import { useState } from "react";
-import { FileWarning } from "lucide-react";
+import { FileDiff, FileWarning } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
-import { getErrorPrompt, type ErrorIncident } from "@/lib/api";
+import { startFix, type ErrorIncident } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 
-export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
+export function IncidentDetail({
+  incident,
+  onReviewChanges,
+}: {
+  incident: ErrorIncident;
+  /** Deep-link to Agent → Changes for the session the fix run snapshotted. */
+  onReviewChanges?: (sessionId: string) => void;
+}) {
   const { error: showErrorToast } = useToasts();
   const { sendToAgent } = useAgentDock();
   const [sending, setSending] = useState(false);
+  // Set after a fix is dispatched: the recorded session whose change-set the
+  // user can review/revert once the agent finishes editing.
+  const [fixedSessionId, setFixedSessionId] = useState<string | null>(null);
 
-  // The AI-native path: build the debugging prompt (log excerpt + the affected
-  // file's diff + recent logs) and hand it straight to the dock so the agent
-  // can start working on it.
+  // The AI-native loop: snapshot the working tree, record an agent session, and
+  // hand the agent the full repro bundle. Whatever it edits then surfaces as a
+  // reviewable, one-click-revertable change-set in Agent → Changes.
   async function fixWithAi() {
     setSending(true);
     try {
-      const { prompt } = await getErrorPrompt(incident.id);
+      const { prompt, sessionId } = await startFix(incident.id);
       sendToAgent({
         prompt,
         source: { type: "error", label: `${incident.service} — ${incident.level}` },
-        label: `Help me debug this ${incident.level} in \`${incident.service}\`: ${incident.title}`,
+        label: `Fix this ${incident.level} in \`${incident.service}\`: ${incident.title}`,
       });
+      setFixedSessionId(sessionId);
     } catch (err) {
       showErrorToast(err instanceof Error ? err.message : String(err));
     } finally {
@@ -57,7 +69,7 @@ export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
             variant="outline"
           >
             <AgentMark className="size-3.5" />
-            {sending ? "Sending…" : "Fix with AI"}
+            {sending ? "Starting…" : "Fix with AI"}
           </Button>
         </div>
         <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
@@ -75,13 +87,34 @@ export function IncidentDetail({ incident }: { incident: ErrorIncident }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-4">
+        {fixedSessionId ? (
+          <Alert variant="muted" className="mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs">
+                The agent is working on this in the dock. A snapshot was taken first — review or
+                undo its edits as one change-set.
+              </span>
+              {onReviewChanges ? (
+                <Button
+                  onClick={() => onReviewChanges(fixedSessionId)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <FileDiff className="size-3.5" />
+                  Review changes
+                </Button>
+              ) : null}
+            </div>
+          </Alert>
+        ) : null}
         <p className="mb-1.5 text-xs font-medium text-muted-foreground">Log excerpt</p>
         <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed">
           {incident.logExcerpt.join("\n")}
         </pre>
         <p className="mt-3 text-[11px] text-muted-foreground">
-          "Fix with AI" sends the agent this excerpt with the affected file's diff and the last 40
-          log lines, so it can start debugging right away.
+          "Fix with AI" snapshots the working tree, then sends the agent a repro bundle (this error,
+          the affected file's diff, recent logs, service state, and masked env) so it can fix it —
+          and you can revert the whole change-set if it goes sideways.
         </p>
       </div>
     </div>

@@ -36,12 +36,18 @@ const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "changes", label: "Changes", icon: <FileDiff className="size-3.5" /> },
 ];
 
-export function AgentView() {
+export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
   const { clear, turns, provider: chatProvider, providers, selectProvider } = useAgentDock();
+
+  // A bump on `focusChanges` (e.g. "Review changes" from an Error Inbox fix)
+  // jumps straight to the Changes tab, which auto-selects the newest session.
+  useEffect(() => {
+    if (focusChanges) setTab("changes");
+  }, [focusChanges]);
 
   // Selecting an agent here views its profile *and* makes it the dock's chat
   // provider — this toggle is the app-wide "which agent am I using" control.
