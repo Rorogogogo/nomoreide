@@ -184,8 +184,10 @@ Workflows are user-run today. Let them fire on events the app already detects �
 - **UI** — a "Triggers" section in `features/workflows/`: bind an event + filter → workflow.
 - **Reuses** — `workflows.ts` runner, the SSE/subscribe patterns already in Error Inbox and metrics.
 
-## 17. Inject env into a running process (the #1 leftover bonus)
+## 17. Inject env into a running process (the #1 leftover bonus) — ✅ shipped
 Env Manager (#1) edits `.env` but requires restart-and-pray. Pushing updated vars into a live process closes that gap. Small, satisfying win — scoped to processes NoMoreIDE spawned (the existing safety boundary).
+
+A live OS process bakes in its environment at exec time and can't be mutated in place, so "inject" lands honestly as **stale-config detection + one-click reload**: `core/env-runtime.ts` (`computeRuntimeEnvStatus` compares each detected config file's mtime against the service's `startedAt`) + `GET /api/services/:name/env/runtime` + an amber banner in the Env tab (`env-runtime-banner.tsx` + `use-service-env-runtime.ts`) that appears only when a running service's `.env`/config was edited after it started, with a **Reload service** button (reuses `restartService`). Saving an env edit re-checks drift immediately. `test/env-runtime.test.ts` (4) green.
 
 ---
 

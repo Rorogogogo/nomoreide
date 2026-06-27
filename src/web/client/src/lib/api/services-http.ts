@@ -10,6 +10,7 @@ import type {
   DirectoryListing,
   LogEntry,
   MetricsSeries,
+  RuntimeEnvStatus,
   ServiceGraph,
   ServiceTestResult,
   ServicesApi,
@@ -121,6 +122,13 @@ export const httpServicesApi: ServicesApi = {
         body: JSON.stringify({ content }),
       },
     );
+  },
+
+  async getServiceEnvRuntime(name) {
+    const response = await requestJson<{ ok: true; runtime: RuntimeEnvStatus }>(
+      `/api/services/${encodeURIComponent(name)}/env/runtime`,
+    );
+    return response.runtime;
   },
 
   async getServiceMetrics(name) {
