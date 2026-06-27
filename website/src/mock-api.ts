@@ -456,6 +456,23 @@ const usageHistory = (() => {
   };
 })();
 
+const githubRepo = {
+  full_name: "acme/web",
+  html_url: "https://github.com/acme/web",
+  default_branch: "main",
+};
+
+const githubBranchesPayload = {
+  repository: githubRepo,
+  defaultBranch: "main",
+  currentBranch: "feat/website-real-ui-demo",
+  branches: [
+    { name: "feat/website-real-ui-demo", protected: false, commit: { sha: "a1b2c3d" } },
+    { name: "main", protected: true, commit: { sha: "1122334" } },
+    { name: "fix/workflow-run-state", protected: false, commit: { sha: "1122334" } },
+  ],
+};
+
 const githubPrs: GitHubPR[] = [
   {
     number: 84,
@@ -634,6 +651,15 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       markdown: "# Demo repro bundle\n\nPlaceholder credentials are visible only in the website mock.",
     });
   }
+  if (path.match(/^\/api\/errors\/\d+\/fix$/)) {
+    return json({
+      ok: true,
+      sessionId: "session-2026-demo",
+      prompt: "Fix the placeholder-credential warning using the repro bundle context.",
+      repoPath: "/Users/demo/projects/acme",
+      snapshotSha: snapshots[0].sha,
+    });
+  }
 
   if (path === "/api/git/diff") return text(diffs[url.searchParams.get("file") ?? ""] ?? "");
   if (path === "/api/git/files") return json({ ok: true, files: Object.keys(files) });
@@ -660,6 +686,36 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     });
   }
   if (path === "/api/git/graph") return json({ ok: true, commits: gitGraph() });
+  if (path === "/api/git/overview") {
+    return json({
+      ok: true,
+      repos: [
+        {
+          name: "acme",
+          path: "/Users/demo/projects/acme",
+          branch: gitStatus.branch,
+          ahead: gitStatus.ahead,
+          behind: gitStatus.behind,
+          files: gitFiles,
+        },
+      ],
+      board: ["acme"],
+    });
+  }
+  if (path === "/api/git/branches") {
+    if (method === "POST") return json({ ok: true, output: "Created branch." });
+    return json({
+      ok: true,
+      branches: [
+        { name: "feat/website-real-ui-demo", current: true, remote: false, upstream: "origin/feat/website-real-ui-demo" },
+        { name: "main", current: false, remote: false, upstream: "origin/main" },
+      ],
+    });
+  }
+  if (path === "/api/git/board") {
+    const names = init?.body ? (JSON.parse(String(init.body)).names ?? ["acme"]) : ["acme"];
+    return json({ ok: true, board: names });
+  }
   if (path === "/api/git/status") return json({ ok: true, status: gitStatus });
   if (path === "/api/git/commit/files") return json({ ok: true, files: gitFiles });
   if (path === "/api/git/commit") return text(Object.values(diffs).join("\n\n"));
@@ -769,9 +825,64 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   if (path.startsWith("/api/github/oauth/")) {
     return json({ ok: true, done: path.endsWith("/poll") });
   }
+  if (path === "/api/github/branches") {
+    return json({ ok: true, ...githubBranchesPayload });
+  }
+  if (path === "/api/github/pr-template") {
+    return json({
+      ok: true,
+      template: {
+        repository: githubRepo,
+        currentBranch: "feat/website-real-ui-demo",
+        suggestedBase: "main",
+        base: "main",
+        head: "feat/website-real-ui-demo",
+        title: "feat: mock real dashboard in website",
+        body: "## Summary\nDemo PR drafted from website mock data.",
+        draft: false,
+        compare: {
+          base: "main",
+          head: "feat/website-real-ui-demo",
+          aheadBy: 2,
+          headSha: "a1b2c3d",
+          commits: [{ sha: "a1b2c3d", message: "feat: mock real dashboard in website" }],
+          files: gitFiles.map((file) => ({
+            path: file.path,
+            status: file.index === "A" ? "added" : "modified",
+            additions: 12,
+            deletions: 3,
+            changes: 15,
+          })),
+        },
+        warnings: [],
+      },
+    });
+  }
   if (path === "/api/github/prs") {
     if (method === "POST") return json({ ok: true, pr: githubPrs[0] });
     return json({ ok: true, prs: githubPrs });
+  }
+  const githubPrReview = path.match(/^\/api\/github\/prs\/(\d+)\/review$/);
+  if (githubPrReview) {
+    const number = Number(githubPrReview[1]);
+    const pr = githubPrs.find((item) => item.number === number) ?? githubPrs[0];
+    return json({
+      ok: true,
+      cockpit: {
+        pr,
+        files: gitFiles.map((file) => ({
+          path: file.path,
+          status: file.index === "A" ? "added" : "modified",
+          additions: 12,
+          deletions: 3,
+          changes: 15,
+          blob_url: `${githubRepo.html_url}/blob/${pr.head.sha}/${file.path}`,
+        })),
+        reviews: [],
+        comments: githubComments,
+        checks: { sha: pr.head.sha, state: "failure" as const, totalCount: githubChecks.length, runs: githubChecks },
+      },
+    });
   }
   if (path === "/api/github/issues") {
     if (method === "POST") return json({ ok: true, issue: githubIssues[0] });
@@ -1050,6 +1161,14 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, path: "/Users/demo/projects", parent: "/Users/demo", entries: [] });
   }
 
+  // Any /api/* path that reaches here is unmocked. Most are click-actions that
+  // are happy with a bare { ok: true }, but a *read* endpoint expecting a
+  // specific field will hand the UI `undefined` and can white-screen the demo.
+  // Surface it loudly in dev so a new dashboard feature's endpoint gets a mock
+  // before it ships, instead of silently breaking the embedded app.
+  if (import.meta.env?.DEV) {
+    console.warn(`[website mock] unhandled ${method} ${path} — returning bare { ok: true }`);
+  }
   return json({ ok: true });
 }
 
