@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Copy, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Copy, Download, Sparkles, Star } from "lucide-react";
 import { App as WorkbenchApp } from "@/app";
 import { installWebsiteMockApi } from "../mock-api";
 import { Button } from "./ui/button";
@@ -163,19 +163,42 @@ export function Hero() {
             logs, review diffs, inspect data, and keep you in control.
           </p>
 
-          <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button asChild size="lg">
-              <a href="#hero-demo">Try the live mock</a>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href="#mcp-setup">Set up MCP</a>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href="/docs">Read the docs</a>
-            </Button>
-            <Button asChild size="lg" variant="ghost">
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Two ways to run it
+            </p>
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+              <Button asChild size="lg">
+                <a className="gap-2" href="#download">
+                  <Download className="size-4" />
+                  Download for macOS
+                </a>
+              </Button>
+              <span className="text-sm text-muted-foreground">or</span>
+              <Button asChild size="lg" variant="outline">
+                <a href="#mcp-setup">Add to your AI agent (MCP)</a>
+              </Button>
+            </div>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Grab the native Mac app, or wire NoMoreIDE into Claude Code, Codex,
+              or any agent as an MCP server. Same workbench either way.
+            </p>
+
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
               <a
-                className="gap-2"
+                className="text-muted-foreground transition hover:text-foreground"
+                href="#hero-demo"
+              >
+                Try the live mock
+              </a>
+              <a
+                className="text-muted-foreground transition hover:text-foreground"
+                href="/docs"
+              >
+                Read the docs
+              </a>
+              <a
+                className="inline-flex items-center gap-1.5 text-muted-foreground transition hover:text-foreground"
                 href="https://github.com/Rorogogogo/nomoreide"
               >
                 <GithubIcon className="size-4" />
@@ -183,14 +206,14 @@ export function Hero() {
                 {githubStars === null ? null : (
                   <span
                     aria-label={`${githubStars} GitHub stars`}
-                    className="inline-flex items-center gap-1 text-muted-foreground"
+                    className="inline-flex items-center gap-1"
                   >
                     <Star className="size-3.5 fill-current" />
                     {formatStarCount(githubStars)}
                   </span>
                 )}
               </a>
-            </Button>
+            </div>
           </div>
         </div>
 
