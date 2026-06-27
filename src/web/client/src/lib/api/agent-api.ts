@@ -180,6 +180,43 @@ export interface UsageInfo {
   codex?: CodexUsage;
 }
 
+export type UsageSource = "claude" | "codex";
+
+export interface UsageHistoryEntry {
+  at: string;
+  source: UsageSource;
+  sessionId?: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  costUSD: number;
+  models?: string[];
+}
+
+export interface UsageDayBucket {
+  date: string;
+  costUSD: number;
+  runs: number;
+  totalTokens: number;
+}
+
+export interface UsageHistorySummary {
+  runs: number;
+  totalCostUSD: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  firstAt?: string;
+  lastAt?: string;
+  byDay: UsageDayBucket[];
+  codexTotalTokens: number;
+}
+
+export interface UsageHistoryResult {
+  entries: UsageHistoryEntry[];
+  summary: UsageHistorySummary;
+}
+
 export interface ClaudeAgentSettings {
   coAuthorWithClaude: boolean;
 }
@@ -191,6 +228,8 @@ export interface AgentApi {
   getRecentToolCalls(limit?: number): Promise<ToolCallRecord[]>;
   /** Agent token/cost usage; returns empty in desktop mode. */
   getAgentUsage(): Promise<UsageInfo>;
+  /** Persisted token/cost history with an aggregate summary (cost/run over time). */
+  getAgentUsageHistory(since?: string): Promise<UsageHistoryResult>;
   getClaudeAgentSettings(): Promise<ClaudeAgentSettings>;
   updateClaudeAgentSettings(
     settings: Partial<ClaudeAgentSettings>,

@@ -17,6 +17,18 @@ export const tauriAgentApi: AgentApi = {
   getMcpAuthStatuses: async () => [],
   getRecentToolCalls: async () => [],
   getAgentUsage: async () => ({}),
+  getAgentUsageHistory: async () => ({
+    entries: [],
+    summary: {
+      runs: 0,
+      totalCostUSD: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalTokens: 0,
+      byDay: [],
+      codexTotalTokens: 0,
+    },
+  }),
   // Settings persistence isn't wired to Rust yet; expose the default and treat
   // updates as a no-op echo so the panel renders without throwing.
   getClaudeAgentSettings: async (): Promise<ClaudeAgentSettings> => ({

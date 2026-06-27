@@ -14,6 +14,7 @@ import type { TestRunner } from "../../core/test-runner.js";
 import type { TerminalSessionManagerLike } from "../../core/terminal-manager.js";
 import type { TimelineStore } from "../../core/timeline-store.js";
 import type { ToolCallStore } from "../../core/tool-call-store.js";
+import type { UsageHistory } from "../../core/usage-history.js";
 
 /** Shared stateful services every route handler receives. */
 export interface RouteServices {
@@ -33,6 +34,7 @@ export interface RouteServices {
   terminalManager: TerminalSessionManagerLike;
   timelineStore: TimelineStore;
   toolCallStore: ToolCallStore;
+  usageHistory: UsageHistory;
 }
 
 /** Per-request context handed to a route handler. */

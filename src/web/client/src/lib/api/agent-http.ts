@@ -6,6 +6,7 @@ import type {
   ClaudeAgentSettings,
   McpAuthStatus,
   ToolCallRecord,
+  UsageHistoryResult,
   UsageInfo,
 } from "./agent-api.js";
 
@@ -32,6 +33,14 @@ export const httpAgentApi: AgentApi = {
   async getAgentUsage() {
     const response = await requestJson<{ ok: true; usage: UsageInfo }>("/api/agent/usage");
     return response.usage;
+  },
+
+  async getAgentUsageHistory(since) {
+    const query = since ? `?since=${encodeURIComponent(since)}` : "";
+    const response = await requestJson<{ ok: true } & UsageHistoryResult>(
+      `/api/agent/usage/history${query}`,
+    );
+    return { entries: response.entries, summary: response.summary };
   },
 
   async getClaudeAgentSettings() {
