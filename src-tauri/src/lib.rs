@@ -57,6 +57,7 @@ pub fn run() {
             // onboard
             commands::onboard::scan_repo_url,
             commands::onboard::run_install_command,
+            commands::onboard::clone_git_repository,
             // config
             commands::config::get_config,
             commands::config::register_service,

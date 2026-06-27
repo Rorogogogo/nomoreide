@@ -35,6 +35,7 @@ export const {
   deleteGitRepository,
   selectGitRepository,
   registerGitRepository,
+  cloneGitRepository,
 } = api;
 
 export type {

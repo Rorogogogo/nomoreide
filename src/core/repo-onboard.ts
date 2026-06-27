@@ -121,13 +121,31 @@ export interface CloneResult {
 }
 
 /**
+ * One-shot git auth header for HTTPS github.com clones, reusing the app's stored
+ * GitHub token. Passed via `git -c` (command-scoped) so it is NOT written into
+ * the cloned repo's `.git/config` — the token never lands on disk. No-ops for
+ * SSH URLs (which use the host's keys) or any non-github.com host.
+ */
+function githubAuthArgs(parsed: ParsedRepoUrl, token?: string): string[] {
+  if (!token) return [];
+  const isHttpsGithub =
+    /^https:\/\//i.test(parsed.normalizedUrl) && parsed.host === "github.com";
+  if (!isHttpsGithub) return [];
+  const basic = Buffer.from(`x-access-token:${token}`).toString("base64");
+  return ["-c", `http.https://github.com/.extraheader=Authorization: Basic ${basic}`];
+}
+
+/**
  * Shallow-clone a repository into `destRoot/<name>`. Refuses to overwrite a
  * non-empty destination, and disables interactive credential prompts so a
- * private repo fails fast instead of hanging.
+ * private repo fails fast instead of hanging. When a `githubToken` is supplied
+ * and the URL is an HTTPS github.com URL, the token authenticates the clone so
+ * private GitHub repos work without SSH keys.
  */
 export async function cloneRepository(
   url: string,
   destRoot: string = defaultReposDir(),
+  githubToken?: string,
 ): Promise<CloneResult> {
   const parsed = parseRepoUrl(url);
   const clonePath = join(destRoot, parsed.name);
@@ -139,7 +157,14 @@ export async function cloneRepository(
   await mkdir(destRoot, { recursive: true });
   await execFileAsync(
     "git",
-    ["clone", "--depth", "1", parsed.normalizedUrl, clonePath],
+    [
+      ...githubAuthArgs(parsed, githubToken),
+      "clone",
+      "--depth",
+      "1",
+      parsed.normalizedUrl,
+      clonePath,
+    ],
     { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
   );
   return { name: parsed.name, clonePath, url: parsed.normalizedUrl };

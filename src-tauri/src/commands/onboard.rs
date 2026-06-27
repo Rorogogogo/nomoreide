@@ -1,11 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use crate::AppState;
+use crate::core::config::GitRepoDef;
 
 // ---------------------------------------------------------------------------
 // Output types (serialized to frontend)
@@ -148,6 +152,87 @@ pub async fn scan_repo_url(url: String) -> Result<ScanResult, String> {
     let databases = propose_databases(&profile.name, &service_details);
 
     Ok(ScanResult { profile, proposals, databases })
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClonedRepo {
+    pub name: String,
+    pub path: String,
+}
+
+/// Clone a remote repo (HTTPS or SSH) into the managed repos dir and register
+/// it as a Git project. Mirrors the web/MCP `cloneRepository` path: SSH uses the
+/// host's ssh-agent/keys and interactive prompts are disabled so private repos
+/// fail fast instead of hanging.
+#[tauri::command]
+pub async fn clone_git_repository(
+    state: State<'_, AppState>,
+    url: String,
+) -> Result<ClonedRepo, String> {
+    let name = parse_repo_name(&url);
+    let dest = repos_dir().join(&name);
+
+    let non_empty = dest
+        .read_dir()
+        .map(|mut entries| entries.next().is_some())
+        .unwrap_or(false);
+    if non_empty {
+        return Err(format!(
+            "Destination already exists and is not empty: {}. Remove it or pick another repo.",
+            dest.display()
+        ));
+    }
+
+    if let Some(parent) = dest.parent() {
+        tokio::fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+    }
+
+    // Reuse the app's stored GitHub token for HTTPS github.com clones so private
+    // repos work without SSH keys. Passed via `git -c` (command-scoped) so the
+    // token is never written into the cloned repo's .git/config.
+    let config = state.config_store.load().await.map_err(|e| e.to_string())?;
+    let mut args: Vec<String> = Vec::new();
+    if url.starts_with("https://github.com/") {
+        if let Some(token) = state.config_store.get_github_token(&config, "github.com") {
+            let basic = BASE64.encode(format!("x-access-token:{token}"));
+            args.push("-c".to_string());
+            args.push(format!(
+                "http.https://github.com/.extraheader=Authorization: Basic {basic}"
+            ));
+        }
+    }
+    args.extend([
+        "clone".to_string(),
+        "--depth".to_string(),
+        "1".to_string(),
+        url.clone(),
+        dest.to_str().unwrap_or("").to_string(),
+    ]);
+
+    let out = Command::new("git")
+        .args(&args)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+
+    let path = dest.to_str().unwrap_or("").to_string();
+    state
+        .config_store
+        .register_git_repository(GitRepoDef { name: name.clone(), path: path.clone() })
+        .await
+        .map_err(|e| e.to_string())?;
+    state
+        .config_store
+        .select_git_repository(Some(name.clone()))
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(ClonedRepo { name, path })
 }
 
 /// Stream a one-shot install command's output lines back as Tauri events.

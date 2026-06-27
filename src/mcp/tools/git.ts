@@ -1,5 +1,6 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+import { cloneRepository } from "../../core/repo-onboard.js";
 import { git, gitActions, stringify, type ToolContext } from "./context.js";
 
 export const GIT_TOOL_NAMES = [
@@ -15,6 +16,7 @@ export const GIT_TOOL_NAMES = [
   "nomoreide_git_unstage",
   "nomoreide_git_commit",
   "nomoreide_git_push",
+  "nomoreide_git_clone",
   "nomoreide_git_register_repository",
   "nomoreide_git_select_repository",
 ] as const;
@@ -127,6 +129,22 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
       remote: z.string().min(1).optional().describe("Remote name (default origin)."),
     }),
     execute: async ({ cwd, remote }) => stringify(await gitActions(cwd).push({ remote })),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_clone",
+    description:
+      "Clone a remote Git repository (HTTPS or SSH/scp-style URL) into the managed repos dir and register it as a Git project. SSH uses the host's ssh-agent/keys; interactive credential prompts are disabled so private repos fail fast. Write op — creates a new local clone.",
+    parameters: z.object({
+      url: z.string().min(1).describe("Git remote URL (https:// or git@host:owner/repo.git)."),
+    }),
+    execute: async ({ url }) => {
+      const config = await configStore.load();
+      const githubToken = configStore.getGithubToken(config);
+      const { name, clonePath } = await cloneRepository(url, undefined, githubToken);
+      await configStore.registerGitRepository({ name, path: clonePath });
+      return stringify({ name, path: clonePath });
+    },
   });
 
   server.addTool({
