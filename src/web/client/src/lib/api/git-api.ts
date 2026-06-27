@@ -124,4 +124,9 @@ export interface GitApi {
   selectGitRepository(name: string): Promise<void>;
   /** Register a new local git repository by absolute path. */
   registerGitRepository(name: string, path: string): Promise<void>;
+  /**
+   * Clone a remote repo (HTTPS or SSH) into the managed repos dir and register
+   * it as a Git project. Returns the derived name and local clone path.
+   */
+  cloneGitRepository(url: string): Promise<{ name: string; path: string }>;
 }

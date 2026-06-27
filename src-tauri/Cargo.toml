@@ -28,6 +28,7 @@ regex = "1"
 portable-pty = "0.8"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "sqlite", "json"] }
 urlencoding = "2"
+base64 = "0.22"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

@@ -1,11 +1,22 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Folder, FolderPlus, Globe2, Plus, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Download,
+  Folder,
+  FolderPlus,
+  Globe2,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
 import {
+  cloneGitRepository,
   deleteGitRepository,
   registerGitRepository,
   selectGitRepository,
@@ -23,7 +34,10 @@ export function RepositorySelector({
   onRefresh: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"path" | "url">("path");
   const [path, setPath] = useState(data.git.cwd);
+  const [cloneUrl, setCloneUrl] = useState("");
+  const [cloning, setCloning] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [browseDialogOpen, setBrowseDialogOpen] = useState(false);
   const [draftPath, setDraftPath] = useState(data.git.cwd);
@@ -107,6 +121,27 @@ export function RepositorySelector({
     event.preventDefault();
     const ok = await registerPath(path);
     if (ok) setOpen(false);
+  }
+
+  async function addRepositoryFromUrl(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const url = cloneUrl.trim();
+    if (!url) return;
+    setCloning(true);
+    setAddError(null);
+    try {
+      const { name } = await cloneGitRepository(url);
+      setCloneUrl("");
+      await onRefresh();
+      showSuccessToast(`Cloned and added ${name}.`);
+      setOpen(false);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setAddError(message);
+      showErrorToast(message);
+    } finally {
+      setCloning(false);
+    }
   }
 
   function openRepositoryPicker() {
@@ -197,34 +232,99 @@ export function RepositorySelector({
           </div>
 
           <div className="border-t border-border bg-muted/20 p-2">
-            <form className="flex gap-1.5" onSubmit={addRepositoryFromInput}>
-              <Input
-                aria-label="Paste absolute path"
-                className="h-7 flex-1 px-2 font-mono text-[11px]"
-                onChange={(event) => {
-                  setPath(event.target.value);
+            <div className="mb-1.5 flex gap-1 text-[11px]">
+              <button
+                className={cn(
+                  "flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
+                  addMode === "path"
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => {
+                  setAddMode("path");
                   setAddError(null);
                 }}
-                placeholder="/absolute/path"
-                value={path}
-              />
-              <Button className="h-7 px-2 text-[11px]" size="sm" type="submit">
-                <Plus className="size-3" />
-                Add
-              </Button>
-              <Button
-                aria-label="Browse and add Git project"
-                className="h-7 px-2"
-                onClick={openRepositoryPicker}
-                size="sm"
                 type="button"
-                variant="outline"
               >
-                <FolderPlus className="size-3" />
-              </Button>
-            </form>
+                <Folder className="size-3" />
+                Local path
+              </button>
+              <button
+                className={cn(
+                  "flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
+                  addMode === "url"
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => {
+                  setAddMode("url");
+                  setAddError(null);
+                }}
+                type="button"
+              >
+                <Download className="size-3" />
+                Clone URL
+              </button>
+            </div>
+
+            {addMode === "path" ? (
+              <form className="flex gap-1.5" onSubmit={addRepositoryFromInput}>
+                <Input
+                  aria-label="Paste absolute path"
+                  className="h-7 flex-1 px-2 font-mono text-[11px]"
+                  onChange={(event) => {
+                    setPath(event.target.value);
+                    setAddError(null);
+                  }}
+                  placeholder="/absolute/path"
+                  value={path}
+                />
+                <Button className="h-7 px-2 text-[11px]" size="sm" type="submit">
+                  <Plus className="size-3" />
+                  Add
+                </Button>
+                <Button
+                  aria-label="Browse and add Git project"
+                  className="h-7 px-2"
+                  onClick={openRepositoryPicker}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <FolderPlus className="size-3" />
+                </Button>
+              </form>
+            ) : (
+              <form className="flex gap-1.5" onSubmit={addRepositoryFromUrl}>
+                <Input
+                  aria-label="Git remote URL"
+                  className="h-7 flex-1 px-2 font-mono text-[11px]"
+                  onChange={(event) => {
+                    setCloneUrl(event.target.value);
+                    setAddError(null);
+                  }}
+                  placeholder="https://… or git@host:owner/repo.git"
+                  value={cloneUrl}
+                />
+                <Button
+                  className="h-7 px-2 text-[11px]"
+                  disabled={cloning || !cloneUrl.trim()}
+                  size="sm"
+                  type="submit"
+                >
+                  <Download className="size-3" />
+                  {cloning ? "Cloning…" : "Clone"}
+                </Button>
+              </form>
+            )}
             {addError ? (
               <div className="mt-1.5 truncate text-[10px] text-destructive">{addError}</div>
+            ) : null}
+            {addMode === "url" ? (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                Private github.com repos reuse your GitHub login; SSH uses your machine's keys.
+                Clones into ~/.nomoreide/repos.
+              </div>
             ) : null}
           </div>
         </div>

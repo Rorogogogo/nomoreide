@@ -1,6 +1,7 @@
 import type { ConfigStore } from "../../core/config-store.js";
 import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
+import { cloneRepository } from "../../core/repo-onboard.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
@@ -329,6 +330,23 @@ export const gitRoutes: Route[] = [
       path: requiredFormValue(form, "path"),
     });
     sendJson(response, { ok: true, config });
+  }),
+
+  // Clone a remote repo (HTTPS or SSH) into the managed repos dir, then register
+  // it as a Git project. Cloning lives in the guarded `repo-onboard` core module
+  // so GitManager stays read-safe; SSH uses the host's ssh-agent/keys/config.
+  route("POST", "/api/git/clone", async ({ request, response, configStore }) => {
+    const form = await readForm(request);
+    const url = requiredFormValue(form, "url");
+    try {
+      const config = await configStore.load();
+      const githubToken = configStore.getGithubToken(config);
+      const { name, clonePath } = await cloneRepository(url, undefined, githubToken);
+      await configStore.registerGitRepository({ name, path: clonePath });
+      sendJson(response, { ok: true, name, path: clonePath });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+    }
   }),
 
   patternRoute(

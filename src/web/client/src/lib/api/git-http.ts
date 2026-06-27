@@ -180,4 +180,12 @@ export const httpGitApi: GitApi = {
   async registerGitRepository(name, path) {
     await postForm("/api/git/repositories", { name, path });
   },
+
+  async cloneGitRepository(url) {
+    const response = await postFormForJson<{ ok: true; name: string; path: string }>(
+      "/api/git/clone",
+      { url },
+    );
+    return { name: response.name, path: response.path };
+  },
 };

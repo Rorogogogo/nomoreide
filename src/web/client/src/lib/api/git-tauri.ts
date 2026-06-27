@@ -18,6 +18,7 @@ import {
   tauri_gitFetch,
   tauri_deleteGitRepository,
   tauri_registerGitRepository,
+  tauri_cloneGitRepository,
   tauri_selectGitRepository,
   tauri_gitFileSizes,
   tauri_setGitBoard,
@@ -58,4 +59,5 @@ export const tauriGitApi: GitApi = {
   registerGitRepository: async (name, path) => {
     await tauri_registerGitRepository({ name, path });
   },
+  cloneGitRepository: (url) => tauri_cloneGitRepository(url),
 };

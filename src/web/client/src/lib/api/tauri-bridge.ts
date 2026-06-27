@@ -442,6 +442,10 @@ export async function tauri_registerGitRepository(repo: { name: string; path: st
   return tauriInvoke("register_git_repository", { repo });
 }
 
+export async function tauri_cloneGitRepository(url: string) {
+  return tauriInvoke<{ name: string; path: string }>("clone_git_repository", { url });
+}
+
 export async function tauri_setGitBoard(names: string[]) {
   await tauriInvoke("set_git_board_repositories", { names });
   return names;
