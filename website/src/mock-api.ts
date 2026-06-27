@@ -385,6 +385,77 @@ const workflows: Workflow[] = [
 // No live event bus in the website demo, so there are no configured triggers.
 const workflowTriggers: never[] = [];
 
+// Working-tree checkpoints (IDEAS #6). Demo data so the Snapshots tab renders
+// with content; the diffs reuse the same mock git diffs as the Git view.
+const snapshots = [
+  {
+    sha: "9f3c1a2b7d4e5a6c8b0d1e2f3a4b5c6d7e8f9a0b",
+    ref: "refs/nomoreide/snapshots/1717000000-before-billing-refactor",
+    label: "Before billing refactor",
+    createdAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+  },
+  {
+    sha: "4d7e88aa11223344556677889900aabbccddeeff",
+    ref: "refs/nomoreide/snapshots/1716990000-agent-session",
+    label: "Auto: agent session start",
+    createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+  },
+];
+
+const snapshotFiles = gitFiles.map((file) => ({
+  status: file.index !== " " ? file.index : file.workingTree,
+  path: file.path,
+}));
+
+// Agent change-sets (IDEAS #11) — files an agent session touched.
+const changeSessions = [
+  {
+    id: "session-2026-demo",
+    repoPath: "/Users/demo/projects/acme",
+    snapshotSha: snapshots[1].sha,
+    snapshotRef: snapshots[1].ref,
+    startedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+    lastToolAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    toolCount: 7,
+  },
+];
+
+// Agent cost / run history (IDEAS #12).
+const usageHistory = (() => {
+  const day = (offset: number) =>
+    new Date(Date.now() - offset * 86400000).toISOString().slice(0, 10);
+  const byDay = [
+    { date: day(2), costUSD: 0.42, runs: 3, totalTokens: 48200 },
+    { date: day(1), costUSD: 0.91, runs: 5, totalTokens: 96400 },
+    { date: day(0), costUSD: 0.37, runs: 2, totalTokens: 41100 },
+  ];
+  return {
+    entries: [
+      {
+        at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        source: "claude" as const,
+        sessionId: "session-2026-demo",
+        inputTokens: 28400,
+        outputTokens: 3200,
+        totalTokens: 31600,
+        costUSD: 0.37,
+        models: ["claude-opus-4"],
+      },
+    ],
+    summary: {
+      runs: 10,
+      totalCostUSD: 1.7,
+      totalInputTokens: 158000,
+      totalOutputTokens: 27700,
+      totalTokens: 185700,
+      firstAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+      lastAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      byDay,
+      codexTotalTokens: 14940,
+    },
+  };
+})();
+
 const githubPrs: GitHubPR[] = [
   {
     number: 84,
@@ -625,6 +696,73 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, triggers: workflowTriggers });
   }
 
+  // Snapshots (IDEAS #6). List + per-snapshot files/diff/restore/rename/delete.
+  if (path === "/api/snapshots") {
+    if (method === "POST") {
+      const created = {
+        sha: `demo${Date.now().toString(16)}`.padEnd(40, "0"),
+        ref: `refs/nomoreide/snapshots/${Date.now()}-manual-snapshot`,
+        label: "manual snapshot",
+        createdAt: new Date().toISOString(),
+      };
+      snapshots.unshift(created);
+      return json({ ok: true, snapshot: created });
+    }
+    return json({ ok: true, snapshots });
+  }
+  const snapshotFilesMatch = path.match(/^\/api\/snapshots\/[^/]+\/files$/);
+  if (snapshotFilesMatch) return json({ ok: true, files: snapshotFiles });
+  if (path.match(/^\/api\/snapshots\/[^/]+\/diff$/)) {
+    return text(diffs[url.searchParams.get("path") ?? ""] ?? "");
+  }
+  if (path.match(/^\/api\/snapshots\/[^/]+\/restore$/)) {
+    return json({ ok: true, preRestore: snapshots[0], restoredFiles: snapshotFiles.length, deletedPaths: [] });
+  }
+  const snapshotMatch = path.match(/^\/api\/snapshots\/([^/]+)$/);
+  if (snapshotMatch) {
+    const target = snapshots.find((snap) => snap.sha === snapshotMatch[1]) ?? snapshots[0];
+    return json({ ok: true, snapshot: target });
+  }
+
+  // Agent change-sets (IDEAS #11).
+  if (path === "/api/agent/change-sets") {
+    return json({ ok: true, sessions: changeSessions });
+  }
+  if (path.match(/^\/api\/agent\/change-sets\/[^/]+\/diff$/)) {
+    return text(diffs[url.searchParams.get("path") ?? ""] ?? "");
+  }
+  if (path.match(/^\/api\/agent\/change-sets\/[^/]+\/restore$/)) {
+    return json({ ok: true, preRestore: snapshots[0], restoredFiles: snapshotFiles.length, deletedPaths: [] });
+  }
+  if (path.match(/^\/api\/agent\/change-sets\/[^/]+$/)) {
+    return json({ ok: true, session: changeSessions[0], files: snapshotFiles });
+  }
+
+  // Agent cost / run history (IDEAS #12).
+  if (path === "/api/agent/usage/history") {
+    return json({ ok: true, ...usageHistory });
+  }
+
+  // Service dependency graph (IDEAS #9) — structural only.
+  if (path === "/api/services/graph") {
+    return json({
+      ok: true,
+      graph: {
+        nodes: serviceDefinitions.map((service) => ({
+          name: service.name,
+          dependsOn: service.name === "web-client" ? ["api"] : service.name === "api" ? ["worker"] : [],
+          missing: [],
+        })),
+        edges: [
+          { from: "worker", to: "api" },
+          { from: "api", to: "web-client" },
+        ],
+        order: ["worker", "api", "web-client"],
+        cycles: [],
+      },
+    });
+  }
+
   if (path === "/api/github/token") {
     return json({ ok: true, configured: true, deviceFlowAvailable: true });
   }
@@ -849,6 +987,17 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     const name = decodeURIComponent(serviceName);
     if (path.endsWith("/logs")) return json({ ok: true, logs: logs(name), queryable: false });
     if (path.endsWith("/metrics")) return json({ ok: true, metrics: metrics(name) });
+    if (path.endsWith("/env/runtime")) {
+      return json({
+        ok: true,
+        runtime: {
+          running: serviceStates[name] === "running",
+          startedAt: serviceStates[name] === "running" ? startedAt : undefined,
+          staleFiles: [],
+          stale: false,
+        },
+      });
+    }
     if (path.endsWith("/config-files")) {
       return json({
         ok: true,
