@@ -1,0 +1,77 @@
+name: Desktop Release (macOS)
+
+# Builds the Tauri desktop app and publishes a universal macOS .dmg to a GitHub
+# Release. Kept separate from the npm publish workflow so it only runs when you
+# deliberately cut a desktop build — either by pushing a `desktop-v*` tag or by
+# triggering it manually — not on every npm patch bump.
+#
+# The app is UNSIGNED (no paid Apple Developer account). The .dmg works fine;
+# users just have to allow it once via System Settings → Privacy & Security.
+# To notarize later, enroll in the Apple Developer Program and add the Apple*
+# secrets below (see the commented block at the bottom of the build step).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. desktop-v0.1.59)"
+        required: true
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install Rust (both Apple targets for a universal binary)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & publish universal macOS app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # --- Notarization (only once you have a paid Apple Developer account) ---
+          # Uncomment and add these as repo secrets to ship a signed, notarized
+          # build so macOS stops warning users on first launch:
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          args: "--target universal-apple-darwin"
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "NoMoreIDE Desktop ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseBody: |
+            macOS desktop build — Tauri (Rust backend) + the NoMoreIDE React UI.
+
+            **This build is unsigned.** On first launch macOS will block it. To open:
+            1. Drag NoMoreIDE into Applications and double-click it.
+            2. Open System Settings → Privacy & Security.
+            3. Under Security, click "Open Anyway" next to the NoMoreIDE message.
+            4. Confirm with Touch ID / password.
+          releaseDraft: false
+          prerelease: false
