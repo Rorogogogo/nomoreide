@@ -158,7 +158,9 @@ async function crash(): Promise<void> {
   await flush();
 }
 
-/** Let the async trigger handlers (configStore.load) settle. */
+/** Let the async trigger handlers (configStore.load → readFile) settle. */
 async function flush(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let i = 0; i < 5; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }
