@@ -18,6 +18,7 @@ import {
   type Workflow,
   type WorkflowTrigger,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { useWorkflowRun } from "./workflow-run-context";
 
 interface WorkflowTriggerValue {
@@ -45,6 +46,7 @@ const WorkflowTriggerContext = createContext<WorkflowTriggerValue | null>(null);
  * client-side runner a manual workflow uses — there is no server-side runner.
  */
 export function WorkflowTriggerProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const { start, isRunning } = useWorkflowRun();
   const [triggers, setTriggers] = useState<WorkflowTrigger[]>([]);
   const [pending, setPending] = useState<PendingRun[]>([]);
@@ -101,9 +103,9 @@ export function WorkflowTriggerProvider({ children }: { children: ReactNode }) {
       handledRef.current.add(run.id);
       void dismissPending(run.id);
       if (workflow) start(workflow, true);
-      else setError(`Trigger references a missing workflow: ${run.workflowId}`);
+      else setError(t("workflows.triggers.missingWorkflow", { id: run.workflowId }));
     },
-    [workflows, start, dismissPending],
+    [workflows, start, dismissPending, t],
   );
 
   // Auto-run watcher: when the runner is idle, start the oldest queued run whose

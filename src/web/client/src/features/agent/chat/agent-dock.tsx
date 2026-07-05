@@ -34,6 +34,7 @@ import {
   type AgentChatProviderOption,
   type DashboardData,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { GitSituationBanner } from "../../git/git-situation-banner";
 import { onboardRepoPrompt } from "../prompts";
@@ -69,6 +70,7 @@ export function AgentDock({
   onGitRefresh?: () => void;
 }) {
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const t = useT();
   const {
     turns,
     streaming,
@@ -231,8 +233,8 @@ export function AgentDock({
     stickRef.current = true;
     sendToAgent({
       prompt: onboardRepoPrompt(url),
-      source: { type: "repo-onboard", label: "Onboard repo" },
-      label: `Onboard and run this repo: ${url}`,
+      source: { type: "repo-onboard", label: t("agent.dock.onboardSource") },
+      label: t("agent.dock.onboardAction", { url }),
     });
   }
 
@@ -246,9 +248,9 @@ export function AgentDock({
   async function startService(name: string) {
     try {
       await startServiceApi(name);
-      showSuccessToast(`Starting ${name}…`);
+      showSuccessToast(t("agent.dock.starting", { name }));
     } catch (caught) {
-      showErrorToast(caught instanceof Error ? caught.message : `Could not start ${name}.`);
+      showErrorToast(caught instanceof Error ? caught.message : t("agent.dock.startFailed", { name }));
     }
   }
 
@@ -347,7 +349,7 @@ export function AgentDock({
                   <Sparkles className="size-3" />
                   <span className="max-w-40 truncate">{activeSource.label}</span>
                   <button
-                    aria-label="Clear source"
+                    aria-label={t("agent.dock.clearSource")}
                     className="opacity-60 hover:opacity-100"
                     onClick={clearSource}
                     type="button"
@@ -360,11 +362,11 @@ export function AgentDock({
             <div className="pointer-events-auto flex items-center gap-1">
               {onOpenAgentPage ? (
                 <Button
-                  aria-label="Open agent page"
+                  aria-label={t("agent.dock.openAgentPage")}
                   className="size-7"
                   onClick={onOpenAgentPage}
                   size="icon"
-                  title="Open the full agent page"
+                  title={t("agent.dock.openAgentPageTitle")}
                   type="button"
                   variant="ghost"
                 >
@@ -372,23 +374,23 @@ export function AgentDock({
                 </Button>
               ) : null}
               <Button
-                aria-label="Clear conversation"
+                aria-label={t("agent.dock.clearConversation")}
                 className="size-7"
                 disabled={turns.length === 0}
                 onClick={clear}
                 size="icon"
-                title="Clear conversation"
+                title={t("agent.dock.clearConversation")}
                 type="button"
                 variant="ghost"
               >
                 <Trash2 />
               </Button>
               <Button
-                aria-label="Collapse agent"
+                aria-label={t("agent.dock.collapse")}
                 className="size-7"
                 onClick={() => setOpen(false)}
                 size="icon"
-                title="Collapse"
+                title={t("agent.dock.collapseTitle")}
                 type="button"
                 variant="ghost"
               >
@@ -474,14 +476,14 @@ export function AgentDock({
                   ref={onboardingInputRef}
                   className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   onChange={(event) => setOnboardUrl(event.target.value)}
-                  placeholder="Paste a repo URL — e.g. https://github.com/owner/repo"
+                  placeholder={t("agent.dock.onboardPlaceholder")}
                   value={onboardUrl}
                 />
                 <Button disabled={!onboardUrl.trim()} size="sm" type="submit">
-                  Onboard
+                  {t("agent.dock.onboard")}
                 </Button>
                 <Button
-                  aria-label="Cancel onboarding"
+                  aria-label={t("agent.dock.cancelOnboarding")}
                   className="size-7"
                   onClick={() => {
                     setOnboarding(false);
@@ -502,7 +504,8 @@ export function AgentDock({
               >
                 <GitBranch className="size-3.5 shrink-0" />
                 <span className="min-w-0 flex-1 truncate">
-                  Onboard <span className="font-mono">{draft.trim()}</span> as a service
+                  {t("agent.dock.onboardServicePre")} <span className="font-mono">{draft.trim()}</span>{" "}
+                  {t("agent.dock.onboardServicePost")}
                 </span>
                 <CornerDownLeft className="size-3.5 shrink-0 opacity-60" />
               </button>
@@ -511,12 +514,12 @@ export function AgentDock({
                 whole container reacting to hover/focus instead of three boxes. */}
             <div className="flex items-end gap-1.5 rounded-2xl border border-border bg-background px-1.5 py-1.5 shadow-sm transition-colors hover:border-foreground/25 focus-within:border-foreground/40 focus-within:ring-1 focus-within:ring-ring">
               <Button
-                aria-label="Attach a file or folder"
+                aria-label={t("agent.dock.attach")}
                 className="size-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                 disabled={configured === false}
                 onClick={() => setPickerOpen(true)}
                 size="icon"
-                title="Attach a file or folder"
+                title={t("agent.dock.attach")}
                 type="button"
                 variant={pickerOpen ? "secondary" : "ghost"}
               >
@@ -530,19 +533,22 @@ export function AgentDock({
                 onKeyDown={onKeyDown}
                 placeholder={
                   configured === false
-                    ? `${provider?.label ?? "Agent"} (\`${provider?.commandName ?? "agent"}\`) is not installed`
-                    : `Ask ${provider?.label ?? "the agent"} anything about this project...`
+                    ? t("agent.dock.notInstalledPlaceholder", {
+                        label: provider?.label ?? "Agent",
+                        command: provider?.commandName ?? "agent",
+                      })
+                    : t("agent.dock.askPlaceholder", { label: provider?.label ?? "the agent" })
                 }
                 rows={1}
                 value={draft}
               />
               {streaming ? (
                 <Button
-                  aria-label="Stop generating"
+                  aria-label={t("agent.dock.stopGenerating")}
                   className="size-8 shrink-0 rounded-full"
                   onClick={stop}
                   size="icon"
-                  title="Stop"
+                  title={t("common.stop")}
                   type="button"
                   variant="secondary"
                 >
@@ -550,12 +556,12 @@ export function AgentDock({
                 </Button>
               ) : (
                 <Button
-                  aria-label="Send message"
+                  aria-label={t("agent.dock.sendMessage")}
                   className="size-8 shrink-0 rounded-full"
                   disabled={!draft.trim() || configured === false}
                   onClick={() => void submit()}
                   size="icon"
-                  title="Send"
+                  title={t("common.send")}
                   type="button"
                 >
                   <ArrowUp className="size-4" />
@@ -577,20 +583,20 @@ export function AgentDock({
           {dragActive ? (
             <>
               <Download className="size-4 animate-bounce text-primary" />
-              <span>Drop here to add it to your message</span>
+              <span>{t("agent.dock.dropHere")}</span>
             </>
           ) : (
             <>
               <ProviderLogo provider={provider} className="size-4 text-primary" />
               {streaming ? (
                 <span className="flex items-center gap-2 text-foreground">
-                  <Loader2 className="size-3.5 animate-spin" /> {provider?.label ?? "Agent"} is
-                  thinking…
+                  <Loader2 className="size-3.5 animate-spin" />{" "}
+                  {t("agent.dock.thinking", { label: provider?.label ?? "Agent" })}
                 </span>
               ) : (
-                <span>Ask {provider?.label ?? "the agent"}...</span>
+                <span>{t("agent.dock.ask", { label: provider?.label ?? "the agent" })}</span>
               )}
-              <span className="ml-auto text-xs text-muted-foreground/70">click to expand</span>
+              <span className="ml-auto text-xs text-muted-foreground/70">{t("agent.dock.clickToExpand")}</span>
             </>
           )}
         </button>
@@ -630,6 +636,7 @@ function ProviderSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -657,7 +664,7 @@ function ProviderSwitcher({
         className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
         disabled={disabled}
         onClick={() => setOpen((value) => !value)}
-        title={disabled ? "Finish the current message to switch agents" : "Switch agent"}
+        title={disabled ? t("agent.dock.finishToSwitch") : t("agent.dock.switchAgent")}
         type="button"
       >
         <ProviderLogo provider={provider} className="size-4 text-primary" />
@@ -688,7 +695,7 @@ function ProviderSwitcher({
                     {candidate.label}
                     {!candidate.configured ? (
                       <span className="rounded bg-muted px-1 py-px text-[10px] font-normal text-muted-foreground">
-                        not installed
+                        {t("agent.notInstalled")}
                       </span>
                     ) : null}
                   </span>
@@ -717,27 +724,27 @@ function EmptyHint({
   provider: AgentChatProviderInfo | null;
   onOnboard: () => void;
 }) {
+  const t = useT();
   if (configured === false) {
     return (
       <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        This dock runs the <code className="font-mono">{provider?.commandName ?? "agent"}</code>{" "}
-        CLI. {provider?.installHint ?? "Install the active agent CLI, then reload."}
+        {t("agent.dock.runsCliPre")}
+        <code className="font-mono">{provider?.commandName ?? "agent"}</code>
+        {t("agent.dock.runsCliPost")}
+        {provider?.installHint ?? t("agent.dock.installHintDefault")}
       </div>
     );
   }
   return (
     <div className="space-y-2 text-xs text-muted-foreground">
-      <p>
-        {provider?.intro ??
-          "This is the active agent, running in your workspace with full tools - e.g. \"restart the api and tail its logs\", \"what changed in git and why?\", \"fix the failing test\"."}
-      </p>
+      <p>{provider?.intro ?? t("agent.dock.intro")}</p>
       <button
         className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-2.5 py-1 text-primary transition-colors hover:bg-primary/10"
         onClick={onOnboard}
         type="button"
       >
         <GitBranch className="size-3.5" />
-        Onboard a repo from a URL
+        {t("agent.dock.onboardFromUrl")}
       </button>
     </div>
   );
@@ -759,6 +766,7 @@ function looksLikeGitUrl(text: string): boolean {
  */
 function UserBubble({ turn }: { turn: ChatTurn }) {
   const [expanded, setExpanded] = useState(false);
+  const t = useT();
   const hasPreset = Boolean(turn.label) && turn.label !== turn.text;
   const shown = hasPreset && !expanded ? (turn.label as string) : turn.text;
   return (
@@ -774,7 +782,7 @@ function UserBubble({ turn }: { turn: ChatTurn }) {
             type="button"
           >
             {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-            {expanded ? "Hide full prompt" : "Show full prompt"}
+            {expanded ? t("agent.dock.hidePrompt") : t("agent.dock.showPrompt")}
           </button>
         ) : null}
       </div>
@@ -863,6 +871,7 @@ function ApprovalRow({
   prompt: ApprovalPrompt;
   onRespond: (requestId: string, decision: "allow" | "deny") => void;
 }) {
+  const t = useT();
   const arg = toolArgSummary(prompt.input).slice(0, 140);
   return (
     <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs">
@@ -871,7 +880,7 @@ function ApprovalRow({
       </span>
       <div className="min-w-0 flex-1 leading-tight">
         <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400/90">
-          Permission needed
+          {t("agent.dock.permissionNeeded")}
         </div>
         <div className="truncate font-mono text-[11px]">
           <span className="font-semibold text-foreground">{prompt.name}</span>
@@ -885,7 +894,7 @@ function ApprovalRow({
         type="button"
         variant="outline"
       >
-        <X className="size-3.5" /> Deny
+        <X className="size-3.5" /> {t("agent.dock.deny")}
       </Button>
       <Button
         className="h-7 gap-1"
@@ -893,7 +902,7 @@ function ApprovalRow({
         size="sm"
         type="button"
       >
-        <Check className="size-3.5" /> Allow
+        <Check className="size-3.5" /> {t("agent.dock.allow")}
       </Button>
     </div>
   );

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TestRunStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { useTestRunner } from "./use-test-runner";
 
 const STATUS_VARIANT: Record<TestRunStatus, "secondary" | "success" | "error"> = {
@@ -13,14 +15,15 @@ const STATUS_VARIANT: Record<TestRunStatus, "secondary" | "success" | "error"> =
   error: "error",
 };
 
-const STATUS_LABEL: Record<TestRunStatus, string> = {
-  running: "Running",
-  passed: "Passed",
-  failed: "Failed",
-  error: "Error",
+const STATUS_LABEL: Record<TestRunStatus, TranslationKey> = {
+  running: "services.tests.statusRunning",
+  passed: "services.tests.statusPassed",
+  failed: "services.tests.statusFailed",
+  error: "services.tests.statusError",
 };
 
 export function TestsTab({ serviceName }: { serviceName: string }) {
+  const t = useT();
   const { run, lines, error, starting, start } = useTestRunner(serviceName);
   const [pattern, setPattern] = useState("");
   const isRunning = run?.status === "running" || starting;
@@ -39,11 +42,11 @@ export function TestsTab({ serviceName }: { serviceName: string }) {
           className="h-7 flex-1 text-[11px]"
           disabled={isRunning}
           onChange={(event) => setPattern(event.target.value)}
-          placeholder="Optional test pattern (e.g. config-store)"
+          placeholder={t("services.tests.patternPlaceholder")}
           value={pattern}
         />
         <Button disabled={isRunning} size="sm" type="submit">
-          {isRunning ? "Running…" : "Run tests"}
+          {isRunning ? t("services.tests.running") : t("services.tests.runTests")}
         </Button>
       </form>
 
@@ -52,14 +55,18 @@ export function TestsTab({ serviceName }: { serviceName: string }) {
       {run ? (
         <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
           <Badge size="small" variant={STATUS_VARIANT[run.status]}>
-            {STATUS_LABEL[run.status]}
+            {t(STATUS_LABEL[run.status])}
           </Badge>
           <code className="font-mono text-[11px]">{run.command}</code>
-          {run.failingCount > 0 ? <span>· {run.failingCount} failing</span> : null}
-          {run.exitCode != null ? <span>· exit {run.exitCode}</span> : null}
+          {run.failingCount > 0 ? (
+            <span>· {t("services.tests.failing", { count: run.failingCount })}</span>
+          ) : null}
+          {run.exitCode != null ? (
+            <span>· {t("services.tests.exit", { code: run.exitCode })}</span>
+          ) : null}
         </div>
       ) : (
-        <div className="text-muted-foreground">No test runs yet.</div>
+        <div className="text-muted-foreground">{t("services.tests.noRuns")}</div>
       )}
 
       {lines.length > 0 ? (
@@ -75,11 +82,11 @@ export function TestsTab({ serviceName }: { serviceName: string }) {
 
       {showFailure ? (
         <div className="rounded border border-border bg-muted/40 p-2">
-          Failures were piped into the{" "}
+          {t("services.tests.failuresPre")}{" "}
           <a className="font-medium underline" href="/errors">
-            Error Inbox
+            {t("services.tests.errorInbox")}
           </a>{" "}
-          — open an incident there to copy a debugging prompt for your agent.
+          {t("services.tests.failuresPost")}
         </div>
       ) : null}
     </div>

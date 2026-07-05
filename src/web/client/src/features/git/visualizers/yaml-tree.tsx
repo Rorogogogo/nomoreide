@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import yaml from "js-yaml";
 import { Alert } from "@/components/ui/alert";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 type Json = unknown;
@@ -88,6 +89,7 @@ function TreeNode({
 }
 
 export function YamlTree({ content }: { content: string }) {
+  const t = useT();
   const result = useMemo(() => {
     try {
       const docs = yaml.loadAll(content);
@@ -104,7 +106,7 @@ export function YamlTree({ content }: { content: string }) {
   if (result.error) {
     return (
       <div className="p-4">
-        <Alert variant="destructive">Could not parse YAML: {result.error}</Alert>
+        <Alert variant="destructive">{t("git.yaml.parseError", { error: result.error })}</Alert>
       </div>
     );
   }

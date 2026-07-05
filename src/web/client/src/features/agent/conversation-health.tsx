@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { MessageCircleWarning, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
 import type { ChatTurn } from "./chat/use-agent-chat";
 
@@ -9,9 +11,7 @@ type ConversationStatus = "fresh" | "long" | "heavy";
 
 export interface ConversationHealthState {
   durationLabel: string;
-  recommendation: string | null;
   status: ConversationStatus;
-  statusLabel: string;
   turnCount: number;
 }
 
@@ -35,14 +35,16 @@ export function buildConversationHealth(
   const status: ConversationStatus = heavy ? "heavy" : long ? "long" : "fresh";
   return {
     durationLabel: firstTurn ? formatConversationDuration(durationMs) : "0m",
-    recommendation:
-      status === "fresh" ? null : "Consider starting a new chat for a cleaner context.",
     status,
-    statusLabel:
-      status === "heavy" ? "Heavy context" : status === "long" ? "Long" : "Fresh",
     turnCount,
   };
 }
+
+const STATUS_LABEL_KEY: Record<ConversationStatus, TranslationKey> = {
+  heavy: "agent.conversation.heavy",
+  long: "agent.conversation.long",
+  fresh: "agent.conversation.fresh",
+};
 
 export function ConversationHealth({
   now,
@@ -54,6 +56,7 @@ export function ConversationHealth({
   turns: ChatTurn[];
 }) {
   const [tick, setTick] = useState(() => Date.now());
+  const t = useT();
 
   useEffect(() => {
     const id = window.setInterval(() => setTick(Date.now()), 30_000);
@@ -76,12 +79,14 @@ export function ConversationHealth({
                 : "text-muted-foreground",
           )}
         />
-        <span className="font-medium">Conversation</span>
+        <span className="font-medium">{t("agent.conversation.label")}</span>
         <span className="font-mono text-muted-foreground">
-          {hasConversation ? health.durationLabel : "not started"}
+          {hasConversation ? health.durationLabel : t("agent.conversation.notStarted")}
         </span>
         {hasConversation ? (
-          <span className="font-mono text-muted-foreground">{health.turnCount} turns</span>
+          <span className="font-mono text-muted-foreground">
+            {t("agent.conversation.turns", { count: health.turnCount })}
+          </span>
         ) : null}
       </div>
       <Badge
@@ -89,13 +94,15 @@ export function ConversationHealth({
         size="small"
         variant={health.status === "heavy" ? "warning" : health.status === "long" ? "secondary" : "outline"}
       >
-        {health.statusLabel}
+        {t(STATUS_LABEL_KEY[health.status])}
       </Badge>
-      {health.recommendation ? (
-        <span className="min-w-0 flex-1 text-muted-foreground">{health.recommendation}</span>
+      {health.status !== "fresh" ? (
+        <span className="min-w-0 flex-1 text-muted-foreground">
+          {t("agent.conversation.recommendation")}
+        </span>
       ) : (
         <span className="min-w-0 flex-1 text-muted-foreground">
-          Short chats usually give the agent cleaner context.
+          {t("agent.conversation.hint")}
         </span>
       )}
       <Button
@@ -107,7 +114,7 @@ export function ConversationHealth({
         variant="outline"
       >
         <RotateCcw className="size-3.5" />
-        New chat
+        {t("agent.conversation.newChat")}
       </Button>
     </div>
   );

@@ -36,6 +36,7 @@ import { UsageHistory } from "../core/usage-history.js";
 import { WorkflowTriggerManager } from "../core/workflow-triggers.js";
 import { buildUsageInfo } from "./usage-info.js";
 import { selectedGitCwd } from "./dashboard.js";
+import { readCiFailure } from "./routes/github-context.js";
 import { sendHtml, sendJson } from "./http-utils.js";
 import { routes, type RouteServices } from "./routes/index.js";
 import { errorMessage } from "./routes/context.js";
@@ -111,11 +112,14 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     resolveRepoPath: () => selectedGitCwd(configStore, cwd),
   });
   // Event-driven workflow triggers (IDEAS #16): subscribe to error incidents +
-  // service crashes and enqueue pending runs the client runner drains.
+  // service crashes and enqueue pending runs the client runner drains. The
+  // `ci-failure` source is polled (GitHub has no in-process push) and no-ops
+  // until a `ci-failure` trigger is enabled and GitHub is configured.
   const triggerManager = new WorkflowTriggerManager({
     configStore,
     errorInbox,
     timelineStore,
+    ciSource: async () => readCiFailure(configStore, await selectedGitCwd(configStore, cwd)),
   });
   triggerManager.start();
 

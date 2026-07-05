@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getGitDiff } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { DiffViewer, diffStats } from "./diff-viewer";
 
 /**
@@ -19,6 +20,7 @@ export function DiffDrawer({
   file: string;
   onClose: () => void;
 }) {
+  const t = useT();
   const [diff, setDiff] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export function DiffDrawer({
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex justify-end">
       <button
-        aria-label="Close diff"
+        aria-label={t("git.diff.closeAria")}
         className="absolute inset-0 bg-black/35"
         onClick={onClose}
         type="button"
@@ -74,7 +76,7 @@ export function DiffDrawer({
               ) : null}
             </div>
           </div>
-          <Button aria-label="Close diff" onClick={onClose} size="icon" variant="ghost">
+          <Button aria-label={t("git.diff.closeAria")} onClick={onClose} size="icon" variant="ghost">
             <X />
           </Button>
         </div>
@@ -84,9 +86,9 @@ export function DiffDrawer({
               <Alert variant="destructive">{error}</Alert>
             </div>
           ) : loading ? (
-            <div className="p-4 text-xs text-muted-foreground">Loading diff…</div>
+            <div className="p-4 text-xs text-muted-foreground">{t("git.diff.loading")}</div>
           ) : (
-            <DiffViewer diff={diff || "No unstaged diff for this file."} />
+            <DiffViewer diff={diff || t("git.noUnstagedDiff")} />
           )}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import type { EnvRow } from "./use-service-env";
+import { useT } from "@/lib/i18n";
 
 export function EnvTable({
   rows,
@@ -14,12 +15,13 @@ export function EnvTable({
   onRemove: (index: number) => void;
   onUpdate: (index: number, patch: Partial<EnvRow>) => void;
 }) {
+  const t = useT();
   if (rows.length === 0) {
     return (
       <div className="text-muted-foreground">
-        No variables yet.{" "}
+        {t("services.env.noVars")}{" "}
         <button className="underline" onClick={onAdd} type="button">
-          Add one
+          {t("services.env.addOne")}
         </button>
         .
       </div>
@@ -30,8 +32,8 @@ export function EnvTable({
       <table className="w-full font-mono text-[11px]">
         <thead className="text-left text-muted-foreground">
           <tr>
-            <th className="py-1 pr-3">Key</th>
-            <th className="py-1 pr-3">Value</th>
+            <th className="py-1 pr-3">{t("services.env.key")}</th>
+            <th className="py-1 pr-3">{t("services.env.value")}</th>
             <th className="py-1 w-8" />
           </tr>
         </thead>
@@ -61,7 +63,7 @@ export function EnvTable({
                     <button
                       className="text-muted-foreground hover:text-foreground"
                       onClick={() => onUpdate(index, { reveal: !row.reveal })}
-                      title={row.reveal || revealAll ? "Hide" : "Reveal"}
+                      title={row.reveal || revealAll ? t("services.env.hide") : t("services.env.reveal")}
                       type="button"
                     >
                       {row.reveal || revealAll ? <EyeOff size={14} /> : <Eye size={14} />}

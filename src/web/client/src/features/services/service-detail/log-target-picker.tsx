@@ -1,4 +1,5 @@
 import type { LogTarget } from "./use-logs";
+import { useT } from "@/lib/i18n";
 
 export interface LogOption {
   target: LogTarget;
@@ -26,12 +27,13 @@ export function LogTargetPicker({
   onChange: (target: LogTarget) => void;
   className?: string;
 }) {
+  const t = useT();
   const selected = options.findIndex((option) => sameTarget(option.target, target));
   const groups = [...new Set(options.map((option) => option.group))];
 
   return (
     <select
-      aria-label="Log source"
+      aria-label={t("services.logSource")}
       className={
         className ?? "h-8 max-w-44 rounded-md border border-border bg-background px-2 text-xs"
       }

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { AiSpark } from "./ai-spark";
 
@@ -22,6 +23,7 @@ export function AiAskInline({
   className?: string;
 }) {
   const [value, setValue] = useState("");
+  const t = useT();
   const submit = () => {
     const trimmed = value.trim();
     if (trimmed) onSubmit(trimmed);
@@ -42,7 +44,7 @@ export function AiAskInline({
         submit();
       }}
     >
-      <AiSpark className="size-5 opacity-100" label="Send to the agent" onAsk={submit} />
+      <AiSpark className="size-5 opacity-100" label={t("agent.ask.sendToAgent")} onAsk={submit} />
       <input
         ref={focusOnMount}
         className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
@@ -53,7 +55,7 @@ export function AiAskInline({
         placeholder={placeholder}
         value={value}
       />
-      <Button type="submit" size="icon" className="size-6" disabled={!value.trim()} title="Send">
+      <Button type="submit" size="icon" className="size-6" disabled={!value.trim()} title={t("common.send")}>
         <Check className="size-3.5" />
       </Button>
       <Button
@@ -62,8 +64,8 @@ export function AiAskInline({
         variant="ghost"
         className="size-6"
         onClick={onCancel}
-        aria-label="Cancel"
-        title="Cancel"
+        aria-label={t("common.cancel")}
+        title={t("common.cancel")}
       >
         <X className="size-3.5" />
       </Button>

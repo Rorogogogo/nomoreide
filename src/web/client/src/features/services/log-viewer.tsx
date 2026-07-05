@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { LogEntry } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function LogSearchInput({
   onChange,
@@ -11,14 +12,15 @@ export function LogSearchInput({
   onChange: (value: string) => void;
   value: string;
 }) {
+  const t = useT();
   return (
     <label className="relative block">
       <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
-        aria-label="Search logs"
+        aria-label={t("services.log.search")}
         className="h-8 w-44 pl-7 text-xs"
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Search logs"
+        placeholder={t("services.log.search")}
         value={value}
       />
     </label>

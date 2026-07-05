@@ -1,8 +1,10 @@
 import { Activity, Cpu, MemoryStick } from "lucide-react";
 import type { ServiceHealth } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function HealthSummary({ health }: { health?: ServiceHealth }) {
+  const t = useT();
   if (!health) return null;
 
   const processTree = health.processTree;
@@ -32,7 +34,7 @@ export function HealthSummary({ health }: { health?: ServiceHealth }) {
           <span className="inline-flex items-center gap-1 font-mono">
             <Cpu className="size-3" />
             {processTree.processCount}{" "}
-            {processTree.processCount === 1 ? "process" : "processes"}
+            {processTree.processCount === 1 ? t("services.process") : t("services.processes")}
           </span>
           <span>{formatCpu(processTree.cpuPercent)} CPU</span>
           <span className="inline-flex items-center gap-1 font-mono">

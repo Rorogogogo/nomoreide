@@ -168,25 +168,27 @@ Leave large *core* modules (`process-manager.ts` 683, `git-manager.ts` 412) alon
 
 Most of the original roadmap has shipped. These are fresh, high-leverage additions that fit the existing architecture. Added 2026-06-13.
 
-## 15. Error → Fix loop (closes the AI-native circle) — ⭐ highest impact
-Today Error Inbox (#2), repro bundle (#8), change-set review (#11), and snapshot/restore (#6) are *separate* features the user manually chains. Wire them into one loop: a **"Fix with agent"** button on an incident hands the repro bundle to an agent run, then surfaces the result as a ROR-39 change-set with one-click restore if it goes sideways. Turns the toolbox from a set of copy-to-clipboard buttons into a closed loop — the real differentiator.
+## 15. Error → Fix loop (closes the AI-native circle) — ✅ shipped ⭐
+Error Inbox (#2), repro bundle (#8), change-set review (#11), and snapshot/restore (#6) used to be *separate* features the user manually chained. They're now wired into one loop: a **"Fix with AI"** button on an incident hands the repro bundle to an agent run, then surfaces the result as a ROR-39 change-set with one-click restore if it goes sideways. Turns the toolbox from a set of copy-to-clipboard buttons into a closed loop — the real differentiator.
 
-**Build:**
-- **Core** — orchestration in a new `core/fix-loop.ts` (or extend `agent-runtime.ts`): take an incident id → build repro bundle → kick an agent session (auto-snapshot already fires via `agent-sessions.ts`) → on completion, resolve the change-set for that session.
-- **API** — `POST /api/errors/:id/fix` → returns the agent `sessionId`; the existing change-set + snapshot endpoints carry the review/restore.
-- **UI** — "Fix with agent" on each Error Inbox incident; on finish, deep-link to the Agent→Changes tab for that session.
-- **Reuses** — `repro-bundle.ts`, `agent-runtime.ts` + `agent-sessions.ts`, `snapshot-manager.ts`, change-set endpoints.
+Done as a vertical slice:
+- **Core** — `core/fix-loop.ts`: `prepare(incidentId)` builds the repro bundle (incident + file diff + recent logs + service state + masked env) and resolves the session the run snapshots into.
+- **API** — `POST /api/errors/:id/fix` (`errors-routes.ts`) → returns `{ prompt, sessionId }`; the existing change-set + snapshot endpoints carry the review/restore.
+- **UI** — `features/errors/incident-detail.tsx`: **"Fix with AI"** snapshots the working tree, sends the agent the repro bundle through the dock, then deep-links to the Agent → Changes tab for that session.
+- **Client API** — `startFix(id)` in `lib/api/errors-http.ts`.
+- **Reuses** — `repro-bundle.ts`, the agent dock run path, `snapshot-manager.ts` + `agent-sessions.ts`, change-set endpoints.
+- **Tests** — `test/fix-loop.test.ts` green.
 
 ## 16. Event-driven workflow triggers — ✅ shipped
 Workflows are user-run today. Let them fire on events the app already detects — a new Error Inbox incident or a service crash. Because the workflow **runner lives client-side** (agent steps run through the dock), the server can't run a triggered workflow itself; instead a fired trigger enqueues a **pending run** that the open dashboard drains and drives through the existing client runner (the "pending-run queue" model). Runs survive until a browser claims them, so an event detected while no tab is open isn't lost.
 
 Done as a vertical slice:
 - **Core** — `core/workflow-triggers.ts` (`WorkflowTriggerManager`): subscribes to `ErrorInbox.subscribe` (error incidents) and a new `TimelineStore.subscribe` (service crashes = `service.lifecycle` events with `severity: "error"`), matches enabled `workflowTriggers` (config schema + `saveWorkflowTrigger`/`removeWorkflowTrigger` in `config-store.ts`), debounces a burst by `triggerId:cause` signature, and pushes a `PendingRun` onto a ring buffer with a subscribe emitter.
+- **CI-failure source (added 2026-06-29)** — the third event, `ci-failure`, is the only **polled** one (GitHub has no in-process push). `WorkflowTriggerManager` takes an optional `ciSource: () => Promise<CiFailureSnapshot | null>` and polls it on an interval (default 60s, unref'd; `start()` only arms the timer when a source is wired); `pollCiOnce()` is public so tests drive it without timers. It skips the network call when no `ci-failure` trigger is enabled, and fires **at most once per failing commit sha** via an `once` dedupe flag on `enqueue` (vs the time-window dedupe the push sources use). The source itself is `readCiFailure()` in `web/routes/github-context.ts` (reuses `optionalGitHubContext` + `listWorkflowRuns(branch)`, scopes to the newest commit's runs, treats `failure`/`timed_out`/`startup_failure` as failing), wired in `server.ts` against the selected repo. `test/workflow-triggers.test.ts` (11) green.
 - **API** — `web/routes/workflow-trigger-routes.ts`: CRUD (`GET/POST /api/workflow-triggers`, `DELETE /:id`), pending queue (`GET .../pending`, SSE `GET .../pending/stream`, `POST .../pending/:id/ack`). `triggerManager` lives in `RouteServices`.
-- **UI** — `features/workflows/`: `workflow-trigger-context.tsx` (app-root provider that streams the queue, **auto-runs** `autoRun` triggers through `useWorkflowRun`, exposes the rest) + `triggers-section.tsx` (bind event + filter + workflow, toggle/delete, one-click "Run" of queued runs) mounted in the Workflows panel.
+- **UI** — `features/workflows/`: `workflow-trigger-context.tsx` (app-root provider that streams the queue, **auto-runs** `autoRun` triggers through `useWorkflowRun`, exposes the rest) + `triggers-section.tsx` (bind event + filter + workflow, toggle/delete, one-click "Run" of queued runs) mounted in the Workflows panel. The event picker now offers **CI failure** alongside error-incident/service-crash.
 - **Client API** — trigger methods added to the Workflows seam (`workflows-{api,http,tauri}.ts`); Tauri stub is inert (web/MCP feature).
-- **Tests** — `test/workflow-triggers.test.ts` (8) green.
-- Remaining bonus: a CI-failure source (poll `github_get_commit_ci`) and fired-trigger history — both slot onto the same queue.
+- Remaining bonus: fired-trigger history — slots onto the same queue.
 
 ## 17. Inject env into a running process (the #1 leftover bonus) — ✅ shipped
 Env Manager (#1) edits `.env` but requires restart-and-pray. Pushing updated vars into a live process closes that gap. Small, satisfying win — scoped to processes NoMoreIDE spawned (the existing safety boundary).

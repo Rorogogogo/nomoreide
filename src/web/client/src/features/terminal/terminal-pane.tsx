@@ -12,8 +12,16 @@ import {
 } from "@/lib/api";
 import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 
 type TerminalConnectionState = "connecting" | "running" | "exited" | "error";
+
+// The status line shows either a translated label (`key`) or a raw server value
+// (`text`, e.g. the shell path or a driver error). Keeping keys unresolved in
+// state means the socket effect never depends on the translator, so switching
+// language can't tear down and reconnect a live shell.
+type StatusDetail = { key: TranslationKey } | { text: string };
 
 // Status is conveyed by a single dot (the word badge ate space and duplicated
 // what the Restart/Stop buttons already imply); the full state stays in the title.
@@ -56,10 +64,11 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const [cwd, setCwd] = useState("Local workspace");
+  const t = useT();
+  const [cwd, setCwd] = useState<StatusDetail>({ key: "terminal.localWorkspace" });
   const [connectionState, setConnectionState] =
     useState<TerminalConnectionState>("connecting");
-  const [detail, setDetail] = useState("Opening shell");
+  const [detail, setDetail] = useState<StatusDetail>({ key: "terminal.openingShell" });
   // Desktop (Tauri) drives the shell through the Rust PTY (invoke + events);
   // the web build talks to the Node terminal server over a WebSocket. The
   // desktop app has no Node server, so the socket path can never connect there.
@@ -143,7 +152,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
           }
           unlisten = off;
           setConnectionState("running");
-          setDetail("Shell connected");
+          setDetail({ key: "terminal.shellConnected" });
           // Now that the listener is live, release the PTY's buffered startup
           // output (the initial shell prompt) so the terminal shows immediately
           // instead of looking dead until the first keystroke.
@@ -153,7 +162,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
         (caught) => {
           if (disposed) return;
           setConnectionState("error");
-          setDetail(caught instanceof Error ? caught.message : String(caught));
+          setDetail({ text: caught instanceof Error ? caught.message : String(caught) });
         },
       );
       cleanupTransport = () => {
@@ -172,7 +181,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
 
       socket.addEventListener("open", () => {
         setConnectionState("running");
-        setDetail("Shell connected");
+        setDetail({ key: "terminal.shellConnected" });
         sendResize();
       });
 
@@ -185,22 +194,23 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
         }
         if (message.type === "error") {
           setConnectionState("error");
-          setDetail(message.error);
+          setDetail({ text: message.error });
           return;
         }
         setConnectionState(message.state === "idle" ? "connecting" : message.state);
-        if (message.cwd) setCwd(message.cwd);
-        setDetail(message.error ?? message.shell ?? "Shell connected");
+        if (message.cwd) setCwd({ text: message.cwd });
+        const nextDetail = message.error ?? message.shell;
+        setDetail(nextDetail ? { text: nextDetail } : { key: "terminal.shellConnected" });
       });
 
       socket.addEventListener("close", () => {
         setConnectionState((state) => (state === "exited" ? state : "exited"));
-        setDetail("Socket closed");
+        setDetail({ key: "terminal.socketClosed" });
       });
 
       socket.addEventListener("error", () => {
         setConnectionState("error");
-        setDetail("Terminal socket error");
+        setDetail({ key: "terminal.socketError" });
       });
 
       cleanupTransport = () => {
@@ -272,29 +282,29 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
               <span className={cn("relative inline-flex size-2 rounded-full", TERMINAL_DOT[connectionState])} />
             </span>
             <span className="truncate font-mono text-[11px] text-white/55">
-              {cwd} · {detail}
+              {"key" in cwd ? t(cwd.key) : cwd.text} · {"key" in detail ? t(detail.key) : detail.text}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <Button
-            aria-label="Restart terminal"
+            aria-label={t("terminal.restart")}
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
             onClick={() => sendControl({ type: "restart" })}
-            title="Restart terminal"
+            title={t("terminal.restart")}
             type="button"
           >
             <RotateCcw />
           </Button>
           <Button
-            aria-label="Stop terminal"
+            aria-label={t("terminal.stop")}
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
             onClick={() => sendControl({ type: "stop" })}
-            title="Stop terminal"
+            title={t("terminal.stop")}
             type="button"
           >
             <Square />
@@ -306,7 +316,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
           FitAddon doesn't subtract the mount element's own padding, so padding
           here would make it provision one row too many and clip the last line. */}
       <div
-        aria-label="terminal viewport"
+        aria-label={t("terminal.viewport")}
         className="min-h-0 flex-1 overflow-hidden px-3 py-0.5"
       >
         <div className="h-full w-full" ref={containerRef} />

@@ -3,6 +3,7 @@ import { Inbox } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { IncidentDetail } from "./incident-detail";
 import { useErrorIncidents } from "./use-error-incidents";
 
@@ -12,6 +13,7 @@ export function ErrorInboxView({
   /** Deep-link to Agent → Changes for a fix run's recorded session. */
   onReviewChanges?: (sessionId: string) => void;
 } = {}) {
+  const t = useT();
   const { incidents, connected, error } = useErrorIncidents();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -39,7 +41,7 @@ export function ErrorInboxView({
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
           <div className="flex items-center gap-2">
             <Inbox className="size-4 text-muted-foreground" />
-            <span className="text-sm font-semibold">Incidents</span>
+            <span className="text-sm font-semibold">{t("errors.incidents")}</span>
             <Badge variant="outline" size="small">
               {incidents.length}
             </Badge>
@@ -56,7 +58,7 @@ export function ErrorInboxView({
               />
             }
           >
-            {connected ? "live" : "reconnecting…"}
+            {connected ? t("errors.live") : t("errors.reconnecting")}
           </Badge>
         </div>
         <ul className="min-h-0 flex-1 divide-y divide-border overflow-auto">
@@ -105,7 +107,7 @@ export function ErrorInboxView({
         {error ? (
           <div className="p-4">
             <Alert variant="muted" className="border-destructive/40 text-destructive">
-              Failed to load incidents: {error}
+              {t("errors.loadFailed", { error })}
             </Alert>
           </div>
         ) : selected ? (
@@ -114,11 +116,8 @@ export function ErrorInboxView({
           <div className="flex h-full items-center justify-center p-8 text-center">
             <div className="max-w-sm">
               <Inbox className="mx-auto size-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm font-medium">No incidents yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Errors and stack traces from your running services land here automatically. Each
-                one becomes a one-click prompt for your agent.
-              </p>
+              <p className="mt-3 text-sm font-medium">{t("errors.emptyTitle")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("errors.emptyBody")}</p>
             </div>
           </div>
         )}

@@ -1,5 +1,6 @@
 import { Database, ExternalLink, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 /**
  * The agent talks to the dock through fenced blocks we strip out of the prose:
@@ -100,14 +101,15 @@ export function ServiceActions({
   onStart: (name: string) => void;
   onOpen?: (name: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5">
       <span className="text-[11px] text-muted-foreground">
-        Added <span className="font-medium text-foreground">{service}</span>
+        {t("agent.chat.added")} <span className="font-medium text-foreground">{service}</span>
       </span>
       <div className="ml-auto flex gap-1.5">
         <Button className="h-7" onClick={() => onStart(service)} size="sm" type="button">
-          <Play /> Start
+          <Play /> {t("common.start")}
         </Button>
         {onOpen ? (
           <Button
@@ -117,7 +119,7 @@ export function ServiceActions({
             type="button"
             variant="outline"
           >
-            <ExternalLink /> Open
+            <ExternalLink /> {t("common.open")}
           </Button>
         ) : null}
       </div>
@@ -137,19 +139,21 @@ export function SqlWriteAction({
   proposal: SqlWriteProposal;
   onOpen: (connection: string, sql: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="rounded-md border border-amber-500/30 bg-amber-500/[0.06] px-2.5 py-2">
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         <Database className="size-3.5 text-amber-600 dark:text-amber-400" />
         <span>
-          Proposed write
+          {t("agent.chat.proposedWrite")}
           {proposal.connection ? (
             <>
               {" "}
-              on <span className="font-medium text-foreground">{proposal.connection}</span>
+              {t("agent.chat.proposedWriteOn")}{" "}
+              <span className="font-medium text-foreground">{proposal.connection}</span>
             </>
           ) : null}{" "}
-          — runs in the console after you unlock and preview.
+          {t("agent.chat.proposedWriteSuffix")}
         </span>
       </div>
       <pre className="mb-2 max-h-28 overflow-auto rounded bg-background px-2 py-1.5 font-mono text-[11px] text-foreground">
@@ -161,7 +165,7 @@ export function SqlWriteAction({
         size="sm"
         type="button"
       >
-        <ExternalLink /> Open in SQL console
+        <ExternalLink /> {t("agent.chat.openSqlConsole")}
       </Button>
     </div>
   );

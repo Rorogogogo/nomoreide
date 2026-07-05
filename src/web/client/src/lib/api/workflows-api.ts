@@ -40,7 +40,7 @@ export interface Workflow {
 }
 
 /** Mirrors `core/workflow-triggers.ts`. */
-export type TriggerEvent = "error-incident" | "service-crash";
+export type TriggerEvent = "error-incident" | "service-crash" | "ci-failure";
 
 export interface WorkflowTrigger {
   id: string;

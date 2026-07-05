@@ -9,6 +9,7 @@ import {
   type ConfigBrowseResult,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function FileBrowserDialog({
   serviceName,
@@ -19,6 +20,7 @@ export function FileBrowserDialog({
   onClose: () => void;
   onPick: (relativePath: string) => void;
 }) {
+  const t = useT();
   const [data, setData] = useState<ConfigBrowseResult | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export function FileBrowserDialog({
       icon={<FolderOpen />}
       onClose={onClose}
       size="lg"
-      title="Pick a config file"
+      title={t("services.fileBrowser.title")}
     >
       <div className="flex flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-xs">
@@ -75,7 +77,7 @@ export function FileBrowserDialog({
             type="button"
             variant="outline"
           >
-            <ChevronUp /> Up
+            <ChevronUp /> {t("services.fileBrowser.up")}
           </Button>
           <code className="truncate rounded bg-muted px-2 py-1 font-mono">
             {data?.relativePath || "./"}
@@ -84,9 +86,9 @@ export function FileBrowserDialog({
         {error ? (
           <div className="text-red-600">{error}</div>
         ) : loading ? (
-          <div className="text-muted-foreground">Loading…</div>
+          <div className="text-muted-foreground">{t("common.loading")}</div>
         ) : !data || data.entries.length === 0 ? (
-          <div className="text-muted-foreground">Empty directory.</div>
+          <div className="text-muted-foreground">{t("services.fileBrowser.empty")}</div>
         ) : (
           <div className="max-h-[50vh] overflow-auto rounded border border-border/60">
             <ul className="divide-y divide-border/40">
@@ -119,8 +121,9 @@ export function FileBrowserDialog({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Only <code>.env*</code>, <code>appsettings*.json</code>, and{" "}
-          <code>application*.yml</code> can be selected. Other files are shown disabled.
+          {t("services.fileBrowser.hintPre")} <code>.env*</code>, <code>appsettings*.json</code>{" "}
+          {t("services.fileBrowser.hintAnd")} <code>application*.yml</code>
+          {t("services.fileBrowser.hintTail")}
         </p>
       </div>
     </ComposerDialog>

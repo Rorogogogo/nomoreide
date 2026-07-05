@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Activity, Brain, DollarSign, FileDiff, Gauge, Plug } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { getAgentInfo, type AgentInfo, type AgentProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
 import { ActivityTab } from "./activity-tab";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
@@ -29,13 +31,13 @@ const AGENTS: Array<{
   { id: "codex", chatId: "codex", label: "Codex", icon: <CodexLogo className="size-4" /> },
 ];
 
-const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
-  { id: "overview", label: "Overview", icon: <Gauge className="size-3.5" /> },
-  { id: "memory", label: "Memory", icon: <Brain className="size-3.5" /> },
-  { id: "tools", label: "Skills, MCPs, Plugins & Hooks", icon: <Plug className="size-3.5" /> },
-  { id: "activity", label: "Activity", icon: <Activity className="size-3.5" /> },
-  { id: "changes", label: "Changes", icon: <FileDiff className="size-3.5" /> },
-  { id: "usage", label: "Usage", icon: <DollarSign className="size-3.5" /> },
+const TABS: Array<{ id: AgentTab; labelKey: TranslationKey; icon: React.ReactNode }> = [
+  { id: "overview", labelKey: "agent.tab.overview", icon: <Gauge className="size-3.5" /> },
+  { id: "memory", labelKey: "agent.tab.memory", icon: <Brain className="size-3.5" /> },
+  { id: "tools", labelKey: "agent.tab.tools", icon: <Plug className="size-3.5" /> },
+  { id: "activity", labelKey: "agent.tab.activity", icon: <Activity className="size-3.5" /> },
+  { id: "changes", labelKey: "agent.tab.changes", icon: <FileDiff className="size-3.5" /> },
+  { id: "usage", labelKey: "agent.tab.usage", icon: <DollarSign className="size-3.5" /> },
 ];
 
 export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
@@ -43,6 +45,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
+  const t = useT();
   const { clear, turns, provider: chatProvider, providers, selectProvider } = useAgentDock();
 
   // A bump on `focusChanges` (e.g. "Review changes" from an Error Inbox fix)
@@ -83,7 +86,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
     return (
       <div className="h-full overflow-auto bg-card/85 p-4">
         <Alert variant="muted" className="border-destructive/40 text-destructive">
-          Failed to load agent info: {error}
+          {t("agent.loadFailed", { error })}
         </Alert>
       </div>
     );
@@ -92,7 +95,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
   if (!agent) {
     return (
       <div className="h-full overflow-auto bg-card/85 p-4">
-        <Alert variant="muted">Loading agent info…</Alert>
+        <Alert variant="muted">{t("agent.loadingInfo")}</Alert>
       </div>
     );
   }
@@ -121,8 +124,8 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
               onClick={() => chooseAgent(entry.id, entry.chatId)}
               title={
                 installed
-                  ? `Use ${entry.label} for chat`
-                  : `${entry.label} CLI isn't installed`
+                  ? t("agent.useForChat", { label: entry.label })
+                  : t("agent.cliNotInstalled", { label: entry.label })
               }
               className={cn(
                 "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
@@ -136,16 +139,16 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
               {entry.label}
               {activeForChat ? (
                 <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
-                  In use
+                  {t("agent.inUse")}
                 </span>
               ) : detected ? (
                 <span
                   className="size-1.5 rounded-full bg-emerald-500"
-                  title="Detected agent"
+                  title={t("agent.detectedAgent")}
                   aria-hidden
                 />
               ) : !installed ? (
-                <span className="text-[10px] font-normal text-muted-foreground">not installed</span>
+                <span className="text-[10px] font-normal text-muted-foreground">{t("agent.notInstalled")}</span>
               ) : null}
             </button>
           );
@@ -166,7 +169,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
             )}
           >
             {entry.icon}
-            {entry.label}
+            {t(entry.labelKey)}
             {tab === entry.id ? (
               <span className="absolute inset-x-1 -bottom-px h-0.5 bg-primary" />
             ) : null}

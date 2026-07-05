@@ -4,6 +4,7 @@ import { ComposerDialog } from "./service-forms";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { EmptyState } from "./empty-state";
 
 const WINDOW_MS = 15 * 60 * 1000;
@@ -11,6 +12,7 @@ const BUCKETS = 12;
 const MAX_EVENTS = 200;
 
 export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
+  const t = useT();
   const [openService, setOpenService] = useState<string | null>(null);
   const [openEvent, setOpenEvent] = useState<TimelineEvent | null>(null);
 
@@ -24,17 +26,17 @@ export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
         <CardHeader className="border-b border-border px-3 py-2">
           <CardTitle className="flex items-center gap-2">
             <Activity className="size-3.5" />
-            Runtime Monitor
+            {t("services.timeline.title")}
           </CardTitle>
           <CardDescription className="text-xs">
             {events.length === 0
-              ? "No events yet"
-              : `${events.length} event${events.length === 1 ? "" : "s"} · last 15 min`}
+              ? t("services.timeline.noEvents")
+              : t("services.timeline.events", { count: events.length })}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {rows.length === 0 ? (
-            <EmptyState label="No runtime timeline events yet." />
+            <EmptyState label={t("services.timeline.empty")} />
           ) : (
             <div className="divide-y divide-border">
               {rows.map((row) => (
@@ -48,7 +50,7 @@ export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
               ))}
               <div className="flex justify-between px-3 py-1.5 font-mono text-[10px] text-muted-foreground">
                 <span>{formatTime(windowStart)}</span>
-                <span>now</span>
+                <span>{t("services.timeline.now")}</span>
               </div>
             </div>
           )}
@@ -182,6 +184,7 @@ function ServiceRowButton({
   windowEnd: number;
   windowStart: number;
 }) {
+  const t = useT();
   const maxCount = Math.max(1, ...row.buckets);
   return (
     <button
@@ -227,7 +230,7 @@ function ServiceRowButton({
         </div>
       ) : (
         <div className="mt-1 truncate text-[10px] text-muted-foreground">
-          {row.infos} info {row.infos === 1 ? "event" : "events"}
+          {t("services.timeline.infoEvents", { count: row.infos })}
         </div>
       )}
       <div className="mt-0.5 flex justify-between font-mono text-[9px] text-muted-foreground/60">
@@ -247,6 +250,7 @@ function DensityCell({
   max: number;
   severity: "error" | "warning" | "info" | null;
 }) {
+  const t = useT();
   if (count === 0) {
     return <span className="rounded-sm bg-border/60" />;
   }
@@ -255,7 +259,7 @@ function DensityCell({
     <span
       className={cn("rounded-sm", densityColor(severity))}
       style={{ opacity: intensity }}
-      title={`${count} event${count === 1 ? "" : "s"}`}
+      title={t("services.timeline.eventsCount", { count })}
     />
   );
 }
@@ -267,15 +271,16 @@ function ServiceEventList({
   onSelect: (event: TimelineEvent) => void;
   row: ServiceRow;
 }) {
+  const t = useT();
   const newestFirst = [...row.events].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return (
     <div className="flex max-h-[480px] flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-        <span>{row.events.length} events</span>
+        <span>{t("services.timeline.eventsCount", { count: row.events.length })}</span>
         <span>·</span>
-        <span>{row.errors} error{row.errors === 1 ? "" : "s"}</span>
+        <span>{t("services.timeline.errorsCount", { count: row.errors })}</span>
         <span>·</span>
-        <span>{row.warnings} warning{row.warnings === 1 ? "" : "s"}</span>
+        <span>{t("services.timeline.warningsCount", { count: row.warnings })}</span>
       </div>
       <ul className="min-h-0 divide-y divide-border overflow-auto">
         {newestFirst.map((event) => (
@@ -308,6 +313,7 @@ function ServiceEventList({
 }
 
 function EventDetail({ event }: { event: TimelineEvent }) {
+  const t = useT();
   const ts = new Date(event.timestamp);
   return (
     <div className="space-y-3 p-4 text-sm">
@@ -330,14 +336,14 @@ function EventDetail({ event }: { event: TimelineEvent }) {
         ) : null}
       </div>
       <div>
-        <div className="text-xs text-muted-foreground">When</div>
+        <div className="text-xs text-muted-foreground">{t("services.timeline.when")}</div>
         <div className="font-mono text-xs">
           {Number.isNaN(ts.getTime()) ? event.timestamp : ts.toLocaleString()}
         </div>
       </div>
       {event.detail ? (
         <div>
-          <div className="text-xs text-muted-foreground">Detail</div>
+          <div className="text-xs text-muted-foreground">{t("services.timeline.detail")}</div>
           <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-3 font-mono text-xs">
             {event.detail}
           </pre>

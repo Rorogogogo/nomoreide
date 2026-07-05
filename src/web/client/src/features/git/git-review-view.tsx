@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { absolutePath } from "../agent/chat/drag-to-agent";
@@ -42,6 +43,7 @@ export function GitReviewView({
   /** Reload dashboard data after a staging/commit/push mutation. */
   onRefresh?: () => void;
 }) {
+  const t = useT();
   const { insertPath } = useAgentDock();
   const [stagingBusy, setStagingBusy] = useState(false);
   const [tab, setTab] = useState<GitTab>("changes");
@@ -188,7 +190,7 @@ export function GitReviewView({
     activeHunkIndex > 0 || files[currentFileIndex - 1],
   );
   const navigationHint = pendingNextFilePath
-    ? `End of file. Click Next again to open ${pendingNextFilePath}.`
+    ? t("git.navHintEndOfFile", { path: pendingNextFilePath })
     : null;
 
   const tabButtonClass = (active: boolean) =>
@@ -249,44 +251,44 @@ export function GitReviewView({
           className={tabButtonClass(tab === "changes")}
           onClick={() => setTab("changes")}
         >
-          Changes
+          {t("git.tab.changes")}
         </button>
         <button
           type="button"
-          aria-label="Show changed files across all repositories"
+          aria-label={t("git.boardAria")}
           className={tabButtonClass(tab === "board")}
           onClick={() => setTab("board")}
         >
-          Board
+          {t("git.tab.board")}
         </button>
         <button
           type="button"
-          aria-label="Open all tracked files"
+          aria-label={t("git.allFilesAria")}
           className={tabButtonClass(tab === "all")}
           onClick={() => setTab("all")}
         >
-          All files
+          {t("git.tab.all")}
         </button>
         <button
           type="button"
           className={tabButtonClass(tab === "graph")}
           onClick={() => setTab("graph")}
         >
-          Tree
+          {t("git.tab.tree")}
         </button>
         <button
           type="button"
           className={tabButtonClass(tab === "largest")}
           onClick={() => setTab("largest")}
         >
-          Largest files
+          {t("git.tab.largest")}
         </button>
         <button
           type="button"
           className={tabButtonClass(tab === "snapshots")}
           onClick={() => setTab("snapshots")}
         >
-          Snapshots
+          {t("git.tab.snapshots")}
         </button>
         <button
           type="button"
@@ -295,7 +297,7 @@ export function GitReviewView({
         >
           <span className="flex items-center gap-1">
             <AgentMark className="size-3" />
-            Workflows
+            {t("git.tab.workflows")}
           </span>
         </button>
       </div>
@@ -342,20 +344,20 @@ export function GitReviewView({
             <aside className="flex min-h-0 flex-col overflow-hidden">
               <div className="flex shrink-0 gap-0.5 border-b border-border bg-card/95 p-1">
                 <button
-                  aria-label="Show changed files as a list"
+                  aria-label={t("git.modeListAria")}
                   className={modeButtonClass(mode === "changes")}
                   onClick={() => setMode("changes")}
                   type="button"
                 >
-                  Changes
+                  {t("git.tab.changes")}
                 </button>
                 <button
-                  aria-label="Show changed files as a tree"
+                  aria-label={t("git.modeTreeAria")}
                   className={modeButtonClass(mode === "tree")}
                   onClick={() => setMode("tree")}
                   type="button"
                 >
-                  Tree
+                  {t("git.tab.tree")}
                 </button>
               </div>
               {mode === "changes" ? (
@@ -372,13 +374,13 @@ export function GitReviewView({
                 <FileTree
                   branch={data.git.status?.branch || undefined}
                   defaultExpandAll
-                  emptyMessage={data.git.error ?? "No changed files."}
+                  emptyMessage={data.git.error ?? t("git.noChangedFiles")}
                   onSelectFile={selectFile}
                   paths={filePaths}
                   root={data.git.cwd}
                   selectedFile={selectedFile}
                   status={files}
-                  title="Changes"
+                  title={t("git.tab.changes")}
                 />
               )}
               {onRefresh && data.git.status ? (
@@ -394,10 +396,10 @@ export function GitReviewView({
               <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
                 <div className="min-w-0">
                   <h2 className="truncate text-[13px] font-semibold tracking-tight">
-                    {selectedFile || "Diff"}
+                    {selectedFile || t("git.diff")}
                   </h2>
                   <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>Long rows wrap inside the editor pane.</span>
+                    <span>{t("git.longRowsWrap")}</span>
                     {stats.additions || stats.deletions ? (
                       <span className="flex items-center gap-1 font-mono">
                         <span className="text-emerald-700">+{stats.additions}</span>
@@ -420,7 +422,7 @@ export function GitReviewView({
                     variant="outline"
                   >
                     <ArrowUp />
-                    Previous
+                    {t("git.previous")}
                   </Button>
                   <Button
                     disabled={!selectedFile || !hasNextChange}
@@ -430,15 +432,15 @@ export function GitReviewView({
                     variant="outline"
                   >
                     <ArrowDown />
-                    Next
+                    {t("git.next")}
                   </Button>
                   <Button
-                    aria-label="Send selected file to AI input"
+                    aria-label={t("git.sendToAiAria")}
                     className="size-8"
                     disabled={!selectedFile}
                     onClick={() => sendFilePathToAgentInput(selectedFile)}
                     size="icon"
-                    title="Send selected file path to AI input"
+                    title={t("git.sendToAiTitle")}
                     type="button"
                     variant="outline"
                   >
@@ -454,12 +456,12 @@ export function GitReviewView({
                 ) : selectedFile ? (
                   <DiffViewer
                     activeHunkIndex={activeHunkIndex}
-                    diff={diff || "No unstaged diff for this file."}
+                    diff={diff || t("git.noUnstagedDiff")}
                   />
                 ) : (
                   <div className="p-4">
                     <Alert variant="muted" className="border-dashed p-12 text-center">
-                      Select a changed file to inspect its diff.
+                      {t("git.selectFilePrompt")}
                     </Alert>
                   </div>
                 )}
@@ -473,15 +475,13 @@ export function GitReviewView({
 }
 
 function NoRepositoryEmptyState() {
+  const t = useT();
   return (
     <div className="flex h-full items-center justify-center p-8 text-center">
       <div className="max-w-sm">
         <FolderGit2 className="mx-auto size-8 text-muted-foreground/50" />
-        <p className="mt-3 text-sm font-medium">No Git project registered</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Add a folder that is a Git worktree to review changes, browse files,
-          and inspect history. Use the project picker in the header to add one.
-        </p>
+        <p className="mt-3 text-sm font-medium">{t("git.noRepoTitle")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("git.noRepoBody")}</p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 // Diffs whose individual lines run this long (data dumps: CSV, logs, minified
 // blobs) are unreadable as a code diff and bog the layout down. Hide by default.
@@ -29,6 +30,7 @@ export function DiffViewer({
   activeHunkIndex?: number;
   diff: string;
 }) {
+  const t = useT();
   const rows = visibleDiffRows(diff);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hunkRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -63,18 +65,17 @@ export function DiffViewer({
       <div className="absolute inset-0 flex items-center justify-center bg-card p-6">
         <div className="max-w-sm space-y-3 text-center">
           <p className="text-[13px] font-medium text-foreground">
-            Diff hidden for this data file
+            {t("git.diff.dataHiddenTitle")}
           </p>
           <p className="text-[12px] text-muted-foreground">
-            Rows run up to {longestLine.toLocaleString()} characters, so this looks
-            like a CSV, log, or other data dump rather than source code.
+            {t("git.diff.dataHiddenBody", { chars: longestLine.toLocaleString() })}
           </p>
           <p className="font-mono text-[11px]">
             <span className="text-emerald-700">+{additions}</span>{" "}
-            <span className="text-red-700">-{deletions}</span> lines changed
+            <span className="text-red-700">-{deletions}</span> {t("git.diff.linesChanged")}
           </p>
           <Button onClick={() => setShowAnyway(true)} size="sm" type="button" variant="outline">
-            Show diff anyway
+            {t("git.diff.showAnyway")}
           </Button>
         </div>
       </div>

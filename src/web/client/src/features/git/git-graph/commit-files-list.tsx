@@ -1,5 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import type { GitFileStatus } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export function CommitFilesList({
   files,
@@ -14,11 +15,12 @@ export function CommitFilesList({
   selectedFile: string | null;
   onSelect: (path: string) => void;
 }) {
+  const t = useT();
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden border-r border-border">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <h2 className="text-[13px] font-semibold tracking-tight">
-          Files
+          {t("git.tree.filesDefault")}
           {files.length ? (
             <span className="ml-2 text-[11px] font-normal text-muted-foreground">
               {files.length}
@@ -33,10 +35,10 @@ export function CommitFilesList({
           </div>
         ) : !selectedHash ? (
           <div className="p-3 text-[12px] text-muted-foreground">
-            Select a commit to see its files.
+            {t("git.graph.selectCommitFiles")}
           </div>
         ) : files.length === 0 ? (
-          <div className="p-3 text-[12px] text-muted-foreground">No file changes.</div>
+          <div className="p-3 text-[12px] text-muted-foreground">{t("git.graph.noFileChanges")}</div>
         ) : (
           <ul className="divide-y divide-border">
             {files.map((file) => (

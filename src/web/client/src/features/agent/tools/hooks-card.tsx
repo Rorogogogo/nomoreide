@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentHook, AgentProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
 import {
   buildAddHookPrompt,
@@ -30,20 +31,21 @@ export function HooksCard({
   const { sendToAgent } = useAgentDock();
   const [adding, setAdding] = useState(false);
   const hooks = agent.hooks ?? [];
+  const t = useT();
 
   function add(input: string) {
     setAdding(false);
     sendToAgent({
       prompt: buildAddHookPrompt(agentId, input),
-      source: { type: "agent-hook", label: "New hook" },
-      label: `Add hook: ${input}`,
+      source: { type: "agent-hook", label: t("agent.hooks.sourceNew") },
+      label: t("agent.hooks.addAction", { input }),
     });
   }
 
   function ask(hook: AgentHook) {
     sendToAgent({
       prompt: buildAskHookPrompt(hook),
-      source: { type: "agent-hook", label: `${hook.event} hook` },
+      source: { type: "agent-hook", label: t("agent.hooks.sourceHook", { event: hook.event }) },
       mode: "draft",
     });
   }
@@ -51,8 +53,8 @@ export function HooksCard({
   function remove(hook: AgentHook) {
     sendToAgent({
       prompt: buildRemoveHookPrompt(hook),
-      source: { type: "agent-hook", label: `Remove ${hook.event}` },
-      label: `Remove hook: ${hook.event}`,
+      source: { type: "agent-hook", label: t("agent.hooks.sourceRemove", { event: hook.event }) },
+      label: t("agent.hooks.removeAction", { event: hook.event }),
     });
   }
 
@@ -68,21 +70,19 @@ export function HooksCard({
             <Badge variant="outline" size="small">
               {hooks.length}
             </Badge>
-            <AddButton label="Add a hook with AI" onClick={() => setAdding((value) => !value)} />
+            <AddButton label={t("agent.hooks.addLabel")} onClick={() => setAdding((value) => !value)} />
           </div>
         </div>
         {adding ? (
           <AddInline
             className="mt-1.5"
-            placeholder="Describe the event, matcher, and command…"
+            placeholder={t("agent.hooks.addPlaceholder")}
             onSubmit={add}
             onCancel={() => setAdding(false)}
           />
         ) : (
           <CardDescription className="text-xs">
-            {agentId === "codex"
-              ? "Codex hooks from ~/.codex/hooks.json, with state from ~/.codex/config.toml."
-              : "PreToolUse, PostToolUse, and other Claude Code hooks from user and project settings."}
+            {agentId === "codex" ? t("agent.hooks.descCodex") : t("agent.hooks.desc")}
           </CardDescription>
         )}
       </CardHeader>
@@ -103,8 +103,8 @@ export function HooksCard({
                       {hook.event}
                     </span>
                     <RowActions
-                      askLabel={`Ask AI about the ${hook.event} hook`}
-                      removeLabel={`Remove the ${hook.event} hook`}
+                      askLabel={t("agent.hooks.askLabel", { event: hook.event })}
+                      removeLabel={t("agent.hooks.removeLabel", { event: hook.event })}
                       onAsk={() => ask(hook)}
                       onRemove={() => remove(hook)}
                     />
@@ -141,44 +141,46 @@ function EmptyHooks({
   agentId: AgentId;
   alternateHooks?: { agentLabel: string; count: number };
 }) {
+  const t = useT();
   const selectedAgent = agentId === "codex" ? "Codex" : "Claude Code";
   return (
     <p className="px-3 py-4 text-xs text-muted-foreground">
-      No {selectedAgent} hooks configured.
-      {alternateHooks?.count ? (
-        <>
-          {" "}
-          {alternateHooks.agentLabel} has {alternateHooks.count} hook
-          {alternateHooks.count === 1 ? "" : "s"}; switch agents above to view them.
-        </>
-      ) : null}
+      {t("agent.hooks.emptyFor", { agent: selectedAgent })}
+      {alternateHooks?.count
+        ? t("agent.hooks.emptyAlternate", {
+            agent: alternateHooks.agentLabel,
+            count: alternateHooks.count,
+          })
+        : null}
     </p>
   );
 }
 
 function HookStatusBadge({ hook }: { hook: AgentHook }) {
+  const t = useT();
   if (hook.status === "enabled") {
     return (
       <Badge variant="success" appearance="subtle" size="small">
-        Enabled
+        {t("agent.hooks.enabled")}
       </Badge>
     );
   }
   if (hook.status === "disabled") {
     return (
       <Badge variant="error" appearance="subtle" size="small">
-        Disabled
+        {t("agent.hooks.disabled")}
       </Badge>
     );
   }
   return (
     <Badge variant="warning" appearance="subtle" size="small">
-      Default
+      {t("agent.hooks.default")}
     </Badge>
   );
 }
 
 function HookTrustBadge({ hook }: { hook: AgentHook }) {
+  const t = useT();
   if (hook.trusted === undefined) return null;
   return (
     <Badge
@@ -186,7 +188,7 @@ function HookTrustBadge({ hook }: { hook: AgentHook }) {
       appearance="subtle"
       size="small"
     >
-      {hook.trusted ? "Trusted" : "Untrusted"}
+      {hook.trusted ? t("agent.hooks.trusted") : t("agent.hooks.untrusted")}
     </Badge>
   );
 }

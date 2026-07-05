@@ -3,17 +3,19 @@ import { ChevronUp, Filter, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getLogSourceLogs, getServiceLogs, type LogEntry, type LogQuery } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { LogSearchInput, LogViewer, logEntryText } from "../log-viewer";
 import { type LogTarget, useLogs } from "./use-logs";
 
 /** Time windows pushed to the host as journalctl `--since` for source targets. */
-const TIME_RANGES: { label: string; value: string }[] = [
-  { label: "Live tail", value: "" },
-  { label: "Last 15 min", value: "15 min ago" },
-  { label: "Last hour", value: "1 hour ago" },
-  { label: "Today", value: "today" },
-  { label: "Last 24h", value: "1 day ago" },
-  { label: "Last 7 days", value: "7 days ago" },
+const TIME_RANGES: { labelKey: TranslationKey; value: string }[] = [
+  { labelKey: "services.log.range.live", value: "" },
+  { labelKey: "services.log.range.15min", value: "15 min ago" },
+  { labelKey: "services.log.range.hour", value: "1 hour ago" },
+  { labelKey: "services.log.range.today", value: "today" },
+  { labelKey: "services.log.range.24h", value: "1 day ago" },
+  { labelKey: "services.log.range.7days", value: "7 days ago" },
 ];
 
 type LevelFilter = "" | "warn" | "error";
@@ -53,6 +55,7 @@ export function LogConsole({
   /** Optional node pinned to the end of the control row (e.g. expand/remove). */
   trailing?: ReactNode;
 }) {
+  const t = useT();
   const isSource = target.kind === "source";
   const [since, setSince] = useState("");
   const [level, setLevel] = useState<LevelFilter>("");
@@ -154,12 +157,12 @@ export function LogConsole({
   }, [streaming, visibleLogs]);
 
   const emptyText = !logs
-    ? "Loading…"
+    ? t("common.loading")
     : normalizedQuery
-      ? `No log lines match "${query.trim()}".`
+      ? t("services.log.noMatch", { query: query.trim() })
       : hideStdout
-        ? "No stderr output captured."
-        : "No log entries.";
+        ? t("services.log.noStderr")
+        : t("services.log.noEntries");
 
   return (
     <div className={fill ? "flex h-full min-h-0 flex-col gap-2" : "flex flex-col gap-2"}>
@@ -169,26 +172,26 @@ export function LogConsole({
         {canQuery ? (
           <>
             <select
-              aria-label="Time range"
+              aria-label={t("services.log.timeRange")}
               className="h-8 rounded-md border border-border bg-background px-2 text-xs"
               onChange={(event) => setSince(event.target.value)}
               value={since}
             >
               {TIME_RANGES.map((range) => (
-                <option key={range.label} value={range.value}>
-                  {range.label}
+                <option key={range.labelKey} value={range.value}>
+                  {t(range.labelKey)}
                 </option>
               ))}
             </select>
             <select
-              aria-label="Level"
+              aria-label={t("services.log.level")}
               className="h-8 rounded-md border border-border bg-background px-2 text-xs"
               onChange={(event) => setLevel(event.target.value as LevelFilter)}
               value={level}
             >
-              <option value="">All levels</option>
-              <option value="warn">Warnings+</option>
-              <option value="error">Errors</option>
+              <option value="">{t("services.log.allLevels")}</option>
+              <option value="warn">{t("services.log.warningsPlus")}</option>
+              <option value="error">{t("services.log.errors")}</option>
             </select>
           </>
         ) : (
@@ -198,7 +201,7 @@ export function LogConsole({
             onClick={() => setHideStdout(!hideStdout)}
           >
             <Filter />
-            Errors only
+            {t("services.log.errorsOnly")}
           </ToggleButton>
         )}
         <ToggleButton
@@ -207,7 +210,7 @@ export function LogConsole({
           onClick={() => setStreaming(!streaming)}
         >
           <Radio />
-          {streaming ? "Streaming" : "Stream"}
+          {streaming ? t("services.log.streaming") : t("services.log.stream")}
         </ToggleButton>
         {canQuery && oldestCursor ? (
           <Button
@@ -218,7 +221,7 @@ export function LogConsole({
             variant="outline"
           >
             <ChevronUp />
-            {loadingOlder ? "Loading…" : "Load older"}
+            {loadingOlder ? t("common.loading") : t("services.log.loadOlder")}
           </Button>
         ) : null}
         {trailing ? <div className="ml-auto flex items-center gap-2">{trailing}</div> : null}

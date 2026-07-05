@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2, ShieldAlert, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
+import { useT } from "@/lib/i18n";
 import { type WriteOutcome } from "@/lib/api";
 
 /**
@@ -18,33 +19,23 @@ export function UnlockDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
     <ComposerDialog
       icon={<ShieldAlert className="text-amber-500" />}
       onClose={onClose}
-      title={`Unlock writes on "${connection}"?`}
+      title={t("database.write.unlockTitle", { connection })}
     >
       <div className="flex flex-col gap-4 text-sm">
-        <p className="text-muted-foreground">
-          This lets the SQL console run statements that <strong>change data</strong>{" "}
-          — <span className="font-mono">INSERT</span>,{" "}
-          <span className="font-mono">UPDATE</span>,{" "}
-          <span className="font-mono">DELETE</span>, and DDL like{" "}
-          <span className="font-mono">DROP</span>. Writes still preview their
-          affected rows before they commit, but an unlocked connection can modify
-          or destroy real data.
-        </p>
-        <p className="text-muted-foreground">
-          The lock stays open for this connection until you re-lock it. It is
-          never shared with the AI agent.
-        </p>
+        <p className="text-muted-foreground">{t("database.write.unlockBody1")}</p>
+        <p className="text-muted-foreground">{t("database.write.unlockBody2")}</p>
         <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" size="sm" onClick={onClose} type="button">
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button size="sm" onClick={onConfirm} disabled={busy} type="button">
             {busy ? <Loader2 className="animate-spin" /> : <Unlock />}
-            Unlock writes
+            {t("database.write.unlockWrites")}
           </Button>
         </div>
       </div>
@@ -69,11 +60,12 @@ export function WritePreviewDialog({
   onConfirm: () => void;
   onClose: () => void;
 }) {
+  const t = useT();
   return (
     <ComposerDialog
       icon={<AlertTriangle className="text-amber-500" />}
       onClose={onClose}
-      title="Confirm write"
+      title={t("database.write.confirmTitle")}
     >
       <div className="flex flex-col gap-4 text-sm">
         <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-[11px] whitespace-pre-wrap">
@@ -81,23 +73,20 @@ export function WritePreviewDialog({
         </pre>
         {preview.previewUnavailable ? (
           <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-300">
-            This statement can’t be previewed — DDL commits immediately on this
-            engine and cannot be rolled back. Running it applies the change at
-            once.
+            {t("database.write.previewUnavailable")}
           </p>
         ) : (
           <p className="text-muted-foreground">
-            This will affect{" "}
+            {t("database.write.willAffectPre")}{" "}
             <strong className="text-foreground tabular-nums">
               {preview.affectedRows ?? 0}
             </strong>{" "}
-            row{preview.affectedRows === 1 ? "" : "s"}. The preview ran in a
-            transaction that was rolled back — nothing has changed yet.
+            {t("database.write.willAffectPost")}
           </p>
         )}
         <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
           <Button variant="outline" size="sm" onClick={onClose} type="button">
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             size="sm"
@@ -107,7 +96,7 @@ export function WritePreviewDialog({
             type="button"
           >
             {busy ? <Loader2 className="animate-spin" /> : null}
-            Run &amp; commit
+            {t("database.write.runCommit")}
           </Button>
         </div>
       </div>

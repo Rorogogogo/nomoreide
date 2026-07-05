@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import {
   postForm,
   testServiceCommand as testServiceCommandRequest,
@@ -26,6 +27,7 @@ export function useServiceForm({
   onSaved?: () => void;
   initialService?: ServiceDefinition;
 }) {
+  const t = useT();
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const editing = Boolean(initialService);
   const [kind, setKind] = useState<ServiceKindOption>(initialService?.kind ?? "local");
@@ -79,19 +81,34 @@ export function useServiceForm({
 
       await postForm("/api/services", payload);
       if (!editing) resetForm();
-      showSuccessToast(editing ? `${name} updated.` : `${name} added.`);
+      showSuccessToast(
+        editing
+          ? t("services.actions.updated", { name })
+          : t("services.actions.added", { name }),
+      );
       await onRefresh();
       onSaved?.();
     } catch (caught) {
       showErrorToast(
-        actionErrorMessage(editing ? "Update service" : "Add service", name || "service", caught),
+        actionErrorMessage(
+          t,
+          editing ? t("services.actions.updateService") : t("services.actions.addService"),
+          name || t("services.actions.serviceFallback"),
+          caught,
+        ),
       );
     }
   }
 
   async function testCommand() {
     if (!command.trim()) {
-      showErrorToast("Test command failed for service: command is required.");
+      showErrorToast(
+        t("services.actions.failed", {
+          label: t("services.actions.testCommand"),
+          target: t("services.actions.serviceFallback"),
+          message: t("services.actions.commandRequired"),
+        }),
+      );
       return;
     }
 
@@ -105,7 +122,14 @@ export function useServiceForm({
         }),
       );
     } catch (caught) {
-      showErrorToast(actionErrorMessage("Test command", name || "service", caught));
+      showErrorToast(
+        actionErrorMessage(
+          t,
+          t("services.actions.testCommand"),
+          name || t("services.actions.serviceFallback"),
+          caught,
+        ),
+      );
     } finally {
       setTesting(false);
     }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDatabaseTables, type DatabaseEngine, type TableRef } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { buildGenerateSqlPrompt } from "../agent/prompts";
 import { useAgentDock } from "../agent/chat/agent-context";
 
@@ -17,6 +18,7 @@ export function useSqlGenerate(
   unlocked: boolean,
   onGenerated: (sql: string) => void,
 ) {
+  const t = useT();
   const { sendToAgent, streaming, turns } = useAgentDock();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function useSqlGenerate(
       sendToAgent({
         prompt: buildGenerateSqlPrompt(connection, intent, { engine, tables, unlocked }),
         source: { type: "database-sql-generate", label: "Generate SQL" },
-        label: `Generate SQL: ${intent}`,
+        label: t("database.sql.generateLabel", { intent }),
         background: true,
       });
 
@@ -85,13 +87,13 @@ export function useSqlGenerate(
         if (sql) {
           onGenerated(sql);
         } else {
-          setError("The agent didn't return a SQL block — open the dock to see its reply.");
+          setError(t("database.sql.noSqlBlock"));
         }
       } finally {
         setGenerating(false);
       }
     },
-    [connection, engine, unlocked, generating, onGenerated, sendToAgent],
+    [connection, engine, unlocked, generating, onGenerated, sendToAgent, t],
   );
 
   return { generate, generating, error };

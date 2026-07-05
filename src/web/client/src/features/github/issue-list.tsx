@@ -1,5 +1,6 @@
 import { CircleDot } from "lucide-react";
 import type { GitHubIssue } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { IssueLabelSwatch } from "./issue-label-swatch";
 import { LoadMoreButton } from "./load-more-button";
 
@@ -22,14 +23,15 @@ export function IssueList({
   onSelect: (number: number) => void;
   onLoadMore: () => void;
 }) {
+  const t = useT();
   if (loading && issues.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">Loading issues…</div>;
+    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.issues.loading")}</div>;
   }
   if (error) {
     return <div className="p-4 text-[12px] text-red-500">{error}</div>;
   }
   if (issues.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">No issues found.</div>;
+    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.issues.empty")}</div>;
   }
 
   return (
@@ -52,7 +54,7 @@ export function IssueList({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13px] font-medium">{issue.title}</span>
               <span className="block text-[11px] text-muted-foreground">
-                #{issue.number} · {issue.user.login} · {issue.comments} comment{issue.comments !== 1 ? "s" : ""}
+                #{issue.number} · {issue.user.login} · {t("github.issues.commentsCount", { count: issue.comments })}
               </span>
             </span>
             {issue.labels.length > 0 ? (

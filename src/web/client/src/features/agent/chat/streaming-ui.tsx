@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 /** How many characters the typewriter reveals per animation frame. Small so it
  *  reads character-by-character; nudged up only when far behind so a long burst
@@ -48,10 +49,11 @@ export function useSmoothText(target: string): string {
 
 /** Minimal "the agent is working" hint, shown before any text streams in. */
 export function ThinkingIndicator() {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
       <Loader2 className="size-3.5 animate-spin" />
-      <span>Thinking…</span>
+      <span>{t("agent.chat.thinking")}</span>
     </div>
   );
 }

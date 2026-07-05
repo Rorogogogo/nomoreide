@@ -17,6 +17,8 @@ import {
   type McpAuthState,
   type McpAuthStatus,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { useAgentDock } from "../chat/agent-context";
 import { buildAddMcpPrompt, buildAskMcpPrompt, buildRemoveMcpPrompt } from "../prompts";
 import type { AgentId } from "../agent-types";
@@ -34,6 +36,7 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
   const [statusList, setStatusList] = useState<McpAuthStatus[]>([]);
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
+  const t = useT();
 
   const loadStatuses = useCallback(async () => {
     setLoading(true);
@@ -71,15 +74,15 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
     setAdding(false);
     sendToAgent({
       prompt: buildAddMcpPrompt(agentId, input),
-      source: { type: "agent-mcp", label: "New MCP server" },
-      label: `Add MCP server: ${input}`,
+      source: { type: "agent-mcp", label: t("agent.mcp.sourceNew") },
+      label: t("agent.mcp.addAction", { input }),
     });
   }
 
   function ask(server: DisplayServer) {
     sendToAgent({
       prompt: buildAskMcpPrompt(server),
-      source: { type: "agent-mcp", label: `${server.name} server` },
+      source: { type: "agent-mcp", label: t("agent.mcp.sourceServer", { name: server.name }) },
       mode: "draft",
     });
   }
@@ -87,8 +90,8 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
   function remove(server: DisplayServer) {
     sendToAgent({
       prompt: buildRemoveMcpPrompt(server, agentId),
-      source: { type: "agent-mcp", label: `Remove ${server.name}` },
-      label: `Remove MCP server: ${server.name}`,
+      source: { type: "agent-mcp", label: t("agent.mcp.sourceRemove", { name: server.name }) },
+      label: t("agent.mcp.removeAction", { name: server.name }),
     });
   }
 
@@ -111,13 +114,13 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
               className="size-6"
               onClick={() => void loadStatuses()}
               disabled={loading}
-              title="Re-check authentication status"
-              aria-label="Re-check authentication status"
+              title={t("agent.mcp.recheck")}
+              aria-label={t("agent.mcp.recheck")}
             >
               <RefreshCw className={loading ? "animate-spin" : undefined} />
             </Button>
             <AddButton
-              label="Register an MCP server with AI"
+              label={t("agent.mcp.addLabel")}
               onClick={() => setAdding((value) => !value)}
             />
           </div>
@@ -125,19 +128,20 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
         {adding ? (
           <AddInline
             className="mt-1.5"
-            placeholder="Paste the MCP install command or URL…"
+            placeholder={t("agent.mcp.addPlaceholder")}
             onSubmit={add}
             onCancel={() => setAdding(false)}
           />
         ) : (
           <CardDescription className="text-xs">
-            From{" "}
+            {t("agent.mcp.descPre")}
             <code className="font-mono">
               {agentId === "codex" ? "~/.codex/config.toml" : "~/.claude.json"}
             </code>
-            {agentId === "codex" ? "" : " + claude.ai connectors"}. Status via{" "}
-            <code className="font-mono">{agentId === "codex" ? "codex" : "claude"} mcp list</code>{" "}
-            (fresh health check).
+            {agentId === "codex" ? "" : t("agent.mcp.descConnectors")}
+            {t("agent.mcp.descMid")}
+            <code className="font-mono">{agentId === "codex" ? "codex" : "claude"} mcp list</code>
+            {t("agent.mcp.descPost")}
           </CardDescription>
         )}
       </CardHeader>
@@ -158,8 +162,8 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
                       {server.name}
                     </span>
                     <RowActions
-                      askLabel={`Ask AI about the ${server.name} server`}
-                      removeLabel={`Remove the ${server.name} server`}
+                      askLabel={t("agent.mcp.askLabel", { name: server.name })}
+                      removeLabel={t("agent.mcp.removeLabel", { name: server.name })}
                       onAsk={() => ask(server)}
                       onRemove={() => remove(server)}
                     />
@@ -167,21 +171,21 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
                   <div className="flex shrink-0 items-center gap-1.5">
                     <AuthStatusBadge state={statuses[server.name]} loading={loading} />
                     <Badge variant="outline" size="small">
-                      {server.synthetic ? "connector" : server.scope}
+                      {server.synthetic ? t("agent.mcp.connector") : server.scope}
                     </Badge>
                   </div>
                 </div>
                 <div
                   className="mt-1 truncate font-mono text-[11px] text-muted-foreground"
-                  title={server.synthetic ? "claude.ai managed connector" : formatMcpServer(server)}
+                  title={server.synthetic ? t("agent.mcp.managedConnector") : formatMcpServer(server)}
                 >
-                  {server.synthetic ? "claude.ai managed connector" : formatMcpServer(server)}
+                  {server.synthetic ? t("agent.mcp.managedConnector") : formatMcpServer(server)}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="px-3 py-4 text-xs text-muted-foreground">No MCP servers configured.</p>
+          <p className="px-3 py-4 text-xs text-muted-foreground">{t("agent.mcp.empty")}</p>
         )}
       </CardContent>
     </Card>
@@ -190,15 +194,16 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
 
 const AUTH_DISPLAY: Record<
   Exclude<McpAuthState, "unknown">,
-  { label: string; dot: string }
+  { labelKey: TranslationKey; dot: string }
 > = {
-  connected: { label: "Connected", dot: "bg-emerald-500" },
-  "needs-auth": { label: "Needs auth", dot: "bg-amber-500" },
-  failed: { label: "Failed", dot: "bg-red-500" },
-  "no-auth": { label: "local", dot: "bg-muted-foreground/50" },
+  connected: { labelKey: "agent.mcp.connected", dot: "bg-emerald-500" },
+  "needs-auth": { labelKey: "agent.mcp.needsAuth", dot: "bg-amber-500" },
+  failed: { labelKey: "agent.mcp.failed", dot: "bg-red-500" },
+  "no-auth": { labelKey: "agent.mcp.local", dot: "bg-muted-foreground/50" },
 };
 
 function AuthStatusBadge({ state, loading }: { state?: McpAuthState; loading: boolean }) {
+  const t = useT();
   if (!state) {
     return loading ? <Loader2 className="size-3 animate-spin text-muted-foreground" /> : null;
   }
@@ -207,7 +212,7 @@ function AuthStatusBadge({ state, loading }: { state?: McpAuthState; loading: bo
   return (
     <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
       <span className={cn("size-1.5 shrink-0 rounded-full", display.dot)} aria-hidden />
-      {display.label}
+      {t(display.labelKey)}
     </span>
   );
 }

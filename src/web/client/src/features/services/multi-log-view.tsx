@@ -3,6 +3,7 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listLogSources, type LogSource } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { LogConsole } from "./service-detail/log-console";
 import { encodeTarget, type LogTarget } from "./service-detail/use-logs";
 import { type LogOption, LogTargetPicker } from "./service-detail/log-target-picker";
@@ -24,6 +25,7 @@ export function MultiLogView({
   initialService?: string;
   onClose: () => void;
 }) {
+  const t = useT();
   const [sources, setSources] = useState<LogSource[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [panes, setPanes] = useState<number[]>(() => [0]);
@@ -51,12 +53,12 @@ export function MultiLogView({
     ...services.map((name) => ({
       target: { kind: "service" as const, name },
       label: name,
-      group: "Services",
+      group: t("services.title"),
     })),
     ...sources.map((source) => ({
       target: { kind: "source" as const, name: source.name },
       label: source.name,
-      group: "Log sources",
+      group: t("services.log.sourcesGroup"),
     })),
   ];
   const allTargets: LogTarget[] = options.map((option) => option.target);
@@ -92,10 +94,10 @@ export function MultiLogView({
 
   const title = (
     <div className="flex items-center gap-3">
-      <span>Logs</span>
+      <span>{t("services.logs")}</span>
       <Button onClick={() => setAddOpen(true)} size="sm" type="button" variant="outline">
         <Plus />
-        Add source
+        {t("services.log.addSource")}
       </Button>
       <Button
         disabled={panes.length >= MAX_PANES || allTargets.length === 0}
@@ -105,7 +107,7 @@ export function MultiLogView({
         variant="outline"
       >
         <Plus />
-        Add pane
+        {t("services.log.addPane")}
       </Button>
     </div>
   );
@@ -116,10 +118,10 @@ export function MultiLogView({
         {allTargets.length === 0 ? (
           <div className="grid h-full place-items-center text-center text-muted-foreground">
             <div>
-              <p>No services or log sources yet.</p>
+              <p>{t("services.log.noneYet")}</p>
               <Button className="mt-2" onClick={() => setAddOpen(true)} size="sm" type="button">
                 <Plus />
-                Add a log source
+                {t("services.log.addLogSource")}
               </Button>
             </div>
           </div>
@@ -161,6 +163,7 @@ function LogPane({
   onChangeTarget: (target: LogTarget) => void;
   onRemove?: () => void;
 }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [streaming, setStreaming] = useState(true);
   const [hideStdout, setHideStdout] = useState(false);
@@ -180,7 +183,7 @@ function LogPane({
         trailing={
           onRemove ? (
             <Button
-              aria-label="Remove pane"
+              aria-label={t("services.log.removePane")}
               onClick={onRemove}
               size="icon"
               type="button"

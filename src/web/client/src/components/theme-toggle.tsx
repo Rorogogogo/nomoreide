@@ -1,36 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { Moon, Sun } from "lucide-react";
 import {
   headerActionClassName,
   headerActionIconClassName,
   headerActionLabelClassName,
 } from "@/components/header-action";
-
-type Theme = "light" | "dark";
-
-const STORAGE_KEY = "nomoreide-theme-choice";
-
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
-  return "dark";
-}
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  root.classList.toggle("dark", theme === "dark");
-  root.style.colorScheme = theme;
-}
+import { useTheme, type Theme } from "@/lib/theme";
+import { useT } from "@/lib/i18n";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
+  const t = useT();
+  const [theme, setTheme] = useTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    applyTheme(theme);
-    window.localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
 
   const toggle = useCallback(() => {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -78,14 +59,14 @@ export function ThemeToggle() {
       ref={buttonRef}
       type="button"
       onClick={toggle}
-      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      aria-label="Toggle theme"
+      title={theme === "dark" ? t("action.toLight") : t("action.toDark")}
+      aria-label={t("action.theme")}
       className={headerActionClassName()}
     >
       <span className={headerActionIconClassName()}>
         {theme === "dark" ? <Sun /> : <Moon />}
       </span>
-      <span className={headerActionLabelClassName()}>Theme</span>
+      <span className={headerActionLabelClassName()}>{t("action.theme")}</span>
     </button>
   );
 }

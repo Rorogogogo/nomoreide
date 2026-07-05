@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentProfile, AgentSkill } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
 import {
   buildAddSkillPrompt,
@@ -21,20 +22,21 @@ import { AddButton, AddInline, RowActions } from "./tools-shared";
 export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
   const { sendToAgent } = useAgentDock();
   const [adding, setAdding] = useState(false);
+  const t = useT();
 
   function add(input: string) {
     setAdding(false);
     sendToAgent({
       prompt: buildAddSkillPrompt(agentId, input),
-      source: { type: "agent-skill", label: "New skill" },
-      label: `Add skill: ${input}`,
+      source: { type: "agent-skill", label: t("agent.skills.sourceNew") },
+      label: t("agent.skills.addAction", { input }),
     });
   }
 
   function ask(skill: AgentSkill) {
     sendToAgent({
       prompt: buildAskSkillPrompt(skill),
-      source: { type: "agent-skill", label: `${skill.name} skill` },
+      source: { type: "agent-skill", label: t("agent.skills.sourceSkill", { name: skill.name }) },
       mode: "draft",
     });
   }
@@ -42,8 +44,8 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
   function remove(skill: AgentSkill) {
     sendToAgent({
       prompt: buildRemoveSkillPrompt(skill),
-      source: { type: "agent-skill", label: `Remove ${skill.name}` },
-      label: `Remove skill: ${skill.name}`,
+      source: { type: "agent-skill", label: t("agent.skills.sourceRemove", { name: skill.name }) },
+      label: t("agent.skills.removeAction", { name: skill.name }),
     });
   }
 
@@ -59,21 +61,19 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
             <Badge variant="outline" size="small">
               {agent.skills.length}
             </Badge>
-            <AddButton label="Add a skill with AI" onClick={() => setAdding((value) => !value)} />
+            <AddButton label={t("agent.tools.addSkillLabel")} onClick={() => setAdding((value) => !value)} />
           </div>
         </div>
         {adding ? (
           <AddInline
             className="mt-1.5"
-            placeholder="Paste a skill URL/repo, or describe the skill…"
+            placeholder={t("agent.tools.addSkillPlaceholder")}
             onSubmit={add}
             onCancel={() => setAdding(false)}
           />
         ) : (
           <CardDescription className="text-xs">
-            {agentId === "codex"
-              ? "User, project, and system skills discovered for Codex."
-              : "User and project skills discovered for the active agent."}
+            {agentId === "codex" ? t("agent.skills.descCodex") : t("agent.skills.desc")}
           </CardDescription>
         )}
       </CardHeader>
@@ -94,8 +94,8 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
                       {skill.name}
                     </span>
                     <RowActions
-                      askLabel={`Ask AI about the ${skill.name} skill`}
-                      removeLabel={`Remove the ${skill.name} skill`}
+                      askLabel={t("agent.skills.askLabel", { name: skill.name })}
+                      removeLabel={t("agent.skills.removeLabel", { name: skill.name })}
                       onAsk={() => ask(skill)}
                       onRemove={() => remove(skill)}
                     />
@@ -115,7 +115,7 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
             ))}
           </ul>
         ) : (
-          <p className="px-3 py-4 text-xs text-muted-foreground">No skills found.</p>
+          <p className="px-3 py-4 text-xs text-muted-foreground">{t("agent.skills.empty")}</p>
         )}
       </CardContent>
     </Card>

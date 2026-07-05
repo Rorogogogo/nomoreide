@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 export function ComposerDialog({
   children,
@@ -16,6 +17,7 @@ export function ComposerDialog({
   title: string;
   size?: "md" | "lg" | "xl";
 }) {
+  const t = useT();
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -44,7 +46,7 @@ export function ComposerDialog({
           </div>
           <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h2>
           <Button
-            aria-label="Close dialog"
+            aria-label={t("services.closeDialog")}
             onClick={onClose}
             size="icon"
             type="button"

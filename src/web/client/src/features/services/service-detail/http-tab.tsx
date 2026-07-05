@@ -5,6 +5,7 @@ import { useToasts } from "@/components/ui/toast";
 import { postForm, type ServiceStatus, type TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { openExternal } from "@/lib/tauri";
+import { useT } from "@/lib/i18n";
 
 interface HttpRow {
   id: string;
@@ -28,6 +29,7 @@ export function HttpTab({
   timeline: TimelineEvent[];
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   const { error: showError, success: showSuccess } = useToasts();
   const [busy, setBusy] = useState(false);
   const inspector = status?.inspector;
@@ -62,7 +64,9 @@ export function HttpTab({
       );
       await onRefresh();
       showSuccess(
-        enabled ? `HTTP inspector started for ${serviceName}.` : `HTTP inspector stopped for ${serviceName}.`,
+        enabled
+          ? t("services.http.started", { name: serviceName })
+          : t("services.http.stopped", { name: serviceName }),
       );
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
@@ -72,19 +76,15 @@ export function HttpTab({
   }
 
   if (!running) {
-    return <div className="text-muted-foreground">Service is not running.</div>;
+    return <div className="text-muted-foreground">{t("services.http.notRunning")}</div>;
   }
 
   if (!inspector?.enabled) {
     return (
       <div className="space-y-2">
-        <p className="text-muted-foreground">
-          The HTTP inspector starts a local proxy that forwards traffic to this service and
-          records every request. Hit the inspect URL instead of the original port to see
-          requests appear here. The service itself is not touched.
-        </p>
+        <p className="text-muted-foreground">{t("services.http.intro")}</p>
         <Button disabled={busy} onClick={() => toggle(true)} size="sm" type="button">
-          <Play /> Start HTTP inspector
+          <Play /> {t("services.http.start")}
         </Button>
       </div>
     );
@@ -95,20 +95,20 @@ export function HttpTab({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground">Inspect URL:</span>
+        <span className="text-muted-foreground">{t("services.http.inspectUrl")}</span>
         {inspectUrl ? (
           <>
             <code className="rounded bg-background px-1.5 py-0.5 font-mono">{inspectUrl}</code>
             <Button
               onClick={() => {
                 void navigator.clipboard.writeText(inspectUrl);
-                showSuccess("Copied inspect URL.");
+                showSuccess(t("services.http.copiedUrl"));
               }}
               size="sm"
               type="button"
               variant="outline"
             >
-              <Copy /> Copy
+              <Copy /> {t("common.copy")}
             </Button>
             <Button
               onClick={() => void openExternal(inspectUrl)}
@@ -116,33 +116,31 @@ export function HttpTab({
               type="button"
               variant="outline"
             >
-              Open
+              {t("common.open")}
             </Button>
           </>
         ) : (
-          <span className="text-muted-foreground">starting…</span>
+          <span className="text-muted-foreground">{t("services.startingEllipsis")}</span>
         )}
         <span className="text-muted-foreground">
-          → upstream :{inspector.upstreamPort ?? "?"}
+          {t("services.http.upstream", { port: inspector.upstreamPort ?? "?" })}
         </span>
         <Button disabled={busy} onClick={() => toggle(false)} size="sm" type="button" variant="outline">
-          <Square /> Stop
+          <Square /> {t("common.stop")}
         </Button>
       </div>
       {rows.length === 0 ? (
-        <div className="text-muted-foreground">
-          No requests captured yet. Hit the inspect URL in your browser to see traffic.
-        </div>
+        <div className="text-muted-foreground">{t("services.http.noRequests")}</div>
       ) : (
         <div className="max-h-80 overflow-auto">
           <table className="w-full font-mono text-[11px]">
             <thead className="sticky top-0 bg-muted/60 text-left text-muted-foreground">
               <tr>
-                <th className="py-1 pr-3">Time</th>
-                <th className="py-1 pr-3">Method</th>
-                <th className="py-1 pr-3">Path</th>
-                <th className="py-1 pr-3 text-right">Status</th>
-                <th className="py-1 pr-3 text-right">Size</th>
+                <th className="py-1 pr-3">{t("services.http.time")}</th>
+                <th className="py-1 pr-3">{t("services.http.method")}</th>
+                <th className="py-1 pr-3">{t("services.http.path")}</th>
+                <th className="py-1 pr-3 text-right">{t("services.http.status")}</th>
+                <th className="py-1 pr-3 text-right">{t("services.http.size")}</th>
                 <th className="py-1 pr-3 text-right">ms</th>
               </tr>
             </thead>

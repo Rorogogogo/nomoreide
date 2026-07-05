@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Server,
+  Settings,
   SquareTerminal,
 } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api";
@@ -34,6 +35,7 @@ import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
+import { SettingsView } from "@/features/settings/settings-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubLogo } from "@/features/github/github-logo";
@@ -47,6 +49,8 @@ import {
 } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
+import { I18nProvider, useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 
 type Page =
   | "services"
@@ -55,7 +59,20 @@ type Page =
   | "agent"
   | "errors"
   | "database"
-  | "terminal";
+  | "terminal"
+  | "settings";
+
+/** Nav label / header title translation key per page. */
+const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
+  services: "nav.services",
+  git: "nav.git",
+  github: "nav.github",
+  agent: "nav.agent",
+  errors: "nav.errors",
+  database: "nav.database",
+  terminal: "nav.terminal",
+  settings: "nav.settings",
+};
 
 export function sidebarShellClassName(docked = false) {
   return cn(
@@ -167,12 +184,22 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
+  return (
+    <I18nProvider>
+      <AppBody syncLocation={syncLocation} />
+    </I18nProvider>
+  );
+}
+
+function AppBody({ syncLocation = true }: { syncLocation?: boolean } = {}) {
+  const t = useT();
   const [page, setPage] = useState<Page>(() => {
     if (!syncLocation) return "services";
     if (window.location.pathname.startsWith("/agent")) return "agent";
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
     if (window.location.pathname.startsWith("/terminal")) return "terminal";
+    if (window.location.pathname.startsWith("/settings")) return "settings";
     if (window.location.pathname.startsWith("/github")) return "github";
     if (window.location.pathname.startsWith("/git")) return "git";
     return "services";
@@ -271,7 +298,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 ? "/database"
                 : page === "terminal"
                   ? "/terminal"
-                  : "/";
+                  : page === "settings"
+                    ? "/settings"
+                    : "/";
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -351,50 +380,57 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               badge={runningCount}
               docked={sidebarDocked}
               icon={<Server />}
-              label="Services"
+              label={t("nav.services")}
               onClick={() => setPage("services")}
             />
             <NavButton
               active={page === "git"}
               docked={sidebarDocked}
               icon={<GitBranch />}
-              label="Git Review"
+              label={t("nav.git")}
               onClick={() => setPage("git")}
             />
             <NavButton
               active={page === "github"}
               docked={sidebarDocked}
               icon={<GitHubLogo />}
-              label="GitHub"
+              label={t("nav.github")}
               onClick={() => setPage("github")}
             />
             <NavButton
               active={page === "errors"}
               docked={sidebarDocked}
               icon={<Inbox />}
-              label="Error Inbox"
+              label={t("nav.errors")}
               onClick={() => setPage("errors")}
             />
             <NavButton
               active={page === "database"}
               docked={sidebarDocked}
               icon={<Database />}
-              label="Database"
+              label={t("nav.database")}
               onClick={() => setPage("database")}
             />
             <NavButton
               active={page === "terminal"}
               docked={sidebarDocked}
               icon={<SquareTerminal />}
-              label="Terminal"
+              label={t("nav.terminal")}
               onClick={() => setPage("terminal")}
             />
             <NavButton
               active={page === "agent"}
               docked={sidebarDocked}
               icon={<Bot />}
-              label="Agent"
+              label={t("nav.agent")}
               onClick={() => setPage("agent")}
+            />
+            <NavButton
+              active={page === "settings"}
+              docked={sidebarDocked}
+              icon={<Settings />}
+              label={t("nav.settings")}
+              onClick={() => setPage("settings")}
             />
           </nav>
           <SidebarCredit
@@ -416,22 +452,10 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {page === "git"
-                    ? "Git Review"
-                    : page === "github"
-                      ? "GitHub"
-                      : page === "agent"
-                        ? "Agent"
-                      : page === "errors"
-                        ? "Error Inbox"
-                        : page === "database"
-                          ? "Database"
-                          : page === "terminal"
-                            ? "Terminal"
-                            : "Services"}
+                  {t(PAGE_TITLE_KEY[page])}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
-                  {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
+                  {data?.git.selectedRepository?.name ?? data?.git.cwd ?? t("app.localWorkspace")}
                 </p>
               </div>
             </div>
@@ -446,30 +470,30 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                 role="toolbar"
               >
                 <button
-                  aria-label="Refresh"
+                  aria-label={t("action.refresh")}
                   className={headerActionClassName()}
                   onClick={refreshAll}
-                  title="Refresh this page"
+                  title={t("action.refreshTitle")}
                   type="button"
                 >
                   <span className={headerActionIconClassName()}>
                     <RefreshCw className={cn(loading && "animate-spin")} />
                   </span>
-                  <span className={headerActionLabelClassName()}>Refresh</span>
+                  <span className={headerActionLabelClassName()}>{t("action.refresh")}</span>
                 </button>
                 <ThemeToggle />
                 <a
-                  aria-label="Open NoMoreIDE documentation"
+                  aria-label={t("action.docsTitle")}
                   className={headerActionClassName()}
                   href="https://www.nomoreide.com/docs"
                   rel="noreferrer"
                   target="_blank"
-                  title="Open NoMoreIDE documentation"
+                  title={t("action.docsTitle")}
                 >
                   <span className={headerActionIconClassName()}>
                     <BookOpen />
                   </span>
-                  <span className={headerActionLabelClassName()}>Docs</span>
+                  <span className={headerActionLabelClassName()}>{t("action.docs")}</span>
                 </a>
                 {data ? <AiContextAction data={data} /> : null}
               </div>
@@ -489,7 +513,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
 
           {loading && !data ? (
             <Alert variant="muted">
-              Loading NoMoreIDE state...
+              {t("app.loading")}
             </Alert>
           ) : null}
 
@@ -522,6 +546,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             ) : null}
             {page === "terminal" ? <TerminalView /> : null}
+            {page === "settings" ? <SettingsView /> : null}
           </div>
         </main>
       </div>

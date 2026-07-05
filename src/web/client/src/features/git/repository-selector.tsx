@@ -23,6 +23,7 @@ import {
   type DashboardData,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { FolderExplorer } from "./folder-explorer";
 import { pathName } from "./path-utils";
 
@@ -33,6 +34,7 @@ export function RepositorySelector({
   data: DashboardData;
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [addMode, setAddMode] = useState<"path" | "url">("path");
   const [path, setPath] = useState(data.git.cwd);
@@ -44,7 +46,7 @@ export function RepositorySelector({
   const containerRef = useRef<HTMLDivElement>(null);
   const selectedRepository = data.git.selectedRepository;
   const selectedName = selectedRepository?.name
-    ?? (data.git.cwd ? pathName(data.git.cwd) : "Add Git project");
+    ?? (data.git.cwd ? pathName(data.git.cwd) : t("git.repo.addProject"));
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const picker = repositoryPickerState({
     gitCwd: data.git.cwd,
@@ -78,7 +80,7 @@ export function RepositorySelector({
       await selectGitRepository(name);
       setOpen(false);
       await onRefresh();
-      showSuccessToast(`Switched to ${name}.`);
+      showSuccessToast(t("git.repo.switchedToast", { name }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
     }
@@ -87,7 +89,7 @@ export function RepositorySelector({
   async function registerPath(nextPath: string): Promise<boolean> {
     const trimmed = nextPath.trim();
     if (!isAbsolutePath(trimmed)) {
-      const message = "Please add an absolute path. Paths beginning with ~ are not expanded here.";
+      const message = t("git.repo.absPathError");
       setAddError(message);
       showErrorToast(message);
       return false;
@@ -97,7 +99,7 @@ export function RepositorySelector({
       await registerGitRepository(repoName, trimmed);
       setAddError(null);
       await onRefresh();
-      showSuccessToast(`Added Git project ${repoName}.`);
+      showSuccessToast(t("git.repo.addedToast", { name: repoName }));
       return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -111,7 +113,7 @@ export function RepositorySelector({
     try {
       await deleteGitRepository(name);
       await onRefresh();
-      showSuccessToast(`Removed Git project ${name}.`);
+      showSuccessToast(t("git.repo.removedToast", { name }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
     }
@@ -133,7 +135,7 @@ export function RepositorySelector({
       const { name } = await cloneGitRepository(url);
       setCloneUrl("");
       await onRefresh();
-      showSuccessToast(`Cloned and added ${name}.`);
+      showSuccessToast(t("git.repo.clonedToast", { name }));
       setOpen(false);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -164,7 +166,7 @@ export function RepositorySelector({
         <ChevronDown className={cn("ml-auto transition-transform", open && "rotate-180")} />
       </Button>
       <Button
-        aria-label="Add Git project"
+        aria-label={t("git.repo.addProject")}
         onClick={openRepositoryPicker}
         size="sm"
         type="button"
@@ -177,7 +179,7 @@ export function RepositorySelector({
         <div className="absolute right-0 top-10 z-50 w-[min(380px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-lg">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Globe2 className="size-3.5 text-muted-foreground" />
-            <div className="text-xs font-semibold">Git Projects</div>
+            <div className="text-xs font-semibold">{t("git.repo.projectsTitle")}</div>
             <Badge className="ml-auto h-5 px-1.5 text-[10px]" variant="outline">
               {data.config.gitRepositories.length}
             </Badge>
@@ -210,11 +212,11 @@ export function RepositorySelector({
                       </button>
                       {selected ? <Check className="size-3.5" /> : <span className="size-3.5" />}
                       <Button
-                        aria-label={`Remove ${repository.name}`}
+                        aria-label={t("git.repo.removeName", { name: repository.name })}
                         className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={() => void removeRepository(repository.name)}
                         size="icon"
-                        title={`Remove ${repository.name}`}
+                        title={t("git.repo.removeName", { name: repository.name })}
                         type="button"
                         variant="ghost"
                       >
@@ -226,7 +228,7 @@ export function RepositorySelector({
               </div>
             ) : (
               <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No saved Git projects yet.
+                {t("git.repo.noProjects")}
               </div>
             )}
           </div>
@@ -247,7 +249,7 @@ export function RepositorySelector({
                 type="button"
               >
                 <Folder className="size-3" />
-                Local path
+                {t("git.repo.localPath")}
               </button>
               <button
                 className={cn(
@@ -263,14 +265,14 @@ export function RepositorySelector({
                 type="button"
               >
                 <Download className="size-3" />
-                Clone URL
+                {t("git.repo.cloneUrl")}
               </button>
             </div>
 
             {addMode === "path" ? (
               <form className="flex gap-1.5" onSubmit={addRepositoryFromInput}>
                 <Input
-                  aria-label="Paste absolute path"
+                  aria-label={t("git.repo.pasteAbsPath")}
                   className="h-7 flex-1 px-2 font-mono text-[11px]"
                   onChange={(event) => {
                     setPath(event.target.value);
@@ -281,10 +283,10 @@ export function RepositorySelector({
                 />
                 <Button className="h-7 px-2 text-[11px]" size="sm" type="submit">
                   <Plus className="size-3" />
-                  Add
+                  {t("common.add")}
                 </Button>
                 <Button
-                  aria-label="Browse and add Git project"
+                  aria-label={t("git.repo.browseAdd")}
                   className="h-7 px-2"
                   onClick={openRepositoryPicker}
                   size="sm"
@@ -297,7 +299,7 @@ export function RepositorySelector({
             ) : (
               <form className="flex gap-1.5" onSubmit={addRepositoryFromUrl}>
                 <Input
-                  aria-label="Git remote URL"
+                  aria-label={t("git.repo.remoteUrl")}
                   className="h-7 flex-1 px-2 font-mono text-[11px]"
                   onChange={(event) => {
                     setCloneUrl(event.target.value);
@@ -313,7 +315,7 @@ export function RepositorySelector({
                   type="submit"
                 >
                   <Download className="size-3" />
-                  {cloning ? "Cloning…" : "Clone"}
+                  {cloning ? t("git.repo.cloning") : t("git.repo.clone")}
                 </Button>
               </form>
             )}
@@ -322,8 +324,7 @@ export function RepositorySelector({
             ) : null}
             {addMode === "url" ? (
               <div className="mt-1 text-[10px] text-muted-foreground">
-                Private github.com repos reuse your GitHub login; SSH uses your machine's keys.
-                Clones into ~/.nomoreide/repos.
+                {t("git.repo.cloneHint")}
               </div>
             ) : null}
           </div>
@@ -331,11 +332,11 @@ export function RepositorySelector({
       ) : null}
       {browseDialogOpen ? (
         <FolderPickerDialog
-          confirmLabel={picker.confirmLabel}
+          confirmLabel={t("git.repo.addProject")}
           errorMessage={addError}
           initialPath={picker.initialPath}
           selectedPath={draftPath}
-          title="Add Git Project"
+          title={t("git.repo.addProjectTitle")}
           onCancel={() => setBrowseDialogOpen(false)}
           onSelect={setDraftPath}
           onUse={async () => {
@@ -369,14 +370,14 @@ export function repositoryPickerState({
 }
 
 export function FolderPickerDialog({
-  confirmLabel = "Use this folder",
+  confirmLabel,
   errorMessage,
   initialPath,
   onCancel,
   onSelect,
   onUse,
   selectedPath,
-  title = "Choose Git Project Folder",
+  title,
 }: {
   confirmLabel?: string;
   errorMessage?: string | null;
@@ -387,6 +388,9 @@ export function FolderPickerDialog({
   selectedPath: string;
   title?: string;
 }) {
+  const t = useT();
+  const resolvedTitle = title ?? t("git.repo.chooseFolder");
+  const resolvedConfirm = confirmLabel ?? t("git.repo.useThisFolder");
   return createPortal(
     <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/35 px-4">
       <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4 shadow-xl">
@@ -395,12 +399,12 @@ export function FolderPickerDialog({
             <Folder className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold">{title}</div>
+            <div className="text-sm font-semibold">{resolvedTitle}</div>
             <div className="truncate font-mono text-xs text-muted-foreground">
               {selectedPath}
             </div>
           </div>
-          <Button aria-label="Close folder picker" onClick={onCancel} size="icon" variant="ghost">
+          <Button aria-label={t("git.repo.closeFolderPicker")} onClick={onCancel} size="icon" variant="ghost">
             <X />
           </Button>
         </div>
@@ -419,10 +423,10 @@ export function FolderPickerDialog({
 
         <div className="mt-4 flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="outline">
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={() => void onUse()} type="button">
-            {confirmLabel}
+            {resolvedConfirm}
           </Button>
         </div>
       </div>

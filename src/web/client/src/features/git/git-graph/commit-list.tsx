@@ -2,6 +2,7 @@ import { useState, type MutableRefObject } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GitGraphCommit } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { AiAskInline } from "../../agent/ai-ask-inline";
 import { AiSpark } from "../../agent/ai-spark";
 import { useAgentDock } from "../../agent/chat/agent-context";
@@ -30,6 +31,7 @@ export function CommitList({
   onSelect: (hash: string) => void;
   onLoadMore: () => void;
 }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   // Which commit row has its inline "what should I do?" field open, if any.
   const [askingHash, setAskingHash] = useState<string | null>(null);
@@ -49,10 +51,10 @@ export function CommitList({
     <aside className="flex min-h-0 flex-col overflow-hidden border-r border-border">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <h2 className="text-[13px] font-semibold tracking-tight">
-          Commit tree
+          {t("git.graph.commitTree")}
           {commits.length ? (
             <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-              {commits.length} commits
+              {t("git.graph.commitsCount", { count: commits.length })}
             </span>
           ) : null}
         </h2>
@@ -63,7 +65,7 @@ export function CommitList({
           type="button"
           variant="outline"
         >
-          Load more
+          {t("git.graph.loadMore")}
         </Button>
       </div>
 
@@ -73,9 +75,9 @@ export function CommitList({
             <Alert variant="destructive">{error}</Alert>
           </div>
         ) : loading && commits.length === 0 ? (
-          <div className="p-3 text-[12px] text-muted-foreground">Loading commits…</div>
+          <div className="p-3 text-[12px] text-muted-foreground">{t("git.graph.loadingCommits")}</div>
         ) : commits.length === 0 ? (
-          <div className="p-3 text-[12px] text-muted-foreground">No commits.</div>
+          <div className="p-3 text-[12px] text-muted-foreground">{t("git.graph.noCommits")}</div>
         ) : (
           <ul className="divide-y divide-border">
             {commits.map((commit) => (
@@ -134,7 +136,7 @@ export function CommitList({
                 </button>
                 <AiSpark
                   className={`mr-1 shrink-0 ${askingHash === commit.hash ? "opacity-100" : ""}`}
-                  label={`Ask AI about commit ${commit.hash.slice(0, 7)}`}
+                  label={t("git.graph.askCommitLabel", { sha: commit.hash.slice(0, 7) })}
                   onAsk={() =>
                     setAskingHash((current) =>
                       current === commit.hash ? null : commit.hash,
@@ -145,7 +147,7 @@ export function CommitList({
                 {askingHash === commit.hash ? (
                   <div className="px-2 pb-1.5 pt-0.5">
                     <AiAskInline
-                      placeholder="What should the agent do with this commit? (explain, summarize, find regressions…)"
+                      placeholder={t("git.graph.askPlaceholder")}
                       onSubmit={(value) => askCommit(commit, value)}
                       onCancel={() => setAskingHash(null)}
                     />
