@@ -37,7 +37,19 @@ interface I18nContextValue {
   t: Translate;
 }
 
-const I18nContext = createContext<I18nContextValue | null>(null);
+/**
+ * Provider-less fallback: an English translator with a no-op `setLanguage`. It
+ * lets any `useT` consumer render standalone (isolated component tests, SSR
+ * fragments) without an `I18nProvider`, resolving `en[key] ?? key`. The real
+ * provider replaces this for the running app.
+ */
+const DEFAULT_CONTEXT: I18nContextValue = {
+  language: "en",
+  setLanguage: () => {},
+  t: (key, params) => interpolate(en[key] ?? key, params),
+};
+
+const I18nContext = createContext<I18nContextValue>(DEFAULT_CONTEXT);
 
 /**
  * App-wide language state + translator. Holds the active language in one place
@@ -70,9 +82,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 }
 
 function useI18n(): I18nContextValue {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error("useI18n must be used within an I18nProvider");
-  return ctx;
+  return useContext(I18nContext);
 }
 
 /** The translator function. `const t = useT();` then `t("nav.services")`. */

@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const themeToggleSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/components/theme-toggle.tsx"),
+// The light/dark preference now lives in the shared theme hook module.
+const themeSource = readFileSync(
+  resolve(__dirname, "../src/web/client/src/lib/theme.ts"),
   "utf8",
 );
 const productHtml = readFileSync(
@@ -14,10 +15,10 @@ const websiteHtml = readFileSync(resolve(__dirname, "../website/index.html"), "u
 
 describe("default theme", () => {
   test("defaults the product theme to dark when no preference is saved", () => {
-    expect(themeToggleSource).toContain('const STORAGE_KEY = "nomoreide-theme-choice";');
-    expect(themeToggleSource).toContain('if (typeof window === "undefined") return "dark";');
-    expect(themeToggleSource).toContain('return "dark";');
-    expect(themeToggleSource).not.toContain("prefers-color-scheme: dark");
+    expect(themeSource).toContain('export const THEME_STORAGE_KEY = "nomoreide-theme-choice";');
+    expect(themeSource).toContain('if (typeof window === "undefined") return "dark";');
+    expect(themeSource).toContain('return "dark";');
+    expect(themeSource).not.toContain("prefers-color-scheme: dark");
   });
 
   test("boots both HTML shells in dark mode before React renders", () => {

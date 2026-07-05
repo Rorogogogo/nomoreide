@@ -20,6 +20,12 @@ const shellRoutesSource = readFileSync(
   resolve(root, "src/web/routes/shell-routes.ts"),
   "utf8",
 );
+// UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted
+// against en.ts rather than the component source.
+const catalog = readFileSync(
+  resolve(root, "src/web/client/src/lib/i18n/en.ts"),
+  "utf8",
+);
 
 describe("product header action dock", () => {
   test("groups refresh, theme, and docs as expandable icon-first controls", () => {
@@ -28,7 +34,7 @@ describe("product header action dock", () => {
     expect(appSource).toContain("headerActionLabelClassName");
     expect(appSource).toContain("Refresh");
     expect(themeToggleSource).toContain("Theme");
-    expect(appSource).toContain("Docs");
+    expect(catalog).toContain("Docs");
     expect(headerActionSource).toContain("hover:w-24");
     expect(headerActionSource).toContain("focus-visible:w-24");
   });
@@ -48,13 +54,13 @@ describe("product header action dock", () => {
   test("adds a global AI context action for services, databases, errors, and git", () => {
     expect(appSource).toContain("<AiContextAction");
     expect(appSource).toContain("data={data}");
-    expect(aiContextSource).toContain("AI Diagnose");
-    expect(aiContextSource).toContain("Diagnose");
+    expect(catalog).toContain("AI Diagnose");
+    expect(catalog).toContain("Diagnose");
     expect(aiContextSource).toContain('size="xl"');
-    expect(aiContextSource).toContain("Services");
+    expect(catalog).toContain("Services");
     expect(aiContextSource).toContain("Databases");
-    expect(aiContextSource).toContain("Error Inbox");
-    expect(aiContextSource).toContain("Git Repositories");
+    expect(catalog).toContain("Error Inbox");
+    expect(catalog).toContain("Git Repositories");
     expect(aiContextSource).toContain("repositoryPaths");
     expect(aiContextSource).toContain("lg:grid-cols-4");
     expect(aiContextSource).toContain("max-h-[min(520px,calc(100vh-18rem))]");
@@ -69,8 +75,9 @@ describe("product header action dock", () => {
 
   test("adds a simple docs button to the local dashboard header", () => {
     expect(appSource).toContain('href="https://www.nomoreide.com/docs"');
-    expect(appSource).toContain('aria-label="Open NoMoreIDE documentation"');
-    expect(appSource).toContain('title="Open NoMoreIDE documentation"');
+    expect(appSource).toContain('aria-label={t("action.docsTitle")}');
+    expect(appSource).toContain('title={t("action.docsTitle")}');
+    expect(catalog).toContain("Open NoMoreIDE documentation");
     expect(appSource).toContain("<ThemeToggle />");
     expect(appSource).toContain("BookOpen");
   });

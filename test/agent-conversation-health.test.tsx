@@ -6,6 +6,8 @@ import {
   formatConversationDuration,
 } from "../src/web/client/src/features/agent/conversation-health";
 import type { ChatTurn } from "../src/web/client/src/features/agent/chat/use-agent-chat";
+// Status label + recommendation copy now resolve through the i18n catalog.
+import { en } from "../src/web/client/src/lib/i18n/en";
 
 function turn(id: string, createdAt: number): ChatTurn {
   return {
@@ -32,8 +34,10 @@ describe("agent conversation health", () => {
     const health = buildConversationHealth(turns, now);
 
     expect(health.status).toBe("long");
-    expect(health.statusLabel).toBe("Long");
-    expect(health.recommendation).toBe("Consider starting a new chat for a cleaner context.");
+    expect(en["agent.conversation.long"]).toBe("Long");
+    expect(en["agent.conversation.recommendation"]).toBe(
+      "Consider starting a new chat for a cleaner context.",
+    );
     expect(health.durationLabel).toBe("35m");
     expect(health.turnCount).toBe(18);
   });
