@@ -1,11 +1,15 @@
 import { Globe, Package, Sparkles, TerminalSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/overflow-menu";
 import type {
+  AgentEnvAgentName,
   AgentEnvAvailability,
   AgentEnvConfig,
   AgentEnvMcpEntry,
+  AgentEnvPendingChange,
   AgentEnvRemoteMcpEntry,
+  AgentEnvScope,
   AgentEnvSkill,
 } from "@/lib/api";
 
@@ -15,13 +19,19 @@ export const AGENT_LABELS: Record<AgentEnvConfig["agent"], string> = {
   antigravity: "Antigravity",
 };
 
+const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
+
+type StageChange = (change: AgentEnvPendingChange) => void;
+
 /** One agent's live environment: MCP servers by scope, then skills & plugins. */
 export function AgentColumn({
   availability,
   config,
+  onStage,
 }: {
   availability?: AgentEnvAvailability;
   config: AgentEnvConfig;
+  onStage?: StageChange;
 }) {
   const userMcps = [
     ...Object.entries(config.mcpServers).map(([name, entry]) => ({
@@ -67,22 +77,62 @@ export function AgentColumn({
         </p>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-        <McpSection label="MCP servers" mcps={userMcps} />
+        <McpSection
+          agent={config.agent}
+          label="MCP servers"
+          mcps={userMcps}
+          onStage={onStage}
+          scope="user"
+        />
         {projectMcps.length > 0 ? (
-          <McpSection label="Project MCP servers" mcps={projectMcps} />
+          <McpSection
+            agent={config.agent}
+            label="Project MCP servers"
+            mcps={projectMcps}
+            onStage={onStage}
+            scope="project"
+          />
         ) : null}
-        <SkillsSection skills={config.skills} />
+        <SkillsSection agent={config.agent} onStage={onStage} skills={config.skills} />
       </CardContent>
     </Card>
   );
 }
 
+/** "Copy to <agent>" / "Move to <agent>" / "Remove" — explicit buttons, no drag-and-drop. */
+function changeMenuItems(
+  change: Omit<AgentEnvPendingChange, "action" | "targetAgent" | "targetScope">,
+  onStage: StageChange,
+  targetScopeFor: (target: AgentEnvAgentName) => AgentEnvScope,
+): OverflowMenuItem[] {
+  const others = ALL_AGENTS.filter((agent) => agent !== change.sourceAgent);
+  return [
+    ...others.map((target) => ({
+      label: `Copy to ${AGENT_LABELS[target]}`,
+      onSelect: () =>
+        onStage({ ...change, action: "copy", targetAgent: target, targetScope: targetScopeFor(target) }),
+    })),
+    ...others.map((target) => ({
+      label: `Move to ${AGENT_LABELS[target]}`,
+      onSelect: () =>
+        onStage({ ...change, action: "move", targetAgent: target, targetScope: targetScopeFor(target) }),
+    })),
+    { label: "Remove", onSelect: () => onStage({ ...change, action: "remove" }) },
+  ];
+}
+
 function McpSection({
+  agent,
   label,
   mcps,
+  scope,
+  onStage,
 }: {
+  agent: AgentEnvAgentName;
   label: string;
   mcps: Array<{ name: string; detail: string; remote: boolean }>;
+  scope: AgentEnvScope;
+  onStage?: StageChange;
 }) {
   return (
     <section>
@@ -96,12 +146,12 @@ function McpSection({
           {mcps.map((mcp) => (
             <li
               key={mcp.name}
-              className="flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
+              className="group flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
                 {mcp.remote ? <Globe /> : <TerminalSquare />}
               </span>
-              <span className="min-w-0">
+              <span className="min-w-0 flex-1">
                 <span className="block text-xs font-medium">{mcp.name}</span>
                 <span
                   className="block truncate font-mono text-[11px] text-muted-foreground"
@@ -110,6 +160,15 @@ function McpSection({
                   {mcp.detail}
                 </span>
               </span>
+              {onStage ? (
+                <OverflowMenu
+                  items={changeMenuItems(
+                    { category: "mcp", name: mcp.name, sourceAgent: agent, sourceScope: scope },
+                    onStage,
+                    () => scope,
+                  )}
+                />
+              ) : null}
             </li>
           ))}
         </ul>
@@ -118,7 +177,15 @@ function McpSection({
   );
 }
 
-function SkillsSection({ skills }: { skills: AgentEnvSkill[] }) {
+function SkillsSection({
+  agent,
+  skills,
+  onStage,
+}: {
+  agent: AgentEnvAgentName;
+  skills: AgentEnvSkill[];
+  onStage?: StageChange;
+}) {
   return (
     <section>
       <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -131,7 +198,7 @@ function SkillsSection({ skills }: { skills: AgentEnvSkill[] }) {
           {skills.map((skill) => (
             <li
               key={`${skill.scope}:${skill.name}`}
-              className="flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
+              className="group flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
                 {skill.kind === "plugin" ? <Package /> : <Sparkles />}
@@ -158,6 +225,17 @@ function SkillsSection({ skills }: { skills: AgentEnvSkill[] }) {
                   </span>
                 ) : null}
               </span>
+              {/* Plugins are managed installs — reinstall via marketplace, don't copy files. */}
+              {onStage && skill.kind !== "plugin" ? (
+                <OverflowMenu
+                  items={changeMenuItems(
+                    { category: "skill", name: skill.name, sourceAgent: agent, sourceScope: skill.scope },
+                    onStage,
+                    // Only Claude reads project-scoped skills; land elsewhere as user scope.
+                    (target) => (target === "claude" ? skill.scope : "user"),
+                  )}
+                />
+              ) : null}
             </li>
           ))}
         </ul>

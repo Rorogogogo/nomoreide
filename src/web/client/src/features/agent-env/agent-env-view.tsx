@@ -3,16 +3,20 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { AgentColumn } from "./agent-column";
+import { StagedChangesDrawer } from "./staged-changes-drawer";
 import { useAgentEnv } from "./use-agent-env";
+import { useStagedChanges } from "./use-staged-changes";
 
 /**
- * Agent Environments (ROR-60): a read-only, side-by-side view of each coding
- * agent's live MCP servers and skills. Copy/move actions arrive with the
- * staged-writes slice (ROR-61).
+ * Agent Environments: a side-by-side view of each coding agent's live MCP
+ * servers and skills (ROR-60), with copy/move/remove actions staged behind a
+ * preview → "Save & apply" gate (ROR-61).
  */
 export function AgentEnvView() {
   const { agents, configs, doctor, loading, error, refresh } = useAgentEnv();
   useRegisterRefresh(refresh);
+  const { staged, preview, applying, stage, unstage, clear, apply } =
+    useStagedChanges(refresh);
 
   const availabilityByAgent = new Map(agents.map((agent) => [agent.agent, agent]));
   const warnings = doctor?.checks.filter((check) => check.status !== "ok") ?? [];
@@ -52,10 +56,20 @@ export function AgentEnvView() {
               key={config.agent}
               availability={availabilityByAgent.get(config.agent)}
               config={config}
+              onStage={stage}
             />
           ))}
         </div>
       ) : null}
+
+      <StagedChangesDrawer
+        applying={applying}
+        count={staged.length}
+        onApply={() => void apply()}
+        onClear={clear}
+        onUnstage={unstage}
+        preview={preview}
+      />
     </div>
   );
 }
