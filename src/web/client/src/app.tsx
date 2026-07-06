@@ -10,6 +10,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
+  Puzzle,
   RefreshCw,
   Server,
   SquareTerminal,
@@ -24,6 +25,7 @@ import {
   headerActionLabelClassName,
 } from "@/components/header-action";
 import { AgentView } from "@/features/agent/agent-view";
+import { AgentEnvView } from "@/features/agent-env/agent-env-view";
 import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
@@ -53,6 +55,7 @@ type Page =
   | "git"
   | "github"
   | "agent"
+  | "agent-env"
   | "errors"
   | "database"
   | "terminal";
@@ -169,6 +172,8 @@ export function AppIdentity({ className }: { className?: string }) {
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   const [page, setPage] = useState<Page>(() => {
     if (!syncLocation) return "services";
+    // Checked before /agent — startsWith("/agent") would swallow it.
+    if (window.location.pathname.startsWith("/agent-env")) return "agent-env";
     if (window.location.pathname.startsWith("/agent")) return "agent";
     if (window.location.pathname.startsWith("/errors")) return "errors";
     if (window.location.pathname.startsWith("/database")) return "database";
@@ -263,6 +268,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         ? "/git"
         : page === "github"
           ? "/github"
+          : page === "agent-env"
+            ? "/agent-env"
           : page === "agent"
             ? "/agent"
             : page === "errors"
@@ -396,6 +403,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               label="Agent"
               onClick={() => setPage("agent")}
             />
+            <NavButton
+              active={page === "agent-env"}
+              docked={sidebarDocked}
+              icon={<Puzzle />}
+              label="Agent Env"
+              onClick={() => setPage("agent-env")}
+            />
           </nav>
           <SidebarCredit
             docked={sidebarDocked}
@@ -420,6 +434,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                     ? "Git Review"
                     : page === "github"
                       ? "GitHub"
+                      : page === "agent-env"
+                        ? "Agent Env"
                       : page === "agent"
                         ? "Agent"
                       : page === "errors"
@@ -507,6 +523,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             ) : null}
             {page === "github" ? <GitHubView key={githubPageKey} /> : null}
             {page === "agent" ? <AgentView focusChanges={changesFocusNonce} /> : null}
+            {page === "agent-env" ? <AgentEnvView /> : null}
             {page === "errors" ? (
               <ErrorInboxView
                 onReviewChanges={() => {
