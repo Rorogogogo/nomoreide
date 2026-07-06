@@ -780,6 +780,52 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, agent: "claude", backups: ["/Users/demo/.claude.json.bak.20260706-090000"] });
   }
 
+  // Profile registry (ROR-63). GET /auth/status is read-on-mount; the rest
+  // back the registry bar's click actions with plausible demo data.
+  if (path === "/api/agent-env/auth/status") {
+    return json({
+      ok: true,
+      signedIn: true,
+      source: "config",
+      user: { email: "demo@nomoreide.dev", displayName: "Demo User" },
+      apiBaseUrl: "https://api.brainctl.net",
+      apiMode: "prod",
+      apiSource: "default",
+      apiFrontendUrl: "https://app.brainctl.net",
+    });
+  }
+  if (path === "/api/agent-env/auth/start") {
+    return json({ ok: true, url: "https://app.brainctl.net/cli-login", state: "demo-state" });
+  }
+  if (path === "/api/agent-env/auth/outcome") return json({ ok: true, status: "success" });
+  if (path === "/api/agent-env/auth/logout") return json({ ok: true });
+  if (path === "/api/agent-env/profiles/install-from-registry") {
+    return json({
+      ok: true,
+      name: "registry-demo",
+      mcpCount: 2,
+      skillCount: 1,
+      missingCredentials: [],
+      version: "1.0.0",
+      sourceKind: "brainctl",
+    });
+  }
+  if (path === "/api/agent-env/profiles/register-github") {
+    return json({ ok: true, result: { slug: "demo-profile" } });
+  }
+  {
+    const profilePublish = path.match(/^\/api\/agent-env\/profiles\/([^/]+)\/publish$/);
+    if (profilePublish) {
+      return json({
+        ok: true,
+        slug: decodeURIComponent(profilePublish[1]),
+        profileId: "demo-profile-id",
+        versionId: "demo-version-id",
+        version: "1.0.0",
+      });
+    }
+  }
+
   // Agent Profiles (ROR-62). GET /profiles is read-on-mount; the rest back
   // the panel's click actions with plausible demo data.
   if (path === "/api/agent-env/profiles" && method === "GET") {

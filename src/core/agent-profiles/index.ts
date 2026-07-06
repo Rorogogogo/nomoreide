@@ -33,6 +33,39 @@ export {
 } from "./store.js";
 export { exportProfile, importProfile, type ExportResult, type ImportResult } from "./transfer.js";
 export {
+  createRegistryConfigService,
+  DEFAULT_REGISTRY_API_BASE_URL,
+  DEFAULT_REGISTRY_FRONTEND_URL,
+  registryConfigPath,
+  resolveRegistryApiBaseUrl,
+  resolveRegistryApiTarget,
+  resolveRegistryApiToken,
+  resolveRegistryFrontendUrl,
+  type RegistryApiTarget,
+  type RegistryConfigOptions,
+  type RegistryConfigService,
+} from "./registry-config.js";
+export {
+  createRegistryTokenManager,
+  type RegistryTokenManager,
+  type RegistryTokenManagerOptions,
+} from "./registry-auth.js";
+export {
+  createRegistryClient,
+  type RegisterGithubProfileInput,
+  type RegistryClient,
+  type RegistryInstallDescriptor,
+  type RegistryProfile,
+} from "./registry-client.js";
+export {
+  installProfileFromRegistry,
+  publishProfileToRegistry,
+  type InstallFromRegistryInput,
+  type InstallFromRegistryResult,
+  type PublishProfileInput,
+  type PublishProfileResult,
+} from "./registry-transfer.js";
+export {
   PROFILE_NAME_PATTERN,
   profileManifestSchema,
   profileMcpSchema,

@@ -12,6 +12,9 @@ import type {
   AgentEnvProfileApplyResult,
   AgentEnvProfileImportResult,
   AgentEnvProfileSummary,
+  AgentEnvRegistryInstallResult,
+  AgentEnvRegistryPublishResult,
+  AgentEnvRegistryStatus,
   AgentEnvSnapshotResult,
 } from "./agent-env-api.js";
 
@@ -121,6 +124,46 @@ export const httpAgentEnvApi: AgentEnvApi = {
     return requestJson<AgentEnvProfileImportResult>(
       `/api/agent-env/profiles/import${options?.force ? "?force=1" : ""}`,
       { method: "POST", headers: { "content-type": "application/gzip" }, body: file },
+    );
+  },
+
+  async getRegistryAuthStatus() {
+    const response = await requestJson<{ ok: true } & AgentEnvRegistryStatus>(
+      "/api/agent-env/auth/status",
+    );
+    const { ok: _ok, ...status } = response;
+    return status;
+  },
+
+  async startRegistryAuth() {
+    const response = await postJson<{ ok: true; url: string; state: string }>(
+      "/api/agent-env/auth/start",
+      {},
+    );
+    return { url: response.url, state: response.state };
+  },
+
+  async getRegistryAuthOutcome(state) {
+    return requestJson<{ status: string; message?: string }>(
+      `/api/agent-env/auth/outcome?state=${encodeURIComponent(state)}`,
+    );
+  },
+
+  async registryLogout() {
+    await postJson("/api/agent-env/auth/logout", {});
+  },
+
+  async publishAgentEnvProfile({ name, ...body }) {
+    return postJson<AgentEnvRegistryPublishResult>(
+      `/api/agent-env/profiles/${encodeURIComponent(name)}/publish`,
+      body,
+    );
+  },
+
+  async installAgentEnvProfileFromRegistry(input) {
+    return postJson<AgentEnvRegistryInstallResult>(
+      "/api/agent-env/profiles/install-from-registry",
+      input,
     );
   },
 };
