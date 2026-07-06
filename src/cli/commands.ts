@@ -6,12 +6,14 @@ import {
 } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import { runAgentsCli } from "./agents.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
 import { runGitCli } from "./git.js";
+import { runProfileCli } from "./profile.js";
 
 const USAGE =
-  "Usage: nomoreide [mcp|setup|tui|web|git|list|logs|start|stop|restart|add]";
+  "Usage: nomoreide [mcp|setup|tui|web|git|agents|profile|list|logs|start|stop|restart|add]";
 
 const MCP_SETUP_LINES = [
   "NoMoreIDE MCP setup",
@@ -66,6 +68,14 @@ export async function runCli(
 
     if (command === "git") {
       return await runGitCli(subcommand, rest, stdout, configStore);
+    }
+
+    if (command === "agents") {
+      return await runAgentsCli(subcommand, rest, stdout);
+    }
+
+    if (command === "profile") {
+      return await runProfileCli(subcommand, rest, stdout);
     }
 
     if (command === "add" && subcommand === "service") {

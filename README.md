@@ -212,6 +212,9 @@ graph TD
 | Database browse and SQL query | | | ✓ | ✓ |
 | Human-approved SQL writes | | | ✓ | |
 | Agent tools, hooks, plugins, usage | | | ✓ | |
+| Agent environments (live MCPs & skills) | ✓ | | ✓ | ✓ |
+| Agent profiles (snapshot / apply / share) | ✓ | | ✓ | ✓ |
+| Hosted profile registry (publish / install) | ✓ | | ✓ | ✓ |
 | Safe Git (no force-push, no reset) | ✓ | ✓ | ✓ | ✓ |
 
 ---
@@ -316,6 +319,36 @@ nomoreide git add-repo    app --path /path/to/repo
 nomoreide git select-repo app
 ```
 
+### Agent Environments & Profiles
+
+Inspect and manage your coding agents' MCP servers and skills (Claude Code,
+Codex CLI, Antigravity), and bundle them into portable profiles. Formerly the
+standalone `brainctl` package — see the
+[migration guide](docs/brainctl-migration.md).
+
+```bash
+# Live agent configuration (read-only)
+nomoreide agents status          # per-agent install state, MCP + skill counts
+nomoreide agents doctor          # config sanity checks
+nomoreide agents read claude     # dump one agent's live config as JSON
+
+# Profiles: named bundles of MCP servers + skills
+nomoreide profile list
+nomoreide profile snapshot claude my-setup    # capture an agent's live config
+nomoreide profile apply my-setup codex --dry-run
+nomoreide profile apply my-setup codex        # backs up the config first
+nomoreide profile export my-setup             # credential-redacted .tar.gz
+nomoreide profile import my-setup.tar.gz --as teammate-setup
+
+# Hosted registry (sign in via the web UI, or set BRAINCTL_API_TOKEN)
+nomoreide profile publish my-setup --slug my-setup --title "My Setup"
+nomoreide profile install my-setup
+```
+
+Exports and published packages never contain raw secrets — secret-looking
+values are redacted to `${credentials.*}` placeholders that importers fill
+from their own environment.
+
 ---
 
 ## MCP Tools
@@ -382,6 +415,21 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_github_create_issue` | Create an issue |
 | `nomoreide_github_get_commit_ci` | Inspect commit check status |
 | `nomoreide_github_list_workflow_runs` | List recent GitHub Actions workflow runs |
+
+### Agent Environment & Profile Tools
+
+| Tool | Description |
+|---|---|
+| `nomoreide_agents_status` / `nomoreide_agents_read_configs` | Live agent install state and MCP/skill configuration |
+| `nomoreide_agents_doctor` | Agent config sanity checks |
+| `nomoreide_agents_add_mcp` / `nomoreide_agents_remove_mcp` | Add or remove an MCP server (config backed up first) |
+| `nomoreide_agents_move_mcp_scope` / `nomoreide_agents_move_skill_scope` | Copy/move MCPs and skills between agents and scopes |
+| `nomoreide_agents_snapshot_agent` | Back up an agent's config files |
+| `nomoreide_profiles_list` / `get` / `create` / `update` / `delete` | Profile CRUD |
+| `nomoreide_profiles_snapshot` / `nomoreide_profiles_apply` | Capture a live agent into a profile / apply one (dry-run preview) |
+| `nomoreide_profiles_export` / `nomoreide_profiles_import` | Credential-redacted portable archives |
+| `nomoreide_profiles_publish` / `nomoreide_profiles_install_from_registry` | Share profiles through the hosted registry |
+| `nomoreide_profiles_register_github` | Register a GitHub repo as a registry profile |
 
 ---
 
