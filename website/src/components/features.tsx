@@ -1,4 +1,5 @@
 import {
+  Bot,
   Database,
   GitBranch,
   GitPullRequestArrow,
@@ -45,6 +46,11 @@ const FEATURES: Feature[] = [
     icon: Workflow,
     title: "Assemble workflows like building blocks",
     body: "Combine terminal, Git, databases, logs, services, and GitHub into reusable workflows triggered by a click or a prompt.",
+  },
+  {
+    icon: Bot,
+    title: "Manage your agents' environments",
+    body: "See every coding agent's MCP servers and skills side by side, move them between agents with a preview, and share whole setups as profiles through the registry.",
   },
   {
     icon: PanelsTopLeft,
