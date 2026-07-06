@@ -173,6 +173,31 @@ export interface AgentEnvProfileImportResult {
   missingCredentials: Array<{ key: string; required: boolean; description?: string }>;
 }
 
+/* ---- Registry (ROR-63): the hosted profile registry (brainctl platform) ---- */
+
+export interface AgentEnvRegistryStatus {
+  signedIn: boolean;
+  user?: { email?: string; displayName?: string; avatarUrl?: string };
+  /** Where the token came from — env tokens can't be signed out from the UI. */
+  source?: "env" | "config";
+  error?: string;
+  apiBaseUrl: string;
+  apiMode: "local" | "prod" | "custom";
+  apiFrontendUrl: string;
+}
+
+export interface AgentEnvRegistryPublishResult {
+  slug: string;
+  profileId: string;
+  versionId: string;
+  version: string;
+}
+
+export interface AgentEnvRegistryInstallResult extends AgentEnvProfileImportResult {
+  version: string;
+  sourceKind: string;
+}
+
 export interface AgentEnvApi {
   getAgentEnvAgents(): Promise<AgentEnvAvailability[]>;
   getAgentEnvConfigs(): Promise<AgentEnvConfig[]>;
@@ -199,4 +224,19 @@ export interface AgentEnvApi {
   }): Promise<AgentEnvProfileApplyResult>;
   exportAgentEnvProfile(name: string): Promise<{ archivePath: string }>;
   importAgentEnvProfile(file: Blob, options?: { force?: boolean }): Promise<AgentEnvProfileImportResult>;
+  getRegistryAuthStatus(): Promise<AgentEnvRegistryStatus>;
+  startRegistryAuth(): Promise<{ url: string; state: string }>;
+  getRegistryAuthOutcome(state: string): Promise<{ status: string; message?: string }>;
+  registryLogout(): Promise<void>;
+  publishAgentEnvProfile(input: {
+    name: string;
+    slug: string;
+    title: string;
+    summary?: string;
+    version?: string;
+  }): Promise<AgentEnvRegistryPublishResult>;
+  installAgentEnvProfileFromRegistry(input: {
+    slug: string;
+    force?: boolean;
+  }): Promise<AgentEnvRegistryInstallResult>;
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Archive, Camera, Trash2, Upload } from "lucide-react";
+import { Archive, Camera, Trash2, Upload, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,6 +23,7 @@ export function ProfilesPanel({
   onExport,
   onImport,
   onDelete,
+  onPublish,
 }: {
   profiles: AgentEnvProfileSummary[];
   loading: boolean;
@@ -32,6 +33,7 @@ export function ProfilesPanel({
   onExport: (name: string) => void;
   onImport: (file: File) => void;
   onDelete: (name: string) => void;
+  onPublish: (name: string) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [snapshotAgent, setSnapshotAgent] = useState<AgentEnvAgentName>("claude");
@@ -148,6 +150,11 @@ export function ProfilesPanel({
                     label: "Export .tar.gz",
                     icon: <Archive className="size-3.5" />,
                     onSelect: () => onExport(profile.name),
+                  },
+                  {
+                    label: "Publish to registry...",
+                    icon: <UploadCloud className="size-3.5" />,
+                    onSelect: () => onPublish(profile.name),
                   },
                   {
                     label: "Delete",

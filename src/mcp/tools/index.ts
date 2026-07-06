@@ -5,6 +5,7 @@ import { wrapServerForRecording, type ToolContext } from "./context.js";
 import { AGENT_TOOL_NAMES, registerAgentTools } from "./agent.js";
 import { AGENT_ENV_TOOL_NAMES, registerAgentEnvTools } from "./agent-env.js";
 import { AGENT_PROFILE_TOOL_NAMES, registerAgentProfileTools } from "./agent-profiles.js";
+import { AGENT_REGISTRY_TOOL_NAMES, registerAgentRegistryTools } from "./agent-registry.js";
 import { DATABASE_TOOL_NAMES, registerDatabaseTools } from "./database.js";
 import { DOC_TOOL_NAMES, registerDocTools } from "./docs.js";
 import { ERROR_TOOL_NAMES, registerErrorTools } from "./errors.js";
@@ -34,6 +35,7 @@ export const NOMOREIDE_TOOL_NAMES = [
   ...AGENT_TOOL_NAMES,
   ...AGENT_ENV_TOOL_NAMES,
   ...AGENT_PROFILE_TOOL_NAMES,
+  ...AGENT_REGISTRY_TOOL_NAMES,
 ] as const;
 
 interface RegisterNoMoreIdeToolsOptions extends ToolContext {
@@ -61,6 +63,7 @@ export function registerNoMoreIdeTools(
   registerAgentTools(server, ctx);
   registerAgentEnvTools(server, ctx);
   registerAgentProfileTools(server, ctx);
+  registerAgentRegistryTools(server, ctx);
 }
 
 export type { ToolContext } from "./context.js";

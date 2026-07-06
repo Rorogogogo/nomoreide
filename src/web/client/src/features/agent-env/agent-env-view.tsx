@@ -1,20 +1,25 @@
+import { useState } from "react";
 import { Stethoscope } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { AgentColumn } from "./agent-column";
 import { ProfileApplyDialog } from "./profile-apply-dialog";
+import { ProfilePublishDialog } from "./profile-publish-dialog";
 import { ProfilesPanel } from "./profiles-panel";
+import { RegistryPanel } from "./registry-panel";
 import { StagedChangesDrawer } from "./staged-changes-drawer";
 import { useAgentEnv } from "./use-agent-env";
 import { useProfiles } from "./use-profiles";
+import { useRegistry } from "./use-registry";
 import { useStagedChanges } from "./use-staged-changes";
 
 /**
  * Agent Environments: a side-by-side view of each coding agent's live MCP
  * servers and skills (ROR-60), copy/move/remove actions staged behind a
- * preview → "Save & apply" gate (ROR-61), and saved profiles with
- * snapshot/apply/export/import (ROR-62).
+ * preview → "Save & apply" gate (ROR-61), saved profiles with
+ * snapshot/apply/export/import (ROR-62), and the hosted profile registry
+ * (ROR-63) for sharing profiles by slug.
  */
 export function AgentEnvView() {
   const { agents, configs, doctor, loading, error, refresh } = useAgentEnv();
@@ -22,6 +27,8 @@ export function AgentEnvView() {
   const { staged, preview, applying, stage, unstage, clear, apply } =
     useStagedChanges(refresh);
   const profilesState = useProfiles(refresh);
+  const registry = useRegistry(profilesState.refresh);
+  const [publishing, setPublishing] = useState<string | null>(null);
 
   const availabilityByAgent = new Map(agents.map((agent) => [agent.agent, agent]));
   const warnings = doctor?.checks.filter((check) => check.status !== "ok") ?? [];
@@ -61,8 +68,18 @@ export function AgentEnvView() {
         onDelete={profilesState.deleteOne}
         onExport={profilesState.exportOne}
         onImport={profilesState.importArchive}
+        onPublish={setPublishing}
         onSnapshot={profilesState.snapshot}
         profiles={profilesState.profiles}
+      />
+
+      <RegistryPanel
+        busy={registry.busy}
+        onInstall={registry.install}
+        onSignIn={() => void registry.signIn()}
+        onSignOut={registry.signOut}
+        signingIn={registry.signingIn}
+        status={registry.status}
       />
 
       {configs.length > 0 ? (
@@ -86,6 +103,19 @@ export function AgentEnvView() {
         onUnstage={unstage}
         preview={preview}
       />
+
+      {publishing ? (
+        <ProfilePublishDialog
+          busy={registry.busy}
+          onCancel={() => setPublishing(null)}
+          onConfirm={(input) => {
+            void registry.publish(input).then((published) => {
+              if (published) setPublishing(null);
+            });
+          }}
+          profileName={publishing}
+        />
+      ) : null}
 
       {profilesState.pendingApply ? (
         <ProfileApplyDialog

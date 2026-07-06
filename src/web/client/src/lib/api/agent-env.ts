@@ -25,6 +25,12 @@ export const {
   applyAgentEnvProfile,
   exportAgentEnvProfile,
   importAgentEnvProfile,
+  getRegistryAuthStatus,
+  startRegistryAuth,
+  getRegistryAuthOutcome,
+  registryLogout,
+  publishAgentEnvProfile,
+  installAgentEnvProfileFromRegistry,
 } = api;
 
 export type {
@@ -48,6 +54,9 @@ export type {
   AgentEnvProfileImportResult,
   AgentEnvProfileMcp,
   AgentEnvProfileSummary,
+  AgentEnvRegistryInstallResult,
+  AgentEnvRegistryPublishResult,
+  AgentEnvRegistryStatus,
   AgentEnvRemoteMcpEntry,
   AgentEnvScope,
   AgentEnvSkill,

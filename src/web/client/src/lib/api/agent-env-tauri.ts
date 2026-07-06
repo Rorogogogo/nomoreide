@@ -33,4 +33,10 @@ export const tauriAgentEnvApi: AgentEnvApi = {
   applyAgentEnvProfile: notAvailable,
   exportAgentEnvProfile: notAvailable,
   importAgentEnvProfile: notAvailable,
+  getRegistryAuthStatus: notAvailable,
+  startRegistryAuth: notAvailable,
+  getRegistryAuthOutcome: notAvailable,
+  registryLogout: notAvailable,
+  publishAgentEnvProfile: notAvailable,
+  installAgentEnvProfileFromRegistry: notAvailable,
 };
