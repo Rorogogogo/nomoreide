@@ -17,6 +17,14 @@ export const {
   previewAgentEnvChanges,
   applyAgentEnvChanges,
   snapshotAgentEnv,
+  listAgentEnvProfiles,
+  getAgentEnvProfile,
+  deleteAgentEnvProfile,
+  snapshotAgentEnvProfile,
+  previewAgentEnvProfileApply,
+  applyAgentEnvProfile,
+  exportAgentEnvProfile,
+  importAgentEnvProfile,
 } = api;
 
 export type {
@@ -33,6 +41,13 @@ export type {
   AgentEnvMcpEntry,
   AgentEnvPendingChange,
   AgentEnvPreviewItem,
+  AgentEnvProfile,
+  AgentEnvProfileApplyItem,
+  AgentEnvProfileApplyPreview,
+  AgentEnvProfileApplyResult,
+  AgentEnvProfileImportResult,
+  AgentEnvProfileMcp,
+  AgentEnvProfileSummary,
   AgentEnvRemoteMcpEntry,
   AgentEnvScope,
   AgentEnvSkill,

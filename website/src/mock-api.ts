@@ -673,6 +673,29 @@ const agentEnvConfigs = [
   },
 ];
 
+const agentEnvProfiles = [
+  {
+    name: "fullstack-dev",
+    description: "GitHub + Linear + docs MCPs with the commit-push skill",
+    mcpCount: 3,
+    skillCount: 1,
+    updatedAt: "2026-07-05T09:30:00.000Z",
+  },
+  {
+    name: "backup-claude",
+    description: "Snapshot of Claude Code before the last bulk change",
+    mcpCount: 2,
+    skillCount: 2,
+    updatedAt: "2026-07-01T18:12:00.000Z",
+  },
+  {
+    name: "minimal-review",
+    mcpCount: 1,
+    skillCount: 0,
+    updatedAt: "2026-06-20T08:00:00.000Z",
+  },
+];
+
 export function installWebsiteMockApi() {
   if (typeof window === "undefined") return;
   const currentWindow = window as Window & { __nomoreideWebsiteMockApi?: boolean };
@@ -755,6 +778,78 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path === "/api/agent-env/snapshot") {
     return json({ ok: true, agent: "claude", backups: ["/Users/demo/.claude.json.bak.20260706-090000"] });
+  }
+
+  // Agent Profiles (ROR-62). GET /profiles is read-on-mount; the rest back
+  // the panel's click actions with plausible demo data.
+  if (path === "/api/agent-env/profiles" && method === "GET") {
+    return json({ ok: true, profiles: agentEnvProfiles });
+  }
+  if (path === "/api/agent-env/profiles" && method === "POST") {
+    return json({ ok: true, profile: { name: "new-profile", mcps: {}, skills: [] } });
+  }
+  if (path === "/api/agent-env/profiles/snapshot") {
+    return json({
+      ok: true,
+      profile: {
+        name: "snapshot-demo",
+        description: "Demo snapshot",
+        mcps: { github: { kind: "local", command: "npx", args: ["-y", "server-github"] } },
+        skills: [{ name: "commit-push" }],
+      },
+    });
+  }
+  if (path === "/api/agent-env/profiles/import") {
+    return json({ ok: true, name: "imported-demo", mcpCount: 2, skillCount: 1, missingCredentials: [] });
+  }
+  {
+    const profileAction = path.match(/^\/api\/agent-env\/profiles\/([^/]+)\/(apply-preview|apply|export)$/);
+    if (profileAction) {
+      const [, name, action] = profileAction;
+      if (action === "apply-preview") {
+        return json({
+          ok: true,
+          profile: decodeURIComponent(name),
+          agent: "codex",
+          items: [
+            { category: "mcp", name: "github", status: "add", warnings: [] },
+            { category: "mcp", name: "linear", status: "conflict", warnings: [] },
+            { category: "skill", name: "commit-push", status: "identical", warnings: [] },
+          ],
+          unresolvedCredentials: [],
+        });
+      }
+      if (action === "apply") {
+        return json({
+          ok: true,
+          profile: decodeURIComponent(name),
+          agent: "codex",
+          mcpsApplied: ["github"],
+          skillsApplied: ["commit-push"],
+          skipped: ['mcp "linear"'],
+          backups: ["/Users/demo/.codex/config.toml.bak.20260706-090000"],
+        });
+      }
+      return json({ ok: true, archivePath: `/Users/demo/projects/acme/${decodeURIComponent(name)}.tar.gz`, credentials: [] });
+    }
+  }
+  {
+    const profileDetail = path.match(/^\/api\/agent-env\/profiles\/([^/]+)$/);
+    if (profileDetail) {
+      if (method === "DELETE") return json({ ok: true });
+      return json({
+        ok: true,
+        profile: {
+          name: decodeURIComponent(profileDetail[1]),
+          description: "Demo profile",
+          mcps: {
+            github: { kind: "local", command: "npx", args: ["-y", "server-github"] },
+            docs: { kind: "remote", transport: "http", url: "https://developers.openai.com/mcp" },
+          },
+          skills: [{ name: "commit-push" }],
+        },
+      });
+    }
   }
 
   if (path === "/api/log-sources") return json({ ok: true, sources: [] });

@@ -3,20 +3,25 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { AgentColumn } from "./agent-column";
+import { ProfileApplyDialog } from "./profile-apply-dialog";
+import { ProfilesPanel } from "./profiles-panel";
 import { StagedChangesDrawer } from "./staged-changes-drawer";
 import { useAgentEnv } from "./use-agent-env";
+import { useProfiles } from "./use-profiles";
 import { useStagedChanges } from "./use-staged-changes";
 
 /**
  * Agent Environments: a side-by-side view of each coding agent's live MCP
- * servers and skills (ROR-60), with copy/move/remove actions staged behind a
- * preview → "Save & apply" gate (ROR-61).
+ * servers and skills (ROR-60), copy/move/remove actions staged behind a
+ * preview → "Save & apply" gate (ROR-61), and saved profiles with
+ * snapshot/apply/export/import (ROR-62).
  */
 export function AgentEnvView() {
   const { agents, configs, doctor, loading, error, refresh } = useAgentEnv();
   useRegisterRefresh(refresh);
   const { staged, preview, applying, stage, unstage, clear, apply } =
     useStagedChanges(refresh);
+  const profilesState = useProfiles(refresh);
 
   const availabilityByAgent = new Map(agents.map((agent) => [agent.agent, agent]));
   const warnings = doctor?.checks.filter((check) => check.status !== "ok") ?? [];
@@ -49,6 +54,17 @@ export function AgentEnvView() {
         </Alert>
       ) : null}
 
+      <ProfilesPanel
+        busy={profilesState.busy}
+        loading={profilesState.loading}
+        onApply={profilesState.startApply}
+        onDelete={profilesState.deleteOne}
+        onExport={profilesState.exportOne}
+        onImport={profilesState.importArchive}
+        onSnapshot={profilesState.snapshot}
+        profiles={profilesState.profiles}
+      />
+
       {configs.length > 0 ? (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {configs.map((config) => (
@@ -70,6 +86,16 @@ export function AgentEnvView() {
         onUnstage={unstage}
         preview={preview}
       />
+
+      {profilesState.pendingApply ? (
+        <ProfileApplyDialog
+          busy={profilesState.busy}
+          onCancel={profilesState.cancelApply}
+          onConfirm={() => void profilesState.confirmApply()}
+          onToggle={profilesState.toggleSkip}
+          pending={profilesState.pendingApply}
+        />
+      ) : null}
     </div>
   );
 }
