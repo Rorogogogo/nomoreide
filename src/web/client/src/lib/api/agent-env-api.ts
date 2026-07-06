@@ -116,6 +116,63 @@ export interface AgentEnvSnapshotResult {
   backups: string[];
 }
 
+/* ---- Profiles (ROR-62): named MCP+skill bundles ---- */
+
+export type AgentEnvProfileMcp =
+  | { kind: "local"; command: string; args?: string[]; env?: Record<string, string> }
+  | {
+      kind: "remote";
+      transport: "http" | "sse";
+      url: string;
+      headers?: Record<string, string>;
+      env?: Record<string, string>;
+    };
+
+export interface AgentEnvProfileSummary {
+  name: string;
+  description?: string;
+  mcpCount: number;
+  skillCount: number;
+  updatedAt: string;
+}
+
+export interface AgentEnvProfile {
+  name: string;
+  description?: string;
+  mcps: Record<string, AgentEnvProfileMcp>;
+  skills: Array<{ name: string }>;
+}
+
+export interface AgentEnvProfileApplyItem {
+  category: "mcp" | "skill";
+  name: string;
+  status: "add" | "identical" | "conflict";
+  warnings: string[];
+}
+
+export interface AgentEnvProfileApplyPreview {
+  profile: string;
+  agent: AgentEnvAgentName;
+  items: AgentEnvProfileApplyItem[];
+  unresolvedCredentials: string[];
+}
+
+export interface AgentEnvProfileApplyResult {
+  profile: string;
+  agent: AgentEnvAgentName;
+  mcpsApplied: string[];
+  skillsApplied: string[];
+  skipped: string[];
+  backups: string[];
+}
+
+export interface AgentEnvProfileImportResult {
+  name: string;
+  mcpCount: number;
+  skillCount: number;
+  missingCredentials: Array<{ key: string; required: boolean; description?: string }>;
+}
+
 export interface AgentEnvApi {
   getAgentEnvAgents(): Promise<AgentEnvAvailability[]>;
   getAgentEnvConfigs(): Promise<AgentEnvConfig[]>;
@@ -123,4 +180,23 @@ export interface AgentEnvApi {
   previewAgentEnvChanges(changes: AgentEnvPendingChange[]): Promise<AgentEnvChangePreview>;
   applyAgentEnvChanges(changes: AgentEnvPendingChange[]): Promise<AgentEnvApplyResult>;
   snapshotAgentEnv(agent: AgentEnvAgentName): Promise<AgentEnvSnapshotResult>;
+  listAgentEnvProfiles(): Promise<AgentEnvProfileSummary[]>;
+  getAgentEnvProfile(name: string): Promise<AgentEnvProfile>;
+  deleteAgentEnvProfile(name: string): Promise<void>;
+  snapshotAgentEnvProfile(input: {
+    agent: AgentEnvAgentName;
+    name: string;
+    description?: string;
+  }): Promise<AgentEnvProfile>;
+  previewAgentEnvProfileApply(
+    name: string,
+    agent: AgentEnvAgentName,
+  ): Promise<AgentEnvProfileApplyPreview>;
+  applyAgentEnvProfile(input: {
+    name: string;
+    agent: AgentEnvAgentName;
+    skip?: { mcps?: string[]; skills?: string[] };
+  }): Promise<AgentEnvProfileApplyResult>;
+  exportAgentEnvProfile(name: string): Promise<{ archivePath: string }>;
+  importAgentEnvProfile(file: Blob, options?: { force?: boolean }): Promise<AgentEnvProfileImportResult>;
 }

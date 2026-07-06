@@ -25,4 +25,12 @@ export const tauriAgentEnvApi: AgentEnvApi = {
   previewAgentEnvChanges: notAvailable,
   applyAgentEnvChanges: notAvailable,
   snapshotAgentEnv: notAvailable,
+  listAgentEnvProfiles: async () => [],
+  getAgentEnvProfile: notAvailable,
+  deleteAgentEnvProfile: notAvailable,
+  snapshotAgentEnvProfile: notAvailable,
+  previewAgentEnvProfileApply: notAvailable,
+  applyAgentEnvProfile: notAvailable,
+  exportAgentEnvProfile: notAvailable,
+  importAgentEnvProfile: notAvailable,
 };
