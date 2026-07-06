@@ -5,6 +5,9 @@
  */
 import type { AgentEnvApi } from "./agent-env-api.js";
 
+const notAvailable = () =>
+  Promise.reject(new Error("Agent Environments is not available in desktop mode yet."));
+
 export const tauriAgentEnvApi: AgentEnvApi = {
   getAgentEnvAgents: async () => [],
   getAgentEnvConfigs: async () => [],
@@ -18,4 +21,8 @@ export const tauriAgentEnvApi: AgentEnvApi = {
     ],
     hasIssues: true,
   }),
+  // Unreachable in practice: with no configs the view renders no action menus.
+  previewAgentEnvChanges: notAvailable,
+  applyAgentEnvChanges: notAvailable,
+  snapshotAgentEnv: notAvailable,
 };

@@ -717,6 +717,46 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       hasIssues: true,
     });
   }
+  // Agent Environments staged writes (ROR-61): preview echoes the staged
+  // changes so the drawer renders; apply pretends everything succeeded.
+  if (path === "/api/agent-env/changes/preview" || path === "/api/agent-env/changes/apply") {
+    const changes = parseAgentEnvChanges(init);
+    const summaries = changes.map(
+      (change) =>
+        `${change.action === "remove" ? "Remove" : change.action === "copy" ? "Copy" : "Move"} ${
+          change.category === "mcp" ? "MCP" : "skill"
+        } "${change.name}" (demo — nothing is written)`,
+    );
+    if (path.endsWith("/preview")) {
+      return json({
+        ok: true,
+        valid: true,
+        items: changes.map((change, index) => ({
+          change,
+          ok: true,
+          summary: summaries[index],
+          warnings: [],
+        })),
+        agents: [],
+      });
+    }
+    return json({
+      ok: true,
+      applied: changes.length,
+      failed: 0,
+      results: changes.map((change, index) => ({
+        change,
+        ok: true,
+        summary: summaries[index],
+        backups: ["/Users/demo/.claude.json.bak.20260706-090000"],
+      })),
+      backups: ["/Users/demo/.claude.json.bak.20260706-090000"],
+    });
+  }
+  if (path === "/api/agent-env/snapshot") {
+    return json({ ok: true, agent: "claude", backups: ["/Users/demo/.claude.json.bak.20260706-090000"] });
+  }
+
   if (path === "/api/log-sources") return json({ ok: true, sources: [] });
   if (path === "/api/errors") return json({ ok: true, incidents });
   if (path.match(/^\/api\/errors\/\d+\/prompt$/)) {
@@ -1676,6 +1716,21 @@ function agentStream(): Response {
     status: 200,
     headers: { "content-type": "text/event-stream" },
   });
+}
+
+interface MockAgentEnvChange {
+  category: "mcp" | "skill";
+  action: "copy" | "move" | "remove";
+  name: string;
+}
+
+function parseAgentEnvChanges(init?: RequestInit): MockAgentEnvChange[] {
+  try {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { changes?: MockAgentEnvChange[] };
+    return Array.isArray(body.changes) ? body.changes : [];
+  } catch {
+    return [];
+  }
 }
 
 function json(value: unknown, status = 200): Response {

@@ -10,16 +10,31 @@ import { tauriAgentEnvApi } from "./agent-env-tauri.js";
 
 const api: AgentEnvApi = isTauri() ? tauriAgentEnvApi : httpAgentEnvApi;
 
-export const { getAgentEnvAgents, getAgentEnvConfigs, getAgentEnvDoctor } = api;
+export const {
+  getAgentEnvAgents,
+  getAgentEnvConfigs,
+  getAgentEnvDoctor,
+  previewAgentEnvChanges,
+  applyAgentEnvChanges,
+  snapshotAgentEnv,
+} = api;
 
 export type {
   AgentEnvAgentName,
   AgentEnvApi,
+  AgentEnvApplyResult,
+  AgentEnvAppliedChange,
   AgentEnvAvailability,
+  AgentEnvChangePreview,
   AgentEnvConfig,
+  AgentEnvDiffSummary,
   AgentEnvDoctorCheck,
   AgentEnvDoctorResult,
   AgentEnvMcpEntry,
+  AgentEnvPendingChange,
+  AgentEnvPreviewItem,
   AgentEnvRemoteMcpEntry,
+  AgentEnvScope,
   AgentEnvSkill,
+  AgentEnvSnapshotResult,
 } from "./agent-env-api.js";
