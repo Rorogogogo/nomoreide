@@ -8,6 +8,7 @@ const shellPaths = new Set([
   "/git",
   "/github",
   "/agent",
+  "/agent-env",
   "/errors",
   "/database",
   "/terminal",

@@ -2,6 +2,7 @@ import type { Route } from "./context.js";
 import { dashboardRoutes } from "./dashboard-routes.js";
 import { agentRoutes } from "./agent-routes.js";
 import { agentChatRoutes } from "./agent-chat-routes.js";
+import { agentEnvRoutes } from "./agent-env-routes.js";
 import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
@@ -27,6 +28,7 @@ export const routes: Route[] = [
   ...dashboardRoutes,
   ...agentRoutes,
   ...agentChatRoutes,
+  ...agentEnvRoutes,
   ...databaseRoutes,
   ...errorRoutes,
   ...githubRoutes,

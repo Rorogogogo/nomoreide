@@ -611,6 +611,68 @@ const githubJobs: GitHubWorkflowJob[] = [
   },
 ];
 
+// Agent Environments demo data: three agents with plausible MCPs and skills.
+const agentEnvAgents = [
+  { agent: "claude", available: true, command: "claude", resolvedPath: "/usr/local/bin/claude" },
+  { agent: "codex", available: true, command: "codex", resolvedPath: "/usr/local/bin/codex" },
+  { agent: "antigravity", available: false, command: "antigravity" },
+];
+
+const agentEnvConfigs = [
+  {
+    agent: "claude",
+    configPath: "/Users/demo/.claude.json",
+    exists: true,
+    mcpServers: {
+      nomoreide: { command: "npx", args: ["-y", "nomoreide", "mcp"] },
+      postgres: { command: "npx", args: ["-y", "@modelcontextprotocol/server-postgres"] },
+    },
+    remoteMcpServers: {
+      linear: { transport: "http", url: "https://mcp.linear.app/mcp" },
+    },
+    projectMcpServers: {
+      playwright: { command: "npx", args: ["-y", "@playwright/mcp"] },
+    },
+    projectRemoteMcpServers: {},
+    skills: [
+      {
+        name: "code-review",
+        source: "claude-plugins-official",
+        kind: "plugin",
+        scope: "user",
+        pluginSkills: ["review", "security-review"],
+        pluginCommands: ["review"],
+      },
+      { name: "commit-push", source: "local", kind: "skill", scope: "user" },
+      { name: "deploy-checklist", source: "local", kind: "skill", scope: "project" },
+    ],
+  },
+  {
+    agent: "codex",
+    configPath: "/Users/demo/.codex/config.toml",
+    exists: true,
+    mcpServers: {
+      nomoreide: { command: "npx", args: ["-y", "nomoreide", "mcp"] },
+    },
+    remoteMcpServers: {
+      docs: { transport: "http", url: "https://developers.openai.com/mcp" },
+    },
+    projectMcpServers: {},
+    projectRemoteMcpServers: {},
+    skills: [{ name: "commit-push", source: "local", kind: "skill", scope: "user" }],
+  },
+  {
+    agent: "antigravity",
+    configPath: "/Users/demo/.gemini/antigravity-cli/mcp_config.json",
+    exists: false,
+    mcpServers: {},
+    remoteMcpServers: {},
+    projectMcpServers: {},
+    projectRemoteMcpServers: {},
+    skills: [],
+  },
+];
+
 export function installWebsiteMockApi() {
   if (typeof window === "undefined") return;
   const currentWindow = window as Window & { __nomoreideWebsiteMockApi?: boolean };
@@ -634,6 +696,27 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   const path = url.pathname;
 
   if (path === "/api/dashboard") return json(dashboard());
+
+  // Agent Environments (ROR-60). All three endpoints are read-on-mount.
+  if (path === "/api/agent-env/agents") {
+    return json({ ok: true, agents: agentEnvAgents });
+  }
+  if (path === "/api/agent-env/live") {
+    return json({ ok: true, configs: agentEnvConfigs });
+  }
+  if (path === "/api/agent-env/doctor") {
+    return json({
+      ok: true,
+      checks: [
+        { label: "Agent CLI", status: "ok", message: "claude is available (/usr/local/bin/claude)" },
+        { label: "Agent CLI", status: "ok", message: "codex is available (/usr/local/bin/codex)" },
+        { label: "Agent CLI", status: "warn", message: "antigravity is not available on PATH" },
+        { label: "Config file", status: "ok", message: "claude config found at ~/.claude.json" },
+        { label: "Config file", status: "ok", message: "codex config found at ~/.codex/config.toml" },
+      ],
+      hasIssues: true,
+    });
+  }
   if (path === "/api/log-sources") return json({ ok: true, sources: [] });
   if (path === "/api/errors") return json({ ok: true, incidents });
   if (path.match(/^\/api\/errors\/\d+\/prompt$/)) {
