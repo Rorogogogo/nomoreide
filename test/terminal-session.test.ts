@@ -115,6 +115,29 @@ describe("TerminalSession", () => {
       cwd: "/repo",
       state: "running",
     });
+    expect(session.snapshot().kind).toBeUndefined();
+    expect(session.snapshot().provider).toBeUndefined();
+  });
+
+  test("retains agent metadata in every snapshot", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      args: ["--no-alt-screen", "Fix tests"],
+      cwd: "/repo",
+      kind: "agent",
+      label: "Fix tests",
+      provider: "codex",
+      shell: "codex",
+    });
+
+    const started = session.start();
+
+    expect(started).toMatchObject({ kind: "agent", provider: "codex" });
+    expect(session.snapshot()).toMatchObject({
+      kind: "agent",
+      provider: "codex",
+    });
   });
 
   test("writes input and resizes the active pty", () => {
