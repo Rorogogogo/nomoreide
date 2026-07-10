@@ -183,6 +183,7 @@ struct PtySession {
 struct TerminalRegistry {
     sessions: HashMap<String, PtySession>,
     creating: HashSet<String>,
+    closing: HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -215,6 +216,9 @@ impl TerminalManager {
 
     fn reserve_id(&self, id: &str) -> Result<IdReservation, String> {
         let mut registry = self.registry.0.lock().unwrap();
+        if registry.closing.contains_key(id) {
+            return Err(format!("Terminal session is closing; retry shortly: {id}"));
+        }
         if let Some(session) = registry.sessions.get(id) {
             return Ok(IdReservation::Existing(session.metadata.clone()));
         }
@@ -312,9 +316,20 @@ impl TerminalManager {
             .unwrap_or(false);
         if matches {
             registry.sessions.remove(id);
-            self.registry.1.notify_all();
         }
+        if registry.closing.get(id).map(String::as_str) == Some(generation) {
+            registry.closing.remove(id);
+        }
+        self.registry.1.notify_all();
         matches
+    }
+
+    fn clear_closing(&self, id: &str, generation: &str) {
+        let mut registry = self.registry.0.lock().unwrap();
+        if registry.closing.get(id).map(String::as_str) == Some(generation) {
+            registry.closing.remove(id);
+        }
+        self.registry.1.notify_all();
     }
 
     #[cfg(unix)]
@@ -380,6 +395,9 @@ impl TerminalManager {
     fn close_session(&self, id: &str) -> Result<(), String> {
         let (generation, pid, mut killer, state) = {
             let mut registry = self.registry.0.lock().unwrap();
+            if registry.closing.contains_key(id) {
+                return Ok(());
+            }
             let Some(session) = registry.sessions.get(id) else {
                 if registry.creating.contains(id) {
                     return Err(format!(
@@ -392,20 +410,49 @@ impl TerminalManager {
                 registry.sessions.remove(id);
                 return Ok(());
             }
-            (
-                session.generation.clone(),
+            let generation = session.generation.clone();
+            let snapshot = (
+                generation.clone(),
                 session.pid,
                 session.killer.clone_killer(),
                 session.metadata.state.clone(),
-            )
+            );
+            registry.closing.insert(id.to_string(), generation);
+            snapshot
         };
         debug_assert_eq!(state, "running");
 
-        self.shutdown_running_session(id, &generation, pid, &mut killer)?;
+        if let Err(error) = self.shutdown_running_session(id, &generation, pid, &mut killer) {
+            self.clear_closing(id, &generation);
+            return Err(error);
+        }
         if self.remove_generation(id, &generation) {
             Ok(())
         } else {
             Err(format!("Terminal session changed while closing: {id}"))
+        }
+    }
+
+    pub fn close_all(&self) -> Result<(), String> {
+        let ids: Vec<String> = self
+            .registry
+            .0
+            .lock()
+            .unwrap()
+            .sessions
+            .keys()
+            .cloned()
+            .collect();
+        let mut errors = Vec::new();
+        for id in ids {
+            if let Err(error) = self.close_session(&id) {
+                errors.push(format!("{id}: {error}"));
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
         }
     }
 }
@@ -968,6 +1015,78 @@ mod tests {
 
         assert!(!process_exists(parent_pid));
         assert!(!process_exists(descendant_pid));
+        let _ = std::fs::remove_file(descendant_file);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reserve_is_blocked_and_second_close_is_idempotent_while_closing() {
+        use std::sync::Arc;
+
+        let manager = Arc::new(super::TerminalManager::new());
+        spawn_test_session(
+            &manager,
+            "svc:closing",
+            "trap '' HUP; while :; do sleep 1; done",
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let closer = {
+            let manager = manager.clone();
+            std::thread::spawn(move || manager.close_session("svc:closing"))
+        };
+        for _ in 0..100 {
+            if manager
+                .registry
+                .0
+                .lock()
+                .unwrap()
+                .closing
+                .contains_key("svc:closing")
+            {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+
+        let reserve_error = manager.reserve_id("svc:closing").unwrap_err();
+        assert!(reserve_error.contains("closing"));
+        assert!(manager.close_session("svc:closing").is_ok());
+        assert!(closer.join().unwrap().is_ok());
+        assert!(manager.list_sessions().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn close_all_kills_and_reaps_every_session_and_descendant() {
+        let manager = super::TerminalManager::new();
+        let descendant_file = std::env::temp_dir().join(format!(
+            "nomoreide-terminal-close-all-descendant-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let resistant_script = format!(
+            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; while :; do sleep 1; done' & echo $! > {}; while :; do sleep 1; done",
+            descendant_file.to_string_lossy()
+        );
+        let resistant_pid = spawn_test_session(&manager, "resistant", &resistant_script);
+        let ordinary_pid = spawn_test_session(&manager, "ordinary", "sleep 30");
+        let descendant_pid = (0..100)
+            .find_map(|_| {
+                let pid = std::fs::read_to_string(&descendant_file)
+                    .ok()
+                    .and_then(|value| value.trim().parse::<u32>().ok());
+                if pid.is_none() {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                pid
+            })
+            .expect("descendant pid should be written");
+
+        manager.close_all().unwrap();
+
+        assert!(!process_exists(resistant_pid));
+        assert!(!process_exists(ordinary_pid));
+        assert!(!process_exists(descendant_pid));
+        assert!(manager.list_sessions().is_empty());
         let _ = std::fs::remove_file(descendant_file);
     }
 

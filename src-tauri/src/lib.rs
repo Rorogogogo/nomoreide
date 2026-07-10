@@ -166,6 +166,7 @@ pub fn run() {
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 let state: State<AppState> = app.state();
+                let _ = state.terminal_manager.close_all();
                 state.process_manager.kill_all();
             }
         });
