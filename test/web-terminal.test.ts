@@ -480,6 +480,99 @@ describe("service-scoped terminal sessions", () => {
   });
 });
 
+describe("agent terminal sessions", () => {
+  test("creates a Codex session from a provider and prompt", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        agent: {
+          provider: "codex",
+          prompt: "Fix the failing test",
+          label: "Fix failing test",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions).toEqual({
+      args: ["--no-alt-screen", "Fix the failing test"],
+      kind: "agent",
+      label: "Fix failing test",
+      provider: "codex",
+      shell: "codex",
+    });
+  });
+
+  test.each([
+    ["unknown provider", { provider: "other", prompt: "Do work" }],
+    ["blank prompt", { provider: "codex", prompt: "   " }],
+  ])("returns 400 for an %s", async (_name, agent) => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual(expect.any(String));
+    expect(manager.lastCreateOptions).toBeUndefined();
+  });
+
+  test("ignores browser-supplied executable and argument fields", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        shell: "malicious-top-level-shell",
+        command: "malicious top-level command",
+        args: ["malicious-top-level-arg"],
+        agent: {
+          provider: "codex",
+          prompt: "Safe prompt",
+          label: `  ${"A".repeat(70)}  `,
+          shell: "malicious-nested-shell",
+          command: "malicious nested command",
+          args: ["malicious-nested-arg"],
+        },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions).toEqual({
+      args: ["--no-alt-screen", "Safe prompt"],
+      kind: "agent",
+      label: "A".repeat(60),
+      provider: "codex",
+      shell: "codex",
+    });
+  });
+});
+
 async function openTerminalSocket(url: string): Promise<{
   nextMessage(): Promise<string>;
   socket: WebSocket;
