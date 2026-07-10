@@ -26,6 +26,18 @@ export const httpTerminalApi: TerminalApi = {
     return res.session;
   },
 
+  async createAgentTerminalSession(opts) {
+    const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
+      "/api/terminal/sessions",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ agent: opts }),
+      },
+    );
+    return res.session;
+  },
+
   async closeTerminalSession(id) {
     await requestJson(`/api/terminal/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",

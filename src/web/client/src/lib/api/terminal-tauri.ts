@@ -4,12 +4,11 @@ import {
   tauri_createTerminalSession,
   tauri_closeTerminalSession,
 } from "./tauri-bridge.js";
-import type { TerminalApi, TerminalSessionInfo } from "./terminal-api.js";
+import type { TerminalApi } from "./terminal-api.js";
 
 export const tauriTerminalApi: TerminalApi = {
-  listTerminalSessions: () =>
-    tauri_listTerminalSessions() as Promise<TerminalSessionInfo[]>,
-  createTerminalSession: (opts) =>
-    tauri_createTerminalSession(opts) as Promise<TerminalSessionInfo>,
+  listTerminalSessions: () => tauri_listTerminalSessions(),
+  createTerminalSession: (opts) => tauri_createTerminalSession(opts),
+  createAgentTerminalSession: (opts) => tauri_createTerminalSession({ agent: opts }),
   closeTerminalSession: (id) => tauri_closeTerminalSession(id),
 };

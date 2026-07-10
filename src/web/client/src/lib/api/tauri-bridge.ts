@@ -4,6 +4,7 @@
  */
 
 import { isTauri } from "@/lib/tauri";
+import type { CreateAgentTerminalOptions, TerminalSessionInfo } from "./terminal-api.js";
 
 // Lazy-loaded to avoid bundling tauri APIs in the web build.
 let _invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null = null;
@@ -719,7 +720,9 @@ export async function tauri_runInstallCommand(cwd: string, command: string) {
 // ---- Terminal ----
 
 export async function tauri_listTerminalSessions() {
-  const sessions = await tauriInvoke<Array<{ id: string; serviceName?: string | null }>>(
+  const sessions = await tauriInvoke<
+    Array<TerminalSessionInfo & { serviceName?: string | null }>
+  >(
     "list_terminal_sessions",
   );
   return sessions.map((session) => ({
@@ -729,11 +732,19 @@ export async function tauri_listTerminalSessions() {
   }));
 }
 
-export async function tauri_createTerminalSession(opts?: { serviceName?: string; cwd?: string }) {
-  const session = await tauriInvoke<{ id: string; serviceName: string | null }>("create_terminal_session", {
-    serviceName: opts?.serviceName ?? null,
-    cwd: opts?.cwd ?? null,
-  });
+export async function tauri_createTerminalSession(opts?: {
+  serviceName?: string;
+  cwd?: string;
+  agent?: CreateAgentTerminalOptions;
+}) {
+  const session = await tauriInvoke<TerminalSessionInfo & { serviceName?: string | null }>(
+    "create_terminal_session",
+    {
+      serviceName: opts?.serviceName ?? null,
+      cwd: opts?.cwd ?? null,
+      agent: opts?.agent ?? null,
+    },
+  );
   return {
     ...session,
     serviceName: session.serviceName ?? undefined,
