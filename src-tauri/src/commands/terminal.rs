@@ -79,6 +79,35 @@ fn normalize_agent_label(provider: &str, label: Option<&str>) -> String {
     requested.unwrap_or(fallback).chars().take(60).collect()
 }
 
+#[derive(Debug, PartialEq)]
+struct SessionScope {
+    service_name: Option<String>,
+    work_dir: String,
+}
+
+fn resolve_session_scope(
+    is_agent: bool,
+    supplied_service_name: Option<String>,
+    supplied_cwd: Option<String>,
+    configured_service_cwd: Option<String>,
+    workspace_cwd: Option<String>,
+    current_dir: String,
+) -> SessionScope {
+    if is_agent {
+        return SessionScope {
+            service_name: None,
+            work_dir: workspace_cwd.unwrap_or(current_dir),
+        };
+    }
+
+    SessionScope {
+        service_name: supplied_service_name,
+        work_dir: supplied_cwd
+            .or(configured_service_cwd)
+            .unwrap_or(current_dir),
+    }
+}
+
 /// Gates PTY output behind the frontend attaching its event listener. The shell
 /// prints its prompt within milliseconds of spawning — well before the async
 /// `listen()` on the JS side resolves — so without this the first prompt is lost
@@ -136,36 +165,25 @@ pub async fn create_terminal_session(
     cwd: Option<String>,
     agent: Option<AgentTerminalRequest>,
 ) -> Result<TerminalSession, String> {
-    let id = if agent.is_some() {
-        format!("agent:{}", Uuid::new_v4())
+    let is_agent = agent.is_some();
+    let config = if is_agent || (cwd.is_none() && service_name.is_some()) {
+        state.config_store.load().await.ok()
     } else {
-        service_name
-            .as_ref()
-            .map(|name| format!("svc:{name}"))
-            .unwrap_or_else(|| Uuid::new_v4().to_string())
+        None
     };
-
-    if let Some(existing) = state.terminal_manager.sessions.lock().unwrap().get(&id) {
-        return Ok(existing.metadata.clone());
-    }
-
-    // Default the working dir to the service's own cwd so "the terminal in the
-    // service" actually lands in the project, not the app's launch directory.
-    let mut work_dir = cwd;
-    if work_dir.is_none() {
-        if let Some(name) = &service_name {
-            if let Ok(config) = state.config_store.load().await {
-                work_dir = config
-                    .services
-                    .iter()
-                    .find(|s| &s.name == name)
-                    .and_then(|s| s.cwd.clone());
-            }
-        }
-    }
-    if work_dir.is_none() && agent.is_some() {
-        if let Ok(config) = state.config_store.load().await {
-            work_dir = config
+    let configured_service_cwd = if is_agent {
+        None
+    } else {
+        service_name.as_ref().and_then(|name| {
+            config
+                .as_ref()
+                .and_then(|config| config.services.iter().find(|service| &service.name == name))
+                .and_then(|service| service.cwd.clone())
+        })
+    };
+    let workspace_cwd = if is_agent {
+        config.as_ref().and_then(|config| {
+            config
                 .selected_git_repository
                 .as_ref()
                 .and_then(|selected| {
@@ -175,16 +193,38 @@ pub async fn create_terminal_session(
                         .find(|repo| &repo.name == selected)
                 })
                 .or_else(|| config.git_repositories.first())
-                .map(|repo| repo.path.clone());
-        }
-    }
-    let work_dir = match work_dir {
-        Some(dir) => dir,
-        None => std::env::current_dir()
-            .map_err(|e| e.to_string())?
-            .to_string_lossy()
-            .into_owned(),
+                .map(|repo| repo.path.clone())
+        })
+    } else {
+        None
     };
+    let current_dir = std::env::current_dir()
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .into_owned();
+    let scope = resolve_session_scope(
+        is_agent,
+        service_name,
+        cwd,
+        configured_service_cwd,
+        workspace_cwd,
+        current_dir,
+    );
+    let session_service_name = scope.service_name;
+    let work_dir = scope.work_dir;
+
+    let id = if is_agent {
+        format!("agent:{}", Uuid::new_v4())
+    } else {
+        session_service_name
+            .as_ref()
+            .map(|name| format!("svc:{name}"))
+            .unwrap_or_else(|| Uuid::new_v4().to_string())
+    };
+
+    if let Some(existing) = state.terminal_manager.sessions.lock().unwrap().get(&id) {
+        return Ok(existing.metadata.clone());
+    }
 
     let (shell, args, label, kind, provider) = if let Some(request) = &agent {
         let claude_bin = agent_binary("NOMOREIDE_CLAUDE_BIN", "claude");
@@ -203,7 +243,7 @@ pub async fn create_terminal_session(
         )
     } else {
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".into());
-        let kind = if service_name.is_some() {
+        let kind = if session_service_name.is_some() {
             "service"
         } else {
             "shell"
@@ -211,14 +251,14 @@ pub async fn create_terminal_session(
         (
             shell,
             Vec::new(),
-            service_name.clone(),
+            session_service_name.clone(),
             Some(kind.to_string()),
             None,
         )
     };
     let session = TerminalSession {
         id: id.clone(),
-        service_name: service_name.clone(),
+        service_name: session_service_name,
         cwd: work_dir.clone(),
         cols: 80,
         rows: 24,
@@ -370,7 +410,62 @@ use std::io::Write;
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_agent_invocation, normalize_agent_label};
+    use super::{derive_agent_invocation, normalize_agent_label, resolve_session_scope};
+
+    #[test]
+    fn agent_scope_ignores_browser_service_and_cwd_in_favor_of_workspace() {
+        let scope = resolve_session_scope(
+            true,
+            Some("browser-service".to_string()),
+            Some("/browser/cwd".to_string()),
+            Some("/configured/service".to_string()),
+            Some("/workspace/repository".to_string()),
+            "/current/dir".to_string(),
+        );
+
+        assert_eq!(scope.service_name, None);
+        assert_eq!(scope.work_dir, "/workspace/repository");
+    }
+
+    #[test]
+    fn agent_scope_falls_back_to_current_dir_without_a_workspace_repository() {
+        let scope = resolve_session_scope(
+            true,
+            Some("browser-service".to_string()),
+            Some("/browser/cwd".to_string()),
+            Some("/configured/service".to_string()),
+            None,
+            "/current/dir".to_string(),
+        );
+
+        assert_eq!(scope.service_name, None);
+        assert_eq!(scope.work_dir, "/current/dir");
+    }
+
+    #[test]
+    fn non_agent_scope_preserves_plain_and_service_precedence() {
+        let requested = resolve_session_scope(
+            false,
+            Some("api".to_string()),
+            Some("/requested/cwd".to_string()),
+            Some("/configured/service".to_string()),
+            Some("/workspace/repository".to_string()),
+            "/current/dir".to_string(),
+        );
+        let configured = resolve_session_scope(
+            false,
+            Some("api".to_string()),
+            None,
+            Some("/configured/service".to_string()),
+            Some("/workspace/repository".to_string()),
+            "/current/dir".to_string(),
+        );
+
+        assert_eq!(requested.service_name.as_deref(), Some("api"));
+        assert_eq!(requested.work_dir, "/requested/cwd");
+        assert_eq!(configured.service_name.as_deref(), Some("api"));
+        assert_eq!(configured.work_dir, "/configured/service");
+    }
 
     #[test]
     fn claude_invocation_uses_default_binary_and_preserves_the_full_prompt() {
