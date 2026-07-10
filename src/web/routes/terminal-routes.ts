@@ -6,7 +6,7 @@ import { patternRoute, route, type Route } from "./context.js";
 
 const agentSessionSchema = z.object({
   provider: z.enum(["codex", "claude"]),
-  prompt: z.string().trim().min(1),
+  prompt: z.string().refine((prompt) => prompt.trim().length > 0),
   label: z.string().optional(),
 });
 

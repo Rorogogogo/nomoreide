@@ -512,6 +512,29 @@ describe("agent terminal sessions", () => {
     });
   });
 
+  test("preserves surrounding whitespace in a valid agent prompt", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+    const prompt = "  First line\nSecond line\n  ";
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent: { provider: "codex", prompt } }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions?.args).toEqual([
+      "--no-alt-screen",
+      prompt,
+    ]);
+  });
+
   test.each([
     ["unknown provider", { provider: "other", prompt: "Do work" }],
     ["blank prompt", { provider: "codex", prompt: "   " }],
