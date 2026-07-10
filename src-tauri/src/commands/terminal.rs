@@ -1,8 +1,11 @@
+#[cfg(target_os = "macos")]
 use crate::core::process_manager::service_path;
 use crate::AppState;
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use portable_pty::{native_pty_system, Child, ChildKiller, CommandBuilder, PtySize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ffi::OsString;
+use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -69,6 +72,51 @@ fn agent_binary(env_name: &str, default: &str) -> String {
         .unwrap_or_else(|| default.to_string())
 }
 
+fn resolve_config_load<T, E: Display>(
+    required: bool,
+    result: Result<T, E>,
+) -> Result<Option<T>, String> {
+    if required {
+        result.map(Some).map_err(|error| error.to_string())
+    } else {
+        Ok(result.ok())
+    }
+}
+
+#[cfg(unix)]
+fn default_terminal_shell_from(shell: Option<OsString>) -> OsString {
+    shell
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| OsString::from("/bin/sh"))
+}
+
+#[cfg(windows)]
+fn default_terminal_shell_from(comspec: Option<OsString>) -> OsString {
+    comspec
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| OsString::from("cmd.exe"))
+}
+
+#[cfg(unix)]
+fn default_terminal_shell() -> OsString {
+    default_terminal_shell_from(std::env::var_os("SHELL"))
+}
+
+#[cfg(windows)]
+fn default_terminal_shell() -> OsString {
+    default_terminal_shell_from(std::env::var_os("COMSPEC"))
+}
+
+#[cfg(target_os = "macos")]
+fn agent_path_override() -> Option<OsString> {
+    Some(OsString::from(service_path()))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn agent_path_override() -> Option<OsString> {
+    None
+}
+
 fn normalize_agent_label(provider: &str, label: Option<&str>) -> String {
     let requested = label.map(str::trim).filter(|label| !label.is_empty());
     let fallback = if provider == "codex" {
@@ -122,8 +170,7 @@ struct OutputGate {
 struct PtySession {
     metadata: TerminalSession,
     writer: Box<dyn std::io::Write + Send>,
-    #[allow(dead_code)]
-    child: Box<dyn portable_pty::Child + Send>,
+    killer: Box<dyn ChildKiller + Send + Sync>,
     #[allow(dead_code)]
     master: Box<dyn portable_pty::MasterPty + Send>,
     gate: Arc<Mutex<OutputGate>>,
@@ -148,6 +195,28 @@ impl TerminalManager {
             .map(|session| session.metadata.clone())
             .collect()
     }
+
+    fn start_child_waiter(&self, id: String, mut child: Box<dyn Child + Send + Sync>) {
+        let sessions = self.sessions.clone();
+        std::thread::spawn(move || {
+            let state = if child.wait().is_ok() {
+                "exited"
+            } else {
+                "error"
+            };
+            if let Some(session) = sessions.lock().unwrap().get_mut(&id) {
+                session.metadata.state = state.to_string();
+            }
+        });
+    }
+
+    fn close_session(&self, id: &str) -> Result<(), String> {
+        let session = { self.sessions.lock().unwrap().remove(id) };
+        if let Some(mut session) = session {
+            session.killer.kill().map_err(|error| error.to_string())?;
+        }
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -167,7 +236,7 @@ pub async fn create_terminal_session(
 ) -> Result<TerminalSession, String> {
     let is_agent = agent.is_some();
     let config = if is_agent || (cwd.is_none() && service_name.is_some()) {
-        state.config_store.load().await.ok()
+        resolve_config_load(is_agent, state.config_store.load().await)?
     } else {
         None
     };
@@ -232,7 +301,7 @@ pub async fn create_terminal_session(
         let invocation =
             derive_agent_invocation(&request.provider, &request.prompt, &claude_bin, &codex_bin)?;
         (
-            invocation.executable,
+            OsString::from(invocation.executable),
             invocation.args,
             Some(normalize_agent_label(
                 &request.provider,
@@ -242,7 +311,7 @@ pub async fn create_terminal_session(
             Some(request.provider.clone()),
         )
     } else {
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".into());
+        let shell = default_terminal_shell();
         let kind = if session_service_name.is_some() {
             "service"
         } else {
@@ -262,7 +331,7 @@ pub async fn create_terminal_session(
         cwd: work_dir.clone(),
         cols: 80,
         rows: 24,
-        shell: shell.clone(),
+        shell: shell.to_string_lossy().into_owned(),
         state: "running".to_string(),
         label,
         kind,
@@ -282,13 +351,18 @@ pub async fn create_terminal_session(
     let mut cmd = CommandBuilder::new(&shell);
     cmd.args(&args);
     cmd.cwd(&work_dir);
-    // A Finder-launched macOS app inherits only a minimal PATH, so `npm`/`node`
-    // etc. would be missing in the shell. Seed the resolved dev PATH.
-    cmd.env("PATH", service_path());
+    // Finder-launched macOS apps inherit a minimal PATH. Other platforms keep
+    // the environment copied by CommandBuilder unchanged.
+    if let Some(path) = agent_path_override() {
+        cmd.env("PATH", path);
+    }
 
-    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
+    // Complete every fallible PTY-handle setup step before spawning. Once a
+    // child exists, it is always handed to the waiter below for reaping.
+    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    let killer = child.clone_killer();
 
     let gate = Arc::new(Mutex::new(OutputGate::default()));
 
@@ -318,7 +392,7 @@ pub async fn create_terminal_session(
     let pty_session = PtySession {
         metadata: session.clone(),
         writer,
-        child,
+        killer,
         master: pair.master,
         gate,
     };
@@ -328,6 +402,7 @@ pub async fn create_terminal_session(
         .lock()
         .unwrap()
         .insert(id.clone(), pty_session);
+    state.terminal_manager.start_child_waiter(id, child);
 
     Ok(session)
 }
@@ -400,8 +475,7 @@ pub async fn resize_terminal(
 
 #[tauri::command]
 pub async fn close_terminal_session(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    state.terminal_manager.sessions.lock().unwrap().remove(&id);
-    Ok(())
+    state.terminal_manager.close_session(&id)
 }
 
 // Needed so std::io::Read is available in the spawned thread
@@ -410,7 +484,161 @@ use std::io::Write;
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_agent_invocation, normalize_agent_label, resolve_session_scope};
+    use super::{
+        derive_agent_invocation, normalize_agent_label, resolve_config_load, resolve_session_scope,
+    };
+
+    #[test]
+    fn agent_config_load_errors_are_propagated() {
+        let result = resolve_config_load::<(), _>(true, Err("config unavailable"));
+
+        assert_eq!(result.unwrap_err(), "config unavailable");
+    }
+
+    #[test]
+    fn legacy_non_agent_config_load_errors_remain_best_effort() {
+        let result = resolve_config_load::<(), _>(false, Err("config unavailable"));
+
+        assert_eq!(result.unwrap(), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_shell_resolution_uses_shell_then_bin_sh() {
+        use super::default_terminal_shell_from;
+        use std::ffi::{OsStr, OsString};
+
+        assert_eq!(
+            default_terminal_shell_from(Some(OsString::from("/custom/shell"))),
+            OsStr::new("/custom/shell")
+        );
+        assert_eq!(default_terminal_shell_from(None), OsStr::new("/bin/sh"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_shell_resolution_uses_comspec_then_cmd_and_preserves_path() {
+        use super::default_terminal_shell_from;
+        use std::ffi::{OsStr, OsString};
+
+        assert_eq!(
+            default_terminal_shell_from(Some(OsString::from("custom-cmd.exe"))),
+            OsStr::new("custom-cmd.exe")
+        );
+        assert_eq!(default_terminal_shell_from(None), OsStr::new("cmd.exe"));
+        assert!(super::agent_path_override().is_none());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_agent_path_is_enriched() {
+        assert!(super::agent_path_override().is_some());
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    #[test]
+    fn non_macos_agent_path_preserves_inherited_environment() {
+        assert!(super::agent_path_override().is_none());
+    }
+
+    #[cfg(unix)]
+    fn spawn_test_session(manager: &super::TerminalManager, id: &str, script: &str) -> u32 {
+        use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+        use std::sync::{Arc, Mutex};
+
+        let pair = native_pty_system()
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+        let mut command = CommandBuilder::new("/bin/sh");
+        command.args(["-c", script]);
+        let child = pair.slave.spawn_command(command).unwrap();
+        let pid = child.process_id().unwrap();
+        let killer = child.clone_killer();
+        let writer = pair.master.take_writer().unwrap();
+        let session = super::PtySession {
+            metadata: super::TerminalSession {
+                id: id.to_string(),
+                service_name: None,
+                cwd: "/tmp".to_string(),
+                cols: 80,
+                rows: 24,
+                shell: "/bin/sh".to_string(),
+                state: "running".to_string(),
+                label: None,
+                kind: Some("shell".to_string()),
+                provider: None,
+            },
+            writer,
+            killer,
+            master: pair.master,
+            gate: Arc::new(Mutex::new(super::OutputGate::default())),
+        };
+        manager
+            .sessions
+            .lock()
+            .unwrap()
+            .insert(id.to_string(), session);
+        manager.start_child_waiter(id.to_string(), child);
+        pid
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn natural_child_exit_is_reaped_and_reported_as_exited() {
+        let manager = super::TerminalManager::new();
+        let pid = spawn_test_session(&manager, "natural", "exit 0");
+
+        for _ in 0..100 {
+            let state = manager
+                .list_sessions()
+                .into_iter()
+                .find(|session| session.id == "natural")
+                .unwrap()
+                .state;
+            if state == "exited" {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        let session = manager
+            .list_sessions()
+            .into_iter()
+            .find(|session| session.id == "natural")
+            .unwrap();
+        assert_eq!(session.state, "exited");
+        assert!(!process_exists(pid));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn closing_a_session_terminates_and_reaps_a_long_running_child() {
+        let manager = super::TerminalManager::new();
+        let pid = spawn_test_session(&manager, "long-running", "sleep 30");
+        assert!(process_exists(pid));
+
+        manager.close_session("long-running").unwrap();
+
+        for _ in 0..100 {
+            if !process_exists(pid) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(!process_exists(pid));
+        assert!(manager.list_sessions().is_empty());
+    }
+
+    #[cfg(unix)]
+    fn process_exists(pid: u32) -> bool {
+        let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
+        result == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+    }
 
     #[test]
     fn agent_scope_ignores_browser_service_and_cwd_in_favor_of_workspace() {
