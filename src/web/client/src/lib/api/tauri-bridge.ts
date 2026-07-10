@@ -728,7 +728,7 @@ export async function tauri_listTerminalSessions() {
   return sessions.map((session) => ({
     ...session,
     serviceName: session.serviceName ?? undefined,
-    label: session.serviceName ?? undefined,
+    label: session.serviceName ?? session.label ?? undefined,
   }));
 }
 
@@ -748,7 +748,7 @@ export async function tauri_createTerminalSession(opts?: {
   return {
     ...session,
     serviceName: session.serviceName ?? undefined,
-    label: session.serviceName ?? undefined,
+    label: session.serviceName ?? session.label ?? undefined,
   };
 }
 

@@ -74,6 +74,14 @@ describe("agent terminal client API", () => {
     expect(bridgeSource).toMatch(/agent:\s*opts\?\.agent\s*\?\?\s*null/);
   });
 
+  test("Tauri list and create adapters preserve agent labels", () => {
+    const labelFallbacks = bridgeSource.match(
+      /label:\s*session\.serviceName\s*\?\?\s*session\.label\s*\?\?\s*undefined/g,
+    );
+
+    expect(labelFallbacks).toHaveLength(2);
+  });
+
   test("the terminal entry point exports and dispatches agent creation", () => {
     expect(terminalSource).toContain("export function createAgentTerminalSession");
     expect(terminalSource).toContain("terminalApi().createAgentTerminalSession(opts)");
