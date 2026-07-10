@@ -58,6 +58,8 @@ export function useAgentTerminalTasks() {
   const activeTaskIdRef = useRef<string | null>(null);
   const [creating, setCreating] = useState(0);
   const [terminalError, setTerminalError] = useState<string | null>(null);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
+  const pendingTaskIdsRef = useRef(new Set<string>());
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [provider, setProvider] = useState<AgentChatProviderInfo | null>(null);
   const [providers, setProviders] = useState<AgentChatProviderOption[]>([]);
@@ -255,6 +257,9 @@ export function useAgentTerminalTasks() {
 
   const closeTask = useCallback(
     async (id: string) => {
+      if (pendingTaskIdsRef.current.has(id)) return;
+      pendingTaskIdsRef.current.add(id);
+      setPendingTaskIds(new Set(pendingTaskIdsRef.current));
       closedIdsRef.current.add(id);
       try {
         await closeTerminalSession(id);
@@ -269,11 +274,52 @@ export function useAgentTerminalTasks() {
           setActiveTaskId(adjacent?.id ?? null);
         }
       } catch (error) {
+        // Stop intentionally terminates the remote PTY while retaining its
+        // local tab. A later close may therefore see an already-gone session;
+        // closing that exited tab is still a successful local operation.
+        const current = tasksRef.current;
+        const closedIndex = current.findIndex((task) => task.id === id);
+        if (current[closedIndex]?.state === "exited") {
+          const next = current.filter((task) => task.id !== id);
+          taskOrderRef.current.delete(id);
+          setTasks(next);
+          if (activeTaskIdRef.current === id) {
+            const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
+            setActiveTaskId(adjacent?.id ?? null);
+          }
+          return;
+        }
         closedIdsRef.current.delete(id);
         if (mountedRef.current) setTerminalError(errorMessage(error));
+      } finally {
+        pendingTaskIdsRef.current.delete(id);
+        if (mountedRef.current) setPendingTaskIds(new Set(pendingTaskIdsRef.current));
       }
     },
     [setActiveTaskId, setTasks],
+  );
+
+  const stopTask = useCallback(
+    async (id: string) => {
+      if (pendingTaskIdsRef.current.has(id)) return;
+      pendingTaskIdsRef.current.add(id);
+      setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+      setTerminalError(null);
+      try {
+        await closeTerminalSession(id);
+        if (!mountedRef.current) return;
+        const next = tasksRef.current.map((task) =>
+          task.id === id ? { ...task, state: "exited" as const } : task,
+        );
+        setTasks(next);
+      } catch (error) {
+        if (mountedRef.current) setTerminalError(errorMessage(error));
+      } finally {
+        pendingTaskIdsRef.current.delete(id);
+        if (mountedRef.current) setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+      }
+    },
+    [setTasks],
   );
 
   const updateTaskStatus = useCallback(
@@ -292,6 +338,7 @@ export function useAgentTerminalTasks() {
     setActiveTaskId,
     creating,
     terminalError,
+    pendingTaskIds,
     error: terminalError,
     provider,
     configured,
@@ -299,6 +346,7 @@ export function useAgentTerminalTasks() {
     selectProvider,
     createTask,
     closeTask,
+    stopTask,
     updateTaskStatus,
   };
 }

@@ -30,7 +30,7 @@ import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
-import { AgentDock } from "@/features/agent/chat/agent-dock";
+import { AgentTerminalDock } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
@@ -553,19 +553,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           upstream={data.git.status?.upstream}
         />
       ) : null}
-      <AgentDock
+      <AgentTerminalDock
         git={data?.git}
         onGitRefresh={() => void refresh({ silent: true })}
-        onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")}
-        onOpenService={(name) => {
-          setFocusService(name);
-          setPage("services");
-          void refresh({ silent: true });
-        }}
-        onOpenSqlConsole={(connection, sql) => {
-          setStagedSql((prev) => ({ connection, sql, nonce: (prev?.nonce ?? 0) + 1 }));
-          setPage("database");
-        }}
       />
     </div>
     </div>

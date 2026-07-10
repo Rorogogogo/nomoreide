@@ -341,6 +341,29 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("stop retains an exited tab, ignores racing actions, then close removes it", async () => {
+    api.listTerminalSessions.mockResolvedValue([session("one"), session("two")]);
+    const stopped = deferred<void>();
+    api.closeTerminalSession.mockReturnValueOnce(stopped.promise).mockResolvedValue(undefined);
+    const mounted = await mountProvider();
+
+    let stopping!: Promise<void>;
+    act(() => { stopping = mounted.value.stopTask("one"); });
+    act(() => { void mounted.value.stopTask("one"); void mounted.value.closeTask("one"); });
+    expect(api.closeTerminalSession).toHaveBeenCalledTimes(1);
+    expect(mounted.value.pendingTaskIds.has("one")).toBe(true);
+
+    await act(async () => stopped.resolve());
+    await stopping;
+    expect(mounted.value.tasks.find((task) => task.id === "one")?.state).toBe("exited");
+    expect(mounted.value.tasks.map((task) => task.id)).toContain("one");
+
+    await act(async () => mounted.value.closeTask("one"));
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["two"]);
+    expect(mounted.value.terminalError).toBeNull();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("surfaces create failures without corrupting existing tasks", async () => {
     api.listTerminalSessions.mockResolvedValue([session("safe")]);
     api.createAgentTerminalSession.mockRejectedValue(new Error("CLI missing"));
