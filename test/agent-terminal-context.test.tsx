@@ -180,6 +180,25 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("does not activate a background task when pending hydration later lists it", async () => {
+    const listed = deferred<Array<ReturnType<typeof session>>>();
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    api.createAgentTerminalSession.mockResolvedValue(session("background-race"));
+    const mounted = await mountProvider();
+
+    act(() => mounted.value.sendToAgent({ prompt: "quiet", background: true }));
+    await act(async () => {});
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["background-race"]);
+    expect(mounted.value.activeTaskId).toBeNull();
+
+    await act(async () => listed.resolve([session("background-race")]));
+
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["background-race"]);
+    expect(mounted.value.activeTaskId).toBeNull();
+    expect(mounted.value.open).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("opens a draft without creating a terminal task", async () => {
     const mounted = await mountProvider();
 

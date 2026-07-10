@@ -130,7 +130,13 @@ export function useAgentTerminalTasks() {
           ...tasksRef.current.filter((task) => !attachedIds.has(task.id)),
         ];
         setTasks(sortTasks(merged));
-        if (!activeTaskIdRef.current && hydrated[0]) setActiveTaskId(hydrated[0].id);
+        if (
+          createSequenceRef.current === 0 &&
+          !activeTaskIdRef.current &&
+          hydrated[0]
+        ) {
+          setActiveTaskId(hydrated[0].id);
+        }
       })
       .catch((error) => {
         if (mountedRef.current) setTerminalError(errorMessage(error));
