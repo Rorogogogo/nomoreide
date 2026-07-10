@@ -538,6 +538,7 @@ describe("agent terminal sessions", () => {
   test.each([
     ["unknown provider", { provider: "other", prompt: "Do work" }],
     ["blank prompt", { provider: "codex", prompt: "   " }],
+    ["null agent", null],
   ])("returns 400 for an %s", async (_name, agent) => {
     const manager = new FakeTerminalManager(tempDir);
     server = await createWebServer({

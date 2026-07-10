@@ -26,7 +26,7 @@ export const terminalRoutes: Route[] = [
     async ({ request, response, terminalManager, configStore }) => {
       const body = await readJson(request);
 
-      if (body.agent !== undefined && body.agent !== null) {
+      if (Object.hasOwn(body, "agent")) {
         const parsed = agentSessionSchema.safeParse(body.agent);
         if (!parsed.success) {
           const invalidField = parsed.error.issues[0]?.path[0];
