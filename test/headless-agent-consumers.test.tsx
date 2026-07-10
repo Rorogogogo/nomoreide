@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, useEffect } from "react";
+import { act, StrictMode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { useSqlGenerate } from "../src/web/client/src/features/database/use-sql-generate";
@@ -30,7 +30,7 @@ vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ provider: { id: "codex" } }),
 }));
 
-async function mountHarness<T>(useValue: () => T) {
+async function mountHarness<T>(useValue: () => T, strict = false) {
   let current: T | undefined;
   function Harness() {
     const value = useValue();
@@ -42,7 +42,15 @@ async function mountHarness<T>(useValue: () => T) {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(<Harness />));
+  await act(async () =>
+    root.render(strict ? (
+      <StrictMode>
+        <Harness />
+      </StrictMode>
+    ) : (
+      <Harness />
+    )),
+  );
   return {
     get value() {
       if (!current) throw new Error("hook has not rendered");
@@ -103,6 +111,28 @@ describe("headless result consumers", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("completes a workflow after Strict Mode replays its effects", async () => {
+    api.streamAgentChat.mockImplementation(
+      async (_prompt, _resume, onEvent: (event: unknown) => void) => {
+        onEvent({ type: "text", text: "Done\nWORKFLOW_STATUS: ok" });
+      },
+    );
+    const mounted = await mountHarness(() => useWorkflowRunner(), true);
+
+    act(() => {
+      mounted.value.start({
+        id: "strict-workflow",
+        name: "Strict workflow",
+        steps: [{ kind: "agent", id: "agent-1", title: "Implement", prompt: "Do it" }],
+      });
+    });
+    await act(async () => {});
+
+    expect(mounted.value.run?.outcome).toBe("done");
+    expect(api.streamAgentChat).toHaveBeenCalledOnce();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("generates SQL directly from isolated streamed text", async () => {
     api.streamAgentChat.mockImplementation(
       async (_prompt, _resume, onEvent: (event: unknown) => void) => {
@@ -145,5 +175,35 @@ describe("headless result consumers", () => {
     await generation;
 
     expect(api.streamAgentChat).not.toHaveBeenCalled();
+  });
+
+  test("aborts a running workflow agent and does not refresh after unmount", async () => {
+    const onRefresh = vi.fn();
+    let capturedSignal!: AbortSignal;
+    api.streamAgentChat.mockImplementation(
+      async (_prompt, _resume, _onEvent, signal: AbortSignal) => {
+        capturedSignal = signal;
+        await new Promise<void>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), {
+            once: true,
+          });
+        });
+      },
+    );
+    const mounted = await mountHarness(() => useWorkflowRunner(onRefresh), true);
+
+    act(() => {
+      mounted.value.start({
+        id: "unmount-workflow",
+        name: "Unmount workflow",
+        steps: [{ kind: "agent", id: "agent-1", title: "Wait", prompt: "Wait" }],
+      });
+    });
+    await act(async () => Promise.resolve());
+    await unmount(mounted.root, mounted.host);
+    await Promise.resolve();
+
+    expect(capturedSignal.aborted).toBe(true);
+    expect(onRefresh).not.toHaveBeenCalled();
   });
 });

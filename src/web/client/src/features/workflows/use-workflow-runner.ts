@@ -77,6 +77,21 @@ export function useWorkflowRunner(onRefresh?: () => void) {
   const stopRef = useRef(false);
   const gateRef = useRef<((decision: GateDecision) => void) | null>(null);
   const headlessAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    stopRef.current = false;
+    return () => {
+      mountedRef.current = false;
+      stopRef.current = true;
+      busyRef.current = false;
+      headlessAbortRef.current?.abort();
+      headlessAbortRef.current = null;
+      gateRef.current?.("stop");
+      gateRef.current = null;
+    };
+  }, []);
 
   const waitForGate = useCallback(
     () => new Promise<GateDecision>((resolve) => {
@@ -131,7 +146,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       autoApprove: boolean,
       resumeFrom?: { index: number; statuses: StepStatus[]; outputs: string[]; startedAt: number },
     ) => {
-      if (busyRef.current) return;
+      if (busyRef.current || !mountedRef.current) return;
       busyRef.current = true;
       stopRef.current = false;
 
@@ -144,11 +159,13 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       const outputs: string[] = workflow.steps.map((_, i) => resumeFrom?.outputs[i] ?? "");
       const patch = (index: number, status: StepStatus, extra?: Partial<RunState>) => {
         statuses[index] = status;
+        if (!mountedRef.current) return;
         setRun((prev) =>
           prev ? { ...prev, index, statuses: [...statuses], outputs: [...outputs], ...extra } : prev,
         );
       };
 
+      if (!mountedRef.current) return;
       setRun({
         workflow,
         startedAt: resumeFrom?.startedAt ?? Date.now(),
@@ -161,6 +178,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       const halt = (outcome: RunOutcome) => {
         busyRef.current = false;
+        if (!mountedRef.current) return;
         setRun((prev) => (prev ? { ...prev, outcome, endedAt: Date.now() } : prev));
       };
 
@@ -185,7 +203,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           try {
             await runAction(step, i, outputs);
             patch(i, "done");
-            onRefresh?.();
+            if (mountedRef.current) onRefresh?.();
           } catch (caught) {
             if (step.op === "assert-pr-branch") {
               patch(i, "blocked", { error: messageOf(caught) });
@@ -223,6 +241,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           return;
         }
         headlessAbortRef.current = null;
+        if (!mountedRef.current) return halt("stopped");
         onRefresh?.();
         const result = readStepResult(agentText);
         outputs[i] = result.output || "(no reply from agent)";
@@ -288,7 +307,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
     gateRef.current?.("stop");
   }, []);
   const dismiss = useCallback(() => {
-    if (busyRef.current) return; // don't clear a live run
+    if (busyRef.current || !mountedRef.current) return; // don't clear a live run
     setRun(null);
   }, []);
 
