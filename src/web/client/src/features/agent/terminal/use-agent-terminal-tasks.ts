@@ -29,6 +29,10 @@ export interface CreateAgentTerminalTaskOptions {
 
 type AgentProviderId = AgentChatProviderInfo["id"];
 type AgentTaskPatch = Partial<Omit<AgentTerminalTask, "id">>;
+interface AgentTaskOrder {
+  group: "attached" | "created";
+  index: number;
+}
 
 function fallbackProviderInfo(id: AgentProviderId): AgentChatProviderInfo {
   return id === "codex"
@@ -62,6 +66,19 @@ export function useAgentTerminalTasks() {
   const createSequenceRef = useRef(0);
   const latestForegroundSequenceRef = useRef(0);
   const providerSelectionSequenceRef = useRef(0);
+  const taskOrderRef = useRef(new Map<string, AgentTaskOrder>());
+
+  const sortTasks = useCallback((items: AgentTerminalTask[]) => {
+    return [...items].sort((left, right) => {
+      const leftOrder = taskOrderRef.current.get(left.id);
+      const rightOrder = taskOrderRef.current.get(right.id);
+      if (!leftOrder || !rightOrder) return leftOrder ? 1 : rightOrder ? -1 : 0;
+      if (leftOrder.group !== rightOrder.group) {
+        return leftOrder.group === "attached" ? -1 : 1;
+      }
+      return leftOrder.index - rightOrder.index;
+    });
+  }, []);
 
   const setTasks = useCallback((next: AgentTerminalTask[]) => {
     tasksRef.current = next;
@@ -88,6 +105,11 @@ export function useAgentTerminalTasks() {
           (session): session is TerminalSessionInfo & { kind: "agent" } =>
             session.kind === "agent",
         );
+        attached.forEach((session, index) => {
+          if (!taskOrderRef.current.has(session.id)) {
+            taskOrderRef.current.set(session.id, { group: "attached", index });
+          }
+        });
         const existingById = new Map(
           tasksRef.current.map((task) => [task.id, task] as const),
         );
@@ -107,13 +129,13 @@ export function useAgentTerminalTasks() {
           ...hydrated,
           ...tasksRef.current.filter((task) => !attachedIds.has(task.id)),
         ];
-        setTasks(merged);
+        setTasks(sortTasks(merged));
         if (!activeTaskIdRef.current && hydrated[0]) setActiveTaskId(hydrated[0].id);
       })
       .catch((error) => {
         if (mountedRef.current) setTerminalError(errorMessage(error));
       });
-  }, [setActiveTaskId, setTasks]);
+  }, [setActiveTaskId, setTasks, sortTasks]);
 
   useEffect(() => {
     const selectionAtRequest = providerSelectionSequenceRef.current;
@@ -138,6 +160,7 @@ export function useAgentTerminalTasks() {
           providerSelectionSequenceRef.current === selectionAtRequest
         ) {
           setConfigured(false);
+          setTerminalError("Unable to load agent provider status");
         }
       });
   }, []);
@@ -147,6 +170,7 @@ export function useAgentTerminalTasks() {
       const selection = ++providerSelectionSequenceRef.current;
       const option = providers.find((candidate) => candidate.id === id);
       providerRef.current = id;
+      setTerminalError(null);
       setProvider(option ?? fallbackProviderInfo(id));
       if (option) setConfigured(option.configured);
       try {
@@ -156,8 +180,11 @@ export function useAgentTerminalTasks() {
         setProvider(selected);
         const selectedOption = providers.find((candidate) => candidate.id === selected.id);
         if (selectedOption) setConfigured(selectedOption.configured);
-      } catch {
+      } catch (error) {
         // Keep the optimistic in-memory choice, matching the legacy selector.
+        if (mountedRef.current && providerSelectionSequenceRef.current === selection) {
+          setTerminalError(errorMessage(error));
+        }
       }
     },
     [providers],
@@ -189,10 +216,11 @@ export function useAgentTerminalTasks() {
           source,
           createdAt,
         };
+        taskOrderRef.current.set(task.id, { group: "created", index: sequence });
         const withoutDuplicate = tasksRef.current.filter(
           (candidate) => candidate.id !== task.id,
         );
-        setTasks([...withoutDuplicate, task]);
+        setTasks(sortTasks([...withoutDuplicate, task]));
         if (!background && latestForegroundSequenceRef.current === sequence) {
           setActiveTaskId(task.id);
         }
@@ -204,7 +232,7 @@ export function useAgentTerminalTasks() {
         if (mountedRef.current) setCreating((count) => Math.max(0, count - 1));
       }
     },
-    [setActiveTaskId, setTasks],
+    [setActiveTaskId, setTasks, sortTasks],
   );
 
   const closeTask = useCallback(
@@ -215,6 +243,7 @@ export function useAgentTerminalTasks() {
         const current = tasksRef.current;
         const closedIndex = current.findIndex((task) => task.id === id);
         const next = current.filter((task) => task.id !== id);
+        taskOrderRef.current.delete(id);
         setTasks(next);
         if (activeTaskIdRef.current === id) {
           const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
@@ -243,6 +272,7 @@ export function useAgentTerminalTasks() {
     setActiveTaskId,
     creating,
     terminalError,
+    error: terminalError,
     provider,
     configured,
     providers,

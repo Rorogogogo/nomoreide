@@ -159,10 +159,7 @@ describe("AgentProvider terminal tasks", () => {
 
     await act(async () => second.resolve(session("task-2")));
     await act(async () => first.resolve(session("task-1")));
-    expect(mounted.value.tasks.map((task) => task.id).sort()).toEqual([
-      "task-1",
-      "task-2",
-    ]);
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["task-1", "task-2"]);
     expect(mounted.value.activeTaskId).toBe("task-2");
     expect(mounted.value.open).toBe(true);
     await unmount(mounted.root, mounted.host);
@@ -221,6 +218,17 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("surfaces provider persistence failures without reverting the optimistic choice", async () => {
+    api.setChatProvider.mockRejectedValue(new Error("Cannot save provider"));
+    const mounted = await mountProvider();
+
+    await act(async () => mounted.value.selectProvider("codex"));
+
+    expect(mounted.value.provider?.id).toBe("codex");
+    expect(mounted.value.error).toBe("Cannot save provider");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("reattaches only existing agent terminal sessions", async () => {
     api.listTerminalSessions.mockResolvedValue([
       session("agent-one"),
@@ -255,14 +263,21 @@ describe("AgentProvider terminal tasks", () => {
   test("surfaces create failures without corrupting existing tasks", async () => {
     api.listTerminalSessions.mockResolvedValue([session("safe")]);
     api.createAgentTerminalSession.mockRejectedValue(new Error("CLI missing"));
+    api.streamAgentChat.mockImplementation(
+      async (_message, _sessionId, onEvent: (event: unknown) => void) => {
+        onEvent({ type: "error", message: "obsolete chat error" });
+      },
+    );
     const mounted = await mountProvider();
 
     act(() => mounted.value.sendToAgent({ prompt: "fail" }));
     await act(async () => {});
+    await act(async () => mounted.value.send("legacy bridge"));
 
     expect(mounted.value.tasks.map((task) => task.id)).toEqual(["safe"]);
     expect(mounted.value.activeTaskId).toBe("safe");
     expect(mounted.value.terminalError).toBe("CLI missing");
+    expect(mounted.value.error).toBe("CLI missing");
     await unmount(mounted.root, mounted.host);
   });
 
