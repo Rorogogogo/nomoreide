@@ -52,7 +52,7 @@ function fallbackProviderInfo(id: AgentChatProviderInfo["id"]): AgentChatProvide
     : { id, label: "Claude Code", commandName: "claude", installHint: "", intro: "" };
 }
 
-export function useAgentChat() {
+export function useAgentChat({ loadProviderStatus = true } = {}) {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +71,7 @@ export function useAgentChat() {
   const liveSessionRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    if (!loadProviderStatus) return;
     void getAgentChatStatus()
       .then((status) => {
         setConfigured(status.configured);
@@ -79,7 +80,7 @@ export function useAgentChat() {
         providerRef.current = status.provider?.id;
       })
       .catch(() => setConfigured(false));
-  }, []);
+  }, [loadProviderStatus]);
 
   // Switch the active provider and persist it. Optimistic: reflect the choice
   // immediately so the UI toggles even against an older backend that doesn't

@@ -2,12 +2,11 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useAgentChat } from "./use-agent-chat";
+import { useAgentTerminalTasks } from "../terminal/use-agent-terminal-tasks";
 
 /** The object an AI action was invoked from, shown as a chip in the dock. */
 export interface AgentSource {
@@ -51,7 +50,8 @@ interface SendToAgentOptions {
   isolated?: boolean;
 }
 
-interface AgentContextValue extends ReturnType<typeof useAgentChat> {
+type AgentContextValue = ReturnType<typeof useAgentChat> &
+  ReturnType<typeof useAgentTerminalTasks> & {
   open: boolean;
   setOpen: (open: boolean) => void;
   draft: string;
@@ -71,7 +71,7 @@ interface AgentContextValue extends ReturnType<typeof useAgentChat> {
   setOnboarding: (value: boolean) => void;
   /** Open the dock and reveal the single repo-URL field; the agent does the rest. */
   startOnboard: () => void;
-}
+  };
 
 const AgentContext = createContext<AgentContextValue | null>(null);
 
@@ -81,17 +81,16 @@ const AgentContext = createContext<AgentContextValue | null>(null);
  * the dock itself is just one more consumer of this context.
  */
 export function AgentProvider({ children }: { children: ReactNode }) {
-  const chat = useAgentChat();
-  const { streaming } = chat;
+  // TODO(Task 8/9): remove this legacy chat bridge once the old dock,
+  // workflows, and SQL consumers read native terminal task state directly.
+  const chat = useAgentChat({ loadProviderStatus: false });
+  const terminalTasks = useAgentTerminalTasks();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [activeSource, setActiveSource] = useState<AgentSource | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
   const [stickNonce, setStickNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
-  // Actions fired while a turn is streaming wait here and flush in order.
-  const queueRef = useRef<Array<{ prompt: string; label?: string; autoApprove?: boolean; isolated?: boolean }>>([]);
-
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const bumpStick = useCallback(() => setStickNonce((nonce) => nonce + 1), []);
 
@@ -121,46 +120,36 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [bumpFocus],
   );
 
-  // Drain the queue the instant the agent goes idle (one turn at a time).
-  useEffect(() => {
-    if (streaming) return;
-    const next = queueRef.current.shift();
-    if (next) {
-      void send(next.prompt, { label: next.label, autoApprove: next.autoApprove, isolated: next.isolated });
-    }
-  }, [streaming, send]);
-
   const sendToAgent = useCallback(
-    ({ prompt, source, mode = "send", label, autoApprove, background, isolated }: SendToAgentOptions) => {
-      // Background sends (workflow steps) stay out of the way — don't pop the dock.
-      if (!background) setOpen(true);
-      setActiveSource(source ?? null);
-      // Opening the dock should always reveal the latest turn, even in draft mode.
-      bumpStick();
+    ({ prompt, source, mode = "send", label, background }: SendToAgentOptions) => {
       if (mode === "draft") {
+        setOpen(true);
+        setActiveSource(source ?? null);
+        bumpStick();
         setDraft(prompt);
         bumpFocus();
         return { queued: false };
       }
-      if (streaming) {
-        queueRef.current.push({ prompt, label, autoApprove, isolated });
-        return { queued: true };
+      if (!background) {
+        setOpen(true);
+        setActiveSource(source ?? null);
+        bumpStick();
       }
-      void send(prompt, { label, autoApprove, isolated });
+      void terminalTasks.createTask({ prompt, label, source, background });
       return { queued: false };
     },
-    [streaming, send, bumpFocus, bumpStick],
+    [terminalTasks.createTask, bumpFocus, bumpStick],
   );
 
-  // Clearing the conversation also drops queued work and the source chip.
+  // Legacy clear remains only for consumers awaiting Task 8/9 migration.
   const clear = useCallback(() => {
-    queueRef.current = [];
     setActiveSource(null);
     chat.clear();
   }, [chat]);
 
   const value: AgentContextValue = {
     ...chat,
+    ...terminalTasks,
     send,
     clear,
     open,
