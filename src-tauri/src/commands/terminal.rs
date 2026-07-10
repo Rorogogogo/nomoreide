@@ -3,10 +3,11 @@ use crate::core::process_manager::service_path;
 use crate::AppState;
 use portable_pty::{native_pty_system, Child, ChildKiller, CommandBuilder, PtySize};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -168,6 +169,8 @@ struct OutputGate {
 }
 
 struct PtySession {
+    generation: String,
+    pid: Option<u32>,
     metadata: TerminalSession,
     writer: Box<dyn std::io::Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
@@ -176,47 +179,267 @@ struct PtySession {
     gate: Arc<Mutex<OutputGate>>,
 }
 
+#[derive(Default)]
+struct TerminalRegistry {
+    sessions: HashMap<String, PtySession>,
+    creating: HashSet<String>,
+}
+
+#[derive(Debug)]
+enum IdReservation {
+    Existing(TerminalSession),
+    Reserved,
+}
+
 pub struct TerminalManager {
-    sessions: Arc<Mutex<HashMap<String, PtySession>>>,
+    registry: Arc<(Mutex<TerminalRegistry>, Condvar)>,
 }
 
 impl TerminalManager {
     pub fn new() -> Self {
         TerminalManager {
-            sessions: Arc::new(Mutex::new(HashMap::new())),
+            registry: Arc::new((Mutex::new(TerminalRegistry::default()), Condvar::new())),
         }
     }
 
     pub fn list_sessions(&self) -> Vec<TerminalSession> {
-        self.sessions
+        self.registry
+            .0
             .lock()
             .unwrap()
+            .sessions
             .values()
             .map(|session| session.metadata.clone())
             .collect()
     }
 
-    fn start_child_waiter(&self, id: String, mut child: Box<dyn Child + Send + Sync>) {
-        let sessions = self.sessions.clone();
+    fn reserve_id(&self, id: &str) -> Result<IdReservation, String> {
+        let mut registry = self.registry.0.lock().unwrap();
+        if let Some(session) = registry.sessions.get(id) {
+            return Ok(IdReservation::Existing(session.metadata.clone()));
+        }
+        if !registry.creating.insert(id.to_string()) {
+            return Err(format!(
+                "Terminal session creation already in progress: {id}"
+            ));
+        }
+        Ok(IdReservation::Reserved)
+    }
+
+    fn release_reservation(&self, id: &str) {
+        let mut registry = self.registry.0.lock().unwrap();
+        registry.creating.remove(id);
+        self.registry.1.notify_all();
+    }
+
+    fn complete_reservation(&self, id: String, session: PtySession) {
+        let mut registry = self.registry.0.lock().unwrap();
+        registry.creating.remove(&id);
+        registry.sessions.insert(id, session);
+        self.registry.1.notify_all();
+    }
+
+    fn start_child_waiter(
+        &self,
+        id: String,
+        generation: String,
+        mut child: Box<dyn Child + Send + Sync>,
+    ) {
+        let registry = self.registry.clone();
         std::thread::spawn(move || {
             let state = if child.wait().is_ok() {
                 "exited"
             } else {
                 "error"
             };
-            if let Some(session) = sessions.lock().unwrap().get_mut(&id) {
-                session.metadata.state = state.to_string();
+            let mut locked = registry.0.lock().unwrap();
+            if let Some(session) = locked.sessions.get_mut(&id) {
+                if session.generation == generation {
+                    session.metadata.state = state.to_string();
+                }
             }
+            registry.1.notify_all();
         });
     }
 
-    fn close_session(&self, id: &str) -> Result<(), String> {
-        let session = { self.sessions.lock().unwrap().remove(id) };
-        if let Some(mut session) = session {
-            session.killer.kill().map_err(|error| error.to_string())?;
+    #[cfg(test)]
+    fn mark_child_state(&self, id: &str, generation: &str, state: &str) {
+        let mut registry = self.registry.0.lock().unwrap();
+        if let Some(session) = registry.sessions.get_mut(id) {
+            if session.generation == generation {
+                session.metadata.state = state.to_string();
+            }
+        }
+        self.registry.1.notify_all();
+    }
+
+    fn wait_for_terminal_state(&self, id: &str, generation: &str, timeout: Duration) -> bool {
+        let deadline = Instant::now() + timeout;
+        let mut registry = self.registry.0.lock().unwrap();
+        loop {
+            let confirmed = registry
+                .sessions
+                .get(id)
+                .map(|session| {
+                    session.generation == generation && session.metadata.state != "running"
+                })
+                .unwrap_or(false);
+            if confirmed {
+                return true;
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return false;
+            }
+            let (next, wait) = self
+                .registry
+                .1
+                .wait_timeout(registry, deadline.saturating_duration_since(now))
+                .unwrap();
+            registry = next;
+            if wait.timed_out() {
+                return false;
+            }
+        }
+    }
+
+    fn remove_generation(&self, id: &str, generation: &str) -> bool {
+        let mut registry = self.registry.0.lock().unwrap();
+        let matches = registry
+            .sessions
+            .get(id)
+            .map(|session| session.generation == generation)
+            .unwrap_or(false);
+        if matches {
+            registry.sessions.remove(id);
+            self.registry.1.notify_all();
+        }
+        matches
+    }
+
+    #[cfg(unix)]
+    fn shutdown_running_session(
+        &self,
+        id: &str,
+        generation: &str,
+        pid: Option<u32>,
+        killer: &mut Box<dyn ChildKiller + Send + Sync>,
+    ) -> Result<(), String> {
+        let Some(pid) = pid else {
+            let kill_result = killer.kill();
+            if self.wait_for_terminal_state(id, generation, Duration::from_secs(2)) {
+                return Ok(());
+            }
+            return Err(kill_result
+                .err()
+                .map(|error| error.to_string())
+                .unwrap_or_else(|| format!("Terminal session did not exit: {id}")));
+        };
+
+        signal_process_group(pid, libc::SIGHUP).map_err(|error| error.to_string())?;
+        let mut confirmed =
+            self.wait_for_terminal_state(id, generation, Duration::from_millis(250));
+
+        // The main process may honor SIGHUP while an agent-spawned descendant
+        // ignores it. Kill any remaining members before dropping control.
+        if process_group_exists(pid) {
+            signal_process_group(pid, libc::SIGKILL).map_err(|error| error.to_string())?;
+        }
+        if !confirmed {
+            confirmed = self.wait_for_terminal_state(id, generation, Duration::from_secs(2));
+        }
+        if !confirmed {
+            return Err(format!(
+                "Terminal session termination was not confirmed: {id}"
+            ));
+        }
+        if !wait_for_process_group_exit(pid, Duration::from_secs(2)) {
+            return Err(format!("Terminal process group is still running: {id}"));
         }
         Ok(())
     }
+
+    #[cfg(not(unix))]
+    fn shutdown_running_session(
+        &self,
+        id: &str,
+        generation: &str,
+        _pid: Option<u32>,
+        killer: &mut Box<dyn ChildKiller + Send + Sync>,
+    ) -> Result<(), String> {
+        let kill_result = killer.kill();
+        if self.wait_for_terminal_state(id, generation, Duration::from_secs(2)) {
+            return Ok(());
+        }
+        Err(kill_result
+            .err()
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| format!("Terminal session termination was not confirmed: {id}")))
+    }
+
+    fn close_session(&self, id: &str) -> Result<(), String> {
+        let (generation, pid, mut killer, state) = {
+            let mut registry = self.registry.0.lock().unwrap();
+            let Some(session) = registry.sessions.get(id) else {
+                if registry.creating.contains(id) {
+                    return Err(format!(
+                        "Terminal session creation is still in progress: {id}"
+                    ));
+                }
+                return Ok(());
+            };
+            if session.metadata.state != "running" {
+                registry.sessions.remove(id);
+                return Ok(());
+            }
+            (
+                session.generation.clone(),
+                session.pid,
+                session.killer.clone_killer(),
+                session.metadata.state.clone(),
+            )
+        };
+        debug_assert_eq!(state, "running");
+
+        self.shutdown_running_session(id, &generation, pid, &mut killer)?;
+        if self.remove_generation(id, &generation) {
+            Ok(())
+        } else {
+            Err(format!("Terminal session changed while closing: {id}"))
+        }
+    }
+}
+
+#[cfg(unix)]
+fn signal_process_group(pid: u32, signal: libc::c_int) -> std::io::Result<()> {
+    let result = unsafe { libc::kill(-(pid as libc::pid_t), signal) };
+    if result == 0 {
+        return Ok(());
+    }
+    let error = std::io::Error::last_os_error();
+    if error.raw_os_error() == Some(libc::ESRCH) {
+        Ok(())
+    } else {
+        Err(error)
+    }
+}
+
+#[cfg(unix)]
+fn process_group_exists(pid: u32) -> bool {
+    let result = unsafe { libc::kill(-(pid as libc::pid_t), 0) };
+    result == 0 || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
+}
+
+#[cfg(unix)]
+fn wait_for_process_group_exit(pid: u32, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while process_group_exists(pid) {
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    true
 }
 
 #[tauri::command]
@@ -291,10 +514,6 @@ pub async fn create_terminal_session(
             .unwrap_or_else(|| Uuid::new_v4().to_string())
     };
 
-    if let Some(existing) = state.terminal_manager.sessions.lock().unwrap().get(&id) {
-        return Ok(existing.metadata.clone());
-    }
-
     let (shell, args, label, kind, provider) = if let Some(request) = &agent {
         let claude_bin = agent_binary("NOMOREIDE_CLAUDE_BIN", "claude");
         let codex_bin = agent_binary("NOMOREIDE_CODEX_BIN", "codex");
@@ -359,9 +578,22 @@ pub async fn create_terminal_session(
 
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
-    // Complete every fallible PTY-handle setup step before spawning. Once a
-    // child exists, it is always handed to the waiter below for reaping.
-    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    match state.terminal_manager.reserve_id(&id)? {
+        IdReservation::Existing(existing) => return Ok(existing),
+        IdReservation::Reserved => {}
+    }
+    // Complete every fallible PTY-handle setup step before reservation. If
+    // spawn fails, release the reservation; otherwise the child is always
+    // handed to the waiter below for reaping.
+    let child = match pair.slave.spawn_command(cmd) {
+        Ok(child) => child,
+        Err(error) => {
+            state.terminal_manager.release_reservation(&id);
+            return Err(error.to_string());
+        }
+    };
+    let generation = Uuid::new_v4().to_string();
+    let pid = child.process_id();
     let killer = child.clone_killer();
 
     let gate = Arc::new(Mutex::new(OutputGate::default()));
@@ -390,6 +622,8 @@ pub async fn create_terminal_session(
     });
 
     let pty_session = PtySession {
+        generation: generation.clone(),
+        pid,
         metadata: session.clone(),
         writer,
         killer,
@@ -398,11 +632,10 @@ pub async fn create_terminal_session(
     };
     state
         .terminal_manager
-        .sessions
-        .lock()
-        .unwrap()
-        .insert(id.clone(), pty_session);
-    state.terminal_manager.start_child_waiter(id, child);
+        .complete_reservation(id.clone(), pty_session);
+    state
+        .terminal_manager
+        .start_child_waiter(id, generation, child);
 
     Ok(session)
 }
@@ -418,8 +651,8 @@ pub async fn start_terminal_stream(
     id: String,
 ) -> Result<(), String> {
     let gate = {
-        let sessions = state.terminal_manager.sessions.lock().unwrap();
-        sessions.get(&id).map(|s| s.gate.clone())
+        let registry = state.terminal_manager.registry.0.lock().unwrap();
+        registry.sessions.get(&id).map(|s| s.gate.clone())
     };
     let Some(gate) = gate else { return Ok(()) };
 
@@ -439,8 +672,8 @@ pub async fn write_terminal_input(
     id: String,
     data: String,
 ) -> Result<(), String> {
-    let mut sessions = state.terminal_manager.sessions.lock().unwrap();
-    if let Some(session) = sessions.get_mut(&id) {
+    let mut registry = state.terminal_manager.registry.0.lock().unwrap();
+    if let Some(session) = registry.sessions.get_mut(&id) {
         session
             .writer
             .write_all(data.as_bytes())
@@ -456,8 +689,8 @@ pub async fn resize_terminal(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
-    let mut sessions = state.terminal_manager.sessions.lock().unwrap();
-    if let Some(session) = sessions.get_mut(&id) {
+    let mut registry = state.terminal_manager.registry.0.lock().unwrap();
+    if let Some(session) = registry.sessions.get_mut(&id) {
         session
             .master
             .resize(PtySize {
@@ -558,9 +791,12 @@ mod tests {
         command.args(["-c", script]);
         let child = pair.slave.spawn_command(command).unwrap();
         let pid = child.process_id().unwrap();
+        let generation = uuid::Uuid::new_v4().to_string();
         let killer = child.clone_killer();
         let writer = pair.master.take_writer().unwrap();
         let session = super::PtySession {
+            generation: generation.clone(),
+            pid: Some(pid),
             metadata: super::TerminalSession {
                 id: id.to_string(),
                 service_name: None,
@@ -579,11 +815,13 @@ mod tests {
             gate: Arc::new(Mutex::new(super::OutputGate::default())),
         };
         manager
-            .sessions
+            .registry
+            .0
             .lock()
             .unwrap()
+            .sessions
             .insert(id.to_string(), session);
-        manager.start_child_waiter(id.to_string(), child);
+        manager.start_child_waiter(id.to_string(), generation, child);
         pid
     }
 
@@ -613,6 +851,71 @@ mod tests {
             .unwrap();
         assert_eq!(session.state, "exited");
         assert!(!process_exists(pid));
+        manager.close_session("natural").unwrap();
+        assert!(manager.list_sessions().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stale_waiter_generation_cannot_mark_a_replacement_exited() {
+        let manager = super::TerminalManager::new();
+        spawn_test_session(&manager, "replacement", "sleep 30");
+
+        manager.mark_child_state("replacement", "old-generation", "exited");
+
+        let session = manager
+            .list_sessions()
+            .into_iter()
+            .find(|session| session.id == "replacement")
+            .unwrap();
+        assert_eq!(session.state, "running");
+        manager.close_session("replacement").unwrap();
+    }
+
+    #[test]
+    fn stable_id_reservation_allows_only_one_concurrent_creator() {
+        use std::sync::{Arc, Barrier};
+
+        let manager = Arc::new(super::TerminalManager::new());
+        let barrier = Arc::new(Barrier::new(3));
+        let mut threads = Vec::new();
+        for _ in 0..2 {
+            let manager = manager.clone();
+            let barrier = barrier.clone();
+            threads.push(std::thread::spawn(move || {
+                barrier.wait();
+                manager.reserve_id("svc:api")
+            }));
+        }
+        barrier.wait();
+        let results: Vec<_> = threads
+            .into_iter()
+            .map(|thread| thread.join().unwrap())
+            .collect();
+
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(result, Ok(super::IdReservation::Reserved)))
+                .count(),
+            1
+        );
+        assert_eq!(results.iter().filter(|result| result.is_err()).count(), 1);
+    }
+
+    #[test]
+    fn close_during_reserved_creation_returns_an_error() {
+        let manager = super::TerminalManager::new();
+        assert!(matches!(
+            manager.reserve_id("svc:api"),
+            Ok(super::IdReservation::Reserved)
+        ));
+
+        let error = manager.close_session("svc:api").unwrap_err();
+
+        assert!(error.contains("creation"));
+        assert!(manager.reserve_id("svc:api").is_err());
+        manager.release_reservation("svc:api");
     }
 
     #[cfg(unix)]
@@ -632,6 +935,40 @@ mod tests {
         }
         assert!(!process_exists(pid));
         assert!(manager.list_sessions().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn close_kills_sighup_resistant_child_and_descendant_process_group() {
+        let manager = super::TerminalManager::new();
+        let descendant_file = std::env::temp_dir().join(format!(
+            "nomoreide-terminal-descendant-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let script = format!(
+            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; while :; do sleep 1; done' & echo $! > {}; while :; do sleep 1; done",
+            descendant_file.to_string_lossy()
+        );
+        let parent_pid = spawn_test_session(&manager, "process-group", &script);
+        let descendant_pid = (0..100)
+            .find_map(|_| {
+                let pid = std::fs::read_to_string(&descendant_file)
+                    .ok()
+                    .and_then(|value| value.trim().parse::<u32>().ok());
+                if pid.is_none() {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                pid
+            })
+            .expect("descendant pid should be written");
+        assert!(process_exists(parent_pid));
+        assert!(process_exists(descendant_pid));
+
+        manager.close_session("process-group").unwrap();
+
+        assert!(!process_exists(parent_pid));
+        assert!(!process_exists(descendant_pid));
+        let _ = std::fs::remove_file(descendant_file);
     }
 
     #[cfg(unix)]
