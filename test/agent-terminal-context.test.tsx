@@ -199,6 +199,29 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("activates a true reattached session but not a background task during delayed hydration", async () => {
+    const listed = deferred<Array<ReturnType<typeof session>>>();
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    api.createAgentTerminalSession.mockResolvedValue(session("background-mixed"));
+    const mounted = await mountProvider();
+
+    act(() => mounted.value.sendToAgent({ prompt: "quiet", background: true }));
+    await act(async () => {});
+    expect(mounted.value.activeTaskId).toBeNull();
+
+    await act(async () =>
+      listed.resolve([session("pre-existing"), session("background-mixed")]),
+    );
+
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual([
+      "pre-existing",
+      "background-mixed",
+    ]);
+    expect(mounted.value.activeTaskId).toBe("pre-existing");
+    expect(mounted.value.open).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("opens a draft without creating a terminal task", async () => {
     const mounted = await mountProvider();
 
