@@ -147,12 +147,15 @@ export function connectWebTerminal(options: {
     ((url: string) => new WebSocket(url) as unknown as TerminalSocketLike);
   options.reportStatus(options.initialStatus);
   const socket = createSocket(terminalSocketUrl(options.sessionId, location));
+  let disposed = false;
   const inputSubscription = options.terminal.onData((data) => {
+    if (disposed) return;
     if (socket.readyState !== WEB_SOCKET_OPEN) return;
     socket.send(JSON.stringify({ data, type: "input" }));
   });
 
   socket.addEventListener("open", () => {
+    if (disposed) return;
     options.reportStatus((current) => ({
       ...current,
       state: "running",
@@ -162,6 +165,7 @@ export function connectWebTerminal(options: {
   });
 
   socket.addEventListener("message", (event) => {
+    if (disposed) return;
     const message = parseServerMessage(event.data);
     if (!message) return;
     if (message.type === "output") {
@@ -184,6 +188,7 @@ export function connectWebTerminal(options: {
   });
 
   socket.addEventListener("close", () => {
+    if (disposed) return;
     options.reportStatus((current) => ({
       ...current,
       state: current.state === "exited" ? current.state : "exited",
@@ -192,6 +197,7 @@ export function connectWebTerminal(options: {
   });
 
   socket.addEventListener("error", () => {
+    if (disposed) return;
     options.reportStatus((current) => ({
       ...current,
       state: "error",
@@ -202,6 +208,8 @@ export function connectWebTerminal(options: {
   return {
     socket,
     dispose: () => {
+      if (disposed) return;
+      disposed = true;
       inputSubscription.dispose();
       socket.close();
     },
@@ -376,13 +384,14 @@ export const TerminalViewport = forwardRef<
     }
 
     window.addEventListener("resize", sendResize);
-    window.setTimeout(sendResize, 0);
+    const initialResizeTimer = window.setTimeout(sendResize, 0);
 
     const observer = new ResizeObserver(() => sendResize());
     observer.observe(container);
 
     return () => {
       window.removeEventListener("resize", sendResize);
+      window.clearTimeout(initialResizeTimer);
       observer.disconnect();
       cleanupTransport();
       terminal.dispose();
