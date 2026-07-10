@@ -11,6 +11,11 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
+#[cfg(unix)]
+const PROCESS_GROUP_EXIT_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(unix)]
+const TERMINAL_CLEANUP_CONFIRM_TIMEOUT: Duration = Duration::from_secs(6);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalSession {
@@ -171,6 +176,7 @@ struct OutputGate {
 struct PtySession {
     generation: String,
     pid: Option<u32>,
+    group_cleanup_complete: bool,
     metadata: TerminalSession,
     writer: Box<dyn std::io::Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
@@ -256,7 +262,14 @@ impl TerminalManager {
     ) {
         let registry = self.registry.clone();
         std::thread::spawn(move || {
-            let state = if child.wait().is_ok() {
+            let pid = child.process_id();
+            let wait_succeeded = child.wait().is_ok();
+            let group_cleanup_complete = if wait_succeeded {
+                cleanup_process_group_after_wait(pid)
+            } else {
+                false
+            };
+            let state = if wait_succeeded && group_cleanup_complete {
                 "exited"
             } else {
                 "error"
@@ -264,6 +277,7 @@ impl TerminalManager {
             let mut locked = registry.0.lock().unwrap();
             if let Some(session) = locked.sessions.get_mut(&id) {
                 if session.generation == generation {
+                    session.group_cleanup_complete = group_cleanup_complete;
                     session.metadata.state = state.to_string();
                 }
             }
@@ -282,7 +296,7 @@ impl TerminalManager {
         self.registry.1.notify_all();
     }
 
-    fn wait_for_terminal_state(&self, id: &str, generation: &str, timeout: Duration) -> bool {
+    fn wait_for_terminal_cleanup(&self, id: &str, generation: &str, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         let mut registry = self.registry.0.lock().unwrap();
         loop {
@@ -290,7 +304,9 @@ impl TerminalManager {
                 .sessions
                 .get(id)
                 .map(|session| {
-                    session.generation == generation && session.metadata.state != "running"
+                    session.generation == generation
+                        && session.metadata.state == "exited"
+                        && session.group_cleanup_complete
                 })
                 .unwrap_or(false);
             if confirmed {
@@ -338,6 +354,28 @@ impl TerminalManager {
     }
 
     #[cfg(unix)]
+    fn signal_running_process_group(
+        &self,
+        id: &str,
+        generation: &str,
+        pid: u32,
+        signal: libc::c_int,
+    ) -> Result<bool, String> {
+        let registry = self.registry.0.lock().unwrap();
+        let is_running_generation = registry
+            .sessions
+            .get(id)
+            .map(|session| session.generation == generation && session.metadata.state == "running")
+            .unwrap_or(false);
+        if !is_running_generation {
+            return Ok(false);
+        }
+        signal_process_group(pid, signal)
+            .map(|()| true)
+            .map_err(|error| error.to_string())
+    }
+
+    #[cfg(unix)]
     fn shutdown_running_session(
         &self,
         id: &str,
@@ -347,7 +385,7 @@ impl TerminalManager {
     ) -> Result<(), String> {
         let Some(pid) = pid else {
             let kill_result = killer.kill();
-            if self.wait_for_terminal_state(id, generation, Duration::from_secs(2)) {
+            if self.wait_for_terminal_cleanup(id, generation, Duration::from_secs(2)) {
                 return Ok(());
             }
             return Err(kill_result
@@ -356,25 +394,25 @@ impl TerminalManager {
                 .unwrap_or_else(|| format!("Terminal session did not exit: {id}")));
         };
 
-        signal_process_group(pid, libc::SIGHUP).map_err(|error| error.to_string())?;
+        self.signal_running_process_group(id, generation, pid, libc::SIGHUP)?;
         let mut confirmed =
-            self.wait_for_terminal_state(id, generation, Duration::from_millis(250));
+            self.wait_for_terminal_cleanup(id, generation, Duration::from_millis(250));
 
         // The main process may honor SIGHUP while an agent-spawned descendant
-        // ignores it. Kill any remaining members before dropping control.
-        if process_group_exists(pid) {
-            signal_process_group(pid, libc::SIGKILL).map_err(|error| error.to_string())?;
-        }
+        // ignores it. Only signal while the matching generation is still
+        // recorded as running; the waiter owns final descendant cleanup and
+        // records completion before publishing the exited state.
         if !confirmed {
-            confirmed = self.wait_for_terminal_state(id, generation, Duration::from_secs(2));
+            self.signal_running_process_group(id, generation, pid, libc::SIGKILL)?;
+            // The waiter may spend several seconds confirming that the
+            // process group disappeared before it publishes the final state.
+            confirmed =
+                self.wait_for_terminal_cleanup(id, generation, TERMINAL_CLEANUP_CONFIRM_TIMEOUT);
         }
         if !confirmed {
             return Err(format!(
                 "Terminal session termination was not confirmed: {id}"
             ));
-        }
-        if !wait_for_process_group_exit(pid, Duration::from_secs(2)) {
-            return Err(format!("Terminal process group is still running: {id}"));
         }
         Ok(())
     }
@@ -388,7 +426,7 @@ impl TerminalManager {
         killer: &mut Box<dyn ChildKiller + Send + Sync>,
     ) -> Result<(), String> {
         let kill_result = killer.kill();
-        if self.wait_for_terminal_state(id, generation, Duration::from_secs(2)) {
+        if self.wait_for_terminal_cleanup(id, generation, Duration::from_secs(2)) {
             return Ok(());
         }
         Err(kill_result
@@ -398,7 +436,7 @@ impl TerminalManager {
     }
 
     fn close_session(&self, id: &str) -> Result<(), String> {
-        let (generation, pid, mut killer, state) = {
+        let (generation, pid, mut killer) = {
             let mut registry = self.registry.0.lock().unwrap();
             if registry.closing.contains_key(id) {
                 return Ok(());
@@ -412,26 +450,13 @@ impl TerminalManager {
                 return Ok(());
             };
             if session.metadata.state != "running" {
-                #[cfg(not(unix))]
-                {
+                if session.group_cleanup_complete {
                     registry.sessions.remove(id);
                     return Ok(());
-                }
-                #[cfg(unix)]
-                if session.pid.map(process_group_exists).unwrap_or(false) {
-                    let generation = session.generation.clone();
-                    let snapshot = (
-                        generation.clone(),
-                        session.pid,
-                        session.killer.clone_killer(),
-                        session.metadata.state.clone(),
-                    );
-                    registry.closing.insert(id.to_string(), generation);
-                    self.registry.1.notify_all();
-                    snapshot
                 } else {
-                    registry.sessions.remove(id);
-                    return Ok(());
+                    return Err(format!(
+                        "Terminal lifecycle cleanup was not confirmed; refusing to signal a stale process group: {id}"
+                    ));
                 }
             } else {
                 let generation = session.generation.clone();
@@ -439,7 +464,6 @@ impl TerminalManager {
                     generation.clone(),
                     session.pid,
                     session.killer.clone_killer(),
-                    session.metadata.state.clone(),
                 );
                 registry.closing.insert(id.to_string(), generation);
                 self.registry.1.notify_all();
@@ -447,12 +471,7 @@ impl TerminalManager {
             }
         };
 
-        let shutdown = if state == "running" {
-            self.shutdown_running_session(id, &generation, pid, &mut killer)
-        } else {
-            self.cleanup_exited_process_group(id, pid)
-        };
-        if let Err(error) = shutdown {
+        if let Err(error) = self.shutdown_running_session(id, &generation, pid, &mut killer) {
             self.clear_closing(id, &generation);
             return Err(error);
         }
@@ -485,24 +504,23 @@ impl TerminalManager {
             Err(errors.join("; "))
         }
     }
+}
 
-    #[cfg(unix)]
-    fn cleanup_exited_process_group(&self, id: &str, pid: Option<u32>) -> Result<(), String> {
-        let Some(pid) = pid else {
-            return Ok(());
-        };
-        signal_process_group(pid, libc::SIGKILL).map_err(|error| error.to_string())?;
-        if wait_for_process_group_exit(pid, Duration::from_secs(2)) {
-            Ok(())
-        } else {
-            Err(format!("Terminal process group is still running: {id}"))
-        }
+#[cfg(unix)]
+fn cleanup_process_group_after_wait(pid: Option<u32>) -> bool {
+    let Some(pid) = pid else {
+        return true;
+    };
+    if !process_group_exists(pid) {
+        return true;
     }
+    signal_process_group(pid, libc::SIGKILL).is_ok()
+        && wait_for_process_group_exit(pid, PROCESS_GROUP_EXIT_TIMEOUT)
+}
 
-    #[cfg(not(unix))]
-    fn cleanup_exited_process_group(&self, _id: &str, _pid: Option<u32>) -> Result<(), String> {
-        Ok(())
-    }
+#[cfg(not(unix))]
+fn cleanup_process_group_after_wait(_pid: Option<u32>) -> bool {
+    true
 }
 
 #[cfg(unix)]
@@ -719,6 +737,7 @@ pub async fn create_terminal_session(
     let pty_session = PtySession {
         generation: generation.clone(),
         pid,
+        group_cleanup_complete: false,
         metadata: session.clone(),
         writer,
         killer,
@@ -892,6 +911,7 @@ mod tests {
         let session = super::PtySession {
             generation: generation.clone(),
             pid: Some(pid),
+            group_cleanup_complete: false,
             metadata: super::TerminalSession {
                 id: id.to_string(),
                 service_name: None,
@@ -1041,7 +1061,7 @@ mod tests {
             uuid::Uuid::new_v4()
         ));
         let script = format!(
-            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; while :; do sleep 1; done' & echo $! > {}; while :; do sleep 1; done",
+            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; echo $$ > {}; exec sleep 30' & wait",
             descendant_file.to_string_lossy()
         );
         let parent_pid = spawn_test_session(&manager, "process-group", &script);
@@ -1075,7 +1095,7 @@ mod tests {
         spawn_test_session(
             &manager,
             "svc:closing",
-            "trap '' HUP; while :; do sleep 1; done",
+            "trap '' HUP; exec sleep 30",
         );
         std::thread::sleep(std::time::Duration::from_millis(50));
         let closer = {
@@ -1112,7 +1132,7 @@ mod tests {
             uuid::Uuid::new_v4()
         ));
         let resistant_script = format!(
-            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; while :; do sleep 1; done' & echo $! > {}; while :; do sleep 1; done",
+            "trap '' HUP; /bin/sh -c 'trap \"\" HUP; echo $$ > {}; exec sleep 30' & wait",
             descendant_file.to_string_lossy()
         );
         let resistant_pid = spawn_test_session(&manager, "resistant", &resistant_script);
@@ -1140,14 +1160,14 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn close_cleans_live_descendant_after_leader_naturally_exits() {
+    fn waiter_cleans_live_descendant_before_reporting_leader_exited() {
         let manager = super::TerminalManager::new();
         let descendant_file = std::env::temp_dir().join(format!(
             "nomoreide-terminal-exited-leader-descendant-{}",
             uuid::Uuid::new_v4()
         ));
         let script = format!(
-            "/bin/sh -c 'trap \"\" HUP; echo $$ > {}; while :; do sleep 1; done' & while [ ! -s {} ]; do sleep 0.01; done; exit 0",
+            "/bin/sh -c 'trap \"\" HUP; echo $$ > {}; exec sleep 30' & while [ ! -s {} ]; do sleep 0.01; done; exit 0",
             descendant_file.to_string_lossy(),
             descendant_file.to_string_lossy()
         );
@@ -1175,19 +1195,74 @@ mod tests {
             }
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
+        let session = manager
+            .list_sessions()
+            .into_iter()
+            .find(|session| session.id == "exited-leader")
+            .unwrap();
+        assert_eq!(session.state, "exited");
         assert!(!process_exists(leader_pid));
-        assert!(process_exists(descendant_pid));
+        assert!(!process_exists(descendant_pid));
+        std::thread::sleep(std::time::Duration::from_millis(50));
 
-        let close_result = manager.close_session("exited-leader");
-        let descendant_survived = process_exists(descendant_pid);
-        if descendant_survived {
-            let _ = unsafe { libc::kill(descendant_pid as libc::pid_t, libc::SIGKILL) };
-        }
-
-        assert!(close_result.is_ok());
-        assert!(!descendant_survived);
+        assert!(manager.close_session("exited-leader").is_ok());
         assert!(manager.list_sessions().is_empty());
         let _ = std::fs::remove_file(descendant_file);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn close_removes_cleanup_complete_session_without_touching_stored_pid() {
+        let manager = super::TerminalManager::new();
+        spawn_test_session(&manager, "stale-pid", "sleep 30");
+        let mut test_killer = {
+            let mut registry = manager.registry.0.lock().unwrap();
+            let session = registry.sessions.get_mut("stale-pid").unwrap();
+            let killer = session.killer.clone_killer();
+            session.pid = Some(u32::MAX);
+            session.metadata.state = "exited".to_string();
+            session.group_cleanup_complete = true;
+            killer
+        };
+
+        assert!(manager.close_session("stale-pid").is_ok());
+        assert!(manager.list_sessions().is_empty());
+
+        // The deliberately invalid stored PID above must never be inspected or
+        // signaled. Clean up through the retained direct-child handle instead.
+        let _ = test_killer.kill();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_running_session_without_confirmed_group_cleanup_is_retained_without_signaling() {
+        let manager = super::TerminalManager::new();
+        let pid = spawn_test_session(&manager, "unsafe-terminal", "sleep 30");
+        {
+            let mut registry = manager.registry.0.lock().unwrap();
+            let session = registry.sessions.get_mut("unsafe-terminal").unwrap();
+            session.metadata.state = "error".to_string();
+            session.group_cleanup_complete = false;
+        }
+
+        let error = manager.close_session("unsafe-terminal").unwrap_err();
+
+        assert!(error.contains("cleanup"));
+        assert!(process_exists(pid));
+        assert!(manager
+            .list_sessions()
+            .iter()
+            .any(|session| session.id == "unsafe-terminal"));
+        {
+            let mut registry = manager.registry.0.lock().unwrap();
+            registry
+                .sessions
+                .get_mut("unsafe-terminal")
+                .unwrap()
+                .metadata
+                .state = "running".to_string();
+        }
+        manager.close_session("unsafe-terminal").unwrap();
     }
 
     #[cfg(unix)]
@@ -1199,7 +1274,7 @@ mod tests {
         let pid = spawn_test_session(
             &manager,
             "active-close",
-            "trap '' HUP; while :; do sleep 1; done",
+            "trap '' HUP; exec sleep 30",
         );
         std::thread::sleep(std::time::Duration::from_millis(50));
         let closer = {
