@@ -184,6 +184,7 @@ struct TerminalRegistry {
     sessions: HashMap<String, PtySession>,
     creating: HashSet<String>,
     closing: HashMap<String, String>,
+    shutting_down: bool,
 }
 
 #[derive(Debug)]
@@ -216,6 +217,9 @@ impl TerminalManager {
 
     fn reserve_id(&self, id: &str) -> Result<IdReservation, String> {
         let mut registry = self.registry.0.lock().unwrap();
+        if registry.shutting_down {
+            return Err("Terminal manager is shutting down".to_string());
+        }
         if registry.closing.contains_key(id) {
             return Err(format!("Terminal session is closing; retry shortly: {id}"));
         }
@@ -227,6 +231,7 @@ impl TerminalManager {
                 "Terminal session creation already in progress: {id}"
             ));
         }
+        self.registry.1.notify_all();
         Ok(IdReservation::Reserved)
     }
 
@@ -407,22 +412,47 @@ impl TerminalManager {
                 return Ok(());
             };
             if session.metadata.state != "running" {
-                registry.sessions.remove(id);
-                return Ok(());
+                #[cfg(not(unix))]
+                {
+                    registry.sessions.remove(id);
+                    return Ok(());
+                }
+                #[cfg(unix)]
+                if session.pid.map(process_group_exists).unwrap_or(false) {
+                    let generation = session.generation.clone();
+                    let snapshot = (
+                        generation.clone(),
+                        session.pid,
+                        session.killer.clone_killer(),
+                        session.metadata.state.clone(),
+                    );
+                    registry.closing.insert(id.to_string(), generation);
+                    self.registry.1.notify_all();
+                    snapshot
+                } else {
+                    registry.sessions.remove(id);
+                    return Ok(());
+                }
+            } else {
+                let generation = session.generation.clone();
+                let snapshot = (
+                    generation.clone(),
+                    session.pid,
+                    session.killer.clone_killer(),
+                    session.metadata.state.clone(),
+                );
+                registry.closing.insert(id.to_string(), generation);
+                self.registry.1.notify_all();
+                snapshot
             }
-            let generation = session.generation.clone();
-            let snapshot = (
-                generation.clone(),
-                session.pid,
-                session.killer.clone_killer(),
-                session.metadata.state.clone(),
-            );
-            registry.closing.insert(id.to_string(), generation);
-            snapshot
         };
-        debug_assert_eq!(state, "running");
 
-        if let Err(error) = self.shutdown_running_session(id, &generation, pid, &mut killer) {
+        let shutdown = if state == "running" {
+            self.shutdown_running_session(id, &generation, pid, &mut killer)
+        } else {
+            self.cleanup_exited_process_group(id, pid)
+        };
+        if let Err(error) = shutdown {
             self.clear_closing(id, &generation);
             return Err(error);
         }
@@ -434,15 +464,15 @@ impl TerminalManager {
     }
 
     pub fn close_all(&self) -> Result<(), String> {
-        let ids: Vec<String> = self
-            .registry
-            .0
-            .lock()
-            .unwrap()
-            .sessions
-            .keys()
-            .cloned()
-            .collect();
+        let ids: Vec<String> = {
+            let mut registry = self.registry.0.lock().unwrap();
+            registry.shutting_down = true;
+            self.registry.1.notify_all();
+            while !registry.creating.is_empty() || !registry.closing.is_empty() {
+                registry = self.registry.1.wait(registry).unwrap();
+            }
+            registry.sessions.keys().cloned().collect()
+        };
         let mut errors = Vec::new();
         for id in ids {
             if let Err(error) = self.close_session(&id) {
@@ -454,6 +484,24 @@ impl TerminalManager {
         } else {
             Err(errors.join("; "))
         }
+    }
+
+    #[cfg(unix)]
+    fn cleanup_exited_process_group(&self, id: &str, pid: Option<u32>) -> Result<(), String> {
+        let Some(pid) = pid else {
+            return Ok(());
+        };
+        signal_process_group(pid, libc::SIGKILL).map_err(|error| error.to_string())?;
+        if wait_for_process_group_exit(pid, Duration::from_secs(2)) {
+            Ok(())
+        } else {
+            Err(format!("Terminal process group is still running: {id}"))
+        }
+    }
+
+    #[cfg(not(unix))]
+    fn cleanup_exited_process_group(&self, _id: &str, _pid: Option<u32>) -> Result<(), String> {
+        Ok(())
     }
 }
 
@@ -1088,6 +1136,134 @@ mod tests {
         assert!(!process_exists(descendant_pid));
         assert!(manager.list_sessions().is_empty());
         let _ = std::fs::remove_file(descendant_file);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn close_cleans_live_descendant_after_leader_naturally_exits() {
+        let manager = super::TerminalManager::new();
+        let descendant_file = std::env::temp_dir().join(format!(
+            "nomoreide-terminal-exited-leader-descendant-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let script = format!(
+            "/bin/sh -c 'trap \"\" HUP; echo $$ > {}; while :; do sleep 1; done' & while [ ! -s {} ]; do sleep 0.01; done; exit 0",
+            descendant_file.to_string_lossy(),
+            descendant_file.to_string_lossy()
+        );
+        let leader_pid = spawn_test_session(&manager, "exited-leader", &script);
+        let descendant_pid = (0..100)
+            .find_map(|_| {
+                let pid = std::fs::read_to_string(&descendant_file)
+                    .ok()
+                    .and_then(|value| value.trim().parse::<u32>().ok());
+                if pid.is_none() {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                pid
+            })
+            .expect("descendant pid should be written");
+        for _ in 0..100 {
+            let exited = manager
+                .list_sessions()
+                .into_iter()
+                .find(|session| session.id == "exited-leader")
+                .map(|session| session.state == "exited")
+                .unwrap_or(false);
+            if exited {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert!(!process_exists(leader_pid));
+        assert!(process_exists(descendant_pid));
+
+        let close_result = manager.close_session("exited-leader");
+        let descendant_survived = process_exists(descendant_pid);
+        if descendant_survived {
+            let _ = unsafe { libc::kill(descendant_pid as libc::pid_t, libc::SIGKILL) };
+        }
+
+        assert!(close_result.is_ok());
+        assert!(!descendant_survived);
+        assert!(manager.list_sessions().is_empty());
+        let _ = std::fs::remove_file(descendant_file);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn close_all_waits_for_an_active_close_to_finish() {
+        use std::sync::{mpsc, Arc};
+
+        let manager = Arc::new(super::TerminalManager::new());
+        let pid = spawn_test_session(
+            &manager,
+            "active-close",
+            "trap '' HUP; while :; do sleep 1; done",
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let closer = {
+            let manager = manager.clone();
+            std::thread::spawn(move || manager.close_session("active-close"))
+        };
+        for _ in 0..100 {
+            if manager
+                .registry
+                .0
+                .lock()
+                .unwrap()
+                .closing
+                .contains_key("active-close")
+            {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        let (tx, rx) = mpsc::channel();
+        let shutdown = {
+            let manager = manager.clone();
+            std::thread::spawn(move || tx.send(manager.close_all()).unwrap())
+        };
+
+        assert!(rx
+            .recv_timeout(std::time::Duration::from_millis(50))
+            .is_err());
+        assert!(closer.join().unwrap().is_ok());
+        assert!(rx
+            .recv_timeout(std::time::Duration::from_secs(3))
+            .unwrap()
+            .is_ok());
+        shutdown.join().unwrap();
+        assert!(!process_exists(pid));
+        assert!(manager.list_sessions().is_empty());
+    }
+
+    #[test]
+    fn close_all_waits_for_reservations_and_fences_future_creation() {
+        use std::sync::{mpsc, Arc};
+
+        let manager = Arc::new(super::TerminalManager::new());
+        assert!(matches!(
+            manager.reserve_id("svc:reserved"),
+            Ok(super::IdReservation::Reserved)
+        ));
+        let (tx, rx) = mpsc::channel();
+        let shutdown = {
+            let manager = manager.clone();
+            std::thread::spawn(move || tx.send(manager.close_all()).unwrap())
+        };
+
+        assert!(rx
+            .recv_timeout(std::time::Duration::from_millis(50))
+            .is_err());
+        manager.release_reservation("svc:reserved");
+        assert!(rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap()
+            .is_ok());
+        shutdown.join().unwrap();
+        let error = manager.reserve_id("svc:later").unwrap_err();
+        assert!(error.contains("shutting down"));
     }
 
     #[cfg(unix)]
