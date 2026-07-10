@@ -1,17 +1,82 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use crate::core::process_manager::service_path;
+use crate::AppState;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
-use crate::AppState;
-use crate::core::process_manager::service_path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TerminalSession {
     pub id: String,
     pub service_name: Option<String>,
+    pub cwd: String,
+    pub cols: u16,
+    pub rows: u16,
+    pub shell: String,
+    pub state: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentTerminalRequest {
+    provider: String,
+    prompt: String,
+    label: Option<String>,
+}
+
+#[derive(Debug, PartialEq)]
+struct AgentInvocation {
+    executable: String,
+    args: Vec<String>,
+}
+
+fn derive_agent_invocation(
+    provider: &str,
+    prompt: &str,
+    claude_bin: &str,
+    codex_bin: &str,
+) -> Result<AgentInvocation, String> {
+    if prompt.trim().is_empty() {
+        return Err("Prompt is required".to_string());
+    }
+
+    match provider {
+        "claude" => Ok(AgentInvocation {
+            executable: claude_bin.to_string(),
+            args: vec![prompt.to_string()],
+        }),
+        "codex" => Ok(AgentInvocation {
+            executable: codex_bin.to_string(),
+            args: vec!["--no-alt-screen".to_string(), prompt.to_string()],
+        }),
+        _ => Err(format!("Unsupported agent provider: {provider}")),
+    }
+}
+
+fn agent_binary(env_name: &str, default: &str) -> String {
+    std::env::var(env_name)
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| default.to_string())
+}
+
+fn normalize_agent_label(provider: &str, label: Option<&str>) -> String {
+    let requested = label.map(str::trim).filter(|label| !label.is_empty());
+    let fallback = if provider == "codex" {
+        "Codex task"
+    } else {
+        "Claude task"
+    };
+    requested.unwrap_or(fallback).chars().take(60).collect()
 }
 
 /// Gates PTY output behind the frontend attaching its event listener. The shell
@@ -26,7 +91,7 @@ struct OutputGate {
 }
 
 struct PtySession {
-    service_name: Option<String>,
+    metadata: TerminalSession,
     writer: Box<dyn std::io::Write + Send>,
     #[allow(dead_code)]
     child: Box<dyn portable_pty::Child + Send>,
@@ -47,18 +112,19 @@ impl TerminalManager {
     }
 
     pub fn list_sessions(&self) -> Vec<TerminalSession> {
-        self.sessions.lock().unwrap()
-            .iter()
-            .map(|(id, session)| TerminalSession {
-                id: id.clone(),
-                service_name: session.service_name.clone(),
-            })
+        self.sessions
+            .lock()
+            .unwrap()
+            .values()
+            .map(|session| session.metadata.clone())
             .collect()
     }
 }
 
 #[tauri::command]
-pub async fn list_terminal_sessions(state: State<'_, AppState>) -> Result<Vec<TerminalSession>, String> {
+pub async fn list_terminal_sessions(
+    state: State<'_, AppState>,
+) -> Result<Vec<TerminalSession>, String> {
     Ok(state.terminal_manager.list_sessions())
 }
 
@@ -68,15 +134,19 @@ pub async fn create_terminal_session(
     state: State<'_, AppState>,
     service_name: Option<String>,
     cwd: Option<String>,
+    agent: Option<AgentTerminalRequest>,
 ) -> Result<TerminalSession, String> {
-    let id = service_name
-        .as_ref()
-        .map(|name| format!("svc:{name}"))
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-    let session = TerminalSession { id: id.clone(), service_name: service_name.clone() };
+    let id = if agent.is_some() {
+        format!("agent:{}", Uuid::new_v4())
+    } else {
+        service_name
+            .as_ref()
+            .map(|name| format!("svc:{name}"))
+            .unwrap_or_else(|| Uuid::new_v4().to_string())
+    };
 
-    if state.terminal_manager.sessions.lock().unwrap().contains_key(&id) {
-        return Ok(session);
+    if let Some(existing) = state.terminal_manager.sessions.lock().unwrap().get(&id) {
+        return Ok(existing.metadata.clone());
     }
 
     // Default the working dir to the service's own cwd so "the terminal in the
@@ -85,25 +155,93 @@ pub async fn create_terminal_session(
     if work_dir.is_none() {
         if let Some(name) = &service_name {
             if let Ok(config) = state.config_store.load().await {
-                work_dir = config.services.iter()
+                work_dir = config
+                    .services
+                    .iter()
                     .find(|s| &s.name == name)
                     .and_then(|s| s.cwd.clone());
             }
         }
     }
+    if work_dir.is_none() && agent.is_some() {
+        if let Ok(config) = state.config_store.load().await {
+            work_dir = config
+                .selected_git_repository
+                .as_ref()
+                .and_then(|selected| {
+                    config
+                        .git_repositories
+                        .iter()
+                        .find(|repo| &repo.name == selected)
+                })
+                .or_else(|| config.git_repositories.first())
+                .map(|repo| repo.path.clone());
+        }
+    }
+    let work_dir = match work_dir {
+        Some(dir) => dir,
+        None => std::env::current_dir()
+            .map_err(|e| e.to_string())?
+            .to_string_lossy()
+            .into_owned(),
+    };
+
+    let (shell, args, label, kind, provider) = if let Some(request) = &agent {
+        let claude_bin = agent_binary("NOMOREIDE_CLAUDE_BIN", "claude");
+        let codex_bin = agent_binary("NOMOREIDE_CODEX_BIN", "codex");
+        let invocation =
+            derive_agent_invocation(&request.provider, &request.prompt, &claude_bin, &codex_bin)?;
+        (
+            invocation.executable,
+            invocation.args,
+            Some(normalize_agent_label(
+                &request.provider,
+                request.label.as_deref(),
+            )),
+            Some("agent".to_string()),
+            Some(request.provider.clone()),
+        )
+    } else {
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "sh".into());
+        let kind = if service_name.is_some() {
+            "service"
+        } else {
+            "shell"
+        };
+        (
+            shell,
+            Vec::new(),
+            service_name.clone(),
+            Some(kind.to_string()),
+            None,
+        )
+    };
+    let session = TerminalSession {
+        id: id.clone(),
+        service_name: service_name.clone(),
+        cwd: work_dir.clone(),
+        cols: 80,
+        rows: 24,
+        shell: shell.clone(),
+        state: "running".to_string(),
+        label,
+        kind,
+        provider,
+    };
 
     let pty_system = native_pty_system();
-    let pair = pty_system.openpty(PtySize {
-        rows: 24,
-        cols: 80,
-        pixel_width: 0,
-        pixel_height: 0,
-    }).map_err(|e| e.to_string())?;
+    let pair = pty_system
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|e| e.to_string())?;
 
-    let mut cmd = CommandBuilder::new(std::env::var("SHELL").unwrap_or_else(|_| "sh".into()));
-    if let Some(dir) = &work_dir {
-        cmd.cwd(dir);
-    }
+    let mut cmd = CommandBuilder::new(&shell);
+    cmd.args(&args);
+    cmd.cwd(&work_dir);
     // A Finder-launched macOS app inherits only a minimal PATH, so `npm`/`node`
     // etc. would be missing in the shell. Seed the resolved dev PATH.
     cmd.env("PATH", service_path());
@@ -138,13 +276,18 @@ pub async fn create_terminal_session(
     });
 
     let pty_session = PtySession {
-        service_name,
+        metadata: session.clone(),
         writer,
         child,
         master: pair.master,
         gate,
     };
-    state.terminal_manager.sessions.lock().unwrap().insert(id.clone(), pty_session);
+    state
+        .terminal_manager
+        .sessions
+        .lock()
+        .unwrap()
+        .insert(id.clone(), pty_session);
 
     Ok(session)
 }
@@ -183,7 +326,10 @@ pub async fn write_terminal_input(
 ) -> Result<(), String> {
     let mut sessions = state.terminal_manager.sessions.lock().unwrap();
     if let Some(session) = sessions.get_mut(&id) {
-        session.writer.write_all(data.as_bytes()).map_err(|e| e.to_string())?;
+        session
+            .writer
+            .write_all(data.as_bytes())
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -195,19 +341,25 @@ pub async fn resize_terminal(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
-    let sessions = state.terminal_manager.sessions.lock().unwrap();
-    if let Some(session) = sessions.get(&id) {
-        session.master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
+    let mut sessions = state.terminal_manager.sessions.lock().unwrap();
+    if let Some(session) = sessions.get_mut(&id) {
+        session
+            .master
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| e.to_string())?;
+        session.metadata.cols = cols;
+        session.metadata.rows = rows;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub async fn close_terminal_session(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn close_terminal_session(state: State<'_, AppState>, id: String) -> Result<(), String> {
     state.terminal_manager.sessions.lock().unwrap().remove(&id);
     Ok(())
 }
@@ -215,3 +367,79 @@ pub async fn close_terminal_session(
 // Needed so std::io::Read is available in the spawned thread
 use std::io::Read;
 use std::io::Write;
+
+#[cfg(test)]
+mod tests {
+    use super::{derive_agent_invocation, normalize_agent_label};
+
+    #[test]
+    fn claude_invocation_uses_default_binary_and_preserves_the_full_prompt() {
+        let prompt = "  inspect this project\nthen explain it  ";
+
+        let invocation = derive_agent_invocation("claude", prompt, "claude", "codex").unwrap();
+
+        assert_eq!(invocation.executable, "claude");
+        assert_eq!(invocation.args, vec![prompt]);
+    }
+
+    #[test]
+    fn codex_invocation_disables_alt_screen_and_preserves_the_full_prompt() {
+        let prompt = "  inspect this project\nthen explain it  ";
+
+        let invocation = derive_agent_invocation("codex", prompt, "claude", "codex").unwrap();
+
+        assert_eq!(invocation.executable, "codex");
+        assert_eq!(invocation.args, vec!["--no-alt-screen", prompt]);
+    }
+
+    #[test]
+    fn blank_agent_prompt_is_rejected() {
+        let error = derive_agent_invocation("claude", " \n\t ", "claude", "codex").unwrap_err();
+
+        assert_eq!(error, "Prompt is required");
+    }
+
+    #[test]
+    fn unknown_agent_provider_is_rejected() {
+        let error = derive_agent_invocation("other", "do work", "claude", "codex").unwrap_err();
+
+        assert_eq!(error, "Unsupported agent provider: other");
+    }
+
+    #[test]
+    fn agent_invocation_uses_resolved_executable_overrides() {
+        let claude = derive_agent_invocation(
+            "claude",
+            "do work",
+            "/custom/bin/claude",
+            "/custom/bin/codex",
+        )
+        .unwrap();
+        let codex = derive_agent_invocation(
+            "codex",
+            "do work",
+            "/custom/bin/claude",
+            "/custom/bin/codex",
+        )
+        .unwrap();
+
+        assert_eq!(claude.executable, "/custom/bin/claude");
+        assert_eq!(codex.executable, "/custom/bin/codex");
+    }
+
+    #[test]
+    fn agent_label_is_trimmed_and_capped_at_sixty_characters() {
+        let requested = format!("  {}  ", "A".repeat(70));
+
+        assert_eq!(
+            normalize_agent_label("codex", Some(&requested)),
+            "A".repeat(60)
+        );
+    }
+
+    #[test]
+    fn agent_label_uses_provider_default_when_missing_or_blank() {
+        assert_eq!(normalize_agent_label("claude", None), "Claude task");
+        assert_eq!(normalize_agent_label("codex", Some(" \t ")), "Codex task");
+    }
+}
