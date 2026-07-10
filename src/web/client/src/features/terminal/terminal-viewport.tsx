@@ -7,7 +7,6 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from "react";
 import {
   tauri_onTerminalOutput,
@@ -46,6 +45,24 @@ export interface TerminalViewportProps {
   onStatusChange?: (status: TerminalViewportStatus) => void;
 }
 
+type StatusUpdate =
+  | TerminalViewportStatus
+  | ((current: TerminalViewportStatus) => TerminalViewportStatus);
+
+interface TerminalSocketLike {
+  readyState: number;
+  send(data: string): void;
+  close(): void;
+  addEventListener(
+    type: string,
+    listener: (event: { data?: unknown }) => void,
+  ): void;
+}
+
+interface FitDimensionsLike {
+  proposeDimensions(): { cols: number; rows: number } | undefined;
+}
+
 type ServerMessage =
   | {
       cols?: number;
@@ -64,6 +81,132 @@ const INITIAL_STATUS: TerminalViewportStatus = {
   cwd: "Local workspace",
   detail: "Opening shell",
 };
+const WEB_SOCKET_OPEN = 1;
+
+export function createTerminalViewportHandle(options: {
+  focus: () => void;
+  refit: () => void;
+  sendControl: (type: "restart" | "stop") => void;
+}): TerminalViewportHandle {
+  return {
+    focus: options.focus,
+    refit: options.refit,
+    restart: () => options.sendControl("restart"),
+    stop: () => options.sendControl("stop"),
+  };
+}
+
+export function sendWebTerminalControl(
+  socket: TerminalSocketLike | null,
+  fit: FitDimensionsLike | null,
+  type: "restart" | "stop",
+): void {
+  if (!socket || socket.readyState !== WEB_SOCKET_OPEN) return;
+  const dimensions = fit?.proposeDimensions();
+  socket.send(
+    JSON.stringify({
+      cols: dimensions?.cols,
+      rows: dimensions?.rows,
+      type,
+    }),
+  );
+}
+
+export function scheduleTerminalActivation(
+  active: boolean,
+  options: {
+    focus: () => void;
+    refit: () => void;
+    schedule: (callback: () => void) => number;
+    cancel: (id: number) => void;
+  },
+): (() => void) | undefined {
+  if (!active) return;
+  const id = options.schedule(() => {
+    options.refit();
+    options.focus();
+  });
+  return () => options.cancel(id);
+}
+
+export function connectWebTerminal(options: {
+  sessionId: string;
+  terminal: {
+    onData(callback: (data: string) => void): { dispose(): void };
+    write(data: string): void;
+  };
+  initialStatus: TerminalViewportStatus;
+  reportStatus: (update: StatusUpdate) => void;
+  sendResize: () => void;
+  location?: { protocol: string; host: string };
+  createSocket?: (url: string) => TerminalSocketLike;
+}): { socket: TerminalSocketLike; dispose: () => void } {
+  const location = options.location ?? window.location;
+  const createSocket =
+    options.createSocket ??
+    ((url: string) => new WebSocket(url) as unknown as TerminalSocketLike);
+  options.reportStatus(options.initialStatus);
+  const socket = createSocket(terminalSocketUrl(options.sessionId, location));
+  const inputSubscription = options.terminal.onData((data) => {
+    if (socket.readyState !== WEB_SOCKET_OPEN) return;
+    socket.send(JSON.stringify({ data, type: "input" }));
+  });
+
+  socket.addEventListener("open", () => {
+    options.reportStatus((current) => ({
+      ...current,
+      state: "running",
+      detail: "Shell connected",
+    }));
+    options.sendResize();
+  });
+
+  socket.addEventListener("message", (event) => {
+    const message = parseServerMessage(event.data);
+    if (!message) return;
+    if (message.type === "output") {
+      options.terminal.write(message.data);
+      return;
+    }
+    if (message.type === "error") {
+      options.reportStatus((current) => ({
+        ...current,
+        state: "error",
+        detail: message.error,
+      }));
+      return;
+    }
+    options.reportStatus((current) => ({
+      state: message.state === "idle" ? "connecting" : message.state,
+      cwd: message.cwd ?? current.cwd,
+      detail: message.error ?? message.shell ?? "Shell connected",
+    }));
+  });
+
+  socket.addEventListener("close", () => {
+    options.reportStatus((current) => ({
+      ...current,
+      state: current.state === "exited" ? current.state : "exited",
+      detail: "Socket closed",
+    }));
+  });
+
+  socket.addEventListener("error", () => {
+    options.reportStatus((current) => ({
+      ...current,
+      state: "error",
+      detail: "Terminal socket error",
+    }));
+  });
+
+  return {
+    socket,
+    dispose: () => {
+      inputSubscription.dispose();
+      socket.close();
+    },
+  };
+}
 
 /**
  * A raw xterm viewport bound to one server-owned PTY. It deliberately renders
@@ -79,9 +222,9 @@ export const TerminalViewport = forwardRef<
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<TerminalSocketLike | null>(null);
   const statusCallbackRef = useRef(onStatusChange);
-  const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
+  const statusRef = useRef<TerminalViewportStatus>(INITIAL_STATUS);
   // Desktop owns its PTY in Rust; the web build attaches to the Node server.
   const tauriMode = isTauri();
 
@@ -89,9 +232,12 @@ export const TerminalViewport = forwardRef<
     statusCallbackRef.current = onStatusChange;
   }, [onStatusChange]);
 
-  useEffect(() => {
-    statusCallbackRef.current?.(status);
-  }, [status]);
+  const reportStatus = useCallback((update: StatusUpdate) => {
+    const next =
+      typeof update === "function" ? update(statusRef.current) : update;
+    statusRef.current = next;
+    statusCallbackRef.current?.(next);
+  }, []);
 
   const sendResize = useCallback(() => {
     const fit = fitRef.current;
@@ -104,7 +250,7 @@ export const TerminalViewport = forwardRef<
       return;
     }
     const socket = socketRef.current;
-    if (socket?.readyState !== WebSocket.OPEN) return;
+    if (socket?.readyState !== WEB_SOCKET_OPEN) return;
     socket.send(
       JSON.stringify({
         cols: dimensions.cols,
@@ -119,28 +265,19 @@ export const TerminalViewport = forwardRef<
       // The Rust PTY has no restart/stop commands yet, matching the existing
       // desktop behavior where these controls are no-ops.
       if (tauriMode) return;
-      const socket = socketRef.current;
-      if (!socket || socket.readyState !== WebSocket.OPEN) return;
-      const dimensions = fitRef.current?.proposeDimensions();
-      socket.send(
-        JSON.stringify({
-          cols: dimensions?.cols,
-          rows: dimensions?.rows,
-          type,
-        }),
-      );
+      sendWebTerminalControl(socketRef.current, fitRef.current, type);
     },
     [tauriMode],
   );
 
   useImperativeHandle(
     forwardedRef,
-    () => ({
-      focus: () => terminalRef.current?.focus(),
-      refit: sendResize,
-      restart: () => sendControl("restart"),
-      stop: () => sendControl("stop"),
-    }),
+    () =>
+      createTerminalViewportHandle({
+        focus: () => terminalRef.current?.focus(),
+        refit: sendResize,
+        sendControl,
+      }),
     [sendControl, sendResize],
   );
 
@@ -148,7 +285,6 @@ export const TerminalViewport = forwardRef<
     const container = containerRef.current;
     if (!container) return;
 
-    setStatus(INITIAL_STATUS);
     const terminal = new Terminal({
       allowProposedApi: true,
       cursorBlink: true,
@@ -187,6 +323,7 @@ export const TerminalViewport = forwardRef<
     let cleanupTransport: () => void;
 
     if (tauriMode) {
+      reportStatus(INITIAL_STATUS);
       let unlisten: (() => void) | null = null;
       let disposed = false;
       const inputSubscription = terminal.onData((data) => {
@@ -199,7 +336,7 @@ export const TerminalViewport = forwardRef<
             return;
           }
           unlisten = off;
-          setStatus((current) => ({
+          reportStatus((current) => ({
             ...current,
             state: "running",
             detail: "Shell connected",
@@ -210,7 +347,7 @@ export const TerminalViewport = forwardRef<
         },
         (caught) => {
           if (disposed) return;
-          setStatus((current) => ({
+          reportStatus((current) => ({
             ...current,
             state: "error",
             detail: caught instanceof Error ? caught.message : String(caught),
@@ -223,64 +360,17 @@ export const TerminalViewport = forwardRef<
         unlisten?.();
       };
     } else {
-      const socket = new WebSocket(terminalSocketUrl(sessionId));
-      socketRef.current = socket;
-
-      const inputSubscription = terminal.onData((data) => {
-        if (socket.readyState !== WebSocket.OPEN) return;
-        socket.send(JSON.stringify({ data, type: "input" }));
+      const transport = connectWebTerminal({
+        initialStatus: INITIAL_STATUS,
+        reportStatus,
+        sendResize,
+        sessionId,
+        terminal,
       });
-
-      socket.addEventListener("open", () => {
-        setStatus((current) => ({
-          ...current,
-          state: "running",
-          detail: "Shell connected",
-        }));
-        sendResize();
-      });
-
-      socket.addEventListener("message", (event) => {
-        const message = parseServerMessage(event.data);
-        if (!message) return;
-        if (message.type === "output") {
-          terminal.write(message.data);
-          return;
-        }
-        if (message.type === "error") {
-          setStatus((current) => ({
-            ...current,
-            state: "error",
-            detail: message.error,
-          }));
-          return;
-        }
-        setStatus((current) => ({
-          state: message.state === "idle" ? "connecting" : message.state,
-          cwd: message.cwd ?? current.cwd,
-          detail: message.error ?? message.shell ?? "Shell connected",
-        }));
-      });
-
-      socket.addEventListener("close", () => {
-        setStatus((current) => ({
-          ...current,
-          state: current.state === "exited" ? current.state : "exited",
-          detail: "Socket closed",
-        }));
-      });
-
-      socket.addEventListener("error", () => {
-        setStatus((current) => ({
-          ...current,
-          state: "error",
-          detail: "Terminal socket error",
-        }));
-      });
+      socketRef.current = transport.socket;
 
       cleanupTransport = () => {
-        inputSubscription.dispose();
-        socket.close();
+        transport.dispose();
         socketRef.current = null;
       };
     }
@@ -299,16 +389,16 @@ export const TerminalViewport = forwardRef<
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [sessionId, sendResize, tauriMode]);
+  }, [reportStatus, sessionId, sendResize, tauriMode]);
 
   // A hidden xterm has zero dimensions. Refit and focus after it is revealed.
   useEffect(() => {
-    if (!active) return;
-    const id = window.setTimeout(() => {
-      sendResize();
-      terminalRef.current?.focus();
-    }, 0);
-    return () => window.clearTimeout(id);
+    return scheduleTerminalActivation(active, {
+      cancel: (id) => window.clearTimeout(id),
+      focus: () => terminalRef.current?.focus(),
+      refit: sendResize,
+      schedule: (callback) => window.setTimeout(callback, 0),
+    });
   }, [active, sendResize]);
 
   return (
@@ -326,10 +416,13 @@ export const TerminalViewport = forwardRef<
   );
 });
 
-function terminalSocketUrl(sessionId: string): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+function terminalSocketUrl(
+  sessionId: string,
+  location: { protocol: string; host: string },
+): string {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const id = encodeURIComponent(sessionId);
-  return `${protocol}//${window.location.host}/api/terminal/socket?id=${id}`;
+  return `${protocol}//${location.host}/api/terminal/socket?id=${id}`;
 }
 
 function parseServerMessage(input: unknown): ServerMessage | null {
