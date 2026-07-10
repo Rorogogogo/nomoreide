@@ -1,6 +1,12 @@
+import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 import { TerminalPane } from "../src/web/client/src/features/terminal/terminal-pane";
+import {
+  TerminalViewport,
+  type TerminalViewportHandle,
+  type TerminalViewportStatus,
+} from "../src/web/client/src/features/terminal/terminal-viewport";
 import { TerminalView } from "../src/web/client/src/features/terminal/terminal-view";
 
 vi.mock("@xterm/xterm", () => ({
@@ -54,5 +60,35 @@ describe("TerminalPane", () => {
 
     expect(markup).toContain("hidden");
     expect(markup).toContain("terminal viewport");
+  });
+});
+
+describe("TerminalViewport", () => {
+  test("renders only the raw terminal viewport", () => {
+    const markup = renderToStaticMarkup(
+      <TerminalViewport active sessionId="term_raw" />,
+    );
+
+    expect(markup).toContain("terminal viewport");
+    expect(markup).not.toContain("Restart");
+    expect(markup).not.toContain("Stop");
+  });
+
+  test("stays rendered while inactive and exposes its control contracts", () => {
+    const handle = createRef<TerminalViewportHandle>();
+    const statuses: TerminalViewportStatus[] = [];
+    const markup = renderToStaticMarkup(
+      <TerminalViewport
+        active={false}
+        onStatusChange={(status) => statuses.push(status)}
+        ref={handle}
+        sessionId="term_hidden"
+      />,
+    );
+
+    expect(markup).toContain("hidden");
+    expect(markup).toContain("terminal viewport");
+    expect(handle).toHaveProperty("current");
+    expect(statuses).toEqual([]);
   });
 });
