@@ -72,7 +72,7 @@ export function AgentDock({
   const {
     turns,
     streaming,
-    error,
+    chatError,
     configured,
     provider,
     providers,
@@ -425,10 +425,10 @@ export function AgentDock({
                   />
                 ))
               )}
-              {error ? (
+              {chatError ? (
                 <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                   <AlertTriangle className="mt-px size-3.5 shrink-0" />
-                  <span className="min-w-0 break-words">{error}</span>
+                  <span className="min-w-0 break-words">{chatError}</span>
                 </div>
               ) : null}
             </div>

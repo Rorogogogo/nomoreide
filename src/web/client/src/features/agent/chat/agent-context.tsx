@@ -52,6 +52,8 @@ interface SendToAgentOptions {
 
 type AgentContextValue = ReturnType<typeof useAgentChat> &
   ReturnType<typeof useAgentTerminalTasks> & {
+  /** Legacy chat-stream error, kept separate from native terminal task errors. */
+  chatError: ReturnType<typeof useAgentChat>["error"];
   open: boolean;
   setOpen: (open: boolean) => void;
   draft: string;
@@ -150,6 +152,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const value: AgentContextValue = {
     ...chat,
     ...terminalTasks,
+    chatError: chat.error,
     send,
     clear,
     open,

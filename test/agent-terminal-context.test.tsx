@@ -222,6 +222,45 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("defers hydration activation until a pending background create is classified", async () => {
+    const listed = deferred<Array<ReturnType<typeof session>>>();
+    const created = deferred<ReturnType<typeof session>>();
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    api.createAgentTerminalSession.mockReturnValue(created.promise);
+    const mounted = await mountProvider();
+
+    act(() => mounted.value.sendToAgent({ prompt: "quiet", background: true }));
+    await act(async () =>
+      listed.resolve([session("pre-existing"), session("pending-background")]),
+    );
+    expect(mounted.value.activeTaskId).toBeNull();
+
+    await act(async () => created.resolve(session("pending-background")));
+
+    expect(mounted.value.activeTaskId).toBe("pre-existing");
+    expect(mounted.value.open).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not resurrect a created session closed before its create response", async () => {
+    const listed = deferred<Array<ReturnType<typeof session>>>();
+    const created = deferred<ReturnType<typeof session>>();
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    api.createAgentTerminalSession.mockReturnValue(created.promise);
+    const mounted = await mountProvider();
+
+    act(() => mounted.value.sendToAgent({ prompt: "quiet", background: true }));
+    await act(async () => listed.resolve([session("closed-pending")]));
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["closed-pending"]);
+
+    await act(async () => mounted.value.closeTask("closed-pending"));
+    await act(async () => created.resolve(session("closed-pending")));
+
+    expect(mounted.value.tasks).toEqual([]);
+    expect(mounted.value.activeTaskId).toBeNull();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("opens a draft without creating a terminal task", async () => {
     const mounted = await mountProvider();
 
@@ -320,6 +359,7 @@ describe("AgentProvider terminal tasks", () => {
     expect(mounted.value.activeTaskId).toBe("safe");
     expect(mounted.value.terminalError).toBe("CLI missing");
     expect(mounted.value.error).toBe("CLI missing");
+    expect(mounted.value.chatError).toBe("obsolete chat error");
     await unmount(mounted.root, mounted.host);
   });
 

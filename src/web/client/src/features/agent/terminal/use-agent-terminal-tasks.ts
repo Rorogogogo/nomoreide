@@ -67,6 +67,8 @@ export function useAgentTerminalTasks() {
   const latestForegroundSequenceRef = useRef(0);
   const providerSelectionSequenceRef = useRef(0);
   const taskOrderRef = useRef(new Map<string, AgentTaskOrder>());
+  const pendingCreateCountRef = useRef(0);
+  const closedIdsRef = useRef(new Set<string>());
 
   const sortTasks = useCallback((items: AgentTerminalTask[]) => {
     return [...items].sort((left, right) => {
@@ -90,6 +92,16 @@ export function useAgentTerminalTasks() {
     setActiveTaskIdState(id);
   }, []);
 
+  const activateFirstAttached = useCallback(() => {
+    if (activeTaskIdRef.current || pendingCreateCountRef.current > 0) return;
+    const firstAttached = sortTasks(tasksRef.current).find(
+      (task) =>
+        !closedIdsRef.current.has(task.id) &&
+        taskOrderRef.current.get(task.id)?.group === "attached",
+    );
+    if (firstAttached) setActiveTaskId(firstAttached.id);
+  }, [setActiveTaskId, sortTasks]);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -103,7 +115,7 @@ export function useAgentTerminalTasks() {
         if (!mountedRef.current) return;
         const attached = sessions.filter(
           (session): session is TerminalSessionInfo & { kind: "agent" } =>
-            session.kind === "agent",
+            session.kind === "agent" && !closedIdsRef.current.has(session.id),
         );
         attached.forEach((session, index) => {
           if (!taskOrderRef.current.has(session.id)) {
@@ -130,17 +142,12 @@ export function useAgentTerminalTasks() {
           ...tasksRef.current.filter((task) => !attachedIds.has(task.id)),
         ];
         setTasks(sortTasks(merged));
-        const firstAttached = hydrated.find(
-          (session) => taskOrderRef.current.get(session.id)?.group === "attached",
-        );
-        if (!activeTaskIdRef.current && firstAttached) {
-          setActiveTaskId(firstAttached.id);
-        }
+        activateFirstAttached();
       })
       .catch((error) => {
         if (mountedRef.current) setTerminalError(errorMessage(error));
       });
-  }, [setActiveTaskId, setTasks, sortTasks]);
+  }, [activateFirstAttached, setTasks, sortTasks]);
 
   useEffect(() => {
     const selectionAtRequest = providerSelectionSequenceRef.current;
@@ -203,6 +210,7 @@ export function useAgentTerminalTasks() {
       background = false,
     }: CreateAgentTerminalTaskOptions) => {
       const sequence = ++createSequenceRef.current;
+      pendingCreateCountRef.current += 1;
       if (!background) latestForegroundSequenceRef.current = sequence;
       const createdAt = Date.now();
       const selectedProvider = providerRef.current ?? "claude";
@@ -215,6 +223,7 @@ export function useAgentTerminalTasks() {
           label,
         });
         if (!mountedRef.current) return undefined;
+        if (closedIdsRef.current.has(session.id)) return undefined;
         const task: AgentTerminalTask = {
           ...session,
           label: session.label ?? label,
@@ -234,14 +243,19 @@ export function useAgentTerminalTasks() {
         if (mountedRef.current) setTerminalError(errorMessage(error));
         return undefined;
       } finally {
+        pendingCreateCountRef.current = Math.max(0, pendingCreateCountRef.current - 1);
+        if (mountedRef.current && pendingCreateCountRef.current === 0) {
+          activateFirstAttached();
+        }
         if (mountedRef.current) setCreating((count) => Math.max(0, count - 1));
       }
     },
-    [setActiveTaskId, setTasks, sortTasks],
+    [activateFirstAttached, setActiveTaskId, setTasks, sortTasks],
   );
 
   const closeTask = useCallback(
     async (id: string) => {
+      closedIdsRef.current.add(id);
       try {
         await closeTerminalSession(id);
         if (!mountedRef.current) return;
@@ -255,6 +269,7 @@ export function useAgentTerminalTasks() {
           setActiveTaskId(adjacent?.id ?? null);
         }
       } catch (error) {
+        closedIdsRef.current.delete(id);
         if (mountedRef.current) setTerminalError(errorMessage(error));
       }
     },
