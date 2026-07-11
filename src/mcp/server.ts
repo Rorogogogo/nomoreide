@@ -64,7 +64,7 @@ export function createNoMoreIdeMcpServer(
     baseDir: logDir,
     timelineStore,
   });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath(logDir));
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
   const manager = new ProcessManager({
     configStore,
     logStore,

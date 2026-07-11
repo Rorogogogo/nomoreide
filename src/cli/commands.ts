@@ -6,6 +6,10 @@ import {
 } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import { ProcessManager } from "../core/process-manager.js";
+import {
+  defaultRuntimeRegistryPath,
+  ServiceRegistry,
+} from "../core/service-registry.js";
 import { runAgentsCli } from "./agents.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
@@ -54,7 +58,8 @@ export async function runCli(
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
   });
-  const manager = new ProcessManager({ configStore, logStore });
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
+  const manager = new ProcessManager({ configStore, logStore, registry });
 
   try {
     const [command, subcommand, ...rest] = args;

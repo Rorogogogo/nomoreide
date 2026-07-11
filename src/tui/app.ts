@@ -3,6 +3,10 @@ import { resolve } from "node:path";
 import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
 import { LogStore } from "../core/log-store.js";
 import {
+  defaultRuntimeRegistryPath,
+  ServiceRegistry,
+} from "../core/service-registry.js";
+import {
   ProcessManager,
   type NoMoreIdeStatus,
 } from "../core/process-manager.js";
@@ -35,7 +39,8 @@ export function createTuiApp(options: TuiAppOptions = {}): TuiApp {
   const logStore = new LogStore({
     baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
   });
-  const manager = new ProcessManager({ configStore, logStore });
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
+  const manager = new ProcessManager({ configStore, logStore, registry });
 
   return {
     async start() {

@@ -71,7 +71,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     baseDir: logDir,
     timelineStore,
   });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath(logDir));
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
   const manager = new ProcessManager({
     configStore,
     logStore,

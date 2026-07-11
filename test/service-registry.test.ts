@@ -1,5 +1,5 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
@@ -84,9 +84,9 @@ describe("ServiceRegistry", () => {
     expect(registry.get("api")).not.toBeNull();
   });
 
-  test("defaultRuntimeRegistryPath sits beside the project logs", () => {
-    expect(defaultRuntimeRegistryPath("/proj/.nomoreide/logs")).toBe(
-      "/proj/.nomoreide/runtime.json",
+  test("defaultRuntimeRegistryPath is machine-global, not cwd-relative", () => {
+    expect(defaultRuntimeRegistryPath()).toBe(
+      join(homedir(), ".nomoreide", "runtime.json"),
     );
   });
 

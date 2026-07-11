@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import type { ServiceKind } from "./types.js";
 
 /**
@@ -111,11 +112,13 @@ export class ServiceRegistry {
 }
 
 /**
- * The shared registry lives next to the project logs: `.nomoreide/runtime.json`.
- * `logDir` is `.nomoreide/logs`, so its parent is the `.nomoreide` root.
+ * The shared registry is machine-global: `~/.nomoreide/runtime.json`. Running
+ * processes and their ports are global resources, so sessions launched from
+ * different directories (multiple terminals, the desktop app, per-project MCP
+ * servers) must all see the same registry or they spawn duplicates.
  */
-export function defaultRuntimeRegistryPath(logDir: string): string {
-  return resolve(dirname(resolve(logDir)), "runtime.json");
+export function defaultRuntimeRegistryPath(): string {
+  return join(homedir(), ".nomoreide", "runtime.json");
 }
 
 /** `true` while the pid exists (including when owned by another user — EPERM). */
