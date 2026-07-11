@@ -9,7 +9,7 @@ plus NoMoreIDE's service, git, and database tooling.
 npm i -g nomoreide
 ```
 
-The hosted registry (app.brainctl.net) **keeps running** — your account,
+The hosted registry (www.brainctl.net) **keeps running** — your account,
 published profiles, and installs all keep working through NoMoreIDE. Your
 existing sign-in carries over automatically: NoMoreIDE reads the same
 `~/.brainctl/config.json` and honors the same `BRAINCTL_*` environment

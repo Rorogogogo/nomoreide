@@ -74,7 +74,7 @@ describe("registry config", () => {
         env: {},
         apiBaseUrl: "https://api.brainctl.net",
       }),
-    ).toBe("https://app.brainctl.net");
+    ).toBe("https://www.brainctl.net");
     expect(
       await resolveRegistryFrontendUrl({
         configPath,
