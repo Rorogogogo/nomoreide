@@ -1,15 +1,10 @@
 import readline from "node:readline";
-import { resolve } from "node:path";
 import { ConfigStore, defaultGlobalConfigPath } from "../core/config-store.js";
-import { LogStore } from "../core/log-store.js";
 import {
-  defaultRuntimeRegistryPath,
-  ServiceRegistry,
-} from "../core/service-registry.js";
-import {
-  ProcessManager,
-  type NoMoreIdeStatus,
-} from "../core/process-manager.js";
+  createDaemonConnection,
+  type DaemonConnection,
+} from "../core/daemon-client.js";
+import type { NoMoreIdeStatus } from "../core/process-manager.js";
 import type { NoMoreIdeConfig, LogEntry } from "../core/types.js";
 
 export type TuiMode = "services" | "bundles" | "logs";
@@ -25,7 +20,8 @@ export interface TuiScreenState {
 
 export interface TuiAppOptions {
   configPath?: string;
-  logDir?: string;
+  /** Injectable for tests; defaults to the machine-global daemon. */
+  daemon?: DaemonConnection;
 }
 
 export interface TuiApp {
@@ -36,15 +32,13 @@ export function createTuiApp(options: TuiAppOptions = {}): TuiApp {
   const configStore = new ConfigStore(
     options.configPath ?? defaultGlobalConfigPath(),
   );
-  const logStore = new LogStore({
-    baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
-  });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
-  const manager = new ProcessManager({ configStore, logStore, registry });
+  // The TUI is a daemon client: services keep running after it quits and
+  // logs/status reflect every session's services, not just this one's.
+  const daemon = options.daemon ?? createDaemonConnection();
 
   return {
     async start() {
-      await runTui({ configStore, logStore, manager });
+      await runTui({ configStore, daemon });
     },
   };
 }
@@ -91,8 +85,7 @@ export function renderTuiScreen(state: TuiScreenState): string {
 
 async function runTui(options: {
   configStore: ConfigStore;
-  logStore: LogStore;
-  manager: ProcessManager;
+  daemon: DaemonConnection;
 }): Promise<void> {
   let mode: TuiMode = "services";
   let selectedIndex = 0;
@@ -105,15 +98,20 @@ async function runTui(options: {
 
   const render = async () => {
     const config = await options.configStore.load();
+    const client = await options.daemon.client();
     const currentService =
       selectedService ?? config.services[Math.max(0, selectedIndex)]?.name;
+    const [runtime, logs] = await Promise.all([
+      client.status(),
+      currentService ? client.logs(currentService) : Promise.resolve([]),
+    ]);
     const output = renderTuiScreen({
       mode,
       selectedIndex,
       selectedService: currentService,
       config,
-      runtime: options.manager.status(),
-      logs: currentService ? options.logStore.read(currentService) : [],
+      runtime,
+      logs,
     });
 
     process.stdout.write("\x1Bc");
@@ -134,11 +132,12 @@ async function runTui(options: {
         if (process.stdin.isTTY) {
           process.stdin.setRawMode(false);
         }
-        await options.manager.stopAll();
+        // Services belong to the daemon and keep running after the TUI exits.
         resolve();
         return;
       }
 
+      const client = await options.daemon.client();
       if (key.name === "up") {
         selectedIndex = Math.max(0, selectedIndex - 1);
       } else if (key.name === "down") {
@@ -154,19 +153,19 @@ async function runTui(options: {
         mode = "services";
       } else if (key.name === "s") {
         if (mode === "bundles" && bundle) {
-          await options.manager.startBundle(bundle.name);
+          await client.startBundle(bundle.name);
         } else if (service) {
-          await options.manager.startService(service.name);
+          await client.startService(service.name);
         }
       } else if (key.name === "x") {
         if (mode === "bundles" && bundle) {
-          await options.manager.stopBundle(bundle.name);
+          await client.stopBundle(bundle.name);
         } else if (service) {
-          await options.manager.stopService(service.name);
+          await client.stopService(service.name);
         }
       } else if (key.name === "r") {
         if (service) {
-          await options.manager.restartService(service.name);
+          await client.restartService(service.name);
         }
       }
 

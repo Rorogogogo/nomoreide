@@ -3,6 +3,11 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { runCli } from "../src/cli/commands.js";
+import {
+  DaemonClient,
+  type DaemonConnection,
+} from "../src/core/daemon-client.js";
+import { createWebServer } from "../src/web/server.js";
 
 let tempDir: string;
 let configPath: string;
@@ -128,6 +133,53 @@ describe("CLI commands", () => {
     });
   });
 
+  test("runs start/stop/logs against the shared daemon", async () => {
+    const server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+    const daemon: DaemonConnection = {
+      ensure: async () => ({
+        status: "already_running",
+        url: server.url,
+        port: server.port,
+        pid: process.pid,
+      }),
+      client: async () => new DaemonClient(server.url),
+      existing: async () => new DaemonClient(server.url),
+    };
+
+    try {
+      await runCli(
+        [
+          "add",
+          "service",
+          "sleeper",
+          "--command",
+          "node -e 'setInterval(() => {}, 1000)'",
+          "--cwd",
+          tempDir,
+        ],
+        cliOptions(daemon),
+      );
+
+      output = [];
+      expect(await runCli(["start", "sleeper"], cliOptions(daemon))).toBe(0);
+      expect(output.join("\n")).toContain('"name": "sleeper"');
+
+      output = [];
+      expect(await runCli(["logs", "sleeper"], cliOptions(daemon))).toBe(0);
+
+      output = [];
+      expect(await runCli(["stop", "sleeper"], cliOptions(daemon))).toBe(0);
+      expect(output.join("\n")).toContain('"state": "stopped"');
+    } finally {
+      await server.stop();
+    }
+  });
+
   test("prints MCP setup commands", async () => {
     const exitCode = await runCli(["setup"], cliOptions());
     const text = output.join("\n");
@@ -143,10 +195,10 @@ describe("CLI commands", () => {
   });
 });
 
-function cliOptions() {
+function cliOptions(daemon?: DaemonConnection) {
   return {
     configPath,
-    logDir: join(tempDir, "logs"),
+    daemon,
     stdout: (line: string) => output.push(line),
     stderr: (line: string) => errors.push(line),
   };

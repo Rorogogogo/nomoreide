@@ -28,11 +28,16 @@ const bundleNameSchema = z.object({
   name: z.string().min(1).describe("Registered bundle name."),
 });
 
+/**
+ * Runtime tools (start/stop/logs/status/…) call the machine-global daemon
+ * over HTTP so every session shares the same services; registration tools
+ * write config locally — the daemon re-reads it from disk on every operation.
+ */
 export function registerServiceTools(
   server: FastMCP,
   ctx: ToolContext,
 ): void {
-  const { configStore, logStore, manager, timelineStore } = ctx;
+  const { configStore, daemon } = ctx;
 
   server.addTool({
     name: "nomoreide_list_services",
@@ -61,33 +66,37 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_start_service",
-    description: "Start a registered service.",
+    description: "Start a registered service (runs in the shared daemon, so it survives this session).",
     parameters: serviceNameSchema,
-    execute: async ({ name }) => stringify(await manager.startService(name)),
+    execute: async ({ name }) =>
+      stringify(await (await daemon.client()).startService(name)),
   });
 
   server.addTool({
     name: "nomoreide_stop_service",
     description: "Stop a running NoMoreIDE service.",
     parameters: serviceNameSchema,
-    execute: async ({ name }) => stringify(await manager.stopService(name)),
+    execute: async ({ name }) =>
+      stringify(await (await daemon.client()).stopService(name)),
   });
 
   server.addTool({
     name: "nomoreide_restart_service",
     description: "Restart a registered service.",
     parameters: serviceNameSchema,
-    execute: async ({ name }) => stringify(await manager.restartService(name)),
+    execute: async ({ name }) =>
+      stringify(await (await daemon.client()).restartService(name)),
   });
 
   server.addTool({
     name: "nomoreide_read_logs",
-    description: "Read recent in-memory logs for a registered service.",
+    description: "Read recent logs for a registered service (from the shared daemon, regardless of which session started it).",
     parameters: z.object({
       name: z.string().min(1),
       limit: z.number().int().positive().max(1000).optional(),
     }),
-    execute: async ({ name, limit }) => stringify(logStore.read(name, limit)),
+    execute: async ({ name, limit }) =>
+      stringify(await (await daemon.client()).logs(name, limit ?? 500)),
   });
 
   server.addTool({
@@ -104,20 +113,22 @@ export function registerServiceTools(
     name: "nomoreide_start_bundle",
     description: "Start every service in a registered bundle.",
     parameters: bundleNameSchema,
-    execute: async ({ name }) => stringify(await manager.startBundle(name)),
+    execute: async ({ name }) =>
+      stringify(await (await daemon.client()).startBundle(name)),
   });
 
   server.addTool({
     name: "nomoreide_stop_bundle",
     description: "Stop every service in a registered bundle.",
     parameters: bundleNameSchema,
-    execute: async ({ name }) => stringify(await manager.stopBundle(name)),
+    execute: async ({ name }) =>
+      stringify(await (await daemon.client()).stopBundle(name)),
   });
 
   server.addTool({
     name: "nomoreide_status",
     description: "Show current NoMoreIDE runtime status.",
-    execute: async () => stringify(manager.status()),
+    execute: async () => stringify(await (await daemon.client()).status()),
   });
 
   server.addTool({
@@ -131,12 +142,14 @@ export function registerServiceTools(
       if (!definition) {
         throw new Error(`Service "${name}" is not registered.`);
       }
-      const runtime = await manager.statusWithResources();
+      const client = await daemon.client();
+      const [runtime, logs, timelineEvents] = await Promise.all([
+        client.status(),
+        client.logs(name, 80),
+        client.timeline(200),
+      ]);
       const status = runtime.services[name];
-      const logs = logStore.read(name, 80);
-      const timeline = timelineStore
-        .read(200)
-        .filter((event) => event.service === name);
+      const timeline = timelineEvents.filter((event) => event.service === name);
       const health = computeServiceHealth({
         service: definition,
         status,
@@ -163,22 +176,27 @@ export function registerServiceTools(
     }),
     execute: async ({ service }) => {
       const config = await configStore.load();
-      const runtime = await manager.statusWithResources();
-      const timeline = timelineStore.read(200);
       const definitions = service
         ? config.services.filter((item) => item.name === service)
         : config.services;
       if (service && definitions.length === 0) {
         throw new Error(`Service "${service}" is not registered.`);
       }
-      const health = definitions.map((definition) =>
-        computeServiceHealth({
-          service: definition,
-          status: runtime.services[definition.name],
-          logs: logStore.read(definition.name, 80),
-          ports: [],
-          timeline: timeline.filter((event) => event.service === definition.name),
-        }),
+      const client = await daemon.client();
+      const [runtime, timeline] = await Promise.all([
+        client.status(),
+        client.timeline(200),
+      ]);
+      const health = await Promise.all(
+        definitions.map(async (definition) =>
+          computeServiceHealth({
+            service: definition,
+            status: runtime.services[definition.name],
+            logs: await client.logs(definition.name, 80),
+            ports: [],
+            timeline: timeline.filter((event) => event.service === definition.name),
+          }),
+        ),
       );
       return stringify(service ? health[0] : health);
     },
@@ -193,7 +211,7 @@ export function registerServiceTools(
       limit: z.number().int().positive().max(200).default(80),
     }),
     execute: async ({ service, limit }) => {
-      const events = timelineStore.read(200);
+      const events = await (await daemon.client()).timeline(200);
       const filtered = service
         ? events.filter((event) => event.service === service)
         : events;

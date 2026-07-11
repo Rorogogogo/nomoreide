@@ -1,15 +1,12 @@
-import { resolve } from "node:path";
 import {
   ConfigStore,
   ConfigValidationError,
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
-import { LogStore } from "../core/log-store.js";
-import { ProcessManager } from "../core/process-manager.js";
 import {
-  defaultRuntimeRegistryPath,
-  ServiceRegistry,
-} from "../core/service-registry.js";
+  createDaemonConnection,
+  type DaemonConnection,
+} from "../core/daemon-client.js";
 import { runAgentsCli } from "./agents.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
@@ -17,7 +14,7 @@ import { runGitCli } from "./git.js";
 import { runProfileCli } from "./profile.js";
 
 const USAGE =
-  "Usage: nomoreide [mcp|setup|tui|web|git|agents|profile|list|logs|start|stop|restart|add]";
+  "Usage: nomoreide [mcp|setup|tui|web|daemon|git|agents|profile|list|logs|start|stop|restart|add]";
 
 const MCP_SETUP_LINES = [
   "NoMoreIDE MCP setup",
@@ -41,9 +38,10 @@ const MCP_SETUP_LINES = [
 
 export interface CliOptions {
   configPath?: string;
-  logDir?: string;
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
+  /** Injectable for tests; defaults to the machine-global daemon. */
+  daemon?: DaemonConnection;
 }
 
 export async function runCli(
@@ -55,11 +53,9 @@ export async function runCli(
   const configStore = new ConfigStore(
     options.configPath ?? defaultGlobalConfigPath(),
   );
-  const logStore = new LogStore({
-    baseDir: options.logDir ?? resolve(process.cwd(), ".nomoreide/logs"),
-  });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
-  const manager = new ProcessManager({ configStore, logStore, registry });
+  // Runtime commands (start/stop/restart/logs) talk to the shared daemon so
+  // services outlive this CLI invocation and are visible to every session.
+  const daemon = options.daemon ?? createDaemonConnection();
 
   try {
     const [command, subcommand, ...rest] = args;
@@ -168,7 +164,8 @@ export async function runCli(
       if (!name) {
         throw new UsageError("service name is required");
       }
-      for (const entry of logStore.read(name, 200)) {
+      const client = await daemon.client();
+      for (const entry of await client.logs(name, 200)) {
         stdout(`${entry.timestamp}\t${entry.stream}\t${entry.text}`);
       }
       return 0;
@@ -181,16 +178,17 @@ export async function runCli(
       }
       const config = await configStore.load();
       const isBundle = config.bundles.some((bundle) => bundle.name === name);
+      const client = await daemon.client();
       const result =
         command === "start"
           ? isBundle
-            ? await manager.startBundle(name)
-            : await manager.startService(name)
+            ? await client.startBundle(name)
+            : await client.startService(name)
           : command === "stop"
             ? isBundle
-              ? await manager.stopBundle(name)
-              : await manager.stopService(name)
-            : await manager.restartService(name);
+              ? await client.stopBundle(name)
+              : await client.stopService(name)
+            : await client.restartService(name);
 
       stdout(JSON.stringify(result, null, 2));
       return 0;

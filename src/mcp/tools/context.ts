@@ -1,25 +1,23 @@
 import type { FastMCP } from "fastmcp";
 import type { AgentSessionTracker } from "../../core/agent-sessions.js";
 import type { ConfigStore } from "../../core/config-store.js";
+import type { DaemonConnection } from "../../core/daemon-client.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
 import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
-import type { LogStore } from "../../core/log-store.js";
-import type { ProcessManager } from "../../core/process-manager.js";
-import type { TimelineStore } from "../../core/timeline-store.js";
 import { previewArgs, type ToolCallStore } from "../../core/tool-call-store.js";
-import type { UiLifecycleManager } from "../../web/ui-lifecycle.js";
 
 /** Shared stateful services every tool group receives. */
 export interface ToolContext {
   configStore: ConfigStore;
+  /**
+   * Handle to the machine-global daemon that owns all spawned services.
+   * Service tools go through it over HTTP; config/git/db tools stay local.
+   */
+  daemon: DaemonConnection;
   dbPeek: DbPeek;
   errorInbox: ErrorInbox;
-  logStore: LogStore;
-  manager: ProcessManager;
-  timelineStore: TimelineStore;
-  uiLifecycle: UiLifecycleManager;
 }
 
 /** Each domain registers its tools onto the (optionally recording) server. */

@@ -28,31 +28,33 @@ Five stateful modules form the backbone:
 - **GitManager** (`git-manager.ts`) — Read-safe Git abstraction; intentionally excludes `reset --hard`, `clean`, `force-push`, `branch -D`. Accepts arbitrary `cwd` so it works with any repo path.
 - **ServiceHealth** (`service-health.ts`) + **PortUtils** (`port-utils.ts`) — Health probing and port conflict detection.
 
+### Shared Daemon (`src/core/daemon-lifecycle.ts`, `src/core/daemon-client.ts`, `src/cli/daemon.ts`)
+
+One detached, machine-global daemon (`nomoreide daemon`, state at `~/.nomoreide/daemon.json`, logs/timeline under `~/.nomoreide/`) owns every spawned service — it *is* the web server on `127.0.0.1:4317`. MCP/CLI/TUI are thin HTTP clients: `ensureDaemon()` reuses (state file + pid + `/api/health` probe), adopts, or spawns it detached; `DaemonClient` wraps the existing REST routes. Services therefore survive session exits and are visible across sessions. `nomoreide daemon {status,stop,restart}` manages it; `stop` (and `POST /api/daemon/shutdown`) stops all services. The Tauri desktop app is the known exception — its Rust core still spawns its own services.
+
 ### MCP Server (`src/mcp/`)
 
-Built on FastMCP 3.0.0, runs as a stdio MCP server for AI agents (Claude Code, Codex CLI, Gemini CLI). Exposes 30+ tools wrapping core layer operations. Auto-starts the web UI unless `NOMOREIDE_AUTO_UI=0`. All tools are read-safe or scoped to services registered in ConfigStore — no raw filesystem enumeration.
+Built on FastMCP 3.0.0, runs as a stdio MCP server for AI agents (Claude Code, Codex CLI, Gemini CLI). Exposes 30+ tools. Service runtime tools (start/stop/logs/status/timeline) call the shared daemon over HTTP; config/git/db/agent tools run locally. Auto-ensures the daemon unless `NOMOREIDE_AUTO_UI=0`. All tools are read-safe or scoped to services registered in ConfigStore — no raw filesystem enumeration.
 
 ### Web Layer (`src/web/`)
 
-HTTP server on `localhost:4317`. Serves a React SPA + REST API endpoints under `/api/*`. The React frontend (`src/web/client/src/`) uses Vite, React 19, Tailwind CSS 4, Radix UI, and Framer Motion. Two main feature modules: `features/services/` (start/stop/logs/health) and `features/git/` (diff, staging, branching).
+HTTP server on `localhost:4317` (the daemon process). Serves a React SPA + REST API endpoints under `/api/*`. The React frontend (`src/web/client/src/`) uses Vite, React 19, Tailwind CSS 4, Radix UI, and Framer Motion. Two main feature modules: `features/services/` (start/stop/logs/health) and `features/git/` (diff, staging, branching).
 
 `server.ts` is a thin dispatcher: it builds a `RouteServices` context once and matches each request against a **route registry** (`src/web/routes/`). Each domain owns a `<domain>-routes.ts` exporting a `Route[]` (`dashboard`, `agent`, `git`, `service`, `shell`); `routes/index.ts` concatenates them in dispatch order (`/api/*` groups first, the SPA-shell catch-alls last). Use `route(method, path, handler)` for exact paths and `patternRoute(regex, paramNames, handler)` for parameterized ones (the handler does its own method check, mirroring 405 behavior). **Adding an endpoint never edits the dispatcher** — add/extend a route module and register it in `routes/index.ts`.
 
 ### CLI & TUI (`src/cli/`, `src/tui/`)
 
-`src/index.ts` routes to the appropriate mode. CLI subcommands: `mcp`, `tui`, `web`, `add`, `git`, `list`, `logs`, `setup`, `start`, `stop`, `restart`.
+`src/index.ts` routes to the appropriate mode. CLI subcommands: `mcp`, `tui`, `web`, `daemon`, `add`, `git`, `list`, `logs`, `setup`, `start`, `stop`, `restart`.
 
 ### Data Flow
 
 ```
-AI Agent ──stdio──► MCP Server
-                        │
-User ───────────► CLI / TUI / Web UI
-                        │
-                   Core Layer
-             (Config / Process / Log / Git)
-                        │
-                 Managed Processes
+AI Agent ──stdio──► MCP Server ──┐
+User ────► CLI / TUI / browser ──┼── HTTP 127.0.0.1:4317 ──► Daemon (web server)
+                                 │                            Core Layer
+             (config writes go straight to ConfigStore;       (Config / Process / Log / Git)
+              the daemon re-reads config from disk per op)         │
+                                                              Managed Processes
 ```
 
 ## Key Patterns

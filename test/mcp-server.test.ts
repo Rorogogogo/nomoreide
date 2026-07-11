@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
+  DaemonClient,
+  type DaemonConnection,
+} from "../src/core/daemon-client.js";
+import {
   createNoMoreIdeMcpServer,
   NOMOREIDE_TOOL_NAMES,
   startNoMoreIdeMcpServer,
@@ -18,11 +22,28 @@ afterEach(async () => {
   await rm(tempDir, { recursive: true, force: true });
 });
 
+function fakeDaemon(calls: string[]): DaemonConnection {
+  return {
+    ensure: async () => {
+      calls.push("daemon");
+      return {
+        status: "started",
+        url: "http://127.0.0.1:4317",
+        port: 4317,
+        pid: process.pid,
+      };
+    },
+    client: async () => new DaemonClient("http://127.0.0.1:1"),
+    existing: async () => null,
+  };
+}
+
 describe("NoMoreIDE MCP server", () => {
   test("creates a FastMCP server with every expected NoMoreIDE tool", () => {
     const mcp = createNoMoreIdeMcpServer({
       configPath: join(tempDir, "nomoreide.config.json"),
       logDir: join(tempDir, "logs"),
+      daemon: fakeDaemon([]),
     });
 
     expect(mcp.toolNames).toEqual(NOMOREIDE_TOOL_NAMES);
@@ -40,10 +61,10 @@ describe("NoMoreIDE MCP server", () => {
     expect(mcp.toolNames).toContain("nomoreide_open_ui");
     expect(mcp.toolNames).toContain("nomoreide_close_ui");
     expect(mcp.server).toBeDefined();
-    expect(mcp.manager).toBeDefined();
+    expect(mcp.daemon).toBeDefined();
   });
 
-  test("starts the singleton UI before starting the MCP transport", async () => {
+  test("ensures the shared daemon before starting the MCP transport", async () => {
     const calls: string[] = [];
 
     await startNoMoreIdeMcpServer({
@@ -52,31 +73,21 @@ describe("NoMoreIDE MCP server", () => {
         ...createNoMoreIdeMcpServer({
           configPath: join(tempDir, "nomoreide.config.json"),
           logDir: join(tempDir, "logs"),
+          daemon: fakeDaemon(calls),
         }),
         server: {
           start: async () => {
             calls.push("mcp");
           },
         },
-        uiLifecycle: {
-          ensureStarted: async () => {
-            calls.push("ui");
-            return {
-              status: "started",
-              url: "http://127.0.0.1:4317",
-              port: 4317,
-              pid: process.pid,
-            };
-          },
-          close: async () => ({ status: "stopped" }),
-        },
+        daemon: fakeDaemon(calls),
       }),
     });
 
-    expect(calls).toEqual(["ui", "mcp"]);
+    expect(calls).toEqual(["daemon", "mcp"]);
   });
 
-  test("skips MCP auto UI startup when NOMOREIDE_AUTO_UI is disabled", async () => {
+  test("skips daemon auto-start when NOMOREIDE_AUTO_UI is disabled", async () => {
     const calls: string[] = [];
 
     await startNoMoreIdeMcpServer({
@@ -85,24 +96,14 @@ describe("NoMoreIDE MCP server", () => {
         ...createNoMoreIdeMcpServer({
           configPath: join(tempDir, "nomoreide.config.json"),
           logDir: join(tempDir, "logs"),
+          daemon: fakeDaemon(calls),
         }),
         server: {
           start: async () => {
             calls.push("mcp");
           },
         },
-        uiLifecycle: {
-          ensureStarted: async () => {
-            calls.push("ui");
-            return {
-              status: "started",
-              url: "http://127.0.0.1:4317",
-              port: 4317,
-              pid: process.pid,
-            };
-          },
-          close: async () => ({ status: "stopped" }),
-        },
+        daemon: fakeDaemon(calls),
       }),
     });
 
