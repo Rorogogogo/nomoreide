@@ -16,15 +16,22 @@ export interface ComputeServiceHealthInput {
   timeline?: TimelineEvent[];
 }
 
+// Many runtimes (Go's log package, cargo, dotnet) write routine output to
+// stderr, so only the text can tell an error apart from an info line.
+const ERROR_LOG_PATTERN =
+  /error|failed|exception|panic|fatal|traceback|exit status/i;
+
 export function computeServiceHealth(
   input: ComputeServiceHealthInput,
 ): ServiceHealth {
   const status = input.status;
+  const startedAt = status?.startedAt;
   const lastErrorLog = [...input.logs]
     .reverse()
     .find(
       (entry) =>
-        entry.stream === "stderr" || /error|failed|exception/i.test(entry.text),
+        ERROR_LOG_PATTERN.test(entry.text) &&
+        (!startedAt || entry.timestamp >= startedAt),
     );
 
   if (!status || status.state === "stopped") {
