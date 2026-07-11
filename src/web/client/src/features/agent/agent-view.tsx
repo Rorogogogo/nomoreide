@@ -8,7 +8,6 @@ import { ClaudeLogo, CodexLogo } from "./agent-logos";
 import type { AgentId } from "./agent-types";
 import { ChangesTab } from "./changes-tab";
 import { useAgentDock } from "./chat/agent-context";
-import { ConversationHealth } from "./conversation-health";
 import { MemoryTab } from "./memory-tab";
 import { OverviewTab } from "./overview-tab";
 import { ToolsTab } from "./tools-tab";
@@ -43,7 +42,7 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
-  const { clear, turns, provider: chatProvider, providers, selectProvider } = useAgentDock();
+  const { provider: chatProvider, providers, selectProvider } = useAgentDock();
 
   // A bump on `focusChanges` (e.g. "Review changes" from an Error Inbox fix)
   // jumps straight to the Changes tab, which auto-selects the newest session.
@@ -173,8 +172,6 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
           </button>
         ))}
       </div>
-
-      <ConversationHealth onNewChat={clear} turns={turns} />
 
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === "overview" ? (

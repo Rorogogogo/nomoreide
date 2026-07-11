@@ -80,7 +80,7 @@ afterEach(() => {
 });
 
 describe("headless result consumers", () => {
-  test("completes a workflow agent step from its isolated streamed result", async () => {
+  test("completes a workflow agent step from its headless streamed result", async () => {
     api.streamAgentChat.mockImplementation(
       async (_prompt, _resume, onEvent: (event: unknown) => void) => {
         onEvent({ type: "session", sessionId: "workflow-headless" });
@@ -133,7 +133,7 @@ describe("headless result consumers", () => {
     await unmount(mounted.root, mounted.host);
   });
 
-  test("generates SQL directly from isolated streamed text", async () => {
+  test("generates SQL directly from headless streamed text", async () => {
     api.streamAgentChat.mockImplementation(
       async (_prompt, _resume, onEvent: (event: unknown) => void) => {
         onEvent({ type: "session", sessionId: "sql-headless" });

@@ -5,28 +5,24 @@ import { stringify, type ToolContext } from "./context.js";
 
 /**
  * Returned to the agent when a write hits the read-only query path. This is the
- * contextual teach for the dock's write-staging convention — it costs nothing
- * until the agent actually tries to change data, and tells it to reply with a
- * `sql-write` block instead of executing or narrating console steps. The dock
- * parses that block into an "Open in SQL console" button (see the web client's
- * `chat/message-options.tsx`); the write still goes through the human-only
- * console with its unlock + affected-rows preview.
+ * contextual teach for the raw-terminal workflow. It costs nothing until the
+ * agent actually tries to change data and keeps execution in the human-only,
+ * locked SQL console with its affected-rows preview.
  */
 function writeStagingGuidance(connection: string): string {
   return [
     "This connection is read-only, so that statement was NOT executed.",
-    "Don't run it here, and don't tell the user to open the console and type it",
-    "themselves. Instead reply with the exact statement in a fenced block tagged",
-    "`sql-write` followed by the connection name:",
+    "Provide the exact SQL statement for the user to review in a standard SQL",
+    `fenced block, and identify the target connection as \`${connection}\`:`,
     "",
-    "```sql-write " + connection,
+    "```sql",
     "UPDATE … SET … WHERE …;",
     "```",
     "",
-    "NoMoreIDE turns that into an \"Open in SQL console\" button that stages the",
-    "statement in the human-only write console, where the user unlocks writes and",
-    "reviews an affected-rows preview before committing. Emit exactly one",
-    "statement, and always scope UPDATE/DELETE with a WHERE clause.",
+    "Direct the user to stage and run it through NoMoreIDE's locked SQL console,",
+    "where they explicitly unlock writes and review an affected-rows preview",
+    "before committing. Emit exactly one statement, and always scope",
+    "UPDATE/DELETE with a WHERE clause.",
   ].join("\n");
 }
 
@@ -110,9 +106,9 @@ export function registerDatabaseTools(server: FastMCP, ctx: ToolContext): void {
     description:
       "Run a read-only SQL query against a registered connection and return the rows. " +
       "Read-only at the transaction level — INSERT/UPDATE/DELETE/DDL are rejected. To " +
-      "make a change, don't run it here and don't tell the user to open the console " +
-      "by hand: reply with the statement in a ```sql-write <connection>``` fenced " +
-      "block, which the dock renders as an 'Open in SQL console' button to review and run.",
+      "make a change, don't run it here. Provide the exact SQL statement for review, " +
+      "identify the connection, and direct the user to stage and run it through " +
+      "NoMoreIDE's locked SQL console with its affected-rows preview.",
     parameters: querySchema,
     execute: async ({ connection, sql, limit }) => {
       try {

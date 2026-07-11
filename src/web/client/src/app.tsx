@@ -241,8 +241,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         // Reload the shared dashboard payload *and* whatever the active page
         // fetches itself (git graph, database, GitHub) so the poll keeps the
         // on-screen view current, not just the services/git overview. The agent
-        // page deliberately registers no handler — a live conversation should
-        // never be reloaded out from under the user.
+        // page deliberately registers no handler because its profile data owns
+        // its own lifecycle; native terminal sessions remain attached separately.
         void refresh({ silent: true });
         void refreshRegistry.runActive();
       }

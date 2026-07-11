@@ -9,7 +9,7 @@ const WorkflowRunContext = createContext<WorkflowRunValue | null>(null);
  * Holds the active workflow run at the app root so it survives page/tab
  * navigation — switch away from the Workflows tab and back without losing the
  * pipeline, and the run keeps going (and pausing at gates) in the background.
- * Mounted inside the AgentProvider so the runner can drive the dock conversation.
+ * Mounted inside the AgentProvider so the runner can use the selected agent provider.
  */
 export function WorkflowRunProvider({
   onRefresh,

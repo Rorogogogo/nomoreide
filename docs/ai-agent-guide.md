@@ -41,7 +41,7 @@ Verify the connection with:
 Use this prompt at the beginning of a coding session:
 
 ```text
-Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; stage writes with a sql-write block so the human can review them in the Web UI SQL console.
+Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; name the connection and provide proposed writes in a standard SQL fence so the human can stage and run them in the locked SQL console.
 ```
 
 ## Recommended Workflow
@@ -96,15 +96,16 @@ For database questions:
 MCP database tools do not execute writes. If the user asks for an INSERT, UPDATE, DELETE, or DDL statement:
 
 1. Draft exactly one scoped statement.
-2. Return it in a fenced block tagged `sql-write` followed by the connection name.
-3. Do not tell the user to manually copy it into a console.
-4. Let NoMoreIDE render the "Open in SQL console" action.
-5. The human unlocks writes, reviews the affected-rows preview, and commits from the Web UI.
+2. Name the target connection and return the statement in a standard `sql` fenced block.
+3. Direct the user to manually stage and run it in NoMoreIDE's locked SQL console.
+4. The human explicitly unlocks writes, reviews the affected-rows preview, and only then commits.
 
 Example:
 
 ````text
-```sql-write acme-local
+Target connection: `acme-local`
+
+```sql
 UPDATE users SET role = 'developer' WHERE id = 'usr_01hx8q9n';
 ```
 ````

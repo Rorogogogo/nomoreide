@@ -367,22 +367,16 @@ describe("AgentProvider terminal tasks", () => {
   test("surfaces create failures without corrupting existing tasks", async () => {
     api.listTerminalSessions.mockResolvedValue([session("safe")]);
     api.createAgentTerminalSession.mockRejectedValue(new Error("CLI missing"));
-    api.streamAgentChat.mockImplementation(
-      async (_message, _sessionId, onEvent: (event: unknown) => void) => {
-        onEvent({ type: "error", message: "obsolete chat error" });
-      },
-    );
     const mounted = await mountProvider();
 
     act(() => mounted.value.sendToAgent({ prompt: "fail" }));
     await act(async () => {});
-    await act(async () => mounted.value.send("legacy bridge"));
 
     expect(mounted.value.tasks.map((task) => task.id)).toEqual(["safe"]);
     expect(mounted.value.activeTaskId).toBe("safe");
     expect(mounted.value.terminalError).toBe("CLI missing");
     expect(mounted.value.error).toBe("CLI missing");
-    expect(mounted.value.chatError).toBe("obsolete chat error");
+    expect(api.streamAgentChat).not.toHaveBeenCalled();
     await unmount(mounted.root, mounted.host);
   });
 

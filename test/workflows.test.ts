@@ -128,4 +128,19 @@ describe("workflows", () => {
       },
     });
   });
+
+  test("keeps legacy isolated data readable but does not expose it in built-ins", () => {
+    const stored = workflowSchema.parse({
+      id: "legacy",
+      name: "Legacy",
+      steps: [
+        { kind: "agent", id: "run", title: "Run", prompt: "Do it", isolated: false },
+      ],
+    });
+
+    expect(stored.steps[0]).toMatchObject({ isolated: false });
+    for (const workflow of BUILTIN_WORKFLOWS) {
+      for (const step of workflow.steps) expect(step).not.toHaveProperty("isolated");
+    }
+  });
 });

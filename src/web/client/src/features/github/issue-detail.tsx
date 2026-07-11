@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Loading, Spinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
-import { ChatMarkdown } from "../agent/chat/chat-markdown";
 import { AiAskInline } from "../agent/ai-ask-inline";
 import { AiSpark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { buildIssueAskPrompt } from "../agent/prompts";
 import { MarkdownBody } from "./markdown-body";
+import { MarkdownPreview } from "../git/visualizers/markdown-preview";
 import { IssueLabelSwatch } from "./issue-label-swatch";
 import { NotchedCommentBox } from "./notched-comment-box";
 
@@ -122,7 +122,7 @@ export function IssueDetail({
                       {new Date(comment.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <ChatMarkdown content={comment.body} />
+                  <MarkdownPreview content={comment.body} />
                 </div>
               ))}
             </div>

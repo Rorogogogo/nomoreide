@@ -67,7 +67,7 @@ export function WorkflowPanel() {
   const [loading, setLoading] = useState(true);
   const [viewingRun, setViewingRun] = useState(false);
   // Gates are the consent, so skip the agent's per-tool prompts by default —
-  // irreversible footguns still surface in the dock regardless of this.
+  // irreversible footguns still require approval regardless of this.
   const [autoApprove, setAutoApprove] = useState(true);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export function WorkflowPanel() {
 
   function runWorkflow(workflow: Workflow) {
     // Runs in the background — the pipeline below is where you watch progress,
-    // so we don't pop the dock open and pull attention away.
+    // so we don't pull attention away with a foreground terminal task.
     setViewingRun(true);
     void start(workflow, autoApprove);
   }
@@ -170,7 +170,7 @@ export function WorkflowPanel() {
               <AgentMark className="size-4" /> AI Workflows
             </h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              One-click rituals that exceed the IDE — isolated agent tasks do the work, pausing at each gate for your OK.
+              One-click rituals that exceed the IDE — agent steps do the work, pausing at each gate for your OK.
             </p>
           </div>
           <Button
@@ -785,24 +785,6 @@ function TimelineStepEditor({
                 placeholder="What should the agent do at this step?"
                 value={step.prompt}
               />
-              <label className="mt-2 flex w-fit items-center gap-1.5 text-[11px] text-muted-foreground">
-                <input
-                  checked={step.isolated ?? false}
-                  className="size-3.5 accent-primary"
-                  onChange={(event) =>
-                    onUpdate(index, (current) =>
-                      current.kind === "agent"
-                        ? { ...current, isolated: event.target.checked }
-                        : current,
-                    )
-                  }
-                  type="checkbox"
-                />
-                Fresh session
-                <span className="text-muted-foreground/60">
-                  — cheaper; this step won't see earlier steps' context.
-                </span>
-              </label>
               <CapabilityPicker
                 capabilities={capabilities}
                 selected={step.capabilities}
@@ -940,7 +922,7 @@ function RunView({
             <AgentMark className="size-4" /> {run.workflow.name}
           </h2>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Terminal className="size-3" /> Watch the isolated agent task run.
+            <Terminal className="size-3" /> Watch the agent workflow run.
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -1361,7 +1343,7 @@ function StepBody({
           <p className="text-muted-foreground">{step.prompt}</p>
           {status === "running" ? (
             <p className="mt-1.5 flex items-center gap-1 text-muted-foreground/80">
-              <Loader2 className="size-3 animate-spin" /> Running isolated agent task…
+              <Loader2 className="size-3 animate-spin" /> Running agent step…
             </p>
           ) : null}
         </>

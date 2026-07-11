@@ -16,7 +16,7 @@ export function AgentTerminalComposer({ onSubmitted }: { onSubmitted?: () => voi
   const [pickerOpen, setPickerOpen] = useState(false);
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { const id = requestAnimationFrame(() => inputRef.current?.focus()); return () => cancelAnimationFrame(id); }, [focusNonce]);
+  useEffect(() => { const id = requestAnimationFrame(() => { const input = inputRef.current; if (!input) return; input.focus(); const end = input.value.length; input.setSelectionRange(end, end); }); return () => cancelAnimationFrame(id); }, [focusNonce]);
   useLayoutEffect(() => { if (!inputRef.current) return; inputRef.current.style.height = "auto"; inputRef.current.style.height = `${inputRef.current.scrollHeight}px`; }, [draft]);
 
   async function submit(prompt = draft, label?: string) {
