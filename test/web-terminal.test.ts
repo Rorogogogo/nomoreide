@@ -504,12 +504,13 @@ describe("agent terminal sessions", () => {
 
     expect(res.status).toBe(201);
     expect(manager.lastCreateOptions).toEqual({
-      args: ["--no-alt-screen", "Fix the failing test"],
+      args: ["--no-alt-screen"],
       kind: "agent",
       label: "Fix failing test",
       provider: "codex",
       shell: "codex",
     });
+    expect(manager.sessions.get("term_1")?.writes).toEqual([]);
   });
 
   test("preserves surrounding whitespace in a valid agent prompt", async () => {
@@ -529,10 +530,8 @@ describe("agent terminal sessions", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(manager.lastCreateOptions?.args).toEqual([
-      "--no-alt-screen",
-      prompt,
-    ]);
+    expect(manager.lastCreateOptions?.args).toEqual(["--no-alt-screen"]);
+    expect(manager.sessions.get("term_1")?.writes).toEqual([]);
   });
 
   test.each([
@@ -588,12 +587,13 @@ describe("agent terminal sessions", () => {
 
     expect(res.status).toBe(201);
     expect(manager.lastCreateOptions).toEqual({
-      args: ["--no-alt-screen", "Safe prompt"],
+      args: ["--no-alt-screen"],
       kind: "agent",
       label: "A".repeat(60),
       provider: "codex",
       shell: "codex",
     });
+    expect(manager.sessions.get("term_1")?.writes).toEqual([]);
   });
 });
 

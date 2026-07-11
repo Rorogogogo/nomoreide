@@ -43,6 +43,10 @@ export interface TerminalViewportProps {
   active: boolean;
   /** Reports transport status for optional chrome rendered by a parent. */
   onStatusChange?: (status: TerminalViewportStatus) => void;
+  /** Claims one-time inputs after the PTY has finished its startup output. */
+  claimInitialInput?: () => readonly string[] | undefined;
+  /** Delay between composed initial input and its submit key. */
+  initialInputIntervalMs?: number;
 }
 
 type StatusUpdate =
@@ -140,6 +144,10 @@ export function connectWebTerminal(options: {
   sendResize: () => void;
   location?: { protocol: string; host: string };
   createSocket?: (url: string) => TerminalSocketLike;
+  claimInitialInput?: () => readonly string[] | undefined;
+  initialInputIntervalMs?: number;
+  scheduleInitialInput?: (callback: () => void) => () => void;
+  scheduleInput?: (callback: () => void, delay: number) => () => void;
 }): { socket: TerminalSocketLike; dispose: () => void } {
   const location = options.location ?? window.location;
   const createSocket =
@@ -148,6 +156,34 @@ export function connectWebTerminal(options: {
   options.reportStatus(options.initialStatus);
   const socket = createSocket(terminalSocketUrl(options.sessionId, location));
   let disposed = false;
+  let cancelInitialInput: (() => void) | undefined;
+  const cancelStaggeredInputs: Array<() => void> = [];
+  const scheduleInitialInput =
+    options.scheduleInitialInput ??
+    ((callback: () => void) => {
+      const id = window.setTimeout(callback, 200);
+      return () => window.clearTimeout(id);
+    });
+  const queueInitialInput = () => {
+    cancelInitialInput?.();
+    cancelInitialInput = scheduleInitialInput(() => {
+      cancelInitialInput = undefined;
+      const inputs = options.claimInitialInput?.() ?? [];
+      inputs.forEach((data, index) => {
+        const send = () => socket.send(JSON.stringify({ data, type: "input" }));
+        if (index === 0) send();
+        else {
+          const schedule = options.scheduleInput ?? ((callback: () => void, delay: number) => {
+            const id = window.setTimeout(callback, delay);
+            return () => window.clearTimeout(id);
+          });
+          cancelStaggeredInputs.push(
+            schedule(send, index * (options.initialInputIntervalMs ?? 75)),
+          );
+        }
+      });
+    });
+  };
   const inputSubscription = options.terminal.onData((data) => {
     if (disposed) return;
     if (socket.readyState !== WEB_SOCKET_OPEN) return;
@@ -170,6 +206,7 @@ export function connectWebTerminal(options: {
     if (!message) return;
     if (message.type === "output") {
       options.terminal.write(message.data);
+      queueInitialInput();
       return;
     }
     if (message.type === "error") {
@@ -210,6 +247,8 @@ export function connectWebTerminal(options: {
     dispose: () => {
       if (disposed) return;
       disposed = true;
+      cancelInitialInput?.();
+      cancelStaggeredInputs.forEach((cancel) => cancel());
       inputSubscription.dispose();
       socket.close();
     },
@@ -224,7 +263,7 @@ export const TerminalViewport = forwardRef<
   TerminalViewportHandle,
   TerminalViewportProps
 >(function TerminalViewport(
-  { sessionId, active, onStatusChange },
+  { sessionId, active, claimInitialInput, initialInputIntervalMs, onStatusChange },
   forwardedRef,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -334,10 +373,28 @@ export const TerminalViewport = forwardRef<
       reportStatus(INITIAL_STATUS);
       let unlisten: (() => void) | null = null;
       let disposed = false;
+      let initialInputTimer: number | undefined;
       const inputSubscription = terminal.onData((data) => {
         void tauri_writeTerminalInput(sessionId, data);
       });
-      void tauri_onTerminalOutput(sessionId, (data) => terminal.write(data)).then(
+      void tauri_onTerminalOutput(sessionId, (data) => {
+        terminal.write(data);
+        if (initialInputTimer !== undefined) window.clearTimeout(initialInputTimer);
+        initialInputTimer = window.setTimeout(() => {
+          initialInputTimer = undefined;
+          void (async () => {
+            const inputs = claimInitialInput?.() ?? [];
+            for (let index = 0; index < inputs.length; index += 1) {
+              if (index > 0) {
+                await new Promise<void>((resolve) =>
+                  window.setTimeout(resolve, initialInputIntervalMs ?? 75),
+                );
+              }
+              await tauri_writeTerminalInput(sessionId, inputs[index]);
+            }
+          })();
+        }, 200);
+      }).then(
         (off) => {
           if (disposed) {
             off();
@@ -364,11 +421,14 @@ export const TerminalViewport = forwardRef<
       );
       cleanupTransport = () => {
         disposed = true;
+        if (initialInputTimer !== undefined) window.clearTimeout(initialInputTimer);
         inputSubscription.dispose();
         unlisten?.();
       };
     } else {
       const transport = connectWebTerminal({
+        claimInitialInput,
+        initialInputIntervalMs,
         initialStatus: INITIAL_STATUS,
         reportStatus,
         sendResize,

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act } from "react";
+import { act, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -30,9 +30,9 @@ vi.mock("@/features/git/git-situation-banner", () => ({ GitSituationBanner: () =
 
 import { AgentTerminalDock, clampAgentDockHeight } from "../src/web/client/src/features/agent/terminal/agent-terminal-dock";
 
-async function render() {
+async function render(props: ComponentProps<typeof AgentTerminalDock> = {}) {
   const host = document.createElement("div"); document.body.append(host);
-  const root = createRoot(host); await act(async () => root.render(<AgentTerminalDock />));
+  const root = createRoot(host); await act(async () => root.render(<AgentTerminalDock {...props} />));
   return { host, root };
 }
 
@@ -224,6 +224,41 @@ describe("AgentTerminalDock", () => {
     expect(dock.stopTask).toHaveBeenCalledWith("one");
   });
 
+  test("expands to a full-screen terminal with horizontal navigation", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
+    const { host } = await render({ currentPage: "git", onNavigate: vi.fn() });
+
+    act(() => (host.querySelector('[aria-label="Enter full-screen terminal"]') as HTMLButtonElement).click());
+
+    expect(host.querySelector('[aria-label="Full-screen navigation"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Git Review"]')?.getAttribute("aria-current")).toBe("page");
+    expect(host.querySelector('[aria-label="Restore terminal dock"]')).not.toBeNull();
+    expect(host.querySelector('[data-session="one"]')).not.toBeNull();
+  });
+
+  test("full-screen navigation opens the page and collapses the dock", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
+    const onNavigate = vi.fn();
+    const { host } = await render({ currentPage: "services", onNavigate });
+    act(() => (host.querySelector('[aria-label="Enter full-screen terminal"]') as HTMLButtonElement).click());
+    act(() => (host.querySelector('[aria-label="Database"]') as HTMLButtonElement).click());
+
+    expect(onNavigate).toHaveBeenCalledWith("database");
+    expect(dock.setOpen).toHaveBeenCalledWith(false);
+    expect(host.querySelector('[aria-label="Full-screen navigation"]')).toBeNull();
+  });
+
+  test("Escape restores the regular dock without closing it", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
+    const { host } = await render();
+    act(() => (host.querySelector('[aria-label="Enter full-screen terminal"]') as HTMLButtonElement).click());
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+
+    expect(host.querySelector('[aria-label="Full-screen navigation"]')).toBeNull();
+    expect(dock.setOpen).not.toHaveBeenCalledWith(false);
+    expect(host.querySelector('[data-session="one"]')).not.toBeNull();
+  });
+
   test("clamps resize height to a usable band", () => {
     expect(clampAgentDockHeight(100, 900)).toBe(180);
     expect(clampAgentDockHeight(1000, 900)).toBe(852);
@@ -251,6 +286,8 @@ describe("AgentTerminalDock", () => {
   test("the app mounts the native terminal dock instead of the legacy chat dock", () => {
     const source = readFileSync("src/web/client/src/app.tsx", "utf8");
     expect(source).toContain("<AgentTerminalDock");
+    expect(source).toContain("currentPage={page}");
+    expect(source).toContain("onNavigate=");
     expect(source).not.toContain("<AgentDock");
   });
 

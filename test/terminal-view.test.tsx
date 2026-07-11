@@ -120,6 +120,8 @@ describe("TerminalViewport", () => {
     const socket = new FakeSocket();
     const statuses: TerminalViewportStatus[] = [];
     const createSocket = vi.fn(() => socket);
+    const delayedInputs: Array<() => void> = [];
+    const inputDelays: number[] = [];
     const reportStatus = vi.fn(
       (
         next:
@@ -143,6 +145,19 @@ describe("TerminalViewport", () => {
         detail: "Opening shell",
       },
       sessionId: "agent / one",
+      claimInitialInput: vi
+        .fn<() => readonly string[] | undefined>()
+        .mockReturnValueOnce(["\u001b[200~Do the work\u001b[201~", "\r"]),
+      initialInputIntervalMs: 500,
+      scheduleInitialInput: (callback) => {
+        callback();
+        return () => {};
+      },
+      scheduleInput: (callback, delay) => {
+        delayedInputs.push(callback);
+        inputDelays.push(delay);
+        return () => {};
+      },
       terminal: {
         onData: () => ({ dispose: vi.fn() }),
         write: vi.fn(),
@@ -152,11 +167,27 @@ describe("TerminalViewport", () => {
       location: { host: "localhost:4321", protocol: "http:" },
     });
     socket.emit("open", {});
+    expect(socket.send).not.toHaveBeenCalled();
+    socket.emit("message", {
+      data: JSON.stringify({ data: "Codex ready", type: "output" }),
+    });
 
     expect(createSocket).toHaveBeenCalledWith(
       "ws://localhost:4321/api/terminal/socket?id=agent%20%2F%20one",
     );
     expect(reportStatus).toHaveBeenCalledTimes(2);
+    expect(socket.send).toHaveBeenNthCalledWith(
+      1,
+      JSON.stringify({ data: "\u001b[200~Do the work\u001b[201~", type: "input" }),
+    );
+    expect(socket.send).toHaveBeenCalledTimes(1);
+    expect(inputDelays).toEqual([500]);
+    delayedInputs.shift()?.();
+    expect(socket.send).toHaveBeenNthCalledWith(2, JSON.stringify({ data: "\r", type: "input" }));
+    socket.emit("message", {
+      data: JSON.stringify({ data: "More output", type: "output" }),
+    });
+    expect(socket.send).toHaveBeenCalledTimes(2);
     expect(statuses).toEqual([
       {
         state: "connecting",

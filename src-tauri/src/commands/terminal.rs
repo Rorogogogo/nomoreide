@@ -61,11 +61,11 @@ fn derive_agent_invocation(
     match provider {
         "claude" => Ok(AgentInvocation {
             executable: claude_bin.to_string(),
-            args: vec![prompt.to_string()],
+            args: Vec::new(),
         }),
         "codex" => Ok(AgentInvocation {
             executable: codex_bin.to_string(),
-            args: vec!["--no-alt-screen".to_string(), prompt.to_string()],
+            args: vec!["--no-alt-screen".to_string()],
         }),
         _ => Err(format!("Unsupported agent provider: {provider}")),
     }
@@ -1403,23 +1403,23 @@ mod tests {
     }
 
     #[test]
-    fn claude_invocation_uses_default_binary_and_preserves_the_full_prompt() {
+    fn claude_invocation_starts_interactively_without_a_prompt_argument() {
         let prompt = "  inspect this project\nthen explain it  ";
 
         let invocation = derive_agent_invocation("claude", prompt, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "claude");
-        assert_eq!(invocation.args, vec![prompt]);
+        assert!(invocation.args.is_empty());
     }
 
     #[test]
-    fn codex_invocation_disables_alt_screen_and_preserves_the_full_prompt() {
+    fn codex_invocation_disables_alt_screen_without_a_prompt_argument() {
         let prompt = "  inspect this project\nthen explain it  ";
 
         let invocation = derive_agent_invocation("codex", prompt, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "codex");
-        assert_eq!(invocation.args, vec!["--no-alt-screen", prompt]);
+        assert_eq!(invocation.args, vec!["--no-alt-screen"]);
     }
 
     #[test]

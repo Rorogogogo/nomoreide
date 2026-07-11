@@ -162,6 +162,8 @@ describe("AgentProvider terminal tasks", () => {
     expect(mounted.value.tasks.map((task) => task.id)).toEqual(["task-1", "task-2"]);
     expect(mounted.value.activeTaskId).toBe("task-2");
     expect(mounted.value.open).toBe(true);
+    expect(mounted.value.claimInitialPrompt("task-2")).toBe("second");
+    expect(mounted.value.claimInitialPrompt("task-2")).toBeUndefined();
     await unmount(mounted.root, mounted.host);
   });
 

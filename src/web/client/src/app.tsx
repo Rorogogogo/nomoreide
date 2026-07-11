@@ -30,7 +30,7 @@ import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
-import { AgentTerminalDock } from "@/features/agent/terminal/agent-terminal-dock";
+import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
@@ -554,7 +554,9 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         />
       ) : null}
       <AgentTerminalDock
+        currentPage={page}
         git={data?.git}
+        onNavigate={(nextPage: AgentDockPage) => setPage(nextPage)}
         onGitRefresh={() => void refresh({ silent: true })}
       />
     </div>

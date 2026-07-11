@@ -12,6 +12,10 @@ async function loadInvocationBuilder(claudeBin = "", codexBin = "") {
   return (await import("../src/core/agent-terminal.js")).buildInteractiveAgentInvocation;
 }
 
+async function loadAgentTerminal() {
+  return import("../src/web/client/src/features/agent/terminal/agent-terminal-input.js");
+}
+
 describe("interactive agent terminal invocation", () => {
   test("uses configured Claude and Codex binaries", async () => {
     const buildInvocation = await loadInvocationBuilder("/custom/claude", "/custom/codex");
@@ -20,12 +24,12 @@ describe("interactive agent terminal invocation", () => {
     expect(buildInvocation("codex", "Review it").shell).toBe("/custom/codex");
   });
 
-  test("passes a Claude prompt as one uninterpolated argument", async () => {
+  test("starts Claude interactively without consuming the prompt as an argument", async () => {
     const buildInteractiveAgentInvocation = await loadInvocationBuilder();
 
     expect(buildInteractiveAgentInvocation("claude", "Fix `api`; then test it")).toEqual({
       shell: "claude",
-      args: ["Fix `api`; then test it"],
+      args: [],
     });
   });
 
@@ -34,8 +38,19 @@ describe("interactive agent terminal invocation", () => {
 
     expect(buildInteractiveAgentInvocation("codex", "Review this workspace")).toEqual({
       shell: "codex",
-      args: ["--no-alt-screen", "Review this workspace"],
+      args: ["--no-alt-screen"],
     });
+  });
+
+  test("sends the complete prompt and Enter as separate terminal inputs", async () => {
+    const { initialAgentInputSequence, initialAgentSubmitDelay } = await loadAgentTerminal();
+
+    expect(initialAgentInputSequence("  First line\nSecond line  ")).toEqual([
+      "\u001b[200~  First line\nSecond line  \u001b[201~",
+      "\r",
+    ]);
+    expect(initialAgentSubmitDelay("codex")).toBe(75);
+    expect(initialAgentSubmitDelay("claude")).toBe(500);
   });
 
   test("rejects providers outside the allowlist", async () => {

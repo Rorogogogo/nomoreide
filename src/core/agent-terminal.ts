@@ -18,9 +18,9 @@ export function buildInteractiveAgentInvocation(
 
   switch (provider) {
     case "claude":
-      return { shell: CLAUDE_BIN, args: [prompt] };
+      return { shell: CLAUDE_BIN, args: [] };
     case "codex":
-      return { shell: CODEX_BIN, args: ["--no-alt-screen", prompt] };
+      return { shell: CODEX_BIN, args: ["--no-alt-screen"] };
     default:
       throw new Error(`Unsupported agent provider: ${String(provider)}`);
   }
