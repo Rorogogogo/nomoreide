@@ -173,19 +173,31 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const retry = useCallback(async () => {
     const revision = ++loadRevisionRef.current;
+    // A load owns only scopes that have not mutated since it began. Waiting for
+    // already-queued saves makes a manual retry read their confirmed server state;
+    // the revision checks below protect saves that start after this snapshot.
+    const globalRevision = globalRevisionRef.current;
+    const projectRevision = projectRevisionRef.current;
+    const pendingGlobal = globalQueueRef.current;
+    const pendingProject = projectQueueRef.current;
     setLoading(true);
     setLoadError(null);
     try {
+      await Promise.all([pendingGlobal, pendingProject]);
       const snapshot = await getSettings();
       if (!mountedRef.current || revision !== loadRevisionRef.current) return;
-      globalRef.current = snapshot.global;
-      projectRef.current = snapshot.project;
-      confirmedGlobalRef.current = snapshot.global;
-      confirmedProjectRef.current = snapshot.project;
-      setGlobal(snapshot.global);
-      setProject(snapshot.project);
-      setConfirmedGlobal(snapshot.global);
-      setConfirmedProject(snapshot.project);
+      if (globalRevision === globalRevisionRef.current) {
+        globalRef.current = snapshot.global;
+        confirmedGlobalRef.current = snapshot.global;
+        setGlobal(snapshot.global);
+        setConfirmedGlobal(snapshot.global);
+      }
+      if (projectRevision === projectRevisionRef.current) {
+        projectRef.current = snapshot.project;
+        confirmedProjectRef.current = snapshot.project;
+        setProject(snapshot.project);
+        setConfirmedProject(snapshot.project);
+      }
     } catch (error) {
       if (mountedRef.current && revision === loadRevisionRef.current) {
         setLoadError(errorMessage(error));
@@ -222,9 +234,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     applyUiPreferences(validated);
     setUi(validated);
 
-    const effectiveTheme = validated.theme === "system"
-      ? window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"
-      : validated.theme;
+    const effectiveTheme = resolveTheme(validated.theme);
     appliedThemeRef.current = effectiveTheme;
     setTheme(effectiveTheme);
     appliedLanguageRef.current = validated.language;
@@ -234,14 +244,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyUiPreferences(ui);
-    const effectiveTheme = ui.theme === "system"
-      ? window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"
-      : ui.theme;
+    const effectiveTheme = resolveTheme(ui.theme);
     appliedThemeRef.current = effectiveTheme;
     setTheme(effectiveTheme);
     appliedLanguageRef.current = ui.language;
     setLanguage(ui.language);
   }, []);
+
+  useEffect(() => {
+    if (ui.theme !== "system" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applySystemTheme = (matches: boolean) => {
+      const resolved = matches ? "dark" : "light";
+      appliedThemeRef.current = resolved;
+      setTheme(resolved);
+    };
+    applySystemTheme(media.matches);
+    const onChange = (event: MediaQueryListEvent) => applySystemTheme(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [ui.theme]);
 
   // Keep the pre-hub header toggle and language hook on the same stored values.
   useEffect(() => {
@@ -408,4 +430,12 @@ export function useSettings(): SettingsContextValue {
   const value = useContext(SettingsContext);
   if (!value) throw new Error("useSettings must be used within SettingsProvider");
   return value;
+}
+
+function resolveTheme(theme: UiPreferences["theme"]): "light" | "dark" {
+  if (theme !== "system") return theme;
+  return typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }

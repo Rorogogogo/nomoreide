@@ -34,12 +34,11 @@ export function defaultUiPreferences(): UiPreferences {
 
 function readLegacyPreferences(): Partial<UiPreferences> {
   if (typeof window === "undefined") return {};
-  const theme = window.localStorage.getItem("nomoreide-theme-choice");
+  const theme = safeGetItem("nomoreide-theme-choice");
   const language =
-    window.localStorage.getItem("nomoreide-language") ??
-    window.localStorage.getItem("nomoreide-language-choice");
-  const sidebarDocked = window.localStorage.getItem("nomoreide:sidebar-docked");
-  const projectScope = window.localStorage.getItem("nomoreide:project-scope");
+    safeGetItem("nomoreide-language") ?? safeGetItem("nomoreide-language-choice");
+  const sidebarDocked = safeGetItem("nomoreide:sidebar-docked");
+  const projectScope = safeGetItem("nomoreide:project-scope");
   return {
     ...(theme === "light" || theme === "dark" || theme === "system" ? { theme } : {}),
     ...(language === "en" || language === "zh" ? { language } : {}),
@@ -48,6 +47,14 @@ function readLegacyPreferences(): Partial<UiPreferences> {
       : {}),
     ...(projectScope === "all" || projectScope === "project" ? { projectScope } : {}),
   };
+}
+
+function safeGetItem(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
 }
 
 export function parseUiPreferences(value: unknown): UiPreferences | null {
@@ -93,7 +100,7 @@ export function saveUiPreferences(preferences: unknown): boolean {
 export function loadUiPreferences(): UiPreferences {
   let stored: UiPreferences | null = null;
   try {
-    const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
+    const raw = safeGetItem(UI_PREFERENCES_KEY);
     stored = raw ? parseUiPreferences(JSON.parse(raw)) : null;
   } catch {
     stored = null;

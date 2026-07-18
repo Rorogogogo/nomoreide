@@ -7,8 +7,12 @@ const STORAGE_KEY = "nomoreide-theme-choice";
 
 function readStoredTheme(): Theme {
   if (typeof window === "undefined") return "dark";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    // Storage unavailable — use the safe product default.
+  }
   return "dark";
 }
 

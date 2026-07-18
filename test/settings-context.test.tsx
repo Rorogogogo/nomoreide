@@ -164,6 +164,28 @@ describe("UI preference migration", () => {
       projectScope: "all",
     });
   });
+
+  test("uses defaults when localStorage reads throw and still lets the provider mount", async () => {
+    const getItem = vi
+      .spyOn(window.localStorage, "getItem")
+      .mockImplementation(() => {
+        throw new Error("storage denied");
+      });
+    try {
+      expect(loadUiPreferences()).toMatchObject({
+        version: 1,
+        theme: "system",
+        language: "en",
+        sidebarDocked: false,
+        projectScope: "all",
+      });
+      const mounted = await mountProvider();
+      expect(mounted.value.ui.theme).toBe("system");
+      await unmount(mounted.root, mounted.host);
+    } finally {
+      getItem.mockRestore();
+    }
+  });
 });
 
 describe("SettingsProvider", () => {
@@ -173,6 +195,89 @@ describe("SettingsProvider", () => {
     expect(api.getSettings).toHaveBeenCalledOnce();
     expect(mounted.value.loading).toBe(false);
     await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not let the initial GET overwrite a newer global save", async () => {
+    const load = deferred<typeof initialSnapshot>();
+    api.getSettings.mockReturnValue(load.promise);
+    api.updateGlobalSettings.mockResolvedValue({
+      ...initialSnapshot.global,
+      terminal: { ...initialSnapshot.global.terminal, fontSize: 16 },
+    });
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.updateGlobal({ terminal: { fontSize: 16 } });
+    });
+    load.resolve({
+      global: initialSnapshot.global,
+      project: {
+        ...initialSnapshot.project,
+        database: { ...initialSnapshot.project.database, resultLimit: 250 },
+      },
+    });
+    await act(async () => load.promise);
+
+    expect(mounted.value.global.terminal.fontSize).toBe(16);
+    expect(mounted.value.confirmedGlobal.terminal.fontSize).toBe(16);
+    expect(mounted.value.project.database.resultLimit).toBe(250);
+    expect(mounted.value.confirmedProject.database.resultLimit).toBe(250);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not let a manual retry overwrite a newer project save", async () => {
+    const mounted = await mountProvider();
+    const retryLoad = deferred<typeof initialSnapshot>();
+    api.getSettings.mockReturnValueOnce(retryLoad.promise);
+    api.updateProjectSettings.mockResolvedValue({
+      ...initialSnapshot.project,
+      logs: { ...initialSnapshot.project.logs, wrapLines: false },
+    });
+
+    let retryOperation!: Promise<void>;
+    act(() => {
+      retryOperation = mounted.value.retry();
+    });
+    await act(async () => {
+      await mounted.value.updateProject({ logs: { wrapLines: false } });
+    });
+    retryLoad.resolve({
+      global: {
+        ...initialSnapshot.global,
+        terminal: { ...initialSnapshot.global.terminal, fontSize: 18 },
+      },
+      project: initialSnapshot.project,
+    });
+    await act(async () => retryOperation);
+
+    expect(mounted.value.project.logs.wrapLines).toBe(false);
+    expect(mounted.value.confirmedProject.logs.wrapLines).toBe(false);
+    expect(mounted.value.global.terminal.fontSize).toBe(18);
+    expect(mounted.value.confirmedGlobal.terminal.fontSize).toBe(18);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("ignores a retry response after unmount", async () => {
+    const mounted = await mountProvider();
+    const retryLoad = deferred<typeof initialSnapshot>();
+    api.getSettings.mockReturnValueOnce(retryLoad.promise);
+    let retryOperation!: Promise<void>;
+    act(() => {
+      retryOperation = mounted.value.retry();
+    });
+    const rendered = mounted.value;
+    await unmount(mounted.root, mounted.host);
+
+    retryLoad.resolve({
+      ...initialSnapshot,
+      global: {
+        ...initialSnapshot.global,
+        terminal: { ...initialSnapshot.global.terminal, fontSize: 18 },
+      },
+    });
+    await act(async () => retryOperation);
+
+    expect(rendered.global.terminal.fontSize).toBe(13);
   });
 
   test("optimistically updates global settings then keeps the confirmed server snapshot", async () => {
@@ -267,6 +372,61 @@ describe("SettingsProvider", () => {
     );
     expect(window.localStorage.getItem(UI_PREFERENCES_KEY)).toBe(persisted);
     await unmount(mounted.root, mounted.host);
+  });
+
+  test("tracks system theme media changes and removes the listener for an explicit theme", async () => {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    const addEventListener = vi.fn(
+      (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+    );
+    const removeEventListener = vi.fn(
+      (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+    );
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query) =>
+        ({
+          matches: false,
+          media: query,
+          onchange: null,
+          addEventListener,
+          removeEventListener,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    window.localStorage.setItem(
+      UI_PREFERENCES_KEY,
+      JSON.stringify({ ...resetUiPreferences(), theme: "system" }),
+    );
+    const mounted = await mountProvider();
+
+    expect(window.matchMedia).toHaveBeenCalledWith("(prefers-color-scheme: dark)");
+    expect(addEventListener).toHaveBeenCalledOnce();
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+
+    act(() => {
+      for (const listener of listeners) {
+        listener({ matches: true } as MediaQueryListEvent);
+      }
+    });
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(JSON.parse(window.localStorage.getItem(UI_PREFERENCES_KEY) ?? "null").theme).toBe(
+      "system",
+    );
+
+    act(() => {
+      mounted.value.updateUi({ theme: "light" });
+    });
+    expect(removeEventListener).toHaveBeenCalledOnce();
+    expect(listeners.size).toBe(0);
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    act(() => {
+      mounted.value.updateUi({ theme: "system" });
+    });
+    expect(addEventListener).toHaveBeenCalledTimes(2);
+    await unmount(mounted.root, mounted.host);
+    expect(removeEventListener).toHaveBeenCalledTimes(2);
   });
 
   test("stays saving until concurrent global and project saves have both settled", async () => {
