@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   rm,
   utimes,
   writeFile,
@@ -11,7 +12,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { ConfigStore } from "../src/core/config-store.js";
+import {
+  __recoverStaleConfigLockForTests,
+  ConfigStore,
+} from "../src/core/config-store.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -173,6 +177,22 @@ describe("ConfigStore", () => {
     await expect(readFile(lockPath, "utf8")).rejects.toMatchObject({
       code: "ENOENT",
     });
+  });
+
+  test("stale recovery preserves a replacement lock owner", async () => {
+    const lockPath = `${configPath}.lock`;
+    const replacementPath = `${lockPath}.replacement`;
+    const staleTime = new Date(Date.now() - 60_000);
+    await writeFile(lockPath, "old-owner");
+    await utimes(lockPath, staleTime, staleTime);
+
+    await __recoverStaleConfigLockForTests(lockPath, async () => {
+      await writeFile(replacementPath, "new-owner");
+      await rename(replacementPath, lockPath);
+      await utimes(lockPath, staleTime, staleTime);
+    });
+
+    expect(await readFile(lockPath, "utf8")).toBe("new-owner");
   });
 
   test("creates a default config when the file does not exist", async () => {

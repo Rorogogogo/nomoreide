@@ -622,15 +622,7 @@ async function acquireConfigLock(lockPath: string) {
       if (!hasErrorCode(error, "EEXIST")) throw error;
     }
 
-    try {
-      const lockStats = await stat(lockPath);
-      if (Date.now() - lockStats.mtimeMs > CONFIG_LOCK_STALE_MS) {
-        const staleOwner = await readFile(lockPath, "utf8");
-        await releaseConfigLock(lockPath, staleOwner);
-        continue;
-      }
-    } catch (error) {
-      if (!hasErrorCode(error, "ENOENT")) throw error;
+    if (await recoverStaleConfigLock(lockPath)) {
       continue;
     }
 
@@ -650,21 +642,55 @@ async function acquireConfigLock(lockPath: string) {
 async function releaseConfigLock(
   lockPath: string,
   ownerToken: string,
-): Promise<void> {
+): Promise<boolean> {
   let currentOwner: string;
   try {
     currentOwner = await readFile(lockPath, "utf8");
   } catch (error) {
-    if (hasErrorCode(error, "ENOENT")) return;
+    if (hasErrorCode(error, "ENOENT")) return true;
     throw error;
   }
-  if (currentOwner !== ownerToken) return;
+  if (currentOwner !== ownerToken) return false;
 
   try {
     await unlink(lockPath);
   } catch (error) {
     if (!hasErrorCode(error, "ENOENT")) throw error;
   }
+  return true;
+}
+
+async function recoverStaleConfigLock(
+  lockPath: string,
+  afterOwnerRead?: () => void | Promise<void>,
+): Promise<boolean> {
+  let observedOwner: string;
+  try {
+    observedOwner = await readFile(lockPath, "utf8");
+  } catch (error) {
+    if (hasErrorCode(error, "ENOENT")) return true;
+    throw error;
+  }
+
+  await afterOwnerRead?.();
+
+  let lockMtimeMs: number;
+  try {
+    lockMtimeMs = (await stat(lockPath)).mtimeMs;
+  } catch (error) {
+    if (hasErrorCode(error, "ENOENT")) return true;
+    throw error;
+  }
+  if (Date.now() - lockMtimeMs <= CONFIG_LOCK_STALE_MS) return false;
+  return releaseConfigLock(lockPath, observedOwner);
+}
+
+/** @internal Deterministic stale-lock ownership seam used by regression tests. */
+export async function __recoverStaleConfigLockForTests(
+  lockPath: string,
+  afterOwnerRead: () => void | Promise<void>,
+): Promise<void> {
+  await recoverStaleConfigLock(lockPath, afterOwnerRead);
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {
