@@ -172,6 +172,76 @@ describe("web server", () => {
     );
   });
 
+  test("returns 400 when stored settings fail schema validation", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        version: 1,
+        terminal: {
+          fontSize: 2,
+          cursorStyle: "block",
+          scrollback: 5_000,
+          copyOnSelect: false,
+          confirmTerminate: true,
+        },
+      }),
+    );
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/settings`);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ ok: false });
+  });
+
+  test("returns 400 when stored project config is invalid on get and reset", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        version: 1,
+        services: [],
+        bundles: [],
+        gitRepositories: [],
+        databases: [],
+        logSources: [],
+        githubTokens: [],
+        workflows: [],
+        workflowTriggers: [],
+        preferences: {
+          logs: { showTimestamps: true, wrapLines: true },
+          database: { confirmWrites: true, resultLimit: 5 },
+        },
+      }),
+    );
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const getResponse = await fetch(`${server.url}/api/settings`);
+    const resetResponse = await fetch(
+      `${server.url}/api/settings/project/reset`,
+      { method: "POST" },
+    );
+
+    expect(getResponse.status).toBe(400);
+    expect(resetResponse.status).toBe(400);
+    await expect(resetResponse.json()).resolves.toMatchObject({ ok: false });
+  });
+
   test("serves the React web app shell from the dashboard route", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({

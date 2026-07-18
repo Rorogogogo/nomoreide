@@ -24,18 +24,20 @@ const globalSettingsPatchSchema = z
 
 export const settingsRoutes: Route[] = [
   route("GET", "/api/settings", async ({ appSettings, configStore, response }) => {
-    const [global, project] = await Promise.all([
-      appSettings.load(),
-      configStore.getPreferences(),
-    ]);
-    sendJson(response, { ok: true, global, project });
+    await respond(response, async () => {
+      const [global, project] = await Promise.all([
+        appSettings.load(),
+        configStore.getPreferences(),
+      ]);
+      return { ok: true, global, project };
+    });
   }),
 
   route(
     "PATCH",
     "/api/settings/global",
     async ({ appSettings, request, response }) => {
-      await respondToValidation(response, async () => {
+      await respond(response, async () => {
         const patch = globalSettingsPatchSchema.parse(
           await readJsonObject(request),
         );
@@ -49,7 +51,7 @@ export const settingsRoutes: Route[] = [
     "PATCH",
     "/api/settings/project",
     async ({ configStore, request, response }) => {
-      await respondToValidation(response, async () => {
+      await respond(response, async () => {
         const patch = projectPreferencesPatchSchema.parse(
           await readJsonObject(request),
         );
@@ -63,7 +65,10 @@ export const settingsRoutes: Route[] = [
     "POST",
     "/api/settings/global/reset",
     async ({ appSettings, response }) => {
-      sendJson(response, { ok: true, global: await appSettings.reset() });
+      await respond(response, async () => ({
+        ok: true,
+        global: await appSettings.reset(),
+      }));
     },
   ),
 
@@ -71,15 +76,15 @@ export const settingsRoutes: Route[] = [
     "POST",
     "/api/settings/project/reset",
     async ({ configStore, response }) => {
-      sendJson(response, {
+      await respond(response, async () => ({
         ok: true,
         project: await configStore.resetPreferences(),
-      });
+      }));
     },
   ),
 ];
 
-async function respondToValidation(
+async function respond(
   response: ServerResponse,
   operation: () => Promise<Record<string, unknown>>,
 ): Promise<void> {
