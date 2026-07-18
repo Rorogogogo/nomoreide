@@ -1,7 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  open,
+  readFile,
+  rename,
+  stat,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 import type {
@@ -17,6 +26,11 @@ import { workflowSchema, type Workflow } from "./workflows.js";
 import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers.js";
 
 const execFileAsync = promisify(execFile);
+
+const CONFIG_LOCK_WAIT_MS = 5_000;
+const CONFIG_LOCK_STALE_MS = 30_000;
+const CONFIG_LOCK_RETRY_MIN_MS = 10;
+const CONFIG_LOCK_RETRY_MAX_MS = 50;
 
 const baseServiceSchema = z.object({
   name: z.string().min(1),
@@ -219,6 +233,10 @@ export class ConfigStore {
   constructor(private readonly configPath = defaultGlobalConfigPath()) {}
 
   async load(): Promise<NoMoreIdeConfig> {
+    return this.loadUnlocked();
+  }
+
+  private async loadUnlocked(): Promise<NoMoreIdeConfig> {
     try {
       const raw = await readFile(this.configPath, "utf8");
       return configSchema.parse(JSON.parse(raw));
@@ -232,13 +250,30 @@ export class ConfigStore {
   }
 
   async save(config: NoMoreIdeConfig): Promise<void> {
-    await this.enqueueMutation(() => this.persist(config));
+    await this.enqueueMutation(() =>
+      this.withConfigLock(() => this.persistUnlocked(config)),
+    );
   }
 
-  private async persist(config: NoMoreIdeConfig): Promise<void> {
+  private async persistUnlocked(config: NoMoreIdeConfig): Promise<void> {
     const parsed = configSchema.parse(config);
-    await mkdir(dirname(this.configPath), { recursive: true });
-    await writeFile(this.configPath, `${JSON.stringify(parsed, null, 2)}\n`);
+    const parentDirectory = dirname(this.configPath);
+    const temporaryPath = join(
+      parentDirectory,
+      `.${basename(this.configPath)}.${process.pid}.${randomUUID()}.tmp`,
+    );
+    await mkdir(parentDirectory, { recursive: true });
+    try {
+      await writeFile(
+        temporaryPath,
+        `${JSON.stringify(parsed, null, 2)}\n`,
+        { flag: "wx" },
+      );
+      await rename(temporaryPath, this.configPath);
+    } catch (error) {
+      await unlink(temporaryPath).catch(() => undefined);
+      throw error;
+    }
   }
 
   async getPreferences(): Promise<ProjectPreferences> {
@@ -250,26 +285,42 @@ export class ConfigStore {
     patch: ProjectPreferencesPatch,
   ): Promise<ProjectPreferences> {
     const validatedPatch = projectPreferencesPatchSchema.parse(patch);
-    return this.enqueueMutation(async () => {
-      const config = await this.load();
-      const current = config.preferences ?? DEFAULT_PROJECT_PREFERENCES;
-      const next = projectPreferencesSchema.parse({
-        logs: { ...current.logs, ...validatedPatch.logs },
-        database: { ...current.database, ...validatedPatch.database },
-      });
-      config.preferences = next;
-      await this.persist(config);
-      return structuredClone(next);
-    });
+    return this.enqueueMutation(() =>
+      this.withConfigLock(async () => {
+        const config = await this.loadUnlocked();
+        const current = config.preferences ?? DEFAULT_PROJECT_PREFERENCES;
+        const next = projectPreferencesSchema.parse({
+          logs: { ...current.logs, ...validatedPatch.logs },
+          database: { ...current.database, ...validatedPatch.database },
+        });
+        config.preferences = next;
+        await this.persistUnlocked(config);
+        return structuredClone(next);
+      }),
+    );
   }
 
   async resetPreferences(): Promise<ProjectPreferences> {
-    return this.enqueueMutation(async () => {
-      const config = await this.load();
-      delete config.preferences;
-      await this.persist(config);
-      return structuredClone(DEFAULT_PROJECT_PREFERENCES);
-    });
+    return this.enqueueMutation(() =>
+      this.withConfigLock(async () => {
+        const config = await this.loadUnlocked();
+        delete config.preferences;
+        await this.persistUnlocked(config);
+        return structuredClone(DEFAULT_PROJECT_PREFERENCES);
+      }),
+    );
+  }
+
+  private async withConfigLock<T>(operation: () => Promise<T>): Promise<T> {
+    const lockPath = `${this.configPath}.lock`;
+    const lock = await acquireConfigLock(lockPath);
+    try {
+      return await operation();
+    } finally {
+      await lock.handle.close().finally(() =>
+        releaseConfigLock(lockPath, lock.ownerToken),
+      );
+    }
   }
 
   private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -284,12 +335,14 @@ export class ConfigStore {
   private mutateConfig(
     mutation: (config: NoMoreIdeConfig) => void | Promise<void>,
   ): Promise<NoMoreIdeConfig> {
-    return this.enqueueMutation(async () => {
-      const config = await this.load();
-      await mutation(config);
-      await this.persist(config);
-      return config;
-    });
+    return this.enqueueMutation(() =>
+      this.withConfigLock(async () => {
+        const config = await this.loadUnlocked();
+        await mutation(config);
+        await this.persistUnlocked(config);
+        return config;
+      }),
+    );
   }
 
   async registerService(service: ServiceDefinition): Promise<NoMoreIdeConfig> {
@@ -548,10 +601,81 @@ async function requireGitWorktree(path: string): Promise<void> {
   );
 }
 
-function isMissingFileError(error: unknown): boolean {
+async function acquireConfigLock(lockPath: string) {
+  await mkdir(dirname(lockPath), { recursive: true });
+  const startedAt = Date.now();
+  let attempts = 0;
+
+  while (Date.now() - startedAt < CONFIG_LOCK_WAIT_MS) {
+    try {
+      const handle = await open(lockPath, "wx");
+      const ownerToken = `${process.pid}:${randomUUID()}`;
+      try {
+        await handle.writeFile(ownerToken, "utf8");
+        return { handle, ownerToken };
+      } catch (error) {
+        await handle.close().catch(() => undefined);
+        await unlink(lockPath).catch(() => undefined);
+        throw error;
+      }
+    } catch (error) {
+      if (!hasErrorCode(error, "EEXIST")) throw error;
+    }
+
+    try {
+      const lockStats = await stat(lockPath);
+      if (Date.now() - lockStats.mtimeMs > CONFIG_LOCK_STALE_MS) {
+        const staleOwner = await readFile(lockPath, "utf8");
+        await releaseConfigLock(lockPath, staleOwner);
+        continue;
+      }
+    } catch (error) {
+      if (!hasErrorCode(error, "ENOENT")) throw error;
+      continue;
+    }
+
+    attempts += 1;
+    const retryDelay = Math.min(
+      CONFIG_LOCK_RETRY_MIN_MS * attempts,
+      CONFIG_LOCK_RETRY_MAX_MS,
+    );
+    await new Promise<void>((resolveDelay) => {
+      setTimeout(resolveDelay, retryDelay);
+    });
+  }
+
+  throw new Error(`Timed out waiting for config lock: ${lockPath}`);
+}
+
+async function releaseConfigLock(
+  lockPath: string,
+  ownerToken: string,
+): Promise<void> {
+  let currentOwner: string;
+  try {
+    currentOwner = await readFile(lockPath, "utf8");
+  } catch (error) {
+    if (hasErrorCode(error, "ENOENT")) return;
+    throw error;
+  }
+  if (currentOwner !== ownerToken) return;
+
+  try {
+    await unlink(lockPath);
+  } catch (error) {
+    if (!hasErrorCode(error, "ENOENT")) throw error;
+  }
+}
+
+function hasErrorCode(error: unknown, code: string): boolean {
   return (
-    error instanceof Error &&
+    typeof error === "object" &&
+    error !== null &&
     "code" in error &&
-    (error as NodeJS.ErrnoException).code === "ENOENT"
+    error.code === code
   );
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return hasErrorCode(error, "ENOENT");
 }

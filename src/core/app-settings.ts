@@ -26,21 +26,26 @@ export const DEFAULT_APP_SETTINGS: AppSettings = Object.freeze({
   }),
 });
 
+const terminalSettingsShape = {
+  fontSize: z.number().int().min(10).max(24),
+  cursorStyle: z.enum(["block", "underline", "bar"]),
+  scrollback: z.number().int().min(500).max(100_000),
+  copyOnSelect: z.boolean(),
+  confirmTerminate: z.boolean(),
+};
+
 const appSettingsSchema: z.ZodType<AppSettings> = z.object({
   version: z.literal(1),
-  terminal: z.object({
-    fontSize: z.number().int().min(10).max(24),
-    cursorStyle: z.enum(["block", "underline", "bar"]),
-    scrollback: z.number().int().min(500).max(100_000),
-    copyOnSelect: z.boolean(),
-    confirmTerminate: z.boolean(),
-  }),
+  terminal: z.object(terminalSettingsShape),
 });
 
-export interface AppSettingsPatch {
-  version?: 1;
-  terminal?: Partial<AppSettings["terminal"]>;
-}
+export const appSettingsPatchSchema = z
+  .object({
+    terminal: z.object(terminalSettingsShape).partial().strict().optional(),
+  })
+  .strict();
+
+export type AppSettingsPatch = z.infer<typeof appSettingsPatchSchema>;
 
 export function defaultAppSettingsPath(): string {
   const configuredRoot = process.env.XDG_CONFIG_HOME?.trim();

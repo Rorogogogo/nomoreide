@@ -1,5 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
@@ -103,6 +110,69 @@ describe("ConfigStore", () => {
     const config = await store.load();
     expect(config.preferences?.logs.wrapLines).toBe(false);
     expect(config.bundles).toEqual([{ name: "stack", services: ["api"] }]);
+  });
+
+  test("serializes mutations across stores sharing a config file", async () => {
+    for (let iteration = 0; iteration < 10; iteration += 1) {
+      const sharedPath = join(tempDir, `shared-${iteration}.json`);
+      const preferencesStore = new ConfigStore(sharedPath);
+      const bundleStore = new ConfigStore(sharedPath);
+
+      await Promise.all([
+        preferencesStore.updatePreferences({
+          database: { resultLimit: 100 + iteration },
+        }),
+        bundleStore.registerBundle({
+          name: `stack-${iteration}`,
+          services: ["api"],
+        }),
+      ]);
+
+      const raw = JSON.parse(await readFile(sharedPath, "utf8"));
+      expect(raw.preferences.database.resultLimit).toBe(100 + iteration);
+      expect(raw.bundles).toEqual([
+        { name: `stack-${iteration}`, services: ["api"] },
+      ]);
+    }
+  });
+
+  test("releases cross-store coordination after a failed mutation", async () => {
+    const first = new ConfigStore(configPath);
+    const second = new ConfigStore(configPath);
+
+    await expect(first.removeService("missing")).rejects.toThrow(
+      /not registered/,
+    );
+    const preferences = await Promise.race([
+      second.updatePreferences({ logs: { wrapLines: false } }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("mutation remained blocked")), 1_000);
+      }),
+    ]);
+
+    expect(preferences.logs.wrapLines).toBe(false);
+    await expect(readFile(`${configPath}.lock`, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  test("recovers an abandoned stale config lock", async () => {
+    const lockPath = `${configPath}.lock`;
+    await writeFile(lockPath, "abandoned-owner");
+    const staleTime = new Date(Date.now() - 60_000);
+    await utimes(lockPath, staleTime, staleTime);
+
+    await new ConfigStore(configPath).updatePreferences({
+      logs: { showTimestamps: false },
+    });
+
+    expect((await new ConfigStore(configPath).getPreferences()).logs).toEqual({
+      showTimestamps: false,
+      wrapLines: true,
+    });
+    await expect(readFile(lockPath, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 
   test("creates a default config when the file does not exist", async () => {

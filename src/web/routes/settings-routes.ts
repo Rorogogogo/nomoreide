@@ -1,26 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import { appSettingsPatchSchema } from "../../core/app-settings.js";
 import {
   ConfigValidationError,
   projectPreferencesPatchSchema,
 } from "../../core/config-store.js";
 import { sendJson } from "../http-utils.js";
 import { route, type Route } from "./context.js";
-
-const globalSettingsPatchSchema = z
-  .object({
-    terminal: z
-      .object({
-        fontSize: z.number().int().min(10).max(24).optional(),
-        cursorStyle: z.enum(["block", "underline", "bar"]).optional(),
-        scrollback: z.number().int().min(500).max(100_000).optional(),
-        copyOnSelect: z.boolean().optional(),
-        confirmTerminate: z.boolean().optional(),
-      })
-      .strict()
-      .optional(),
-  })
-  .strict();
 
 export const settingsRoutes: Route[] = [
   route("GET", "/api/settings", async ({ appSettings, configStore, response }) => {
@@ -38,7 +24,7 @@ export const settingsRoutes: Route[] = [
     "/api/settings/global",
     async ({ appSettings, request, response }) => {
       await respond(response, async () => {
-        const patch = globalSettingsPatchSchema.parse(
+        const patch = appSettingsPatchSchema.parse(
           await readJsonObject(request),
         );
         const global = await appSettings.update(patch);
