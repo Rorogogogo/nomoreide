@@ -137,14 +137,14 @@ const NAV_SECTIONS: Array<{
 
 export function sidebarShellClassName(docked = false) {
   return cn(
-    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-5 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
+    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-4 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
     docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
   );
 }
 
 export function navButtonClassName(active: boolean, docked = false) {
   return cn(
-    "relative grid h-12 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-[15px] font-medium transition-[background-color,color,width] duration-150",
+    "relative grid h-10 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-sm font-medium transition-[background-color,color,width] duration-150",
     docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
     active
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -164,7 +164,7 @@ export function navButtonLabelClassName(docked = false, hasBadge = false) {
 
 export function navButtonIconClassName(docked = false) {
   return cn(
-    "flex size-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
+    "flex h-10 w-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
     docked ? "translate-x-0" : "-translate-x-px group-hover/sidebar:translate-x-0",
   );
 }
@@ -436,7 +436,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             />
           </div>
           {data ? (
-            <div className="mt-4">
+            <div className="mt-3">
               <ProjectSwitcher
                 data={data}
                 docked={sidebarDocked}
@@ -446,14 +446,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             </div>
           ) : null}
-          <nav className="mt-5 flex-1 content-start overflow-y-auto overflow-x-hidden">
+          <nav className="mt-3 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {NAV_SECTIONS.map((section, index) => (
               <div
-                className={cn(index > 0 && "mt-3 border-t border-border/60 pt-3")}
+                className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
                 key={section.label}
               >
                 <NavSectionLabel docked={sidebarDocked} label={section.label} />
-                <div className="grid gap-1">
+                <div className="grid gap-0.5">
                   {section.items.map((item) => (
                     <NavButton
                       active={page === item.page}

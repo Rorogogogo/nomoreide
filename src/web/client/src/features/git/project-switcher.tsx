@@ -56,14 +56,14 @@ export function ProjectSwitcher({
       <button
         aria-label={`Project scope: ${label}`}
         className={cn(
-          "relative grid h-12 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md border border-border bg-background/60 text-left transition-[background-color,width] duration-150 hover:bg-muted",
+          "relative grid h-11 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md border border-border bg-background/60 text-left transition-[background-color,width] duration-150 hover:bg-muted",
           docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
         )}
         onClick={() => setOpen(true)}
         title={`Project scope: ${label}`}
         type="button"
       >
-        <span className="flex size-12 items-center justify-center text-muted-foreground [&_svg]:size-5">
+        <span className="flex h-11 w-12 items-center justify-center text-muted-foreground [&_svg]:size-5">
           {scopeAll ? <Globe2 /> : <Folder />}
         </span>
         <span
