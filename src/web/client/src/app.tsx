@@ -35,6 +35,10 @@ import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-c
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { SettingsView } from "@/features/settings/settings-view";
+import {
+  SettingsProvider,
+  useSettings,
+} from "@/features/settings/settings-context";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
@@ -250,6 +254,14 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
+  return (
+    <SettingsProvider>
+      <AppContent syncLocation={syncLocation} />
+    </SettingsProvider>
+  );
+}
+
+function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? pageFromPath(window.location.pathname) : "services",
   );
@@ -273,15 +285,16 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     message: showMessageToast,
     success: showSuccessToast,
   } = useToasts();
-  const [sidebarDocked, setSidebarDocked] = useState(() => {
-    return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
-  });
+  const { ui, updateUi } = useSettings();
+  const sidebarDocked = ui.sidebarDocked;
   // Project scope: "All projects" (default) leaves the Run pages machine-wide;
   // picking a project filters them to services under that repo. Git/GitHub
   // always follow the daemon-selected repository.
-  const [scopeAll, setScopeAll] = useState(() => {
-    return window.localStorage.getItem("nomoreide:project-scope") !== "project";
-  });
+  const scopeAll = ui.projectScope === "all";
+  const setScopeAll = useCallback(
+    (next: boolean) => updateUi({ projectScope: next ? "all" : "project" }),
+    [updateUi],
+  );
 
   const refreshRegistry = useRefreshRegistry();
 
@@ -349,17 +362,6 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
       window.history.pushState(null, "", path);
     }
   }, [page, syncLocation]);
-
-  useEffect(() => {
-    window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
-  }, [sidebarDocked]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      "nomoreide:project-scope",
-      scopeAll ? "all" : "project",
-    );
-  }, [scopeAll]);
 
   const activeProject = (!scopeAll && data?.git.selectedRepository) || null;
   const scopedData = useMemo(
@@ -485,7 +487,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           </div>
           <SidebarCredit
             docked={sidebarDocked}
-            onToggleDock={() => setSidebarDocked((docked) => !docked)}
+            onToggleDock={() => updateUi({ sidebarDocked: !sidebarDocked })}
           />
         </aside>
 
