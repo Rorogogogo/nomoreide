@@ -436,7 +436,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             />
           </div>
           {data ? (
-            <div className="mt-3">
+            <div className="mt-3 border-b border-border/60 pb-2">
               <ProjectSwitcher
                 data={data}
                 docked={sidebarDocked}
@@ -446,7 +446,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             </div>
           ) : null}
-          <nav className="mt-3 flex-1 content-start overflow-y-auto overflow-x-hidden">
+          <nav className="mt-2 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {NAV_SECTIONS.map((section, index) => (
               <div
                 className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}

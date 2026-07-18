@@ -50,21 +50,35 @@ export function ProjectSwitcher({
   const label = scopeAll
     ? "All projects"
     : selectedRepository?.name ?? "Pick a project";
+  const projectCount = data.config.gitRepositories.length;
+  const subtitle = scopeAll
+    ? `${projectCount} project${projectCount === 1 ? "" : "s"}`
+    : selectedRepository
+      ? data.git.status?.branch ?? selectedRepository.path
+      : "set the context";
 
   return (
     <>
       <button
         aria-label={`Project scope: ${label}`}
         className={cn(
-          "relative grid h-11 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md border border-border bg-background/60 text-left transition-[background-color,width] duration-150 hover:bg-muted",
+          "relative grid h-11 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md text-left transition-[background-color,width] duration-150 hover:bg-muted",
           docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
         )}
         onClick={() => setOpen(true)}
         title={`Project scope: ${label}`}
         type="button"
       >
-        <span className="flex h-11 w-12 items-center justify-center text-muted-foreground [&_svg]:size-5">
-          {scopeAll ? <Globe2 /> : <Folder />}
+        <span className="flex h-11 w-12 items-center justify-center">
+          <span className="flex size-8 items-center justify-center rounded-lg border border-border bg-background text-[13px] font-semibold text-foreground">
+            {scopeAll ? (
+              <Globe2 className="size-4 text-muted-foreground" />
+            ) : selectedRepository ? (
+              label.charAt(0).toUpperCase()
+            ) : (
+              <Folder className="size-4 text-muted-foreground" />
+            )}
+          </span>
         </span>
         <span
           className={cn(
@@ -74,10 +88,12 @@ export function ProjectSwitcher({
               : "opacity-0 group-hover/sidebar:translate-x-1 group-hover/sidebar:opacity-100",
           )}
         >
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Project
+          <span className="block truncate text-[13px] font-semibold leading-tight">
+            {label}
           </span>
-          <span className="block truncate text-[13px] font-medium">{label}</span>
+          <span className="block truncate text-[10px] leading-tight text-muted-foreground">
+            {subtitle}
+          </span>
         </span>
         <ChevronsUpDown
           className={cn(
