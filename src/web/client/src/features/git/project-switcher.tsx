@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FolderPickerDialog } from "./repository-selector";
 import { pathName } from "./path-utils";
+import { ProjectMenu } from "./project-menu";
 
 /**
  * Persistent project context: lives at the top of the sidebar on every page.
@@ -45,7 +46,10 @@ export function ProjectSwitcher({
   onScopeChange: (scopeAll: boolean) => void;
   onRefresh: () => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 });
+  const [manageOpen, setManageOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedRepository = data.git.selectedRepository;
   const label = scopeAll
     ? "All projects"
@@ -65,7 +69,23 @@ export function ProjectSwitcher({
           "relative grid h-11 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md text-left transition-[background-color,width] duration-150 hover:bg-muted",
           docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
         )}
-        onClick={() => setOpen(true)}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        onClick={() => {
+          if (menuOpen) {
+            setMenuOpen(false);
+            return;
+          }
+          const rect = triggerRef.current?.getBoundingClientRect();
+          if (rect) {
+            setMenuAnchor({
+              top: rect.bottom + 6,
+              left: Math.max(8, Math.min(rect.left, window.innerWidth - 264)),
+            });
+          }
+          setMenuOpen(true);
+        }}
+        ref={triggerRef}
         title={`Project scope: ${label}`}
         type="button"
       >
@@ -102,10 +122,22 @@ export function ProjectSwitcher({
           )}
         />
       </button>
-      {open ? (
+      {menuOpen ? (
+        <ProjectMenu
+          anchor={menuAnchor}
+          data={data}
+          onClose={() => setMenuOpen(false)}
+          onManage={() => setManageOpen(true)}
+          onRefresh={onRefresh}
+          onScopeChange={onScopeChange}
+          scopeAll={scopeAll}
+          triggerRef={triggerRef}
+        />
+      ) : null}
+      {manageOpen ? (
         <ProjectSwitcherDialog
           data={data}
-          onClose={() => setOpen(false)}
+          onClose={() => setManageOpen(false)}
           onRefresh={onRefresh}
           onScopeChange={onScopeChange}
           scopeAll={scopeAll}
