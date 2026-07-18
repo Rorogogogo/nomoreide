@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stethoscope } from "lucide-react";
+import { Puzzle, Stethoscope } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRegisterRefresh } from "@/components/refresh-registry";
@@ -34,66 +34,78 @@ export function AgentEnvView() {
   const warnings = doctor?.checks.filter((check) => check.status !== "ok") ?? [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4">
-      {error ? <Alert variant="muted">{error}</Alert> : null}
-      {loading && configs.length === 0 ? (
-        <Alert variant="muted">Reading agent configurations...</Alert>
-      ) : null}
-
-      {warnings.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card/70 px-3 py-2">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Stethoscope className="size-3.5" />
-            Doctor
+    <div className="flex h-full min-h-0 flex-col bg-card/85">
+      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+        <Puzzle className="size-4 text-muted-foreground" />
+        <span className="text-sm font-semibold">Agent Environments</span>
+        {warnings.length > 0 ? (
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="ml-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <Stethoscope className="size-3.5" />
+              Doctor
+            </span>
+            {warnings.map((check) => (
+              <Badge key={check.message} size="small" variant="warning">
+                {check.message}
+              </Badge>
+            ))}
           </span>
-          {warnings.map((check) => (
-            <Badge key={check.message} size="small" variant="warning">
-              {check.message}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
+        ) : null}
+      </header>
 
-      {!loading && configs.length === 0 && !error ? (
-        <Alert variant="muted">
-          No agent configurations found. Agent Environments reads Claude Code, Codex CLI,
-          and Antigravity configs from your home directory.
+      {error ? (
+        <Alert className="m-3 shrink-0" variant="muted">
+          {error}
         </Alert>
       ) : null}
 
-      <ProfilesPanel
-        busy={profilesState.busy}
-        loading={profilesState.loading}
-        onApply={profilesState.startApply}
-        onDelete={profilesState.deleteOne}
-        onExport={profilesState.exportOne}
-        onImport={profilesState.importArchive}
-        onPublish={setPublishing}
-        onSnapshot={profilesState.snapshot}
-        profiles={profilesState.profiles}
-      />
+      <div className="grid shrink-0 grid-cols-1 divide-y divide-border border-b border-border lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
+        <ProfilesPanel
+          busy={profilesState.busy}
+          loading={profilesState.loading}
+          onApply={profilesState.startApply}
+          onDelete={profilesState.deleteOne}
+          onExport={profilesState.exportOne}
+          onImport={profilesState.importArchive}
+          onPublish={setPublishing}
+          onSnapshot={profilesState.snapshot}
+          profiles={profilesState.profiles}
+        />
 
-      <RegistryPanel
-        busy={registry.busy}
-        onInstall={registry.install}
-        onSignIn={() => void registry.signIn()}
-        onSignOut={registry.signOut}
-        signingIn={registry.signingIn}
-        status={registry.status}
-      />
+        <RegistryPanel
+          busy={registry.busy}
+          onInstall={registry.install}
+          onSignIn={() => void registry.signIn()}
+          onSignOut={registry.signOut}
+          signingIn={registry.signingIn}
+          status={registry.status}
+        />
+      </div>
 
       {configs.length > 0 ? (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {configs.map((config) => (
-            <AgentColumn
-              key={config.agent}
-              availability={availabilityByAgent.get(config.agent)}
-              config={config}
-              onStage={stage}
-            />
-          ))}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {configs.map((config) => (
+              <AgentColumn
+                key={config.agent}
+                availability={availabilityByAgent.get(config.agent)}
+                config={config}
+                onStage={stage}
+              />
+            ))}
+          </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">
+          <p className="max-w-sm text-xs text-muted-foreground">
+            {loading
+              ? "Reading agent configurations..."
+              : error
+                ? null
+                : "No agent configurations found. Agent Environments reads Claude Code, Codex CLI, and Antigravity configs from your home directory."}
+          </p>
+        </div>
+      )}
 
       <StagedChangesDrawer
         applying={applying}
