@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
-const themeToggleSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/components/theme-toggle.tsx"),
+// The storage key + dark default live in the shared theme store (used by the
+// header toggle and the Settings page).
+const themeStoreSource = readFileSync(
+  resolve(__dirname, "../src/web/client/src/lib/theme.ts"),
   "utf8",
 );
 const productHtml = readFileSync(
@@ -14,10 +16,10 @@ const websiteHtml = readFileSync(resolve(__dirname, "../website/index.html"), "u
 
 describe("default theme", () => {
   test("defaults the product theme to dark when no preference is saved", () => {
-    expect(themeToggleSource).toContain('const STORAGE_KEY = "nomoreide-theme-choice";');
-    expect(themeToggleSource).toContain('if (typeof window === "undefined") return "dark";');
-    expect(themeToggleSource).toContain('return "dark";');
-    expect(themeToggleSource).not.toContain("prefers-color-scheme: dark");
+    expect(themeStoreSource).toContain('const STORAGE_KEY = "nomoreide-theme-choice";');
+    expect(themeStoreSource).toContain('if (typeof window === "undefined") return "dark";');
+    expect(themeStoreSource).toContain('return "dark";');
+    expect(themeStoreSource).not.toContain("prefers-color-scheme: dark");
   });
 
   test("boots both HTML shells in dark mode before React renders", () => {

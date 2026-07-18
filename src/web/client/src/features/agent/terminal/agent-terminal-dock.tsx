@@ -12,7 +12,7 @@ import { initialAgentInputSequence, initialAgentSubmitDelay } from "./agent-term
 import { GitHubLogo } from "../../github/github-logo";
 import { isTauri } from "@/lib/tauri";
 
-export type AgentDockPage = "services" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env";
+export type AgentDockPage = "services" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
 
 const FULLSCREEN_NAV: Array<{ page: AgentDockPage; label: string; icon: ReactNode }> = [
   { page: "services", label: "Services", icon: <Server /> },
