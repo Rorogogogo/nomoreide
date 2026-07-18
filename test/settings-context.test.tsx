@@ -248,6 +248,86 @@ describe("SettingsProvider", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("rejects invalid UI patches without changing attributes or persisted preferences", async () => {
+    const mounted = await mountProvider();
+    act(() => {
+      mounted.value.updateUi({ codeFontSize: 14, density: "compact" });
+    });
+    const persisted = window.localStorage.getItem(UI_PREFERENCES_KEY);
+
+    let accepted: boolean | undefined;
+    act(() => {
+      accepted = mounted.value.updateUi({ codeFontSize: 100 });
+    });
+
+    expect(accepted).toBe(false);
+    expect(mounted.value.ui.codeFontSize).toBe(14);
+    expect(document.documentElement.style.getPropertyValue("--code-font-size")).toBe(
+      "14px",
+    );
+    expect(window.localStorage.getItem(UI_PREFERENCES_KEY)).toBe(persisted);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("stays saving until concurrent global and project saves have both settled", async () => {
+    const globalSave = deferred<typeof initialSnapshot.global>();
+    const projectSave = deferred<typeof initialSnapshot.project>();
+    api.updateGlobalSettings.mockReturnValue(globalSave.promise);
+    api.updateProjectSettings.mockReturnValue(projectSave.promise);
+    const mounted = await mountProvider();
+
+    let globalOperation!: Promise<void>;
+    let projectOperation!: Promise<void>;
+    act(() => {
+      globalOperation = mounted.value.updateGlobal({ terminal: { fontSize: 14 } });
+      projectOperation = mounted.value.updateProject({ logs: { wrapLines: false } });
+    });
+    await act(async () => Promise.resolve());
+    expect(mounted.value.saveState).toBe("saving");
+
+    globalSave.resolve({
+      ...initialSnapshot.global,
+      terminal: { ...initialSnapshot.global.terminal, fontSize: 14 },
+    });
+    await act(async () => globalOperation);
+    expect(mounted.value.saveState).toBe("saving");
+
+    projectSave.resolve({
+      ...initialSnapshot.project,
+      logs: { ...initialSnapshot.project.logs, wrapLines: false },
+    });
+    await act(async () => projectOperation);
+    expect(mounted.value.saveState).toBe("saved");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not let an overlapping success hide another scope's failure", async () => {
+    const globalSave = deferred<typeof initialSnapshot.global>();
+    const projectSave = deferred<typeof initialSnapshot.project>();
+    api.updateGlobalSettings.mockReturnValue(globalSave.promise);
+    api.updateProjectSettings.mockReturnValue(projectSave.promise);
+    const mounted = await mountProvider();
+
+    let globalOperation!: Promise<void>;
+    let projectOperation!: Promise<void>;
+    act(() => {
+      globalOperation = mounted.value.updateGlobal({ terminal: { fontSize: 14 } });
+      projectOperation = mounted.value.updateProject({ logs: { wrapLines: false } });
+    });
+    projectSave.reject(new Error("project config is read-only"));
+    await act(async () => projectOperation);
+    expect(mounted.value.saveState).toBe("saving");
+
+    globalSave.resolve({
+      ...initialSnapshot.global,
+      terminal: { ...initialSnapshot.global.terminal, fontSize: 14 },
+    });
+    await act(async () => globalOperation);
+    expect(mounted.value.saveState).toBe("error");
+    expect(mounted.value.saveError).toContain("project config is read-only");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("serializes overlapping mutations so an older response cannot overwrite newer state", async () => {
     const first = deferred<typeof initialSnapshot.global>();
     const second = deferred<typeof initialSnapshot.global>();

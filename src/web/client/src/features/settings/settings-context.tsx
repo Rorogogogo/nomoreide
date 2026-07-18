@@ -23,6 +23,8 @@ import { setTheme, useTheme } from "@/lib/theme";
 import {
   applyUiPreferences,
   loadUiPreferences,
+  mergeUiPreferences,
+  parseUiPreferences,
   resetUiPreferences,
   saveUiPreferences,
   type UiPreferences,
@@ -59,7 +61,7 @@ export interface SettingsContextValue {
   ui: UiPreferences;
   updateGlobal: (patch: AppSettingsPatch) => Promise<void>;
   updateProject: (patch: ProjectPreferencesPatch) => Promise<void>;
-  updateUi: (patch: Partial<Omit<UiPreferences, "version">>) => void;
+  updateUi: (patch: Partial<Omit<UiPreferences, "version">>) => boolean;
   resetGlobal: () => Promise<void>;
   resetProject: () => Promise<void>;
   resetUi: () => void;
@@ -116,6 +118,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const confirmedGlobalRef = useRef(confirmedGlobal);
   const confirmedProjectRef = useRef(confirmedProject);
   const savedTimerRef = useRef<number | null>(null);
+  const pendingSavesRef = useRef(0);
+  const saveCycleErrorRef = useRef<string | null>(null);
   const compatibilityTimerRef = useRef<number | null>(null);
   const compatibilityReadyRef = useRef(false);
   const appliedThemeRef = useRef<"light" | "dark" | null>(null);
@@ -135,6 +139,37 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (mountedRef.current) setSaveState("idle");
     }, 1_500);
   }, [clearSavedTimer]);
+
+  const beginSave = useCallback(() => {
+    clearSavedTimer();
+    if (pendingSavesRef.current === 0) {
+      saveCycleErrorRef.current = null;
+      setSaveError(null);
+    }
+    pendingSavesRef.current += 1;
+    setSaveState("saving");
+  }, [clearSavedTimer]);
+
+  const finishSave = useCallback(
+    (failure?: string) => {
+      if (failure && !saveCycleErrorRef.current) {
+        saveCycleErrorRef.current = failure;
+      }
+      pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
+      if (pendingSavesRef.current > 0) {
+        setSaveState("saving");
+        if (saveCycleErrorRef.current) setSaveError(saveCycleErrorRef.current);
+        return;
+      }
+      if (saveCycleErrorRef.current) {
+        setSaveError(saveCycleErrorRef.current);
+        setSaveState("error");
+        return;
+      }
+      markSaved();
+    },
+    [markSaved],
+  );
 
   const retry = useCallback(async () => {
     const revision = ++loadRevisionRef.current;
@@ -179,19 +214,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
   }, [clearSavedTimer, retry]);
 
-  const applyUi = useCallback((next: UiPreferences) => {
-    uiRef.current = next;
-    saveUiPreferences(next);
-    applyUiPreferences(next);
-    setUi(next);
+  const applyUi = useCallback((next: UiPreferences): boolean => {
+    const validated = parseUiPreferences(next);
+    if (!validated) return false;
+    saveUiPreferences(validated);
+    uiRef.current = validated;
+    applyUiPreferences(validated);
+    setUi(validated);
 
-    const effectiveTheme = next.theme === "system"
+    const effectiveTheme = validated.theme === "system"
       ? window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark"
-      : next.theme;
+      : validated.theme;
     appliedThemeRef.current = effectiveTheme;
     setTheme(effectiveTheme);
-    appliedLanguageRef.current = next.language;
-    setLanguage(next.language);
+    appliedLanguageRef.current = validated.language;
+    setLanguage(validated.language);
+    return true;
   }, []);
 
   useEffect(() => {
@@ -230,7 +268,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const updateUi = useCallback(
     (patch: Partial<Omit<UiPreferences, "version">>) => {
-      applyUi({ ...uiRef.current, ...patch });
+      const next = mergeUiPreferences(uiRef.current, patch);
+      return next ? applyUi(next) : false;
     },
     [applyUi],
   );
@@ -244,8 +283,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const optimistic = patchGlobal(globalRef.current, patch);
     globalRef.current = optimistic;
     setGlobal(optimistic);
-    setSaveError(null);
-    setSaveState("saving");
+    beginSave();
 
     const operation = globalQueueRef.current.then(() => updateGlobalSettings(patch));
     globalQueueRef.current = operation.then(() => undefined, () => undefined);
@@ -257,24 +295,24 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (revision === globalRevisionRef.current) {
         globalRef.current = confirmed;
         setGlobal(confirmed);
-        markSaved();
       }
+      finishSave();
     } catch (error) {
-      if (!mountedRef.current || revision !== globalRevisionRef.current) return;
-      globalRef.current = confirmedGlobalRef.current;
-      setGlobal(confirmedGlobalRef.current);
-      setSaveError(`Could not save global settings: ${errorMessage(error)}`);
-      setSaveState("error");
+      if (!mountedRef.current) return;
+      if (revision === globalRevisionRef.current) {
+        globalRef.current = confirmedGlobalRef.current;
+        setGlobal(confirmedGlobalRef.current);
+      }
+      finishSave(`Could not save global settings: ${errorMessage(error)}`);
     }
-  }, [markSaved]);
+  }, [beginSave, finishSave]);
 
   const updateProject = useCallback(async (patch: ProjectPreferencesPatch) => {
     const revision = ++projectRevisionRef.current;
     const optimistic = patchProject(projectRef.current, patch);
     projectRef.current = optimistic;
     setProject(optimistic);
-    setSaveError(null);
-    setSaveState("saving");
+    beginSave();
 
     const operation = projectQueueRef.current.then(() => updateProjectSettings(patch));
     projectQueueRef.current = operation.then(() => undefined, () => undefined);
@@ -286,21 +324,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (revision === projectRevisionRef.current) {
         projectRef.current = confirmed;
         setProject(confirmed);
-        markSaved();
       }
+      finishSave();
     } catch (error) {
-      if (!mountedRef.current || revision !== projectRevisionRef.current) return;
-      projectRef.current = confirmedProjectRef.current;
-      setProject(confirmedProjectRef.current);
-      setSaveError(`Could not save project settings: ${errorMessage(error)}`);
-      setSaveState("error");
+      if (!mountedRef.current) return;
+      if (revision === projectRevisionRef.current) {
+        projectRef.current = confirmedProjectRef.current;
+        setProject(confirmedProjectRef.current);
+      }
+      finishSave(`Could not save project settings: ${errorMessage(error)}`);
     }
-  }, [markSaved]);
+  }, [beginSave, finishSave]);
 
   const resetGlobal = useCallback(async () => {
     const revision = ++globalRevisionRef.current;
-    setSaveError(null);
-    setSaveState("saving");
+    beginSave();
     const operation = globalQueueRef.current.then(resetGlobalSettings);
     globalQueueRef.current = operation.then(() => undefined, () => undefined);
     try {
@@ -311,20 +349,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (revision === globalRevisionRef.current) {
         globalRef.current = confirmed;
         setGlobal(confirmed);
-        markSaved();
       }
+      finishSave();
     } catch (error) {
-      if (mountedRef.current && revision === globalRevisionRef.current) {
-        setSaveError(`Could not reset global settings: ${errorMessage(error)}`);
-        setSaveState("error");
-      }
+      if (!mountedRef.current) return;
+      finishSave(`Could not reset global settings: ${errorMessage(error)}`);
     }
-  }, [markSaved]);
+  }, [beginSave, finishSave]);
 
   const resetProject = useCallback(async () => {
     const revision = ++projectRevisionRef.current;
-    setSaveError(null);
-    setSaveState("saving");
+    beginSave();
     const operation = projectQueueRef.current.then(resetProjectSettings);
     projectQueueRef.current = operation.then(() => undefined, () => undefined);
     try {
@@ -335,15 +370,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (revision === projectRevisionRef.current) {
         projectRef.current = confirmed;
         setProject(confirmed);
-        markSaved();
       }
+      finishSave();
     } catch (error) {
-      if (mountedRef.current && revision === projectRevisionRef.current) {
-        setSaveError(`Could not reset project settings: ${errorMessage(error)}`);
-        setSaveState("error");
-      }
+      if (!mountedRef.current) return;
+      finishSave(`Could not reset project settings: ${errorMessage(error)}`);
     }
-  }, [markSaved]);
+  }, [beginSave, finishSave]);
 
   return (
     <SettingsContext.Provider

@@ -50,7 +50,7 @@ function readLegacyPreferences(): Partial<UiPreferences> {
   };
 }
 
-function validate(value: unknown): UiPreferences | null {
+export function parseUiPreferences(value: unknown): UiPreferences | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
   if (
@@ -71,11 +71,22 @@ function validate(value: unknown): UiPreferences | null {
   return input as unknown as UiPreferences;
 }
 
-export function saveUiPreferences(preferences: UiPreferences): void {
+export function mergeUiPreferences(
+  current: UiPreferences,
+  patch: Partial<Omit<UiPreferences, "version">>,
+): UiPreferences | null {
+  return parseUiPreferences({ ...current, ...patch });
+}
+
+export function saveUiPreferences(preferences: unknown): boolean {
+  const validated = parseUiPreferences(preferences);
+  if (!validated) return false;
   try {
-    window.localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(preferences));
+    window.localStorage.setItem(UI_PREFERENCES_KEY, JSON.stringify(validated));
+    return true;
   } catch {
     // Storage can be unavailable; the provider still keeps the in-memory value.
+    return false;
   }
 }
 
@@ -83,7 +94,7 @@ export function loadUiPreferences(): UiPreferences {
   let stored: UiPreferences | null = null;
   try {
     const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
-    stored = raw ? validate(JSON.parse(raw)) : null;
+    stored = raw ? parseUiPreferences(JSON.parse(raw)) : null;
   } catch {
     stored = null;
   }
