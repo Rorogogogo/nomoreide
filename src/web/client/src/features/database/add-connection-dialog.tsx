@@ -11,7 +11,9 @@ import {
   testDatabase,
   type DatabaseEngine,
   type DetectedConnection,
+  type GitRepositoryDefinition,
 } from "@/lib/api";
+import { pathInScope } from "../services/project-scope";
 import {
   buildConnectionUrl,
   engineFromUrl,
@@ -33,16 +35,20 @@ export interface EditTarget {
   name: string;
   engine: DatabaseEngine;
   url: string;
+  projectPath?: string;
 }
 
 export function AddConnectionDialog({
   onClose,
   onSaved,
   initial,
+  projects = [],
 }: {
   onClose: () => void;
   onSaved: () => void;
   initial?: EditTarget;
+  /** Registered git projects the connection can be classified under. */
+  projects?: GitRepositoryDefinition[];
 }) {
   const { error: showError, success: showSuccess } = useToasts();
   const isEditing = Boolean(initial);
@@ -54,6 +60,8 @@ export function AddConnectionDialog({
   const [url, setUrl] = useState(seed.url);
   const [fields, setFields] = useState<ConnectionFields>(seed.fields);
   const [detected, setDetected] = useState<DetectedConnection[]>([]);
+  // Repo path the connection is classified under; "" = unassigned/shared.
+  const [projectPath, setProjectPath] = useState(initial?.projectPath ?? "");
   const [testState, setTestState] = useState<TestState>({ status: "idle" });
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -135,6 +143,11 @@ export function AddConnectionDialog({
     }
     resetTest();
     if (!name.trim()) setName(suggestName(candidate));
+    // Classify under the project the source service lives in, when we know it.
+    const repo = candidate.cwd
+      ? projects.find((project) => pathInScope(candidate.cwd, project.path))
+      : undefined;
+    if (repo) setProjectPath(repo.path);
   }
 
   function validate(): string | null {
@@ -177,7 +190,7 @@ export function AddConnectionDialog({
     }
     setSaving(true);
     try {
-      await addDatabase({ name: name.trim(), engine, url: submitUrl });
+      await addDatabase({ name: name.trim(), engine, url: submitUrl, projectPath });
       showSuccess(`Saved connection "${name.trim()}".`);
       onSaved();
       onClose();
@@ -253,6 +266,33 @@ export function AddConnectionDialog({
             </span>
           ) : null}
         </label>
+
+        {projects.length > 0 ? (
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Project</span>
+            <select
+              className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+              onChange={(event) => setProjectPath(event.target.value)}
+              value={projectPath}
+            >
+              <option value="">No project (shared)</option>
+              {projectPath && !projects.some((project) => project.path === projectPath) ? (
+                // Assignment to a repo that's no longer registered — keep it
+                // visible so an unrelated edit doesn't silently clear it.
+                <option value={projectPath}>{projectPath}</option>
+              ) : null}
+              {projects.map((project) => (
+                <option key={project.path} value={project.path}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-muted-foreground">
+              Classifies the connection under a project; shared connections show
+              in every project scope.
+            </span>
+          </label>
+        ) : null}
 
         {!isSqlite ? (
           <section className="flex flex-col gap-3">

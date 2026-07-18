@@ -1,6 +1,14 @@
+import { z } from "zod";
+import { buildInteractiveAgentInvocation } from "../../core/agent-terminal.js";
 import { resolveServiceTerminal } from "../../core/terminal-spawn.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { patternRoute, route, type Route } from "./context.js";
+
+const agentSessionSchema = z.object({
+  provider: z.enum(["codex", "claude"]),
+  prompt: z.string().refine((prompt) => prompt.trim().length > 0),
+  label: z.string().optional(),
+});
 
 /**
  * Terminal tab session management. The PTY data stream stays on the
@@ -17,6 +25,39 @@ export const terminalRoutes: Route[] = [
     "/api/terminal/sessions",
     async ({ request, response, terminalManager, configStore }) => {
       const body = await readJson(request);
+
+      if (Object.hasOwn(body, "agent")) {
+        const parsed = agentSessionSchema.safeParse(body.agent);
+        if (!parsed.success) {
+          const invalidField = parsed.error.issues[0]?.path[0];
+          const error =
+            invalidField === "provider"
+              ? "Agent provider must be codex or claude."
+              : invalidField === "prompt"
+                ? "Agent prompt is required."
+                : "Invalid agent session request.";
+          sendJson(response, { ok: false, error }, 400);
+          return;
+        }
+
+        const { provider, prompt } = parsed.data;
+        const invocation = buildInteractiveAgentInvocation(provider, prompt);
+        const trimmedLabel = parsed.data.label?.trim();
+        const label = (trimmedLabel || `${provider === "codex" ? "Codex" : "Claude"} task`)
+          .slice(0, 60);
+        const session = terminalManager.create(
+          {},
+          {
+            ...invocation,
+            kind: "agent",
+            provider,
+            label,
+          },
+        );
+        sendJson(response, { ok: true, session }, 201);
+        return;
+      }
+
       const serviceName =
         typeof body.serviceName === "string" ? body.serviceName.trim() : "";
 

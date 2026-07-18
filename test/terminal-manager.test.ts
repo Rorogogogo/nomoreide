@@ -55,7 +55,34 @@ describe("TerminalSessionManager", () => {
     expect(a.id).not.toBe(b.id);
     expect(a.state).toBe("running");
     expect(a.cwd).toBe("/repo");
+    expect(a.kind).toBeUndefined();
+    expect(a.provider).toBeUndefined();
     expect(manager.list().map((s) => s.id)).toEqual([a.id, b.id]);
+  });
+
+  test("create retains agent metadata in create, snapshot, and list", () => {
+    const { manager } = makeManager();
+
+    const created = manager.create({}, {
+      shell: "codex",
+      args: ["--no-alt-screen", "Fix tests"],
+      label: "Fix tests",
+      kind: "agent",
+      provider: "codex",
+    });
+
+    expect(created).toMatchObject({ kind: "agent", provider: "codex" });
+    expect(manager.get(created.id)?.snapshot()).toMatchObject({
+      kind: "agent",
+      provider: "codex",
+    });
+    expect(manager.list()).toContainEqual(
+      expect.objectContaining({
+        id: created.id,
+        kind: "agent",
+        provider: "codex",
+      }),
+    );
   });
 
   test("ensure reuses an existing id and lazily creates unknown ids", () => {
@@ -98,6 +125,8 @@ describe("TerminalSessionManager", () => {
     expect(second.id).toBe("svc:api");
     expect(manager.list()).toHaveLength(1);
     expect(adapters).toHaveLength(1); // spawned once
+    expect(first.kind).toBeUndefined();
+    expect(first.provider).toBeUndefined();
   });
 
   test("detach keeps the session alive so a reopen can reattach", () => {

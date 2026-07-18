@@ -73,7 +73,7 @@ describe("sidebar styling", () => {
     const inactive = navButtonClassName(false);
 
     expect(active).toContain("w-12");
-    expect(active).toContain("h-12");
+    expect(active).toContain("h-10");
     expect(active).toContain("grid");
     expect(active).toContain("grid-cols-[48px_minmax(0,1fr)]");
     expect(active).toContain("gap-0");
@@ -81,8 +81,7 @@ describe("sidebar styling", () => {
     expect(active).toContain("group-hover/sidebar:w-full");
     expect(active).not.toContain("flex");
     expect(active).not.toContain("group-hover/sidebar:grid");
-    expect(active).toContain("h-12");
-    expect(active).toContain("text-[15px]");
+    expect(active).toContain("text-sm");
     expect(active).toContain("bg-primary");
     expect(active).toContain("text-primary-foreground");
     expect(navButtonIconClassName(false)).toContain("-translate-x-px");

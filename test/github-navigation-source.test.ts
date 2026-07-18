@@ -10,13 +10,13 @@ const gitReviewSource = readFileSync(
 describe("GitHub top-level navigation", () => {
   test("app owns the GitHub page route", () => {
     expect(appSource).toContain('| "github"');
-    expect(appSource).toContain('startsWith("/github")');
+    expect(appSource).toContain('github: "/github"');
     expect(appSource).toContain('page === "github"');
     expect(appSource).toContain("<GitHubView");
   });
 
   test("github page exposes repository switching and remounts per selected repo", () => {
-    expect(appSource).toContain('page === "git" || page === "github"');
+    expect(appSource).toContain("<ProjectSwitcher");
     expect(appSource).toContain("githubPageKey");
     expect(appSource).toContain("<GitHubView key={githubPageKey}");
   });

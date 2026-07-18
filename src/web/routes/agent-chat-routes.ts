@@ -13,13 +13,12 @@ import { detectAgent } from "../agent-info.js";
 import { sendJson } from "../http-utils.js";
 import { errorMessage, route, type Route } from "./context.js";
 
-/** In-dashboard AI chat: streams the active agent CLI session over SSE. */
+/** Headless agent runtime used by workflows and structured result generators. */
 export const agentChatRoutes: Route[] = [
   route("GET", "/api/agent/chat/status", async ({ response, configStore }) => {
     const [detected, config] = await Promise.all([detectAgent(), configStore.load()]);
     const provider = resolveChatProvider(detected.name, config.chatProvider);
-    // Probe every provider so the dock can show which CLIs are installed and let
-    // the user switch to an available one (e.g. when the active one is limited).
+    // Probe every provider so terminal and headless tasks can select an installed CLI.
     const providers = await Promise.all(
       CHAT_PROVIDERS.map(async (candidate) => ({
         ...publicProviderInfo(candidate),
@@ -143,7 +142,7 @@ export const agentChatRoutes: Route[] = [
     sendJson(response, decision);
   }),
 
-  // Called by the dock when the user clicks Allow / Deny.
+  // Called by a headless task runner when it resolves an approval request.
   route("POST", "/api/agent/chat/approve", async ({ request, response, agentApprovals }) => {
     let body: { sessionId?: string; requestId?: string; decision?: string; reason?: string };
     try {

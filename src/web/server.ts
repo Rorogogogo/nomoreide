@@ -47,6 +47,8 @@ export interface WebServerOptions {
   port?: number;
   terminalManager?: TerminalSessionManagerLike;
   toolCallStore?: ToolCallStore;
+  /** Daemon mode only: runs after `/api/daemon/shutdown` stopped all services. */
+  onDaemonShutdown?: () => void | Promise<void>;
 }
 
 export interface RunningWebServer {
@@ -71,7 +73,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     baseDir: logDir,
     timelineStore,
   });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath(logDir));
+  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
   const manager = new ProcessManager({
     configStore,
     logStore,
@@ -138,6 +140,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     toolCallStore,
     triggerManager,
     usageHistory,
+    onDaemonShutdown: options.onDaemonShutdown,
   };
 
   // Always-on usage sampler: record the current reading shortly after start and

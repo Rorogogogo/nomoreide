@@ -7,17 +7,29 @@ export const AGENT_TOOL_NAMES = [
 ] as const;
 
 export function registerAgentTools(server: FastMCP, ctx: ToolContext): void {
-  const { uiLifecycle } = ctx;
+  const { daemon } = ctx;
 
   server.addTool({
     name: "nomoreide_open_ui",
-    description: "Open or reuse the singleton NoMoreIDE web UI.",
-    execute: async () => stringify(await uiLifecycle.ensureStarted()),
+    description:
+      "Open (or reuse) the machine-global NoMoreIDE daemon and return its web UI URL.",
+    execute: async () => stringify(await daemon.ensure()),
   });
 
   server.addTool({
     name: "nomoreide_close_ui",
-    description: "Close the NoMoreIDE web UI owned by this MCP process.",
-    execute: async () => stringify(await uiLifecycle.close()),
+    description:
+      "Shut down the NoMoreIDE daemon. WARNING: this stops every service it manages, for all sessions on this machine.",
+    execute: async () => {
+      const client = await daemon.existing();
+      if (!client) {
+        return stringify({ status: "not_running" });
+      }
+      await client.shutdown();
+      return stringify({
+        status: "stopping",
+        note: "Daemon is stopping all managed services and exiting.",
+      });
+    },
   });
 }

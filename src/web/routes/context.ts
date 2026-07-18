@@ -37,6 +37,12 @@ export interface RouteServices {
   toolCallStore: ToolCallStore;
   triggerManager: WorkflowTriggerManager;
   usageHistory: UsageHistory;
+  /**
+   * Present only when this server runs as the machine-global daemon: invoked
+   * after `POST /api/daemon/shutdown` has stopped all services, so the daemon
+   * command can remove its state file and exit the process.
+   */
+  onDaemonShutdown?: () => void | Promise<void>;
 }
 
 /** Per-request context handed to a route handler. */

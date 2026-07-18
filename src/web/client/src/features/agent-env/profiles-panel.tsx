@@ -48,7 +48,7 @@ export function ProfilesPanel({
   };
 
   return (
-    <div className="shrink-0 rounded-lg border border-border bg-card/80">
+    <div className="flex min-w-0 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold">
           <Archive className="size-3.5 text-muted-foreground" />
@@ -122,7 +122,7 @@ export function ProfilesPanel({
           bundle, or import a shared .tar.gz.
         </p>
       ) : (
-        <ul className="divide-y divide-border/60">
+        <ul className="max-h-44 divide-y divide-border/60 overflow-y-auto">
           {profiles.map((profile) => (
             <li className="group flex items-center gap-3 px-3 py-2" key={profile.name}>
               <span className="min-w-0 flex-1">

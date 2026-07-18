@@ -7,6 +7,7 @@ const shellPaths = new Set([
   "/",
   "/git",
   "/github",
+  "/workflows",
   "/agent",
   "/agent-env",
   "/errors",

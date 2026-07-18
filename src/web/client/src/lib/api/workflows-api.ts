@@ -26,7 +26,7 @@ export type WorkflowStep =
       prompt: string;
       capabilities?: WorkflowCapabilities;
       verify?: "committed" | "pushed";
-      /** Run in a fresh one-shot session (cheaper; no memory of earlier steps). */
+      /** @deprecated Retained for older saved workflows; every agent step is fresh. */
       isolated?: boolean;
     }
   | { kind: "gate"; id: string; title: string; message: string };

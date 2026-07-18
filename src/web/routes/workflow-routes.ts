@@ -5,8 +5,8 @@ import { errorMessage, patternRoute, route, type Route } from "./context.js";
 /**
  * User-owned git/GitHub workflows. `GET` returns the built-in templates merged
  * with the user's saved/forked workflows; `POST`/`DELETE` persist edits through
- * ConfigStore. The runner that executes a workflow lives client-side (agent
- * steps run through the dock conversation), so there's no "run" endpoint here.
+ * ConfigStore. The runner lives client-side and executes agent steps as fresh
+ * headless tasks, so there's no "run" endpoint here.
  */
 export const workflowRoutes: Route[] = [
   route("GET", "/api/workflows", async ({ response, configStore }) => {

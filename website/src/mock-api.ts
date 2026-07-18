@@ -791,11 +791,11 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       apiBaseUrl: "https://api.brainctl.net",
       apiMode: "prod",
       apiSource: "default",
-      apiFrontendUrl: "https://app.brainctl.net",
+      apiFrontendUrl: "https://www.brainctl.net",
     });
   }
   if (path === "/api/agent-env/auth/start") {
-    return json({ ok: true, url: "https://app.brainctl.net/cli-login", state: "demo-state" });
+    return json({ ok: true, url: "https://www.brainctl.net/cli-login", state: "demo-state" });
   }
   if (path === "/api/agent-env/auth/outcome") return json({ ok: true, status: "success" });
   if (path === "/api/agent-env/auth/logout") return json({ ok: true });
@@ -1332,6 +1332,29 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
 
   if (path === "/api/terminal/sessions") {
     if (method === "POST") {
+      let agent: { provider?: "claude" | "codex"; prompt?: string; label?: string } | undefined;
+      if (typeof init?.body === "string") {
+        try {
+          agent = (JSON.parse(init.body) as { agent?: typeof agent }).agent;
+        } catch {
+          // Keep the website demo responsive when a caller sends malformed JSON.
+        }
+      }
+      if (agent?.provider && agent.prompt) {
+        const session = {
+          id: `demo-agent-${Date.now()}-${terminalSessions.length}`,
+          cwd: terminalSessions[0]?.cwd ?? "/Users/demo/projects/acme",
+          cols: 100,
+          rows: 28,
+          shell: agent.provider,
+          provider: agent.provider,
+          kind: "agent" as const,
+          label: agent.label ?? `${agent.provider === "claude" ? "Claude" : "Codex"} agent`,
+          state: "running" as const,
+        };
+        terminalSessions = [...terminalSessions, session];
+        return json({ ok: true, sessions: terminalSessions, session });
+      }
       terminalSessions = [...terminalSessions];
     }
     return json({ ok: true, sessions: terminalSessions, session: terminalSessions[0] });

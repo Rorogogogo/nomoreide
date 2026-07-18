@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { runHeadlessAgentTask } from "../agent/headless/run-headless-agent-task";
 import {
   buildWorkflowAiDraftPrompt,
   draftWorkflowFromIntent,
@@ -54,8 +55,8 @@ import type { RunState, StepStatus } from "./use-workflow-runner";
 /**
  * The Workflows panel: your own git/GitHub rituals as one-click, gated,
  * visualized pipelines. Picking one runs it through {@link useWorkflowRunner};
- * the agent does the work down in the dock while this view shows where the run
- * is and pauses at each gate for your approval.
+ * headless agent tasks do the work while this view shows where the run is and
+ * pauses at each gate for your approval.
  */
 export function WorkflowPanel() {
   const { run, start, resume, approve, skip, stop, dismiss } = useWorkflowRun();
@@ -66,7 +67,7 @@ export function WorkflowPanel() {
   const [loading, setLoading] = useState(true);
   const [viewingRun, setViewingRun] = useState(false);
   // Gates are the consent, so skip the agent's per-tool prompts by default —
-  // irreversible footguns still surface in the dock regardless of this.
+  // irreversible footguns still require approval regardless of this.
   const [autoApprove, setAutoApprove] = useState(true);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export function WorkflowPanel() {
 
   function runWorkflow(workflow: Workflow) {
     // Runs in the background — the pipeline below is where you watch progress,
-    // so we don't pop the dock open and pull attention away.
+    // so we don't pull attention away with a foreground terminal task.
     setViewingRun(true);
     void start(workflow, autoApprove);
   }
@@ -169,7 +170,7 @@ export function WorkflowPanel() {
               <AgentMark className="size-4" /> AI Workflows
             </h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              One-click rituals that exceed the IDE — the agent does the work in the dock, pausing at each gate for your OK.
+              One-click rituals that exceed the IDE — agent steps do the work, pausing at each gate for your OK.
             </p>
           </div>
           <Button
@@ -784,24 +785,6 @@ function TimelineStepEditor({
                 placeholder="What should the agent do at this step?"
                 value={step.prompt}
               />
-              <label className="mt-2 flex w-fit items-center gap-1.5 text-[11px] text-muted-foreground">
-                <input
-                  checked={step.isolated ?? false}
-                  className="size-3.5 accent-primary"
-                  onChange={(event) =>
-                    onUpdate(index, (current) =>
-                      current.kind === "agent"
-                        ? { ...current, isolated: event.target.checked }
-                        : current,
-                    )
-                  }
-                  type="checkbox"
-                />
-                Fresh session
-                <span className="text-muted-foreground/60">
-                  — cheaper; this step won't see earlier steps' context.
-                </span>
-              </label>
               <CapabilityPicker
                 capabilities={capabilities}
                 selected={step.capabilities}
@@ -939,7 +922,7 @@ function RunView({
             <AgentMark className="size-4" /> {run.workflow.name}
           </h2>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Terminal className="size-3" /> Watch the agent work in the dock below.
+            <Terminal className="size-3" /> Watch the agent workflow run.
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -1145,31 +1128,45 @@ function PrBranchRecovery({
   onRestart: () => void;
   workflowName: string;
 }) {
-  const { sendToAgent, setOpen, streaming, turns } = useAgentDock();
-  const [handoffSent, setHandoffSent] = useState(false);
-  const [handoffTurnCount, setHandoffTurnCount] = useState<number | null>(null);
+  const { provider } = useAgentDock();
+  const [agentOutput, setAgentOutput] = useState("");
+  const [branchRecoveryInProgress, setBranchRecoveryInProgress] = useState(false);
   const [creatingBranch, setCreatingBranch] = useState(false);
   const [createdBranch, setCreatedBranch] = useState<string | null>(null);
   const [branchError, setBranchError] = useState<string | null>(null);
-  const agentOutput = handoffTurnCount === null ? "" : latestAssistantTextAfter(turns, handoffTurnCount);
+  const abortRef = useRef<AbortController | null>(null);
   const recommendedBranch = parseRecommendedBranchName(agentOutput);
-  const branchRecoveryInProgress = handoffSent && !recommendedBranch && streaming;
 
-  function askAgentForBranchName(extraInstruction?: string) {
-    setHandoffTurnCount(turns.length);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  async function askAgentForBranchName(extraInstruction?: string) {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setBranchError(null);
     setCreatedBranch(null);
-    sendToAgent({
-      prompt: [
+    setAgentOutput("");
+    setBranchRecoveryInProgress(true);
+    try {
+      const output = await runHeadlessAgentTask({
+        prompt: [
         buildPrBranchRecoveryPrompt({ workflowName, error }),
         extraInstruction?.trim() ? extraInstruction.trim() : "",
-      ].filter(Boolean).join("\n\n"),
-      source: { type: "workflow-branch-recovery", label: workflowName },
-      mode: "send",
-      label: `Recommend PR branch for ${workflowName}`,
-      background: true,
-    });
-    setHandoffSent(true);
+        ].filter(Boolean).join("\n\n"),
+        provider: provider?.id,
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) setAgentOutput(output);
+    } catch (caught) {
+      if (!controller.signal.aborted) {
+        setBranchError(caught instanceof Error ? caught.message : String(caught));
+      }
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setBranchRecoveryInProgress(false);
+      }
+    }
   }
 
   async function createRecommendedBranch() {
@@ -1193,7 +1190,7 @@ function PrBranchRecovery({
         Let the agent inspect the change and suggest a feature branch. You approve before anything changes.
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
-        <Button onClick={() => askAgentForBranchName()} size="sm" type="button">
+        <Button onClick={() => void askAgentForBranchName()} size="sm" type="button">
           <AgentMark className="size-3.5" /> Recommend branch with AI
         </Button>
         {createdBranch ? (
@@ -1227,7 +1224,7 @@ function PrBranchRecovery({
               <Button
                 disabled={creatingBranch}
                 onClick={() =>
-                  askAgentForBranchName(
+                  void askAgentForBranchName(
                     "Recommend a different concise branch name. Keep the same output contract with `BRANCH_NAME: <branch-name>`.",
                   )
                 }
@@ -1248,7 +1245,7 @@ function PrBranchRecovery({
           <Button
             className="mt-2"
             onClick={() =>
-              askAgentForBranchName(
+              void askAgentForBranchName(
                 "Return only a concise branch suggestion using this exact line: `BRANCH_NAME: <branch-name>`.",
               )
             }
@@ -1268,29 +1265,8 @@ function PrBranchRecovery({
       {branchError ? (
         <p className="mt-2 text-[11px] text-destructive">{branchError}</p>
       ) : null}
-      {agentOutput ? (
-        <Button
-          className="mt-2"
-          onClick={() => setOpen(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <MessageSquarePlus className="size-3.5" /> Open agent
-        </Button>
-      ) : null}
     </div>
   );
-}
-
-function latestAssistantTextAfter(
-  turns: ReadonlyArray<{ role: string; text: string }>,
-  startIndex: number,
-): string {
-  for (let i = turns.length - 1; i >= startIndex; i--) {
-    if (turns[i]?.role === "assistant") return turns[i].text.trim();
-  }
-  return "";
 }
 
 function statusLabel(status: StepStatus): string {
@@ -1360,14 +1336,14 @@ function StepBody({
       <Label>{ran ? "Result" : "Task"}</Label>
       {ran ? (
         <p className="italic text-muted-foreground">
-          No text reply — see the dock for what the agent did.
+          The agent returned no text result.
         </p>
       ) : (
         <>
           <p className="text-muted-foreground">{step.prompt}</p>
           {status === "running" ? (
             <p className="mt-1.5 flex items-center gap-1 text-muted-foreground/80">
-              <Loader2 className="size-3 animate-spin" /> Working in the dock…
+              <Loader2 className="size-3 animate-spin" /> Running agent step…
             </p>
           ) : null}
         </>

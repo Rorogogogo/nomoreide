@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 import type { DatabaseConnection } from "@/lib/api";
 
 /**
- * Connection picker that lives in the header (mirrors the git RepositorySelector)
- * so browsing no longer costs a permanent sidebar lane.
+ * Connection picker that lives in the header so browsing no longer costs a
+ * permanent sidebar lane.
  */
 export function ConnectionSelector({
   connections,
+  projectLabel,
   selected,
   onSelect,
   onAdd,
@@ -18,6 +19,8 @@ export function ConnectionSelector({
   onRemove,
 }: {
   connections: DatabaseConnection[];
+  /** Project tag for a row; null = unassigned (shown in every scope). */
+  projectLabel?: (connection: DatabaseConnection) => string | null;
   selected: string | null;
   onSelect: (name: string) => void;
   onAdd: () => void;
@@ -93,8 +96,15 @@ export function ConnectionSelector({
                         }}
                         type="button"
                       >
-                        <span className="block truncate text-sm font-medium leading-tight">
-                          {connection.name}
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate text-sm font-medium leading-tight">
+                            {connection.name}
+                          </span>
+                          {projectLabel ? (
+                            <Badge className="shrink-0" size="small" variant="outline">
+                              {projectLabel(connection) ?? "unassigned"}
+                            </Badge>
+                          ) : null}
                         </span>
                         <span className="block truncate font-mono text-[10px] leading-tight text-muted-foreground">
                           {connection.url}

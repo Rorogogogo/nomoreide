@@ -5,6 +5,7 @@ import {
   type TerminalSize,
   type TerminalSnapshot,
 } from "./terminal-session.js";
+import type { InteractiveAgentProvider } from "./agent-terminal.js";
 
 /** A session's snapshot plus the id the manager tracks it under. */
 export interface TerminalSessionInfo extends TerminalSnapshot {
@@ -18,6 +19,8 @@ export interface TerminalSpawnOptions {
   shell?: string;
   args?: string[];
   label?: string;
+  kind?: "shell" | "service" | "agent";
+  provider?: InteractiveAgentProvider;
 }
 
 /** The subset of the manager the web layer depends on (so tests can fake it). */
@@ -189,7 +192,9 @@ export class TerminalSessionManager implements TerminalSessionManagerLike {
       env: options.env ?? this.options.env,
       shell: options.shell ?? this.options.shell,
       args: options.args,
+      kind: options.kind,
       label: options.label,
+      provider: options.provider,
     });
     // PTY output counts as activity, so a live tail keeps the session alive.
     const outputSub = session.onOutput(() => this.touch(id));

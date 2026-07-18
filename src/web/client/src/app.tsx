@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Server,
   SquareTerminal,
+  Workflow,
 } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -30,16 +31,18 @@ import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
-import { AgentDock } from "@/features/agent/chat/agent-dock";
+import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
+import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubLogo } from "@/features/github/github-logo";
-import { RepositorySelector } from "@/features/git/repository-selector";
+import { ProjectSwitcher } from "@/features/git/project-switcher";
+import { scopeDashboard } from "@/features/services/project-scope";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -54,22 +57,94 @@ type Page =
   | "services"
   | "git"
   | "github"
+  | "workflows"
   | "agent"
   | "agent-env"
   | "errors"
   | "database"
   | "terminal";
 
+const PAGE_PATHS: Record<Page, string> = {
+  services: "/",
+  git: "/git",
+  github: "/github",
+  workflows: "/workflows",
+  errors: "/errors",
+  database: "/database",
+  terminal: "/terminal",
+  agent: "/agent",
+  "agent-env": "/agent-env",
+};
+
+const PAGE_TITLES: Record<Page, string> = {
+  services: "Services",
+  git: "Git Review",
+  github: "GitHub",
+  workflows: "Workflows",
+  errors: "Error Inbox",
+  database: "Database",
+  terminal: "Terminal",
+  agent: "Agent",
+  "agent-env": "Agent Env",
+};
+
+// Longest prefix wins so "/agent-env" is matched before "/agent".
+const PAGE_PATH_MATCHERS = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
+  .filter(([, path]) => path !== "/")
+  .sort(([, a], [, b]) => b.length - a.length);
+
+export function pageFromPath(pathname: string): Page {
+  for (const [page, path] of PAGE_PATH_MATCHERS) {
+    if (pathname.startsWith(path)) return page;
+  }
+  return "services";
+}
+
+// Sidebar grouping: Run (what's executing on this machine), Code (repo-scoped
+// work), Data, Agent. Keep the dock's FULLSCREEN_NAV in the same order.
+const NAV_SECTIONS: Array<{
+  label: string;
+  items: Array<{ page: Page; label: string; icon: ReactNode }>;
+}> = [
+  {
+    label: "Run",
+    items: [
+      { page: "services", label: "Services", icon: <Server /> },
+      { page: "errors", label: "Error Inbox", icon: <Inbox /> },
+      { page: "terminal", label: "Terminal", icon: <SquareTerminal /> },
+    ],
+  },
+  {
+    label: "Code",
+    items: [
+      { page: "git", label: "Git Review", icon: <GitBranch /> },
+      { page: "github", label: "GitHub", icon: <GitHubLogo /> },
+      { page: "workflows", label: "Workflows", icon: <Workflow /> },
+    ],
+  },
+  {
+    label: "Data",
+    items: [{ page: "database", label: "Database", icon: <Database /> }],
+  },
+  {
+    label: "Agent",
+    items: [
+      { page: "agent", label: "Agent", icon: <Bot /> },
+      { page: "agent-env", label: "Agent Env", icon: <Puzzle /> },
+    ],
+  },
+];
+
 export function sidebarShellClassName(docked = false) {
   return cn(
-    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-5 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
+    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-4 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
     docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
   );
 }
 
 export function navButtonClassName(active: boolean, docked = false) {
   return cn(
-    "relative grid h-12 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-[15px] font-medium transition-[background-color,color,width] duration-150",
+    "relative grid h-10 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-sm font-medium transition-[background-color,color,width] duration-150",
     docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
     active
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -89,7 +164,7 @@ export function navButtonLabelClassName(docked = false, hasBadge = false) {
 
 export function navButtonIconClassName(docked = false) {
   return cn(
-    "flex size-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
+    "flex h-10 w-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
     docked ? "translate-x-0" : "-translate-x-px group-hover/sidebar:translate-x-0",
   );
 }
@@ -170,18 +245,9 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
-  const [page, setPage] = useState<Page>(() => {
-    if (!syncLocation) return "services";
-    // Checked before /agent — startsWith("/agent") would swallow it.
-    if (window.location.pathname.startsWith("/agent-env")) return "agent-env";
-    if (window.location.pathname.startsWith("/agent")) return "agent";
-    if (window.location.pathname.startsWith("/errors")) return "errors";
-    if (window.location.pathname.startsWith("/database")) return "database";
-    if (window.location.pathname.startsWith("/terminal")) return "terminal";
-    if (window.location.pathname.startsWith("/github")) return "github";
-    if (window.location.pathname.startsWith("/git")) return "git";
-    return "services";
-  });
+  const [page, setPage] = useState<Page>(() =>
+    syncLocation ? pageFromPath(window.location.pathname) : "services",
+  );
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
   const [focusService, setFocusService] = useState<string | null>(null);
@@ -197,9 +263,19 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   const [changesFocusNonce, setChangesFocusNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const {
+    error: showErrorToast,
+    message: showMessageToast,
+    success: showSuccessToast,
+  } = useToasts();
   const [sidebarDocked, setSidebarDocked] = useState(() => {
     return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
+  });
+  // Project scope: "All projects" (default) leaves the Run pages machine-wide;
+  // picking a project filters them to services under that repo. Git/GitHub
+  // always follow the daemon-selected repository.
+  const [scopeAll, setScopeAll] = useState(() => {
+    return window.localStorage.getItem("nomoreide:project-scope") !== "project";
   });
 
   const refreshRegistry = useRefreshRegistry();
@@ -241,8 +317,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
         // Reload the shared dashboard payload *and* whatever the active page
         // fetches itself (git graph, database, GitHub) so the poll keeps the
         // on-screen view current, not just the services/git overview. The agent
-        // page deliberately registers no handler — a live conversation should
-        // never be reloaded out from under the user.
+        // page deliberately registers no handler because its profile data owns
+        // its own lifecycle; native terminal sessions remain attached separately.
         void refresh({ silent: true });
         void refreshRegistry.runActive();
       }
@@ -263,22 +339,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
 
   useEffect(() => {
     if (!syncLocation) return;
-    const path =
-      page === "git"
-        ? "/git"
-        : page === "github"
-          ? "/github"
-          : page === "agent-env"
-            ? "/agent-env"
-          : page === "agent"
-            ? "/agent"
-            : page === "errors"
-              ? "/errors"
-              : page === "database"
-                ? "/database"
-                : page === "terminal"
-                  ? "/terminal"
-                  : "/";
+    const path = PAGE_PATHS[page];
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -288,13 +349,35 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
   }, [sidebarDocked]);
 
+  useEffect(() => {
+    window.localStorage.setItem(
+      "nomoreide:project-scope",
+      scopeAll ? "all" : "project",
+    );
+  }, [scopeAll]);
+
+  const activeProject = (!scopeAll && data?.git.selectedRepository) || null;
+  const scopedData = useMemo(
+    () => (data && activeProject ? scopeDashboard(data, activeProject) : data),
+    [data, activeProject],
+  );
+  const scopedServiceNames = useMemo(
+    () =>
+      activeProject && scopedData
+        ? new Set(scopedData.config.services.map((service) => service.name))
+        : null,
+    [activeProject, scopedData],
+  );
+
+  // Badge matches what the Services page shows, so it respects the scope.
   const runningCount = useMemo(
     () =>
-      data
-        ? Object.values(data.runtime.services).filter((service) => service.state === "running")
-            .length
+      scopedData
+        ? Object.values(scopedData.runtime.services).filter(
+            (service) => service.state === "running",
+          ).length
         : 0,
-    [data],
+    [scopedData],
   );
   const githubPageKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
@@ -352,64 +435,39 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               )}
             />
           </div>
-          <nav className="mt-5 grid flex-1 content-start gap-1">
-            <NavButton
-              active={page === "services"}
-              badge={runningCount}
-              docked={sidebarDocked}
-              icon={<Server />}
-              label="Services"
-              onClick={() => setPage("services")}
-            />
-            <NavButton
-              active={page === "git"}
-              docked={sidebarDocked}
-              icon={<GitBranch />}
-              label="Git Review"
-              onClick={() => setPage("git")}
-            />
-            <NavButton
-              active={page === "github"}
-              docked={sidebarDocked}
-              icon={<GitHubLogo />}
-              label="GitHub"
-              onClick={() => setPage("github")}
-            />
-            <NavButton
-              active={page === "errors"}
-              docked={sidebarDocked}
-              icon={<Inbox />}
-              label="Error Inbox"
-              onClick={() => setPage("errors")}
-            />
-            <NavButton
-              active={page === "database"}
-              docked={sidebarDocked}
-              icon={<Database />}
-              label="Database"
-              onClick={() => setPage("database")}
-            />
-            <NavButton
-              active={page === "terminal"}
-              docked={sidebarDocked}
-              icon={<SquareTerminal />}
-              label="Terminal"
-              onClick={() => setPage("terminal")}
-            />
-            <NavButton
-              active={page === "agent"}
-              docked={sidebarDocked}
-              icon={<Bot />}
-              label="Agent"
-              onClick={() => setPage("agent")}
-            />
-            <NavButton
-              active={page === "agent-env"}
-              docked={sidebarDocked}
-              icon={<Puzzle />}
-              label="Agent Env"
-              onClick={() => setPage("agent-env")}
-            />
+          {data ? (
+            <div className="mt-3 border-b border-border/60 pb-2">
+              <ProjectSwitcher
+                data={data}
+                docked={sidebarDocked}
+                onRefresh={() => refresh({ silent: true })}
+                onScopeChange={setScopeAll}
+                scopeAll={scopeAll}
+              />
+            </div>
+          ) : null}
+          <nav className="mt-2 flex-1 content-start overflow-y-auto overflow-x-hidden">
+            {NAV_SECTIONS.map((section, index) => (
+              <div
+                className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
+                key={section.label}
+              >
+                <NavSectionLabel docked={sidebarDocked} label={section.label} />
+                <div className="grid gap-0.5">
+                  {section.items.map((item) => (
+                    <NavButton
+                      active={page === item.page}
+                      badge={item.page === "services" ? runningCount : undefined}
+                      docked={sidebarDocked}
+                      icon={item.icon}
+                      key={item.page}
+                      label={item.label}
+                      onClick={() => setPage(item.page)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </nav>
           <SidebarCredit
             docked={sidebarDocked}
@@ -430,32 +488,17 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {page === "git"
-                    ? "Git Review"
-                    : page === "github"
-                      ? "GitHub"
-                      : page === "agent-env"
-                        ? "Agent Env"
-                      : page === "agent"
-                        ? "Agent"
-                      : page === "errors"
-                        ? "Error Inbox"
-                        : page === "database"
-                          ? "Database"
-                          : page === "terminal"
-                            ? "Terminal"
-                            : "Services"}
+                  {PAGE_TITLES[page]}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
-                  {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
+                  {page === "git" || page === "github"
+                    ? data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"
+                    : activeProject?.name ?? "All projects"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {error ? <Badge variant="danger">{error}</Badge> : null}
-              {data && (page === "git" || page === "github") ? (
-                <RepositorySelector data={data} onRefresh={refresh} />
-              ) : null}
               <div
                 aria-label="Dashboard quick actions"
                 className="flex items-center gap-1 rounded-lg border border-border bg-background p-px"
@@ -496,6 +539,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             <RunningStripe
               data={data}
               onOpenService={(name) => {
+                // The stripe is machine-wide; widen the scope when it points
+                // at a service the current project filter would hide.
+                if (scopedServiceNames && !scopedServiceNames.has(name)) {
+                  setScopeAll(true);
+                  showMessageToast({
+                    text: "Service is outside the current project — showing all projects.",
+                  });
+                }
                 setFocusService(name);
                 setPage("services");
                 void refresh({ silent: true });
@@ -510,22 +561,29 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            {data && page === "services" ? (
+            {scopedData && page === "services" ? (
               <ServicesView
-                data={data}
+                data={scopedData}
                 onRefresh={refresh}
                 focusService={focusService}
                 onServiceFocused={() => setFocusService(null)}
+                scopeName={activeProject?.name ?? null}
               />
             ) : null}
             {data && page === "git" ? (
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {page === "github" ? <GitHubView key={githubPageKey} /> : null}
+            {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? <AgentView focusChanges={changesFocusNonce} /> : null}
             {page === "agent-env" ? <AgentEnvView /> : null}
             {page === "errors" ? (
               <ErrorInboxView
+                inScope={
+                  scopedServiceNames
+                    ? (service) => scopedServiceNames.has(service)
+                    : undefined
+                }
                 onReviewChanges={() => {
                   setChangesFocusNonce((nonce) => nonce + 1);
                   setPage("agent");
@@ -534,6 +592,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             ) : null}
             {page === "database" ? (
               <DatabaseView
+                projects={data?.config.gitRepositories ?? []}
+                scopePath={activeProject?.path ?? null}
                 staged={stagedSql}
                 onStageConsumed={() => setStagedSql(null)}
               />
@@ -553,19 +613,11 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           upstream={data.git.status?.upstream}
         />
       ) : null}
-      <AgentDock
+      <AgentTerminalDock
+        currentPage={page}
         git={data?.git}
+        onNavigate={(nextPage: AgentDockPage) => setPage(nextPage)}
         onGitRefresh={() => void refresh({ silent: true })}
-        onOpenAgentPage={page === "agent" ? undefined : () => setPage("agent")}
-        onOpenService={(name) => {
-          setFocusService(name);
-          setPage("services");
-          void refresh({ silent: true });
-        }}
-        onOpenSqlConsole={(connection, sql) => {
-          setStagedSql((prev) => ({ connection, sql, nonce: (prev?.nonce ?? 0) + 1 }));
-          setPage("database");
-        }}
       />
     </div>
     </div>
@@ -573,6 +625,22 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     </WorkflowRunProvider>
     </RefreshRegistryProvider>
     </AgentProvider>
+  );
+}
+
+function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) {
+  // Fixed height so the collapsed rail doesn't shift when labels fade in.
+  return (
+    <div className="flex h-5 items-center overflow-hidden px-3">
+      <span
+        className={cn(
+          "whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-opacity duration-150",
+          docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+        )}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 

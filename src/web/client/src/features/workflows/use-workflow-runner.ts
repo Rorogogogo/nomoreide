@@ -11,6 +11,7 @@ import {
   type WorkflowStep,
 } from "@/lib/api";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { runHeadlessAgentTask } from "../agent/headless/run-headless-agent-task";
 import { buildAgentWorkflowPrompt } from "./workflow-prompts";
 import { readStepResult } from "./workflow-result";
 
@@ -56,26 +57,14 @@ type GateDecision = "approve" | "skip" | "stop";
  * time:
  *
  * - **action** → calls the REST API and trusts its result.
- * - **agent** → hands the step to the dock conversation via `sendToAgent`, waits
- *   for that turn to finish, then (optionally) verifies the real git state
- *   before advancing. The agent does the work *in the dock* — the panel just
- *   shows where we are.
+ * - **agent** → runs the step in a fresh headless agent session, reads its
+ *   explicit result, then optionally verifies real git state before advancing.
  * - **gate** → stops and waits for the human (Approve / Skip / Stop).
  *
- * Agent turns are tracked via the dock's `streaming` flag: we wait for it to go
- * idle, with a grace timeout so a turn that never starts (agent not installed)
- * doesn't hang the run.
  */
 export function useWorkflowRunner(onRefresh?: () => void) {
-  const { sendToAgent, streaming, turns } = useAgentDock();
+  const { provider } = useAgentDock();
   const [run, setRun] = useState<RunState | null>(null);
-
-  // Always-fresh view of the dock transcript so the loop can grab a finished
-  // agent turn's text as that step's result.
-  const turnsRef = useRef(turns);
-  useEffect(() => {
-    turnsRef.current = turns;
-  }, [turns]);
 
   // Always-fresh view of the run so `resume` can read where a paused run stopped
   // without re-binding the callback on every status patch.
@@ -87,43 +76,26 @@ export function useWorkflowRunner(onRefresh?: () => void) {
   const busyRef = useRef(false);
   const stopRef = useRef(false);
   const gateRef = useRef<((decision: GateDecision) => void) | null>(null);
-  const idleRef = useRef<(() => void) | null>(null);
-  const sawStreamingRef = useRef(false);
+  const headlessAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
-  // Resolve an in-flight agent step the moment the dock turn finishes streaming.
   useEffect(() => {
-    if (streaming) {
-      sawStreamingRef.current = true;
-    } else if (sawStreamingRef.current && idleRef.current) {
-      const resolve = idleRef.current;
-      idleRef.current = null;
-      resolve();
-    }
-  }, [streaming]);
+    mountedRef.current = true;
+    stopRef.current = false;
+    return () => {
+      mountedRef.current = false;
+      stopRef.current = true;
+      busyRef.current = false;
+      headlessAbortRef.current?.abort();
+      headlessAbortRef.current = null;
+      gateRef.current?.("stop");
+      gateRef.current = null;
+    };
+  }, []);
 
   const waitForGate = useCallback(
     () => new Promise<GateDecision>((resolve) => {
       gateRef.current = resolve;
-    }),
-    [],
-  );
-
-  const waitForAgentTurn = useCallback(
-    () => new Promise<void>((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        idleRef.current = null;
-        resolve();
-      };
-      idleRef.current = finish;
-      // If the turn never even begins streaming (e.g. agent not configured),
-      // don't wait forever — verification will catch a no-op.
-      const timer = setTimeout(() => {
-        if (!sawStreamingRef.current) finish();
-      }, 8000);
     }),
     [],
   );
@@ -174,7 +146,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       autoApprove: boolean,
       resumeFrom?: { index: number; statuses: StepStatus[]; outputs: string[]; startedAt: number },
     ) => {
-      if (busyRef.current) return;
+      if (busyRef.current || !mountedRef.current) return;
       busyRef.current = true;
       stopRef.current = false;
 
@@ -187,11 +159,13 @@ export function useWorkflowRunner(onRefresh?: () => void) {
       const outputs: string[] = workflow.steps.map((_, i) => resumeFrom?.outputs[i] ?? "");
       const patch = (index: number, status: StepStatus, extra?: Partial<RunState>) => {
         statuses[index] = status;
+        if (!mountedRef.current) return;
         setRun((prev) =>
           prev ? { ...prev, index, statuses: [...statuses], outputs: [...outputs], ...extra } : prev,
         );
       };
 
+      if (!mountedRef.current) return;
       setRun({
         workflow,
         startedAt: resumeFrom?.startedAt ?? Date.now(),
@@ -204,6 +178,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       const halt = (outcome: RunOutcome) => {
         busyRef.current = false;
+        if (!mountedRef.current) return;
         setRun((prev) => (prev ? { ...prev, outcome, endedAt: Date.now() } : prev));
       };
 
@@ -228,7 +203,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           try {
             await runAction(step, i, outputs);
             patch(i, "done");
-            onRefresh?.();
+            if (mountedRef.current) onRefresh?.();
           } catch (caught) {
             if (step.op === "assert-pr-branch") {
               patch(i, "blocked", { error: messageOf(caught) });
@@ -243,27 +218,33 @@ export function useWorkflowRunner(onRefresh?: () => void) {
           continue;
         }
 
-        // Agent step — runs in the dock conversation.
+        // Agent step — runs in a fresh, result-bearing headless session.
         patch(i, "running");
-        sawStreamingRef.current = false;
-        sendToAgent({
-          prompt: buildAgentWorkflowPrompt(step) + STATUS_HINT,
-          source: { type: "workflow", label: `${workflow.name}: ${step.title}` },
-          mode: "send",
-          label: step.title,
-          autoApprove,
-          background: true,
-          // Self-contained steps run in a fresh session so the model isn't
-          // re-fed every prior step's transcript — a big token saving.
-          isolated: step.isolated,
-        });
-        await waitForAgentTurn();
+        const controller = new AbortController();
+        headlessAbortRef.current = controller;
+        let agentText: string;
+        try {
+          agentText = await runHeadlessAgentTask({
+            prompt: buildAgentWorkflowPrompt(step) + STATUS_HINT,
+            provider: provider?.id,
+            autoApprove,
+            signal: controller.signal,
+          });
+        } catch (caught) {
+          headlessAbortRef.current = null;
+          if (stopRef.current || controller.signal.aborted) {
+            halt("stopped");
+            return;
+          }
+          patch(i, "failed", { error: messageOf(caught) });
+          halt("failed");
+          return;
+        }
+        headlessAbortRef.current = null;
+        if (!mountedRef.current) return halt("stopped");
         onRefresh?.();
-        // Read the agent's reply: capture it as the step result, and decide
-        // whether it actually succeeded — don't just assume a finished turn means
-        // success. A blocked / question reply pauses the run for the user.
-        const result = readStepResult(latestAssistantText(turnsRef.current));
-        outputs[i] = result.output || "(no reply — see the dock)";
+        const result = readStepResult(agentText);
+        outputs[i] = result.output || "(no reply from agent)";
         if (result.blocked) {
           patch(i, "blocked", {
             error: result.reason
@@ -293,7 +274,7 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
       halt("done");
     },
-    [onRefresh, runAction, sendToAgent, verify, waitForAgentTurn, waitForGate],
+    [onRefresh, provider?.id, runAction, verify, waitForGate],
   );
 
   const start = useCallback(
@@ -322,10 +303,11 @@ export function useWorkflowRunner(onRefresh?: () => void) {
   const skip = useCallback(() => gateRef.current?.("skip"), []);
   const stop = useCallback(() => {
     stopRef.current = true;
+    headlessAbortRef.current?.abort();
     gateRef.current?.("stop");
   }, []);
   const dismiss = useCallback(() => {
-    if (busyRef.current) return; // don't clear a live run
+    if (busyRef.current || !mountedRef.current) return; // don't clear a live run
     setRun(null);
   }, []);
 
@@ -334,14 +316,6 @@ export function useWorkflowRunner(onRefresh?: () => void) {
 
 function messageOf(caught: unknown): string {
   return caught instanceof Error ? caught.message : String(caught);
-}
-
-/** The most recent assistant reply in the transcript — a finished step's result. */
-function latestAssistantText(turns: ReadonlyArray<{ role: string; text: string }>): string {
-  for (let i = turns.length - 1; i >= 0; i--) {
-    if (turns[i].role === "assistant") return turns[i].text.trim();
-  }
-  return "";
 }
 
 /**

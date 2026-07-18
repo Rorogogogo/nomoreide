@@ -38,17 +38,14 @@ describe("workflow run AI actions", () => {
     expect(workflowPanelSource).toContain("Recommended branch");
     expect(workflowPanelSource).toContain("Create this branch");
     expect(workflowPanelSource).toContain("Ask for another");
-    expect(workflowPanelSource).toContain("Open agent");
-    expect(workflowPanelSource).toContain("setOpen(true)");
+    expect(workflowPanelSource).toContain("runHeadlessAgentTask");
     expect(workflowPanelSource).toContain("gitCreateBranch");
     expect(workflowPanelSource).toContain("parseRecommendedBranchName");
     expect(workflowPanelSource).toContain("branchRecoveryInProgress");
     expect(workflowPanelSource).toContain("!branchRecoveryInProgress");
-    expect(workflowPanelSource).toContain("latestAssistantTextAfter");
     expect(workflowPanelSource).toContain("buildPrBranchRecoveryPrompt");
-    expect(workflowPanelSource).toMatch(
-      /source: \{ type: "workflow-branch-recovery"[\s\S]*?background: true/,
-    );
+    expect(workflowPanelSource).not.toContain("latestAssistantTextAfter");
+    expect(workflowPanelSource).not.toContain("Open agent");
     expect(workflowPanelSource).toMatch(
       /canRecoverPrBranch[\s\S]*?selectedStatus === "blocked"[\s\S]*?selectedStep\.op === "assert-pr-branch"/,
     );

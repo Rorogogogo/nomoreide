@@ -34,7 +34,7 @@ export function RegistryPanel({
   };
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-card/80 px-3 py-2">
+    <div className="flex min-w-0 flex-wrap content-start items-center gap-2 px-3 py-2">
       <span className="flex items-center gap-1.5 text-xs font-semibold">
         <Globe className="size-3.5 text-muted-foreground" />
         Registry

@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 export const DEFAULT_REGISTRY_API_BASE_URL = "https://api.brainctl.net";
-export const DEFAULT_REGISTRY_FRONTEND_URL = "https://app.brainctl.net";
+export const DEFAULT_REGISTRY_FRONTEND_URL = "https://www.brainctl.net";
 
 export type RegistryConfigKey =
   | "apiBaseUrl"
@@ -154,6 +154,9 @@ export async function resolveRegistryFrontendUrl(
   if (stored) return normalizeBaseUrl(stored);
   if (options.apiBaseUrl) {
     try {
+      if (normalizeBaseUrl(options.apiBaseUrl) === DEFAULT_REGISTRY_API_BASE_URL) {
+        return DEFAULT_REGISTRY_FRONTEND_URL;
+      }
       const url = new URL(options.apiBaseUrl);
       if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
         return `${url.protocol}//${url.hostname}:5173`;

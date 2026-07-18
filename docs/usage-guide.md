@@ -219,19 +219,26 @@ Database:
 - List tables and views.
 - Sample rows and schema metadata for inspection.
 - Run read-only SQL queries through MCP and the Web UI.
-- Generate SQL with the agent dock.
+- Generate SQL with the agent terminal dock.
 - Keep writes locked by default; unlock a connection, preview affected rows, then commit from the human-only SQL console.
-- When an agent proposes a write, it should stage a `sql-write` block for the Web UI instead of executing the write through MCP.
+- When an agent proposes a write, it should name the connection and provide one scoped statement in a standard `sql` fence instead of executing it through MCP:
+
+  ```sql
+  UPDATE users SET role = 'developer' WHERE id = 'usr_01hx8q9n';
+  ```
+
+  Manually stage and run the reviewed statement in the locked SQL console, explicitly unlock writes, inspect the affected-rows preview, and only then commit.
 
 Terminal:
 
 - Work in an embedded terminal surface when available.
 - Keep terminal work close to the dashboard context.
 
-Agent dock:
+Agent terminal dock:
 
-- Use the AI-native entry points in the UI to hand structured context to the agent.
-- Keep agent actions visible to the human user.
+- Launch real Claude Code or Codex terminal sessions from AI-native entry points in the UI.
+- Review the complete prompt, switch between concurrent task tabs, and stop or close each session independently.
+- Collapse the dock without disconnecting running sessions or losing their terminal scrollback.
 - Inspect MCP servers, skills, plugins, hooks, usage, and tool-call activity.
 
 ## MCP Tool Reference

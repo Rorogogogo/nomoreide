@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import type { InteractiveAgentProvider } from "./agent-terminal.js";
 
 const require = createRequire(import.meta.url);
 
@@ -20,6 +21,8 @@ export interface TerminalSnapshot extends TerminalSize {
   shell: string;
   /** Human label for the tab (e.g. a service name); absent for plain shells. */
   label?: string;
+  kind?: "shell" | "service" | "agent";
+  provider?: InteractiveAgentProvider;
   exit?: TerminalExit;
   error?: string;
 }
@@ -54,6 +57,8 @@ export interface TerminalSessionOptions {
   /** Args for the spawned program. Empty → a plain interactive shell. */
   args?: string[];
   label?: string;
+  kind?: "shell" | "service" | "agent";
+  provider?: InteractiveAgentProvider;
 }
 
 type Listener<T> = (value: T) => void;
@@ -77,6 +82,8 @@ export class TerminalSession implements TerminalSessionLike {
   private readonly shell: string;
   private readonly args: string[];
   private readonly label: string | undefined;
+  private readonly kind: "shell" | "service" | "agent" | undefined;
+  private readonly provider: InteractiveAgentProvider | undefined;
   private cols = 80;
   private rows = 24;
   private exit: TerminalExit | undefined;
@@ -94,6 +101,8 @@ export class TerminalSession implements TerminalSessionLike {
     this.shell = options.shell ?? defaultShell();
     this.args = options.args ?? [];
     this.label = options.label;
+    this.kind = options.kind;
+    this.provider = options.provider;
   }
 
   snapshot(): TerminalSnapshot {
@@ -102,7 +111,9 @@ export class TerminalSession implements TerminalSessionLike {
       cwd: this.cwd,
       error: this.error,
       exit: this.exit,
+      kind: this.kind,
       label: this.label,
+      provider: this.provider,
       rows: this.rows,
       shell: this.shell,
       state: this.state,

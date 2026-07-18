@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Database, Loader2, Plus, Sparkles, Table2, Terminal } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +10,11 @@ import { usePersistentState } from "@/lib/use-persistent-state";
 import {
   deleteDatabase,
   type DatabaseConnection,
+  type GitRepositoryDefinition,
   type RowSample,
   type TableRef,
 } from "@/lib/api";
+import { connectionInScope, pathInScope } from "../services/project-scope";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { AiSpark } from "../agent/ai-spark";
 import { DATABASE_SETUP_PROMPT, buildTablePrompt } from "../agent/prompts";
@@ -29,12 +31,33 @@ type ViewMode = "browse" | "query";
 export function DatabaseView({
   staged,
   onStageConsumed,
+  projects = [],
+  scopePath = null,
 }: {
   /** A write the dock agent drafted, routed here to seed the SQL console. */
   staged?: { connection: string; sql: string; nonce: number } | null;
   onStageConsumed?: () => void;
+  /** Registered git projects, for classifying connections. */
+  projects?: GitRepositoryDefinition[];
+  /** Active project scope; unassigned connections stay visible when set. */
+  scopePath?: string | null;
 } = {}) {
-  const { connections, loading, error, refresh } = useDatabases();
+  const { connections: allConnections, loading, error, refresh } = useDatabases();
+  const connections = useMemo(
+    () =>
+      allConnections.filter((connection) =>
+        connectionInScope(connection.projectPath, scopePath),
+      ),
+    [allConnections, scopePath],
+  );
+  // "api-server" beats "/Users/x/repo/api-server" as a row tag.
+  const projectLabel = (connection: DatabaseConnection): string | null => {
+    if (!connection.projectPath) return null;
+    const repo = projects.find((project) =>
+      pathInScope(connection.projectPath, project.path),
+    );
+    return repo?.name ?? connection.projectPath.split("/").pop() ?? null;
+  };
   useRegisterRefresh(refresh);
   const { error: showError, success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
@@ -109,6 +132,7 @@ export function DatabaseView({
           {selected ? <ViewModeToggle mode={mode} onChange={setMode} /> : null}
           <ConnectionSelector
             connections={connections}
+            projectLabel={projectLabel}
             selected={selected}
             onSelect={setSelected}
             onAdd={() => setDialog({ mode: "add" })}
@@ -149,6 +173,7 @@ export function DatabaseView({
       {dialog ? (
         <AddConnectionDialog
           initial={dialog.mode === "edit" ? dialog.target : undefined}
+          projects={projects}
           onClose={() => setDialog(null)}
           onSaved={refresh}
         />

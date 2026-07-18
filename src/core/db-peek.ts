@@ -14,11 +14,15 @@ export interface MaskedConnection {
   url: string;
   /** Whether the user has unlocked write access for this connection. */
   writeUnlocked: boolean;
+  /** Project directory the connection is classified under, if any. */
+  projectPath?: string;
 }
 
 /** A DB connection string discovered in a service's `.env` file. */
 export interface DetectedConnection {
   service: string;
+  /** The service's working directory — provenance for project classification. */
+  cwd: string;
   key: string;
   engine: DatabaseEngine;
   url: string;
@@ -49,6 +53,7 @@ export class DbPeek {
       engine: connection.engine,
       url: maskConnectionUrl(connection.engine, connection.url),
       writeUnlocked: connection.writeUnlocked ?? false,
+      projectPath: connection.projectPath,
     }));
   }
 
@@ -110,6 +115,7 @@ export class DbPeek {
         seen.add(dedupe);
         found.push({
           service: service.name,
+          cwd: service.cwd,
           key,
           engine,
           url: value,

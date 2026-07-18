@@ -15,13 +15,13 @@ const workflowCapabilitiesSchema = z.object({
  *
  * - **action** — deterministic, no inputs needed (e.g. `push`). Runs via the
  *   REST API and its result tells us pass/fail. Predictable, no tokens spent.
- * - **agent** — a scoped natural-language task handed to the dock agent, which
+ * - **agent** — a scoped natural-language task run in a fresh headless agent
+ *   session, which
  *   does the fuzzy work (review a diff, group commits, draft + file a PR/issue)
  *   using its own git/GitHub tools. Optionally `verify`-d against real git state.
  * - **gate** — a hard stop that waits for the human (Approve / Skip / Stop).
  *
- * The runner itself lives client-side (agent steps execute through the dock
- * conversation); this module owns the *shape* and the built-in templates, and is
+ * The runner itself lives client-side; this module owns the *shape* and the built-in templates, and is
  * persisted through {@link ConfigStore} so a user can fork/edit them later.
  */
 
@@ -44,17 +44,11 @@ export const workflowStepSchema = z.discriminatedUnion("kind", [
     kind: z.literal("agent"),
     id: z.string().min(1),
     title: z.string().min(1),
-    /** The instruction handed to the dock agent. */
+    /** The instruction handed to a fresh headless agent session. */
     prompt: z.string().min(1),
     /** Optional user-selected capabilities the runner adds as prompt guidance. */
     capabilities: workflowCapabilitiesSchema.optional(),
-    /**
-     * Run this step in a fresh, one-shot agent session instead of resuming the
-     * dock conversation. Much cheaper — the model isn't re-fed every earlier
-     * step's transcript and tool output — but the step gets no shared memory, so
-     * only set it on self-contained steps (e.g. drafting a commit message, not
-     * "merge the PR you just opened").
-     */
+    /** @deprecated Retained only so older saved workflows still parse; ignored by the runner. */
     isolated: z.boolean().optional(),
     /**
      * Real-state check run after the agent's turn before advancing:
@@ -99,10 +93,8 @@ const COMMIT_MESSAGE_STEP: WorkflowStep = {
   kind: "agent",
   id: "commit-message",
   title: "Generate commit message",
-  // Self-contained: it stages, reads its own staged diff, and replies with just
-  // the message (which the commit action consumes). No later step needs its
-  // session, so run it isolated to avoid re-feeding the dock transcript.
-  isolated: true,
+  // It stages, reads its own staged diff, and replies with just the message
+  // consumed by the deterministic commit action.
   prompt:
     "Stage my changes with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`), inspect the staged diff once with `nomoreide_git_staged_diff`, then write one conventional-commit message — a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. Do NOT commit. Reply with ONLY the commit message you recommend.",
 };
@@ -162,9 +154,7 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
         kind: "agent",
         id: "open-pr",
         title: "Open a PR",
-        // Self-contained: gathers its own commit list, so it needs no prior
-        // session — run it isolated. The merge step below finds the PR itself.
-        isolated: true,
+        // Gathers its own commit list. The merge step below finds the PR itself.
         prompt:
           "Open a PR for the current branch into `main` using the `nomoreide_github_create_pr` tool. Title = the latest commit subject; for the body, list the commits via `nomoreide_git_log`. Do NOT read file diffs. Reply with just the PR number and URL.",
       },
@@ -173,9 +163,7 @@ export const BUILTIN_WORKFLOWS: Workflow[] = [
         kind: "agent",
         id: "merge",
         title: "Squash-merge",
-        // Finds the PR by branch rather than relying on the open-pr step's
-        // session, so it can run isolated too.
-        isolated: true,
+        // Finds the PR by branch instead of relying on output from the open-pr step.
         prompt:
           "Squash-merge the open pull request for the current branch. First call `nomoreide_git_status` for the branch name, then `nomoreide_github_list_prs` to find its open PR, then merge it with `nomoreide_github_merge_pr`. Don't analyze anything else — just find it and merge. Reply with one line.",
       },

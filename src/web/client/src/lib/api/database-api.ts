@@ -12,10 +12,14 @@ export interface DatabaseConnection {
   url: string;
   /** Whether the user has unlocked write access for this connection. */
   writeUnlocked: boolean;
+  /** Project directory the connection is classified under; absent = shared. */
+  projectPath?: string;
 }
 
 export interface DetectedConnection {
   service: string;
+  /** The service's working directory (absent from older/desktop backends). */
+  cwd?: string;
   key: string;
   engine: DatabaseEngine;
   url: string;
@@ -67,7 +71,13 @@ export interface DatabaseApi {
   listDatabases(): Promise<DatabaseConnection[]>;
   /** Not available in desktop mode — returns empty array. */
   detectDatabases(): Promise<DetectedConnection[]>;
-  addDatabase(input: { name: string; engine: DatabaseEngine; url: string }): Promise<void>;
+  addDatabase(input: {
+    name: string;
+    engine: DatabaseEngine;
+    url: string;
+    /** Omit or pass empty to leave the connection unassigned. */
+    projectPath?: string;
+  }): Promise<void>;
   testDatabase(input: {
     engine: DatabaseEngine;
     url: string;

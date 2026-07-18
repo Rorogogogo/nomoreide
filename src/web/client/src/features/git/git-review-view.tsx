@@ -22,7 +22,6 @@ import { GitGraphView } from "./git-graph-view";
 import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
-import { WorkflowPanel } from "../workflows/workflow-panel";
 
 type GitTab =
   | "changes"
@@ -30,8 +29,7 @@ type GitTab =
   | "all"
   | "graph"
   | "largest"
-  | "snapshots"
-  | "workflows";
+  | "snapshots";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
@@ -288,22 +286,10 @@ export function GitReviewView({
         >
           Snapshots
         </button>
-        <button
-          type="button"
-          className={tabButtonClass(tab === "workflows")}
-          onClick={() => setTab("workflows")}
-        >
-          <span className="flex items-center gap-1">
-            <AgentMark className="size-3" />
-            Workflows
-          </span>
-        </button>
       </div>
 
       <div className="min-h-0 flex-1">
-        {tab === "workflows" ? (
-          <WorkflowPanel />
-        ) : tab === "board" ? (
+        {tab === "board" ? (
           <MultiRepoBoard currentRepoPath={data.git.cwd} />
         ) : tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />
@@ -480,7 +466,7 @@ function NoRepositoryEmptyState() {
         <p className="mt-3 text-sm font-medium">No Git project registered</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Add a folder that is a Git worktree to review changes, browse files,
-          and inspect history. Use the project picker in the header to add one.
+          and inspect history. Use the project switcher in the sidebar to add one.
         </p>
       </div>
     </div>

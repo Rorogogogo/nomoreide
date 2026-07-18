@@ -26,7 +26,7 @@ export function StagedChangesDrawer({
   if (count === 0) return null;
 
   return (
-    <div className="shrink-0 rounded-lg border border-border bg-card/80 shadow-sm">
+    <div className="shrink-0 border-t border-border bg-card/95">
       <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold">
           <Layers className="size-3.5 text-muted-foreground" />

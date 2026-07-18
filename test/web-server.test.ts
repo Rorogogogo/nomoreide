@@ -84,9 +84,11 @@ describe("web server", () => {
     const response = await fetch(`${server.url}/api/health`);
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       ok: true,
       app: "nomoreide",
+      pid: process.pid,
+      version: expect.stringMatching(/^\d+\.\d+\.\d+/),
     });
   });
 

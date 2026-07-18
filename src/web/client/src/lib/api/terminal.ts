@@ -5,7 +5,7 @@
  * per-function `if (isTauri())` branch.
  */
 import { isTauri } from "./tauri-bridge.js";
-import type { TerminalApi } from "./terminal-api.js";
+import type { CreateAgentTerminalOptions, TerminalApi } from "./terminal-api.js";
 import { httpTerminalApi } from "./terminal-http.js";
 import { tauriTerminalApi } from "./terminal-tauri.js";
 
@@ -28,8 +28,17 @@ export function createTerminalSession(opts?: { serviceName?: string }) {
   return terminalApi().createTerminalSession(opts);
 }
 
+export function createAgentTerminalSession(opts: CreateAgentTerminalOptions) {
+  return terminalApi().createAgentTerminalSession(opts);
+}
+
 export function closeTerminalSession(id: string) {
   return terminalApi().closeTerminalSession(id);
 }
 
-export type { TerminalApi, TerminalState, TerminalSessionInfo } from "./terminal-api.js";
+export type {
+  CreateAgentTerminalOptions,
+  TerminalApi,
+  TerminalState,
+  TerminalSessionInfo,
+} from "./terminal-api.js";
