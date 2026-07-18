@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  Box,
   Check,
   ChevronDown,
   Download,
@@ -79,7 +80,7 @@ export function ProjectSwitcher({
             ) : selectedRepository ? (
               label.charAt(0).toUpperCase()
             ) : (
-              <Folder className="size-4 text-muted-foreground" />
+              <Box className="size-4 text-muted-foreground" />
             )}
           </span>
         </span>

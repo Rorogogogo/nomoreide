@@ -1,4 +1,4 @@
-import { Check, Folder, FolderPlus, Globe2 } from "lucide-react";
+import { Box, Check, FolderPlus, Globe2 } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { selectGitRepository, type DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -90,7 +90,7 @@ export function ProjectMenuList({
             type="button"
           >
             <span className="flex h-8 w-12 items-center justify-center">
-              <Folder className="size-4 text-muted-foreground" />
+              <Box className="size-4 text-muted-foreground" />
             </span>
             <span className={labelClassName}>
               <span className="min-w-0 flex-1 truncate font-medium">{repository.name}</span>
