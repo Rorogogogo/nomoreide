@@ -1,60 +1,35 @@
-import { type RefObject, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { Check, FolderPlus, Globe2 } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { selectGitRepository, type DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /**
- * Quick project-switch popover anchored under the sidebar trigger. Switching
- * is the frequent, low-stakes action so it happens in place; registering,
- * cloning, and deleting stay behind "Add or manage projects…" (the dialog).
- * Portalled + fixed like OverflowMenu so the rail's overflow-hidden can't
- * clip it; closes on outside-click, Escape, or scroll.
+ * Inline project list, disclosed under the sidebar trigger (no popover — it
+ * expands in place and pushes the nav down). Switching is the frequent,
+ * low-stakes action so it happens here; registering, cloning, and deleting
+ * stay behind "Add or manage projects…" (the dialog). Rows follow the nav
+ * buttons' collapsed-rail pattern: 48px icon column, labels fade in when the
+ * rail is docked or hovered.
  */
-export function ProjectMenu({
-  anchor,
+export function ProjectMenuList({
   data,
+  docked,
   scopeAll,
   onScopeChange,
   onRefresh,
   onClose,
   onManage,
-  triggerRef,
 }: {
-  anchor: { top: number; left: number };
   data: DashboardData;
+  docked: boolean;
   scopeAll: boolean;
   onScopeChange: (scopeAll: boolean) => void;
   onRefresh: () => Promise<void>;
   onClose: () => void;
   onManage: () => void;
-  triggerRef: RefObject<HTMLButtonElement | null>;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const selectedRepository = data.git.selectedRepository;
-
-  useEffect(() => {
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) {
-        return;
-      }
-      onClose();
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("scroll", onClose, true);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("scroll", onClose, true);
-    };
-  }, [onClose, triggerRef]);
 
   async function selectProject(name: string) {
     onClose();
@@ -74,70 +49,78 @@ export function ProjectMenu({
     showSuccessToast("Showing all projects.");
   }
 
-  return createPortal(
-    <div
-      className="fixed z-[1000] w-64 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-      ref={menuRef}
-      role="menu"
-      style={{ top: anchor.top, left: anchor.left }}
-    >
-      <div className="max-h-72 overflow-y-auto p-1">
-        <button
-          className={cn(
-            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
-            scopeAll && "bg-muted/60",
-          )}
-          onClick={selectAllProjects}
-          role="menuitem"
-          type="button"
-        >
-          <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate text-xs font-medium">All projects</span>
+  const rowClassName = (active: boolean) =>
+    cn(
+      "grid h-8 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md text-left transition-[background-color,width] duration-150 hover:bg-muted",
+      docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
+      active && "bg-muted/60",
+    );
+  const labelClassName = cn(
+    "flex min-w-0 items-center gap-2 overflow-hidden whitespace-pre pr-2 text-xs transition duration-150",
+    docked
+      ? "translate-x-1 opacity-100"
+      : "opacity-0 group-hover/sidebar:translate-x-1 group-hover/sidebar:opacity-100",
+  );
+
+  return (
+    <div className="mt-1 grid gap-0.5">
+      <button
+        className={rowClassName(scopeAll)}
+        onClick={selectAllProjects}
+        title="All projects"
+        type="button"
+      >
+        <span className="flex h-8 w-12 items-center justify-center">
+          <Globe2 className="size-4 text-muted-foreground" />
+        </span>
+        <span className={labelClassName}>
+          <span className="min-w-0 flex-1 truncate font-medium">All projects</span>
           {scopeAll ? <Check className="size-3.5 shrink-0" /> : null}
-        </button>
+        </span>
+      </button>
 
-        {data.config.gitRepositories.map((repository) => {
-          const selected = !scopeAll && repository.name === selectedRepository?.name;
-          return (
-            <button
-              className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted",
-                selected && "bg-muted/60",
-              )}
-              key={repository.name}
-              onClick={() => void selectProject(repository.name)}
-              role="menuitem"
-              type="button"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium leading-tight">
-                  {repository.name}
-                </span>
-                <span className="block truncate font-mono text-[10px] leading-tight text-muted-foreground">
-                  {repository.path}
-                </span>
+      {data.config.gitRepositories.map((repository) => {
+        const selected = !scopeAll && repository.name === selectedRepository?.name;
+        return (
+          <button
+            className={rowClassName(selected)}
+            key={repository.name}
+            onClick={() => void selectProject(repository.name)}
+            title={repository.path}
+            type="button"
+          >
+            <span className="flex h-8 w-12 items-center justify-center">
+              <span className="flex size-6 items-center justify-center rounded-md border border-border bg-background text-[10px] font-semibold text-foreground">
+                {repository.name.charAt(0).toUpperCase()}
               </span>
+            </span>
+            <span className={labelClassName}>
+              <span className="min-w-0 flex-1 truncate font-medium">{repository.name}</span>
               {selected ? <Check className="size-3.5 shrink-0" /> : null}
-            </button>
-          );
-        })}
-      </div>
+            </span>
+          </button>
+        );
+      })}
 
-      <div className="border-t border-border p-1">
-        <button
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={() => {
-            onClose();
-            onManage();
-          }}
-          role="menuitem"
-          type="button"
-        >
-          <FolderPlus className="size-3.5 shrink-0" />
-          Add or manage projects…
-        </button>
-      </div>
-    </div>,
-    document.body,
+      <button
+        className={cn(
+          "grid h-8 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md text-left text-muted-foreground transition-[background-color,color,width] duration-150 hover:bg-muted hover:text-foreground",
+          docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
+        )}
+        onClick={() => {
+          onClose();
+          onManage();
+        }}
+        title="Add or manage projects"
+        type="button"
+      >
+        <span className="flex h-8 w-12 items-center justify-center">
+          <FolderPlus className="size-4" />
+        </span>
+        <span className={labelClassName}>
+          <span className="min-w-0 flex-1 truncate">Add or manage projects…</span>
+        </span>
+      </button>
+    </div>
   );
 }

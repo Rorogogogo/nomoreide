@@ -1,8 +1,8 @@
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Check,
-  ChevronsUpDown,
+  ChevronDown,
   Download,
   Folder,
   FolderPlus,
@@ -25,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FolderPickerDialog } from "./repository-selector";
 import { pathName } from "./path-utils";
-import { ProjectMenu } from "./project-menu";
+import { ProjectMenuList } from "./project-menu";
 
 /**
  * Persistent project context: lives at the top of the sidebar on every page.
@@ -47,9 +47,7 @@ export function ProjectSwitcher({
   onRefresh: () => Promise<void>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState({ top: 0, left: 0 });
   const [manageOpen, setManageOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedRepository = data.git.selectedRepository;
   const label = scopeAll
     ? "All projects"
@@ -70,22 +68,7 @@ export function ProjectSwitcher({
           docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
         )}
         aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        onClick={() => {
-          if (menuOpen) {
-            setMenuOpen(false);
-            return;
-          }
-          const rect = triggerRef.current?.getBoundingClientRect();
-          if (rect) {
-            setMenuAnchor({
-              top: rect.bottom + 6,
-              left: Math.max(8, Math.min(rect.left, window.innerWidth - 264)),
-            });
-          }
-          setMenuOpen(true);
-        }}
-        ref={triggerRef}
+        onClick={() => setMenuOpen((value) => !value)}
         title={`Project scope: ${label}`}
         type="button"
       >
@@ -115,23 +98,23 @@ export function ProjectSwitcher({
             {subtitle}
           </span>
         </span>
-        <ChevronsUpDown
+        <ChevronDown
           className={cn(
-            "absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-opacity duration-150",
+            "absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground transition-[opacity,transform] duration-150",
             docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+            menuOpen && "rotate-180",
           )}
         />
       </button>
       {menuOpen ? (
-        <ProjectMenu
-          anchor={menuAnchor}
+        <ProjectMenuList
           data={data}
+          docked={docked}
           onClose={() => setMenuOpen(false)}
           onManage={() => setManageOpen(true)}
           onRefresh={onRefresh}
           onScopeChange={onScopeChange}
           scopeAll={scopeAll}
-          triggerRef={triggerRef}
         />
       ) : null}
       {manageOpen ? (
