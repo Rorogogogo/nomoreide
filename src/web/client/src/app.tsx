@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Server,
   SquareTerminal,
+  Workflow,
 } from "lucide-react";
 import { getDashboard, type DashboardData } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
+import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubLogo } from "@/features/github/github-logo";
 import { RepositorySelector } from "@/features/git/repository-selector";
@@ -54,11 +56,83 @@ type Page =
   | "services"
   | "git"
   | "github"
+  | "workflows"
   | "agent"
   | "agent-env"
   | "errors"
   | "database"
   | "terminal";
+
+const PAGE_PATHS: Record<Page, string> = {
+  services: "/",
+  git: "/git",
+  github: "/github",
+  workflows: "/workflows",
+  errors: "/errors",
+  database: "/database",
+  terminal: "/terminal",
+  agent: "/agent",
+  "agent-env": "/agent-env",
+};
+
+const PAGE_TITLES: Record<Page, string> = {
+  services: "Services",
+  git: "Git Review",
+  github: "GitHub",
+  workflows: "Workflows",
+  errors: "Error Inbox",
+  database: "Database",
+  terminal: "Terminal",
+  agent: "Agent",
+  "agent-env": "Agent Env",
+};
+
+// Longest prefix wins so "/agent-env" is matched before "/agent".
+const PAGE_PATH_MATCHERS = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
+  .filter(([, path]) => path !== "/")
+  .sort(([, a], [, b]) => b.length - a.length);
+
+export function pageFromPath(pathname: string): Page {
+  for (const [page, path] of PAGE_PATH_MATCHERS) {
+    if (pathname.startsWith(path)) return page;
+  }
+  return "services";
+}
+
+// Sidebar grouping: Run (what's executing on this machine), Code (repo-scoped
+// work), Data, Agent. Keep the dock's FULLSCREEN_NAV in the same order.
+const NAV_SECTIONS: Array<{
+  label: string;
+  items: Array<{ page: Page; label: string; icon: ReactNode }>;
+}> = [
+  {
+    label: "Run",
+    items: [
+      { page: "services", label: "Services", icon: <Server /> },
+      { page: "errors", label: "Error Inbox", icon: <Inbox /> },
+      { page: "terminal", label: "Terminal", icon: <SquareTerminal /> },
+    ],
+  },
+  {
+    label: "Code",
+    items: [
+      { page: "git", label: "Git Review", icon: <GitBranch /> },
+      { page: "github", label: "GitHub", icon: <GitHubLogo /> },
+      { page: "workflows", label: "Workflows", icon: <Workflow /> },
+    ],
+  },
+  {
+    label: "Data",
+    items: [{ page: "database", label: "Database", icon: <Database /> }],
+  },
+  {
+    label: "Agent",
+    items: [
+      { page: "agent", label: "Agent", icon: <Bot /> },
+      { page: "agent-env", label: "Agent Env", icon: <Puzzle /> },
+    ],
+  },
+];
 
 export function sidebarShellClassName(docked = false) {
   return cn(
@@ -170,18 +244,9 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
-  const [page, setPage] = useState<Page>(() => {
-    if (!syncLocation) return "services";
-    // Checked before /agent — startsWith("/agent") would swallow it.
-    if (window.location.pathname.startsWith("/agent-env")) return "agent-env";
-    if (window.location.pathname.startsWith("/agent")) return "agent";
-    if (window.location.pathname.startsWith("/errors")) return "errors";
-    if (window.location.pathname.startsWith("/database")) return "database";
-    if (window.location.pathname.startsWith("/terminal")) return "terminal";
-    if (window.location.pathname.startsWith("/github")) return "github";
-    if (window.location.pathname.startsWith("/git")) return "git";
-    return "services";
-  });
+  const [page, setPage] = useState<Page>(() =>
+    syncLocation ? pageFromPath(window.location.pathname) : "services",
+  );
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
   const [focusService, setFocusService] = useState<string | null>(null);
@@ -263,22 +328,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
 
   useEffect(() => {
     if (!syncLocation) return;
-    const path =
-      page === "git"
-        ? "/git"
-        : page === "github"
-          ? "/github"
-          : page === "agent-env"
-            ? "/agent-env"
-          : page === "agent"
-            ? "/agent"
-            : page === "errors"
-              ? "/errors"
-              : page === "database"
-                ? "/database"
-                : page === "terminal"
-                  ? "/terminal"
-                  : "/";
+    const path = PAGE_PATHS[page];
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
@@ -352,64 +402,28 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               )}
             />
           </div>
-          <nav className="mt-5 grid flex-1 content-start gap-1">
-            <NavButton
-              active={page === "services"}
-              badge={runningCount}
-              docked={sidebarDocked}
-              icon={<Server />}
-              label="Services"
-              onClick={() => setPage("services")}
-            />
-            <NavButton
-              active={page === "git"}
-              docked={sidebarDocked}
-              icon={<GitBranch />}
-              label="Git Review"
-              onClick={() => setPage("git")}
-            />
-            <NavButton
-              active={page === "github"}
-              docked={sidebarDocked}
-              icon={<GitHubLogo />}
-              label="GitHub"
-              onClick={() => setPage("github")}
-            />
-            <NavButton
-              active={page === "errors"}
-              docked={sidebarDocked}
-              icon={<Inbox />}
-              label="Error Inbox"
-              onClick={() => setPage("errors")}
-            />
-            <NavButton
-              active={page === "database"}
-              docked={sidebarDocked}
-              icon={<Database />}
-              label="Database"
-              onClick={() => setPage("database")}
-            />
-            <NavButton
-              active={page === "terminal"}
-              docked={sidebarDocked}
-              icon={<SquareTerminal />}
-              label="Terminal"
-              onClick={() => setPage("terminal")}
-            />
-            <NavButton
-              active={page === "agent"}
-              docked={sidebarDocked}
-              icon={<Bot />}
-              label="Agent"
-              onClick={() => setPage("agent")}
-            />
-            <NavButton
-              active={page === "agent-env"}
-              docked={sidebarDocked}
-              icon={<Puzzle />}
-              label="Agent Env"
-              onClick={() => setPage("agent-env")}
-            />
+          <nav className="mt-5 flex-1 content-start overflow-y-auto overflow-x-hidden">
+            {NAV_SECTIONS.map((section, index) => (
+              <div
+                className={cn(index > 0 && "mt-3 border-t border-border/60 pt-3")}
+                key={section.label}
+              >
+                <NavSectionLabel docked={sidebarDocked} label={section.label} />
+                <div className="grid gap-1">
+                  {section.items.map((item) => (
+                    <NavButton
+                      active={page === item.page}
+                      badge={item.page === "services" ? runningCount : undefined}
+                      docked={sidebarDocked}
+                      icon={item.icon}
+                      key={item.page}
+                      label={item.label}
+                      onClick={() => setPage(item.page)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </nav>
           <SidebarCredit
             docked={sidebarDocked}
@@ -430,21 +444,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {page === "git"
-                    ? "Git Review"
-                    : page === "github"
-                      ? "GitHub"
-                      : page === "agent-env"
-                        ? "Agent Env"
-                      : page === "agent"
-                        ? "Agent"
-                      : page === "errors"
-                        ? "Error Inbox"
-                        : page === "database"
-                          ? "Database"
-                          : page === "terminal"
-                            ? "Terminal"
-                            : "Services"}
+                  {PAGE_TITLES[page]}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
@@ -522,6 +522,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {page === "github" ? <GitHubView key={githubPageKey} /> : null}
+            {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? <AgentView focusChanges={changesFocusNonce} /> : null}
             {page === "agent-env" ? <AgentEnvView /> : null}
             {page === "errors" ? (
@@ -565,6 +566,22 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     </WorkflowRunProvider>
     </RefreshRegistryProvider>
     </AgentProvider>
+  );
+}
+
+function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) {
+  // Fixed height so the collapsed rail doesn't shift when labels fade in.
+  return (
+    <div className="flex h-5 items-center overflow-hidden px-3">
+      <span
+        className={cn(
+          "whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-opacity duration-150",
+          docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+        )}
+      >
+        {label}
+      </span>
+    </div>
   );
 }
 

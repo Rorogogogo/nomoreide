@@ -22,7 +22,6 @@ import { GitGraphView } from "./git-graph-view";
 import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
-import { WorkflowPanel } from "../workflows/workflow-panel";
 
 type GitTab =
   | "changes"
@@ -30,8 +29,7 @@ type GitTab =
   | "all"
   | "graph"
   | "largest"
-  | "snapshots"
-  | "workflows";
+  | "snapshots";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
@@ -288,22 +286,10 @@ export function GitReviewView({
         >
           Snapshots
         </button>
-        <button
-          type="button"
-          className={tabButtonClass(tab === "workflows")}
-          onClick={() => setTab("workflows")}
-        >
-          <span className="flex items-center gap-1">
-            <AgentMark className="size-3" />
-            Workflows
-          </span>
-        </button>
       </div>
 
       <div className="min-h-0 flex-1">
-        {tab === "workflows" ? (
-          <WorkflowPanel />
-        ) : tab === "board" ? (
+        {tab === "board" ? (
           <MultiRepoBoard currentRepoPath={data.git.cwd} />
         ) : tab === "graph" ? (
           <GitGraphView branches={data.git.branches ?? []} />

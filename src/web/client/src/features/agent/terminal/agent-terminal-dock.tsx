@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Bot, ChevronDown, ChevronUp, Database, GitBranch, Inbox, Maximize2, Minimize2, Plus, Puzzle, Server, Square, SquareTerminal } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Database, GitBranch, Inbox, Maximize2, Minimize2, Plus, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
 import type { DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
@@ -12,12 +12,13 @@ import { initialAgentInputSequence, initialAgentSubmitDelay } from "./agent-term
 import { GitHubLogo } from "../../github/github-logo";
 import { isTauri } from "@/lib/tauri";
 
-export type AgentDockPage = "services" | "git" | "github" | "errors" | "database" | "terminal" | "agent" | "agent-env";
+export type AgentDockPage = "services" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env";
 
 const FULLSCREEN_NAV: Array<{ page: AgentDockPage; label: string; icon: ReactNode }> = [
   { page: "services", label: "Services", icon: <Server /> },
   { page: "git", label: "Git Review", icon: <GitBranch /> },
   { page: "github", label: "GitHub", icon: <GitHubLogo /> },
+  { page: "workflows", label: "Workflows", icon: <Workflow /> },
   { page: "errors", label: "Error Inbox", icon: <Inbox /> },
   { page: "database", label: "Database", icon: <Database /> },
   { page: "terminal", label: "Terminal", icon: <SquareTerminal /> },

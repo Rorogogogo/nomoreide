@@ -10,7 +10,7 @@ const gitReviewSource = readFileSync(
 describe("GitHub top-level navigation", () => {
   test("app owns the GitHub page route", () => {
     expect(appSource).toContain('| "github"');
-    expect(appSource).toContain('startsWith("/github")');
+    expect(appSource).toContain('github: "/github"');
     expect(appSource).toContain('page === "github"');
     expect(appSource).toContain("<GitHubView");
   });
