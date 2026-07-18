@@ -34,6 +34,144 @@ afterEach(async () => {
 });
 
 describe("web server", () => {
+  test("serves and updates scoped settings without replacing untouched fields", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    let response = await fetch(`${server.url}/api/settings`);
+    expect(await response.json()).toEqual({
+      ok: true,
+      global: {
+        version: 1,
+        terminal: {
+          fontSize: 13,
+          cursorStyle: "block",
+          scrollback: 5_000,
+          copyOnSelect: false,
+          confirmTerminate: true,
+        },
+      },
+      project: {
+        logs: { showTimestamps: true, wrapLines: true },
+        database: { confirmWrites: true, resultLimit: 100 },
+      },
+    });
+
+    response = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 16 } }),
+    });
+    expect((await response.json()).global.terminal).toEqual({
+      fontSize: 16,
+      cursorStyle: "block",
+      scrollback: 5_000,
+      copyOnSelect: false,
+      confirmTerminate: true,
+    });
+
+    response = await fetch(`${server.url}/api/settings/project`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ logs: { wrapLines: false } }),
+    });
+    expect((await response.json()).project).toEqual({
+      logs: { showTimestamps: true, wrapLines: false },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    expect(JSON.parse(await readFile(configPath, "utf8"))).toMatchObject({
+      preferences: { logs: { showTimestamps: true, wrapLines: false } },
+    });
+  });
+
+  test("rejects invalid scoped settings without persisting them", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const globalResponse = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 2 } }),
+    });
+    const projectResponse = await fetch(`${server.url}/api/settings/project`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ database: { resultLimit: 5 } }),
+    });
+    const unknownResponse = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ secret: true }),
+    });
+    const malformedResponse = await fetch(`${server.url}/api/settings/project`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: "{not-json",
+    });
+
+    expect(globalResponse.status).toBe(400);
+    expect(projectResponse.status).toBe(400);
+    expect(unknownResponse.status).toBe(400);
+    expect(malformedResponse.status).toBe(400);
+    await expect(readFile(settingsPath, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(readFile(configPath, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+  });
+
+  test("resets global and project settings to defaults", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+    await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 18 } }),
+    });
+    await fetch(`${server.url}/api/settings/project`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ database: { resultLimit: 300 } }),
+    });
+
+    const globalResponse = await fetch(
+      `${server.url}/api/settings/global/reset`,
+      { method: "POST" },
+    );
+    const projectResponse = await fetch(
+      `${server.url}/api/settings/project/reset`,
+      { method: "POST" },
+    );
+
+    expect((await globalResponse.json()).global.terminal.fontSize).toBe(13);
+    expect((await projectResponse.json()).project.database.resultLimit).toBe(100);
+    expect(JSON.parse(await readFile(configPath, "utf8"))).not.toHaveProperty(
+      "preferences",
+    );
+  });
+
   test("serves the React web app shell from the dashboard route", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({

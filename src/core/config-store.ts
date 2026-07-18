@@ -7,9 +7,9 @@ import { z } from "zod";
 import type {
   BundleDefinition,
   DatabaseConnection,
-  GitHubToken,
   LogSourceDefinition,
   NoMoreIdeConfig,
+  ProjectPreferences,
   GitRepositoryDefinition,
   ServiceDefinition,
 } from "./types.js";
@@ -123,6 +123,51 @@ const githubTokenSchema = z.object({
   token: z.string().min(1),
 });
 
+export const projectPreferencesSchema: z.ZodType<ProjectPreferences> = z
+  .object({
+    logs: z
+      .object({
+        showTimestamps: z.boolean(),
+        wrapLines: z.boolean(),
+      })
+      .strict(),
+    database: z
+      .object({
+        confirmWrites: z.boolean(),
+        resultLimit: z.number().int().min(10).max(5_000),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const projectPreferencesPatchSchema = z
+  .object({
+    logs: z
+      .object({
+        showTimestamps: z.boolean().optional(),
+        wrapLines: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    database: z
+      .object({
+        confirmWrites: z.boolean().optional(),
+        resultLimit: z.number().int().min(10).max(5_000).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+export type ProjectPreferencesPatch = z.infer<
+  typeof projectPreferencesPatchSchema
+>;
+
+export const DEFAULT_PROJECT_PREFERENCES: ProjectPreferences = Object.freeze({
+  logs: Object.freeze({ showTimestamps: true, wrapLines: true }),
+  database: Object.freeze({ confirmWrites: true, resultLimit: 100 }),
+});
+
 const configSchema = z.object({
   version: z.literal(1),
   services: z.array(serviceSchema),
@@ -147,6 +192,7 @@ const configSchema = z.object({
    * providers, so the choice sticks across CLI/web/desktop.
    */
   chatProvider: z.enum(["claude", "codex"]).optional(),
+  preferences: projectPreferencesSchema.optional(),
 });
 
 const defaultConfig: NoMoreIdeConfig = {
@@ -168,6 +214,8 @@ export function defaultGlobalConfigPath(): string {
 }
 
 export class ConfigStore {
+  private mutationQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly configPath = defaultGlobalConfigPath()) {}
 
   async load(): Promise<NoMoreIdeConfig> {
@@ -184,22 +232,74 @@ export class ConfigStore {
   }
 
   async save(config: NoMoreIdeConfig): Promise<void> {
+    await this.enqueueMutation(() => this.persist(config));
+  }
+
+  private async persist(config: NoMoreIdeConfig): Promise<void> {
     const parsed = configSchema.parse(config);
     await mkdir(dirname(this.configPath), { recursive: true });
     await writeFile(this.configPath, `${JSON.stringify(parsed, null, 2)}\n`);
   }
 
+  async getPreferences(): Promise<ProjectPreferences> {
+    const config = await this.load();
+    return structuredClone(config.preferences ?? DEFAULT_PROJECT_PREFERENCES);
+  }
+
+  async updatePreferences(
+    patch: ProjectPreferencesPatch,
+  ): Promise<ProjectPreferences> {
+    const validatedPatch = projectPreferencesPatchSchema.parse(patch);
+    return this.enqueueMutation(async () => {
+      const config = await this.load();
+      const current = config.preferences ?? DEFAULT_PROJECT_PREFERENCES;
+      const next = projectPreferencesSchema.parse({
+        logs: { ...current.logs, ...validatedPatch.logs },
+        database: { ...current.database, ...validatedPatch.database },
+      });
+      config.preferences = next;
+      await this.persist(config);
+      return structuredClone(next);
+    });
+  }
+
+  async resetPreferences(): Promise<ProjectPreferences> {
+    return this.enqueueMutation(async () => {
+      const config = await this.load();
+      delete config.preferences;
+      await this.persist(config);
+      return structuredClone(DEFAULT_PROJECT_PREFERENCES);
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationQueue.then(operation);
+    this.mutationQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  private mutateConfig(
+    mutation: (config: NoMoreIdeConfig) => void | Promise<void>,
+  ): Promise<NoMoreIdeConfig> {
+    return this.enqueueMutation(async () => {
+      const config = await this.load();
+      await mutation(config);
+      await this.persist(config);
+      return config;
+    });
+  }
+
   async registerService(service: ServiceDefinition): Promise<NoMoreIdeConfig> {
     const parsedService = serviceSchema.parse(service);
-    const config = await this.load();
-
-    config.services = [
-      ...config.services.filter((item) => item.name !== parsedService.name),
-      parsedService,
-    ];
-
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.services = [
+        ...config.services.filter((item) => item.name !== parsedService.name),
+        parsedService,
+      ];
+    });
   }
 
   async removeService(name: string): Promise<NoMoreIdeConfig> {
@@ -208,22 +308,18 @@ export class ConfigStore {
       throw new ConfigValidationError("service name is required");
     }
 
-    const config = await this.load();
-    const nextServices = config.services.filter((item) => item.name !== serviceName);
-    if (nextServices.length === config.services.length) {
-      throw new Error(`Service "${serviceName}" is not registered.`);
-    }
+    return this.mutateConfig((config) => {
+      const nextServices = config.services.filter((item) => item.name !== serviceName);
+      if (nextServices.length === config.services.length) {
+        throw new Error(`Service "${serviceName}" is not registered.`);
+      }
 
-    config.services = nextServices;
-    // Prune the service from any bundles that referenced it (keep empty bundles
-    // intact — the user created them deliberately).
-    config.bundles = config.bundles.map((bundle) => ({
-      ...bundle,
-      services: bundle.services.filter((service) => service !== serviceName),
-    }));
-
-    await this.save(config);
-    return config;
+      config.services = nextServices;
+      config.bundles = config.bundles.map((bundle) => ({
+        ...bundle,
+        services: bundle.services.filter((service) => service !== serviceName),
+      }));
+    });
   }
 
   async registerBundle(
@@ -231,17 +327,14 @@ export class ConfigStore {
     previousName?: string,
   ): Promise<NoMoreIdeConfig> {
     const parsedBundle = bundleSchema.parse(bundle);
-    const config = await this.load();
-
-    config.bundles = [
-      ...config.bundles.filter(
-        (item) => item.name !== parsedBundle.name && item.name !== previousName,
-      ),
-      parsedBundle,
-    ];
-
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.bundles = [
+        ...config.bundles.filter(
+          (item) => item.name !== parsedBundle.name && item.name !== previousName,
+        ),
+        parsedBundle,
+      ];
+    });
   }
 
   async registerGitRepository(
@@ -250,18 +343,15 @@ export class ConfigStore {
     const parsedRepository = gitRepositorySchema.parse(repository);
     requireAbsolutePath(parsedRepository.path);
     await requireGitWorktree(parsedRepository.path);
-    const config = await this.load();
-
-    config.gitRepositories = [
-      ...config.gitRepositories.filter(
-        (item) => item.name !== parsedRepository.name,
-      ),
-      parsedRepository,
-    ];
-    config.selectedGitRepository = parsedRepository.name;
-
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.gitRepositories = [
+        ...config.gitRepositories.filter(
+          (item) => item.name !== parsedRepository.name,
+        ),
+        parsedRepository,
+      ];
+      config.selectedGitRepository = parsedRepository.name;
+    });
   }
 
   async removeGitRepository(name: string): Promise<NoMoreIdeConfig> {
@@ -270,21 +360,19 @@ export class ConfigStore {
       throw new ConfigValidationError("repository name is required");
     }
 
-    const config = await this.load();
-    const nextRepositories = config.gitRepositories.filter(
-      (repository) => repository.name !== repositoryName,
-    );
-    if (nextRepositories.length === config.gitRepositories.length) {
-      throw new Error(`Git repository "${repositoryName}" is not registered.`);
-    }
+    return this.mutateConfig((config) => {
+      const nextRepositories = config.gitRepositories.filter(
+        (repository) => repository.name !== repositoryName,
+      );
+      if (nextRepositories.length === config.gitRepositories.length) {
+        throw new Error(`Git repository "${repositoryName}" is not registered.`);
+      }
 
-    config.gitRepositories = nextRepositories;
-    if (config.selectedGitRepository === repositoryName) {
-      delete config.selectedGitRepository;
-    }
-
-    await this.save(config);
-    return config;
+      config.gitRepositories = nextRepositories;
+      if (config.selectedGitRepository === repositoryName) {
+        delete config.selectedGitRepository;
+      }
+    });
   }
 
   /**
@@ -294,60 +382,51 @@ export class ConfigStore {
    * from the client can never corrupt the board or strand repos off-screen.
    */
   async setGitBoardRepositories(names: string[]): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    const registered = new Set(config.gitRepositories.map((repo) => repo.name));
-    const seen = new Set<string>();
-    config.gitBoardRepositories = names
-      .filter((name) => {
-        if (!registered.has(name) || seen.has(name)) return false;
-        seen.add(name);
-        return true;
-      })
-      .slice(0, MAX_BOARD_REPOSITORIES);
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      const registered = new Set(config.gitRepositories.map((repo) => repo.name));
+      const seen = new Set<string>();
+      config.gitBoardRepositories = names
+        .filter((name) => {
+          if (!registered.has(name) || seen.has(name)) return false;
+          seen.add(name);
+          return true;
+        })
+        .slice(0, MAX_BOARD_REPOSITORIES);
+    });
   }
 
   async selectGitRepository(name: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-
-    if (!config.gitRepositories.some((repository) => repository.name === name)) {
-      throw new Error(`Git repository "${name}" is not registered.`);
-    }
-
-    config.selectedGitRepository = name;
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      if (!config.gitRepositories.some((repository) => repository.name === name)) {
+        throw new Error(`Git repository "${name}" is not registered.`);
+      }
+      config.selectedGitRepository = name;
+    });
   }
 
   /** Persist which agent CLI the in-dock chat drives. */
   async setChatProvider(provider: "claude" | "codex"): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.chatProvider = provider;
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.chatProvider = provider;
+    });
   }
 
   async registerDatabase(
     database: DatabaseConnection,
   ): Promise<NoMoreIdeConfig> {
     const parsed = databaseSchema.parse(database);
-    const config = await this.load();
-
-    config.databases = [
-      ...config.databases.filter((item) => item.name !== parsed.name),
-      parsed,
-    ];
-
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.databases = [
+        ...config.databases.filter((item) => item.name !== parsed.name),
+        parsed,
+      ];
+    });
   }
 
   async removeDatabase(name: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.databases = config.databases.filter((item) => item.name !== name);
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.databases = config.databases.filter((item) => item.name !== name);
+    });
   }
 
   /** Lock or unlock write access for a single connection's SQL console. */
@@ -355,52 +434,47 @@ export class ConfigStore {
     name: string,
     unlocked: boolean,
   ): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    const connection = config.databases.find((item) => item.name === name);
-    if (!connection) {
-      throw new Error(`Database connection "${name}" is not registered.`);
-    }
-    connection.writeUnlocked = unlocked;
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      const connection = config.databases.find((item) => item.name === name);
+      if (!connection) {
+        throw new Error(`Database connection "${name}" is not registered.`);
+      }
+      connection.writeUnlocked = unlocked;
+    });
   }
 
   async registerLogSource(source: LogSourceDefinition): Promise<NoMoreIdeConfig> {
     const parsed = logSourceSchema.parse(source);
-    const config = await this.load();
-
-    config.logSources = [
-      ...config.logSources.filter((item) => item.name !== parsed.name),
-      parsed,
-    ];
-
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.logSources = [
+        ...config.logSources.filter((item) => item.name !== parsed.name),
+        parsed,
+      ];
+    });
   }
 
   async removeLogSource(name: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.logSources = config.logSources.filter((item) => item.name !== name);
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.logSources = config.logSources.filter((item) => item.name !== name);
+    });
   }
 
   async setGithubToken(host: string, token: string): Promise<NoMoreIdeConfig> {
     const parsed = githubTokenSchema.parse({ host: host.trim(), token: token.trim() });
-    const config = await this.load();
-    config.githubTokens = [
-      ...config.githubTokens.filter((t) => t.host !== parsed.host),
-      parsed,
-    ];
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.githubTokens = [
+        ...config.githubTokens.filter((t) => t.host !== parsed.host),
+        parsed,
+      ];
+    });
   }
 
   async removeGithubToken(host: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.githubTokens = config.githubTokens.filter((t) => t.host !== host.trim());
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.githubTokens = config.githubTokens.filter(
+        (t) => t.host !== host.trim(),
+      );
+    });
   }
 
   getGithubToken(config: NoMoreIdeConfig, host = "github.com"): string | undefined {
@@ -410,41 +484,37 @@ export class ConfigStore {
   /** Persist a user-saved/forked workflow (replaces one with the same id). */
   async saveWorkflow(workflow: Workflow): Promise<NoMoreIdeConfig> {
     const parsed = workflowSchema.parse(workflow);
-    const config = await this.load();
-    config.workflows = [
-      ...config.workflows.filter((item) => item.id !== parsed.id),
-      parsed,
-    ];
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.workflows = [
+        ...config.workflows.filter((item) => item.id !== parsed.id),
+        parsed,
+      ];
+    });
   }
 
   async removeWorkflow(id: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.workflows = config.workflows.filter((item) => item.id !== id.trim());
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.workflows = config.workflows.filter((item) => item.id !== id.trim());
+    });
   }
 
   /** Persist an event→workflow trigger (replaces one with the same id). */
   async saveWorkflowTrigger(trigger: WorkflowTrigger): Promise<NoMoreIdeConfig> {
     const parsed = workflowTriggerSchema.parse(trigger);
-    const config = await this.load();
-    config.workflowTriggers = [
-      ...config.workflowTriggers.filter((item) => item.id !== parsed.id),
-      parsed,
-    ];
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.workflowTriggers = [
+        ...config.workflowTriggers.filter((item) => item.id !== parsed.id),
+        parsed,
+      ];
+    });
   }
 
   async removeWorkflowTrigger(id: string): Promise<NoMoreIdeConfig> {
-    const config = await this.load();
-    config.workflowTriggers = config.workflowTriggers.filter(
-      (item) => item.id !== id.trim(),
-    );
-    await this.save(config);
-    return config;
+    return this.mutateConfig((config) => {
+      config.workflowTriggers = config.workflowTriggers.filter(
+        (item) => item.id !== id.trim(),
+      );
+    });
   }
 }
 

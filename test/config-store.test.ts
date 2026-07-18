@@ -21,6 +21,90 @@ afterEach(async () => {
 });
 
 describe("ConfigStore", () => {
+  test("round-trips optional project preferences", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.updatePreferences({
+      logs: { showTimestamps: false, wrapLines: false },
+      database: { confirmWrites: false, resultLimit: 250 },
+    });
+
+    expect((await store.load()).preferences).toEqual({
+      logs: { showTimestamps: false, wrapLines: false },
+      database: { confirmWrites: false, resultLimit: 250 },
+    });
+  });
+
+  test("exposes independent safe defaults when preferences are absent", async () => {
+    const store = new ConfigStore(configPath);
+
+    const first = await store.getPreferences();
+    first.logs.wrapLines = false;
+
+    expect(await store.getPreferences()).toEqual({
+      logs: { showTimestamps: true, wrapLines: true },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    expect((await store.load()).preferences).toBeUndefined();
+  });
+
+  test("partially updates preferences without changing other config", async () => {
+    const store = new ConfigStore(configPath);
+    await store.registerBundle({ name: "stack", services: ["api"] });
+    await store.updatePreferences({ logs: { showTimestamps: false } });
+
+    const preferences = await store.updatePreferences({
+      database: { resultLimit: 750 },
+    });
+
+    expect(preferences).toEqual({
+      logs: { showTimestamps: false, wrapLines: true },
+      database: { confirmWrites: true, resultLimit: 750 },
+    });
+    expect((await store.load()).bundles).toEqual([
+      { name: "stack", services: ["api"] },
+    ]);
+  });
+
+  test("reset removes persisted preference overrides and returns defaults", async () => {
+    const store = new ConfigStore(configPath);
+    await store.updatePreferences({ database: { resultLimit: 300 } });
+
+    expect(await store.resetPreferences()).toEqual({
+      logs: { showTimestamps: true, wrapLines: true },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    expect((await store.load()).preferences).toBeUndefined();
+    expect(JSON.parse(await readFile(configPath, "utf8"))).not.toHaveProperty(
+      "preferences",
+    );
+  });
+
+  test("does not persist invalid project result limits", async () => {
+    const store = new ConfigStore(configPath);
+    await store.updatePreferences({ database: { resultLimit: 200 } });
+    const before = await readFile(configPath, "utf8");
+
+    await expect(
+      store.updatePreferences({ database: { resultLimit: 5 } }),
+    ).rejects.toThrow();
+
+    expect(await readFile(configPath, "utf8")).toBe(before);
+  });
+
+  test("serializes preference updates with other config mutations", async () => {
+    const store = new ConfigStore(configPath);
+
+    await Promise.all([
+      store.updatePreferences({ logs: { wrapLines: false } }),
+      store.registerBundle({ name: "stack", services: ["api"] }),
+    ]);
+
+    const config = await store.load();
+    expect(config.preferences?.logs.wrapLines).toBe(false);
+    expect(config.bundles).toEqual([{ name: "stack", services: ["api"] }]);
+  });
+
   test("creates a default config when the file does not exist", async () => {
     const store = new ConfigStore(configPath);
 

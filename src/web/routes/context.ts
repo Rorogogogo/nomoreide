@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AgentSessionStore } from "../../core/agent-sessions.js";
 import type { ApprovalBroker } from "../../core/approval-broker.js";
+import type { AppSettingsStore } from "../../core/app-settings.js";
 import type { ConfigStore } from "../../core/config-store.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { DbWrite } from "../../core/db-write.js";
@@ -21,6 +22,7 @@ import type { WorkflowTriggerManager } from "../../core/workflow-triggers.js";
 export interface RouteServices {
   agentApprovals: ApprovalBroker;
   agentSessions: AgentSessionStore;
+  appSettings: AppSettingsStore;
   configStore: ConfigStore;
   cwd: string;
   dbPeek: DbPeek;
