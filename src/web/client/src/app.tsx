@@ -592,6 +592,8 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             ) : null}
             {page === "database" ? (
               <DatabaseView
+                projects={data?.config.gitRepositories ?? []}
+                scopePath={activeProject?.path ?? null}
                 staged={stagedSql}
                 onStageConsumed={() => setStagedSql(null)}
               />

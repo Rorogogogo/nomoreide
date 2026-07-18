@@ -54,6 +54,12 @@ export interface DatabaseConnection {
    * connection's SQL console. Default/absent = read-only (locked).
    */
   writeUnlocked?: boolean;
+  /**
+   * Directory that ties this connection to a project (a repo root, or the
+   * cwd of the service whose .env it was detected in). Absent = shared /
+   * unclassified — such connections stay visible in every project scope.
+   */
+  projectPath?: string;
 }
 
 export type LogSourceKind = "file" | "ssh" | "command";

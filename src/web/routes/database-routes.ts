@@ -46,6 +46,9 @@ export const databaseRoutes: Route[] = [
       url,
       // Re-registering replaces the entry, so carry the unlock state forward.
       writeUnlocked: existing?.writeUnlocked,
+      // Unlike the password, the client always knows the project assignment,
+      // so the submitted value (or its absence) is authoritative.
+      projectPath: optionalFormValue(form, "projectPath")?.trim() || undefined,
     });
     sendJson(response, {
       ok: true,

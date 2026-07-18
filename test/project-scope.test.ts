@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  connectionInScope,
   pathInScope,
   scopeDashboard,
 } from "../src/web/client/src/features/services/project-scope";
@@ -16,6 +17,20 @@ describe("pathInScope", () => {
 
   test("tolerates a trailing slash on the repo path", () => {
     expect(pathInScope("/repo/api/server", "/repo/api/")).toBe(true);
+  });
+});
+
+describe("connectionInScope", () => {
+  test("everything shows in the all-projects scope", () => {
+    expect(connectionInScope("/repo/api", null)).toBe(true);
+    expect(connectionInScope(undefined, null)).toBe(true);
+  });
+
+  test("scoped: keeps matching and unassigned connections, drops others", () => {
+    expect(connectionInScope("/repo/api", "/repo/api")).toBe(true);
+    expect(connectionInScope("/repo/api/server", "/repo/api")).toBe(true);
+    expect(connectionInScope(undefined, "/repo/api")).toBe(true);
+    expect(connectionInScope("/other/site", "/repo/api")).toBe(false);
   });
 });
 

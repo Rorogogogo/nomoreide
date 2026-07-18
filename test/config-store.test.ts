@@ -46,6 +46,7 @@ describe("ConfigStore", () => {
       name: "shop",
       engine: "postgres",
       url: "postgres://user:secret@localhost:5432/shop",
+      projectPath: "/repo/shop",
     });
 
     let config = await store.load();
@@ -54,6 +55,7 @@ describe("ConfigStore", () => {
         name: "shop",
         engine: "postgres",
         url: "postgres://user:secret@localhost:5432/shop",
+        projectPath: "/repo/shop",
       },
     ]);
 

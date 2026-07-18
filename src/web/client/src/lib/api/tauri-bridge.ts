@@ -610,7 +610,8 @@ export async function tauri_listTables(name: string) {
 }
 
 export async function tauri_registerDatabase(db: {
-  name: string; engine: string; url: string;
+  // projectPath rides along for forward-compat; the Rust core ignores it today.
+  name: string; engine: string; url: string; projectPath?: string;
 }) {
   await tauriInvoke("register_database", { db });
 }

@@ -8,6 +8,19 @@ export function pathInScope(cwd: string | undefined, repoPath: string): boolean 
 }
 
 /**
+ * Whether a DB connection should show under a project scope. Unlike services,
+ * unassigned connections (no projectPath) stay visible in every scope — most
+ * start unclassified, and the lens shouldn't hide what hasn't been sorted yet.
+ */
+export function connectionInScope(
+  projectPath: string | undefined,
+  scopePath: string | null,
+): boolean {
+  if (!scopePath || !projectPath) return true;
+  return pathInScope(projectPath, scopePath);
+}
+
+/**
  * Narrow the dashboard payload to one project: services whose cwd lives under
  * the repo, plus the runtime/health/log/port/timeline entries that belong to
  * them. Services without a cwd only appear in the "All projects" scope.

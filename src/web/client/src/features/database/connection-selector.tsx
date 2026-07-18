@@ -11,6 +11,7 @@ import type { DatabaseConnection } from "@/lib/api";
  */
 export function ConnectionSelector({
   connections,
+  projectLabel,
   selected,
   onSelect,
   onAdd,
@@ -18,6 +19,8 @@ export function ConnectionSelector({
   onRemove,
 }: {
   connections: DatabaseConnection[];
+  /** Project tag for a row; null = unassigned (shown in every scope). */
+  projectLabel?: (connection: DatabaseConnection) => string | null;
   selected: string | null;
   onSelect: (name: string) => void;
   onAdd: () => void;
@@ -93,8 +96,15 @@ export function ConnectionSelector({
                         }}
                         type="button"
                       >
-                        <span className="block truncate text-sm font-medium leading-tight">
-                          {connection.name}
+                        <span className="flex items-center gap-1.5">
+                          <span className="truncate text-sm font-medium leading-tight">
+                            {connection.name}
+                          </span>
+                          {projectLabel ? (
+                            <Badge className="shrink-0" size="small" variant="outline">
+                              {projectLabel(connection) ?? "unassigned"}
+                            </Badge>
+                          ) : null}
                         </span>
                         <span className="block truncate font-mono text-[10px] leading-tight text-muted-foreground">
                           {connection.url}

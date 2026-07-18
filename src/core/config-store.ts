@@ -79,6 +79,7 @@ const databaseSchema = z.object({
   engine: z.enum(["postgres", "mysql", "sqlite"]),
   url: z.string().min(1),
   writeUnlocked: z.boolean().optional(),
+  projectPath: z.string().min(1).optional(),
 });
 
 const logSourceSchema = z
