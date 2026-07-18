@@ -13,6 +13,7 @@ const shellPaths = new Set([
   "/errors",
   "/database",
   "/terminal",
+  "/settings",
 ]);
 
 /** Static assets and the SPA shell. Registered last so /api/* wins first. */

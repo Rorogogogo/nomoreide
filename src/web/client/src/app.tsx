@@ -13,6 +13,7 @@ import {
   Puzzle,
   RefreshCw,
   Server,
+  Settings,
   SquareTerminal,
   Workflow,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
+import { SettingsView } from "@/features/settings/settings-view";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
@@ -62,7 +64,8 @@ type Page =
   | "agent-env"
   | "errors"
   | "database"
-  | "terminal";
+  | "terminal"
+  | "settings";
 
 const PAGE_PATHS: Record<Page, string> = {
   services: "/",
@@ -74,6 +77,7 @@ const PAGE_PATHS: Record<Page, string> = {
   terminal: "/terminal",
   agent: "/agent",
   "agent-env": "/agent-env",
+  settings: "/settings",
 };
 
 const PAGE_TITLES: Record<Page, string> = {
@@ -86,6 +90,7 @@ const PAGE_TITLES: Record<Page, string> = {
   terminal: "Terminal",
   agent: "Agent",
   "agent-env": "Agent Env",
+  settings: "Settings",
 };
 
 // Longest prefix wins so "/agent-env" is matched before "/agent".
@@ -469,6 +474,15 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               </div>
             ))}
           </nav>
+          <div className="mb-1 border-t border-border/60 pt-1">
+            <NavButton
+              active={page === "settings"}
+              docked={sidebarDocked}
+              icon={<Settings />}
+              label="Settings"
+              onClick={() => setPage("settings")}
+            />
+          </div>
           <SidebarCredit
             docked={sidebarDocked}
             onToggleDock={() => setSidebarDocked((docked) => !docked)}
@@ -599,6 +613,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             ) : null}
             {page === "terminal" ? <TerminalView /> : null}
+            {page === "settings" ? <SettingsView /> : null}
           </div>
         </main>
       </div>
