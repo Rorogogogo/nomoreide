@@ -57,12 +57,15 @@ export function ServicesView({
   onRefresh,
   focusService,
   onServiceFocused,
+  scopeName,
 }: {
   data: DashboardData;
   onRefresh: () => Promise<void>;
   /** When set (e.g. from the dock's "Open" shortcut), select this service. */
   focusService?: string | null;
   onServiceFocused?: () => void;
+  /** Project the data was scoped to, or null for the all-projects view. */
+  scopeName?: string | null;
 }) {
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
@@ -264,7 +267,21 @@ export function ServicesView({
 
   return (
     <>
-      {!hasServices ? (
+      {!hasServices && scopeName ? (
+        // A scoped project with no services isn't a first run — the machine
+        // may run plenty elsewhere. Offer the way back out instead.
+        <div className="flex h-full items-center justify-center p-8 text-center">
+          <div className="max-w-sm text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">
+              No services in {scopeName}
+            </p>
+            <p className="mt-1 text-xs">
+              Services whose working directory lives under this project appear
+              here. Switch to All projects in the sidebar to see everything.
+            </p>
+          </div>
+        </div>
+      ) : !hasServices ? (
         <FirstRunGuide
           onOnboardRepo={() => setOnboardOpen(true)}
           onOnboardWithAi={startOnboard}

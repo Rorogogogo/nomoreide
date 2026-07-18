@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 import type { DatabaseConnection } from "@/lib/api";
 
 /**
- * Connection picker that lives in the header (mirrors the git RepositorySelector)
- * so browsing no longer costs a permanent sidebar lane.
+ * Connection picker that lives in the header so browsing no longer costs a
+ * permanent sidebar lane.
  */
 export function ConnectionSelector({
   connections,

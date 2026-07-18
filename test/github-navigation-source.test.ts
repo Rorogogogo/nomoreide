@@ -16,7 +16,7 @@ describe("GitHub top-level navigation", () => {
   });
 
   test("github page exposes repository switching and remounts per selected repo", () => {
-    expect(appSource).toContain('page === "git" || page === "github"');
+    expect(appSource).toContain("<ProjectSwitcher");
     expect(appSource).toContain("githubPageKey");
     expect(appSource).toContain("<GitHubView key={githubPageKey}");
   });

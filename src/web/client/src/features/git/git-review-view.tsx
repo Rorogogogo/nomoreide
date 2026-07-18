@@ -466,7 +466,7 @@ function NoRepositoryEmptyState() {
         <p className="mt-3 text-sm font-medium">No Git project registered</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Add a folder that is a Git worktree to review changes, browse files,
-          and inspect history. Use the project picker in the header to add one.
+          and inspect history. Use the project switcher in the sidebar to add one.
         </p>
       </div>
     </div>

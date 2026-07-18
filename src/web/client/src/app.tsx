@@ -41,7 +41,8 @@ import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubLogo } from "@/features/github/github-logo";
-import { RepositorySelector } from "@/features/git/repository-selector";
+import { ProjectSwitcher } from "@/features/git/project-switcher";
+import { scopeDashboard } from "@/features/services/project-scope";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -262,9 +263,19 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   const [changesFocusNonce, setChangesFocusNonce] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const {
+    error: showErrorToast,
+    message: showMessageToast,
+    success: showSuccessToast,
+  } = useToasts();
   const [sidebarDocked, setSidebarDocked] = useState(() => {
     return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
+  });
+  // Project scope: "All projects" (default) leaves the Run pages machine-wide;
+  // picking a project filters them to services under that repo. Git/GitHub
+  // always follow the daemon-selected repository.
+  const [scopeAll, setScopeAll] = useState(() => {
+    return window.localStorage.getItem("nomoreide:project-scope") !== "project";
   });
 
   const refreshRegistry = useRefreshRegistry();
@@ -338,13 +349,35 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
   }, [sidebarDocked]);
 
+  useEffect(() => {
+    window.localStorage.setItem(
+      "nomoreide:project-scope",
+      scopeAll ? "all" : "project",
+    );
+  }, [scopeAll]);
+
+  const activeProject = (!scopeAll && data?.git.selectedRepository) || null;
+  const scopedData = useMemo(
+    () => (data && activeProject ? scopeDashboard(data, activeProject) : data),
+    [data, activeProject],
+  );
+  const scopedServiceNames = useMemo(
+    () =>
+      activeProject && scopedData
+        ? new Set(scopedData.config.services.map((service) => service.name))
+        : null,
+    [activeProject, scopedData],
+  );
+
+  // Badge matches what the Services page shows, so it respects the scope.
   const runningCount = useMemo(
     () =>
-      data
-        ? Object.values(data.runtime.services).filter((service) => service.state === "running")
-            .length
+      scopedData
+        ? Object.values(scopedData.runtime.services).filter(
+            (service) => service.state === "running",
+          ).length
         : 0,
-    [data],
+    [scopedData],
   );
   const githubPageKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
@@ -402,6 +435,17 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               )}
             />
           </div>
+          {data ? (
+            <div className="mt-4">
+              <ProjectSwitcher
+                data={data}
+                docked={sidebarDocked}
+                onRefresh={() => refresh({ silent: true })}
+                onScopeChange={setScopeAll}
+                scopeAll={scopeAll}
+              />
+            </div>
+          ) : null}
           <nav className="mt-5 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {NAV_SECTIONS.map((section, index) => (
               <div
@@ -447,15 +491,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
                   {PAGE_TITLES[page]}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
-                  {data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"}
+                  {page === "git" || page === "github"
+                    ? data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"
+                    : activeProject?.name ?? "All projects"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {error ? <Badge variant="danger">{error}</Badge> : null}
-              {data && (page === "git" || page === "github") ? (
-                <RepositorySelector data={data} onRefresh={refresh} />
-              ) : null}
               <div
                 aria-label="Dashboard quick actions"
                 className="flex items-center gap-1 rounded-lg border border-border bg-background p-px"
@@ -496,6 +539,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             <RunningStripe
               data={data}
               onOpenService={(name) => {
+                // The stripe is machine-wide; widen the scope when it points
+                // at a service the current project filter would hide.
+                if (scopedServiceNames && !scopedServiceNames.has(name)) {
+                  setScopeAll(true);
+                  showMessageToast({
+                    text: "Service is outside the current project — showing all projects.",
+                  });
+                }
                 setFocusService(name);
                 setPage("services");
                 void refresh({ silent: true });
@@ -510,12 +561,13 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            {data && page === "services" ? (
+            {scopedData && page === "services" ? (
               <ServicesView
-                data={data}
+                data={scopedData}
                 onRefresh={refresh}
                 focusService={focusService}
                 onServiceFocused={() => setFocusService(null)}
+                scopeName={activeProject?.name ?? null}
               />
             ) : null}
             {data && page === "git" ? (
@@ -527,6 +579,11 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             {page === "agent-env" ? <AgentEnvView /> : null}
             {page === "errors" ? (
               <ErrorInboxView
+                inScope={
+                  scopedServiceNames
+                    ? (service) => scopedServiceNames.has(service)
+                    : undefined
+                }
                 onReviewChanges={() => {
                   setChangesFocusNonce((nonce) => nonce + 1);
                   setPage("agent");
