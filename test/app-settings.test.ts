@@ -49,6 +49,37 @@ describe("AppSettingsStore", () => {
     expect(updated.version).toBe(1);
   });
 
+  test("serializes concurrent partial updates on the same store", async () => {
+    const store = new AppSettingsStore(settingsPath);
+
+    await Promise.all([
+      store.update({ terminal: { fontSize: 16 } }),
+      store.update({ terminal: { copyOnSelect: true } }),
+    ]);
+
+    expect(await store.load()).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      terminal: {
+        ...DEFAULT_APP_SETTINGS.terminal,
+        fontSize: 16,
+        copyOnSelect: true,
+      },
+    });
+  });
+
+  test("continues queued writes after a rejected update", async () => {
+    const store = new AppSettingsStore(settingsPath);
+
+    const [invalid, valid] = await Promise.allSettled([
+      store.update({ terminal: { fontSize: 25 } }),
+      store.update({ terminal: { cursorStyle: "underline" } }),
+    ]);
+
+    expect(invalid.status).toBe("rejected");
+    expect(valid.status).toBe("fulfilled");
+    expect((await store.load()).terminal.cursorStyle).toBe("underline");
+  });
+
   test("rejects an invalid terminal font size without changing the last valid file", async () => {
     const store = new AppSettingsStore(settingsPath);
     await store.update({ terminal: { scrollback: 8_000 } });

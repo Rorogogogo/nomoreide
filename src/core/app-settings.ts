@@ -49,6 +49,8 @@ export function defaultAppSettingsPath(): string {
 }
 
 export class AppSettingsStore {
+  private mutationQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly settingsPath = defaultAppSettingsPath()) {}
 
   async load(): Promise<AppSettings> {
@@ -64,24 +66,37 @@ export class AppSettingsStore {
   }
 
   async update(patch: AppSettingsPatch): Promise<AppSettings> {
-    const current = await this.load();
-    const next = appSettingsSchema.parse({
-      ...current,
-      ...patch,
-      terminal: {
-        ...current.terminal,
-        ...patch.terminal,
-      },
-    });
+    return this.enqueueMutation(async () => {
+      const current = await this.load();
+      const next = appSettingsSchema.parse({
+        ...current,
+        ...patch,
+        terminal: {
+          ...current.terminal,
+          ...patch.terminal,
+        },
+      });
 
-    await this.persist(next);
-    return cloneSettings(next);
+      await this.persist(next);
+      return cloneSettings(next);
+    });
   }
 
   async reset(): Promise<AppSettings> {
-    const defaults = cloneSettings(DEFAULT_APP_SETTINGS);
-    await this.persist(defaults);
-    return cloneSettings(defaults);
+    return this.enqueueMutation(async () => {
+      const defaults = cloneSettings(DEFAULT_APP_SETTINGS);
+      await this.persist(defaults);
+      return cloneSettings(defaults);
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.mutationQueue.then(operation);
+    this.mutationQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private async persist(settings: AppSettings): Promise<void> {
