@@ -1644,6 +1644,16 @@ export const en = {
   "agentEnv.settings.close": "Close",
   "agentEnv.settings.saveFile": "Save file",
   "agentEnv.settings.savingFile": "Saving...",
+  "app.pickProject": "Pick a project",
+  "app.setContext": "set the context",
+  "app.projectCountOne": "{count} project",
+  "app.projectCountMany": "{count} projects",
+  "app.projectScope": "Project scope: {label}",
+  "app.showingAllProjects": "Showing all projects.",
+  "app.allProjectsHint": "Everything the daemon runs, across every repo",
+  "app.addManageProjects": "Add or manage projects",
+  "git.repo.projectsShort": "Projects",
+  "git.repo.closeSwitcher": "Close project switcher",
 } as const;
 
 export type TranslationKey = keyof typeof en;

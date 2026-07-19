@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { Folder, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FolderExplorer } from "./folder-explorer";
+import { useT } from "@/lib/i18n";
 
 export function repositoryPickerState({
   gitCwd,
@@ -23,14 +24,14 @@ export function repositoryPickerState({
 }
 
 export function FolderPickerDialog({
-  confirmLabel = "Use this folder",
+  confirmLabel,
   errorMessage,
   initialPath,
   onCancel,
   onSelect,
   onUse,
   selectedPath,
-  title = "Choose Git Project Folder",
+  title,
 }: {
   confirmLabel?: string;
   errorMessage?: string | null;
@@ -41,6 +42,7 @@ export function FolderPickerDialog({
   selectedPath: string;
   title?: string;
 }) {
+  const t = useT();
   return createPortal(
     <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/35 px-4">
       <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-4 shadow-xl">
@@ -49,12 +51,12 @@ export function FolderPickerDialog({
             <Folder className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold">{title}</div>
+            <div className="text-sm font-semibold">{title ?? t("git.repo.chooseFolder")}</div>
             <div className="truncate font-mono text-xs text-muted-foreground">
               {selectedPath}
             </div>
           </div>
-          <Button aria-label="Close folder picker" onClick={onCancel} size="icon" variant="ghost">
+          <Button aria-label={t("git.repo.closeFolderPicker")} onClick={onCancel} size="icon" variant="ghost">
             <X />
           </Button>
         </div>
@@ -73,10 +75,10 @@ export function FolderPickerDialog({
 
         <div className="mt-4 flex justify-end gap-2">
           <Button onClick={onCancel} type="button" variant="outline">
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={() => void onUse()} type="button">
-            {confirmLabel}
+            {confirmLabel ?? t("git.repo.useThisFolder")}
           </Button>
         </div>
       </div>

@@ -1604,4 +1604,15 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "agentEnv.settings.close": "关闭",
   "agentEnv.settings.saveFile": "保存文件",
   "agentEnv.settings.savingFile": "保存中…",
+
+  "app.pickProject": "选择项目",
+  "app.setContext": "设定上下文",
+  "app.projectCountOne": "{count} 个项目",
+  "app.projectCountMany": "{count} 个项目",
+  "app.projectScope": "项目范围：{label}",
+  "app.showingAllProjects": "已切换为显示所有项目。",
+  "app.allProjectsHint": "守护进程运行的一切，跨所有仓库",
+  "app.addManageProjects": "添加或管理项目",
+  "git.repo.projectsShort": "项目",
+  "git.repo.closeSwitcher": "关闭项目切换器",
 };

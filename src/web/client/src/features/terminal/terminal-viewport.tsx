@@ -1,4 +1,5 @@
 import { FitAddon } from "@xterm/addon-fit";
+import { translate } from "@/lib/i18n";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import {
@@ -98,8 +99,8 @@ type ServerMessage =
 
 const INITIAL_STATUS: TerminalViewportStatus = {
   state: "connecting",
-  cwd: "Local workspace",
-  detail: "Opening shell",
+  cwd: translate("terminal.localWorkspace"),
+  detail: translate("terminal.openingShell"),
 };
 const WEB_SOCKET_OPEN = 1;
 
@@ -211,7 +212,7 @@ export function connectWebTerminal(options: {
     options.reportStatus((current) => ({
       ...current,
       state: "running",
-      detail: "Shell connected",
+      detail: translate("terminal.shellConnected"),
     }));
     options.sendResize();
   });
@@ -236,7 +237,7 @@ export function connectWebTerminal(options: {
     options.reportStatus((current) => ({
       state: message.state === "idle" ? "connecting" : message.state,
       cwd: message.cwd ?? current.cwd,
-      detail: message.error ?? message.shell ?? "Shell connected",
+      detail: message.error ?? message.shell ?? translate("terminal.shellConnected"),
     }));
   });
 
@@ -245,7 +246,7 @@ export function connectWebTerminal(options: {
     options.reportStatus((current) => ({
       ...current,
       state: current.state === "exited" ? current.state : "exited",
-      detail: "Socket closed",
+      detail: translate("terminal.socketClosed"),
     }));
   });
 
@@ -254,7 +255,7 @@ export function connectWebTerminal(options: {
     options.reportStatus((current) => ({
       ...current,
       state: "error",
-      detail: "Terminal socket error",
+      detail: translate("terminal.socketError"),
     }));
   });
 
@@ -457,7 +458,7 @@ export const TerminalViewport = forwardRef<
           reportStatus((current) => ({
             ...current,
             state: "running",
-            detail: "Shell connected",
+            detail: translate("terminal.shellConnected"),
           }));
           // Attach the listener before releasing buffered startup output.
           void tauri_startTerminalStream(sessionId);
