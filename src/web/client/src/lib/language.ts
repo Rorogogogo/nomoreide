@@ -32,6 +32,7 @@ function readStoredLanguage(): Language {
 }
 
 let current: Language = readStoredLanguage();
+if (typeof document !== "undefined") document.documentElement.lang = current;
 const listeners = new Set<() => void>();
 
 export function getLanguage(): Language {
