@@ -71,9 +71,9 @@ describe("capabilityCountsFor", () => {
 });
 
 describe("skillInsertText", () => {
-  test("Claude skills insert as slash commands, Codex skills as prose", () => {
+  test("Claude skills insert as slash commands, Codex skills as @-mentions", () => {
     expect(skillInsertText("commit-push", "claude")).toBe("/commit-push ");
-    expect(skillInsertText("commit-push", "codex")).toBe('Use the "commit-push" skill: ');
+    expect(skillInsertText("commit-push", "codex")).toBe("@commit-push ");
   });
 });
 

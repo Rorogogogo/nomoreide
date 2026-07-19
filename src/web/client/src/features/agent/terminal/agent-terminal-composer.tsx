@@ -17,7 +17,7 @@ export function taskLabel(prompt: string, explicit?: string) {
 
 export function AgentTerminalComposer({ capabilities, onNavigate, onSubmitted }: { capabilities?: AgentCapabilities; onNavigate?: (page: AgentDockPage) => void; onSubmitted?: () => void }) {
   const t = useT();
-  const { activeSource, clearSource, configured, createTask, creating, draft, focusNonce, insertPath, insertPrompt, onboarding, provider, setDraft, setOnboarding } = useAgentDock();
+  const { activeSource, clearSource, configured, createTask, creating, draft, focusNonce, insertPath, insertPrompt, onboarding, provider, providers, selectProvider, setDraft, setOnboarding } = useAgentDock();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -31,7 +31,6 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onSubmitted }:
     setDraft(""); clearSource(); setOnboarding(false); setUrl(""); onSubmitted?.();
   }
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }
-  const logo = provider?.id === "codex" ? <CodexLogo className="size-4" /> : <ClaudeLogo className="size-4" />;
 
   return <div className="flex h-full items-center justify-center overflow-auto p-6">
     <div className="w-full max-w-3xl">
@@ -42,7 +41,7 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onSubmitted }:
         {onboarding ? <div className="flex items-center gap-2 border-b border-border px-3 py-2"><Link className="size-4 text-muted-foreground" /><input aria-label={t("dock.repoUrlAria")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" disabled={configured !== true} onChange={(e) => setUrl(e.target.value)} placeholder="https://github.com/owner/repository" value={url} /><Button disabled={configured !== true || !url.trim() || !!creating} onClick={() => void submit(onboardRepoPrompt(url), `Onboard ${url}`)} size="sm">{t("dock.onboard")}</Button></div> : null}
         <textarea aria-label={t("dock.promptAria")} className="block max-h-40 min-h-20 w-full resize-none bg-transparent px-3 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground" disabled={configured !== true} onChange={(e) => setDraft(e.target.value)} onKeyDown={keyDown} placeholder={t("dock.promptPlaceholder")} ref={inputRef} rows={2} value={draft} />
         <div className="flex h-10 items-center gap-1 border-t border-border px-2">
-          <span className="flex items-center gap-1.5 px-1 text-xs font-medium">{logo}{provider?.label ?? "Agent"}</span>
+          <fieldset aria-label={t("dock.providerAria")} className="flex shrink-0 items-center gap-0.5">{providers.map((p) => { const ProviderLogo = p.id === "codex" ? CodexLogo : ClaudeLogo; const selected = (provider?.id ?? "claude") === p.id; return <button aria-label={p.label} aria-pressed={selected} className={`flex h-7 items-center gap-1.5 rounded-sm px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40 ${selected ? "bg-muted text-foreground" : ""}`} disabled={!p.configured} key={p.id} onClick={() => void selectProvider(p.id)} title={p.configured ? p.label : `${p.label}${t("dock.notInstalledSuffix")} — ${p.installHint}`} type="button"><ProviderLogo className="size-3.5" />{selected ? <span>{p.label}</span> : null}</button>; })}</fieldset>
           <button aria-label={t("dock.attachAria")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setPickerOpen((v) => !v)} type="button"><Paperclip className="size-3.5" /></button>
           <button className="px-2 text-[11px] text-muted-foreground hover:text-foreground" onClick={() => setOnboarding(!onboarding)} type="button">{t("dock.repoUrlToggle")}</button>
           <span className="flex-1" />
