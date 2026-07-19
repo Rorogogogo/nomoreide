@@ -328,6 +328,7 @@ let terminalSessions = [
     rows: 28,
     shell: "zsh",
     state: "running" as const,
+    kind: "shell" as const,
     label: "demo shell",
   },
 ];
@@ -1484,7 +1485,19 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
         terminalSessions = [...terminalSessions, session];
         return json({ ok: true, sessions: terminalSessions, session });
       }
-      terminalSessions = [...terminalSessions];
+      // No agent named → a plain shell, same as the server's `+` tab path.
+      const session = {
+        id: `demo-shell-${Date.now()}-${terminalSessions.length}`,
+        cwd: terminalSessions[0]?.cwd ?? "/Users/demo/projects/acme",
+        cols: 100,
+        rows: 28,
+        shell: "zsh",
+        kind: "shell" as const,
+        label: "shell",
+        state: "running" as const,
+      };
+      terminalSessions = [...terminalSessions, session];
+      return json({ ok: true, sessions: terminalSessions, session });
     }
     return json({ ok: true, sessions: terminalSessions, session: terminalSessions[0] });
   }

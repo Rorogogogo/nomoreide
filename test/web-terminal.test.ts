@@ -340,6 +340,8 @@ describe("web terminal socket", () => {
       session: TerminalSessionInfo;
     };
     expect(session.id).toBe("term_1");
+    // A plain create is a shell, and says so — the dock adopts tabs by kind.
+    expect(manager.lastCreateOptions?.kind).toBe("shell");
 
     const listed = await (
       await fetch(`${server.url}/api/terminal/sessions`)
@@ -387,6 +389,7 @@ describe("service-scoped terminal sessions", () => {
       session: TerminalSessionInfo;
     };
     expect(session.label).toBe("api");
+    expect(manager.lastCreateOptions?.kind).toBe("service");
     expect(manager.lastCreateOptions?.cwd).toBe(serviceCwd);
     expect(manager.lastCreateOptions?.label).toBe("api");
     // Inherited env is preserved and the service's vars are layered on top.

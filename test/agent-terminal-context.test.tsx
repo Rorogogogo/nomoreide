@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   approveAgentTool: vi.fn(),
   closeTerminalSession: vi.fn(),
   createAgentTerminalSession: vi.fn(),
+  createTerminalSession: vi.fn(),
   getAgentChatStatus: vi.fn(),
   listTerminalSessions: vi.fn(),
   setChatProvider: vi.fn(),
@@ -310,7 +311,7 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
-  test("reattaches only existing agent terminal sessions", async () => {
+  test("reattaches agent and shell sessions but leaves service tabs alone", async () => {
     api.listTerminalSessions.mockResolvedValue([
       session("agent-one"),
       session("shell-one", "shell"),
@@ -318,8 +319,41 @@ describe("AgentProvider terminal tasks", () => {
     ]);
     const mounted = await mountProvider();
 
-    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["agent-one"]);
+    // One session pool: a shell opened anywhere shows up as a dock tab. Service
+    // terminals stay owned by their service detail view.
+    expect(mounted.value.tasks.map((task) => task.id)).toEqual(["agent-one", "shell-one"]);
     expect(mounted.value.activeTaskId).toBe("agent-one");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("opens a shell tab whose command is claimed as initial input exactly once", async () => {
+    api.listTerminalSessions.mockResolvedValue([]);
+    api.createTerminalSession.mockResolvedValue(session("sh1", "shell"));
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.createShellTask("npm run build");
+    });
+
+    expect(api.createTerminalSession).toHaveBeenCalled();
+    // A shell is a shell — no agent invocation is built for it.
+    expect(api.createAgentTerminalSession).not.toHaveBeenCalled();
+    expect(mounted.value.activeTaskId).toBe("sh1");
+    expect(mounted.value.claimInitialInput("sh1")).toEqual(["npm run build", "\r"]);
+    expect(mounted.value.claimInitialInput("sh1")).toBeUndefined();
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("a bare shell carries no initial input to replay", async () => {
+    api.listTerminalSessions.mockResolvedValue([]);
+    api.createTerminalSession.mockResolvedValue(session("sh2", "shell"));
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.createShellTask("   ");
+    });
+
+    expect(mounted.value.claimInitialInput("sh2")).toBeUndefined();
     await unmount(mounted.root, mounted.host);
   });
 

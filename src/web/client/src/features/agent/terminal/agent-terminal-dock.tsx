@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Bot, ChevronDown, ChevronUp, Database, GitBranch, Inbox, Maximize2, Minimize2, Plus, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
+// SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import type { DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
@@ -10,6 +11,7 @@ import { AgentCapabilityBadges } from "./agent-capability-strip";
 import { useAgentCapabilities } from "./agent-capability-data";
 import { AgentTerminalComposer } from "./agent-terminal-composer";
 import { AgentTerminalTabs } from "./agent-terminal-tabs";
+import { COMPOSE_TAB_ID } from "./compose-tab";
 import { GitHubLogo } from "../../github/github-logo";
 import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
@@ -35,29 +37,32 @@ function stateLabel(state: string) { return `${state.charAt(0).toUpperCase()}${s
 export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onNavigate?: (page: AgentDockPage) => void }) {
   const t = useT();
   const settings = useOptionalSettings();
-  const { activeTaskId, closeTask, draft, focusNonce, insertPrompt, onboarding, open, pendingTaskIds, provider, setActiveTaskId, setOpen, stopTask, tasks, terminalError, updateTaskStatus } = useAgentDock();
-  const [compose, setCompose] = useState(() => Boolean(draft || focusNonce || onboarding || tasks.length === 0)); const [height, setHeight] = useState<number | null>(null); const [resizing, setResizing] = useState(false);
+  const { activeTaskId, claimInitialInput, closeTask, draft, focusNonce, insertPrompt, onboarding, open, pendingTaskIds, provider, setActiveTaskId, setOpen, stopTask, tasks, terminalError, updateTaskStatus } = useAgentDock();
+  const [height, setHeight] = useState<number | null>(null); const [resizing, setResizing] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [splitTaskId, setSplitTaskId] = useState<string | null>(null);
+  const [shellMode, setShellMode] = useState(false);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const viewportHandlesRef = useRef(new Map<string, TerminalViewportHandle>());
   const previousFocusNonceRef = useRef(focusNonce);
   const previousOnboardingRef = useRef(onboarding);
-  const previousTaskCountRef = useRef(tasks.length);
   const active = tasks.find((task) => task.id === activeTaskId) ?? null;
+  // Work staged before this mount (the dock mounts with the app, so a draft can
+  // arrive while it is closed) still has to land on the composer; the effects
+  // below only see changes that happen after mount.
   useEffect(() => {
-    if (tasks.length === 0) setCompose(true);
-    else if (previousTaskCountRef.current === 0 && !draft) setCompose(false);
-    previousTaskCountRef.current = tasks.length;
-  }, [draft, tasks.length]);
+    if (draft || onboarding) setActiveTaskId(COMPOSE_TAB_ID);
+  }, []);
+  // A prefill (draft, path insert, capability click) or an onboard entry has to
+  // bring the composer forward — which is now simply selecting its tab.
   useEffect(() => {
-    if (focusNonce !== previousFocusNonceRef.current) setCompose(true);
+    if (focusNonce !== previousFocusNonceRef.current) setActiveTaskId(COMPOSE_TAB_ID);
     previousFocusNonceRef.current = focusNonce;
-  }, [focusNonce]);
+  }, [focusNonce, setActiveTaskId]);
   useEffect(() => {
-    if (onboarding && !previousOnboardingRef.current) setCompose(true);
+    if (onboarding && !previousOnboardingRef.current) setActiveTaskId(COMPOSE_TAB_ID);
     previousOnboardingRef.current = onboarding;
-  }, [onboarding]);
+  }, [onboarding, setActiveTaskId]);
   useEffect(() => () => resizeCleanupRef.current?.(), []);
   useEffect(() => {
     if (!fullScreen) return;
@@ -74,11 +79,15 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const navigate = (page: AgentDockPage) => { onNavigate?.(page); collapse(); };
   function resizeStart(event: ReactPointerEvent<HTMLDivElement>) { event.preventDefault(); event.currentTarget.setPointerCapture?.(event.pointerId); setResizing(true); const move = (e: PointerEvent) => setHeight(clampAgentDockHeight(window.innerHeight - e.clientY, window.innerHeight)); const cleanup = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); resizeCleanupRef.current = null; }; const up = () => { setResizing(false); cleanup(); }; resizeCleanupRef.current?.(); resizeCleanupRef.current = cleanup; window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); }
   const railProviderId = active?.provider ?? provider?.id;
-  const Logo = railProviderId === "codex" ? CodexLogo : ClaudeLogo;
-  const railProviderLabel = active ? (active.provider === "codex" ? "Codex" : "Claude Code") : (provider?.label ?? "Agent");
+  const activeShell = active?.kind === "shell";
+  const Logo = activeShell ? SquareTerminal : railProviderId === "codex" ? CodexLogo : ClaudeLogo;
+  const railProviderLabel = activeShell ? t("dock.shell") : active ? (active.provider === "codex" ? "Codex" : "Claude Code") : (provider?.label ?? "Agent");
   // Counts follow what the user is looking at: the selected provider while
   // composing, the active task's provider while a terminal is showing.
-  const composing = compose || tasks.length === 0;
+  const composing = activeTaskId === COMPOSE_TAB_ID || tasks.length === 0;
+  // Agent capabilities are meaningless against a plain shell, so the chips go
+  // away whenever the thing in front of the user is one.
+  const agentContext = composing ? !shellMode : !activeShell;
   // The right pane only survives while its task exists and is not the active one.
   const splitId = splitTaskId && splitTaskId !== activeTaskId && tasks.some((task) => task.id === splitTaskId) ? splitTaskId : null;
   const capabilities = useAgentCapabilities(
@@ -102,24 +111,24 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {fullScreen ? <nav aria-label={t("dock.fullscreenNavAria")} className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-background px-2">{FULLSCREEN_NAV.map((item) => <button aria-current={currentPage === item.page ? "page" : undefined} aria-label={t(item.labelKey)} className={cn("flex h-8 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-4", currentPage === item.page && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground")} key={item.page} onClick={() => navigate(item.page)} type="button">{item.icon}<span>{t(item.labelKey)}</span></button>)}</nav> : null}
     <div aria-hidden className={cn("absolute inset-x-0 -top-1 z-20 h-2 cursor-ns-resize", fullScreen && "hidden")} data-agent-resize-grip onDoubleClick={() => setHeight(null)} onPointerDown={resizeStart} />
     <div className="flex h-9 shrink-0 items-stretch border-b border-border bg-muted/25">
-      <AgentTerminalTabs activeTaskId={activeTaskId} onActivate={(id) => { setActiveTaskId(id); setCompose(false); }} onClose={(id) => void closeTask(id)} onSplit={(id) => { setSplitTaskId((current) => (current === id ? null : id)); setCompose(false); }} pendingTaskIds={pendingTaskIds} splitTaskId={splitId} tasks={tasks} />
-      <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} />
+      <AgentTerminalTabs activeTaskId={activeTaskId} composing={composing} onActivate={setActiveTaskId} onClose={(id) => void closeTask(id)} onSplit={(id) => setSplitTaskId((current) => (current === id ? null : id))} pendingTaskIds={pendingTaskIds} splitTaskId={splitId} tasks={tasks} />
+      {agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} /> : <span className="flex-1" />}
       <div className="flex shrink-0 items-center border-l border-border px-1">
-        <button aria-label={t("dock.newTask")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setCompose(true)} type="button"><Plus className="size-3.5" /></button>
+        <button aria-label={t("dock.newTask")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setActiveTaskId(COMPOSE_TAB_ID)} type="button"><Plus className="size-3.5" /></button>
         {active?.state === "running" ? <button aria-label={t("dock.stopTaskAria", { label: active.label ?? t("dock.newTask") })} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35" disabled={pendingTaskIds.has(active.id)} onClick={() => void stopTask(active.id)} type="button"><Square className="size-3" /></button> : null}
         <button aria-label={fullScreen ? t("dock.restoreDock") : t("dock.enterFullScreen")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setFullScreen((value) => !value)} type="button">{fullScreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}</button>
         <button aria-label={t("dock.collapseAria")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={collapse} type="button"><ChevronDown className="size-3.5" /></button>
       </div>
     </div>
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
-    {git && (compose || tasks.length === 0) ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}
+    {git && composing ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}
     <div className="relative min-h-0 flex-1 bg-[#101214]">
       {tasks.map((task) => {
-        const shown = open && !compose && (task.id === activeTaskId || task.id === splitId);
+        const shown = open && (task.id === activeTaskId || task.id === splitId);
         const pane = splitId ? (task.id === splitId ? "left-1/2 right-0 border-l border-border" : "left-0 right-1/2") : "inset-x-0";
-        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-y-0", pane, !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={shown} displaySettings={settings?.confirmedGlobal.terminal} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} /></div>;
+        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-y-0", pane, !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={shown} claimInitialInput={() => claimInitialInput(task.id)} displaySettings={settings?.confirmedGlobal.terminal} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} /></div>;
       })}
-      {open && (compose || tasks.length === 0) ? <div className="absolute inset-0 bg-background"><AgentTerminalComposer capabilities={capabilities} onNavigate={onNavigate ? navigate : undefined} onSubmitted={() => setCompose(false)} /></div> : null}
+      {open && composing ? <div aria-labelledby={`agent-tab-${COMPOSE_TAB_ID}`} className={cn("absolute inset-y-0 bg-background", splitId ? "left-0 right-1/2" : "inset-x-0")} id={`agent-panel-${COMPOSE_TAB_ID}`} role="tabpanel"><AgentTerminalComposer capabilities={shellMode ? undefined : capabilities} onNavigate={onNavigate ? navigate : undefined} onShellMode={setShellMode} shellMode={shellMode} /></div> : null}
     </div>
   </div></>;
 }

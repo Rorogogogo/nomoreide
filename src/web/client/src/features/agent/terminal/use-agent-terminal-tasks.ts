@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   closeTerminalSession,
   createAgentTerminalSession,
+  createTerminalSession,
   getAgentChatStatus,
   listTerminalSessions,
   setChatProvider as setChatProviderApi,
@@ -9,6 +10,9 @@ import {
   type AgentChatProviderOption,
   type TerminalSessionInfo,
 } from "@/lib/api";
+
+/** Session kinds the dock adopts as tabs — agent tasks and plain shells. */
+const DOCK_SESSION_KINDS = new Set(["agent", "shell"]);
 
 export interface AgentTerminalTaskSource {
   type: string;
@@ -50,6 +54,12 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Tab label for a shell opened with a command — its first line, truncated. */
+function shellTaskLabel(command: string): string {
+  const firstLine = command.split(/\r?\n/)[0]?.trim() ?? command;
+  return firstLine.length > 60 ? `${firstLine.slice(0, 57).trimEnd()}…` : firstLine;
+}
+
 /** Owns the independent native terminal sessions launched from the agent dock. */
 export function useAgentTerminalTasks() {
   const [tasks, setTasksState] = useState<AgentTerminalTask[]>([]);
@@ -69,6 +79,7 @@ export function useAgentTerminalTasks() {
   const latestForegroundSequenceRef = useRef(0);
   const providerSelectionSequenceRef = useRef(0);
   const taskOrderRef = useRef(new Map<string, AgentTaskOrder>());
+  const initialInputRef = useRef(new Map<string, string[]>());
   const pendingCreateCountRef = useRef(0);
   const closedIdsRef = useRef(new Set<string>());
 
@@ -116,8 +127,9 @@ export function useAgentTerminalTasks() {
       .then((sessions) => {
         if (!mountedRef.current) return;
         const attached = sessions.filter(
-          (session): session is TerminalSessionInfo & { kind: "agent" } =>
-            session.kind === "agent" && !closedIdsRef.current.has(session.id),
+          (session) =>
+            DOCK_SESSION_KINDS.has(session.kind ?? "") &&
+            !closedIdsRef.current.has(session.id),
         );
         attached.forEach((session, index) => {
           if (!taskOrderRef.current.has(session.id)) {
@@ -204,26 +216,34 @@ export function useAgentTerminalTasks() {
     [providers],
   );
 
-  const createTask = useCallback(
-    async ({
-      prompt,
-      label,
-      source,
-      background = false,
-    }: CreateAgentTerminalTaskOptions) => {
+  /**
+   * Shared create path for every dock tab. The caller supplies the spawn — an
+   * agent invocation or a plain shell — and this owns the ordering, the
+   * "newest foreground wins" selection race, and the pending accounting.
+   */
+  const runCreate = useCallback(
+    async (
+      spawn: () => Promise<TerminalSessionInfo>,
+      {
+        background = false,
+        initialInput,
+        label,
+        source,
+      }: {
+        background?: boolean;
+        initialInput?: readonly string[];
+        label?: string;
+        source?: AgentTerminalTaskSource;
+      } = {},
+    ) => {
       const sequence = ++createSequenceRef.current;
       pendingCreateCountRef.current += 1;
       if (!background) latestForegroundSequenceRef.current = sequence;
       const createdAt = Date.now();
-      const selectedProvider = providerRef.current ?? "claude";
       setTerminalError(null);
       setCreating((count) => count + 1);
       try {
-        const session = await createAgentTerminalSession({
-          provider: selectedProvider,
-          prompt,
-          label,
-        });
+        const session = await spawn();
         if (!mountedRef.current) return undefined;
         if (closedIdsRef.current.has(session.id)) return undefined;
         const task: AgentTerminalTask = {
@@ -232,6 +252,10 @@ export function useAgentTerminalTasks() {
           source,
           createdAt,
         };
+        // Recorded before the tab renders, so the viewport's first claim wins.
+        if (initialInput?.length) {
+          initialInputRef.current.set(task.id, [...initialInput]);
+        }
         taskOrderRef.current.set(task.id, { group: "created", index: sequence });
         const withoutDuplicate = tasksRef.current.filter(
           (candidate) => candidate.id !== task.id,
@@ -255,6 +279,41 @@ export function useAgentTerminalTasks() {
     [activateFirstAttached, setActiveTaskId, setTasks, sortTasks],
   );
 
+  const createTask = useCallback(
+    ({ prompt, label, source, background }: CreateAgentTerminalTaskOptions) => {
+      const selectedProvider = providerRef.current ?? "claude";
+      return runCreate(
+        () =>
+          createAgentTerminalSession({ provider: selectedProvider, prompt, label }),
+        { background, label, source },
+      );
+    },
+    [runCreate],
+  );
+
+  /**
+   * A plain workspace shell in the dock. An optional command is typed in as the
+   * first line once the PTY is up — the session itself is an ordinary shell, so
+   * nothing here can run a program the user did not type.
+   */
+  const createShellTask = useCallback(
+    (command?: string) => {
+      const trimmed = command?.trim();
+      return runCreate(() => createTerminalSession(), {
+        initialInput: trimmed ? [trimmed, "\r"] : undefined,
+        label: trimmed ? shellTaskLabel(trimmed) : undefined,
+      });
+    },
+    [runCreate],
+  );
+
+  /** One-shot: the viewport claims a shell task's opening command exactly once. */
+  const claimInitialInput = useCallback((id: string) => {
+    const inputs = initialInputRef.current.get(id);
+    if (inputs) initialInputRef.current.delete(id);
+    return inputs;
+  }, []);
+
   const closeTask = useCallback(
     async (id: string) => {
       if (pendingTaskIdsRef.current.has(id)) return;
@@ -268,6 +327,7 @@ export function useAgentTerminalTasks() {
         const closedIndex = current.findIndex((task) => task.id === id);
         const next = current.filter((task) => task.id !== id);
         taskOrderRef.current.delete(id);
+        initialInputRef.current.delete(id);
         setTasks(next);
         if (activeTaskIdRef.current === id) {
           const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
@@ -282,6 +342,7 @@ export function useAgentTerminalTasks() {
         if (current[closedIndex]?.state === "exited") {
           const next = current.filter((task) => task.id !== id);
           taskOrderRef.current.delete(id);
+          initialInputRef.current.delete(id);
           setTasks(next);
           if (activeTaskIdRef.current === id) {
             const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
@@ -345,6 +406,8 @@ export function useAgentTerminalTasks() {
     providers,
     selectProvider,
     createTask,
+    createShellTask,
+    claimInitialInput,
     closeTask,
     stopTask,
     updateTaskStatus,
