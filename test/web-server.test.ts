@@ -39,7 +39,10 @@ afterEach(async () => {
     ),
   );
   portServers = [];
-  await rm(tempDir, { recursive: true, force: true });
+  // Tests here start real service processes whose log writer can land one more
+  // append while `rm` is walking the tree, yielding ENOTEMPTY. `force` only
+  // suppresses ENOENT, so retry the removal instead.
+  await rm(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
 describe("web server", () => {
