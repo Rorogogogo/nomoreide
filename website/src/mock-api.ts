@@ -45,7 +45,16 @@ const createMockProjectSettings = (): ProjectPreferences => ({
 });
 
 let mockGlobalSettings = createMockGlobalSettings();
-let mockProjectSettings = createMockProjectSettings();
+const mockProjectSettingsByPath = new Map<string, ProjectPreferences>();
+
+function projectSettings(url: URL): ProjectPreferences {
+  const path = url.searchParams.get("projectPath") ?? "";
+  const existing = mockProjectSettingsByPath.get(path);
+  if (existing) return existing;
+  const created = createMockProjectSettings();
+  mockProjectSettingsByPath.set(path, created);
+  return created;
+}
 
 const serviceDefinitions = [
   {
@@ -740,7 +749,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   const path = url.pathname;
 
   if (path === "/api/settings" && method === "GET") {
-    return json({ ok: true, global: mockGlobalSettings, project: mockProjectSettings });
+    return json({ ok: true, global: mockGlobalSettings, project: projectSettings(url) });
   }
   if (path === "/api/settings/global" && method === "PATCH") {
     const patch = parseJsonBody(init) as { terminal?: Partial<typeof mockGlobalSettings.terminal> };
@@ -751,23 +760,26 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, global: mockGlobalSettings });
   }
   if (path === "/api/settings/project" && method === "PATCH") {
+    const current = projectSettings(url);
     const patch = parseJsonBody(init) as {
-      logs?: Partial<typeof mockProjectSettings.logs>;
-      database?: Partial<typeof mockProjectSettings.database>;
+      logs?: Partial<ProjectPreferences["logs"]>;
+      database?: Partial<ProjectPreferences["database"]>;
     };
-    mockProjectSettings = {
-      logs: { ...mockProjectSettings.logs, ...patch.logs },
-      database: { ...mockProjectSettings.database, ...patch.database },
+    const updated = {
+      logs: { ...current.logs, ...patch.logs },
+      database: { ...current.database, ...patch.database },
     };
-    return json({ ok: true, project: mockProjectSettings });
+    mockProjectSettingsByPath.set(url.searchParams.get("projectPath") ?? "", updated);
+    return json({ ok: true, project: updated });
   }
   if (path === "/api/settings/global/reset" && method === "POST") {
     mockGlobalSettings = createMockGlobalSettings();
     return json({ ok: true, global: mockGlobalSettings });
   }
   if (path === "/api/settings/project/reset" && method === "POST") {
-    mockProjectSettings = createMockProjectSettings();
-    return json({ ok: true, project: mockProjectSettings });
+    const project = createMockProjectSettings();
+    mockProjectSettingsByPath.set(url.searchParams.get("projectPath") ?? "", project);
+    return json({ ok: true, project });
   }
 
   if (path === "/api/dashboard") return json(dashboard());

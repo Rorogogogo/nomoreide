@@ -15,8 +15,11 @@ const jsonRequest = (method: "PATCH" | "POST", body?: unknown): RequestInit => (
 });
 
 export const httpSettingsApi: SettingsApi = {
-  async getSettings() {
-    const response = await requestJson<{ ok: true } & SettingsSnapshot>("/api/settings");
+  async getSettings(projectPath) {
+    const path = projectPath === undefined
+      ? "/api/settings"
+      : `/api/settings?projectPath=${encodeURIComponent(projectPath)}`;
+    const response = await requestJson<{ ok: true } & SettingsSnapshot>(path);
     return { global: response.global, project: response.project };
   },
 
@@ -28,9 +31,9 @@ export const httpSettingsApi: SettingsApi = {
     return response.global;
   },
 
-  async updateProjectSettings(patch: ProjectPreferencesPatch) {
+  async updateProjectSettings(projectPath, patch: ProjectPreferencesPatch) {
     const response = await requestJson<{ ok: true; project: ProjectPreferences }>(
-      "/api/settings/project",
+      `/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
       jsonRequest("PATCH", patch),
     );
     return response.project;
@@ -44,9 +47,9 @@ export const httpSettingsApi: SettingsApi = {
     return response.global;
   },
 
-  async resetProjectSettings() {
+  async resetProjectSettings(projectPath) {
     const response = await requestJson<{ ok: true; project: ProjectPreferences }>(
-      "/api/settings/project/reset",
+      `/api/settings/project/reset?projectPath=${encodeURIComponent(projectPath)}`,
       jsonRequest("POST"),
     );
     return response.project;

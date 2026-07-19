@@ -22,6 +22,9 @@ vi.mock("@/features/settings/settings-context", async (importOriginal) => {
 const baseSettings: SettingsContextValue = {
   loading: false,
   loadError: null,
+  activeProjectPath: "/tmp/workbench",
+  projectLoading: false,
+  selectProject: vi.fn(async () => undefined),
   retry: vi.fn(async () => undefined),
   saveState: "idle",
   saveError: null,
@@ -216,6 +219,14 @@ describe("SettingsView", () => {
     expect(host.textContent).toContain("Workbench");
     expect(host.textContent).toContain("nomoreide.config.json");
     expect(host.querySelector<HTMLInputElement>('#setting-confirm-writes')?.disabled).toBe(false);
+  });
+
+  test("keeps project controls disabled while provider data belongs to another project", async () => {
+    await renderView({}, { activeProjectPath: "/tmp/previous", projectLoading: true });
+    await click(button("Database & Safety"));
+
+    expect(host.querySelector<HTMLInputElement>('#setting-confirm-writes')?.disabled).toBe(true);
+    expect(host.textContent).toContain("Loading settings for Workbench");
   });
 
   test("supports ArrowUp, ArrowDown, Home, and End category navigation", async () => {

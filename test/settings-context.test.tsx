@@ -189,6 +189,135 @@ describe("UI preference migration", () => {
 });
 
 describe("SettingsProvider", () => {
+  test("loads independent preferences when the selected project changes", async () => {
+    const mounted = await mountProvider();
+    api.getSettings.mockImplementation(async (path?: string) => ({
+      ...structuredClone(initialSnapshot),
+      project: {
+        ...structuredClone(initialSnapshot.project),
+        database: {
+          ...initialSnapshot.project.database,
+          resultLimit: path === "/work/a" ? 111 : 222,
+        },
+      },
+    }));
+
+    await act(async () => mounted.value.selectProject("/work/a"));
+    expect(mounted.value.activeProjectPath).toBe("/work/a");
+    expect(mounted.value.project.database.resultLimit).toBe(111);
+
+    await act(async () => mounted.value.selectProject("/work/b"));
+    expect(mounted.value.activeProjectPath).toBe("/work/b");
+    expect(mounted.value.project.database.resultLimit).toBe(222);
+    expect(api.getSettings).toHaveBeenNthCalledWith(2, "/work/a");
+    expect(api.getSettings).toHaveBeenNthCalledWith(3, "/work/b");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("ignores a stale project response after a rapid project switch", async () => {
+    const mounted = await mountProvider();
+    const projectA = deferred<typeof initialSnapshot>();
+    const projectB = deferred<typeof initialSnapshot>();
+    api.getSettings
+      .mockReturnValueOnce(projectA.promise)
+      .mockReturnValueOnce(projectB.promise);
+
+    let selectA!: Promise<void>;
+    let selectB!: Promise<void>;
+    act(() => { selectA = mounted.value.selectProject("/work/a"); });
+    act(() => { selectB = mounted.value.selectProject("/work/b"); });
+    projectB.resolve({
+      ...initialSnapshot,
+      project: { ...initialSnapshot.project, database: { confirmWrites: true, resultLimit: 222 } },
+    });
+    await act(async () => selectB);
+    projectA.resolve({
+      ...initialSnapshot,
+      project: { ...initialSnapshot.project, database: { confirmWrites: true, resultLimit: 111 } },
+    });
+    await act(async () => selectA);
+
+    expect(mounted.value.activeProjectPath).toBe("/work/b");
+    expect(mounted.value.project.database.resultLimit).toBe(222);
+    expect(mounted.value.projectLoading).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not let an older project selection overwrite a newer retry", async () => {
+    const mounted = await mountProvider();
+    const selection = deferred<typeof initialSnapshot>();
+    const retry = deferred<typeof initialSnapshot>();
+    api.getSettings
+      .mockReturnValueOnce(selection.promise)
+      .mockReturnValueOnce(retry.promise);
+
+    let selectionOperation!: Promise<void>;
+    let retryOperation!: Promise<void>;
+    act(() => { selectionOperation = mounted.value.selectProject("/work/a"); });
+    act(() => { retryOperation = mounted.value.retry(); });
+    retry.resolve({
+      ...initialSnapshot,
+      project: { ...initialSnapshot.project, database: { confirmWrites: true, resultLimit: 222 } },
+    });
+    await act(async () => retryOperation);
+    selection.resolve({
+      ...initialSnapshot,
+      project: { ...initialSnapshot.project, database: { confirmWrites: true, resultLimit: 111 } },
+    });
+    await act(async () => selectionOperation);
+
+    expect(mounted.value.project.database.resultLimit).toBe(222);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("captures the project path for a save and never leaks its result after switching", async () => {
+    const mounted = await mountProvider();
+    api.getSettings.mockImplementation(async (path?: string) => ({
+      ...initialSnapshot,
+      project: {
+        ...initialSnapshot.project,
+        database: { confirmWrites: true, resultLimit: path === "/work/b" ? 222 : 111 },
+      },
+    }));
+    await act(async () => mounted.value.selectProject("/work/a"));
+    const saveA = deferred<typeof initialSnapshot.project>();
+    api.updateProjectSettings.mockReturnValueOnce(saveA.promise);
+
+    let save!: Promise<void>;
+    act(() => { save = mounted.value.updateProject({ logs: { wrapLines: false } }); });
+    await act(async () => mounted.value.selectProject("/work/b"));
+    saveA.resolve({ ...initialSnapshot.project, logs: { showTimestamps: true, wrapLines: false } });
+    await act(async () => save);
+
+    expect(api.updateProjectSettings).toHaveBeenCalledWith("/work/a", { logs: { wrapLines: false } });
+    expect(mounted.value.activeProjectPath).toBe("/work/b");
+    expect(mounted.value.project.database.resultLimit).toBe(222);
+    expect(mounted.value.project.logs.wrapLines).toBe(true);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("blocks project mutations until a project is selected", async () => {
+    const mounted = await mountProvider();
+
+    await act(async () => mounted.value.updateProject({ logs: { wrapLines: false } }));
+
+    expect(api.updateProjectSettings).not.toHaveBeenCalled();
+    expect(mounted.value.saveState).toBe("error");
+    expect(mounted.value.saveError).toContain("Select a project");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("blocks project reset until a project is selected", async () => {
+    const mounted = await mountProvider();
+
+    await act(async () => mounted.value.resetProject());
+
+    expect(api.resetProjectSettings).not.toHaveBeenCalled();
+    expect(mounted.value.saveState).toBe("error");
+    expect(mounted.value.saveError).toContain("Select a project");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("loads the API snapshot once under React StrictMode", async () => {
     const mounted = await mountProvider(true);
 
@@ -227,6 +356,7 @@ describe("SettingsProvider", () => {
 
   test("does not let a manual retry overwrite a newer project save", async () => {
     const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
     const retryLoad = deferred<typeof initialSnapshot>();
     api.getSettings.mockReturnValueOnce(retryLoad.promise);
     api.updateProjectSettings.mockResolvedValue({
@@ -323,6 +453,7 @@ describe("SettingsProvider", () => {
       logs: { showTimestamps: true, wrapLines: false },
     });
     const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
 
     await act(async () => {
       await mounted.value.updateProject({ logs: { wrapLines: false } });
@@ -337,12 +468,13 @@ describe("SettingsProvider", () => {
   test("resets only the requested server scope and resets UI preferences locally", async () => {
     window.localStorage.setItem("nomoreide-theme-choice", "light");
     const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
     await act(async () => {
       mounted.value.updateUi({ density: "compact", sidebarDocked: true });
     });
 
     await act(async () => mounted.value.resetProject());
-    expect(api.resetProjectSettings).toHaveBeenCalledOnce();
+    expect(api.resetProjectSettings).toHaveBeenCalledWith("/work/a");
     expect(api.resetGlobalSettings).not.toHaveBeenCalled();
     expect(mounted.value.ui.density).toBe("compact");
 
@@ -435,6 +567,7 @@ describe("SettingsProvider", () => {
     api.updateGlobalSettings.mockReturnValue(globalSave.promise);
     api.updateProjectSettings.mockReturnValue(projectSave.promise);
     const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
 
     let globalOperation!: Promise<void>;
     let projectOperation!: Promise<void>;
@@ -467,6 +600,7 @@ describe("SettingsProvider", () => {
     api.updateGlobalSettings.mockReturnValue(globalSave.promise);
     api.updateProjectSettings.mockReturnValue(projectSave.promise);
     const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
 
     let globalOperation!: Promise<void>;
     let projectOperation!: Promise<void>;

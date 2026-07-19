@@ -261,6 +261,19 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   );
 }
 
+export function SettingsProjectSync({
+  projectPath,
+  selectProject,
+}: {
+  projectPath: string | null;
+  selectProject: (path: string | null) => Promise<void>;
+}) {
+  useEffect(() => {
+    void selectProject(projectPath);
+  }, [projectPath, selectProject]);
+  return null;
+}
+
 function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? pageFromPath(window.location.pathname) : "services",
@@ -285,7 +298,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     message: showMessageToast,
     success: showSuccessToast,
   } = useToasts();
-  const { ui, updateUi } = useSettings();
+  const { ui, updateUi, selectProject } = useSettings();
   const sidebarDocked = ui.sidebarDocked;
   // Project scope: "All projects" (default) leaves the Run pages machine-wide;
   // picking a project filters them to services under that repo. Git/GitHub
@@ -388,9 +401,14 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   );
   const githubPageKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
+  const settingsProjectPath = data?.git.selectedRepository?.path ?? null;
 
   return (
     <AgentProvider>
+    <SettingsProjectSync
+      projectPath={settingsProjectPath}
+      selectProject={selectProject}
+    />
     <RefreshRegistryProvider value={refreshRegistry}>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <WorkflowTriggerProvider>

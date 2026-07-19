@@ -35,9 +35,12 @@ export interface SettingsSnapshot {
 }
 
 export interface SettingsApi {
-  getSettings(): Promise<SettingsSnapshot>;
+  getSettings(projectPath?: string): Promise<SettingsSnapshot>;
   updateGlobalSettings(patch: AppSettingsPatch): Promise<AppSettings>;
-  updateProjectSettings(patch: ProjectPreferencesPatch): Promise<ProjectPreferences>;
+  updateProjectSettings(
+    projectPath: string,
+    patch: ProjectPreferencesPatch,
+  ): Promise<ProjectPreferences>;
   resetGlobalSettings(): Promise<AppSettings>;
-  resetProjectSettings(): Promise<ProjectPreferences>;
+  resetProjectSettings(projectPath: string): Promise<ProjectPreferences>;
 }
