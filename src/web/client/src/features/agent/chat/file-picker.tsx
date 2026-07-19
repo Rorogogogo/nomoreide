@@ -3,6 +3,7 @@ import { ChevronUp, CornerDownRight, Folder, Loader2, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getDirectories, type DirectoryListing } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { FileKindIcon } from "../../git/file-kind-icon";
 
 /** Trailing extension (".txt") shown as a tag, or "" for dotless names. */
@@ -31,6 +32,7 @@ export function FilePicker({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const t = useT();
   const canGoUp = listing ? listing.parent !== listing.path : false;
 
   // Dismiss when focus/click leaves the popover.
@@ -62,7 +64,7 @@ export function FilePicker({
     >
       <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
         <Button
-          aria-label="Parent folder"
+          aria-label={t("agent.picker.parentFolder")}
           className="size-7"
           disabled={!canGoUp}
           onClick={() => listing && setBrowsePath(listing.parent)}
@@ -81,14 +83,14 @@ export function FilePicker({
             className="h-7 px-2 text-[11px]"
             onClick={() => onPick(listing.path)}
             size="sm"
-            title="Attach this folder"
+            title={t("agent.picker.attachFolder")}
             type="button"
             variant="outline"
           >
-            <CornerDownRight /> This folder
+            <CornerDownRight /> {t("agent.picker.thisFolder")}
           </Button>
         ) : null}
-        <Button aria-label="Close" className="size-7" onClick={onClose} size="icon" type="button" variant="ghost">
+        <Button aria-label={t("common.close")} className="size-7" onClick={onClose} size="icon" type="button" variant="ghost">
           <X />
         </Button>
       </div>
@@ -99,7 +101,7 @@ export function FilePicker({
           </Alert>
         ) : listing && listing.entries.length === 0 ? (
           <Alert variant="muted" className="m-1 text-center">
-            Empty folder.
+            {t("agent.picker.emptyFolder")}
           </Alert>
         ) : (
           listing?.entries.map((entry) => {

@@ -9,6 +9,7 @@ import {
   type TerminalSessionInfo,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { TerminalPane } from "./terminal-pane";
 
 /**
@@ -17,6 +18,7 @@ import { TerminalPane } from "./terminal-pane";
  * every shell that is still running.
  */
 export function TerminalView() {
+  const t = useT();
   const { confirmedGlobal } = useSettings();
   const [tabs, setTabs] = useState<TerminalSessionInfo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -90,12 +92,12 @@ export function TerminalView() {
   return (
     <section className="flex h-full min-h-0 flex-col bg-[#090909] text-white">
       <div
-        aria-label="Terminal tabs"
+        aria-label={t("terminal.tabs")}
         className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/10 bg-[#111111] px-2 py-1.5"
         role="tablist"
       >
         {tabs.map((tab, index) => {
-          const name = tab.label ?? `Terminal ${index + 1}`;
+          const name = tab.label ?? t("terminal.tabName", { n: index + 1 });
           return (
           <div
             key={tab.id}
@@ -116,7 +118,7 @@ export function TerminalView() {
               {name}
             </button>
             <button
-              aria-label={`Close ${name}`}
+              aria-label={t("terminal.closeTab", { name })}
               className="rounded p-0.5 text-white/40 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
               disabled={busy}
               onClick={() => requestClose(tab.id, name)}
@@ -128,7 +130,7 @@ export function TerminalView() {
           );
         })}
         <button
-          aria-label="New terminal"
+          aria-label={t("terminal.newTerminal")}
           className="ml-1 rounded-md p-1 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
           disabled={busy}
           onClick={() => void addTab()}
@@ -140,7 +142,7 @@ export function TerminalView() {
       <div className="relative min-h-0 flex-1">
         {tabs.length === 0 ? (
           <div className="flex h-full items-center justify-center font-mono text-[11px] text-white/40">
-            Starting terminal…
+            {t("terminal.starting")}
           </div>
         ) : (
           tabs.map((tab) => (

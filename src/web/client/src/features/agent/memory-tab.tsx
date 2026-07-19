@@ -9,10 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AgentId } from "./agent-types";
 
 export function MemoryTab({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
+  const t = useT();
   const instructionFileName =
     agent.project.instructionFileName ?? (agent.project.claudeMdPath ? "CLAUDE.md" : undefined);
   const instructionFilePreview =
@@ -25,7 +27,7 @@ export function MemoryTab({ agent, agentId }: { agent: AgentProfile; agentId: Ag
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Brain className="size-4 text-muted-foreground" />
-            <CardTitle>Project Memory</CardTitle>
+            <CardTitle>{t("agent.memory.title")}</CardTitle>
           </div>
           <Badge variant="outline" size="small">
             {memoryCount}
@@ -34,8 +36,8 @@ export function MemoryTab({ agent, agentId }: { agent: AgentProfile; agentId: Ag
         <CardDescription className="truncate text-xs">
           {agent.project.memoryDir ??
             (agentId === "codex"
-              ? "No Codex memory directory found for this project."
-              : "No memory directory found for this project.")}
+              ? t("agent.memory.noCodexDir")
+              : t("agent.memory.noDir"))}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 p-3">
@@ -58,7 +60,7 @@ export function MemoryTab({ agent, agentId }: { agent: AgentProfile; agentId: Ag
           ))
         ) : !instructionFileName ? (
           <p className="text-xs text-muted-foreground">
-            No memory files persisted yet for this project.
+            {t("agent.memory.noFiles")}
           </p>
         ) : null}
       </CardContent>

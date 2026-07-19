@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentPlugin, AgentProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
 import {
   buildAddPluginPrompt,
@@ -22,20 +23,21 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
   const { sendToAgent } = useAgentDock();
   const [adding, setAdding] = useState(false);
   const plugins = agent.plugins ?? [];
+  const t = useT();
 
   function add(input: string) {
     setAdding(false);
     sendToAgent({
       prompt: buildAddPluginPrompt(agentId, input),
-      source: { type: "agent-plugin", label: "New plugin" },
-      label: `Install plugin: ${input}`,
+      source: { type: "agent-plugin", label: t("agent.plugins.sourceNew") },
+      label: t("agent.plugins.installAction", { input }),
     });
   }
 
   function ask(plugin: AgentPlugin) {
     sendToAgent({
       prompt: buildAskPluginPrompt(plugin),
-      source: { type: "agent-plugin", label: `${plugin.name} plugin` },
+      source: { type: "agent-plugin", label: t("agent.plugins.sourcePlugin", { name: plugin.name }) },
       mode: "draft",
     });
   }
@@ -43,8 +45,8 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
   function remove(plugin: AgentPlugin) {
     sendToAgent({
       prompt: buildRemovePluginPrompt(plugin),
-      source: { type: "agent-plugin", label: `Remove ${plugin.name}` },
-      label: `Uninstall plugin: ${plugin.name}`,
+      source: { type: "agent-plugin", label: t("agent.plugins.sourceRemove", { name: plugin.name }) },
+      label: t("agent.plugins.uninstallAction", { name: plugin.name }),
     });
   }
 
@@ -61,7 +63,7 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
               {plugins.length}
             </Badge>
             <AddButton
-              label="Install a plugin with AI"
+              label={t("agent.plugins.addLabel")}
               onClick={() => setAdding((value) => !value)}
             />
           </div>
@@ -69,15 +71,13 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
         {adding ? (
           <AddInline
             className="mt-1.5"
-            placeholder="Paste a plugin name, marketplace, or install command…"
+            placeholder={t("agent.plugins.addPlaceholder")}
             onSubmit={add}
             onCancel={() => setAdding(false)}
           />
         ) : (
           <CardDescription className="text-xs">
-            {agentId === "codex"
-              ? "Codex doesn't expose an installed-plugin registry here yet."
-              : "Installed from marketplaces (~/.claude/plugins). Each bundles skills, commands, agents, and MCP servers."}
+            {agentId === "codex" ? t("agent.plugins.descCodex") : t("agent.plugins.desc")}
           </CardDescription>
         )}
       </CardHeader>
@@ -98,8 +98,8 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
                       {plugin.name}
                     </span>
                     <RowActions
-                      askLabel={`Ask AI about the ${plugin.name} plugin`}
-                      removeLabel={`Uninstall the ${plugin.name} plugin`}
+                      askLabel={t("agent.plugins.askLabel", { name: plugin.name })}
+                      removeLabel={t("agent.plugins.removeLabel", { name: plugin.name })}
                       onAsk={() => ask(plugin)}
                       onRemove={() => remove(plugin)}
                     />
@@ -127,7 +127,7 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
             ))}
           </ul>
         ) : (
-          <p className="px-3 py-4 text-xs text-muted-foreground">No plugins installed.</p>
+          <p className="px-3 py-4 text-xs text-muted-foreground">{t("agent.plugins.empty")}</p>
         )}
       </CardContent>
     </Card>
@@ -135,13 +135,14 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
 }
 
 function PluginContributions({ plugin }: { plugin: AgentPlugin }) {
+  const t = useT();
   const parts: string[] = [];
-  if (plugin.skills.length) parts.push(`${plugin.skills.length} skill${plural(plugin.skills.length)}`);
+  if (plugin.skills.length) parts.push(t("agent.plugins.contribSkills", { count: plugin.skills.length }));
   if (plugin.commands.length)
-    parts.push(`${plugin.commands.length} command${plural(plugin.commands.length)}`);
-  if (plugin.agents.length) parts.push(`${plugin.agents.length} agent${plural(plugin.agents.length)}`);
+    parts.push(t("agent.plugins.contribCommands", { count: plugin.commands.length }));
+  if (plugin.agents.length) parts.push(t("agent.plugins.contribAgents", { count: plugin.agents.length }));
   if (plugin.mcpServers.length)
-    parts.push(`${plugin.mcpServers.length} MCP server${plural(plugin.mcpServers.length)}`);
+    parts.push(t("agent.plugins.contribMcp", { count: plugin.mcpServers.length }));
   if (!parts.length) return null;
   return (
     <div className="mt-1.5 flex flex-wrap gap-1">
@@ -155,8 +156,4 @@ function PluginContributions({ plugin }: { plugin: AgentPlugin }) {
       ))}
     </div>
   );
-}
-
-function plural(count: number): string {
-  return count === 1 ? "" : "s";
 }

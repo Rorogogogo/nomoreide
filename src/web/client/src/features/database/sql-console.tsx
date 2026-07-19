@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ColumnInfo, DatabaseEngine } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
@@ -48,6 +49,7 @@ export function SqlConsole({
   onWriteAccessChange: () => void;
   preferences?: { confirmWrites: boolean; resultLimit: number };
 }) {
+  const t = useT();
   const { success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
   const read = useSqlQuery(connection);
@@ -109,7 +111,7 @@ export function SqlConsole({
     sendToAgent({
       prompt: buildDebugSqlPrompt(connection, engine, sql, error),
       source: { type: "database-sql-debug", label: "Debug SQL" },
-      label: "Debug this SQL error",
+      label: t("database.sql.debugLabel"),
     });
   }
 
@@ -117,7 +119,7 @@ export function SqlConsole({
     const outcome = await write.commit(statement);
     if (outcome?.committed) {
       const affected = outcome.affectedRows ?? 0;
-      showSuccess(`Committed — ${affected} row${affected === 1 ? "" : "s"} affected.`);
+      showSuccess(t("database.sql.committed", { count: affected }));
     }
   }
 
@@ -132,8 +134,8 @@ export function SqlConsole({
           spellCheck={false}
           placeholder={
             unlocked
-              ? "SELECT … / INSERT … / UPDATE …   (Cmd/Ctrl+Enter to run)"
-              : "SELECT * FROM …   (read-only — Cmd/Ctrl+Enter to run)"
+              ? t("database.sql.placeholderUnlocked")
+              : t("database.sql.placeholderLocked")
           }
           className="code-font-size h-24 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono outline-none focus:border-ring"
         />
@@ -147,7 +149,7 @@ export function SqlConsole({
           <div className="flex items-center gap-2">
             {!isWrite ? (
               <select
-                aria-label="Max rows"
+                aria-label={t("database.sql.maxRows")}
                 className="rounded-md border border-border bg-background px-1.5 py-1 text-[11px]"
                 value={limit}
                 onChange={(event) => {
@@ -157,7 +159,7 @@ export function SqlConsole({
               >
                 {databaseLimitOptions(preferences.resultLimit).map((size) => (
                   <option key={size} value={size}>
-                    {size} rows
+                    {t("database.sql.rowsOption", { size })}
                   </option>
                 ))}
               </select>
@@ -174,7 +176,11 @@ export function SqlConsole({
               ) : (
                 <Play className="size-3.5" />
               )}
-              {isWrite ? (preferences.confirmWrites ? "Preview write" : "Run write") : "Run"}
+              {isWrite
+                ? preferences.confirmWrites
+                  ? t("database.sql.previewWrite")
+                  : t("database.sql.runWrite")
+                : t("database.sql.run")}
             </Button>
           </div>
         </div>
@@ -213,6 +219,7 @@ export function SqlConsole({
  * and run. Generation respects the connection's lock (read-only stays SELECT).
  */
 function GenerateField({ generate }: { generate: ReturnType<typeof useSqlGenerate> }) {
+  const t = useT();
   const [intent, setIntent] = useState("");
 
   function submit() {
@@ -238,7 +245,7 @@ function GenerateField({ generate }: { generate: ReturnType<typeof useSqlGenerat
             onChange={(event) => setIntent(event.target.value)}
             onKeyDown={onKeyDown}
             disabled={generate.generating}
-            placeholder="Describe the query in plain English — AI writes the SQL below"
+            placeholder={t("database.sql.generatePlaceholder")}
             className="h-8 w-full rounded-md border border-border bg-background pl-7 pr-2 text-[12px] outline-none focus:border-ring disabled:opacity-60"
           />
         </div>
@@ -255,7 +262,7 @@ function GenerateField({ generate }: { generate: ReturnType<typeof useSqlGenerat
           ) : (
             <AgentMark className="size-3.5" />
           )}
-          {generate.generating ? "Generating…" : "Ask AI"}
+          {generate.generating ? t("database.sql.generating") : t("database.sql.askAi")}
         </Button>
       </div>
       {generate.error ? (
@@ -276,6 +283,7 @@ function LockControl({
   onUnlock: () => void;
   onLock: () => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -287,7 +295,7 @@ function LockControl({
           ? "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 dark:text-amber-400"
           : "border-border text-muted-foreground hover:text-foreground",
       )}
-      title={unlocked ? "Writes unlocked — click to lock" : "Read-only — click to unlock writes"}
+      title={unlocked ? t("database.sql.writesUnlockedTitle") : t("database.sql.readOnlyTitle")}
     >
       {updating ? (
         <Loader2 className="size-3.5 animate-spin" />
@@ -296,7 +304,7 @@ function LockControl({
       ) : (
         <Lock className="size-3.5" />
       )}
-      {unlocked ? "Writes unlocked" : "Read-only"}
+      {unlocked ? t("database.sql.writesUnlocked") : t("database.sql.readOnly")}
     </button>
   );
 }
@@ -311,6 +319,7 @@ function ResultArea({
   write: ReturnType<typeof useSqlWrite>;
   onDebug: (error: string) => void;
 }) {
+  const t = useT();
   const error = write.error ?? read.error;
   return (
     <div className="min-h-0 flex-1 overflow-auto">
@@ -325,7 +334,7 @@ function ResultArea({
             type="button"
           >
             <AgentMark className="size-3.5" />
-            Debug with AI
+            {t("database.sql.debugWithAi")}
           </Button>
         </div>
       ) : write.committed ? (
@@ -334,7 +343,7 @@ function ResultArea({
         <ResultGrid columns={read.result.columns} rows={read.result.rows} truncated={read.result.truncated} />
       ) : (
         <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-          Write a query and run it to see results here.
+          {t("database.sql.emptyResult")}
         </div>
       )}
     </div>
@@ -342,13 +351,14 @@ function ResultArea({
 }
 
 function WriteSummary({ outcome }: { outcome: ReturnType<typeof useSqlWrite>["committed"] }) {
+  const t = useT();
   if (!outcome) return null;
   const affected = outcome.affectedRows ?? 0;
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-1.5 border-b border-border bg-emerald-500/10 px-3 py-1.5 text-[12px] text-emerald-700 dark:text-emerald-400">
         <Check className="size-3.5" />
-        Committed — {affected} row{affected === 1 ? "" : "s"} affected.
+        {t("database.sql.committed", { count: affected })}
       </div>
       {outcome.rows && outcome.rows.length > 0 && outcome.columns ? (
         <ResultGrid columns={outcome.columns} rows={outcome.rows} />
@@ -366,10 +376,11 @@ function ResultGrid({
   rows: Array<Record<string, unknown>>;
   truncated?: boolean;
 }) {
+  const t = useT();
   if (columns.length === 0) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Query ran successfully — no columns returned.
+        {t("database.sql.noColumns")}
       </div>
     );
   }
@@ -378,7 +389,7 @@ function ResultGrid({
       {truncated ? (
         <div className="flex shrink-0 items-center gap-1.5 border-b border-border bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
           <AlertTriangle className="size-3.5" />
-          Showing the first {rows.length} rows — add a LIMIT to narrow the result.
+          {t("database.sql.truncated", { count: rows.length })}
         </div>
       ) : null}
       <div className="min-h-0 flex-1 overflow-auto">
@@ -417,7 +428,7 @@ function ResultGrid({
                   colSpan={columns.length}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  No rows.
+                  {t("database.grid.noRows")}
                 </td>
               </tr>
             ) : null}

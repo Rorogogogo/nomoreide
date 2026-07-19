@@ -3,17 +3,19 @@ import { ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addLogSource, type LogSource } from "@/lib/api";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { ComposerDialog } from "./service-form/composer-dialog";
 
 /** A `driver` source (journald/docker) supports server-side query; the rest tail. */
 type SourceType = "journald" | "docker" | "ssh" | "file" | "command";
 
-const TYPE_HINTS: Record<SourceType, string> = {
-  journald: "Queries `journalctl -u <unit>` — time range, text, and level filter server-side. Add a host to run it over SSH.",
-  docker: "Queries `docker logs <container>` — time window server-side. Add a host to run it over SSH.",
-  ssh: "Reads via `ssh <host> tail -n 500 <path>` using your ~/.ssh/config + ssh-agent.",
-  file: "Tails an absolute file path on this machine.",
-  command: "Runs the command and treats its output as the log (kubectl logs, …).",
+const TYPE_HINT_KEYS: Record<SourceType, TranslationKey> = {
+  journald: "services.log.hint.journald",
+  docker: "services.log.hint.docker",
+  ssh: "services.log.hint.ssh",
+  file: "services.log.hint.file",
+  command: "services.log.hint.command",
 };
 
 /** Dialog to register a saved log source (UAT/PROD/…). Calls back with the new list. */
@@ -24,6 +26,7 @@ export function LogSourceForm({
   onClose: () => void;
   onAdded: (sources: LogSource[], added: string) => void;
 }) {
+  const t = useT();
   const [name, setName] = useState("");
   const [type, setType] = useState<SourceType>("journald");
   const [host, setHost] = useState("");
@@ -72,7 +75,7 @@ export function LogSourceForm({
   }
 
   return (
-    <ComposerDialog icon={<ScrollText />} onClose={onClose} size="md" title="Add log source">
+    <ComposerDialog icon={<ScrollText />} onClose={onClose} size="md" title={t("services.log.addSourceTitle")}>
       <form
         className="flex flex-col gap-3 p-4 text-xs"
         onSubmit={(event) => {
@@ -80,7 +83,7 @@ export function LogSourceForm({
           void submit();
         }}
       >
-        <Field label="Name">
+        <Field label={t("services.log.name")}>
           <Input
             autoFocus
             onChange={(event) => setName(event.target.value)}
@@ -88,23 +91,23 @@ export function LogSourceForm({
             value={name}
           />
         </Field>
-        <Field label="Type">
+        <Field label={t("services.log.type")}>
           <select
             className="h-9 w-full rounded-md border border-border bg-background px-2 text-xs"
             onChange={(event) => setType(event.target.value as SourceType)}
             value={type}
           >
-            <option value="journald">systemd journal (journald)</option>
-            <option value="docker">Docker container</option>
-            <option value="ssh">Remote file (SSH)</option>
-            <option value="file">Local file</option>
-            <option value="command">Command</option>
+            <option value="journald">{t("services.log.typeJournald")}</option>
+            <option value="docker">{t("services.log.typeDocker")}</option>
+            <option value="ssh">{t("services.log.typeSsh")}</option>
+            <option value="file">{t("services.log.typeFile")}</option>
+            <option value="command">{t("services.log.typeCommand")}</option>
           </select>
-          <p className="mt-1 text-[11px] text-muted-foreground">{TYPE_HINTS[type]}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t(TYPE_HINT_KEYS[type])}</p>
         </Field>
 
         {type === "journald" || type === "docker" ? (
-          <Field label="Host (optional — leave blank to run locally)">
+          <Field label={t("services.log.hostOptional")}>
             <Input
               onChange={(event) => setHost(event.target.value)}
               placeholder="jobjourney-prod (an alias from ~/.ssh/config)"
@@ -114,7 +117,7 @@ export function LogSourceForm({
         ) : null}
 
         {type === "journald" ? (
-          <Field label="Unit">
+          <Field label={t("services.log.unit")}>
             <Input
               onChange={(event) => setUnit(event.target.value)}
               placeholder="jobjourney"
@@ -124,7 +127,7 @@ export function LogSourceForm({
         ) : null}
 
         {type === "docker" ? (
-          <Field label="Container">
+          <Field label={t("services.log.container")}>
             <Input
               onChange={(event) => setContainer(event.target.value)}
               placeholder="brainctl-api"
@@ -134,7 +137,7 @@ export function LogSourceForm({
         ) : null}
 
         {type === "ssh" ? (
-          <Field label="Host">
+          <Field label={t("services.log.host")}>
             <Input
               onChange={(event) => setHost(event.target.value)}
               placeholder="prod (an alias from ~/.ssh/config)"
@@ -144,7 +147,7 @@ export function LogSourceForm({
         ) : null}
 
         {type === "file" || type === "ssh" ? (
-          <Field label={type === "ssh" ? "Remote path" : "File path"}>
+          <Field label={type === "ssh" ? t("services.log.remotePath") : t("services.log.filePath")}>
             <Input
               onChange={(event) => setPath(event.target.value)}
               placeholder="/var/log/app/out.log"
@@ -155,14 +158,14 @@ export function LogSourceForm({
 
         {type === "command" ? (
           <>
-            <Field label="Command">
+            <Field label={t("services.log.command")}>
               <Input
                 onChange={(event) => setCommand(event.target.value)}
                 placeholder="kubectl logs -l app=myapp --tail 500"
                 value={command}
               />
             </Field>
-            <Field label="Working directory (optional)">
+            <Field label={t("services.log.cwdOptional")}>
               <Input
                 onChange={(event) => setCwd(event.target.value)}
                 placeholder="/srv/app"
@@ -176,10 +179,10 @@ export function LogSourceForm({
 
         <div className="flex justify-end gap-2 pt-1">
           <Button onClick={onClose} size="sm" type="button" variant="outline">
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button disabled={saving || !name.trim()} size="sm" type="submit">
-            {saving ? "Saving…" : "Add source"}
+            {saving ? t("common.saving") : t("services.log.addSource")}
           </Button>
         </div>
       </form>

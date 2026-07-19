@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { gitPush, postForm, type GitBranch as GitBranchInfo } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function BranchControls({
@@ -33,6 +34,7 @@ export function BranchControls({
   onRefresh: () => Promise<void>;
   upstream?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [newBranch, setNewBranch] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function BranchControls({
   async function fetchBranches() {
     await runAction("fetch", async () => {
       await postForm("/api/git/fetch", {});
-      setMessage("Fetched latest branch refs.");
+      setMessage(t("git.branch.fetched"));
     });
   }
 
@@ -74,8 +76,8 @@ export function BranchControls({
       const result = await gitPush();
       setMessage(
         result.setUpstream
-          ? `Pushed ${result.branch} and set upstream.`
-          : `Pushed ${result.branch}.`,
+          ? t("git.branch.pushedSetUpstream", { branch: result.branch })
+          : t("git.branch.pushed", { branch: result.branch }),
       );
     });
   }
@@ -88,7 +90,7 @@ export function BranchControls({
     event.preventDefault();
     const name = newBranch.trim();
     if (!name) {
-      setError("Branch name is required.");
+      setError(t("git.branch.nameRequired"));
       return;
     }
 
@@ -103,7 +105,7 @@ export function BranchControls({
     <div className="fixed bottom-12 right-4 z-50 flex items-end">
       {open ? (
         <div
-          aria-label="Switch Git branch"
+          aria-label={t("git.branch.switchAria")}
           className="mb-11 w-[min(460px,calc(100vw-2rem))] rounded-lg border border-border bg-card shadow-xl"
           role="dialog"
         >
@@ -111,42 +113,42 @@ export function BranchControls({
             <div className="flex min-w-0 items-center gap-2">
               <GitBranch className="size-4 text-muted-foreground" />
               <span className="truncate text-sm font-semibold">
-                {currentBranch || "Branches"}
+                {currentBranch || t("git.branch.branches")}
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {canPush ? (
                 <Button
-                  aria-label="Push current branch"
+                  aria-label={t("git.branch.pushAria")}
                   className="gap-1.5 px-2 text-xs"
                   disabled={disabled || busy !== null}
                   onClick={() => void pushBranch()}
                   size="sm"
                   title={
                     upstream
-                      ? `Push ${ahead} commit${ahead === 1 ? "" : "s"} to ${upstream}`
-                      : "Push and set upstream"
+                      ? t("git.branch.pushCountTo", { ahead, upstream })
+                      : t("git.branch.pushSetUpstream")
                   }
                   type="button"
                   variant="default"
                 >
                   <Upload className={cn("size-3.5", busy === "push" && "animate-pulse")} />
-                  Push{ahead > 0 ? ` ${ahead}` : ""}
+                  {t("git.branch.push")}{ahead > 0 ? ` ${ahead}` : ""}
                 </Button>
               ) : null}
               <Button
-                aria-label="Fetch branches"
+                aria-label={t("git.branch.fetchAria")}
                 disabled={disabled || busy !== null}
                 onClick={() => void fetchBranches()}
                 size="icon"
-                title="Fetch branches"
+                title={t("git.branch.fetchAria")}
                 type="button"
                 variant="ghost"
               >
                 <RefreshCw className={cn(busy === "fetch" && "animate-spin")} />
               </Button>
               <Button
-                aria-label="Close branch dialog"
+                aria-label={t("git.branch.closeAria")}
                 onClick={() => setOpen(false)}
                 size="icon"
                 type="button"
@@ -164,20 +166,22 @@ export function BranchControls({
                   branches={localBranches}
                   busy={busy !== null}
                   disabled={disabled}
-                  label="Local"
+                  empty={t("git.branch.noLocal")}
+                  label={t("git.branch.sectionLocal")}
                   onSwitch={switchBranch}
                 />
                 <BranchSection
                   branches={remoteBranches}
                   busy={busy !== null}
                   disabled={disabled}
-                  label="Remote"
+                  empty={t("git.branch.noRemote")}
+                  label={t("git.branch.sectionRemote")}
                   onSwitch={switchBranch}
                 />
               </>
             ) : (
               <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                No branches found.
+                {t("git.branch.noneFound")}
               </div>
             )}
           </div>
@@ -185,7 +189,7 @@ export function BranchControls({
           <div className="border-t border-border p-3">
             <form className="grid gap-2 sm:grid-cols-[1fr_auto]" onSubmit={createBranch}>
               <Input
-                aria-label="New branch name"
+                aria-label={t("git.branch.newNameAria")}
                 disabled={disabled || busy !== null}
                 onChange={(event) => {
                   setNewBranch(event.target.value);
@@ -197,7 +201,7 @@ export function BranchControls({
               />
               <Button disabled={disabled || busy !== null} type="submit">
                 <GitPullRequestCreate />
-                Create
+                {t("git.branch.create")}
               </Button>
             </form>
 
@@ -215,19 +219,19 @@ export function BranchControls({
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         size="sm"
-        title="Switch Git branch"
+        title={t("git.branch.switchAria")}
         type="button"
         variant="default"
       >
         <GitBranch className="size-4" />
-        <span className="truncate font-mono text-xs">{currentBranch || "No branch"}</span>
+        <span className="truncate font-mono text-xs">{currentBranch || t("git.branch.noBranch")}</span>
         {currentBranch && (ahead > 0 || behind > 0) ? (
           <span
             className="flex items-center gap-1 font-mono text-[11px] tabular-nums"
             title={
               upstream
-                ? `${ahead} ahead / ${behind} behind ${upstream}`
-                : `${ahead} ahead / ${behind} behind`
+                ? t("git.branch.aheadBehindUpstream", { ahead, behind, upstream })
+                : t("git.branch.aheadBehind", { ahead, behind })
             }
           >
             {behind > 0 ? (
@@ -254,15 +258,18 @@ function BranchSection({
   branches,
   busy,
   disabled,
+  empty,
   label,
   onSwitch,
 }: {
   branches: GitBranchInfo[];
   busy: boolean;
   disabled?: boolean;
+  empty: string;
   label: string;
   onSwitch: (name: string) => Promise<void>;
 }) {
+  const t = useT();
   return (
     <section>
       <div className="border-b border-border bg-muted/60 px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
@@ -284,18 +291,22 @@ function BranchSection({
               <span className="block truncate font-medium">{branch.name}</span>
               {branch.upstream ? (
                 <span className="block truncate font-mono text-[11px] text-muted-foreground">
-                  tracks {branch.upstream}
+                  {t("git.branch.tracks", { upstream: branch.upstream })}
                 </span>
               ) : null}
             </span>
             <Badge variant={branch.current ? "success" : branch.remote ? "outline" : "secondary"}>
-              {branch.current ? "current" : branch.remote ? "remote" : "local"}
+              {branch.current
+                ? t("git.branch.tagCurrent")
+                : branch.remote
+                  ? t("git.branch.tagRemote")
+                  : t("git.branch.tagLocal")}
             </Badge>
           </button>
         ))
       ) : (
         <div className="border-b border-border px-3 py-3 text-sm text-muted-foreground">
-          No {label.toLowerCase()} branches.
+          {empty}
         </div>
       )}
     </section>

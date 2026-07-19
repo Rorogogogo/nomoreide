@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSettings } from "@/features/settings/settings-context";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import {
   TerminalViewport,
   type TerminalConnectionState,
@@ -35,6 +36,7 @@ const INITIAL_STATUS: TerminalViewportStatus = {
 
 /** Terminal page chrome around one reusable raw PTY viewport. */
 export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPaneProps) {
+  const t = useT();
   const { confirmedGlobal } = useSettings();
   const viewportRef = useRef<TerminalViewportHandle>(null);
   const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
@@ -95,23 +97,23 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
         </div>
         <div className="flex items-center gap-1">
           <Button
-            aria-label="Restart terminal"
+            aria-label={t("terminal.restart")}
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
             onClick={() => requestAction("restart")}
-            title="Restart terminal"
+            title={t("terminal.restart")}
             type="button"
           >
             <RotateCcw />
           </Button>
           <Button
-            aria-label="Stop terminal"
+            aria-label={t("terminal.stop")}
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
             onClick={() => requestAction("stop")}
-            title="Stop terminal"
+            title={t("terminal.stop")}
             type="button"
           >
             <Square />
@@ -130,14 +132,14 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
       </div>
       {pendingAction ? (
         <ConfirmDialog
-          confirmLabel={pendingAction === "restart" ? "Restart terminal" : "Stop terminal"}
-          message={`The running shell process will be terminated${pendingAction === "restart" ? " and a new shell will be started" : ""}.`}
+          confirmLabel={pendingAction === "restart" ? t("terminal.restart") : t("terminal.stop")}
+          message={pendingAction === "restart" ? t("terminal.confirmRestartBody") : t("terminal.confirmStopBody")}
           onCancel={() => setPendingAction(null)}
           onConfirm={() => {
             runAction(pendingAction);
             setPendingAction(null);
           }}
-          title={pendingAction === "restart" ? "Restart terminal?" : "Stop terminal?"}
+          title={pendingAction === "restart" ? t("terminal.confirmRestartTitle") : t("terminal.confirmStopTitle")}
           tone="danger"
         />
       ) : null}

@@ -29,13 +29,16 @@ const issueDetailSource = readFileSync(
   "src/web/client/src/features/github/issue-detail.tsx",
   "utf8",
 );
+// UI copy now lives in the i18n catalog (t("...")), so text the views render is
+// asserted against en.ts rather than the component source.
+const catalog = readFileSync("src/web/client/src/lib/i18n/en.ts", "utf8");
 
 describe("GitHub connection recovery UI", () => {
   test("view renders refresh and reconnect recovery paths", () => {
     expect(viewSource).toContain("GitHubConnectionRecovery");
-    expect(viewSource).toContain("Reconnect GitHub");
-    expect(viewSource).toContain("Refresh");
-    expect(viewSource).toContain("Use token instead");
+    expect(catalog).toContain("Reconnect GitHub");
+    expect(catalog).toContain("Refresh");
+    expect(catalog).toContain("Use token instead");
     expect(viewSource).toContain("auth_error");
     expect(viewSource).toContain("connection_error");
   });
@@ -64,11 +67,11 @@ describe("GitHub connection recovery UI", () => {
   test("PR detail presents a review cockpit with files, reviews, checks, and merge readiness", () => {
     expect(prDetailSource).toContain("PRReviewCockpit");
     expect(prDetailSource).toContain("getGitHubPRReviewCockpit");
-    expect(prDetailSource).toContain("Changed files");
-    expect(prDetailSource).toContain("Review state");
-    expect(prDetailSource).toContain("Checks");
-    expect(prDetailSource).toContain("Merge readiness");
-    expect(prDetailSource).toContain("Open failing check");
+    expect(catalog).toContain("Changed files");
+    expect(catalog).toContain("Review state");
+    expect(catalog).toContain("Checks");
+    expect(catalog).toContain("Merge readiness");
+    expect(catalog).toContain("Open failing check");
   });
 
   test("connected view uses the same shell and tab rail structure as Git Review", () => {
@@ -87,9 +90,9 @@ describe("GitHub connection recovery UI", () => {
     expect(viewSource).toContain('setTab("branches")');
     expect(viewSource).toContain("initialHead");
     expect(branchesSource).toContain("listGitHubBranches");
-    expect(branchesSource).toContain("Open PR");
-    expect(branchesSource).toContain("Default");
-    expect(branchesSource).toContain("Current");
+    expect(catalog).toContain("Open PR");
+    expect(catalog).toContain("Default");
+    expect(catalog).toContain("Current");
     expect(branchesSource).not.toContain("components/ui/badge");
   });
 
@@ -101,17 +104,17 @@ describe("GitHub connection recovery UI", () => {
     expect(viewSource).toContain("branch={actionsBranch ?? undefined}");
     expect(actionsSource).toContain("branch?: string");
     expect(actionsSource).toContain("useGitHubActions(branch)");
-    expect(actionsSource).toContain("Filtered to");
+    expect(catalog).toContain("Filtered to");
     expect(actionsSource).toContain("onClearBranch");
-    expect(branchesSource).toContain("View runs");
+    expect(catalog).toContain("View runs");
   });
 
   test("new PR flow uses a branch-to-PR assistant instead of the manual form", () => {
     expect(viewSource).toContain("BranchToPRAssistant");
     expect(viewSource).toContain("getGitHubPRTemplate");
-    expect(viewSource).toContain("Compare summary");
-    expect(viewSource).toContain("commits ahead");
-    expect(viewSource).toContain("changed files");
+    expect(catalog).toContain("Compare summary");
+    expect(catalog).toContain("commits ahead");
+    expect(catalog).toContain("changed files");
     expect(viewSource).toContain("setSelectedNumber(created.number)");
     expect(viewSource).not.toContain("function CreatePRForm");
   });

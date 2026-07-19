@@ -3,6 +3,7 @@ import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useRegisterRefresh } from "@/components/refresh-registry";
+import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
 import { AiAskInline } from "../agent/ai-ask-inline";
 import { AgentMark, AiSpark } from "../agent/ai-spark";
@@ -42,6 +43,7 @@ export function ActionsView({
     syncLatest,
     setSelectedRunId,
   } = useGitHubActions(branch);
+  const t = useT();
   // Header/poll refresh syncs in place (no pagination reset); the in-panel
   // button below still does an explicit full reload.
   useRegisterRefresh(syncLatest);
@@ -56,8 +58,11 @@ export function ActionsView({
     setAskingRunId(null);
     sendToAgent({
       prompt: buildFixRunPrompt(run, input),
-      source: { type: "github-run", label: `Run #${run.run_number}` },
-      label: `Run #${run.run_number}: ${input ?? "fix failing run"}`,
+      source: { type: "github-run", label: t("github.actions.runLabel", { number: run.run_number }) },
+      label: t("github.actions.runInputLabel", {
+        number: run.run_number,
+        input: input ?? t("github.actions.fixDefault"),
+      }),
     });
   }
 
@@ -65,17 +70,17 @@ export function ActionsView({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold">Workflow Runs</h2>
+          <h2 className="text-[13px] font-semibold">{t("github.actions.title")}</h2>
           {branch ? (
             <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="shrink-0">Filtered to</span>
+              <span className="shrink-0">{t("github.actions.filteredTo")}</span>
               <span className="min-w-0 truncate font-mono">{branch}</span>
               {onClearBranch ? (
                 <button
-                  aria-label="Clear branch filter"
+                  aria-label={t("github.actions.clearFilter")}
                   className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   onClick={onClearBranch}
-                  title="Clear branch filter"
+                  title={t("github.actions.clearFilter")}
                   type="button"
                 >
                   <X className="size-3" />
@@ -86,7 +91,7 @@ export function ActionsView({
         </div>
         <Button disabled={loading} onClick={() => void refresh()} size="sm" type="button" variant="outline">
           <RefreshCw className={`mr-1 size-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -94,9 +99,9 @@ export function ActionsView({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading && runs.length === 0 ? (
-          <div className="p-4 text-[12px] text-muted-foreground">Loading workflow runs…</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.loadingRuns")}</div>
         ) : runs.length === 0 ? (
-          <div className="p-4 text-[12px] text-muted-foreground">No workflow runs found.</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.noRuns")}</div>
         ) : (
           <div className="grid h-full min-h-0 grid-cols-[minmax(280px,380px)_minmax(0,1fr)] divide-x divide-border">
             <div className="min-h-0 overflow-auto">
@@ -128,7 +133,7 @@ export function ActionsView({
                     {isFailedRun(run) ? (
                       <AiSpark
                         className={`mr-2 shrink-0 ${askingRunId === run.id ? "opacity-100" : ""}`}
-                        label={`Fix failing run #${run.run_number} with AI`}
+                        label={t("github.actions.fixRunAi", { number: run.run_number })}
                         onAsk={() =>
                           setAskingRunId((current) => (current === run.id ? null : run.id))
                         }
@@ -140,7 +145,7 @@ export function ActionsView({
                       <AiAskInline
                         onCancel={() => setAskingRunId(null)}
                         onSubmit={(value) => askRun(run, value)}
-                        placeholder="What should the agent do? (fix it, explain the failure, find the broken step…)"
+                        placeholder={t("github.actions.askPlaceholder")}
                       />
                     </div>
                   ) : null}
@@ -208,8 +213,9 @@ function RunJobsDetail({
   error: string | null;
   onFix: (run: GitHubWorkflowRun) => void;
 }) {
+  const t = useT();
   if (!run) {
-    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Select a workflow run</div>;
+    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">{t("github.actions.selectRun")}</div>;
   }
 
   return (
@@ -226,21 +232,21 @@ function RunJobsDetail({
             className="shrink-0 gap-1"
             onClick={() => onFix(run)}
             size="sm"
-            title="Send this failing run to the agent to investigate and fix"
+            title={t("github.actions.fixTitle")}
             type="button"
             variant="outline"
           >
             <AgentMark className="size-3.5" />
-            Fix with AI
+            {t("github.actions.fixWithAi")}
           </Button>
         ) : null}
         <a
-          aria-label="Open run on GitHub"
+          aria-label={t("github.actions.openRun")}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           href={run.html_url}
           rel="noopener noreferrer"
           target="_blank"
-          title="Open run on GitHub"
+          title={t("github.actions.openRun")}
         >
           <ExternalLink className="size-3.5" />
         </a>
@@ -250,9 +256,9 @@ function RunJobsDetail({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading ? (
-          <div className="p-4 text-[12px] text-muted-foreground">Loading jobs…</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.loadingJobs")}</div>
         ) : jobs.length === 0 ? (
-          <div className="p-4 text-[12px] text-muted-foreground">No jobs found for this run.</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.noJobs")}</div>
         ) : (
           <ul className="divide-y divide-border">
             {jobs.map((job) => (
@@ -264,12 +270,12 @@ function RunJobsDetail({
                     {durationLabel(job.started_at, job.completed_at)}
                   </span>
                   <a
-                    aria-label={`Open ${job.name} job on GitHub`}
+                    aria-label={t("github.actions.openJobAria", { name: job.name })}
                     className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     href={job.html_url}
                     rel="noopener noreferrer"
                     target="_blank"
-                    title="Open job on GitHub"
+                    title={t("github.actions.openJob")}
                   >
                     <ExternalLink className="size-3.5" />
                   </a>
@@ -287,7 +293,7 @@ function RunJobsDetail({
                     ))}
                   </ol>
                 ) : (
-                  <p className="pl-6 text-[12px] text-muted-foreground">No step details available.</p>
+                  <p className="pl-6 text-[12px] text-muted-foreground">{t("github.actions.noSteps")}</p>
                 )}
               </li>
             ))}

@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDirectories, type DirectoryListing } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function FolderExplorer({
@@ -15,6 +16,7 @@ export function FolderExplorer({
   onSelect: (path: string) => void;
   selectedPath: string;
 }) {
+  const t = useT();
   const [browsePath, setBrowsePath] = useState(initialPath);
   const [pathDraft, setPathDraft] = useState(initialPath);
   const [listing, setListing] = useState<DirectoryListing | null>(null);
@@ -59,7 +61,7 @@ export function FolderExplorer({
       <div className="flex items-center gap-2 border-b border-border p-2">
         {canGoBack ? (
           <Button
-            aria-label="Open parent folder"
+            aria-label={t("git.folder.parentAria")}
             onClick={() => listing && setBrowsePath(listing.parent)}
             size="icon"
             type="button"
@@ -69,7 +71,7 @@ export function FolderExplorer({
           </Button>
         ) : null}
         <Input
-          aria-label="Folder path"
+          aria-label={t("git.folder.pathAria")}
           className="h-7 min-w-0 flex-1 font-mono text-xs"
           onChange={(event) => setPathDraft(event.target.value)}
           onKeyDown={(event) => {
@@ -92,7 +94,7 @@ export function FolderExplorer({
         ) : null}
         {!error && listing?.entries.length === 0 ? (
           <Alert variant="muted" className="m-1 text-center">
-            No folders here.
+            {t("git.folder.empty")}
           </Alert>
         ) : null}
         {listing?.entries.map((entry) => (

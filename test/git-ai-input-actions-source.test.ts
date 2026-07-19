@@ -14,10 +14,15 @@ const agentComposerSource = readFileSync(
   resolve(__dirname, "../src/web/client/src/features/agent/terminal/agent-terminal-composer.tsx"),
   "utf8",
 );
+// UI copy now lives in the i18n catalog (t("...")).
+const catalog = readFileSync(
+  resolve(__dirname, "../src/web/client/src/lib/i18n/en.ts"),
+  "utf8",
+);
 
 describe("Git file AI input actions", () => {
   test("keeps file AI actions in viewer controls instead of file rows", () => {
-    expect(gitReviewSource).toContain("Send selected file to AI input");
+    expect(catalog).toContain("Send selected file to AI input");
     expect(gitReviewSource).toContain("onSendToAi");
   });
 

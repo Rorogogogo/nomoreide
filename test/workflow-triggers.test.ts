@@ -8,6 +8,7 @@ import { LogStore } from "../src/core/log-store.js";
 import { TimelineStore } from "../src/core/timeline-store.js";
 import {
   WorkflowTriggerManager,
+  type CiFailureSnapshot,
   type WorkflowTrigger,
 } from "../src/core/workflow-triggers.js";
 
@@ -145,6 +146,86 @@ describe("WorkflowTriggerManager", () => {
     const [run] = manager.listPending();
     expect(manager.ackPending(run.id)).toBe(true);
     expect(manager.listPending()).toHaveLength(0);
+  });
+});
+
+describe("WorkflowTriggerManager — ci-failure source", () => {
+  let snapshot: CiFailureSnapshot | null;
+  let pollCount: number;
+  let ciManager: WorkflowTriggerManager;
+
+  beforeEach(() => {
+    snapshot = null;
+    pollCount = 0;
+    ciManager = new WorkflowTriggerManager({
+      configStore,
+      errorInbox,
+      timelineStore,
+      now: () => clock,
+      ciPollIntervalMs: 0, // no internal timer; tests drive pollCiOnce()
+      ciSource: async () => {
+        pollCount += 1;
+        return snapshot;
+      },
+    });
+    ciManager.start();
+  });
+
+  afterEach(() => {
+    ciManager.stop();
+  });
+
+  test("skips the CI fetch entirely when no ci-failure trigger is enabled", async () => {
+    await ciManager.pollCiOnce();
+    expect(pollCount).toBe(0);
+    expect(ciManager.listPending()).toHaveLength(0);
+  });
+
+  test("enqueues when the current branch CI is failing", async () => {
+    await configStore.saveWorkflowTrigger({
+      ...baseTrigger,
+      id: "ci",
+      event: "ci-failure",
+    });
+    snapshot = { sha: "abc123", branch: "main", failingChecks: ["build", "lint"] };
+
+    await ciManager.pollCiOnce();
+
+    const pending = ciManager.listPending();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({ event: "ci-failure", triggerId: "ci" });
+    expect(pending[0]!.summary).toContain("build, lint");
+  });
+
+  test("does not enqueue when CI is green (source returns null)", async () => {
+    await configStore.saveWorkflowTrigger({
+      ...baseTrigger,
+      id: "ci",
+      event: "ci-failure",
+    });
+    snapshot = null;
+
+    await ciManager.pollCiOnce();
+    expect(ciManager.listPending()).toHaveLength(0);
+  });
+
+  test("fires once per failing commit, even across many polls", async () => {
+    await configStore.saveWorkflowTrigger({
+      ...baseTrigger,
+      id: "ci",
+      event: "ci-failure",
+    });
+    snapshot = { sha: "abc123", branch: "main", failingChecks: ["build"] };
+
+    await ciManager.pollCiOnce();
+    clock += 5 * 60_000; // well past the dedupe window
+    await ciManager.pollCiOnce();
+    expect(ciManager.listPending()).toHaveLength(1);
+
+    // A new failing commit is a fresh signature → fires again.
+    snapshot = { sha: "def456", branch: "main", failingChecks: ["build"] };
+    await ciManager.pollCiOnce();
+    expect(ciManager.listPending()).toHaveLength(2);
   });
 });
 

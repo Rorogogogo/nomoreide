@@ -11,17 +11,13 @@ export interface LanguageOption {
   nativeLabel: string;
   /** Name in English, for the secondary line. */
   englishLabel: string;
-  /**
-   * Whether the UI is actually translated into this language yet. English is
-   * the only fully-translated locale today; others persist the preference so
-   * it's ready when the string catalogs land, but the UI stays English.
-   */
+  /** Whether the UI is actually translated into this language yet. */
   available: boolean;
 }
 
 export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { value: "en", nativeLabel: "English", englishLabel: "English", available: true },
-  { value: "zh", nativeLabel: "简体中文", englishLabel: "Chinese (Simplified)", available: false },
+  { value: "zh", nativeLabel: "简体中文", englishLabel: "Chinese (Simplified)", available: true },
 ];
 
 function readStoredLanguage(): Language {
@@ -50,6 +46,7 @@ export function setLanguage(next: Language) {
   } catch {
     // Storage unavailable — keep in-memory state.
   }
+  document.documentElement.lang = next;
   for (const listener of listeners) listener();
 }
 

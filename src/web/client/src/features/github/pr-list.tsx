@@ -1,5 +1,6 @@
 import { GitMerge, GitPullRequest, GitPullRequestClosed } from "lucide-react";
 import type { GitHubPR } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { LoadMoreButton } from "./load-more-button";
 
 export function PrList({
@@ -21,14 +22,15 @@ export function PrList({
   onSelect: (number: number) => void;
   onLoadMore: () => void;
 }) {
+  const t = useT();
   if (loading && prs.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">Loading pull requests…</div>;
+    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.prs.loading")}</div>;
   }
   if (error) {
     return <div className="p-4 text-[12px] text-red-500">{error}</div>;
   }
   if (prs.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">No pull requests found.</div>;
+    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.prs.empty")}</div>;
   }
 
   return (
@@ -54,7 +56,7 @@ export function PrList({
             </span>
             {pr.draft ? (
               <span className="shrink-0 rounded border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-                Draft
+                {t("github.prs.draft")}
               </span>
             ) : null}
           </button>

@@ -3,6 +3,7 @@ import { Check, ChevronDown, Database, Pencil, Plus, Trash2 } from "lucide-react
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import type { DatabaseConnection } from "@/lib/api";
 
 /**
@@ -27,6 +28,7 @@ export function ConnectionSelector({
   onEdit: (connection: DatabaseConnection) => void;
   onRemove: (name: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const current = connections.find((c) => c.name === selected);
@@ -56,7 +58,7 @@ export function ConnectionSelector({
         variant="outline"
       >
         <Database className="text-muted-foreground" />
-        <span className="truncate">{current?.name ?? "Select connection"}</span>
+        <span className="truncate">{current?.name ?? t("database.selectConnection")}</span>
         {current ? (
           <Badge variant="outline" size="small">
             {current.engine}
@@ -69,7 +71,7 @@ export function ConnectionSelector({
         <div className="absolute right-0 top-10 z-50 w-[min(420px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card shadow-lg">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Database className="size-3.5 text-muted-foreground" />
-            <div className="text-xs font-semibold">Connections</div>
+            <div className="text-xs font-semibold">{t("database.connections")}</div>
             <Badge className="ml-auto" variant="outline" size="small">
               {connections.length}
             </Badge>
@@ -116,25 +118,25 @@ export function ConnectionSelector({
                         <span className="size-3.5" />
                       )}
                       <Button
-                        aria-label={`Edit ${connection.name}`}
+                        aria-label={t("database.editConn", { name: connection.name })}
                         className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={() => {
                           onEdit(connection);
                           setOpen(false);
                         }}
                         size="icon"
-                        title={`Edit ${connection.name}`}
+                        title={t("database.editConn", { name: connection.name })}
                         type="button"
                         variant="ghost"
                       >
                         <Pencil className="size-3.5" />
                       </Button>
                       <Button
-                        aria-label={`Remove ${connection.name}`}
+                        aria-label={t("database.removeConn", { name: connection.name })}
                         className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={() => onRemove(connection.name)}
                         size="icon"
-                        title={`Remove ${connection.name}`}
+                        title={t("database.removeConn", { name: connection.name })}
                         type="button"
                         variant="ghost"
                       >
@@ -146,7 +148,7 @@ export function ConnectionSelector({
               </div>
             ) : (
               <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                No saved connections yet.
+                {t("database.noSavedConnections")}
               </div>
             )}
           </div>
@@ -162,7 +164,7 @@ export function ConnectionSelector({
               type="button"
             >
               <Plus className="size-3" />
-              Add connection
+              {t("database.addConnection")}
             </Button>
           </div>
         </div>

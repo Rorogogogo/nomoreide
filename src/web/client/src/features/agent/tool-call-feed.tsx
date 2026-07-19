@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ToolCallRecord } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const MAX_RECORDS = 100;
@@ -17,6 +18,7 @@ export function ToolCallFeed() {
   const [records, setRecords] = useState<ToolCallRecord[]>([]);
   const [connected, setConnected] = useState(false);
   const seenIds = useRef<Set<number>>(new Set());
+  const t = useT();
 
   useEffect(() => {
     const source = new EventSource("/api/agent/tool-calls/stream");
@@ -49,7 +51,7 @@ export function ToolCallFeed() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Activity className="size-4 text-muted-foreground" />
-            <CardTitle>Live MCP Tool Calls</CardTitle>
+            <CardTitle>{t("agent.feed.title")}</CardTitle>
             <Badge variant="outline" size="small">
               {records.length}
             </Badge>
@@ -66,11 +68,11 @@ export function ToolCallFeed() {
               />
             }
           >
-            {connected ? "live" : "reconnecting…"}
+            {connected ? t("agent.feed.live") : t("agent.feed.reconnecting")}
           </Badge>
         </div>
         <CardDescription className="text-xs">
-          Streamed from this NoMoreIDE MCP server. Newest at the top.
+          {t("agent.feed.desc")}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
@@ -111,7 +113,7 @@ export function ToolCallFeed() {
           </ul>
         ) : (
           <p className="px-3 py-4 text-xs text-muted-foreground">
-            No tool calls yet. Invoke a NoMoreIDE MCP tool from your agent and it will appear here.
+            {t("agent.feed.empty")}
           </p>
         )}
       </CardContent>

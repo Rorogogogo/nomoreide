@@ -6,8 +6,10 @@ import {
   headerActionLabelClassName,
 } from "@/components/header-action";
 import { useResolvedTheme, useTheme, type Theme } from "@/lib/theme";
+import { useT } from "@/lib/i18n";
 
 export function ThemeToggle() {
+  const t = useT();
   const [, setTheme] = useTheme();
   const resolvedTheme = useResolvedTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -58,14 +60,14 @@ export function ThemeToggle() {
       ref={buttonRef}
       type="button"
       onClick={toggle}
-      title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-      aria-label="Toggle theme"
+      title={resolvedTheme === "dark" ? t("action.toLight") : t("action.toDark")}
+      aria-label={t("action.theme")}
       className={headerActionClassName()}
     >
       <span className={headerActionIconClassName()}>
         {resolvedTheme === "dark" ? <Sun /> : <Moon />}
       </span>
-      <span className={headerActionLabelClassName()}>Theme</span>
+      <span className={headerActionLabelClassName()}>{t("action.theme")}</span>
     </button>
   );
 }

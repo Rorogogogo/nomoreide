@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, GitBranch, Minus, Plus } from "lucide-react"
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import type { GitFileStatus } from "@/lib/api";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
 import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
 import { BranchNameBadge } from "./branch-name-badge";
@@ -33,6 +35,7 @@ export function ChangedFilesList({
   /** When provided, rows and section headers expose stage/unstage controls. */
   staging?: StagingHandlers;
 }) {
+  const t = useT();
   const groups = useMemo(() => groupFiles(files).filter((group) => group.files.length), [files]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<ChangeGroupId, boolean>>({
     staged: false,
@@ -45,7 +48,7 @@ export function ChangedFilesList({
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-2.5 py-1.5">
         <span className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold tracking-tight">
           <GitBranch className="size-3.5" />
-          <span className="truncate">Changes</span>
+          <span className="truncate">{t("git.tab.changes")}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {branch ? <BranchNameBadge branch={branch} /> : null}
@@ -73,7 +76,7 @@ export function ChangedFilesList({
           ))
         ) : (
           <Alert variant="muted" className="m-3 text-center">
-            {error ?? "No changed files."}
+            {error ?? t("git.noChangedFiles")}
           </Alert>
         )}
       </div>
@@ -98,13 +101,14 @@ function ChangeSection({
   selectedFile: string;
   staging?: StagingHandlers;
 }) {
+  const t = useT();
   const Chevron = collapsed ? ChevronRight : ChevronDown;
   const groupPaths = group.files.map((file) => file.path);
   // Staged files can be unstaged; everything else can be staged.
   const bulkAction = staging
     ? group.id === "staged"
-      ? { label: "Unstage all", run: () => staging.onUnstage(groupPaths) }
-      : { label: "Stage all", run: () => staging.onStage(groupPaths) }
+      ? { label: t("git.stageArea.unstageAll"), run: () => staging.onUnstage(groupPaths) }
+      : { label: t("git.stageArea.stageAll"), run: () => staging.onStage(groupPaths) }
     : null;
 
   return (
@@ -116,7 +120,7 @@ function ChangeSection({
           type="button"
         >
           <Chevron className="size-3.5" />
-          <span className="truncate">{group.label}</span>
+          <span className="truncate">{t(group.labelKey)}</span>
         </button>
         {bulkAction ? (
           <button
@@ -166,6 +170,7 @@ function FileButton({
   root?: string;
   staging?: StagingHandlers;
 }) {
+  const t = useT();
   const filename = file.path.split("/").pop() || file.path;
   const dir = file.path.split("/").slice(0, -1).join("/");
   const dragProps = root ? agentPathDragProps(absolutePath(root, file.path)) : {};
@@ -178,7 +183,7 @@ function FileButton({
       )}
     >
       <button
-        aria-label={`Open changed file ${file.path}`}
+        aria-label={t("git.file.openAria", { path: file.path })}
         className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
         onClick={onClick}
         type="button"
@@ -201,11 +206,15 @@ function FileButton({
       </button>
       {staging ? (
         <button
-          aria-label={`${staged ? "Unstage" : "Stage"} ${file.path}`}
+          aria-label={
+            staged
+              ? t("git.stageArea.unstageFile", { path: file.path })
+              : t("git.stageArea.stageFile", { path: file.path })
+          }
           className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-colors hover:bg-background hover:text-foreground focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
           disabled={staging.busy}
           onClick={() => (staged ? staging.onUnstage([file.path]) : staging.onStage([file.path]))}
-          title={staged ? "Unstage" : "Stage"}
+          title={staged ? t("git.stageArea.unstage") : t("git.stageArea.stage")}
           type="button"
         >
           {staged ? <Minus className="size-3.5" /> : <Plus className="size-3.5" />}
@@ -235,7 +244,7 @@ type ChangeGroupId = "staged" | "unstaged" | "untracked";
 
 interface ChangeGroup {
   id: ChangeGroupId;
-  label: string;
+  labelKey: TranslationKey;
   files: GitFileStatus[];
 }
 
@@ -243,7 +252,7 @@ function groupFiles(files: GitFileStatus[]): ChangeGroup[] {
   return [
     {
       id: "unstaged",
-      label: "Changes",
+      labelKey: "git.group.changes",
       files: files.filter(
         (file) =>
           !(file.index === "?" && file.workingTree === "?") && file.workingTree.trim(),
@@ -251,7 +260,7 @@ function groupFiles(files: GitFileStatus[]): ChangeGroup[] {
     },
     {
       id: "staged",
-      label: "Staged Changes",
+      labelKey: "git.group.staged",
       files: files.filter(
         (file) =>
           !(file.index === "?" && file.workingTree === "?") &&
@@ -261,7 +270,7 @@ function groupFiles(files: GitFileStatus[]): ChangeGroup[] {
     },
     {
       id: "untracked",
-      label: "Untracked Files",
+      labelKey: "git.group.untracked",
       files: files.filter((file) => file.index === "?" && file.workingTree === "?"),
     },
   ];

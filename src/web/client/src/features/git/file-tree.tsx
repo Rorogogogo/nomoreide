@@ -10,6 +10,7 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import type { GitFileStatus } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
 import { BranchNameBadge } from "./branch-name-badge";
@@ -78,9 +79,9 @@ export function FileTree({
   selectedFile,
   onSelectFile,
   branch,
-  emptyMessage = "No tracked files.",
+  emptyMessage,
   root,
-  title = "Files",
+  title,
 }: {
   defaultExpandAll?: boolean;
   paths: string[];
@@ -93,6 +94,9 @@ export function FileTree({
   root?: string;
   title?: string;
 }) {
+  const t = useT();
+  const resolvedTitle = title ?? t("git.tree.filesDefault");
+  const resolvedEmpty = emptyMessage ?? t("git.tree.emptyDefault");
   const tree = useMemo(() => buildTree(paths), [paths]);
   const initialExpanded = useMemo(
     () => expandedDirectoryMap(tree, defaultExpandAll),
@@ -131,25 +135,25 @@ export function FileTree({
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-2.5 py-1.5">
         <span className="flex min-w-0 items-center gap-1.5 text-[12px] font-semibold tracking-tight">
           <Folder className="size-3.5" />
-          <span className="truncate">{title}</span>
+          <span className="truncate">{resolvedTitle}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {directoryCount > 0 ? (
             <span className="flex items-center gap-0.5">
               <button
-                aria-label="Expand all folders"
+                aria-label={t("git.tree.expandAll")}
                 className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 onClick={expandAllFolders}
-                title="Expand all folders"
+                title={t("git.tree.expandAll")}
                 type="button"
               >
                 <ListTree className="size-3.5" />
               </button>
               <button
-                aria-label="Collapse all folders"
+                aria-label={t("git.tree.collapseAll")}
                 className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 onClick={collapseAllFolders}
-                title="Collapse all folders"
+                title={t("git.tree.collapseAll")}
                 type="button"
               >
                 <ListCollapse className="size-3.5" />
@@ -163,7 +167,7 @@ export function FileTree({
       <div className="min-h-0 flex-1 overflow-auto py-1">
         {tree.children.length === 0 ? (
           <Alert variant="muted" className="m-3 text-center">
-            {emptyMessage}
+            {resolvedEmpty}
           </Alert>
         ) : (
           tree.children.map((node) => (

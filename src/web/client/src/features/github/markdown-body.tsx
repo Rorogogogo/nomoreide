@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MarkdownPreview } from "../git/visualizers/markdown-preview";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,11 +10,13 @@ import { cn } from "@/lib/utils";
  */
 export function MarkdownBody({
   body,
-  title = "Description",
+  title,
 }: {
   body: string;
   title?: string;
 }) {
+  const t = useT();
+  const resolvedTitle = title ?? t("github.md.description");
   const [view, setView] = useState<"rendered" | "raw">("rendered");
   const toggleClass = (active: boolean) =>
     cn(
@@ -24,13 +27,13 @@ export function MarkdownBody({
   return (
     <section className="overflow-hidden rounded-md border border-border bg-muted/25">
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-        <span className="text-[11px] font-medium text-muted-foreground">{title}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{resolvedTitle}</span>
         <div className="flex items-center gap-0.5 rounded-md bg-background/60 p-0.5">
           <button className={toggleClass(view === "rendered")} onClick={() => setView("rendered")} type="button">
-            Rendered
+            {t("github.md.rendered")}
           </button>
           <button className={toggleClass(view === "raw")} onClick={() => setView("raw")} type="button">
-            Raw
+            {t("github.md.raw")}
           </button>
         </div>
       </div>

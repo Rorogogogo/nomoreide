@@ -9,6 +9,7 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 const NODE_W = 150;
 const NODE_H = 40;
@@ -33,6 +34,7 @@ export function DependencyGraph({
   hasDependencies: boolean;
   onSelectService: (name: string) => void;
 }) {
+  const t = useT();
   const [graph, setGraph] = useState<ServiceGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,13 +55,13 @@ export function DependencyGraph({
   const layout = useMemo(() => (graph ? layoutGraph(graph.nodes) : null), [graph]);
 
   if (error) {
-    return <Alert variant="destructive">Couldn't load the dependency graph: {error}</Alert>;
+    return <Alert variant="destructive">{t("services.graph.loadError", { error })}</Alert>;
   }
   if (!graph || !layout) {
     return (
       <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        Loading graph…
+        {t("services.graph.loading")}
       </div>
     );
   }
@@ -68,11 +70,11 @@ export function DependencyGraph({
     return (
       <div className="grid gap-3">
         <Alert variant="muted">
-          <div className="font-medium">No dependencies declared yet.</div>
+          <div className="font-medium">{t("services.graph.noDeps")}</div>
           <div className="mt-1 text-xs">
-            Edit a service and pick the services it should wait for under{" "}
-            <span className="font-medium">Dependencies</span>. Groups then start in
-            dependency order, waiting for each service's port before the next.
+            {t("services.graph.noDepsHint1")}{" "}
+            <span className="font-medium">{t("services.graph.dependencies")}</span>
+            {t("services.graph.noDepsHint2")}
           </div>
         </Alert>
       </div>
@@ -87,11 +89,10 @@ export function DependencyGraph({
         <Alert variant="destructive">
           <div className="flex items-center gap-1.5 font-medium">
             <AlertTriangle className="size-4" />
-            Dependency cycle detected
+            {t("services.graph.cycleDetected")}
           </div>
           <div className="mt-1 text-xs">
-            {graph.cycles.map((cycle) => cycle.join(" → ")).join("; ")}. Group start
-            will refuse to run until this is resolved.
+            {graph.cycles.map((cycle) => cycle.join(" → ")).join("; ")}. {t("services.graph.cycleHint")}
           </div>
         </Alert>
       ) : null}
@@ -100,8 +101,13 @@ export function DependencyGraph({
           <div className="text-xs">
             {missing.map((node) => (
               <div key={node.name}>
-                <span className="font-medium">{node.name}</span> depends on unknown
-                service{node.missing.length > 1 ? "s" : ""}: {node.missing.join(", ")}
+                <span className="font-medium">{node.name}</span>{" "}
+                {t(
+                  node.missing.length > 1
+                    ? "services.graph.dependsUnknownMany"
+                    : "services.graph.dependsUnknownOne",
+                  { list: node.missing.join(", ") },
+                )}
               </div>
             ))}
           </div>
@@ -110,7 +116,7 @@ export function DependencyGraph({
 
       <div className="overflow-auto rounded-md border border-border bg-muted/20 p-2">
         <svg
-          aria-label="Service dependency graph"
+          aria-label={t("services.graph.aria")}
           height={layout.height}
           role="img"
           width={layout.width}
@@ -128,7 +134,7 @@ export function DependencyGraph({
             const color = nodeColor(status?.state, health[node.name]?.status);
             return (
               <g
-                aria-label={`Select ${node.name}`}
+                aria-label={t("services.graph.selectAria", { name: node.name })}
                 className="cursor-pointer"
                 key={node.name}
                 onClick={() => onSelectService(node.name)}
@@ -157,7 +163,7 @@ export function DependencyGraph({
 
       {graph.order.length > 0 ? (
         <div className="text-[11px] text-muted-foreground">
-          <span className="font-medium uppercase tracking-wide">Start order:</span>{" "}
+          <span className="font-medium uppercase tracking-wide">{t("services.graph.startOrder")}</span>{" "}
           {graph.order.join(" → ")}
         </div>
       ) : null}

@@ -4,6 +4,7 @@ import { createTerminalSession } from "@/lib/api";
 import { TerminalPane } from "@/features/terminal/terminal-pane";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { LogsOverlay } from "./logs-tab";
 
 /**
@@ -23,6 +24,7 @@ export function TerminalTab({
   serviceName: string;
   active: boolean;
 }) {
+  const t = useT();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -60,11 +62,11 @@ export function TerminalTab({
 
   const expandButton = (
     <Button
-      aria-label={fullscreen ? "Exit fullscreen terminal" : "Expand terminal"}
+      aria-label={fullscreen ? t("services.term.exitFs") : t("services.term.expand")}
       className="text-white/60 hover:bg-white/10 hover:text-white"
       onClick={() => setFullscreen((value) => !value)}
       size="icon-sm"
-      title={fullscreen ? "Exit fullscreen" : "Expand"}
+      title={fullscreen ? t("services.fsExit") : t("services.fsExpand")}
       type="button"
       variant="ghost"
     >
@@ -74,19 +76,19 @@ export function TerminalTab({
 
   const body = error ? (
     <div className="p-3 font-mono text-[11px] text-destructive">
-      Could not open terminal: {error}
+      {t("services.term.openError", { error })}
     </div>
   ) : sessionId ? (
     <TerminalPane active={active} sessionId={sessionId} toolbarExtra={expandButton} />
   ) : (
     <div className="p-3 font-mono text-[11px] text-muted-foreground">
-      Opening terminal…
+      {t("services.term.opening")}
     </div>
   );
 
   if (fullscreen && active) {
     return (
-      <LogsOverlay onClose={() => setFullscreen(false)} title={`Terminal — ${serviceName}`}>
+      <LogsOverlay onClose={() => setFullscreen(false)} title={t("services.termTitle", { name: serviceName })}>
         {body}
       </LogsOverlay>
     );

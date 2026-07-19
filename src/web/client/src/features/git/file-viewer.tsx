@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { getGitFile, type GitFileContent, updateGitFile } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { MarkdownPreview } from "./visualizers/markdown-preview";
@@ -142,6 +143,7 @@ export function FileViewer({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { success: showSuccess, error: showError } = useToasts();
+  const t = useT();
 
   const visualKind = useMemo(() => visualKindFor(path), [path]);
   const [mode, setMode] = useState<ViewMode>("preview");
@@ -190,7 +192,7 @@ export function FileViewer({
       const nextFile = { ...file, content: draft, size: new TextEncoder().encode(draft).length };
       setFile(nextFile);
       setEditing(false);
-      showSuccess(`Saved ${path}.`);
+      showSuccess(t("git.fileViewer.savedToast", { path }));
       onFileSaved?.(path);
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
@@ -208,7 +210,7 @@ export function FileViewer({
     return (
       <div className="p-4">
         <Alert variant="muted" className="border-dashed p-12 text-center">
-          Select a file to view its contents.
+          {t("git.fileViewer.selectFile")}
         </Alert>
       </div>
     );
@@ -220,11 +222,11 @@ export function FileViewer({
         <div className="min-w-0">
           <h2 className="truncate text-[13px] font-semibold tracking-tight">{path}</h2>
           <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-            <span>Read-only view of tracked file.</span>
+            <span>{t("git.fileViewer.readOnly")}</span>
             {file?.truncated ? (
-              <span className="text-amber-700">Truncated — file exceeds 1MB.</span>
+              <span className="text-amber-700">{t("git.fileViewer.truncated")}</span>
             ) : null}
-            {file?.binary ? <span className="text-amber-700">Binary file.</span> : null}
+            {file?.binary ? <span className="text-amber-700">{t("git.fileViewer.binary")}</span> : null}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -242,7 +244,7 @@ export function FileViewer({
                 )}
               >
                 <Eye className="size-3.5" />
-                Preview
+                {t("git.fileViewer.preview")}
               </button>
               <button
                 type="button"
@@ -256,23 +258,23 @@ export function FileViewer({
                 )}
               >
                 <Code2 className="size-3.5" />
-                Source
+                {t("git.fileViewer.source")}
               </button>
             </div>
           ) : null}
           {isModified ? (
             <Button onClick={onViewDiff} size="sm" type="button" variant="outline">
-              View diff
+              {t("git.fileViewer.viewDiff")}
             </Button>
           ) : null}
           {onSendToAi ? (
             <Button
-              aria-label="Send file to AI input"
+              aria-label={t("git.fileViewer.sendToAi")}
               className="size-8"
               disabled={!path}
               onClick={onSendToAi}
               size="icon"
-              title="Send file path to AI input"
+              title={t("git.fileViewer.sendPathToAi")}
               type="button"
               variant="outline"
             >
@@ -288,7 +290,7 @@ export function FileViewer({
                 type="button"
               >
                 <Save />
-                Apply
+                {t("git.fileViewer.apply")}
               </Button>
               <Button
                 disabled={saving}
@@ -298,7 +300,7 @@ export function FileViewer({
                 variant="outline"
               >
                 <X />
-                Cancel
+                {t("common.cancel")}
               </Button>
             </>
           ) : canEdit ? (
@@ -312,7 +314,7 @@ export function FileViewer({
               variant="outline"
             >
               <Pencil />
-              Edit
+              {t("common.edit")}
             </Button>
           ) : null}
         </div>
@@ -323,17 +325,17 @@ export function FileViewer({
             <Alert variant="destructive">{error}</Alert>
           </div>
         ) : loading ? (
-          <div className="p-4 text-[12px] text-muted-foreground">Loading…</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("common.loading")}</div>
         ) : file?.binary ? (
           <div className="p-4 text-[12px] text-muted-foreground">
-            Cannot display binary content.
+            {t("git.fileViewer.cannotBinary")}
           </div>
         ) : file ? (
           editing ? (
             <Suspense
               fallback={
                 <div className="p-4 text-[12px] text-muted-foreground">
-                  Loading editor…
+                  {t("git.fileViewer.loadingEditor")}
                 </div>
               }
             >

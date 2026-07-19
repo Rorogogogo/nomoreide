@@ -25,6 +25,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ChangedFilesList, type StagingHandlers } from "./changed-files-list";
 import { CommitComposer } from "./commit-composer";
@@ -53,6 +54,7 @@ const ADD_TILE_WIDTH = 176 + COLUMN_GAP;
  * {@link DiffDrawer} — the board itself stays an at-a-glance summary.
  */
 export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }) {
+  const t = useT();
   const [repos, setRepos] = useState<GitRepoOverview[] | null>(null);
   const [board, setBoardNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
     async (rawPath: string): Promise<string | null> => {
       const path = rawPath.trim();
       if (!path.startsWith("/")) {
-        return "Please add an absolute path (it must start with /).";
+        return t("git.board.absolutePathError");
       }
       try {
         const name = pathName(path);
@@ -140,7 +142,7 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
         return caught instanceof Error ? caught.message : String(caught);
       }
     },
-    [],
+    [t],
   );
 
   const reposByName = new Map((repos ?? []).map((repo) => [repo.name, repo]));
@@ -179,7 +181,7 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/95 px-3 py-1.5">
         <span className="flex items-center gap-1.5 text-[12px] font-semibold tracking-tight">
           <FolderGit2 className="size-3.5" />
-          Repositories
+          {t("git.board.repositories")}
           {repos ? (
             <Badge variant="secondary" className="ml-1">
               {pinned.length}
@@ -188,12 +190,12 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
           ) : null}
           {hiddenCount > 0 ? (
             <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-              +{hiddenCount} hidden — widen the window or remove one
+              {t("git.board.hidden", { count: hiddenCount })}
             </span>
           ) : null}
         </span>
         <Button
-          aria-label="Refresh repositories"
+          aria-label={t("git.board.refreshAria")}
           disabled={loading}
           onClick={refresh}
           size="sm"
@@ -201,7 +203,7 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
           variant="outline"
         >
           <RefreshCw className={loading ? "animate-spin" : undefined} />
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -212,7 +214,7 @@ export function MultiRepoBoard({ currentRepoPath }: { currentRepoPath?: string }
           </Alert>
         ) : repos && repos.length === 0 ? (
           <Alert variant="muted" className="m-3 text-center">
-            No Git projects registered. Add one with the project picker in the header.
+            {t("git.board.emptyRegistered")}
           </Alert>
         ) : (
           <div className="flex h-full min-h-0 gap-2 p-2" ref={rowRef}>
@@ -269,6 +271,7 @@ function RepoColumn({
   onDragStart: () => void;
   onDropColumn: () => void;
 }) {
+  const t = useT();
   const [dragOver, setDragOver] = useState(false);
   const [stagingBusy, setStagingBusy] = useState(false);
   const [commitOpen, setCommitOpen] = useState(false);
@@ -334,33 +337,33 @@ function RepoColumn({
           {isCurrent ? (
             <span
               className="flex shrink-0 items-center gap-0.5 rounded bg-primary px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-primary-foreground"
-              title="The repository currently selected across NoMoreIDE"
+              title={t("git.board.currentTitle")}
             >
               <Check className="size-2.5" />
-              Current
+              {t("git.board.current")}
             </span>
           ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-1">
           <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
             {repo.ahead ? (
-              <span className="flex items-center" title={`${repo.ahead} ahead`}>
+              <span className="flex items-center" title={t("git.board.aheadTitle", { count: repo.ahead })}>
                 <ArrowUp className="size-3" />
                 {repo.ahead}
               </span>
             ) : null}
             {repo.behind ? (
-              <span className="flex items-center" title={`${repo.behind} behind`}>
+              <span className="flex items-center" title={t("git.board.behindTitle", { count: repo.behind })}>
                 <ArrowDown className="size-3" />
                 {repo.behind}
               </span>
             ) : null}
           </span>
           <button
-            aria-label={`Remove ${repo.name} from board`}
+            aria-label={t("git.board.removeAria", { name: repo.name })}
             className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
             onClick={onRemove}
-            title="Remove from board (stays registered)"
+            title={t("git.board.removeTitle")}
             type="button"
           >
             <X className="size-3.5" />
@@ -387,10 +390,10 @@ function RepoColumn({
           type="button"
         >
           <CommitChevron className="size-3.5 shrink-0" />
-          <span className="flex-1">Commit</span>
+          <span className="flex-1">{t("git.commit.title")}</span>
           {stagedCount ? (
             <Badge size="small" variant="secondary">
-              {stagedCount} staged
+              {t("git.commit.stagedCount", { count: stagedCount })}
             </Badge>
           ) : null}
         </button>
@@ -417,6 +420,7 @@ function AddRepoTile({
   /** Register a new repo by absolute path. Resolves to an error message, or null on success. */
   onRegister: (path: string) => Promise<string | null>;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [path, setPath] = useState("");
@@ -479,7 +483,7 @@ function AddRepoTile({
         type="button"
       >
         <Plus className="size-5" />
-        <span className="text-[12px] font-medium">Add repository</span>
+        <span className="text-[12px] font-medium">{t("git.board.addRepo")}</span>
       </button>
       {open && rect
         ? createPortal(
@@ -494,7 +498,7 @@ function AddRepoTile({
               {unpinned.length ? (
                 <div className="border-b border-border">
                   <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Pin a registered repo
+                    {t("git.board.pinRegistered")}
                   </div>
                   <div className="max-h-52 overflow-auto pb-1">
                     {unpinned.map((repo) => (
@@ -524,11 +528,11 @@ function AddRepoTile({
 
               <div className="p-2.5">
                 <div className="pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Add a new repository
+                  {t("git.board.addNew")}
                 </div>
                 <form className="flex gap-1.5" onSubmit={submitPath}>
                   <Input
-                    aria-label="Repository absolute path"
+                    aria-label={t("git.board.absPathAria")}
                     className="h-7 flex-1 px-2 font-mono text-[11px]"
                     onChange={(event) => {
                       setPath(event.target.value);
@@ -543,7 +547,7 @@ function AddRepoTile({
                     size="sm"
                     type="submit"
                   >
-                    Add
+                    {t("common.add")}
                   </Button>
                 </form>
                 <Button
@@ -558,7 +562,7 @@ function AddRepoTile({
                   variant="outline"
                 >
                   <FolderPlus className="size-3" />
-                  Browse folders…
+                  {t("git.board.browseFolders")}
                 </Button>
                 {error ? (
                   <div className="mt-1.5 text-[10px] text-destructive">{error}</div>
@@ -570,11 +574,11 @@ function AddRepoTile({
         : null}
       {browsing ? (
         <FolderPickerDialog
-          confirmLabel="Add repository"
+          confirmLabel={t("git.board.addRepo")}
           errorMessage={error}
           initialPath={draftPath || "/"}
           selectedPath={draftPath}
-          title="Add Repository"
+          title={t("git.board.addRepoTitle")}
           onCancel={() => setBrowsing(false)}
           onSelect={setDraftPath}
           onUse={async () => {

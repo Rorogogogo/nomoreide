@@ -56,6 +56,6 @@ describe("HooksCard", () => {
     );
 
     expect(markup).toContain("No Codex hooks configured.");
-    expect(markup).toContain("Claude Code has 19 hooks");
+    expect(markup).toContain("Claude Code has 19 hook(s)");
   });
 });

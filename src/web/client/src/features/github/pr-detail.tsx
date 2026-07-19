@@ -15,6 +15,8 @@ import { buildPrAskPrompt, buildPrFileAskPrompt } from "../agent/prompts";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loading, Spinner } from "@/components/ui/loading";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
 
 export function PrDetail({
@@ -30,6 +32,7 @@ export function PrDetail({
   diffError: string | null;
   onMerged?: () => void;
 }) {
+  const t = useT();
   const [tab, setTab] = useState<"cockpit" | "diff">("cockpit");
   const [cockpit, setCockpit] = useState<GitHubPRReviewCockpit | null>(null);
   const [cockpitLoading, setCockpitLoading] = useState(false);
@@ -98,7 +101,7 @@ export function PrDetail({
   }, [pr]);
 
   if (!pr) {
-    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Select a pull request</div>;
+    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">{t("github.pr.selectPrompt")}</div>;
   }
 
   const canMerge = pr.state === "open" && !pr.draft;
@@ -130,12 +133,12 @@ export function PrDetail({
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{pr.title}</span>
         <AiSpark
           className={cn("shrink-0", asking && "opacity-100")}
-          label={`Ask AI about PR #${pr.number}`}
+          label={t("github.pr.askLabel", { number: pr.number })}
           onAsk={() => setAsking((open) => !open)}
         />
         <div className="flex shrink-0 items-center gap-1">
-          <button className={tabClass(tab === "cockpit")} onClick={() => setTab("cockpit")} type="button">Review</button>
-          <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">Diff</button>
+          <button className={tabClass(tab === "cockpit")} onClick={() => setTab("cockpit")} type="button">{t("github.pr.tabReview")}</button>
+          <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">{t("github.pr.tabDiff")}</button>
         </div>
         {canMerge ? (
           <Button
@@ -143,21 +146,21 @@ export function PrDetail({
             disabled={merging}
             onClick={() => setConfirmingMerge(true)}
             size="sm"
-            title="Squash & merge this pull request"
+            title={t("github.pr.squashTitle")}
             type="button"
             variant="success"
           >
             <GitMerge />
-            Squash &amp; merge
+            {t("github.pr.squashMerge")}
           </Button>
         ) : null}
         <a
-          aria-label="Open on GitHub"
+          aria-label={t("github.openOnGithub")}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           href={pr.html_url}
           rel="noopener noreferrer"
           target="_blank"
-          title="Open on GitHub"
+          title={t("github.openOnGithub")}
         >
           <ExternalLink className="size-3.5" />
         </a>
@@ -171,7 +174,7 @@ export function PrDetail({
       {asking ? (
         <div className="shrink-0 border-b border-border px-3 py-1.5">
           <AiAskInline
-            placeholder="What should the agent do with this PR? (review, summarize, find regressions…)"
+            placeholder={t("github.pr.askPlaceholder")}
             onSubmit={(value) => askAgent(value)}
             onCancel={() => setAsking(false)}
           />
@@ -189,7 +192,7 @@ export function PrDetail({
           />
         </div>
       ) : diffLoading ? (
-        <Loading className="flex-1" label="Loading diff…" />
+        <Loading className="flex-1" label={t("git.diff.loading")} />
       ) : diffError ? (
         <div className="p-4 text-[12px] text-red-500">{diffError}</div>
       ) : fileDiffs.length ? (
@@ -205,7 +208,7 @@ export function PrDetail({
           </div>
         </div>
       ) : (
-        <div className="p-4 text-[12px] text-muted-foreground">No diff available.</div>
+        <div className="p-4 text-[12px] text-muted-foreground">{t("github.pr.noDiff")}</div>
       )}
 
       {confirmingMerge ? (
@@ -213,24 +216,24 @@ export function PrDetail({
           confirmLabel={
             merging ? (
               <>
-                <Spinner size="sm" /> Merging…
+                <Spinner size="sm" /> {t("github.pr.merging")}
               </>
             ) : (
-              "Squash & merge"
+              t("github.pr.squashMerge")
             )
           }
           icon={<GitMerge />}
           loading={merging}
           message={
             <>
-              Squash &amp; merge PR <span className="font-mono">#{pr.number}</span>{" "}
-              <span className="font-medium text-foreground">{pr.title}</span> into{" "}
-              <span className="font-mono">{pr.base.ref}</span>?
+              {t("github.pr.confirmPre")}<span className="font-mono">#{pr.number}</span>{" "}
+              <span className="font-medium text-foreground">{pr.title}</span>{t("github.pr.confirmInto")}
+              <span className="font-mono">{pr.base.ref}</span>{t("github.pr.confirmQ")}
             </>
           }
           onCancel={() => setConfirmingMerge(false)}
           onConfirm={() => void squashMerge()}
-          title="Squash & merge"
+          title={t("github.pr.squashMerge")}
           tone="success"
         />
       ) : null}
@@ -251,6 +254,7 @@ function PRReviewCockpit({
   error: string | null;
   onOpenFile: (path: string) => void;
 }) {
+  const t = useT();
   const [filesOpen, setFilesOpen] = useState(false);
   const activePR = cockpit?.pr ?? pr;
   const files = cockpit?.files ?? [];
@@ -284,18 +288,18 @@ function PRReviewCockpit({
           {error}
         </div>
       ) : null}
-      {loading ? <Loading className="justify-start" label="Loading review cockpit…" /> : null}
+      {loading ? <Loading className="justify-start" label={t("github.pr.loadingCockpit")} /> : null}
 
       <div className="grid gap-2 md:grid-cols-4">
-        <CockpitMetric title="Merge readiness" value={mergeReadiness(activePR, checks)} tone={mergeTone(activePR, checks)} />
-        <CockpitMetric title="Review state" value={reviewState(reviews)} tone={reviewTone(reviews)} />
-        <CockpitMetric title="Checks" value={checks ? `${checks.state} (${checks.totalCount})` : "unknown"} tone={checks?.state === "success" ? "success" : checks?.state === "failure" || checks?.state === "error" ? "danger" : "muted"} />
-        <CockpitMetric title="Changed files" value={String(files.length)} tone="muted" />
+        <CockpitMetric title={t("github.pr.mergeReadiness")} value={t(mergeReadinessKey(activePR, checks))} tone={mergeTone(activePR, checks)} />
+        <CockpitMetric title={t("github.pr.reviewStateTitle")} value={t(reviewStateKey(reviews))} tone={reviewTone(reviews)} />
+        <CockpitMetric title={t("github.pr.checks")} value={checks ? t("github.pr.checksValue", { state: checks.state, count: checks.totalCount }) : t("github.pr.unknown")} tone={checks?.state === "success" ? "success" : checks?.state === "failure" || checks?.state === "error" ? "danger" : "muted"} />
+        <CockpitMetric title={t("github.pr.changedFiles")} value={String(files.length)} tone="muted" />
       </div>
 
       {failingChecks.length > 0 ? (
         <section className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2">
-          <div className="mb-1 text-[11px] font-medium text-red-500">Failing checks</div>
+          <div className="mb-1 text-[11px] font-medium text-red-500">{t("github.pr.failingChecks")}</div>
           <div className="flex flex-wrap gap-2">
             {failingChecks.slice(0, 4).map((check) => (
               <a
@@ -306,7 +310,7 @@ function PRReviewCockpit({
                 target="_blank"
               >
                 <XCircle className="size-3" />
-                Open failing check: {check.name}
+                {t("github.pr.openFailingCheck", { name: check.name })}
               </a>
             ))}
           </div>
@@ -325,7 +329,7 @@ function PRReviewCockpit({
             <ChevronRight className="size-3.5 text-muted-foreground" />
           )}
           <FileText className="size-3.5 text-muted-foreground" />
-          Changed files
+          {t("github.pr.changedFiles")}
           {files.length ? (
             <span className="font-mono text-[11px] text-muted-foreground">({files.length})</span>
           ) : null}
@@ -337,7 +341,7 @@ function PRReviewCockpit({
                 <button
                   className="flex w-full items-center gap-2 py-1.5 text-left text-[12px] transition-colors hover:text-foreground"
                   onClick={() => onOpenFile(file.path)}
-                  title={`View diff for ${file.path}`}
+                  title={t("github.pr.viewDiffTitle", { path: file.path })}
                   type="button"
                 >
                   <span className="w-16 shrink-0 font-mono text-[10px] uppercase text-muted-foreground">{file.status}</span>
@@ -349,14 +353,14 @@ function PRReviewCockpit({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[12px] text-muted-foreground">No changed file metadata available.</p>
+          <p className="mt-2 text-[12px] text-muted-foreground">{t("github.pr.noFileMeta")}</p>
         )}
       </section>
 
       <section className="rounded-md border border-border bg-muted/25 p-3">
         <div className="mb-2 flex items-center gap-2 text-[12px] font-medium">
           <MessageSquare className="size-3.5 text-muted-foreground" />
-          Review state
+          {t("github.pr.reviewStateTitle")}
         </div>
         {reviews.length || comments.length ? (
           <div className="space-y-2">
@@ -365,27 +369,27 @@ function PRReviewCockpit({
                 href={review.html_url}
                 key={`review:${review.id}`}
                 meta={`${review.user.login} - ${review.state.toLowerCase()}`}
-                text={review.body || "No review summary."}
+                text={review.body || t("github.pr.noReviewSummary")}
               />
             ))}
             {comments.slice(-4).map((comment) => (
               <ReviewLine
                 href={comment.html_url}
                 key={`comment:${comment.id}`}
-                meta={`${comment.user.login} - comment`}
+                meta={t("github.pr.reviewMetaComment", { login: comment.user.login })}
                 text={comment.body}
               />
             ))}
           </div>
         ) : (
-          <p className="text-[12px] text-muted-foreground">No reviews or PR comments yet.</p>
+          <p className="text-[12px] text-muted-foreground">{t("github.pr.noReviews")}</p>
         )}
       </section>
 
       {activePR.body ? (
         <MarkdownBody body={activePR.body} />
       ) : (
-        <p className="text-[12px] italic text-muted-foreground">No description provided.</p>
+        <p className="text-[12px] italic text-muted-foreground">{t("github.noDescription")}</p>
       )}
     </div>
   );
@@ -403,6 +407,7 @@ function FileDiffList({
   onSelect: (path: string) => void;
   onAsk: (path: string, input: string) => void;
 }) {
+  const t = useT();
   const [askingPath, setAskingPath] = useState<string | null>(null);
   return (
     <div className="w-44 shrink-0 overflow-y-auto border-r border-border bg-card/60">
@@ -430,7 +435,7 @@ function FileDiffList({
               </button>
               <AiSpark
                 className={cn("mr-1 shrink-0", askingPath === file.path && "opacity-100")}
-                label={`Ask AI about ${basename(file.path)}`}
+                label={t("github.pr.askFileLabel", { name: basename(file.path) })}
                 onAsk={() =>
                   setAskingPath((current) => (current === file.path ? null : file.path))
                 }
@@ -439,7 +444,7 @@ function FileDiffList({
             {askingPath === file.path ? (
               <div className="px-2 pb-1.5 pt-0.5">
                 <AiAskInline
-                  placeholder="What about this file? (review, explain, find bugs…)"
+                  placeholder={t("github.pr.askFilePlaceholder")}
                   onSubmit={(value) => {
                     setAskingPath(null);
                     onAsk(file.path, value);
@@ -513,52 +518,54 @@ function ReviewLine({
   );
 }
 
-function mergeReadiness(pr: GitHubPR, checks: GitHubPRReviewCockpit["checks"] | null): string {
-  if (pr.state !== "open") return pr.state;
-  if (pr.draft) return "draft";
-  if (pr.mergeable === false) return "blocked";
-  if (checks?.state === "failure" || checks?.state === "error") return "checks failing";
-  if (checks?.state === "pending") return "checks pending";
-  return pr.mergeable === true ? "ready" : "unknown";
+function mergeReadinessKey(pr: GitHubPR, checks: GitHubPRReviewCockpit["checks"] | null): TranslationKey {
+  if (pr.state === "merged") return "github.pr.readiness.merged";
+  if (pr.state === "closed") return "github.pr.readiness.closed";
+  if (pr.draft) return "github.pr.readiness.draft";
+  if (pr.mergeable === false) return "github.pr.readiness.blocked";
+  if (checks?.state === "failure" || checks?.state === "error") return "github.pr.readiness.checksFailing";
+  if (checks?.state === "pending") return "github.pr.readiness.checksPending";
+  return pr.mergeable === true ? "github.pr.readiness.ready" : "github.pr.unknown";
 }
 
 function mergeTone(pr: GitHubPR, checks: GitHubPRReviewCockpit["checks"] | null): "success" | "warning" | "danger" | "muted" {
-  const readiness = mergeReadiness(pr, checks);
-  if (readiness === "ready") return "success";
-  if (readiness === "blocked" || readiness === "checks failing") return "danger";
-  if (readiness === "draft" || readiness === "checks pending") return "warning";
+  const readiness = mergeReadinessKey(pr, checks);
+  if (readiness === "github.pr.readiness.ready") return "success";
+  if (readiness === "github.pr.readiness.blocked" || readiness === "github.pr.readiness.checksFailing") return "danger";
+  if (readiness === "github.pr.readiness.draft" || readiness === "github.pr.readiness.checksPending") return "warning";
   return "muted";
 }
 
-function reviewState(reviews: GitHubPRReviewCockpit["reviews"]): string {
-  if (reviews.some((review) => review.state === "CHANGES_REQUESTED")) return "changes requested";
-  if (reviews.some((review) => review.state === "APPROVED")) return "approved";
-  if (reviews.some((review) => review.state === "COMMENTED")) return "commented";
-  return "no reviews";
+function reviewStateKey(reviews: GitHubPRReviewCockpit["reviews"]): TranslationKey {
+  if (reviews.some((review) => review.state === "CHANGES_REQUESTED")) return "github.pr.review.changesRequested";
+  if (reviews.some((review) => review.state === "APPROVED")) return "github.pr.review.approved";
+  if (reviews.some((review) => review.state === "COMMENTED")) return "github.pr.review.commented";
+  return "github.pr.review.none";
 }
 
 function reviewTone(reviews: GitHubPRReviewCockpit["reviews"]): "success" | "warning" | "danger" | "muted" {
-  const state = reviewState(reviews);
-  if (state === "approved") return "success";
-  if (state === "changes requested") return "danger";
-  if (state === "commented") return "warning";
+  const state = reviewStateKey(reviews);
+  if (state === "github.pr.review.approved") return "success";
+  if (state === "github.pr.review.changesRequested") return "danger";
+  if (state === "github.pr.review.commented") return "warning";
   return "muted";
 }
 
 function StateText({ pr }: { pr: GitHubPR }) {
-  const { label, dot } =
+  const t = useT();
+  const { labelKey, dot, kind } =
     pr.state === "merged"
-      ? { label: "Merged", dot: "bg-violet-500" }
+      ? { labelKey: "github.prState.merged" as const, dot: "bg-violet-500", kind: "merged" as const }
       : pr.state === "closed"
-        ? { label: "Closed", dot: "bg-red-500" }
+        ? { labelKey: "github.prState.closed" as const, dot: "bg-red-500", kind: "other" as const }
         : pr.draft
-          ? { label: "Draft", dot: "bg-muted-foreground" }
-          : { label: "Open", dot: "bg-emerald-500" };
+          ? { labelKey: "github.prState.draft" as const, dot: "bg-muted-foreground", kind: "other" as const }
+          : { labelKey: "github.prState.open" as const, dot: "bg-emerald-500", kind: "open" as const };
   return (
     <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
       <span className={`size-1.5 rounded-full ${dot}`} />
-      {label === "Merged" ? <GitMerge className="size-3" /> : label === "Open" ? <CheckCircle className="size-3" /> : <Circle className="size-3" />}
-      {label}
+      {kind === "merged" ? <GitMerge className="size-3" /> : kind === "open" ? <CheckCircle className="size-3" /> : <Circle className="size-3" />}
+      {t(labelKey)}
     </span>
   );
 }

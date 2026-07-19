@@ -15,6 +15,7 @@ import {
   type TimelineEvent,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { Tooltip } from "@/components/ui/tooltip";
 import { setAgentPathData } from "../agent/chat/drag-to-agent";
 import { ProcessBadge } from "./process-badge";
@@ -46,6 +47,7 @@ export function ServiceGroupSection({
   onSelectService: (name: string) => void;
   onDropService?: (serviceName: string) => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -96,10 +98,10 @@ export function ServiceGroupSection({
             </Badge>
           ) : null}
         </button>
-        <Tooltip label="Edit group">
+        <Tooltip label={t("services.list.editGroup")}>
           <Button
             aria-expanded={editing}
-            aria-label={`Edit ${group.name}`}
+            aria-label={t("services.list.editName", { name: group.name })}
             className="size-7"
             onClick={() => setEditing((current) => !current)}
             size="icon"
@@ -276,6 +278,7 @@ export function PortEditor({
   service: DashboardData["config"]["services"][number];
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   const [port, setPort] = useState(service.port ? String(service.port) : "");
   const [busy, setBusy] = useState(false);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
@@ -299,7 +302,7 @@ export function PortEditor({
       showSuccessToast(`Port saved for ${service.name}.`);
       await onRefresh();
     } catch (caught) {
-      showErrorToast(actionErrorMessage("Save port", service.name, caught));
+      showErrorToast(actionErrorMessage(t, t("services.list.savePort"), service.name, caught));
     } finally {
       setBusy(false);
     }
@@ -308,22 +311,22 @@ export function PortEditor({
   return (
     <form className="flex items-center gap-1.5" onSubmit={submit}>
       <Input
-        aria-label={`Port for ${service.name}`}
+        aria-label={t("services.list.portFor", { name: service.name })}
         className="h-8 w-20 font-mono text-xs"
         inputMode="numeric"
         min={1}
         max={65535}
         onChange={(event) => setPort(event.target.value)}
-        placeholder="port"
+        placeholder={t("services.list.portPlaceholder")}
         type="number"
         value={port}
       />
       <Button
-        aria-label={`Save port for ${service.name}`}
+        aria-label={t("services.list.savePortFor", { name: service.name })}
         disabled={busy || !dirty}
         className="size-8"
         size="icon"
-        title="Save port"
+        title={t("services.list.savePort")}
         type="submit"
         variant="outline"
       >

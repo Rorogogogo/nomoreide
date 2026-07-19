@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export interface OverflowMenuItem {
   label: string;
@@ -16,13 +17,15 @@ export interface OverflowMenuItem {
  */
 export function OverflowMenu({
   items,
-  label = "More actions",
+  label,
   className,
 }: {
   items: OverflowMenuItem[];
   label?: string;
   className?: string;
 }) {
+  const t = useT();
+  const resolvedLabel = label ?? t("common.moreActions");
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -59,7 +62,7 @@ export function OverflowMenu({
   return (
     <>
       <button
-        aria-label={label}
+        aria-label={resolvedLabel}
         className={cn(
           "flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all duration-150 hover:bg-muted hover:text-foreground group-hover:opacity-100",
           open && "opacity-100",
@@ -67,7 +70,7 @@ export function OverflowMenu({
         )}
         onClick={toggle}
         ref={triggerRef}
-        title={label}
+        title={resolvedLabel}
         type="button"
       >
         <MoreHorizontal className="size-3.5" />

@@ -3,6 +3,7 @@ import { Check, Loader2, Upload } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { gitCommit, gitPush, type GitFileStatus } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { buildCommitMessagePrompt } from "../agent/prompts";
@@ -21,6 +22,7 @@ export function CommitComposer({
   /** Scope the commit/push to a named board repository (board columns). */
   repo?: string;
 }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<"commit" | "push" | null>(null);
@@ -43,9 +45,9 @@ export function CommitComposer({
       await gitCommit(message.trim(), repo);
       if (push) {
         const result = await gitPush(repo);
-        setDone(`Committed and pushed ${result.branch}.`);
+        setDone(t("git.commit.committedPushed", { branch: result.branch }));
       } else {
-        setDone("Committed staged changes.");
+        setDone(t("git.commit.committed"));
       }
       setMessage("");
       onDone();
@@ -59,9 +61,9 @@ export function CommitComposer({
   function suggestMessage() {
     sendToAgent({
       prompt: buildCommitMessagePrompt({ branch, stagedFiles }),
-      source: { type: "git-commit", label: "commit message" },
+      source: { type: "git-commit", label: t("git.commit.sourceLabel") },
       mode: "send",
-      label: "Suggest a commit message",
+      label: t("git.commit.suggestLabel"),
     });
   }
 
@@ -69,35 +71,35 @@ export function CommitComposer({
     <div className="shrink-0 space-y-2 border-t border-border bg-card/95 p-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
-          Commit
+          {t("git.commit.title")}
         </span>
         <span className="flex items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground">
-            {stagedFiles.length} staged
+            {t("git.commit.stagedCount", { count: stagedFiles.length })}
           </span>
           <button
-            aria-label="Suggest a commit message with AI"
+            aria-label={t("git.commit.suggestAria")}
             className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
             disabled={stagedFiles.length === 0}
             onClick={suggestMessage}
-            title="Ask the agent to draft a commit message from the staged diff"
+            title={t("git.commit.suggestTitle")}
             type="button"
           >
             <AgentMark className="size-3.5" />
-            AI message
+            {t("git.commit.aiMessage")}
           </button>
         </span>
       </div>
 
       <textarea
-        aria-label="Commit message"
+        aria-label={t("git.commit.messageAria")}
         className="min-h-16 w-full resize-y rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px] outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/40 focus:ring-2 focus:ring-ring"
         onChange={(event) => {
           setMessage(event.target.value);
           setError(null);
           setDone(null);
         }}
-        placeholder={stagedFiles.length ? "Commit message…" : "Stage files to commit"}
+        placeholder={stagedFiles.length ? t("git.commit.messagePlaceholder") : t("git.commit.stagePrompt")}
         value={message}
       />
 
@@ -110,7 +112,7 @@ export function CommitComposer({
           variant="outline"
         >
           {busy === "commit" ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-          Commit
+          {t("git.commit.commit")}
         </Button>
         <Button
           disabled={!canCommit}
@@ -119,7 +121,7 @@ export function CommitComposer({
           type="button"
         >
           {busy === "push" ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
-          Commit &amp; push
+          {t("git.commit.commitPush")}
         </Button>
       </div>
 

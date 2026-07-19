@@ -58,6 +58,7 @@ import {
 } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
+import { useT, type TranslationKey } from "@/lib/i18n";
 
 type Page =
   | "services"
@@ -84,17 +85,18 @@ const PAGE_PATHS: Record<Page, string> = {
   settings: "/settings",
 };
 
-const PAGE_TITLES: Record<Page, string> = {
-  services: "Services",
-  git: "Git Review",
-  github: "GitHub",
-  workflows: "Workflows",
-  errors: "Error Inbox",
-  database: "Database",
-  terminal: "Terminal",
-  agent: "Agent Console",
-  "agent-env": "Agent Environments",
-  settings: "Settings",
+/** Header title translation key per page. */
+const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
+  services: "nav.services",
+  git: "nav.git",
+  github: "nav.github",
+  workflows: "nav.workflows",
+  errors: "nav.errors",
+  database: "nav.database",
+  terminal: "nav.terminal",
+  agent: "pageTitle.agent",
+  "agent-env": "pageTitle.agentEnv",
+  settings: "nav.settings",
 };
 
 // Longest prefix wins so "/agent-env" is matched before "/agent".
@@ -111,35 +113,36 @@ export function pageFromPath(pathname: string): Page {
 
 // Sidebar grouping: Run (what's executing on this machine), Code (repo-scoped
 // work), Data, Agent. Keep the dock's FULLSCREEN_NAV in the same order.
+// Labels are TranslationKeys resolved with t() at render.
 const NAV_SECTIONS: Array<{
-  label: string;
-  items: Array<{ page: Page; label: string; icon: ReactNode }>;
+  labelKey: TranslationKey;
+  items: Array<{ page: Page; labelKey: TranslationKey; icon: ReactNode }>;
 }> = [
   {
-    label: "Run",
+    labelKey: "nav.section.run",
     items: [
-      { page: "services", label: "Services", icon: <Server /> },
-      { page: "errors", label: "Error Inbox", icon: <Inbox /> },
-      { page: "terminal", label: "Terminal", icon: <SquareTerminal /> },
+      { page: "services", labelKey: "nav.services", icon: <Server /> },
+      { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
+      { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },
     ],
   },
   {
-    label: "Code",
+    labelKey: "nav.section.code",
     items: [
-      { page: "git", label: "Git Review", icon: <GitBranch /> },
-      { page: "github", label: "GitHub", icon: <GitHubLogo /> },
-      { page: "workflows", label: "Workflows", icon: <Workflow /> },
+      { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
+      { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
+      { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },
     ],
   },
   {
-    label: "Data",
-    items: [{ page: "database", label: "Database", icon: <Database /> }],
+    labelKey: "nav.section.data",
+    items: [{ page: "database", labelKey: "nav.database", icon: <Database /> }],
   },
   {
-    label: "Agent",
+    labelKey: "nav.section.agent",
     items: [
-      { page: "agent", label: "Console", icon: <Bot /> },
-      { page: "agent-env", label: "Environments", icon: <Puzzle /> },
+      { page: "agent", labelKey: "nav.agentConsole", icon: <Bot /> },
+      { page: "agent-env", labelKey: "nav.agentEnv", icon: <Puzzle /> },
     ],
   },
 ];
@@ -275,6 +278,7 @@ export function SettingsProjectSync({
 }
 
 function AppContent({ syncLocation }: { syncLocation: boolean }) {
+  const t = useT();
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? pageFromPath(window.location.pathname) : "services",
   );
@@ -319,7 +323,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     try {
       setData(await getDashboard());
       if (options.notify) {
-        showSuccessToast("Dashboard refreshed.");
+        showSuccessToast(t("app.dashboardRefreshed"));
       }
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -328,7 +332,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, [showErrorToast, showSuccessToast]);
+  }, [showErrorToast, showSuccessToast, t]);
 
   // Header Refresh: reload the shared dashboard state *and* whatever the active
   // page fetches on its own (GitHub, Database, commit graph), so it always
@@ -475,9 +479,9 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {NAV_SECTIONS.map((section, index) => (
               <div
                 className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
-                key={section.label}
+                key={section.labelKey}
               >
-                <NavSectionLabel docked={sidebarDocked} label={section.label} />
+                <NavSectionLabel docked={sidebarDocked} label={t(section.labelKey)} />
                 <div className="grid gap-0.5">
                   {section.items.map((item) => (
                     <NavButton
@@ -486,7 +490,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                       docked={sidebarDocked}
                       icon={item.icon}
                       key={item.page}
-                      label={item.label}
+                      label={t(item.labelKey)}
                       onClick={() => setPage(item.page)}
                     />
                   ))}
@@ -499,7 +503,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               active={page === "settings"}
               docked={sidebarDocked}
               icon={<Settings />}
-              label="Settings"
+              label={t("nav.settings")}
               onClick={() => setPage("settings")}
             />
           </div>
@@ -522,12 +526,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               <PanelLeft className="size-4 text-muted-foreground md:hidden" />
               <div>
                 <h1 className="text-lg font-semibold tracking-tight">
-                  {PAGE_TITLES[page]}
+                  {t(PAGE_TITLE_KEY[page])}
                 </h1>
                 <p className="font-mono text-xs text-muted-foreground">
                   {page === "git" || page === "github"
-                    ? data?.git.selectedRepository?.name ?? data?.git.cwd ?? "Local workspace"
-                    : activeProject?.name ?? "All projects"}
+                    ? data?.git.selectedRepository?.name ?? data?.git.cwd ?? t("app.localWorkspace")
+                    : activeProject?.name ?? t("app.allProjects")}
                 </p>
               </div>
             </div>
@@ -539,30 +543,30 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 role="toolbar"
               >
                 <button
-                  aria-label="Refresh"
+                  aria-label={t("action.refresh")}
                   className={headerActionClassName()}
                   onClick={refreshAll}
-                  title="Refresh this page"
+                  title={t("action.refreshTitle")}
                   type="button"
                 >
                   <span className={headerActionIconClassName()}>
                     <RefreshCw className={cn(loading && "animate-spin")} />
                   </span>
-                  <span className={headerActionLabelClassName()}>Refresh</span>
+                  <span className={headerActionLabelClassName()}>{t("action.refresh")}</span>
                 </button>
                 <ThemeToggle />
                 <a
-                  aria-label="Open NoMoreIDE documentation"
+                  aria-label={t("action.docsTitle")}
                   className={headerActionClassName()}
                   href="https://www.nomoreide.com/docs"
                   rel="noreferrer"
                   target="_blank"
-                  title="Open NoMoreIDE documentation"
+                  title={t("action.docsTitle")}
                 >
                   <span className={headerActionIconClassName()}>
                     <BookOpen />
                   </span>
-                  <span className={headerActionLabelClassName()}>Docs</span>
+                  <span className={headerActionLabelClassName()}>{t("action.docs")}</span>
                 </a>
                 {data ? <AiContextAction data={data} /> : null}
               </div>
@@ -578,7 +582,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 if (scopedServiceNames && !scopedServiceNames.has(name)) {
                   setScopeAll(true);
                   showMessageToast({
-                    text: "Service is outside the current project — showing all projects.",
+                    text: t("app.serviceOutsideScope"),
                   });
                 }
                 setFocusService(name);
@@ -590,7 +594,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
 
           {loading && !data ? (
             <Alert variant="muted">
-              Loading NoMoreIDE state...
+              {t("app.loading")}
             </Alert>
           ) : null}
 

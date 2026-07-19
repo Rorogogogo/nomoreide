@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { LogConsole } from "./log-console";
 
 export function LogsTab({ serviceName }: { serviceName: string }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [hideStdout, setHideStdout] = useState(false);
@@ -22,11 +24,11 @@ export function LogsTab({ serviceName }: { serviceName: string }) {
       target={{ kind: "service", name: serviceName }}
       trailing={
         <Button
-          aria-label={fullscreen ? "Exit fullscreen logs" : "Expand logs"}
+          aria-label={fullscreen ? t("services.logsView.exitFs") : t("services.logsView.expand")}
           className="text-muted-foreground hover:text-foreground"
           onClick={() => setFullscreen((value) => !value)}
           size="icon-sm"
-          title={fullscreen ? "Exit fullscreen" : "Expand"}
+          title={fullscreen ? t("services.fsExit") : t("services.fsExpand")}
           type="button"
           variant="ghost"
         >
@@ -38,7 +40,7 @@ export function LogsTab({ serviceName }: { serviceName: string }) {
 
   if (fullscreen) {
     return (
-      <LogsOverlay onClose={() => setFullscreen(false)} title={`Logs — ${serviceName}`}>
+      <LogsOverlay onClose={() => setFullscreen(false)} title={t("services.logsTitle", { name: serviceName })}>
         {console}
       </LogsOverlay>
     );
@@ -60,6 +62,7 @@ export function LogsOverlay({
   children: ReactNode;
   maxWidthClass?: string;
 }) {
+  const t = useT();
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -78,7 +81,7 @@ export function LogsOverlay({
       >
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
           <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h2>
-          <Button aria-label="Close logs" onClick={onClose} size="icon" type="button" variant="ghost">
+          <Button aria-label={t("services.closeLogs")} onClick={onClose} size="icon" type="button" variant="ghost">
             <X />
           </Button>
         </div>

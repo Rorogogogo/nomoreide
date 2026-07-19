@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { AiSpark } from "../ai-spark";
 
 /** The Tools cards' "paste a URL / command" field is the shared inline ask input. */
@@ -8,6 +9,7 @@ export { AiAskInline as AddInline } from "../ai-ask-inline";
 
 /** Header "Add" button shared by every Tools card; toggles the inline input. */
 export function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  const t = useT();
   return (
     <Button
       type="button"
@@ -19,7 +21,7 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
       aria-label={label}
     >
       <Plus className="size-3.5" />
-      Add
+      {t("common.add")}
     </Button>
   );
 }
@@ -52,6 +54,7 @@ export function RowActions({
 /** Bin button that expands into a confirm (check) / cancel (cross) pair. */
 function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => void }) {
   const [confirming, setConfirming] = useState(false);
+  const t = useT();
 
   if (confirming) {
     return (
@@ -70,8 +73,8 @@ function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => v
         </button>
         <button
           type="button"
-          aria-label="Cancel"
-          title="Cancel"
+          aria-label={t("common.cancel")}
+          title={t("common.cancel")}
           onClick={() => setConfirming(false)}
           className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted"
         >
