@@ -29,6 +29,10 @@ export const en = {
   "app.serviceOutsideScope":
     "Service is outside the current project — showing all projects.",
 
+  "operation.multiple": "{count} operations in progress",
+  "operation.showDetails": "Show operation details",
+  "operation.hideDetails": "Hide operation details",
+
   "action.refresh": "Refresh",
   "action.refreshTitle": "Refresh this page",
   "action.docs": "Docs",

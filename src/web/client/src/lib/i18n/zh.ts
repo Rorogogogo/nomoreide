@@ -29,6 +29,10 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "app.dashboardRefreshed": "仪表盘已刷新。",
   "app.serviceOutsideScope": "该服务不在当前项目范围内 — 已切换为显示所有项目。",
 
+  "operation.multiple": "{count} 个操作正在进行",
+  "operation.showDetails": "显示操作详情",
+  "operation.hideDetails": "隐藏操作详情",
+
   "action.refresh": "刷新",
   "action.refreshTitle": "刷新此页面",
   "action.docs": "文档",
