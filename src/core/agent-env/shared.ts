@@ -38,18 +38,22 @@ export async function readSkillDirs(
 
 /**
  * Walk from `cwd` up to the repo root (first ancestor containing `.git`, or
- * the filesystem root) and emit skills declared in `<ancestor>/.claude/skills/`
- * with `scope: "project"`. Only Claude reads project-scoped skills; the closer
- * ancestor wins on name collisions.
+ * the filesystem root) and emit skills declared in `<ancestor>/<skillsSubdir>`
+ * with `scope: "project"`. Claude reads `.claude/skills/`, Codex reads the
+ * Agent Skills standard `.agents/skills/`; the closer ancestor wins on name
+ * collisions.
  */
-export async function readProjectSkills(cwd: string): Promise<AgentSkillEntry[]> {
+export async function readProjectSkills(
+  cwd: string,
+  skillsSubdir: string = path.join(".claude", "skills"),
+): Promise<AgentSkillEntry[]> {
   const seen = new Map<string, AgentSkillEntry>();
   let current = path.resolve(cwd);
   const visited = new Set<string>();
 
   while (!visited.has(current)) {
     visited.add(current);
-    const skillsDir = path.join(current, ".claude", "skills");
+    const skillsDir = path.join(current, skillsSubdir);
     try {
       const entries = await readSkillDirs(skillsDir, "project");
       for (const entry of entries) {

@@ -6,6 +6,7 @@ import { readCodexPlugins } from "./plugin-reader.js";
 import {
   filterPluginOwnedMcps,
   readBrainctlProjectMcps,
+  readProjectSkills,
   readSkillDirs,
 } from "./shared.js";
 import type {
@@ -18,16 +19,18 @@ import type {
 
 /**
  * Codex CLI stores MCP servers as `[mcp_servers.*]` TOML sections in
- * `~/.codex/config.toml` and skills as SKILL.md dirs under `~/.codex/skills/`.
- * The TOML subset parser is deliberate — the config format only uses flat
- * sections with string/array values, and a dependency-free parse mirrors what
- * brainctl shipped and tested.
+ * `~/.codex/config.toml`. Skills follow the Agent Skills standard:
+ * `~/.agents/skills/` for personal skills (legacy `~/.codex/skills/` is still
+ * read) and `<repo>/.agents/skills/` for project skills. The TOML subset
+ * parser is deliberate — the config format only uses flat sections with
+ * string/array values, and a dependency-free parse mirrors what brainctl
+ * shipped and tested.
  */
 export async function readCodexConfig(options: AgentEnvReadOptions): Promise<AgentLiveConfig> {
   const homeDir = options.homeDir ?? homedir();
   const configPath = path.join(homeDir, ".codex", "config.toml");
   const projectMaps = await readBrainctlProjectMcps(options.cwd, "codex");
-  const skills = await readCodexSkills(homeDir);
+  const skills = await readCodexSkills(homeDir, options.cwd);
 
   try {
     const source = await readFile(configPath, "utf8");
@@ -50,22 +53,39 @@ export async function readCodexConfig(options: AgentEnvReadOptions): Promise<Age
   }
 }
 
-async function readCodexSkills(homeDir: string): Promise<AgentSkillEntry[]> {
+async function readCodexSkills(homeDir: string, cwd: string): Promise<AgentSkillEntry[]> {
   const nativePlugins = await readCodexPlugins({
     configTomlPath: path.join(homeDir, ".codex", "config.toml"),
     pluginsCacheDir: path.join(homeDir, ".codex", "plugins", "cache"),
   });
   const managedPlugins = await readManagedPlugins({ agent: "codex", homeDir });
 
-  let localSkills: AgentSkillEntry[] = [];
-  try {
-    localSkills = await readSkillDirs(path.join(homeDir, ".codex", "skills"));
-  } catch {
-    localSkills = [];
-  }
+  // Personal skills: the Agent Skills standard dir wins over the legacy dir
+  // when the same name exists in both.
+  const localSkills = dedupeSkillsByName([
+    ...(await readSkillDirsSafe(path.join(homeDir, ".agents", "skills"))),
+    ...(await readSkillDirsSafe(path.join(homeDir, ".codex", "skills"))),
+  ]);
+  const projectSkills = await readProjectSkills(cwd, path.join(".agents", "skills"));
 
   const allPlugins = dedupePluginsByName([...managedPlugins, ...nativePlugins]);
-  return mergeManagedPluginsIntoSkills(localSkills, allPlugins);
+  return [...mergeManagedPluginsIntoSkills(localSkills, allPlugins), ...projectSkills];
+}
+
+async function readSkillDirsSafe(skillsDir: string): Promise<AgentSkillEntry[]> {
+  try {
+    return await readSkillDirs(skillsDir);
+  } catch {
+    return [];
+  }
+}
+
+function dedupeSkillsByName(skills: AgentSkillEntry[]): AgentSkillEntry[] {
+  const seen = new Map<string, AgentSkillEntry>();
+  for (const skill of skills) {
+    if (!seen.has(skill.name)) seen.set(skill.name, skill);
+  }
+  return Array.from(seen.values());
 }
 
 function dedupePluginsByName(plugins: AgentSkillEntry[]): AgentSkillEntry[] {

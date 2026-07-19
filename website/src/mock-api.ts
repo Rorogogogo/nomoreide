@@ -670,7 +670,9 @@ const agentEnvConfigs = [
         source: "claude-plugins-official",
         kind: "plugin",
         scope: "user",
+        installPath: "/Users/demo/.claude/plugins/cache/claude-plugins-official/code-review/1.0.0",
         pluginSkills: ["review", "security-review"],
+        pluginAgents: ["code-reviewer"],
         pluginCommands: ["review"],
       },
       { name: "commit-push", source: "local", kind: "skill", scope: "user" },
@@ -689,7 +691,18 @@ const agentEnvConfigs = [
     },
     projectMcpServers: {},
     projectRemoteMcpServers: {},
-    skills: [{ name: "commit-push", source: "local", kind: "skill", scope: "user" }],
+    skills: [
+      { name: "commit-push", source: "local", kind: "skill", scope: "user" },
+      {
+        name: "code-review",
+        source: "claude-plugins-official",
+        kind: "plugin",
+        scope: "user",
+        managed: true,
+        pluginSkills: ["review"],
+        pluginCommands: ["code-review"],
+      },
+    ],
   },
   {
     agent: "antigravity",
@@ -813,7 +826,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     const summaries = changes.map(
       (change) =>
         `${change.action === "remove" ? "Remove" : change.action === "copy" ? "Copy" : "Move"} ${
-          change.category === "mcp" ? "MCP" : "skill"
+          change.category === "mcp" ? "MCP" : change.category
         } "${change.name}" (demo — nothing is written)`,
     );
     if (path.endsWith("/preview")) {
@@ -1999,7 +2012,7 @@ function agentStream(): Response {
 }
 
 interface MockAgentEnvChange {
-  category: "mcp" | "skill";
+  category: "mcp" | "skill" | "plugin";
   action: "copy" | "move" | "remove";
   name: string;
 }

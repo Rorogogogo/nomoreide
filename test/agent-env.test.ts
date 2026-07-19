@@ -123,6 +123,29 @@ describe("agent-env readers", () => {
     ]);
   });
 
+  it("reads Codex skills from ~/.agents/skills, deduping the legacy dir and adding project scope", async () => {
+    // Standard dir wins on a name collision with the legacy dir.
+    await mkdir(path.join(homeDir, ".agents", "skills", "dup"), { recursive: true });
+    await mkdir(path.join(homeDir, ".codex", "skills", "dup"), { recursive: true });
+    await mkdir(path.join(homeDir, ".agents", "skills", "standard-only"), { recursive: true });
+    await mkdir(path.join(homeDir, ".codex", "skills", "legacy-only"), { recursive: true });
+
+    const repo = await mkdtemp(path.join(os.tmpdir(), "nomoreide-agent-env-repo-"));
+    await mkdir(path.join(repo, ".git"), { recursive: true });
+    await mkdir(path.join(repo, ".agents", "skills", "project-skill"), { recursive: true });
+    const innerCwd = path.join(repo, "sub");
+    await mkdir(innerCwd, { recursive: true });
+
+    const result = await readCodexConfig({ cwd: innerCwd, homeDir });
+    const byName = Object.fromEntries(result.skills.map((skill) => [skill.name, skill]));
+
+    expect(byName["dup"].installPath).toBe(path.join(homeDir, ".agents", "skills", "dup"));
+    expect(byName["standard-only"]).toMatchObject({ scope: "user", kind: "skill" });
+    expect(byName["legacy-only"]).toMatchObject({ scope: "user", kind: "skill" });
+    expect(byName["project-skill"]).toMatchObject({ scope: "project", kind: "skill" });
+    expect(result.skills.filter((skill) => skill.name === "dup")).toHaveLength(1);
+  });
+
   it("discovers Claude project skills via ancestor walk, stopping at the repo root", async () => {
     // Layout: <repo>/.git, <repo>/.claude/skills/project-only, cwd=<repo>/sub/inner.
     // A skill above the repo root must NOT be picked up.

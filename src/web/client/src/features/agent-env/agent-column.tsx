@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Globe, Package, Settings2, Sparkles, TerminalSquare } from "lucide-react";
+import {
+  Bot,
+  ChevronDown,
+  ChevronRight,
+  Globe,
+  Package,
+  Settings2,
+  SlashSquare,
+  Sparkles,
+  TerminalSquare,
+} from "lucide-react";
 import {
   AntigravityLogo,
   ClaudeLogo,
@@ -133,7 +143,16 @@ export function AgentColumn({
             scope="project"
           />
         ) : null}
-        <SkillsSection agent={config.agent} onStage={onStage} skills={config.skills} />
+        <SkillsSection
+          agent={config.agent}
+          onStage={onStage}
+          skills={config.skills.filter((skill) => skill.kind !== "plugin")}
+        />
+        <PluginsSection
+          agent={config.agent}
+          onStage={onStage}
+          plugins={config.skills.filter((skill) => skill.kind === "plugin")}
+        />
       </CardContent>
     </Card>
   );
@@ -233,7 +252,7 @@ function SkillsSection({
   return (
     <section>
       <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {t("agentEnv.skillsPlugins")}
+        {t("agentEnv.skills")}
       </h4>
       {skills.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("agentEnv.noneInstalled")}</p>
@@ -245,7 +264,7 @@ function SkillsSection({
               className="group flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
-                {skill.kind === "plugin" ? <Package /> : <Sparkles />}
+                <Sparkles />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
@@ -256,27 +275,15 @@ function SkillsSection({
                     </Badge>
                   ) : null}
                 </span>
-                {skill.kind === "plugin" && skill.pluginSkills?.length ? (
-                  <span
-                    className="block truncate text-[11px] text-muted-foreground"
-                    title={skill.pluginSkills.join(", ")}
-                  >
-                    {t(skill.pluginSkills.length === 1 ? "agentEnv.skillCountOne" : "agentEnv.skillCountMany", { count: skill.pluginSkills.length })}
-                    {skill.pluginMcps?.length
-                      ? `, ${t(skill.pluginMcps.length === 1 ? "agentEnv.mcpCountOne" : "agentEnv.mcpCountMany", { count: skill.pluginMcps.length })}`
-                      : ""}
-                  </span>
-                ) : null}
               </span>
-              {/* Plugins are managed installs — reinstall via marketplace, don't copy files. */}
-              {onStage && skill.kind !== "plugin" ? (
+              {onStage ? (
                 <OverflowMenu
                   items={changeMenuItems(
                     t,
                     { category: "skill", name: skill.name, sourceAgent: agent, sourceScope: skill.scope },
                     onStage,
-                    // Only Claude reads project-scoped skills; land elsewhere as user scope.
-                    (target) => (target === "claude" ? skill.scope : "user"),
+                    // Claude and Codex read project-scoped skills; Antigravity is user-only.
+                    (target) => (target === "antigravity" ? "user" : skill.scope),
                   )}
                 />
               ) : null}
@@ -285,6 +292,122 @@ function SkillsSection({
         </ul>
       )}
     </section>
+  );
+}
+
+/** Client mirror of core's isRemovablePlugin — drives whether Uninstall shows. */
+function isRemovablePlugin(agent: AgentEnvAgentName, plugin: AgentEnvSkill): boolean {
+  if (plugin.managed) return true;
+  const native = agent === "claude" || agent === "codex";
+  return native && !!plugin.installPath && !!plugin.source;
+}
+
+function PluginsSection({
+  agent,
+  plugins,
+  onStage,
+}: {
+  agent: AgentEnvAgentName;
+  plugins: AgentEnvSkill[];
+  onStage?: StageChange;
+}) {
+  const t = useT();
+  if (plugins.length === 0) return null;
+  return (
+    <section>
+      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {t("agentEnv.plugins")}
+      </h4>
+      <ul className="space-y-1">
+        {plugins.map((plugin) => (
+          <PluginRow agent={agent} key={plugin.name} onStage={onStage} plugin={plugin} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function PluginRow({
+  agent,
+  plugin,
+  onStage,
+}: {
+  agent: AgentEnvAgentName;
+  plugin: AgentEnvSkill;
+  onStage?: StageChange;
+}) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  const contents = [
+    ...(plugin.pluginSkills ?? []).map((name) => ({ name, icon: <Sparkles />, label: t("agentEnv.skills") })),
+    ...(plugin.pluginMcps ?? []).map((name) => ({ name, icon: <TerminalSquare />, label: t("agentEnv.mcpServers") })),
+    ...(plugin.pluginAgents ?? []).map((name) => ({ name, icon: <Bot />, label: t("agentEnv.pluginAgents") })),
+    ...(plugin.pluginCommands ?? []).map((name) => ({ name, icon: <SlashSquare />, label: t("agentEnv.pluginCommands") })),
+  ];
+
+  return (
+    <li className="group rounded-md border border-border/60 bg-background/60 px-2 py-1.5">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
+          <Package />
+        </span>
+        <button
+          className="min-w-0 flex-1 text-left"
+          onClick={() => setExpanded((open) => !open)}
+          title={t("agentEnv.toggleContents")}
+          type="button"
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-xs font-medium">{plugin.name}</span>
+            {plugin.managed ? (
+              <Badge size="small" variant="outline">
+                {t("agentEnv.managed")}
+              </Badge>
+            ) : null}
+            {contents.length > 0 ? (
+              <span className="text-muted-foreground [&_svg]:size-3">
+                {expanded ? <ChevronDown /> : <ChevronRight />}
+              </span>
+            ) : null}
+          </span>
+          {plugin.source ? (
+            <span className="block truncate font-mono text-[11px] text-muted-foreground" title={plugin.source}>
+              {plugin.source}
+            </span>
+          ) : null}
+        </button>
+        {onStage && isRemovablePlugin(agent, plugin) ? (
+          <OverflowMenu
+            items={[
+              {
+                label: t("agentEnv.uninstall"),
+                onSelect: () =>
+                  onStage({
+                    category: "plugin",
+                    action: "remove",
+                    name: plugin.name,
+                    sourceAgent: agent,
+                    sourceScope: "user",
+                  }),
+              },
+            ]}
+          />
+        ) : null}
+      </div>
+      {expanded && contents.length > 0 ? (
+        <ul className="mt-1.5 space-y-0.5 border-t border-border/40 pt-1.5">
+          {contents.map((item) => (
+            <li className="flex items-center gap-1.5 pl-5" key={`${item.label}:${item.name}`}>
+              <span className="text-muted-foreground [&_svg]:size-3">{item.icon}</span>
+              <span className="truncate text-[11px]">{item.name}</span>
+              <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                {item.label}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
   );
 }
 

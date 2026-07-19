@@ -20,7 +20,7 @@ function agentLabel(agentId: AgentId): string {
 export function buildAddSkillPrompt(agentId: AgentId, input: string): string {
   const location =
     agentId === "codex"
-      ? "`~/.codex/skills/<name>/SKILL.md` (user) or `.codex/skills/<name>/SKILL.md` (project)"
+      ? "`~/.agents/skills/<name>/SKILL.md` (user) or `.agents/skills/<name>/SKILL.md` (project)"
       : "`~/.claude/skills/<name>/SKILL.md` (user) or `.claude/skills/<name>/SKILL.md` (project)";
   return [
     `Add a new skill for ${agentLabel(agentId)} from this:`,

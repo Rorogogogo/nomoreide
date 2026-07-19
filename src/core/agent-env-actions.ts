@@ -23,13 +23,14 @@ import {
   type AgentEnvScope,
   type WriteOutcome,
 } from "./agent-env-writers.js";
+import { isRemovablePlugin, removePlugin } from "./agent-env-plugin-uninstall.js";
 
 const agentNameSchema = z.enum(["claude", "codex", "antigravity"]);
 const scopeSchema = z.enum(["user", "project"]);
 
-/** One staged mutation. `name` is the MCP key or the skill directory name. */
+/** One staged mutation. `name` is the MCP key, skill directory, or plugin name. */
 export const pendingChangeSchema = z.object({
-  category: z.enum(["mcp", "skill"]),
+  category: z.enum(["mcp", "skill", "plugin"]),
   action: z.enum(["copy", "move", "remove"]),
   name: z.string().min(1),
   sourceAgent: agentNameSchema,
@@ -140,14 +141,47 @@ function previewOne(
   const source = byAgent.get(change.sourceAgent);
   if (!source) return fail(`Unknown agent "${change.sourceAgent}".`);
 
+  if (change.category === "plugin") {
+    if (change.action !== "remove") {
+      return fail(
+        `Plugins are managed installs; install "${change.name}" through the target agent's plugin marketplace instead of copying files.`,
+      );
+    }
+    if (change.targetAgent) return fail("A remove cannot have a target agent.");
+    const plugin = source.skills.find(
+      (candidate) => candidate.kind === "plugin" && candidate.name === change.name,
+    );
+    if (!plugin) {
+      return fail(`Plugin "${change.name}" not found in ${AGENT_LABELS[change.sourceAgent]}.`);
+    }
+    if (!isRemovablePlugin(change.sourceAgent, plugin)) {
+      return fail(
+        `Plugin "${change.name}" can't be uninstalled from here — no install path or marketplace source was detected.`,
+      );
+    }
+    const contents = [
+      [plugin.pluginSkills?.length, "skills"],
+      [plugin.pluginMcps?.length, "MCPs"],
+      [plugin.pluginAgents?.length, "agents"],
+      [plugin.pluginCommands?.length, "commands"],
+    ]
+      .filter(([count]) => (count as number) > 0)
+      .map(([count, label]) => `${count} ${label}`)
+      .join(", ");
+    if (contents) {
+      warnings.push(`Uninstalling "${change.name}" removes ${contents}.`);
+    }
+    return { change, ok: true, summary: describeChange(change), warnings };
+  }
+
   if (change.action !== "remove") {
     if (!change.targetAgent) return fail(`A ${change.action} needs a target agent.`);
     const targetScope = change.targetScope ?? "user";
     if (change.targetAgent === change.sourceAgent && targetScope === change.sourceScope) {
       return fail(`Source and target are the same; nothing to ${change.action}.`);
     }
-    if (change.category === "skill" && targetScope === "project" && change.targetAgent !== "claude") {
-      return fail(`${AGENT_LABELS[change.targetAgent]} has no project-scoped skills; only Claude reads .claude/skills/.`);
+    if (change.category === "skill" && targetScope === "project" && change.targetAgent === "antigravity") {
+      return fail(`${AGENT_LABELS[change.targetAgent]} has no project-scoped skills; Claude reads .claude/skills/ and Codex reads .agents/skills/.`);
     }
   } else if (change.targetAgent) {
     return fail("A remove cannot have a target agent.");
@@ -214,9 +248,12 @@ function previewOne(
 }
 
 export function describeChange(change: PendingChange): string {
-  const kind = change.category === "mcp" ? "MCP" : "skill";
+  const kind = change.category === "mcp" ? "MCP" : change.category;
   const from = `${AGENT_LABELS[change.sourceAgent]} (${change.sourceScope})`;
   if (change.action === "remove") {
+    if (change.category === "plugin") {
+      return `Uninstall plugin "${change.name}" from ${AGENT_LABELS[change.sourceAgent]}`;
+    }
     return `Remove ${kind} "${change.name}" from ${from}`;
   }
   const targetScope = change.targetScope ?? "user";
@@ -287,6 +324,17 @@ async function applyOne(
   options: AgentEnvActionOptions,
 ): Promise<WriteOutcome> {
   const base = { cwd: options.cwd, homeDir: options.homeDir };
+
+  if (change.category === "plugin") {
+    const source = byAgent.get(change.sourceAgent)!;
+    const plugin = source.skills.find(
+      (candidate) => candidate.kind === "plugin" && candidate.name === change.name,
+    );
+    if (!plugin) {
+      throw new Error(`Plugin "${change.name}" not found in ${AGENT_LABELS[change.sourceAgent]}.`);
+    }
+    return removePlugin({ ...base, agent: change.sourceAgent, plugin });
+  }
 
   if (change.category === "mcp") {
     const source = byAgent.get(change.sourceAgent)!;
