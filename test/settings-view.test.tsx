@@ -24,7 +24,9 @@ const baseSettings: SettingsContextValue = {
   loadError: null,
   activeProjectPath: "/tmp/workbench",
   projectLoading: false,
+  projectLoadError: null,
   selectProject: vi.fn(async () => undefined),
+  retryProject: vi.fn(async () => undefined),
   retry: vi.fn(async () => undefined),
   saveState: "idle",
   saveError: null,
@@ -247,6 +249,22 @@ describe("SettingsView", () => {
 
     expect(host.querySelector<HTMLInputElement>('#setting-confirm-writes')?.disabled).toBe(true);
     expect(host.textContent).toContain("Loading settings for Workbench");
+  });
+
+  test("keeps global controls usable while a project error is retried inline", async () => {
+    const retryProject = vi.fn(async () => undefined);
+    await renderView({}, {
+      projectLoadError: "project config is invalid",
+      retryProject,
+    });
+
+    expect(host.querySelector<HTMLSelectElement>("#setting-language")?.disabled).toBe(false);
+    expect(host.textContent).not.toContain("Settings could not be loaded");
+    await click(button("Services & Logs"));
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("project config is invalid");
+    expect(host.querySelector<HTMLInputElement>("#setting-log-timestamps")?.disabled).toBe(true);
+    await click(button("Retry project settings"));
+    expect(retryProject).toHaveBeenCalledOnce();
   });
 
   test("supports ArrowUp, ArrowDown, Home, and End category navigation", async () => {

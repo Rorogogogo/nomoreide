@@ -310,15 +310,97 @@ describe("SettingsProvider", () => {
     api.updateProjectSettings.mockReturnValueOnce(saveA.promise);
 
     let save!: Promise<void>;
+    let selectB!: Promise<void>;
     act(() => { save = mounted.value.updateProject({ logs: { wrapLines: false } }); });
-    await act(async () => mounted.value.selectProject("/work/b"));
+    act(() => { selectB = mounted.value.selectProject("/work/b"); });
     saveA.resolve({ ...initialSnapshot.project, logs: { showTimestamps: true, wrapLines: false } });
-    await act(async () => save);
+    await act(async () => Promise.all([save, selectB]));
 
     expect(api.updateProjectSettings).toHaveBeenCalledWith("/work/a", { logs: { wrapLines: false } });
     expect(mounted.value.activeProjectPath).toBe("/work/b");
     expect(mounted.value.project.database.resultLimit).toBe(222);
     expect(mounted.value.project.logs.wrapLines).toBe(true);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("waits for a queued save before reloading A after an A to B to A switch", async () => {
+    const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
+    const saveA = deferred<typeof initialSnapshot.project>();
+    api.updateProjectSettings.mockReturnValueOnce(saveA.promise);
+    api.getSettings.mockClear();
+    api.getSettings.mockImplementation(async (path?: string) => ({
+      ...initialSnapshot,
+      project: {
+        ...initialSnapshot.project,
+        logs: { showTimestamps: true, wrapLines: path === "/work/a" ? false : true },
+      },
+    }));
+
+    let save!: Promise<void>;
+    let selectB!: Promise<void>;
+    let selectA!: Promise<void>;
+    act(() => { save = mounted.value.updateProject({ logs: { wrapLines: false } }); });
+    await act(async () => Promise.resolve());
+    act(() => { selectB = mounted.value.selectProject("/work/b"); });
+    act(() => { selectA = mounted.value.selectProject("/work/a"); });
+    await act(async () => Promise.resolve());
+    expect(api.getSettings).not.toHaveBeenCalled();
+
+    saveA.resolve({ ...initialSnapshot.project, logs: { showTimestamps: true, wrapLines: false } });
+    await act(async () => Promise.all([save, selectB, selectA]));
+
+    expect(mounted.value.activeProjectPath).toBe("/work/a");
+    expect(mounted.value.project.logs.wrapLines).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("rolls a failed queued patch back to the preceding successful patch", async () => {
+    const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
+    const first = deferred<typeof initialSnapshot.project>();
+    const second = deferred<typeof initialSnapshot.project>();
+    api.updateProjectSettings
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    let firstOperation!: Promise<void>;
+    let secondOperation!: Promise<void>;
+    act(() => {
+      firstOperation = mounted.value.updateProject({ logs: { wrapLines: false } });
+      secondOperation = mounted.value.updateProject({ database: { resultLimit: 250 } });
+    });
+    first.resolve({
+      ...initialSnapshot.project,
+      logs: { showTimestamps: true, wrapLines: false },
+    });
+    await act(async () => firstOperation);
+    second.reject(new Error("project config is read-only"));
+    await act(async () => secondOperation);
+
+    expect(mounted.value.project.logs.wrapLines).toBe(false);
+    expect(mounted.value.confirmedProject.logs.wrapLines).toBe(false);
+    expect(mounted.value.project.database.resultLimit).toBe(100);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("keeps a project load failure separate and retries only that project", async () => {
+    const mounted = await mountProvider();
+    api.getSettings.mockRejectedValueOnce(new Error("project config is invalid"));
+
+    await act(async () => mounted.value.selectProject("/work/a"));
+    expect(mounted.value.loadError).toBeNull();
+    expect(mounted.value.projectLoadError).toContain("project config is invalid");
+
+    api.getSettings.mockResolvedValueOnce({
+      ...initialSnapshot,
+      project: { ...initialSnapshot.project, database: { confirmWrites: true, resultLimit: 321 } },
+    });
+    await act(async () => mounted.value.retryProject());
+
+    expect(mounted.value.projectLoadError).toBeNull();
+    expect(mounted.value.project.database.resultLimit).toBe(321);
+    expect(mounted.value.activeProjectPath).toBe("/work/a");
     await unmount(mounted.root, mounted.host);
   });
 

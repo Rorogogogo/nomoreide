@@ -55,13 +55,13 @@ export function SettingSelect({ id, label, description, value, options, onChange
   );
 }
 
-export function SettingNumberInput({ id, label, description, value, min, max, onSave, disabled = false }: { id: string; label: string; description: string; value: number; min: number; max: number; onSave: (value: number) => void | Promise<void>; disabled?: boolean }) {
+export function SettingNumberInput({ id, label, description, value, min, max, onSave, disabled = false, scopeKey }: { id: string; label: string; description: string; value: number; min: number; max: number; onSave: (value: number) => void | Promise<void>; disabled?: boolean; scopeKey?: string | null }) {
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     setDraft(String(value));
     setError(null);
-  }, [value]);
+  }, [scopeKey, value]);
   function save() {
     const parsed = Number(draft);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {

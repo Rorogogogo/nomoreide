@@ -54,7 +54,9 @@ export interface SettingsContextValue {
   retry: () => Promise<void>;
   activeProjectPath: string | null;
   projectLoading: boolean;
+  projectLoadError: string | null;
   selectProject: (path: string | null) => Promise<void>;
+  retryProject: () => Promise<void>;
   saveState: SettingsSaveState;
   saveError: string | null;
   global: AppSettings;
@@ -105,6 +107,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [activeProjectPath, setActiveProjectPath] = useState<string | null>(null);
   const [projectLoading, setProjectLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [projectLoadError, setProjectLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SettingsSaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [legacyTheme] = useTheme();
@@ -188,7 +191,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     ++projectRevisionRef.current;
     activeProjectPathRef.current = path;
     setActiveProjectPath(path);
-    setLoadError(null);
+    setProjectLoadError(null);
 
     projectRef.current = structuredClone(FALLBACK_PROJECT);
     confirmedProjectRef.current = structuredClone(FALLBACK_PROJECT);
@@ -202,7 +205,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
 
     setProjectLoading(true);
-    const operation = getSettings(path)
+    const pendingProject = projectQueueRef.current;
+    const operation = pendingProject
+      .then(() => getSettings(path))
       .then((snapshot) => {
         if (
           !mountedRef.current ||
@@ -220,7 +225,53 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           selectionRevision === projectLoadRevisionRef.current &&
           activeProjectPathRef.current === path
         ) {
-          setLoadError(`Could not load project settings: ${errorMessage(error)}`);
+          setProjectLoadError(`Could not load project settings: ${errorMessage(error)}`);
+        }
+      })
+      .finally(() => {
+        if (
+          mountedRef.current &&
+          selectionRevision === projectLoadRevisionRef.current &&
+          activeProjectPathRef.current === path
+        ) {
+          setProjectLoading(false);
+          projectLoadPromiseRef.current = null;
+        }
+      });
+    projectLoadPromiseRef.current = operation;
+    return operation;
+  }, []);
+
+  const retryProject = useCallback(async () => {
+    const path = activeProjectPathRef.current;
+    if (!path) return;
+
+    const selectionRevision = ++projectLoadRevisionRef.current;
+    ++projectRevisionRef.current;
+    const pendingProject = projectQueueRef.current;
+    setProjectLoading(true);
+    setProjectLoadError(null);
+
+    const operation = pendingProject
+      .then(() => getSettings(path))
+      .then((snapshot) => {
+        if (
+          !mountedRef.current ||
+          selectionRevision !== projectLoadRevisionRef.current ||
+          activeProjectPathRef.current !== path
+        ) return;
+        projectRef.current = snapshot.project;
+        confirmedProjectRef.current = snapshot.project;
+        setProject(snapshot.project);
+        setConfirmedProject(snapshot.project);
+      })
+      .catch((error) => {
+        if (
+          mountedRef.current &&
+          selectionRevision === projectLoadRevisionRef.current &&
+          activeProjectPathRef.current === path
+        ) {
+          setProjectLoadError(`Could not load project settings: ${errorMessage(error)}`);
         }
       })
       .finally(() => {
@@ -253,6 +304,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     if (projectPath) setProjectLoading(true);
     setLoadError(null);
+    if (projectPath) setProjectLoadError(null);
     try {
       await Promise.all([pendingGlobal, pendingProject]);
       const snapshot = await getSettings(projectPath ?? undefined);
@@ -283,7 +335,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         revision === loadRevisionRef.current &&
         ownsProjectLoad
       ) {
-        setLoadError(errorMessage(error));
+        if (projectPath) {
+          setProjectLoadError(`Could not load project settings: ${errorMessage(error)}`);
+        } else {
+          setLoadError(errorMessage(error));
+        }
       }
     } finally {
       if (mountedRef.current && revision === loadRevisionRef.current) {
@@ -435,14 +491,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     try {
       const confirmed = await operation;
       if (!mountedRef.current) return;
-      if (
-        projectPath === activeProjectPathRef.current &&
-        revision === projectRevisionRef.current
-      ) {
+      if (projectPath === activeProjectPathRef.current) {
         confirmedProjectRef.current = confirmed;
         setConfirmedProject(confirmed);
-        projectRef.current = confirmed;
-        setProject(confirmed);
+        if (revision === projectRevisionRef.current) {
+          projectRef.current = confirmed;
+          setProject(confirmed);
+        }
       }
       finishSave();
     } catch (error) {
@@ -495,14 +550,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     try {
       const confirmed = await operation;
       if (!mountedRef.current) return;
-      if (
-        projectPath === activeProjectPathRef.current &&
-        revision === projectRevisionRef.current
-      ) {
+      if (projectPath === activeProjectPathRef.current) {
         confirmedProjectRef.current = confirmed;
         setConfirmedProject(confirmed);
-        projectRef.current = confirmed;
-        setProject(confirmed);
+        if (revision === projectRevisionRef.current) {
+          projectRef.current = confirmed;
+          setProject(confirmed);
+        }
       }
       finishSave();
     } catch (error) {
@@ -519,7 +573,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         retry,
         activeProjectPath,
         projectLoading,
+        projectLoadError,
         selectProject,
+        retryProject,
         saveState,
         saveError,
         global,

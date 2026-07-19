@@ -50,6 +50,38 @@ test("announces invalid numeric input and clears stale validation on confirmed r
   await act(async () => root.unmount());
 });
 
+test("resets an equal numeric value when its project scope changes", async () => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const render = (scopeKey: string) => (
+    <SettingNumberInput
+      description="Maximum rows returned."
+      id="project-row-limit"
+      label="Row limit"
+      max={5_000}
+      min={10}
+      onSave={vi.fn()}
+      scopeKey={scopeKey}
+      value={100}
+    />
+  );
+  await act(async () => root.render(render("/work/a")));
+  const input = host.querySelector<HTMLInputElement>("#project-row-limit")!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, "250");
+    input.dispatchEvent(new InputEvent("input", { bubbles: true }));
+  });
+  expect(input.value).toBe("250");
+
+  await act(async () => root.render(render("/work/b")));
+
+  expect(input.value).toBe("100");
+  await act(async () => root.unmount());
+});
+
 test("stacks management actions on narrow layouts and protects both columns", async () => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   const host = document.createElement("div");

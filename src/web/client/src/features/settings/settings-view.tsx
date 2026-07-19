@@ -44,10 +44,22 @@ function ScopeSection({ scope, title, children }: {
   );
 }
 
-function ProjectNotice({ project, ready }: {
+function ProjectNotice({ project, ready, loadError, onRetry }: {
   project: SettingsViewProps["activeProject"];
   ready: boolean;
+  loadError: string | null;
+  onRetry: () => void;
 }) {
+  if (project && loadError) {
+    return (
+      <div className="border-b border-destructive/30 bg-destructive/5 px-4 py-3" role="alert">
+        <p className="text-xs text-destructive">{loadError}</p>
+        <Button aria-label="Retry project settings" className="mt-2" onClick={onRetry} size="sm" type="button" variant="outline">
+          Retry project settings
+        </Button>
+      </div>
+    );
+  }
   if (project && !ready) {
     return (
       <div className="border-b border-border/50 bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
@@ -72,7 +84,8 @@ export function SettingsView({ activeProject = null, onNavigate }: SettingsViewP
   const projectReady = Boolean(
     activeProject?.path &&
     activeProject.path === settings.activeProjectPath &&
-    !settings.projectLoading,
+    !settings.projectLoading &&
+    !settings.projectLoadError,
   );
   const [selected, setSelected] = useState<SettingsCategoryId>("general");
   const [search, setSearch] = useState("");
@@ -207,7 +220,7 @@ function CategoryContent({
     case "services-logs":
       return (
         <ScopeSection scope="project">
-          <ProjectNotice project={activeProject} ready={projectReady} />
+          <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
           {visible("log-timestamps") ? <SettingToggle {...copy("log-timestamps")} checked={settings.project.logs.showTimestamps} disabled={projectDisabled} id="setting-log-timestamps" onChange={(value) => void settings.updateProject({ logs: { showTimestamps: value } })} /> : null}
           {visible("wrap-lines") ? <SettingToggle {...copy("wrap-lines")} checked={settings.project.logs.wrapLines} disabled={projectDisabled} id="setting-wrap-lines" onChange={(value) => void settings.updateProject({ logs: { wrapLines: value } })} /> : null}
         </ScopeSection>
@@ -226,7 +239,7 @@ function CategoryContent({
           ) : null}
           {anyVisible(["repository-defaults"]) ? (
             <ScopeSection scope="project" title="Current project">
-              <ProjectNotice project={activeProject} ready={projectReady} />
+              <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("repository-defaults").description}
                 title={copy("repository-defaults").label}
@@ -249,7 +262,7 @@ function CategoryContent({
           ) : null}
           {anyVisible(["project-agent-context"]) ? (
             <ScopeSection scope="project" title="Current project">
-              <ProjectNotice project={activeProject} ready={projectReady} />
+              <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("project-agent-context").description}
                 title={copy("project-agent-context").label}
@@ -261,9 +274,9 @@ function CategoryContent({
     case "database-safety":
       return (
         <ScopeSection scope="project">
-          <ProjectNotice project={activeProject} ready={projectReady} />
+          <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
           {visible("confirm-writes") ? <SettingToggle {...copy("confirm-writes")} checked={settings.project.database.confirmWrites} disabled={projectDisabled} id="setting-confirm-writes" onChange={(value) => void settings.updateProject({ database: { confirmWrites: value } })} /> : null}
-          {visible("result-limit") ? <SettingNumberInput {...copy("result-limit")} disabled={projectDisabled} id="setting-result-limit" max={5000} min={10} onSave={(value) => settings.updateProject({ database: { resultLimit: value } })} value={settings.project.database.resultLimit} /> : null}
+          {visible("result-limit") ? <SettingNumberInput {...copy("result-limit")} disabled={projectDisabled} id="setting-result-limit" max={5000} min={10} onSave={(value) => settings.updateProject({ database: { resultLimit: value } })} scopeKey={settings.activeProjectPath} value={settings.project.database.resultLimit} /> : null}
           {visible("connections") ? (
             <ManagementRow
               action={<Button disabled={projectDisabled} onClick={() => onNavigate?.("database")} size="sm" type="button" variant="outline">Open Database</Button>}
@@ -302,7 +315,7 @@ function CategoryContent({
           ) : null}
           {anyVisible(["export-reset"]) ? (
             <ScopeSection scope="project" title="Current project">
-              <ProjectNotice project={activeProject} ready={projectReady} />
+              <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("export-reset").description}
                 title={copy("export-reset").label}
