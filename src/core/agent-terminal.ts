@@ -8,6 +8,12 @@ export interface InteractiveAgentInvocation {
   args: string[];
 }
 
+/**
+ * Both CLIs accept a positional initial prompt and queue it themselves until
+ * the interactive TUI is ready. Passing it as an argument is what makes the
+ * first prompt reliable — injecting keystrokes after spawn raced the TUI's
+ * startup (trust dialogs, first paint) and the paste was silently dropped.
+ */
 export function buildInteractiveAgentInvocation(
   provider: string,
   prompt: string,
@@ -18,9 +24,9 @@ export function buildInteractiveAgentInvocation(
 
   switch (provider) {
     case "claude":
-      return { shell: CLAUDE_BIN, args: [] };
+      return { shell: CLAUDE_BIN, args: [prompt] };
     case "codex":
-      return { shell: CODEX_BIN, args: ["--no-alt-screen"] };
+      return { shell: CODEX_BIN, args: ["--no-alt-screen", prompt] };
     default:
       throw new Error(`Unsupported agent provider: ${String(provider)}`);
   }

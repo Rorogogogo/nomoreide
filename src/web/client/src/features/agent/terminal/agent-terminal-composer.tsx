@@ -5,6 +5,9 @@ import { onboardRepoPrompt } from "../prompts";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { FilePicker } from "../chat/file-picker";
 import { useAgentDock } from "../chat/agent-context";
+import { AgentCapabilityStrip } from "./agent-capability-strip";
+import type { AgentCapabilities } from "./agent-capability-data";
+import type { AgentDockPage } from "./agent-terminal-dock";
 import { useT } from "@/lib/i18n";
 
 export function taskLabel(prompt: string, explicit?: string) {
@@ -12,9 +15,9 @@ export function taskLabel(prompt: string, explicit?: string) {
   return source.length > 60 ? `${source.slice(0, 57).trimEnd()}…` : source;
 }
 
-export function AgentTerminalComposer({ onSubmitted }: { onSubmitted?: () => void }) {
+export function AgentTerminalComposer({ capabilities, onNavigate, onSubmitted }: { capabilities?: AgentCapabilities; onNavigate?: (page: AgentDockPage) => void; onSubmitted?: () => void }) {
   const t = useT();
-  const { activeSource, clearSource, configured, createTask, creating, draft, focusNonce, insertPath, onboarding, provider, setDraft, setOnboarding } = useAgentDock();
+  const { activeSource, clearSource, configured, createTask, creating, draft, focusNonce, insertPath, insertPrompt, onboarding, provider, setDraft, setOnboarding } = useAgentDock();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -47,6 +50,7 @@ export function AgentTerminalComposer({ onSubmitted }: { onSubmitted?: () => voi
           <Button aria-label={t("dock.runAria")} className="size-7" disabled={configured !== true || !draft.trim() || !!creating} onClick={() => void submit()} size="icon"><ArrowUp /></Button>
         </div>
       </div>
+      {capabilities ? <AgentCapabilityStrip capabilities={capabilities} onInsert={insertPrompt} onNavigate={onNavigate} providerLabel={provider?.label} /> : null}
       {pickerOpen ? <div className="relative mt-2"><FilePicker onClose={() => setPickerOpen(false)} onPick={(path) => { insertPath(path); setPickerOpen(false); }} /></div> : null}
     </div>
   </div>;

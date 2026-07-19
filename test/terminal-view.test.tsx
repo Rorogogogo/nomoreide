@@ -273,12 +273,15 @@ describe("TerminalViewport", () => {
     const fit = { proposeDimensions: vi.fn(() => ({ cols: 91, rows: 27 })) };
     const sendControl = (type: "restart" | "stop") =>
       sendWebTerminalControl(socket, fit, type);
-    const handle = createTerminalViewportHandle({ focus, refit, sendControl });
+    const sendInput = (data: string) =>
+      socket.send(JSON.stringify({ data, type: "input" }));
+    const handle = createTerminalViewportHandle({ focus, refit, sendControl, sendInput });
 
     handle.restart();
     handle.stop();
     handle.focus();
     handle.refit();
+    handle.input("/verify ");
 
     expect(socket.send).toHaveBeenNthCalledWith(
       1,
@@ -287,6 +290,10 @@ describe("TerminalViewport", () => {
     expect(socket.send).toHaveBeenNthCalledWith(
       2,
       JSON.stringify({ cols: 91, rows: 27, type: "stop" }),
+    );
+    expect(socket.send).toHaveBeenNthCalledWith(
+      3,
+      JSON.stringify({ data: "/verify ", type: "input" }),
     );
     expect(focus).toHaveBeenCalledOnce();
     expect(refit).toHaveBeenCalledOnce();

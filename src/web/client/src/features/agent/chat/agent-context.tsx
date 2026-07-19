@@ -38,6 +38,8 @@ type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
   draft: string;
   setDraft: (value: string | ((current: string) => string)) => void;
   insertPath: (path: string) => void;
+  /** Append invocation text (e.g. "/skill ") to the draft and focus the composer. */
+  insertPrompt: (text: string) => void;
   /** The source object behind the current/last action, or null. */
   activeSource: AgentSource | null;
   clearSource: () => void;
@@ -84,6 +86,18 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [bumpFocus],
   );
 
+  const insertPrompt = useCallback(
+    (text: string) => {
+      setOpen(true);
+      setDraft((current) => {
+        const trimmed = current.replace(/\s*$/, "");
+        return trimmed ? `${trimmed} ${text}` : text;
+      });
+      bumpFocus();
+    },
+    [bumpFocus],
+  );
+
   const sendToAgent = useCallback(
     ({ prompt, source, mode = "send", label, background }: SendToAgentOptions) => {
       if (mode === "draft") {
@@ -110,6 +124,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     draft,
     setDraft,
     insertPath,
+    insertPrompt,
     activeSource,
     clearSource,
     focusNonce,
