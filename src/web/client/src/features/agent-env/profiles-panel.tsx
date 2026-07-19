@@ -16,6 +16,7 @@ import type { AgentEnvAgentName, AgentEnvProfileSummary } from "@/lib/api";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_LABELS, AgentLogo } from "./agent-column";
 import { ProfileContents } from "./profile-contents";
+import { useT } from "@/lib/i18n";
 
 const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
 
@@ -47,6 +48,7 @@ export function ProfilesPanel({
   onPublish: (name: string) => void;
   onChanged: () => void;
 }) {
+  const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [snapshotAgent, setSnapshotAgent] =
     useState<AgentEnvAgentName>("claude");
@@ -66,7 +68,7 @@ export function ProfilesPanel({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold">
           <Archive className="size-3.5 text-muted-foreground" />
-          Profiles
+          {t("agentEnv.profilesTitle")}
           {profiles.length > 0 ? (
             <Badge size="small" variant="outline">
               {profiles.length}
@@ -75,7 +77,7 @@ export function ProfilesPanel({
         </span>
         <div className="flex flex-wrap items-center gap-2">
           <div
-            aria-label="Agent to snapshot"
+            aria-label={t("agentEnv.snapshotAgentAria")}
             className="flex h-8 items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5"
             role="radiogroup"
           >
@@ -91,7 +93,7 @@ export function ProfilesPanel({
                 key={agent}
                 onClick={() => setSnapshotAgent(agent)}
                 role="radio"
-                title={`Snapshot ${AGENT_LABELS[agent]}`}
+                title={t("agentEnv.snapshotAgentTitle", { name: AGENT_LABELS[agent] })}
                 type="button"
               >
                 <AgentLogo agent={agent} className="size-4" />
@@ -99,13 +101,13 @@ export function ProfilesPanel({
             ))}
           </div>
           <input
-            aria-label="New profile name"
+            aria-label={t("agentEnv.newProfileAria")}
             className="h-8 w-36 rounded-md border border-border bg-background px-2 text-xs"
             onChange={(event) => setSnapshotName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") submitSnapshot();
             }}
-            placeholder="profile name"
+            placeholder={t("agentEnv.profileNamePlaceholder")}
             value={snapshotName}
           />
           <Button
@@ -115,7 +117,7 @@ export function ProfilesPanel({
             variant="outline"
           >
             <Camera />
-            Snapshot
+            {t("agentEnv.snapshot")}
           </Button>
           <Button
             disabled={busy}
@@ -124,7 +126,7 @@ export function ProfilesPanel({
             variant="outline"
           >
             <Upload />
-            Import
+            {t("agentEnv.import")}
           </Button>
           <input
             accept=".tar.gz,.tgz,application/gzip"
@@ -142,12 +144,11 @@ export function ProfilesPanel({
 
       {loading ? (
         <p className="px-3 py-2 text-xs text-muted-foreground">
-          Loading profiles...
+          {t("agentEnv.loadingProfiles")}
         </p>
       ) : profiles.length === 0 ? (
         <p className="px-3 py-2 text-xs text-muted-foreground">
-          No profiles yet. Snapshot an agent to capture its MCPs and skills as a
-          reusable bundle, or import a shared .tar.gz.
+          {t("agentEnv.noProfiles")}
         </p>
       ) : (
         <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto">
@@ -166,8 +167,8 @@ export function ProfilesPanel({
                     className="shrink-0"
                     title={
                       profile.sourceAgent
-                        ? `Snapshot of ${AGENT_LABELS[profile.sourceAgent]}`
-                        : "Imported profile"
+                        ? t("agentEnv.snapshotOf", { name: AGENT_LABELS[profile.sourceAgent] })
+                        : t("agentEnv.importedProfile")
                     }
                   >
                     {profile.sourceAgent ? (
@@ -185,12 +186,10 @@ export function ProfilesPanel({
                         {profile.name}
                       </span>
                       <Badge size="small" variant="outline">
-                        {profile.mcpCount} MCP
-                        {profile.mcpCount === 1 ? "" : "s"}
+                        {t(profile.mcpCount === 1 ? "agentEnv.mcpCountOne" : "agentEnv.mcpCountMany", { count: profile.mcpCount })}
                       </Badge>
                       <Badge size="small" variant="outline">
-                        {profile.skillCount} skill
-                        {profile.skillCount === 1 ? "" : "s"}
+                        {t(profile.skillCount === 1 ? "agentEnv.skillCountOne" : "agentEnv.skillCountMany", { count: profile.skillCount })}
                       </Badge>
                       <ChevronRight
                         className={cn(
@@ -215,26 +214,26 @@ export function ProfilesPanel({
                   className="opacity-100"
                   items={[
                     ...ALL_AGENTS.map((agent) => ({
-                      label: `Apply to ${AGENT_LABELS[agent]}`,
+                      label: t("agentEnv.applyTo", { name: AGENT_LABELS[agent] }),
                       onSelect: () => onApply(profile.name, agent),
                     })),
                     {
-                      label: "Export .tar.gz",
+                      label: t("agentEnv.exportTar"),
                       icon: <Archive className="size-3.5" />,
                       onSelect: () => onExport(profile.name),
                     },
                     {
-                      label: "Publish to registry...",
+                      label: t("agentEnv.publishRegistry"),
                       icon: <UploadCloud className="size-3.5" />,
                       onSelect: () => onPublish(profile.name),
                     },
                     {
-                      label: "Delete",
+                      label: t("agentEnv.delete"),
                       icon: <Trash2 className="size-3.5" />,
                       onSelect: () => setConfirmDelete(profile.name),
                     },
                   ]}
-                  label={`Actions for ${profile.name}`}
+                  label={t("agentEnv.profileActions", { name: profile.name })}
                 />
               </div>
               {expanded === profile.name ? (
@@ -247,15 +246,15 @@ export function ProfilesPanel({
 
       {confirmDelete ? (
         <ConfirmDialog
-          confirmLabel="Delete"
+          confirmLabel={t("agentEnv.delete")}
           icon={<Trash2 />}
-          message={`Delete profile "${confirmDelete}"? Agents' live configs are not touched.`}
+          message={t("agentEnv.deleteProfileBody", { name: confirmDelete })}
           onCancel={() => setConfirmDelete(null)}
           onConfirm={() => {
             onDelete(confirmDelete);
             setConfirmDelete(null);
           }}
-          title="Delete profile"
+          title={t("agentEnv.deleteProfileTitle")}
           tone="danger"
         />
       ) : null}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { PublishFormInput } from "./use-registry";
+import { useT } from "@/lib/i18n";
 
 function slugify(input: string): string {
   return input
@@ -25,6 +26,7 @@ export function ProfilePublishDialog({
   onConfirm: (input: PublishFormInput) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [slug, setSlug] = useState(slugify(profileName));
   const [title, setTitle] = useState(profileName);
   const [version, setVersion] = useState("1.0.0");
@@ -36,18 +38,18 @@ export function ProfilePublishDialog({
 
   return (
     <ConfirmDialog
-      confirmLabel={busy ? "Publishing..." : "Publish"}
+      confirmLabel={busy ? t("agentEnv.publishing") : t("agentEnv.publish")}
       icon={<UploadCloud />}
       loading={busy}
       message={
         <div className="space-y-2">
           <p>
-            Publish <span className="font-medium text-foreground">{profileName}</span> to the
-            registry. The uploaded archive is credential-redacted — installers supply their own
-            secrets.
+            {t("agentEnv.publishBodyPre")}
+            <span className="font-medium text-foreground">{profileName}</span>
+            {t("agentEnv.publishBodyPost")}
           </p>
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium">Slug</span>
+            <span className="text-[11px] font-medium">{t("agentEnv.slugField")}</span>
             <input
               className={fieldClass}
               onChange={(event) => setSlug(slugify(event.target.value))}
@@ -55,7 +57,7 @@ export function ProfilePublishDialog({
             />
           </label>
           <label className="block space-y-1">
-            <span className="text-[11px] font-medium">Title</span>
+            <span className="text-[11px] font-medium">{t("agentEnv.titleField")}</span>
             <input
               className={fieldClass}
               onChange={(event) => setTitle(event.target.value)}
@@ -64,7 +66,7 @@ export function ProfilePublishDialog({
           </label>
           <div className="flex gap-2">
             <label className="block w-24 space-y-1">
-              <span className="text-[11px] font-medium">Version</span>
+              <span className="text-[11px] font-medium">{t("agentEnv.versionField")}</span>
               <input
                 className={fieldClass}
                 onChange={(event) => setVersion(event.target.value)}
@@ -72,7 +74,7 @@ export function ProfilePublishDialog({
               />
             </label>
             <label className="block flex-1 space-y-1">
-              <span className="text-[11px] font-medium">Summary (optional)</span>
+              <span className="text-[11px] font-medium">{t("agentEnv.summaryField")}</span>
               <input
                 className={fieldClass}
                 onChange={(event) => setSummary(event.target.value)}
@@ -93,7 +95,7 @@ export function ProfilePublishDialog({
           summary: summary.trim() || undefined,
         });
       }}
-      title="Publish to registry"
+      title={t("agentEnv.publishTitle")}
       tone="success"
     />
   );

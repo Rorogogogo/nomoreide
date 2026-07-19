@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { AgentSettingsDialog } from "./agent-settings-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/overflow-menu";
+import { useT, type Translate } from "@/lib/i18n";
 import type {
   AgentEnvAgentName,
   AgentEnvAvailability,
@@ -54,6 +55,7 @@ export function AgentColumn({
   config: AgentEnvConfig;
   onStage?: StageChange;
 }) {
+  const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const userMcps = [
     ...Object.entries(config.mcpServers).map(([name, entry]) => ({
@@ -91,13 +93,13 @@ export function AgentColumn({
           <span className="flex items-center gap-1">
             {availability ? (
               <Badge size="small" variant={availability.available ? "success" : "warning"}>
-                {availability.available ? "installed" : "not on PATH"}
+                {availability.available ? t("agentEnv.installed") : t("agentEnv.notOnPath")}
               </Badge>
             ) : null}
             <button
               className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               onClick={() => setSettingsOpen(true)}
-              title={`${AGENT_LABELS[config.agent]} settings`}
+              title={t("agentEnv.settingsTitle", { name: AGENT_LABELS[config.agent] })}
               type="button"
             >
               <Settings2 className="size-3.5" />
@@ -111,13 +113,13 @@ export function AgentColumn({
           className="truncate font-mono text-[11px] text-muted-foreground"
           title={config.configPath}
         >
-          {config.exists ? config.configPath : `no config — ${config.configPath}`}
+          {config.exists ? config.configPath : t("agentEnv.noConfig", { path: config.configPath })}
         </p>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         <McpSection
           agent={config.agent}
-          label="MCP servers"
+          label={t("agentEnv.mcpServers")}
           mcps={userMcps}
           onStage={onStage}
           scope="user"
@@ -125,7 +127,7 @@ export function AgentColumn({
         {projectMcps.length > 0 ? (
           <McpSection
             agent={config.agent}
-            label="Project MCP servers"
+            label={t("agentEnv.projectMcpServers")}
             mcps={projectMcps}
             onStage={onStage}
             scope="project"
@@ -139,6 +141,7 @@ export function AgentColumn({
 
 /** "Copy to <agent>" / "Move to <agent>" / "Remove" — explicit buttons, no drag-and-drop. */
 function changeMenuItems(
+  t: Translate,
   change: Omit<AgentEnvPendingChange, "action" | "targetAgent" | "targetScope">,
   onStage: StageChange,
   targetScopeFor: (target: AgentEnvAgentName) => AgentEnvScope,
@@ -146,16 +149,16 @@ function changeMenuItems(
   const others = ALL_AGENTS.filter((agent) => agent !== change.sourceAgent);
   return [
     ...others.map((target) => ({
-      label: `Copy to ${AGENT_LABELS[target]}`,
+      label: t("agentEnv.copyTo", { name: AGENT_LABELS[target] }),
       onSelect: () =>
         onStage({ ...change, action: "copy", targetAgent: target, targetScope: targetScopeFor(target) }),
     })),
     ...others.map((target) => ({
-      label: `Move to ${AGENT_LABELS[target]}`,
+      label: t("agentEnv.moveTo", { name: AGENT_LABELS[target] }),
       onSelect: () =>
         onStage({ ...change, action: "move", targetAgent: target, targetScope: targetScopeFor(target) }),
     })),
-    { label: "Remove", onSelect: () => onStage({ ...change, action: "remove" }) },
+    { label: t("agentEnv.remove"), onSelect: () => onStage({ ...change, action: "remove" }) },
   ];
 }
 
@@ -172,13 +175,14 @@ function McpSection({
   scope: AgentEnvScope;
   onStage?: StageChange;
 }) {
+  const t = useT();
   return (
     <section>
       <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </h4>
       {mcps.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None configured.</p>
+        <p className="text-xs text-muted-foreground">{t("agentEnv.noneConfigured")}</p>
       ) : (
         <ul className="space-y-1">
           {mcps.map((mcp) => (
@@ -201,6 +205,7 @@ function McpSection({
               {onStage ? (
                 <OverflowMenu
                   items={changeMenuItems(
+                    t,
                     { category: "mcp", name: mcp.name, sourceAgent: agent, sourceScope: scope },
                     onStage,
                     () => scope,
@@ -224,13 +229,14 @@ function SkillsSection({
   skills: AgentEnvSkill[];
   onStage?: StageChange;
 }) {
+  const t = useT();
   return (
     <section>
       <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Skills & plugins
+        {t("agentEnv.skillsPlugins")}
       </h4>
       {skills.length === 0 ? (
-        <p className="text-xs text-muted-foreground">None installed.</p>
+        <p className="text-xs text-muted-foreground">{t("agentEnv.noneInstalled")}</p>
       ) : (
         <ul className="space-y-1">
           {skills.map((skill) => (
@@ -255,10 +261,9 @@ function SkillsSection({
                     className="block truncate text-[11px] text-muted-foreground"
                     title={skill.pluginSkills.join(", ")}
                   >
-                    {skill.pluginSkills.length} skill
-                    {skill.pluginSkills.length === 1 ? "" : "s"}
+                    {t(skill.pluginSkills.length === 1 ? "agentEnv.skillCountOne" : "agentEnv.skillCountMany", { count: skill.pluginSkills.length })}
                     {skill.pluginMcps?.length
-                      ? `, ${skill.pluginMcps.length} MCP${skill.pluginMcps.length === 1 ? "" : "s"}`
+                      ? `, ${t(skill.pluginMcps.length === 1 ? "agentEnv.mcpCountOne" : "agentEnv.mcpCountMany", { count: skill.pluginMcps.length })}`
                       : ""}
                   </span>
                 ) : null}
@@ -267,6 +272,7 @@ function SkillsSection({
               {onStage && skill.kind !== "plugin" ? (
                 <OverflowMenu
                   items={changeMenuItems(
+                    t,
                     { category: "skill", name: skill.name, sourceAgent: agent, sourceScope: skill.scope },
                     onStage,
                     // Only Claude reads project-scoped skills; land elsewhere as user scope.

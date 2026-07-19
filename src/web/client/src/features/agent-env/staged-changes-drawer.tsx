@@ -2,6 +2,7 @@ import { AlertTriangle, Layers, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AgentEnvChangePreview } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 /**
  * Bottom drawer listing staged changes with their server-side preview. Nothing
@@ -23,6 +24,7 @@ export function StagedChangesDrawer({
   onClear: () => void;
   onApply: () => void;
 }) {
+  const t = useT();
   if (count === 0) return null;
 
   return (
@@ -30,27 +32,27 @@ export function StagedChangesDrawer({
       <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold">
           <Layers className="size-3.5 text-muted-foreground" />
-          Staged changes
+          {t("agentEnv.stagedChanges")}
           <Badge size="small" variant="outline">
             {count}
           </Badge>
         </span>
         <div className="flex items-center gap-2">
           <Button disabled={applying} onClick={onClear} size="sm" variant="ghost">
-            Clear
+            {t("agentEnv.clear")}
           </Button>
           <Button
             disabled={applying || (preview !== null && !preview.valid)}
             onClick={onApply}
             size="sm"
           >
-            {applying ? "Applying..." : "Save & apply"}
+            {applying ? t("agentEnv.applying") : t("agentEnv.saveApply")}
           </Button>
         </div>
       </div>
 
       {preview === null ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">Validating staged changes...</p>
+        <p className="px-3 py-2 text-xs text-muted-foreground">{t("agentEnv.validating")}</p>
       ) : null}
 
       <ul className="max-h-48 space-y-1 overflow-y-auto p-2">
@@ -77,7 +79,7 @@ export function StagedChangesDrawer({
               ))}
             </span>
             <button
-              aria-label="Unstage change"
+              aria-label={t("agentEnv.unstageAria")}
               className="mt-0.5 text-muted-foreground transition-colors hover:text-foreground"
               disabled={applying}
               onClick={() => onUnstage(index)}

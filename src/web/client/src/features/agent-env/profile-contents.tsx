@@ -6,6 +6,7 @@ import {
   type AgentEnvProfile,
   type AgentEnvProfileMcp,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 /**
  * Expanded profile row: view the bundled MCPs/skills and lightly edit them —
@@ -20,6 +21,7 @@ export function ProfileContents({
   name: string;
   onChanged: () => void;
 }) {
+  const t = useT();
   const [profile, setProfile] = useState<AgentEnvProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,7 +64,7 @@ export function ProfileContents({
   if (!profile) {
     return (
       <p className="px-3 pb-2 pl-9 text-[11px] text-muted-foreground">
-        {error ?? "Loading profile..."}
+        {error ?? t("agentEnv.loadingProfile")}
       </p>
     );
   }
@@ -89,7 +91,7 @@ export function ProfileContents({
   return (
     <div className="space-y-2 border-t border-border/40 bg-muted/20 px-3 py-2 pl-9">
       <input
-        aria-label="Profile description"
+        aria-label={t("agentEnv.profileDescAria")}
         className="h-7 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[11px] text-muted-foreground placeholder:text-muted-foreground/60 hover:border-border focus:border-border focus:bg-background focus:text-foreground focus:outline-none"
         disabled={busy}
         onBlur={saveDescription}
@@ -97,7 +99,7 @@ export function ProfileContents({
         onKeyDown={(event) => {
           if (event.key === "Enter") event.currentTarget.blur();
         }}
-        placeholder="Add a description..."
+        placeholder={t("agentEnv.profileDescPlaceholder")}
         value={description}
       />
 
@@ -109,7 +111,7 @@ export function ProfileContents({
           detail: mcpDetail(entry),
           icon: entry.kind === "remote" ? <Globe /> : <TerminalSquare />,
         }))}
-        label="MCP servers"
+        label={t("agentEnv.mcpServers")}
         onRemove={removeMcp}
       />
       <ItemSection
@@ -119,7 +121,7 @@ export function ProfileContents({
           name: skill.name,
           icon: <Sparkles />,
         }))}
-        label="Skills"
+        label={t("agentEnv.skills")}
         onRemove={removeSkill}
       />
 
@@ -144,13 +146,14 @@ function ItemSection({
   busy: boolean;
   onRemove: (key: string) => void;
 }) {
+  const t = useT();
   return (
     <section>
       <h5 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </h5>
       {items.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">None.</p>
+        <p className="text-[11px] text-muted-foreground">{t("agentEnv.none")}</p>
       ) : (
         <ul className="space-y-1">
           {items.map((item) => (
@@ -176,7 +179,7 @@ function ItemSection({
                 className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/item:opacity-100"
                 disabled={busy}
                 onClick={() => onRemove(item.key)}
-                title="Remove from profile"
+                title={t("agentEnv.removeFromProfile")}
                 type="button"
               >
                 <X className="size-3.5" />
