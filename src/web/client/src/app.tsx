@@ -88,8 +88,8 @@ const PAGE_TITLES: Record<Page, string> = {
   errors: "Error Inbox",
   database: "Database",
   terminal: "Terminal",
-  agent: "Agent",
-  "agent-env": "Agent Env",
+  agent: "Agent Console",
+  "agent-env": "Agent Environments",
   settings: "Settings",
 };
 
@@ -134,8 +134,8 @@ const NAV_SECTIONS: Array<{
   {
     label: "Agent",
     items: [
-      { page: "agent", label: "Agent", icon: <Bot /> },
-      { page: "agent-env", label: "Agent Env", icon: <Puzzle /> },
+      { page: "agent", label: "Console", icon: <Bot /> },
+      { page: "agent-env", label: "Environments", icon: <Puzzle /> },
     ],
   },
 ];
@@ -589,7 +589,12 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
             ) : null}
             {page === "github" ? <GitHubView key={githubPageKey} /> : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
-            {page === "agent" ? <AgentView focusChanges={changesFocusNonce} /> : null}
+            {page === "agent" ? (
+              <AgentView
+                focusChanges={changesFocusNonce}
+                onOpenAgentEnv={() => setPage("agent-env")}
+              />
+            ) : null}
             {page === "agent-env" ? <AgentEnvView /> : null}
             {page === "errors" ? (
               <ErrorInboxView

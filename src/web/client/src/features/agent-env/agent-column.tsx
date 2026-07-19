@@ -1,5 +1,13 @@
-import { Globe, Package, Sparkles, TerminalSquare } from "lucide-react";
+import { useState } from "react";
+import { Globe, Package, Settings2, Sparkles, TerminalSquare } from "lucide-react";
+import {
+  AntigravityLogo,
+  ClaudeLogo,
+  CodexLogo,
+} from "@/features/agent/agent-logos";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { AgentSettingsDialog } from "./agent-settings-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/overflow-menu";
 import type {
@@ -19,6 +27,19 @@ export const AGENT_LABELS: Record<AgentEnvConfig["agent"], string> = {
   antigravity: "Antigravity",
 };
 
+/** Official mark for an agent, brand-colored where the brand has one color. */
+export function AgentLogo({
+  agent,
+  className,
+}: {
+  agent: AgentEnvAgentName;
+  className?: string;
+}) {
+  if (agent === "claude") return <ClaudeLogo className={cn("text-[#D97757]", className)} />;
+  if (agent === "codex") return <CodexLogo className={className} />;
+  return <AntigravityLogo className={className} />;
+}
+
 const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
 
 type StageChange = (change: AgentEnvPendingChange) => void;
@@ -33,6 +54,7 @@ export function AgentColumn({
   config: AgentEnvConfig;
   onStage?: StageChange;
 }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const userMcps = [
     ...Object.entries(config.mcpServers).map(([name, entry]) => ({
       name,
@@ -62,13 +84,29 @@ export function AgentColumn({
     <Card className="flex min-h-0 flex-col">
       <CardHeader className="shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle>{AGENT_LABELS[config.agent]}</CardTitle>
-          {availability ? (
-            <Badge size="small" variant={availability.available ? "success" : "warning"}>
-              {availability.available ? "installed" : "not on PATH"}
-            </Badge>
-          ) : null}
+          <CardTitle className="flex items-center gap-1.5">
+            <AgentLogo agent={config.agent} className="size-4" />
+            {AGENT_LABELS[config.agent]}
+          </CardTitle>
+          <span className="flex items-center gap-1">
+            {availability ? (
+              <Badge size="small" variant={availability.available ? "success" : "warning"}>
+                {availability.available ? "installed" : "not on PATH"}
+              </Badge>
+            ) : null}
+            <button
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              onClick={() => setSettingsOpen(true)}
+              title={`${AGENT_LABELS[config.agent]} settings`}
+              type="button"
+            >
+              <Settings2 className="size-3.5" />
+            </button>
+          </span>
         </div>
+        {settingsOpen ? (
+          <AgentSettingsDialog agent={config.agent} onClose={() => setSettingsOpen(false)} />
+        ) : null}
         <p
           className="truncate font-mono text-[11px] text-muted-foreground"
           title={config.configPath}

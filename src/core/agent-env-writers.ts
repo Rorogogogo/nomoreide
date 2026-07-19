@@ -41,7 +41,7 @@ export function formatTimestamp(): string {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
-async function backupFile(filePath: string): Promise<string | null> {
+export async function backupFile(filePath: string): Promise<string | null> {
   const base = `${filePath}.bak.${formatTimestamp()}`;
   // COPYFILE_EXCL + suffix loop: two writes within the same second (e.g. the
   // add+remove halves of a move) must not overwrite each other's backup.
@@ -59,7 +59,7 @@ async function backupFile(filePath: string): Promise<string | null> {
   return null;
 }
 
-async function atomicWrite(filePath: string, content: string): Promise<void> {
+export async function atomicWrite(filePath: string, content: string): Promise<void> {
   const tmpPath = `${filePath}.tmp.${Date.now()}`;
   await writeFile(tmpPath, content, "utf8");
   await rename(tmpPath, filePath);

@@ -37,7 +37,10 @@ const TABS: Array<{ id: AgentTab; label: string; icon: React.ReactNode }> = [
   { id: "usage", label: "Usage", icon: <DollarSign className="size-3.5" /> },
 ];
 
-export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
+export function AgentView({
+  focusChanges,
+  onOpenAgentEnv,
+}: { focusChanges?: number; onOpenAgentEnv?: () => void } = {}) {
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<AgentId>("claude-code");
@@ -183,7 +186,12 @@ export function AgentView({ focusChanges }: { focusChanges?: number } = {}) {
         ) : null}
         {tab === "memory" ? <MemoryTab agent={activeAgent} agentId={agentId} /> : null}
         {tab === "tools" ? (
-          <ToolsTab agent={activeAgent} agentId={agentId} alternateHooks={alternateHooks} />
+          <ToolsTab
+            agent={activeAgent}
+            agentId={agentId}
+            alternateHooks={alternateHooks}
+            onOpenAgentEnv={onOpenAgentEnv}
+          />
         ) : null}
         {tab === "activity" ? <ActivityTab agent={activeAgent} agentId={agentId} /> : null}
         {tab === "changes" ? <ChangesTab /> : null}

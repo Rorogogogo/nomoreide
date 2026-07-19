@@ -5,6 +5,7 @@ import { agentChatRoutes } from "./agent-chat-routes.js";
 import { agentEnvRoutes } from "./agent-env-routes.js";
 import { agentProfileRoutes } from "./agent-profile-routes.js";
 import { agentRegistryRoutes } from "./agent-registry-routes.js";
+import { agentSettingsRoutes } from "./agent-settings-routes.js";
 import { databaseRoutes } from "./database-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
@@ -35,6 +36,7 @@ export const routes: Route[] = [
   // would otherwise swallow `install-from-registry` / `register-github`.
   ...agentRegistryRoutes,
   ...agentProfileRoutes,
+  ...agentSettingsRoutes,
   ...databaseRoutes,
   ...errorRoutes,
   ...githubRoutes,

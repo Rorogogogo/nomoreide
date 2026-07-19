@@ -76,6 +76,7 @@ export async function listProfiles(
       summaries.push({
         name: profile.name,
         description: profile.description,
+        sourceAgent: profile.sourceAgent,
         mcpCount: Object.keys(profile.mcps).length,
         skillCount: profile.skills.length,
         updatedAt: info.mtime.toISOString(),
@@ -207,6 +208,7 @@ export async function snapshotProfileFromAgent(
   const profile: Profile = {
     name,
     ...(input.description ? { description: input.description } : {}),
+    sourceAgent: input.agent,
     mcps,
     skills: [],
   };

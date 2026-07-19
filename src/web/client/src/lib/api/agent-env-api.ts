@@ -128,9 +128,21 @@ export type AgentEnvProfileMcp =
       env?: Record<string, string>;
     };
 
+export interface AgentEnvSettings {
+  agent: AgentEnvAgentName;
+  path: string;
+  exists: boolean;
+  format: "json" | "toml";
+  content: string;
+  model?: string;
+  modelEditable: boolean;
+}
+
 export interface AgentEnvProfileSummary {
   name: string;
   description?: string;
+  /** Agent the profile was snapshotted from; absent on older/imported profiles. */
+  sourceAgent?: AgentEnvAgentName;
   mcpCount: number;
   skillCount: number;
   updatedAt: string;
@@ -139,6 +151,7 @@ export interface AgentEnvProfileSummary {
 export interface AgentEnvProfile {
   name: string;
   description?: string;
+  sourceAgent?: AgentEnvAgentName;
   mcps: Record<string, AgentEnvProfileMcp>;
   skills: Array<{ name: string }>;
 }
@@ -205,8 +218,21 @@ export interface AgentEnvApi {
   previewAgentEnvChanges(changes: AgentEnvPendingChange[]): Promise<AgentEnvChangePreview>;
   applyAgentEnvChanges(changes: AgentEnvPendingChange[]): Promise<AgentEnvApplyResult>;
   snapshotAgentEnv(agent: AgentEnvAgentName): Promise<AgentEnvSnapshotResult>;
+  getAgentEnvSettings(agent: AgentEnvAgentName): Promise<AgentEnvSettings>;
+  saveAgentEnvSettings(
+    agent: AgentEnvAgentName,
+    content: string,
+  ): Promise<{ settings: AgentEnvSettings; backup: string | null }>;
+  setAgentEnvModel(
+    agent: AgentEnvAgentName,
+    model: string,
+  ): Promise<{ settings: AgentEnvSettings; backup: string | null }>;
   listAgentEnvProfiles(): Promise<AgentEnvProfileSummary[]>;
   getAgentEnvProfile(name: string): Promise<AgentEnvProfile>;
+  updateAgentEnvProfile(
+    name: string,
+    patch: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills">>,
+  ): Promise<AgentEnvProfile>;
   deleteAgentEnvProfile(name: string): Promise<void>;
   snapshotAgentEnvProfile(input: {
     agent: AgentEnvAgentName;

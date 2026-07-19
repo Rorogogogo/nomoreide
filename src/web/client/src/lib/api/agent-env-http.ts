@@ -15,6 +15,7 @@ import type {
   AgentEnvRegistryInstallResult,
   AgentEnvRegistryPublishResult,
   AgentEnvRegistryStatus,
+  AgentEnvSettings,
   AgentEnvSnapshotResult,
 } from "./agent-env-api.js";
 
@@ -70,6 +71,35 @@ export const httpAgentEnvApi: AgentEnvApi = {
     return { agent: response.agent, backups: response.backups };
   },
 
+  async getAgentEnvSettings(agent) {
+    const response = await requestJson<{ ok: true; settings: AgentEnvSettings }>(
+      `/api/agent-env/settings/${agent}`,
+    );
+    return response.settings;
+  },
+
+  async saveAgentEnvSettings(agent, content) {
+    const response = await requestJson<{
+      ok: true;
+      settings: AgentEnvSettings;
+      backup: string | null;
+    }>(`/api/agent-env/settings/${agent}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    return { settings: response.settings, backup: response.backup };
+  },
+
+  async setAgentEnvModel(agent, model) {
+    const response = await postJson<{
+      ok: true;
+      settings: AgentEnvSettings;
+      backup: string | null;
+    }>(`/api/agent-env/settings/${agent}/model`, { model });
+    return { settings: response.settings, backup: response.backup };
+  },
+
   async listAgentEnvProfiles() {
     const response = await requestJson<{ ok: true; profiles: AgentEnvProfileSummary[] }>(
       "/api/agent-env/profiles",
@@ -80,6 +110,18 @@ export const httpAgentEnvApi: AgentEnvApi = {
   async getAgentEnvProfile(name) {
     const response = await requestJson<{ ok: true; profile: AgentEnvProfile }>(
       `/api/agent-env/profiles/${encodeURIComponent(name)}`,
+    );
+    return response.profile;
+  },
+
+  async updateAgentEnvProfile(name, patch) {
+    const response = await requestJson<{ ok: true; profile: AgentEnvProfile }>(
+      `/api/agent-env/profiles/${encodeURIComponent(name)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      },
     );
     return response.profile;
   },
