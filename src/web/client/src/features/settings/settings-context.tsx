@@ -274,7 +274,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setConfirmedProject(snapshot.project);
       }
     } catch (error) {
-      if (mountedRef.current && revision === loadRevisionRef.current) {
+      const ownsProjectLoad = projectPath === null || (
+        projectPath === activeProjectPathRef.current &&
+        projectLoadRevision === projectLoadRevisionRef.current
+      );
+      if (
+        mountedRef.current &&
+        revision === loadRevisionRef.current &&
+        ownsProjectLoad
+      ) {
         setLoadError(errorMessage(error));
       }
     } finally {

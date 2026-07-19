@@ -270,6 +270,32 @@ describe("SettingsProvider", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("ignores a failed retry after another project has loaded", async () => {
+    const mounted = await mountProvider();
+    await act(async () => mounted.value.selectProject("/work/a"));
+    const retryA = deferred<typeof initialSnapshot>();
+    api.getSettings.mockReturnValueOnce(retryA.promise).mockResolvedValueOnce({
+      ...initialSnapshot,
+      project: {
+        ...initialSnapshot.project,
+        database: { confirmWrites: true, resultLimit: 222 },
+      },
+    });
+
+    let retryOperation!: Promise<void>;
+    act(() => { retryOperation = mounted.value.retry(); });
+    await act(async () => Promise.resolve());
+    await act(async () => mounted.value.selectProject("/work/b"));
+    retryA.reject(new Error("project A disappeared"));
+    await act(async () => retryOperation);
+
+    expect(mounted.value.loadError).toBeNull();
+    expect(mounted.value.activeProjectPath).toBe("/work/b");
+    expect(mounted.value.project.database.resultLimit).toBe(222);
+    expect(mounted.value.projectLoading).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("captures the project path for a save and never leaks its result after switching", async () => {
     const mounted = await mountProvider();
     api.getSettings.mockImplementation(async (path?: string) => ({
