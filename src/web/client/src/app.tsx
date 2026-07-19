@@ -615,7 +615,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               />
             ) : null}
             {page === "terminal" ? <TerminalView /> : null}
-            {page === "settings" ? <SettingsView /> : null}
+            {page === "settings" ? (
+              <SettingsView
+                activeProject={data?.git.selectedRepository ?? null}
+                onNavigate={(nextPage) => setPage(nextPage)}
+              />
+            ) : null}
           </div>
         </main>
       </div>
