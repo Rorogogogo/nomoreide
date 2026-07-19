@@ -14,6 +14,15 @@ import {
 } from "../src/web/client/src/features/errors/incident-filters";
 import type { ErrorIncident } from "../src/web/client/src/lib/api";
 import { IncidentTable } from "../src/web/client/src/features/errors/incident-table";
+import { ErrorInboxView } from "../src/web/client/src/features/errors/error-inbox-view";
+
+const incidentFeed = vi.hoisted(() => ({
+  value: {
+    incidents: [] as ErrorIncident[],
+    connected: false,
+    error: null as string | null,
+  },
+}));
 
 vi.mock("@/components/ui/toast", () => ({
   useToasts: () => ({ error: vi.fn(), success: vi.fn() }),
@@ -21,6 +30,10 @@ vi.mock("@/components/ui/toast", () => ({
 
 vi.mock("@/features/agent/chat/agent-context", () => ({
   useAgentDock: () => ({ sendToAgent: vi.fn() }),
+}));
+
+vi.mock("@/features/errors/use-error-incidents", () => ({
+  useErrorIncidents: () => incidentFeed.value,
 }));
 
 function incident(overrides: Partial<ErrorIncident> & Pick<ErrorIncident, "id">): ErrorIncident {
@@ -259,5 +272,48 @@ describe("IncidentTable", () => {
     expect(source).not.toContain("SAMPLE_LOGS");
     expect(source).not.toContain("duration_ms");
     expect(source).toContain("useReducedMotion");
+  });
+});
+
+describe("ErrorInboxView", () => {
+  test("scopes live incidents and forwards connection, error, and review props to the table", async () => {
+    incidentFeed.value = {
+      incidents,
+      connected: false,
+      error: "initial fetch failed",
+    };
+    const onReviewChanges = vi.fn();
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        <ErrorInboxView
+          inScope={(service) => service === "web"}
+          onReviewChanges={onReviewChanges}
+        />,
+      );
+    });
+
+    expect(host.querySelectorAll("[data-incident-id]")).toHaveLength(1);
+    expect(host.textContent).toContain("Checkout render warning");
+    expect(host.textContent).not.toContain("Queue stalled");
+    expect(host.textContent).toContain("reconnecting");
+    expect(host.textContent).toContain("initial fetch failed");
+    expect(host.querySelector('input[aria-label="Search incidents"]')).not.toBeNull();
+
+    const source = readFileSync(
+      resolve("src/web/client/src/features/errors/error-inbox-view.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("<IncidentTable");
+    expect(source).toContain("onReviewChanges={onReviewChanges}");
+    expect(source).not.toContain("w-72");
+
+    await act(async () => root.unmount());
+    host.remove();
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
   });
 });
