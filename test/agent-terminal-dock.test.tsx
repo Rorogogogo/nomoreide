@@ -291,13 +291,20 @@ describe("AgentTerminalDock", () => {
     expect(source).not.toContain("<AgentDock");
   });
 
-  test("disables missing providers and selects an installed provider", async () => {
+  test("disables missing providers and switches with the segmented control", async () => {
     Object.assign(dock, { open: true }); const { host } = await render();
-    const select = host.querySelector('[aria-label="Agent provider"]') as HTMLSelectElement;
-    expect((select.querySelector('option[value="codex"]') as HTMLOptionElement).disabled).toBe(true);
+    const group = host.querySelector('[aria-label="Agent provider"]') as HTMLElement;
+    const toggles = Array.from(group.querySelectorAll("button")) as HTMLButtonElement[];
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0].getAttribute("aria-pressed")).toBe("true");
+    expect(toggles[1].disabled).toBe(true);
+    expect(toggles[1].title).toContain("npm i codex");
+
     dock.providers[1].configured = true;
-    select.value = "codex";
-    act(() => select.dispatchEvent(new Event("change", { bubbles: true })));
+    const { host: enabledHost } = await render();
+    const codex = enabledHost.querySelectorAll('[aria-label="Agent provider"] button')[1] as HTMLButtonElement;
+    expect(codex.disabled).toBe(false);
+    act(() => codex.click());
     expect(dock.selectProvider).toHaveBeenCalledWith("codex");
     dock.providers[1].configured = false;
   });

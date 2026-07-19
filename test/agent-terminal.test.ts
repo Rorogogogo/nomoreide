@@ -12,10 +12,6 @@ async function loadInvocationBuilder(claudeBin = "", codexBin = "") {
   return (await import("../src/core/agent-terminal.js")).buildInteractiveAgentInvocation;
 }
 
-async function loadAgentTerminal() {
-  return import("../src/web/client/src/features/agent/terminal/agent-terminal-input.js");
-}
-
 describe("interactive agent terminal invocation", () => {
   test("uses configured Claude and Codex binaries", async () => {
     const buildInvocation = await loadInvocationBuilder("/custom/claude", "/custom/codex");
@@ -24,33 +20,22 @@ describe("interactive agent terminal invocation", () => {
     expect(buildInvocation("codex", "Review it").shell).toBe("/custom/codex");
   });
 
-  test("starts Claude interactively without consuming the prompt as an argument", async () => {
+  test("passes the prompt to Claude as a positional argument", async () => {
     const buildInteractiveAgentInvocation = await loadInvocationBuilder();
 
     expect(buildInteractiveAgentInvocation("claude", "Fix `api`; then test it")).toEqual({
       shell: "claude",
-      args: [],
+      args: ["Fix `api`; then test it"],
     });
   });
 
-  test("keeps Codex in the terminal's normal screen buffer", async () => {
+  test("keeps Codex in the normal screen buffer and passes the prompt", async () => {
     const buildInteractiveAgentInvocation = await loadInvocationBuilder();
 
     expect(buildInteractiveAgentInvocation("codex", "Review this workspace")).toEqual({
       shell: "codex",
-      args: ["--no-alt-screen"],
+      args: ["--no-alt-screen", "Review this workspace"],
     });
-  });
-
-  test("sends the complete prompt and Enter as separate terminal inputs", async () => {
-    const { initialAgentInputSequence, initialAgentSubmitDelay } = await loadAgentTerminal();
-
-    expect(initialAgentInputSequence("  First line\nSecond line  ")).toEqual([
-      "\u001b[200~  First line\nSecond line  \u001b[201~",
-      "\r",
-    ]);
-    expect(initialAgentSubmitDelay("codex")).toBe(75);
-    expect(initialAgentSubmitDelay("claude")).toBe(500);
   });
 
   test("rejects providers outside the allowlist", async () => {

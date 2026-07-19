@@ -35,6 +35,8 @@ export interface TerminalViewportHandle {
   stop(): void;
   focus(): void;
   refit(): void;
+  /** Writes raw data to the PTY, as if typed into the terminal. */
+  input(data: string): void;
 }
 
 export interface TerminalViewportProps {
@@ -108,9 +110,11 @@ export function createTerminalViewportHandle(options: {
   focus: () => void;
   refit: () => void;
   sendControl: (type: "restart" | "stop") => void;
+  sendInput: (data: string) => void;
 }): TerminalViewportHandle {
   return {
     focus: options.focus,
+    input: options.sendInput,
     refit: options.refit,
     restart: () => options.sendControl("restart"),
     stop: () => options.sendControl("stop"),
@@ -360,6 +364,19 @@ export const TerminalViewport = forwardRef<
     [tauriMode],
   );
 
+  const sendInput = useCallback(
+    (data: string) => {
+      if (tauriMode) {
+        void tauri_writeTerminalInput(sessionId, data);
+        return;
+      }
+      const socket = socketRef.current;
+      if (socket?.readyState !== WEB_SOCKET_OPEN) return;
+      socket.send(JSON.stringify({ data, type: "input" }));
+    },
+    [tauriMode, sessionId],
+  );
+
   useImperativeHandle(
     forwardedRef,
     () =>
@@ -367,8 +384,9 @@ export const TerminalViewport = forwardRef<
         focus: () => terminalRef.current?.focus(),
         refit: sendResize,
         sendControl,
+        sendInput,
       }),
-    [sendControl, sendResize],
+    [sendControl, sendInput, sendResize],
   );
 
   useEffect(() => {
