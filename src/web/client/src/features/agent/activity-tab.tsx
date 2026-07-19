@@ -8,11 +8,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { AgentProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AgentId } from "./agent-types";
 import { ToolCallFeed } from "./tool-call-feed";
 
 export function ActivityTab({ agent }: { agent: AgentProfile; agentId: AgentId }) {
+  const t = useT();
   return (
     <>
       <ToolCallFeed />
@@ -22,14 +24,14 @@ export function ActivityTab({ agent }: { agent: AgentProfile; agentId: AgentId }
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <FolderOpen className="size-4 text-muted-foreground" />
-              <CardTitle>Recent Projects</CardTitle>
+              <CardTitle>{t("agent.activity.recentProjects")}</CardTitle>
             </div>
             <Badge variant="outline" size="small">
               {agent.projects.length}
             </Badge>
           </div>
           <CardDescription className="text-xs">
-            Most recently active projects known to the agent.
+            {t("agent.activity.recentDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -50,7 +52,7 @@ export function ActivityTab({ agent }: { agent: AgentProfile; agentId: AgentId }
                       </span>
                       {project.current ? (
                         <Badge variant="outline" size="small">
-                          current
+                          {t("agent.current")}
                         </Badge>
                       ) : null}
                     </div>
@@ -72,7 +74,7 @@ export function ActivityTab({ agent }: { agent: AgentProfile; agentId: AgentId }
               ))}
             </ul>
           ) : (
-            <p className="px-3 py-4 text-xs text-muted-foreground">No known projects.</p>
+            <p className="px-3 py-4 text-xs text-muted-foreground">{t("agent.activity.noProjects")}</p>
           )}
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 import type { ProcessRow } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 export function ProcessesTab({
   rows,
@@ -8,12 +9,11 @@ export function ProcessesTab({
   rows: ProcessRow[];
   running?: boolean;
 }) {
+  const t = useT();
   if (rows.length === 0) {
     return (
       <div className="text-muted-foreground">
-        {running
-          ? "No process tree available for this running service."
-          : "No process tree (service not running)."}
+        {running ? t("services.proc.emptyRunning") : t("services.proc.emptyStopped")}
       </div>
     );
   }
@@ -28,7 +28,7 @@ export function ProcessesTab({
             <th className="py-1 pr-3">PPID</th>
             <th className="py-1 pr-3 text-right">CPU%</th>
             <th className="py-1 pr-3 text-right">RSS MB</th>
-            <th className="py-1">Command</th>
+            <th className="py-1">{t("services.proc.command")}</th>
           </tr>
         </thead>
         <tbody>

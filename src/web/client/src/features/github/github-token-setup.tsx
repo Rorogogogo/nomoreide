@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { useT } from "@/lib/i18n";
 import { openExternal } from "@/lib/tauri";
 
 type SetupMode = "choose" | "device-pending" | "pat";
@@ -21,6 +22,7 @@ export function GitHubTokenSetup({
   initialMode?: SetupMode;
   onSaved: () => void;
 }) {
+  const t = useT();
   const [mode, setMode] = useState<SetupMode>(() => {
     if (initialMode === "device-pending" && !deviceFlowAvailable) return "pat";
     return initialMode ?? (deviceFlowAvailable ? "choose" : "pat");
@@ -47,9 +49,9 @@ export function GitHubTokenSetup({
           <GitFork className="size-6 text-muted-foreground" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Connect GitHub</h2>
+          <h2 className="text-base font-semibold">{t("github.setup.connectTitle")}</h2>
           <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            Authorize NoMoreIDE to read pull requests, issues, and CI status for your repositories.
+            {t("github.setup.connectDesc")}
           </p>
         </div>
       </div>
@@ -57,14 +59,14 @@ export function GitHubTokenSetup({
       <div className="flex w-full max-w-xs flex-col gap-2">
         <Button className="w-full" onClick={() => setMode("device-pending")} type="button">
           <GitFork className="mr-2 size-4" />
-          Authorize with GitHub
+          {t("github.setup.authorizeWith")}
         </Button>
         <button
           className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           onClick={() => setMode("pat")}
           type="button"
         >
-          Use a Personal Access Token instead
+          {t("github.setup.usePat")}
         </button>
       </div>
     </div>
@@ -78,6 +80,7 @@ function DeviceFlowPending({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [flow, setFlow] = useState<GitHubDeviceFlowStart | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(true);
@@ -122,7 +125,7 @@ function DeviceFlowPending({
 
   async function doPoll(deviceCode: string, interval: number) {
     if (expiredRef.current) {
-      setError("Authorization expired. Please try again.");
+      setError(t("github.setup.expired"));
       return;
     }
     try {
@@ -154,7 +157,7 @@ function DeviceFlowPending({
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader className="size-6 animate-spin text-muted-foreground" />
-          <p className="text-[13px] text-muted-foreground">Requesting authorization…</p>
+          <p className="text-[13px] text-muted-foreground">{t("github.setup.requesting")}</p>
         </div>
       </div>
     );
@@ -164,7 +167,7 @@ function DeviceFlowPending({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
         <Alert variant="destructive">{error}</Alert>
-        <Button onClick={onCancel} variant="outline">Go back</Button>
+        <Button onClick={onCancel} variant="outline">{t("github.setup.goBack")}</Button>
       </div>
     );
   }
@@ -176,10 +179,11 @@ function DeviceFlowPending({
           <CheckCircle className="size-6 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Authorize on GitHub</h2>
+          <h2 className="text-base font-semibold">{t("github.setup.authorizeOnTitle")}</h2>
           <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            A GitHub page just opened in a new tab. Enter the code below and click{" "}
-            <strong>Authorize</strong>.
+            {t("github.setup.enterCodePre")}
+            <strong>{t("github.setup.authorizeWord")}</strong>
+            {t("github.setup.enterCodePost")}
           </p>
         </div>
       </div>
@@ -189,7 +193,7 @@ function DeviceFlowPending({
         <div
           className="flex cursor-pointer select-all items-center gap-3 rounded-xl border-2 border-border bg-muted px-6 py-4 font-mono text-2xl font-bold tracking-[0.3em] transition-colors hover:border-ring"
           onClick={copyCode}
-          title="Click to copy"
+          title={t("github.setup.clickToCopy")}
         >
           {flow?.user_code}
         </div>
@@ -198,14 +202,14 @@ function DeviceFlowPending({
           onClick={copyCode}
           type="button"
         >
-          {copied ? "Copied!" : "Click code to copy"}
+          {copied ? t("common.copied") : t("github.setup.clickCodeCopy")}
         </button>
       </div>
 
       <div className="flex flex-col items-center gap-2">
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
           <Loader className="size-3.5 animate-spin" />
-          Waiting for authorization…
+          {t("github.setup.waiting")}
         </div>
         <a
           className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
@@ -213,14 +217,14 @@ function DeviceFlowPending({
           rel="noopener noreferrer"
           target="_blank"
         >
-          Open GitHub again
+          {t("github.setup.openAgain")}
         </a>
         <button
           className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           onClick={onCancel}
           type="button"
         >
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>
@@ -234,6 +238,7 @@ function PATForm({
   onSaved: () => void;
   onBack?: () => void;
 }) {
+  const t = useT();
   const [token, setToken] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -261,9 +266,9 @@ function PATForm({
           <KeyRound className="size-6 text-muted-foreground" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Personal Access Token</h2>
+          <h2 className="text-base font-semibold">{t("github.setup.patTitle")}</h2>
           <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">
-            Create a token at{" "}
+            {t("github.setup.patDescPre")}
             <a
               className="underline underline-offset-2 hover:text-foreground"
               href="https://github.com/settings/tokens/new?scopes=repo,workflow"
@@ -271,9 +276,12 @@ function PATForm({
               target="_blank"
             >
               github.com/settings/tokens
-            </a>{" "}
-            with <code className="rounded bg-muted px-1 py-px text-[11px]">repo</code> and{" "}
-            <code className="rounded bg-muted px-1 py-px text-[11px]">workflow</code> scopes.
+            </a>
+            {t("github.setup.patDescMid")}
+            <code className="rounded bg-muted px-1 py-px text-[11px]">repo</code>
+            {t("github.setup.patDescAnd")}
+            <code className="rounded bg-muted px-1 py-px text-[11px]">workflow</code>
+            {t("github.setup.patDescPost")}
           </p>
         </div>
       </div>
@@ -290,7 +298,7 @@ function PATForm({
         />
         {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Button disabled={!token.trim() || saving} type="submit">
-          {saving ? "Saving…" : "Save token"}
+          {saving ? t("common.saving") : t("github.setup.saveToken")}
         </Button>
         {onBack ? (
           <button
@@ -298,7 +306,7 @@ function PATForm({
             onClick={onBack}
             type="button"
           >
-            ← Back
+            {t("github.setup.back")}
           </button>
         ) : null}
       </form>

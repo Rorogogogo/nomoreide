@@ -14,6 +14,7 @@ import { useAgentEnv } from "./use-agent-env";
 import { useProfiles } from "./use-profiles";
 import { useRegistry } from "./use-registry";
 import { useStagedChanges } from "./use-staged-changes";
+import { useT } from "@/lib/i18n";
 
 /**
  * Agent Environments: a side-by-side view of each coding agent's live MCP
@@ -23,6 +24,7 @@ import { useStagedChanges } from "./use-staged-changes";
  * (ROR-63) for sharing profiles by slug.
  */
 export function AgentEnvView() {
+  const t = useT();
   const { agents, configs, doctor, loading, error, refresh } = useAgentEnv();
   useRegisterRefresh(refresh);
   const { staged, preview, applying, stage, unstage, clear, apply } =
@@ -39,7 +41,7 @@ export function AgentEnvView() {
     <div className="flex h-full min-h-0 flex-col bg-card/85">
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <Puzzle className="size-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">Agent Environments</span>
+        <span className="text-sm font-semibold">{t("agentEnv.title")}</span>
         <div className="ml-2 flex items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5">
           {(["agents", "profiles"] as const).map((id) => (
             <button
@@ -53,7 +55,7 @@ export function AgentEnvView() {
               onClick={() => setTab(id)}
               type="button"
             >
-              {id === "agents" ? "Agents" : "Profiles"}
+              {id === "agents" ? t("agentEnv.tabAgents") : t("agentEnv.tabProfiles")}
               {id === "profiles" && profilesState.profiles.length > 0 ? (
                 <span className="text-[10px] tabular-nums text-muted-foreground">
                   {profilesState.profiles.length}
@@ -66,7 +68,7 @@ export function AgentEnvView() {
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="ml-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
               <Stethoscope className="size-3.5" />
-              Doctor
+              {t("agentEnv.doctor")}
             </span>
             {warnings.map((check) => (
               <Badge key={check.message} size="small" variant="warning">
@@ -123,11 +125,7 @@ export function AgentEnvView() {
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">
           <p className="max-w-sm text-xs text-muted-foreground">
-            {loading
-              ? "Reading agent configurations..."
-              : error
-                ? null
-                : "No agent configurations found. Agent Environments reads Claude Code, Codex CLI, and Antigravity configs from your home directory."}
+            {loading ? t("agentEnv.readingConfigs") : error ? null : t("agentEnv.noConfigs")}
           </p>
         </div>
       )}

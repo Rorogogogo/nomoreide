@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Database, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 
 /**
  * The Database page "+" entry point — mirrors the Services add menu: a manual
@@ -13,6 +14,7 @@ export function DbAddMenu({
   onAddManual: () => void;
   onAddWithAi: () => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -39,13 +41,13 @@ export function DbAddMenu({
   return (
     <div className="relative" ref={containerRef}>
       <Button
-        aria-label="Add database connection"
+        aria-label={t("database.addMenuAria")}
         onClick={() => setOpen((value) => !value)}
         size="sm"
         type="button"
       >
         <Plus className="size-3.5" />
-        Add
+        {t("common.add")}
       </Button>
 
       {open ? (
@@ -56,7 +58,7 @@ export function DbAddMenu({
             type="button"
           >
             <Database className="size-3.5 text-muted-foreground" />
-            Add connection
+            {t("database.addConnection")}
           </button>
           <button
             className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
@@ -64,7 +66,7 @@ export function DbAddMenu({
             type="button"
           >
             <Sparkles className="size-3.5 text-muted-foreground" />
-            Add with AI
+            {t("database.addWithAi")}
           </button>
         </div>
       ) : null}

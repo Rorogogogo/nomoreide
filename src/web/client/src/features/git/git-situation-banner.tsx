@@ -6,6 +6,7 @@ import {
   type DashboardData,
   type GitHubWorkflowRun,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -28,6 +29,7 @@ export function GitSituationBanner({
   git: DashboardData["git"];
   onRefresh?: () => void;
 }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const [pushing, setPushing] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
@@ -92,14 +94,14 @@ export function GitSituationBanner({
         {dirtyCount > 0 ? (
           <Chip
             icon={<GitCommit className="size-3" />}
-            label={`Commit ${dirtyCount} change${dirtyCount === 1 ? "" : "s"}`}
+            label={t("git.situation.commitChanges", { count: dirtyCount })}
             ai
             onClick={() =>
               sendToAgent({
                 prompt: buildCommitDirtyPrompt({ branch, fileCount: dirtyCount }),
-                source: { type: "git-situation", label: "uncommitted changes" },
+                source: { type: "git-situation", label: t("git.situation.srcUncommitted") },
                 mode: "send",
-                label: `Commit ${dirtyCount} uncommitted change${dirtyCount === 1 ? "" : "s"}`,
+                label: t("git.situation.commitUncommitted", { count: dirtyCount }),
               })
             }
           />
@@ -108,14 +110,14 @@ export function GitSituationBanner({
         {behind > 0 ? (
           <Chip
             icon={<ArrowDown className="size-3" />}
-            label={`Pull ${behind} behind`}
+            label={t("git.situation.pullBehind", { count: behind })}
             ai
             onClick={() =>
               sendToAgent({
                 prompt: buildPullRebasePrompt({ branch, behind, upstream: status.upstream }),
-                source: { type: "git-situation", label: "behind upstream" },
+                source: { type: "git-situation", label: t("git.situation.srcBehind") },
                 mode: "send",
-                label: `Pull & rebase (${behind} behind)`,
+                label: t("git.situation.pullRebase", { count: behind }),
               })
             }
           />
@@ -124,7 +126,7 @@ export function GitSituationBanner({
         {ahead > 0 ? (
           <Chip
             icon={pushing ? <Loader2 className="size-3 animate-spin" /> : <Upload className="size-3" />}
-            label={`Push ${ahead}`}
+            label={t("git.situation.push", { count: ahead })}
             disabled={pushing}
             onClick={() => void push()}
           />
@@ -134,7 +136,7 @@ export function GitSituationBanner({
           <Chip
             danger
             icon={<AlertTriangle className="size-3" />}
-            label="Fix failing CI"
+            label={t("git.situation.fixCi")}
             ai
             onClick={() =>
               sendToAgent({
@@ -143,9 +145,9 @@ export function GitSituationBanner({
                   runName: failingRun.name,
                   url: failingRun.html_url,
                 }),
-                source: { type: "git-situation", label: "failing CI" },
+                source: { type: "git-situation", label: t("git.situation.srcCi") },
                 mode: "send",
-                label: `Fix failing CI: ${failingRun.name}`,
+                label: t("git.situation.fixCiNamed", { name: failingRun.name }),
               })
             }
           />

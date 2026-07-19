@@ -4,6 +4,7 @@ import type { GitHubComment, GitHubIssue } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Loading, Spinner } from "@/components/ui/loading";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { AiAskInline } from "../agent/ai-ask-inline";
 import { AiSpark } from "../agent/ai-spark";
@@ -29,6 +30,7 @@ export function IssueDetail({
   submitting: boolean;
   onAddComment: (body: string) => Promise<void>;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState("");
   const [asking, setAsking] = useState(false);
   const { sendToAgent } = useAgentDock();
@@ -48,7 +50,7 @@ export function IssueDetail({
   }
 
   if (!issue) {
-    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">Select an issue</div>;
+    return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">{t("github.issue.selectPrompt")}</div>;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -65,11 +67,11 @@ export function IssueDetail({
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{issue.title}</span>
         <AiSpark
           className={cn("shrink-0", asking && "opacity-100")}
-          label={`Ask AI about issue #${issue.number}`}
+          label={t("github.issue.askLabel", { number: issue.number })}
           onAsk={() => setAsking((open) => !open)}
         />
         <a
-          aria-label="Open on GitHub"
+          aria-label={t("github.openOnGithub")}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           href={issue.html_url}
           rel="noopener noreferrer"
@@ -81,7 +83,7 @@ export function IssueDetail({
       {asking ? (
         <div className="shrink-0 border-b border-border px-3 py-1.5">
           <AiAskInline
-            placeholder="What should the agent do with this issue? (summarize, draft a fix plan, reproduce…)"
+            placeholder={t("github.issue.askPlaceholder")}
             onSubmit={askAgent}
             onCancel={() => setAsking(false)}
           />
@@ -92,11 +94,11 @@ export function IssueDetail({
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
             <span className="text-[11px]">
-              <span className="text-muted-foreground">Author: </span>
+              <span className="text-muted-foreground">{t("github.issue.author")}</span>
               <span className="font-medium">{issue.user.login}</span>
             </span>
             <span className="text-[11px]">
-              <span className="text-muted-foreground">Opened: </span>
+              <span className="text-muted-foreground">{t("github.issue.opened")}</span>
               <span className="font-medium">{new Date(issue.created_at).toLocaleDateString()}</span>
             </span>
             {issue.labels.map((label) => (
@@ -107,11 +109,11 @@ export function IssueDetail({
           {issue.body ? (
             <MarkdownBody body={issue.body} />
           ) : (
-            <p className="text-[12px] text-muted-foreground italic">No description provided.</p>
+            <p className="text-[12px] text-muted-foreground italic">{t("github.noDescription")}</p>
           )}
 
           {commentsLoading ? (
-            <Loading className="justify-start" label="Loading comments…" />
+            <Loading className="justify-start" label={t("github.issue.loadingComments")} />
           ) : (
             <div className="space-y-2">
               {comments.map((comment) => (
@@ -137,15 +139,15 @@ export function IssueDetail({
               <Button disabled={!draft.trim() || submitting} size="sm" type="submit">
                 {submitting ? (
                   <>
-                    <Spinner size="sm" /> Posting…
+                    <Spinner size="sm" /> {t("github.issue.posting")}
                   </>
                 ) : (
-                  "Comment"
+                  t("github.issue.comment")
                 )}
               </Button>
             }
             onChange={setDraft}
-            placeholder="Add a comment…"
+            placeholder={t("github.issue.addComment")}
             value={draft}
           />
           {commentError ? <Alert variant="destructive">{commentError}</Alert> : null}

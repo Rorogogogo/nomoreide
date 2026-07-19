@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff, FolderOpen, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { EnvRuntimeBanner } from "./env-runtime-banner";
 import { EnvTable } from "./env-table";
 import { FileBrowserDialog } from "./file-browser-dialog";
@@ -9,6 +10,7 @@ import { useServiceEnvRuntime } from "./use-service-env-runtime";
 import { prettyJson, useServiceEnv } from "./use-service-env";
 
 export function EnvTab({ serviceName }: { serviceName: string }) {
+  const t = useT();
   const {
     files,
     selectedPath,
@@ -36,7 +38,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
   }
 
   if (loadingList) {
-    return <div className="text-muted-foreground">Loading…</div>;
+    return <div className="text-muted-foreground">{t("common.loading")}</div>;
   }
   if (error && !loaded) {
     return <div className="text-red-600">{error}</div>;
@@ -51,7 +53,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">File:</span>
+          <span className="text-muted-foreground">{t("services.env.file")}</span>
           {files.length > 0 ? (
             <select
               className="rounded border border-border/60 bg-background px-1.5 py-0.5 font-mono text-xs"
@@ -65,7 +67,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
               ))}
             </select>
           ) : (
-            <span className="text-muted-foreground">none detected</span>
+            <span className="text-muted-foreground">{t("services.env.noneDetected")}</span>
           )}
           <Button
             onClick={() => setBrowserOpen(true)}
@@ -73,7 +75,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
             type="button"
             variant="outline"
           >
-            <FolderOpen /> Browse files
+            <FolderOpen /> {t("services.env.browseFiles")}
           </Button>
           {loaded ? (
             <code className="rounded bg-background px-1.5 py-0.5 font-mono text-muted-foreground">
@@ -86,10 +88,10 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
             <>
               <Button onClick={() => setRevealAll((value) => !value)} size="sm" type="button" variant="outline">
                 {revealAll ? <EyeOff /> : <Eye />}
-                {revealAll ? "Hide secrets" : "Reveal secrets"}
+                {revealAll ? t("services.env.hideSecrets") : t("services.env.revealSecrets")}
               </Button>
               <Button onClick={addRow} size="sm" type="button" variant="outline">
-                <Plus /> Add
+                <Plus /> {t("common.add")}
               </Button>
             </>
           ) : null}
@@ -99,7 +101,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
             size="sm"
             type="button"
           >
-            <Save /> {saving ? "Saving…" : "Save"}
+            <Save /> {saving ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </div>
@@ -125,7 +127,7 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
                 type="button"
                 variant="outline"
               >
-                Format JSON
+                {t("services.env.formatJson")}
               </Button>
             </div>
           ) : null}
@@ -137,16 +139,16 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
           />
         </div>
       ) : loadingFile ? (
-        <div className="text-muted-foreground">Loading file…</div>
+        <div className="text-muted-foreground">{t("services.env.loadingFile")}</div>
       ) : null}
       {loaded ? (
         <p className="text-muted-foreground">
           {loaded.info.format === "env"
-            ? "Comments and blank lines are preserved."
+            ? t("services.env.preservedEnv")
             : loaded.info.format === "json"
-              ? "JSON is validated on save."
-              : "YAML is saved as raw text."}{" "}
-          The running process won't see changes until you restart it.
+              ? t("services.env.validatedJson")
+              : t("services.env.rawYaml")}{" "}
+          {t("services.env.restartHint")}
         </p>
       ) : null}
       {browserOpen ? (

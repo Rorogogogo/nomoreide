@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ServiceDefinition } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { ProcessBadge } from "../process-badge";
 import { kindOptions, serviceCommandPresets } from "./presets";
 import { ServiceTestAlert } from "./service-test-alert";
@@ -23,6 +24,7 @@ export function ServiceForm({
   /** Other registered service names, offered as start-order dependencies. */
   availableServices?: string[];
 }) {
+  const t = useT();
   const {
     editing,
     kind,
@@ -71,7 +73,7 @@ export function ServiceForm({
     <form className="grid gap-3" onSubmit={submit}>
       <div className="grid gap-3 sm:grid-cols-2">
       <fieldset className={`${sectionClass} sm:col-span-2`}>
-        <legend className={legendClass}>Step 1 · Service kind</legend>
+        <legend className={legendClass}>{t("services.form.step1")}</legend>
         <div className="grid grid-cols-3 gap-1.5">
           {kindOptions.map((option) => (
             <Button
@@ -83,18 +85,18 @@ export function ServiceForm({
               type="button"
               variant={kind === option.value ? "default" : "outline"}
             >
-              {option.label}
+              {t(option.label)}
             </Button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">{activeKind.hint}</p>
+        <p className="text-[11px] text-muted-foreground">{t(activeKind.hint)}</p>
       </fieldset>
 
       <div className="grid gap-3 sm:col-start-1 sm:row-start-2 sm:self-start">
         <fieldset className={sectionClass}>
-          <legend className={legendClass}>Step 2 · Identity</legend>
+          <legend className={legendClass}>{t("services.form.step2")}</legend>
           <Label>
-            Name
+            {t("services.form.name")}
             <Input
               className="h-8 text-sm"
               name="name"
@@ -106,12 +108,12 @@ export function ServiceForm({
             />
             {editing ? (
               <span className="text-[11px] text-muted-foreground">
-                Name is the service key and can't be changed here.
+                {t("services.form.nameLocked")}
               </span>
             ) : null}
           </Label>
           <Label>
-            Description
+            {t("services.form.description")}
             <Input
               className="h-8 text-sm"
               name="description"
@@ -122,9 +124,9 @@ export function ServiceForm({
           </Label>
         </fieldset>
         <fieldset className={sectionClass}>
-          <legend className={legendClass}>Step 4 · Networking (optional)</legend>
+          <legend className={legendClass}>{t("services.form.step4")}</legend>
           <Label>
-            Port
+            {t("services.form.port")}
             <Input
               className="h-8 text-sm"
               inputMode="numeric"
@@ -139,7 +141,7 @@ export function ServiceForm({
 
       {kind === "local" ? (
         <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
-          <legend className={legendClass}>Step 3 · Local command</legend>
+          <legend className={legendClass}>{t("services.form.step3Local")}</legend>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             {serviceCommandPresets.map((preset) => (
               <Button
@@ -147,7 +149,7 @@ export function ServiceForm({
                 key={preset.label}
                 onClick={() => {
                   setCommand(preset.command);
-                  setDescription(preset.description);
+                  setDescription(t(preset.description));
                 }}
                 size="sm"
                 type="button"
@@ -159,7 +161,7 @@ export function ServiceForm({
             ))}
           </div>
           <Label>
-            Command
+            {t("services.form.command")}
             <Input
               className="h-8 font-mono text-sm"
               name="command"
@@ -170,7 +172,7 @@ export function ServiceForm({
             />
           </Label>
           <Label>
-            Working Directory
+            {t("services.form.cwd")}
             <Input
               className="h-8 font-mono text-sm"
               name="cwd"
@@ -184,9 +186,9 @@ export function ServiceForm({
 
       {kind === "docker-compose" ? (
         <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
-          <legend className={legendClass}>Step 3 · Docker Compose target</legend>
+          <legend className={legendClass}>{t("services.form.step3Compose")}</legend>
           <Label>
-            Compose Service
+            {t("services.form.composeService")}
             <Input
               className="h-8 font-mono text-sm"
               name="composeService"
@@ -197,7 +199,7 @@ export function ServiceForm({
             />
           </Label>
           <Label>
-            Compose File (optional)
+            {t("services.form.composeFile")}
             <Input
               className="h-8 font-mono text-sm"
               name="composeFile"
@@ -207,7 +209,7 @@ export function ServiceForm({
             />
           </Label>
           <Label>
-            Working Directory (where compose file lives)
+            {t("services.form.composeCwd")}
             <Input
               className="h-8 font-mono text-sm"
               name="cwd"
@@ -221,9 +223,9 @@ export function ServiceForm({
 
       {kind === "ssh" ? (
         <fieldset className={`${sectionClass} sm:col-start-2 sm:row-start-2 sm:self-start`}>
-          <legend className={legendClass}>Step 3 · SSH connection</legend>
+          <legend className={legendClass}>{t("services.form.step3Ssh")}</legend>
           <Label>
-            SSH Host (alias from ~/.ssh/config)
+            {t("services.form.sshHost")}
             <Input
               className="h-8 font-mono text-sm"
               name="host"
@@ -234,7 +236,7 @@ export function ServiceForm({
             />
           </Label>
           <Label>
-            Remote Command
+            {t("services.form.remoteCommand")}
             <Input
               className="h-8 font-mono text-sm"
               name="command"
@@ -245,7 +247,7 @@ export function ServiceForm({
             />
           </Label>
           <Label>
-            Remote Working Directory
+            {t("services.form.remoteCwd")}
             <Input
               className="h-8 font-mono text-sm"
               name="cwd"
@@ -256,14 +258,9 @@ export function ServiceForm({
             />
           </Label>
           <Alert variant="muted">
-            <div className="font-medium">SSH key handling</div>
+            <div className="font-medium">{t("services.form.sshTitle")}</div>
             <div className="mt-1 text-xs">
-              NoMoreIDE never stores key files. Add a <code>Host {host || "&lt;alias&gt;"}</code> entry to
-              <code> ~/.ssh/config</code> with <code>HostName</code>, <code>User</code>, and{" "}
-              <code>IdentityFile ~/.ssh/your-key.pem</code> (chmod 0600). Make sure{" "}
-              <code>ssh-agent</code> is running or your key is loaded
-              (<code>ssh-add ~/.ssh/your-key.pem</code>). NoMoreIDE will run{" "}
-              <code>ssh {host || "&lt;alias&gt;"}</code> using that config.
+              {t("services.form.sshBody", { alias: host || "<alias>" })}
             </div>
           </Alert>
         </fieldset>
@@ -271,11 +268,8 @@ export function ServiceForm({
 
       {dependencyChoices.length > 0 ? (
         <fieldset className={`${sectionClass} sm:col-span-2`}>
-          <legend className={legendClass}>Step 5 · Dependencies (optional)</legend>
-          <p className="text-[11px] text-muted-foreground">
-            When this service runs as part of a group, the selected services start
-            first — and NoMoreIDE waits for each to come up before this one.
-          </p>
+          <legend className={legendClass}>{t("services.form.step5")}</legend>
+          <p className="text-[11px] text-muted-foreground">{t("services.form.depsHint")}</p>
           <div className="flex flex-wrap gap-1.5">
             {dependencyChoices.map((service) => (
               <Button
@@ -305,10 +299,10 @@ export function ServiceForm({
             variant="outline"
           >
             <Terminal />
-            {testing ? "Testing..." : "Test Command"}
+            {testing ? t("services.form.testing") : t("services.form.testCommand")}
           </Button>
         ) : null}
-        <Button type="submit">{editing ? "Save Service" : "Add Service"}</Button>
+        <Button type="submit">{editing ? t("services.form.saveService") : t("services.addService")}</Button>
       </div>
     </form>
   );

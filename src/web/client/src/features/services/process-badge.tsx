@@ -15,6 +15,7 @@ import {
   type SimpleIcon,
 } from "simple-icons";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { processKindForCommand, type ProcessKind } from "./process-kind";
 
 export function ProcessBadge({
@@ -24,12 +25,13 @@ export function ProcessBadge({
   command: string;
   compact?: boolean;
 }) {
+  const t = useT();
   const process = processKindForCommand(command);
   const icon = processBadgeIcon[process.kind];
 
   return (
     <span
-      aria-label={`${process.label} process`}
+      aria-label={t("services.processBadgeAria", { label: process.label })}
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-md border bg-card shadow-sm dark:border-zinc-700/80 dark:bg-zinc-100",
         compact ? "size-6" : "size-7",

@@ -15,14 +15,33 @@ import type { TimelineEvent } from "./types.js";
  * existing client runner. Pending runs survive until a browser claims them, so
  * an event detected while no tab is open isn't lost.
  *
- * Live event sources are the two already push-based and in-process:
- * - `error-incident` — {@link ErrorInbox} surfaces a new/repeated incident.
+ * Event sources:
+ * - `error-incident` — {@link ErrorInbox} surfaces a new/repeated incident (push).
  * - `service-crash`   — {@link TimelineStore} records a `service.lifecycle`
- *   event with `severity: "error"` (non-zero exit not initiated by the user).
+ *   event with `severity: "error"` (non-zero exit not initiated by the user) (push).
+ * - `ci-failure`      — the only **polled** source: an optional `ciSource`
+ *   reports the current branch's failing CI on an interval. It fires at most
+ *   once per commit sha (a failing run isn't re-enqueued every poll).
  */
 
-export const triggerEventSchema = z.enum(["error-incident", "service-crash"]);
+export const triggerEventSchema = z.enum([
+  "error-incident",
+  "service-crash",
+  "ci-failure",
+]);
 export type TriggerEvent = z.infer<typeof triggerEventSchema>;
+
+/**
+ * A non-null result means the current branch's CI is failing on `sha`. The
+ * source returns `null` whenever CI is green, still running, or GitHub is
+ * unavailable (no token / remote) — i.e. "nothing to fire".
+ */
+export interface CiFailureSnapshot {
+  sha: string;
+  branch: string;
+  /** Names of the checks / workflow runs that failed. */
+  failingChecks: string[];
+}
 
 export const workflowTriggerSchema = z.object({
   id: z.string().min(1),
@@ -64,6 +83,16 @@ interface WorkflowTriggerManagerOptions {
   configStore: ConfigStore;
   errorInbox: ErrorInbox;
   timelineStore: TimelineStore;
+  /**
+   * Polled CI source for `ci-failure` triggers. Omit to disable the source
+   * (e.g. tests that don't exercise CI, or when GitHub is never configured).
+   */
+  ciSource?: () => Promise<CiFailureSnapshot | null>;
+  /**
+   * How often {@link ciSource} is polled. `0` disables the internal timer —
+   * tests drive {@link WorkflowTriggerManager.pollCiOnce} by hand instead.
+   */
+  ciPollIntervalMs?: number;
   /** Max pending runs kept; older ones drop off the front. */
   capacity?: number;
   /** A repeat of the same signature within this window is ignored. */
@@ -76,6 +105,8 @@ export class WorkflowTriggerManager {
   private readonly configStore: ConfigStore;
   private readonly errorInbox: ErrorInbox;
   private readonly timelineStore: TimelineStore;
+  private readonly ciSource?: () => Promise<CiFailureSnapshot | null>;
+  private readonly ciPollIntervalMs: number;
   private readonly capacity: number;
   private readonly dedupeWindowMs: number;
   private readonly now: () => number;
@@ -84,12 +115,15 @@ export class WorkflowTriggerManager {
   private readonly lastFiredAt = new Map<string, number>();
   private readonly listeners = new Set<PendingListener>();
   private readonly unsubscribers: Array<() => void> = [];
+  private ciTimer?: ReturnType<typeof setInterval>;
   private started = false;
 
   constructor(options: WorkflowTriggerManagerOptions) {
     this.configStore = options.configStore;
     this.errorInbox = options.errorInbox;
     this.timelineStore = options.timelineStore;
+    this.ciSource = options.ciSource;
+    this.ciPollIntervalMs = options.ciPollIntervalMs ?? 60_000;
     this.capacity = options.capacity ?? 50;
     this.dedupeWindowMs = options.dedupeWindowMs ?? 30_000;
     this.now = options.now ?? Date.now;
@@ -109,10 +143,21 @@ export class WorkflowTriggerManager {
         void this.onTimelineEvent(event);
       }),
     );
+    if (this.ciSource && this.ciPollIntervalMs > 0) {
+      this.ciTimer = setInterval(() => {
+        void this.pollCiOnce();
+      }, this.ciPollIntervalMs);
+      // Don't keep the process alive just for CI polling.
+      this.ciTimer.unref?.();
+    }
   }
 
   stop(): void {
     for (const off of this.unsubscribers.splice(0)) off();
+    if (this.ciTimer) {
+      clearInterval(this.ciTimer);
+      this.ciTimer = undefined;
+    }
     this.started = false;
   }
 
@@ -159,6 +204,33 @@ export class WorkflowTriggerManager {
     }
   }
 
+  /**
+   * Poll the CI source once and enqueue a run per matching `ci-failure`
+   * trigger. Public so tests can drive it without timers; a no-op when no CI
+   * source is wired or no `ci-failure` trigger is enabled (skips the network
+   * call entirely in that case).
+   */
+  async pollCiOnce(): Promise<void> {
+    if (!this.ciSource) return;
+    const triggers = await this.triggersFor("ci-failure");
+    if (triggers.length === 0) return;
+    const snapshot = await this.ciSource().catch(() => null);
+    if (!snapshot) return;
+    const haystack = `${snapshot.branch} ${snapshot.failingChecks.join(" ")}`;
+    for (const trigger of triggers) {
+      if (!matchesFilter(trigger.filter, haystack)) continue;
+      const checks = snapshot.failingChecks.length
+        ? `: ${snapshot.failingChecks.join(", ")}`
+        : "";
+      this.enqueue(trigger, {
+        // Fire at most once per failing commit, not every poll.
+        signatureCause: `ci:${snapshot.sha}`,
+        summary: `CI failed on ${snapshot.branch}${checks}`,
+        once: true,
+      });
+    }
+  }
+
   private async triggersFor(event: TriggerEvent): Promise<WorkflowTrigger[]> {
     const config = await this.configStore.load();
     return config.workflowTriggers.filter(
@@ -168,12 +240,17 @@ export class WorkflowTriggerManager {
 
   private enqueue(
     trigger: WorkflowTrigger,
-    cause: { signatureCause: string; summary: string },
+    cause: { signatureCause: string; summary: string; once?: boolean },
   ): void {
     const signature = `${trigger.id}:${cause.signatureCause}`;
     const at = this.now();
     const previous = this.lastFiredAt.get(signature);
-    if (previous !== undefined && at - previous < this.dedupeWindowMs) return;
+    if (previous !== undefined) {
+      // `once` signatures (e.g. a CI failure on a given sha) never re-fire;
+      // the rest are debounced by the dedupe window.
+      if (cause.once) return;
+      if (at - previous < this.dedupeWindowMs) return;
+    }
     this.lastFiredAt.set(signature, at);
 
     const run: PendingRun = {

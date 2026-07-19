@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GitBranch, GitPullRequest, PlayCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { listGitHubBranches, type GitHubBranchInfo, type GitHubBranchesPayload } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 
 export function BranchesView({
@@ -11,6 +12,7 @@ export function BranchesView({
   onCreatePR: (head: string) => void;
   onViewRuns: (head: string) => void;
 }) {
+  const t = useT();
   const [payload, setPayload] = useState<GitHubBranchesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +52,9 @@ export function BranchesView({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold">Branches</h2>
+          <h2 className="text-[13px] font-semibold">{t("github.tab.branches")}</h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            {payload?.repository.full_name ?? "Selected repository"}
+            {payload?.repository.full_name ?? t("github.selectedRepo")}
           </p>
         </div>
         <Button
@@ -63,7 +65,7 @@ export function BranchesView({
           variant="outline"
         >
           <RefreshCw className={`mr-1 size-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -71,9 +73,9 @@ export function BranchesView({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading && !payload ? (
-          <div className="p-4 text-[12px] text-muted-foreground">Loading branches...</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.branches.loading")}</div>
         ) : branches.length === 0 ? (
-          <div className="p-4 text-[12px] text-muted-foreground">No branches found.</div>
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.branches.empty")}</div>
         ) : (
           <ul className="divide-y divide-border">
             {branches.map((branch) => (
@@ -106,6 +108,7 @@ function BranchRow({
   onCreatePR: (head: string) => void;
   onViewRuns: (head: string) => void;
 }) {
+  const t = useT();
   const isDefault = branch.name === defaultBranch;
   const isCurrent = branch.name === currentBranch;
   const canOpenPR = !isDefault;
@@ -116,12 +119,12 @@ function BranchRow({
       <div className="min-w-48 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate font-mono text-[13px] font-medium">{branch.name}</span>
-          {isDefault ? <StatusText label="Default" tone="success" /> : null}
-          {isCurrent ? <StatusText label="Current" tone="warning" /> : null}
+          {isDefault ? <StatusText label={t("github.branches.default")} tone="success" /> : null}
+          {isCurrent ? <StatusText label={t("github.branches.current")} tone="warning" /> : null}
           {branch.protected ? (
             <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
               <ShieldCheck className="size-3" />
-              protected
+              {t("github.branches.protected")}
             </span>
           ) : null}
         </div>
@@ -133,23 +136,23 @@ function BranchRow({
         <Button
           onClick={() => onViewRuns(branch.name)}
           size="sm"
-          title={`View workflow runs for ${branch.name}`}
+          title={t("github.branches.viewRunsTitle", { name: branch.name })}
           type="button"
           variant="outline"
         >
           <PlayCircle className="size-3.5" />
-          View runs
+          {t("github.branches.viewRuns")}
         </Button>
         <Button
           disabled={!canOpenPR}
           onClick={() => onCreatePR(branch.name)}
           size="sm"
-          title={canOpenPR ? `Open PR from ${branch.name}` : "Default branch does not need a PR"}
+          title={canOpenPR ? t("github.branches.openPrTitle", { name: branch.name }) : t("github.branches.defaultNoPr")}
           type="button"
           variant="outline"
         >
           <GitPullRequest className="size-3.5" />
-          Open PR
+          {t("github.branches.openPr")}
         </Button>
       </div>
     </li>

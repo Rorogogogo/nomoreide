@@ -2,6 +2,7 @@ import { Box, Check, FolderPlus, Globe2 } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { selectGitRepository, type DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /**
  * Inline project list, disclosed under the sidebar trigger (no popover — it
@@ -28,6 +29,7 @@ export function ProjectMenuList({
   onClose: () => void;
   onManage: () => void;
 }) {
+  const t = useT();
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const selectedRepository = data.git.selectedRepository;
 
@@ -37,7 +39,7 @@ export function ProjectMenuList({
       await selectGitRepository(name);
       onScopeChange(false);
       await onRefresh();
-      showSuccessToast(`Switched to ${name}.`);
+      showSuccessToast(t("git.repo.switchedToast", { name }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
     }
@@ -46,7 +48,7 @@ export function ProjectMenuList({
   function selectAllProjects() {
     onClose();
     onScopeChange(true);
-    showSuccessToast("Showing all projects.");
+    showSuccessToast(t("app.showingAllProjects"));
   }
 
   const rowClassName = (active: boolean) =>
@@ -67,14 +69,14 @@ export function ProjectMenuList({
       <button
         className={rowClassName(scopeAll)}
         onClick={selectAllProjects}
-        title="All projects"
+        title={t("app.allProjects")}
         type="button"
       >
         <span className="flex h-8 w-12 items-center justify-center">
           <Globe2 className="size-4 text-muted-foreground" />
         </span>
         <span className={labelClassName}>
-          <span className="min-w-0 flex-1 truncate font-medium">All projects</span>
+          <span className="min-w-0 flex-1 truncate font-medium">{t("app.allProjects")}</span>
           {scopeAll ? <Check className="size-3.5 shrink-0" /> : null}
         </span>
       </button>
@@ -109,14 +111,14 @@ export function ProjectMenuList({
           onClose();
           onManage();
         }}
-        title="Add or manage projects"
+        title={t("app.addManageProjects")}
         type="button"
       >
         <span className="flex h-8 w-12 items-center justify-center">
           <FolderPlus className="size-4" />
         </span>
         <span className={labelClassName}>
-          <span className="min-w-0 flex-1 truncate">Add or manage projects…</span>
+          <span className="min-w-0 flex-1 truncate">{t("app.addManageProjects")}…</span>
         </span>
       </button>
     </div>

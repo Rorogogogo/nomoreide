@@ -13,11 +13,13 @@ import {
   type Snapshot,
   type SnapshotChange,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { DiffViewer } from "../diff-viewer";
 
 /** Working-tree checkpoints: list, take, inspect, and (with confirm) restore. */
 export function SnapshotsView() {
+  const t = useT();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedSha, setSelectedSha] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +49,10 @@ export function SnapshotsView() {
     setBusy(true);
     setNotice(null);
     try {
-      const snapshot = await createSnapshot("manual snapshot");
+      const snapshot = await createSnapshot(t("git.snapshot.manualLabel"));
       await refresh();
       setSelectedSha(snapshot.sha);
-      setNotice(`Snapshot ${snapshot.sha.slice(0, 7)} created.`);
+      setNotice(t("git.snapshot.created", { sha: snapshot.sha.slice(0, 7) }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -65,7 +67,7 @@ export function SnapshotsView() {
       const renamed = await renameSnapshot(sha, label);
       await refresh();
       setSelectedSha(renamed.sha);
-      setNotice(`Snapshot renamed to “${renamed.label}”.`);
+      setNotice(t("git.snapshot.renamed", { label: renamed.label }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -79,7 +81,7 @@ export function SnapshotsView() {
     try {
       await deleteSnapshot(sha);
       await refresh();
-      setNotice(`Snapshot ${sha.slice(0, 7)} deleted.`);
+      setNotice(t("git.snapshot.deleted", { sha: sha.slice(0, 7) }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -94,11 +96,11 @@ export function SnapshotsView() {
       const result = await restoreSnapshot(sha);
       await refresh();
       setNotice(
-        `Restored ${result.restoredFiles} file(s)` +
+        t("git.snapshot.restored", { count: result.restoredFiles }) +
           (result.deletedPaths.length
-            ? `, removed ${result.deletedPaths.length} added since`
+            ? t("git.snapshot.restoredRemoved", { count: result.deletedPaths.length })
             : "") +
-          `. Undo via pre-restore snapshot ${result.preRestore.sha.slice(0, 7)}.`,
+          t("git.snapshot.restoredUndo", { sha: result.preRestore.sha.slice(0, 7) }),
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -115,11 +117,11 @@ export function SnapshotsView() {
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="flex items-center gap-1.5 text-xs font-semibold">
             <History className="size-3.5" />
-            Snapshots
+            {t("git.tab.snapshots")}
           </span>
           <Button disabled={busy} onClick={() => void takeSnapshot()} size="sm" type="button">
             <Camera className="size-3.5" />
-            Snapshot now
+            {t("git.snapshot.now")}
           </Button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto">
@@ -127,14 +129,13 @@ export function SnapshotsView() {
             <Alert variant="destructive" className="m-3">
               <CircleAlert />
               <div className="min-w-0">
-                <AlertTitle>Couldn’t load snapshots</AlertTitle>
+                <AlertTitle>{t("git.snapshot.loadError")}</AlertTitle>
                 <AlertDescription className="break-words">{error}</AlertDescription>
               </div>
             </Alert>
           ) : snapshots.length === 0 ? (
             <Alert variant="muted" className="m-3 border-dashed">
-              No snapshots yet. Take one before risky changes, or let agent
-              sessions create them automatically.
+              {t("git.snapshot.empty")}
             </Alert>
           ) : (
             <ul>
@@ -165,7 +166,7 @@ export function SnapshotsView() {
         ) : (
           <div className="p-4">
             <Alert variant="muted" className="border-dashed p-12 text-center">
-              Select a snapshot to compare it with the current working tree.
+              {t("git.snapshot.selectPrompt")}
             </Alert>
           </div>
         )}
@@ -190,6 +191,7 @@ function SnapshotRow({
   selected: boolean;
   snapshot: Snapshot;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(snapshot.label);
   const [confirming, setConfirming] = useState(false);
@@ -223,7 +225,7 @@ function SnapshotRow({
               if (event.key === "Escape") setEditing(false);
             }}
             className="min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-1 text-xs"
-            aria-label="Snapshot label"
+            aria-label={t("git.snapshot.labelAria")}
           />
           <Button disabled={busy} onClick={commitRename} size="icon-sm" type="button" variant="ghost">
             <Check className="size-3.5" />
@@ -255,7 +257,7 @@ function SnapshotRow({
                     void onDelete(snapshot.sha);
                   }}
                   size="icon-sm"
-                  title="Confirm delete"
+                  title={t("git.snapshot.confirmDelete")}
                   type="button"
                   variant="ghost"
                   className="text-red-600 hover:text-red-600"
@@ -265,7 +267,7 @@ function SnapshotRow({
                 <Button
                   onClick={() => setConfirming(false)}
                   size="icon-sm"
-                  title="Cancel"
+                  title={t("common.cancel")}
                   type="button"
                   variant="ghost"
                 >
@@ -278,7 +280,7 @@ function SnapshotRow({
                   disabled={busy}
                   onClick={startEditing}
                   size="icon-sm"
-                  title="Rename snapshot"
+                  title={t("git.snapshot.rename")}
                   type="button"
                   variant="ghost"
                 >
@@ -288,7 +290,7 @@ function SnapshotRow({
                   disabled={busy}
                   onClick={() => setConfirming(true)}
                   size="icon-sm"
-                  title="Delete snapshot"
+                  title={t("git.snapshot.delete")}
                   type="button"
                   variant="ghost"
                   className="text-muted-foreground hover:text-red-600"
@@ -313,6 +315,7 @@ function SnapshotDetail({
   onRestore: (sha: string) => Promise<void>;
   snapshot: Snapshot;
 }) {
+  const t = useT();
   const [files, setFiles] = useState<SnapshotChange[]>([]);
   const [selectedPath, setSelectedPath] = useState("");
   const [diff, setDiff] = useState("");
@@ -368,8 +371,8 @@ function SnapshotDetail({
           </h2>
           <p className="text-[10px] text-muted-foreground">
             {files.length
-              ? `${files.length} file(s) differ from the current working tree.`
-              : "Identical to the current working tree."}
+              ? t("git.snapshot.filesDiffer", { count: files.length })
+              : t("git.snapshot.identical")}
           </p>
         </div>
         {confirming ? (
@@ -384,7 +387,7 @@ function SnapshotDetail({
               type="button"
               variant="destructive"
             >
-              Confirm restore
+              {t("git.snapshot.confirmRestore")}
             </Button>
             <Button
               onClick={() => setConfirming(false)}
@@ -392,7 +395,7 @@ function SnapshotDetail({
               type="button"
               variant="outline"
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </span>
         ) : (
@@ -400,12 +403,12 @@ function SnapshotDetail({
             disabled={busy || files.length === 0}
             onClick={() => setConfirming(true)}
             size="sm"
-            title="Reset the working tree to this snapshot (a pre-restore snapshot is taken first)"
+            title={t("git.snapshot.restoreTitle")}
             type="button"
             variant="outline"
           >
             <RotateCcw className="size-3.5" />
-            Restore…
+            {t("git.snapshot.restore")}
           </Button>
         )}
       </div>
@@ -434,13 +437,14 @@ export function ChangedFilesWithDiff({
   onSelectPath: (path: string) => void;
   selectedPath: string;
 }) {
+  const t = useT();
   if (error) {
     return (
       <div className="p-4">
         <Alert variant="destructive">
           <CircleAlert />
           <div className="min-w-0">
-            <AlertTitle>Couldn’t load this snapshot</AlertTitle>
+            <AlertTitle>{t("git.snapshot.loadOneError")}</AlertTitle>
             <AlertDescription className="break-words">{error}</AlertDescription>
           </div>
         </Alert>
@@ -477,11 +481,11 @@ export function ChangedFilesWithDiff({
       </ul>
       <div className="relative min-h-0 min-w-0">
         {selectedPath ? (
-          <DiffViewer diff={diff || "No diff for this file."} />
+          <DiffViewer diff={diff || t("git.snapshot.noDiff")} />
         ) : (
           <div className="p-4">
             <Alert variant="muted" className="border-dashed p-8 text-center">
-              Select a file to see how it differs from the snapshot.
+              {t("git.snapshot.selectFile")}
             </Alert>
           </div>
         )}

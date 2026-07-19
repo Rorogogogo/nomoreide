@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { PendingProfileApply } from "./use-profiles";
 import { AGENT_LABELS } from "./agent-column";
+import { useT } from "@/lib/i18n";
 
 /**
  * Conflict preview before a profile apply. Conflicting items start unchecked
@@ -22,6 +23,7 @@ export function ProfileApplyDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const { preview, skipped } = pending;
   const applyCount = preview.items.filter(
     (item) => !skipped.has(`${item.category}:${item.name}`),
@@ -29,14 +31,15 @@ export function ProfileApplyDialog({
 
   return (
     <ConfirmDialog
-      confirmLabel={busy ? "Applying..." : `Apply ${applyCount} item${applyCount === 1 ? "" : "s"}`}
+      confirmLabel={busy ? t("agentEnv.applying") : t(applyCount === 1 ? "agentEnv.applyCountOne" : "agentEnv.applyCountMany", { count: applyCount })}
       icon={<Download />}
       loading={busy}
       message={
         <div className="space-y-2">
           <p>
-            Apply profile <span className="font-medium text-foreground">{preview.profile}</span>{" "}
-            to {AGENT_LABELS[preview.agent]}. A config backup is written first.
+            {t("agentEnv.applyBodyPre")}
+            <span className="font-medium text-foreground">{preview.profile}</span>
+            {t("agentEnv.applyBodyPost", { name: AGENT_LABELS[preview.agent] })}
           </p>
           <ul className="max-h-56 space-y-1 overflow-y-auto">
             {preview.items.map((item) => {
@@ -54,7 +57,7 @@ export function ProfileApplyDialog({
                   <label className="min-w-0 flex-1 cursor-pointer" htmlFor={`apply-${key}`}>
                     <span className="flex items-center gap-1.5">
                       <span className="truncate text-xs text-foreground">
-                        {item.category === "mcp" ? "MCP" : "Skill"} {item.name}
+                        {item.category === "mcp" ? t("agentEnv.itemMcp") : t("agentEnv.itemSkill")} {item.name}
                       </span>
                       <Badge
                         size="small"
@@ -67,10 +70,10 @@ export function ProfileApplyDialog({
                         }
                       >
                         {item.status === "conflict"
-                          ? "overwrites existing"
+                          ? t("agentEnv.statusOverwrites")
                           : item.status === "identical"
-                            ? "already identical"
-                            : "new"}
+                            ? t("agentEnv.statusIdentical")
+                            : t("agentEnv.statusNew")}
                       </Badge>
                     </span>
                     {item.warnings.map((warning) => (
@@ -90,7 +93,7 @@ export function ProfileApplyDialog({
           {preview.unresolvedCredentials.length > 0 ? (
             <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-500">
               <AlertTriangle className="size-3 shrink-0" />
-              Unfilled credentials applied as placeholders:{" "}
+              {t("agentEnv.unfilledCredentials")}
               {preview.unresolvedCredentials.join(", ")}
             </p>
           ) : null}
@@ -98,7 +101,7 @@ export function ProfileApplyDialog({
       }
       onCancel={onCancel}
       onConfirm={onConfirm}
-      title={`Apply profile to ${AGENT_LABELS[preview.agent]}`}
+      title={t("agentEnv.applyProfileTitle", { name: AGENT_LABELS[preview.agent] })}
       tone="success"
     />
   );

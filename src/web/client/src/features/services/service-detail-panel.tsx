@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { ServiceHealth, ServiceStatus, TimelineEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { EnvTab } from "./service-detail/env-tab";
 import { HttpTab } from "./service-detail/http-tab";
@@ -25,6 +26,7 @@ export function ServiceDetailPanel({
   timeline: TimelineEvent[];
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   // Sticky so reopening a service lands on the tab you last used.
   const [tab, setTab] = usePersistentState<Tab>("service-detail:tab", "metrics");
   const processes = health?.processTree?.processes ?? [];
@@ -33,28 +35,28 @@ export function ServiceDetailPanel({
     <div className="border-t border-border bg-muted/30 px-3 py-2 text-xs">
       <div className="mb-2 flex gap-1">
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
-          Logs
+          {t("services.logs")}
         </TabButton>
         <TabButton active={tab === "processes"} onClick={() => setTab("processes")}>
-          Processes {processes.length ? <Badge variant="secondary" size="small">{processes.length}</Badge> : null}
+          {t("services.tab.processes")} {processes.length ? <Badge variant="secondary" size="small">{processes.length}</Badge> : null}
         </TabButton>
         <TabButton active={tab === "metrics"} onClick={() => setTab("metrics")}>
-          Metrics
+          {t("services.tab.metrics")}
         </TabButton>
         <TabButton active={tab === "http"} onClick={() => setTab("http")}>
           HTTP
           {status?.inspector?.enabled ? (
-            <Badge variant="success" size="small">on</Badge>
+            <Badge variant="success" size="small">{t("services.tab.on")}</Badge>
           ) : null}
         </TabButton>
         <TabButton active={tab === "env"} onClick={() => setTab("env")}>
-          Env
+          {t("services.tab.env")}
         </TabButton>
         <TabButton active={tab === "tests"} onClick={() => setTab("tests")}>
-          Tests
+          {t("services.tab.tests")}
         </TabButton>
         <TabButton active={tab === "terminal"} onClick={() => setTab("terminal")}>
-          Terminal
+          {t("nav.terminal")}
         </TabButton>
       </div>
       {tab === "processes" ? (

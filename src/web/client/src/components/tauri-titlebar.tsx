@@ -1,7 +1,9 @@
 import { Minus, Square, X } from "lucide-react";
 import { isTauri, minimizeWindow, toggleMaximizeWindow, hideWindow, startDragging } from "@/lib/tauri";
+import { useT } from "@/lib/i18n";
 
 export function TauriTitleBar() {
+  const t = useT();
   if (!isTauri()) return null;
 
   return (
@@ -19,7 +21,7 @@ export function TauriTitleBar() {
           type="button"
           onClick={minimizeWindow}
           className="h-8 w-10 flex items-center justify-center hover:bg-muted transition-colors"
-          aria-label="Minimize"
+          aria-label={t("common.minimize")}
         >
           <Minus className="h-3 w-3" />
         </button>
@@ -27,7 +29,7 @@ export function TauriTitleBar() {
           type="button"
           onClick={toggleMaximizeWindow}
           className="h-8 w-10 flex items-center justify-center hover:bg-muted transition-colors"
-          aria-label="Maximize"
+          aria-label={t("common.maximize")}
         >
           <Square className="h-3 w-3" />
         </button>
@@ -35,7 +37,7 @@ export function TauriTitleBar() {
           type="button"
           onClick={hideWindow}
           className="h-8 w-10 flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors"
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           <X className="h-3 w-3" />
         </button>

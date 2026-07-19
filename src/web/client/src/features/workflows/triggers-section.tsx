@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Play, Plus, Trash2, X, Zap } from "lucide-react";
 import type { TriggerEvent, Workflow, WorkflowTrigger } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { useWorkflowTriggers } from "./workflow-trigger-context";
 
-const EVENT_LABELS: Record<TriggerEvent, string> = {
-  "error-incident": "Error incident",
-  "service-crash": "Service crash",
+const EVENT_LABEL_KEY: Record<TriggerEvent, TranslationKey> = {
+  "error-incident": "workflows.triggers.eventErrorIncident",
+  "service-crash": "workflows.triggers.eventServiceCrash",
+  "ci-failure": "workflows.triggers.eventCiFailure",
 };
 
 /**
@@ -16,6 +19,7 @@ const EVENT_LABELS: Record<TriggerEvent, string> = {
  * wait here for one click. Reads/writes through {@link useWorkflowTriggers}.
  */
 export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
+  const t = useT();
   const { triggers, pending, error, saveTrigger, removeTrigger, runPending, dismissPending } =
     useWorkflowTriggers();
   const [adding, setAdding] = useState(false);
@@ -27,14 +31,14 @@ export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-1.5 text-[12px] font-semibold">
-            <Zap className="size-3.5 text-amber-500" /> Triggers
+            <Zap className="size-3.5 text-amber-500" /> {t("workflows.triggers.title")}
           </h3>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Run a workflow automatically when an error or crash is detected.
+            {t("workflows.triggers.subtitle")}
           </p>
         </div>
         <Button onClick={() => setAdding((v) => !v)} size="sm" type="button" variant="outline">
-          <Plus className="size-3.5" /> Add trigger
+          <Plus className="size-3.5" /> {t("workflows.triggers.add")}
         </Button>
       </div>
 
@@ -50,20 +54,22 @@ export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
               <div className="min-w-0">
                 <div className="truncate text-[11px] font-medium">
                   {nameFor(run.workflowId)}
-                  <span className="ml-1.5 text-muted-foreground">· {EVENT_LABELS[run.event]}</span>
+                  <span className="ml-1.5 text-muted-foreground">
+                    · {t(EVENT_LABEL_KEY[run.event])}
+                  </span>
                 </div>
                 <div className="truncate text-[10px] text-muted-foreground">{run.summary}</div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button onClick={() => runPending(run)} size="sm" type="button" variant="outline">
-                  <Play className="size-3" /> Run
+                  <Play className="size-3" /> {t("workflows.run")}
                 </Button>
                 <Button
                   onClick={() => void dismissPending(run.id)}
                   size="icon"
                   type="button"
                   variant="ghost"
-                  aria-label="Dismiss"
+                  aria-label={t("workflows.triggers.dismiss")}
                 >
                   <X className="size-3.5" />
                 </Button>
@@ -86,7 +92,7 @@ export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
 
       <div className="mt-3 space-y-1.5">
         {triggers.length === 0 && !adding ? (
-          <p className="text-[11px] text-muted-foreground/70">No triggers yet.</p>
+          <p className="text-[11px] text-muted-foreground/70">{t("workflows.triggers.empty")}</p>
         ) : null}
         {triggers.map((trigger) => (
           <div
@@ -103,14 +109,14 @@ export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
                 type="checkbox"
               />
               <span className="min-w-0 truncate text-[11px]">
-                <span className="font-medium">{EVENT_LABELS[trigger.event]}</span>
+                <span className="font-medium">{t(EVENT_LABEL_KEY[trigger.event])}</span>
                 {trigger.filter ? (
                   <span className="text-muted-foreground"> · “{trigger.filter}”</span>
                 ) : null}
                 <span className="text-muted-foreground"> → {nameFor(trigger.workflowId)}</span>
                 {trigger.autoRun ? (
                   <span className="ml-1.5 rounded bg-amber-500/15 px-1 py-px text-[9px] font-semibold uppercase text-amber-600">
-                    auto
+                    {t("workflows.triggers.autoBadge")}
                   </span>
                 ) : null}
               </span>
@@ -120,7 +126,7 @@ export function TriggersSection({ workflows }: { workflows: Workflow[] }) {
               size="icon"
               type="button"
               variant="ghost"
-              aria-label="Delete trigger"
+              aria-label={t("workflows.triggers.deleteAria")}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -140,6 +146,7 @@ function AddTriggerForm({
   onCancel: () => void;
   onSave: (trigger: WorkflowTrigger) => Promise<void>;
 }) {
+  const t = useT();
   const [event, setEvent] = useState<TriggerEvent>("error-incident");
   const [workflowId, setWorkflowId] = useState(workflows[0]?.id ?? "");
   const [filter, setFilter] = useState("");
@@ -152,21 +159,21 @@ function AddTriggerForm({
     <div className="mt-3 space-y-2 rounded-md border border-border bg-background p-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          When
+          {t("workflows.triggers.when")}
           <select
             className={inputClass}
             value={event}
             onChange={(e) => setEvent(e.target.value as TriggerEvent)}
           >
-            {(Object.keys(EVENT_LABELS) as TriggerEvent[]).map((value) => (
+            {(Object.keys(EVENT_LABEL_KEY) as TriggerEvent[]).map((value) => (
               <option key={value} value={value}>
-                {EVENT_LABELS[value]}
+                {t(EVENT_LABEL_KEY[value])}
               </option>
             ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-          Run workflow
+          {t("workflows.triggers.runWorkflow")}
           <select
             className={inputClass}
             value={workflowId}
@@ -181,7 +188,7 @@ function AddTriggerForm({
         </label>
       </div>
       <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
-        Only when the service name / message contains (optional)
+        {t("workflows.triggers.filterLabel")}
         <input
           className={inputClass}
           value={filter}
@@ -197,11 +204,11 @@ function AddTriggerForm({
           onChange={(e) => setAutoRun(e.target.checked)}
           type="checkbox"
         />
-        Start automatically (otherwise it waits for one click)
+        {t("workflows.triggers.autoRunLabel")}
       </label>
       <div className="flex justify-end gap-2 pt-1">
         <Button onClick={onCancel} size="sm" type="button" variant="ghost">
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           disabled={!workflowId}
@@ -218,7 +225,7 @@ function AddTriggerForm({
           size="sm"
           type="button"
         >
-          Add
+          {t("common.add")}
         </Button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Activity } from "lucide-react";
 import type { DashboardData, ServiceHealth, ServiceStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type DotTone = "healthy" | "starting" | "warning" | "unhealthy" | "unknown";
 
@@ -26,14 +27,15 @@ export function RunningStripe({
   data: DashboardData;
   onOpenService: (name: string) => void;
 }) {
-  const entries = useMemo(() => collectEntries(data), [data]);
+  const t = useT();
+  const entries = useMemo(() => collectEntries(data, t("services.startingEllipsis")), [data, t]);
   if (!entries.length) return null;
 
   return (
     <div className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card/60 px-4 py-1.5 backdrop-blur">
       <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
         <Activity className="size-3" />
-        Running
+        {t("services.stripeRunning")}
       </span>
       <div className="flex min-w-0 items-center gap-2">
         {entries.map((entry) => (
@@ -59,7 +61,7 @@ export function RunningStripe({
   );
 }
 
-function collectEntries(data: DashboardData): RunningEntry[] {
+function collectEntries(data: DashboardData, startingLabel: string): RunningEntry[] {
   const ports = new Map(data.config.services.map((service) => [service.name, service.port]));
 
   return Object.values(data.runtime.services)
@@ -68,7 +70,7 @@ function collectEntries(data: DashboardData): RunningEntry[] {
       name: status.name,
       tone: toneFor(status, data.health[status.name]),
       port: ports.get(status.name) ?? portFromUrl(status.url),
-      uptime: status.state === "running" ? formatUptime(status.startedAt) : "starting…",
+      uptime: status.state === "running" ? formatUptime(status.startedAt) : startingLabel,
       url: status.url,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

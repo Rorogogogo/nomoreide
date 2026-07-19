@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import {
   registerOnboarded,
   scanRepo,
@@ -35,6 +36,7 @@ export function OnboardDialog({
   onClose: () => void;
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   const toasts = useToasts();
   const { sendToAgent } = useAgentDock();
   const [step, setStep] = useState<Step>("url");
@@ -64,7 +66,7 @@ export function OnboardDialog({
       setDatabases(result.databases);
       setSelected(result.proposals[0] ?? null);
       if (result.proposals.length === 0) {
-        setError("Cloned, but couldn't detect how to run this repo. Refine with AI or add it manually.");
+        setError(t("onboard.scanNoDetect"));
       }
       setStep("review");
     } catch (caught) {
@@ -78,7 +80,7 @@ export function OnboardDialog({
     sendToAgent({
       prompt: `Onboard this repository and register it as a NoMoreIDE service: ${url.trim()}\nUse nomoreide_onboard_repo to inspect it, pick the best run command, then register and start it.`,
       source: { type: "repo-onboard", label: "Onboard repo" },
-      label: `Onboard and run this repo: ${url.trim()}`,
+      label: t("onboard.refineLabel", { url: url.trim() }),
     });
     onClose();
   }
@@ -90,11 +92,9 @@ export function OnboardDialog({
     try {
       await registerOnboarded(selected, start, matchedDatabase);
       await onRefresh();
-      toasts.success(
-        `${selected.name} registered${matchedDatabase ? " (+ database)" : ""}${
-          start ? " and starting" : ""
-        }.`,
-      );
+      const extras =
+        (matchedDatabase ? t("onboard.extraDb") : "") + (start ? t("onboard.extraStart") : "");
+      toasts.success(t("onboard.registeredToast", { name: selected.name, extras }));
       onClose();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -104,7 +104,7 @@ export function OnboardDialog({
   }
 
   return (
-    <ComposerDialog icon={<GitBranch />} onClose={onClose} size="lg" title="Add from GitHub">
+    <ComposerDialog icon={<GitBranch />} onClose={onClose} size="lg" title={t("onboard.title")}>
       {step === "url" ? (
         <UrlStep
           url={url}
@@ -159,11 +159,10 @@ function UrlStep({
   onScan: () => void;
   onRefine: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
-        Paste a repository URL. NoMoreIDE clones it, detects how it runs, and proposes a service.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("onboard.urlIntro")}</p>
       <Input
         autoFocus
         placeholder="https://github.com/owner/repo"
@@ -177,11 +176,11 @@ function UrlStep({
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={onRefine} disabled={!url.trim()}>
           <Sparkles className="size-3.5" />
-          Refine with AI
+          {t("onboard.refineWithAi")}
         </Button>
         <Button onClick={onScan} disabled={busy || !url.trim()}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : <GitBranch className="size-4" />}
-          {busy ? "Cloning…" : "Clone & detect"}
+          {busy ? t("onboard.cloning") : t("onboard.cloneDetect")}
         </Button>
       </div>
     </div>
@@ -211,6 +210,7 @@ function ReviewStep({
   onRefine: () => void;
   onContinue: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -225,7 +225,7 @@ function ReviewStep({
       {proposals.length > 0 ? (
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Detected service{proposals.length > 1 ? "s" : ""}
+            {t("onboard.detectedServices")}
           </span>
           {proposals.map((proposal) => {
             const active = selected?.name === proposal.name;
@@ -264,21 +264,22 @@ function ReviewStep({
         <div className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
           <Database className="size-3.5" />
           <span>
-            Also registers database <span className="font-medium">{database.name}</span> (
-            {database.engine}) so it shows in the Database tab.
+            {t("onboard.alsoRegistersPre")}{" "}
+            <span className="font-medium">{database.name}</span> ({database.engine}){" "}
+            {t("onboard.alsoRegistersPost")}
           </span>
         </div>
       ) : null}
 
       {profile.envKeys.length > 0 ? (
         <div className="text-xs text-muted-foreground">
-          <span className="font-medium">Env from .env.example:</span> {profile.envKeys.join(", ")}
+          <span className="font-medium">{t("onboard.envFrom")}</span> {profile.envKeys.join(", ")}
         </div>
       ) : null}
 
       {profile.readmeExcerpt ? (
         <details className="rounded-md border border-border bg-muted/30 p-2 text-xs">
-          <summary className="cursor-pointer font-medium">README excerpt</summary>
+          <summary className="cursor-pointer font-medium">{t("onboard.readmeExcerpt")}</summary>
           <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono">
             {profile.readmeExcerpt}
           </pre>
@@ -288,15 +289,15 @@ function ReviewStep({
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-3.5" />
-          Back
+          {t("common.back")}
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onRefine}>
             <Sparkles className="size-3.5" />
-            Refine with AI
+            {t("onboard.refineWithAi")}
           </Button>
           <Button onClick={onContinue} disabled={!selected}>
-            Continue
+            {t("onboard.continue")}
           </Button>
         </div>
       </div>
@@ -311,12 +312,13 @@ function ProposalEditor({
   proposal: OnboardProposal;
   onChange: (proposal: OnboardProposal) => void;
 }) {
+  const t = useT();
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Field label="Service name">
+      <Field label={t("onboard.serviceName")}>
         <Input value={proposal.name} onChange={(e) => onChange({ ...proposal, name: e.target.value })} />
       </Field>
-      <Field label="Port (optional)">
+      <Field label={t("onboard.portOptional")}>
         <Input
           value={proposal.port?.toString() ?? ""}
           placeholder="auto"
@@ -326,14 +328,14 @@ function ProposalEditor({
         />
       </Field>
       {proposal.kind === "docker-compose" ? (
-        <Field label="Compose service" className="col-span-2">
+        <Field label={t("onboard.composeService")} className="col-span-2">
           <Input
             value={proposal.composeService ?? ""}
             onChange={(e) => onChange({ ...proposal, composeService: e.target.value })}
           />
         </Field>
       ) : (
-        <Field label="Run command" className="col-span-2">
+        <Field label={t("onboard.runCommand")} className="col-span-2">
           <Input
             value={proposal.command ?? ""}
             onChange={(e) => onChange({ ...proposal, command: e.target.value })}
@@ -357,6 +359,7 @@ function InstallStep({
   onBack: () => void;
   onRegister: (start: boolean) => void;
 }) {
+  const t = useT();
   const [installCommand, setInstallCommand] = useState(proposal.installCommand ?? "");
   const [lines, setLines] = useState<string[]>([]);
   const [installing, setInstalling] = useState(false);
@@ -381,7 +384,11 @@ function InstallStep({
       {
         onLine: (line) => appendLine(line.text),
         onDone: (exitCode) => {
-          appendLine(exitCode === 0 ? "✓ install complete" : `✗ install exited ${exitCode}`);
+          appendLine(
+            exitCode === 0
+              ? t("onboard.installComplete")
+              : t("onboard.installExited", { code: exitCode ?? "?" }),
+          );
           setInstalling(false);
           setInstalled(exitCode === 0);
         },
@@ -396,7 +403,7 @@ function InstallStep({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-end gap-2">
-        <Field label="Install command (optional)" className="flex-1">
+        <Field label={t("onboard.installCommand")} className="flex-1">
           <Input
             value={installCommand}
             placeholder="e.g. npm install"
@@ -405,7 +412,7 @@ function InstallStep({
         </Field>
         <Button variant="outline" onClick={runInstall} disabled={installing || !installCommand.trim()}>
           {installing ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          Install
+          {t("onboard.install")}
         </Button>
       </div>
 
@@ -423,15 +430,17 @@ function InstallStep({
       <div className="flex items-center justify-between gap-2">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="size-3.5" />
-          Back
+          {t("common.back")}
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => onRegister(false)} disabled={busy}>
-            Register only
+            {t("onboard.registerOnly")}
           </Button>
           <Button onClick={() => onRegister(true)} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-            {installed || !installCommand.trim() ? "Register & start" : "Skip install & start"}
+            {installed || !installCommand.trim()
+              ? t("onboard.registerStart")
+              : t("onboard.skipInstallStart")}
           </Button>
         </div>
       </div>

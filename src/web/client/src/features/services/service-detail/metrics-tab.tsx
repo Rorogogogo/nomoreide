@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { getServiceMetrics, type MetricSample, type MetricsSeries } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 
 export function MetricsTab({ serviceName }: { serviceName: string }) {
+  const t = useT();
   const [series, setSeries] = useState<MetricsSeries | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -29,23 +31,20 @@ export function MetricsTab({ serviceName }: { serviceName: string }) {
   }, [serviceName]);
 
   if (error) {
-    return <p className="text-destructive">Failed to load metrics: {error}</p>;
+    return <p className="text-destructive">{t("services.metrics.loadError", { error })}</p>;
   }
   if (!series) {
-    return <p className="text-muted-foreground">Loading metrics…</p>;
+    return <p className="text-muted-foreground">{t("services.metrics.loading")}</p>;
   }
   if (series.samples.length === 0) {
-    return (
-      <p className="text-muted-foreground">
-        No samples yet. Metrics start collecting once the service is running.
-      </p>
-    );
+    return <p className="text-muted-foreground">{t("services.metrics.noSamples")}</p>;
   }
 
   return <MetricsContent series={series} now={now} />;
 }
 
 function MetricsContent({ series, now }: { series: MetricsSeries; now: number }) {
+  const t = useT();
   const { samples } = series;
   const cpu = useMemo(() => summarize(samples, (s) => s.cpu), [samples]);
   const mem = useMemo(() => summarize(samples, (s) => s.rss), [samples]);
@@ -61,25 +60,35 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
           accent="#22c55e"
           label="CPU"
           value={`${cpu.last.toFixed(1)}%`}
-          sub={`peak ${cpu.max.toFixed(1)}% · avg ${cpu.avg.toFixed(1)}%`}
+          sub={t("services.metrics.peakAvg", {
+            peak: `${cpu.max.toFixed(1)}%`,
+            avg: `${cpu.avg.toFixed(1)}%`,
+          })}
         />
         <StatCard
           accent="#3b82f6"
-          label="Memory"
+          label={t("services.metrics.memory")}
           value={formatMb(mem.last)}
-          sub={`peak ${formatMb(mem.max)} · avg ${formatMb(mem.avg)}`}
+          sub={t("services.metrics.peakAvg", {
+            peak: formatMb(mem.max),
+            avg: formatMb(mem.avg),
+          })}
         />
         <StatCard
           accent="#a855f7"
-          label="Uptime"
+          label={t("services.metrics.uptime")}
           value={uptimeMs != null ? formatDuration(uptimeMs) : "—"}
-          sub={startedAt ? `since ${startedAt.toLocaleTimeString()}` : "not running"}
+          sub={
+            startedAt
+              ? t("services.metrics.since", { time: startedAt.toLocaleTimeString() })
+              : t("services.metrics.notRunning")
+          }
         />
         <StatCard
           accent="#f59e0b"
-          label="Samples"
+          label={t("services.metrics.samples")}
           value={String(samples.length)}
-          sub={windowMs ? `over ${formatDuration(windowMs)}` : "collecting…"}
+          sub={windowMs ? t("services.metrics.over", { dur: formatDuration(windowMs) }) : t("services.metrics.collecting")}
         />
       </div>
       <Chart
@@ -92,7 +101,7 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
         unit="percent"
       />
       <Chart
-        label="Memory (RSS)"
+        label={t("services.metrics.memoryRss")}
         samples={samples}
         pick={(s) => s.rss}
         summary={mem}
@@ -171,6 +180,7 @@ function Chart({
   suffix: string;
   unit: "percent" | "mb";
 }) {
+  const t = useT();
   const gradientId = useMemo(
     () => `metric-grad-${unit}-${Math.random().toString(36).slice(2, 8)}`,
     [unit],
@@ -205,9 +215,9 @@ function Chart({
           {label}
         </span>
         <span className="font-mono text-[11px] text-muted-foreground">
-          now <span className="text-foreground">{summary.last.toFixed(1)}{suffix}</span>
-          <span className="mx-1.5">·</span>peak {summary.max.toFixed(1)}{suffix}
-          <span className="mx-1.5">·</span>avg {summary.avg.toFixed(1)}{suffix}
+          {t("services.metrics.wNow")} <span className="text-foreground">{summary.last.toFixed(1)}{suffix}</span>
+          <span className="mx-1.5">·</span>{t("services.metrics.wPeak")} {summary.max.toFixed(1)}{suffix}
+          <span className="mx-1.5">·</span>{t("services.metrics.wAvg")} {summary.avg.toFixed(1)}{suffix}
         </span>
       </figcaption>
       <div className="rounded-lg border border-border bg-card p-2">

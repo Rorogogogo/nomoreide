@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 /** Footer row for paginated GitHub lists — bumps to the next page on click. */
 export function LoadMoreButton({
@@ -10,6 +11,7 @@ export function LoadMoreButton({
   loading: boolean;
   onLoadMore: () => void;
 }) {
+  const t = useT();
   if (!hasMore) return null;
   return (
     <div className="p-2">
@@ -20,7 +22,7 @@ export function LoadMoreButton({
         type="button"
       >
         {loading ? <Loader2 className="size-3 animate-spin" /> : null}
-        {loading ? "Loading…" : "Load more"}
+        {loading ? t("common.loading") : t("github.loadMore")}
       </button>
     </div>
   );

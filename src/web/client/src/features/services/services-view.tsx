@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { openExternal } from "@/lib/tauri";
+import { useT, type Translate } from "@/lib/i18n";
 import { DebugTimeline } from "./debug-timeline";
 import { DependencyGraph } from "./dependency-graph";
 import { EmptyState } from "./empty-state";
@@ -67,6 +68,7 @@ export function ServicesView({
   /** Project the data was scoped to, or null for the all-projects view. */
   scopeName?: string | null;
 }) {
+  const t = useT();
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
   const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
@@ -145,7 +147,7 @@ export function ServicesView({
     if (group.services.includes(serviceName)) return;
     try {
       await addServiceToBundle(group.name, group.services, serviceName);
-      showSuccessToast(`Added ${serviceName} to ${group.name}.`);
+      showSuccessToast(t("services.toast.addedToGroup", { service: serviceName, group: group.name }));
       await onRefresh();
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
@@ -155,19 +157,15 @@ export function ServicesView({
   async function deleteSelected() {
     if (!selectedServiceDef) return;
     if (isServiceOn(selectedStatus?.state)) {
-      showErrorToast(`Stop ${selectedServiceDef.name} before deleting it.`);
+      showErrorToast(t("services.toast.stopBeforeDelete", { name: selectedServiceDef.name }));
       return;
     }
-    if (
-      !window.confirm(
-        `Delete service "${selectedServiceDef.name}"? This removes it from your config.`,
-      )
-    ) {
+    if (!window.confirm(t("services.confirmDelete", { name: selectedServiceDef.name }))) {
       return;
     }
     try {
       await deleteService(selectedServiceDef.name);
-      showSuccessToast(`Deleted ${selectedServiceDef.name}.`);
+      showSuccessToast(t("services.toast.deleted", { name: selectedServiceDef.name }));
       await onRefresh();
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
@@ -184,7 +182,10 @@ export function ServicesView({
         await removeServiceFromBundle(group.name, group.services, serviceName);
       }
       showMessageToast({
-        text: `Removed ${serviceName} from ${owningGroups.map((group) => group.name).join(", ")}.`,
+        text: t("services.toast.removedFromGroups", {
+          service: serviceName,
+          groups: owningGroups.map((group) => group.name).join(", "),
+        }),
       });
       await onRefresh();
     } catch (caught) {
@@ -227,17 +228,17 @@ export function ServicesView({
         }
 
         if (nextState === "running") {
-          showSuccessToast(`${service.name} is running.`);
+          showSuccessToast(t("services.toast.running", { name: service.name }));
         } else if (nextState === "stopped") {
-          showMessageToast({ text: `${service.name} stopped.` });
+          showMessageToast({ text: t("services.toast.stopped", { name: service.name }) });
         } else if (nextState === "starting") {
-          showMessageToast({ text: `${service.name} is starting.` });
+          showMessageToast({ text: t("services.toast.starting", { name: service.name }) });
         } else if (nextState === "exited") {
-          const exitText =
+          showErrorToast(
             status?.exitCode === undefined || status.exitCode === null
-              ? ""
-              : ` with code ${status.exitCode}`;
-          showErrorToast(`${service.name} exited${exitText}.`);
+              ? t("services.toast.exited", { name: service.name })
+              : t("services.toast.exitedWithCode", { name: service.name, code: status.exitCode }),
+          );
         }
       }
 
@@ -249,6 +250,7 @@ export function ServicesView({
           showMessageToast,
           showSuccessToast,
           transitions,
+          t,
         });
       }
     }
@@ -307,7 +309,7 @@ export function ServicesView({
           <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
             <CardHeader className="border-b border-border px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-sm">Services</CardTitle>
+                <CardTitle className="text-sm">{t("services.title")}</CardTitle>
                 <div className="flex items-center gap-1">
                   <Button
                     aria-haspopup="dialog"
@@ -318,7 +320,7 @@ export function ServicesView({
                     variant="outline"
                   >
                     <Workflow className="size-3.5" />
-                    Graph
+                    {t("services.graph")}
                   </Button>
                   <Button
                     aria-haspopup="dialog"
@@ -329,7 +331,7 @@ export function ServicesView({
                     variant="outline"
                   >
                     <ScrollText className="size-3.5" />
-                    Logs
+                    {t("services.logs")}
                   </Button>
                   <AddMenu
                     onCreateGroup={() => setServiceComposer("group")}
@@ -398,7 +400,7 @@ export function ServicesView({
                       }}
                     >
                       <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                        <span>Ungrouped</span>
+                        <span>{t("services.ungrouped")}</span>
                         <span className="text-muted-foreground/80">
                           {ungroupedServices.length}
                         </span>
@@ -422,7 +424,7 @@ export function ServicesView({
                   ) : null}
                 </div>
               ) : (
-                <EmptyState label="No services registered yet." />
+                <EmptyState label={t("services.empty")} />
               )}
             </CardContent>
           </Card>
@@ -444,9 +446,9 @@ export function ServicesView({
                         selectedStatus?.url ??
                         (selectedServiceDef.port ? serviceUrl(selectedServiceDef.port) : undefined);
                       return openUrl ? (
-                        <Tooltip label={`Open ${openUrl}`}>
+                        <Tooltip label={t("services.openUrl", { url: openUrl })}>
                           <Button
-                            aria-label="Open in browser"
+                            aria-label={t("services.openInBrowser")}
                             className="size-7"
                             onClick={() => void openExternal(openUrl)}
                             size="icon"
@@ -459,9 +461,9 @@ export function ServicesView({
                       ) : null;
                     })()}
                     {selectedHealth?.agentContext && selectedServiceDef ? (
-                      <Tooltip label="Debug this service with AI">
+                      <Tooltip label={t("services.debugWithAi")}>
                         <Button
-                          aria-label="Debug this service with AI"
+                          aria-label={t("services.debugWithAi")}
                           className="size-7"
                           onClick={() =>
                             sendToAgent({
@@ -495,7 +497,7 @@ export function ServicesView({
                       items={[
                         {
                           icon: <Pencil className="size-3.5" />,
-                          label: "Edit service",
+                          label: t("services.editService"),
                           onSelect: () => setEditOpen(true),
                         },
                         ...(isServiceOn(selectedStatus?.state)
@@ -503,19 +505,19 @@ export function ServicesView({
                           : [
                               {
                                 icon: <Trash2 className="size-3.5 text-destructive" />,
-                                label: "Delete service",
+                                label: t("services.deleteService"),
                                 onSelect: () => void deleteSelected(),
                               },
                             ]),
                       ]}
-                      label={`More actions for ${selectedServiceDef.name}`}
+                      label={t("services.moreActions", { name: selectedServiceDef.name })}
                     />
                     <Tooltip
-                      label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
+                      label={railCollapsed ? t("services.showRail") : t("services.hideRail")}
                       side="left"
                     >
                       <Button
-                        aria-label={railCollapsed ? "Show Ports & Timeline" : "Hide Ports & Timeline"}
+                        aria-label={railCollapsed ? t("services.showRail") : t("services.hideRail")}
                         className="size-7"
                         onClick={() => setRailCollapsed((current) => !current)}
                         size="icon"
@@ -554,7 +556,7 @@ export function ServicesView({
               </div>
             </div>
           ) : (
-            <EmptyState label="Select a service to see details." />
+            <EmptyState label={t("services.selectPrompt")} />
           )}
         </div>
 
@@ -571,7 +573,7 @@ export function ServicesView({
           icon={<Pencil />}
           onClose={() => setEditOpen(false)}
           size="lg"
-          title={`Edit Service — ${selectedServiceDef.name}`}
+          title={t("services.editServiceTitle", { name: selectedServiceDef.name })}
         >
           <ServiceForm
             cwd={data.cwd}
@@ -587,7 +589,7 @@ export function ServicesView({
           icon={serviceComposer === "service" ? <Plus /> : <Box />}
           onClose={() => setServiceComposer(null)}
           size={serviceComposer === "service" ? "lg" : "md"}
-          title={serviceComposer === "service" ? "Add Service" : "Create Group"}
+          title={serviceComposer === "service" ? t("services.addService") : t("services.createGroup")}
         >
           {serviceComposer === "service" ? (
             <ServiceForm
@@ -620,7 +622,7 @@ export function ServicesView({
           icon={<Workflow />}
           onClose={() => setGraphOpen(false)}
           size="lg"
-          title="Service Dependency Graph"
+          title={t("services.depGraphTitle")}
         >
           <DependencyGraph
             statuses={data.runtime.services}
@@ -656,6 +658,7 @@ function AddMenu({
   onOnboardRepo: () => void;
   onOnboardWithAi: () => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   function choose(action: () => void) {
@@ -665,11 +668,11 @@ function AddMenu({
 
   return (
     <div className="relative">
-      <Tooltip label="Add" side="bottom">
+      <Tooltip label={t("services.add")} side="bottom">
         <Button
           aria-expanded={open}
           aria-haspopup="menu"
-          aria-label="Add service or group"
+          aria-label={t("services.addServiceOrGroup")}
           className="size-7"
           onClick={() => setOpen((current) => !current)}
           size="icon"
@@ -702,13 +705,13 @@ function AddMenu({
                 type="button"
               >
                 <Plus />
-                Create Service
+                {t("services.createService")}
               </button>
               <button
                 className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
                 onClick={() => choose(onCreateWithAi)}
                 role="menuitem"
-                title="Set up with AI — the agent walks you through it"
+                title={t("services.setupWithAiHint")}
                 type="button"
               >
                 <AgentMark className="size-3.5 shrink-0" />
@@ -726,14 +729,14 @@ function AddMenu({
                 type="button"
               >
                 <Box />
-                Create Group
+                {t("services.createGroup")}
               </button>
               {canGroupWithAi ? (
                 <button
                   className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
                   onClick={() => choose(onGroupWithAi)}
                   role="menuitem"
-                  title="Group with AI — the agent proposes groupings for your ungrouped services"
+                  title={t("services.groupWithAiHint")}
                   type="button"
                 >
                   <AgentMark className="size-3.5 shrink-0" />
@@ -751,13 +754,13 @@ function AddMenu({
                 type="button"
               >
                 <GitBranch />
-                Add from GitHub
+                {t("services.addFromGithub")}
               </button>
               <button
                 className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
                 onClick={() => choose(onOnboardWithAi)}
                 role="menuitem"
-                title="Onboard with AI — the agent clones, detects and runs it for you"
+                title={t("services.onboardWithAiHint")}
                 type="button"
               >
                 <AgentMark className="size-3.5 shrink-0" />
@@ -778,6 +781,7 @@ function showGroupTransitionToast({
   showMessageToast,
   showSuccessToast,
   transitions,
+  t,
 }: {
   exitCodes: Array<number | null | undefined>;
   groupName: string;
@@ -785,19 +789,26 @@ function showGroupTransitionToast({
   showMessageToast: (message: { text: string }) => void;
   showSuccessToast: (text: string) => void;
   transitions: Map<ServiceStatus["state"], number>;
+  t: Translate;
 }) {
   if (transitions.size === 1) {
     const [state] = transitions.keys();
     if (state === "running") {
-      showSuccessToast(`${groupName} group is running.`);
+      showSuccessToast(t("services.toast.groupRunning", { name: groupName }));
     } else if (state === "stopped") {
-      showMessageToast({ text: `${groupName} group stopped.` });
+      showMessageToast({ text: t("services.toast.groupStopped", { name: groupName }) });
     } else if (state === "starting") {
-      showMessageToast({ text: `${groupName} group is starting.` });
+      showMessageToast({ text: t("services.toast.groupStarting", { name: groupName }) });
     } else if (state === "exited") {
       const knownCodes = exitCodes.filter((code) => code !== undefined && code !== null);
-      const exitText = knownCodes.length ? ` with code ${knownCodes.join(", ")}` : "";
-      showErrorToast(`${groupName} group exited${exitText}.`);
+      showErrorToast(
+        knownCodes.length
+          ? t("services.toast.groupExitedWithCode", {
+              name: groupName,
+              code: knownCodes.join(", "),
+            })
+          : t("services.toast.groupExited", { name: groupName }),
+      );
     }
     return;
   }
@@ -805,7 +816,7 @@ function showGroupTransitionToast({
   const summary = [...transitions.entries()]
     .map(([state, count]) => `${count} ${state}`)
     .join(", ");
-  const text = `${groupName} group updated: ${summary}.`;
+  const text = t("services.toast.groupUpdated", { name: groupName, summary });
   if (transitions.has("exited")) {
     showErrorToast(text);
   } else {

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useT } from "@/lib/i18n";
 
 /**
  * A comment textarea whose bottom-right corner is notched out so an action
@@ -47,6 +48,7 @@ export function NotchedCommentBox({
   rows?: number;
   action: ReactNode;
 }) {
+  const t = useT();
   const boxRef = useRef<HTMLDivElement>(null);
   const actionRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
@@ -92,7 +94,7 @@ export function NotchedCommentBox({
           viewBox={`0 0 ${box.w} ${box.h}`}
           width={box.w}
         >
-          <title>Comment field border</title>
+          <title>{t("github.commentBorderTitle")}</title>
           <path d={path} stroke="currentColor" strokeWidth={1} />
         </svg>
       ) : null}

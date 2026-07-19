@@ -11,6 +11,7 @@ import {
   SquareTerminal,
   type LucideIcon,
 } from "lucide-react";
+import type { TranslationKey } from "@/lib/i18n";
 
 export type SettingsCategoryId =
   | "general"
@@ -86,15 +87,43 @@ export function settingCopy(id: SettingId | string): (typeof SETTING_COPY)[Setti
   return copy;
 }
 
+// The English copy above stays the search corpus and fallback; display strings
+// resolve through the i18n catalog by id-derived key.
+export function settingLabelKey(id: SettingId): TranslationKey {
+  return `settingsHub.item.${id}.label` as TranslationKey;
+}
+
+export function settingDescKey(id: SettingId): TranslationKey {
+  return `settingsHub.item.${id}.desc` as TranslationKey;
+}
+
+export function categoryLabelKey(id: SettingsCategoryId): TranslationKey {
+  return `settingsHub.cat.${id}.label` as TranslationKey;
+}
+
+export function categoryDescKey(id: SettingsCategoryId): TranslationKey {
+  return `settingsHub.cat.${id}.desc` as TranslationKey;
+}
+
 export const SEARCHABLE_SETTINGS = Object.keys(SETTING_COPY) as SettingId[];
 
-export function matchingSettingIds(categoryId: SettingsCategoryId, query: string): SettingId[] {
+export function matchingSettingIds(
+  categoryId: SettingsCategoryId,
+  query: string,
+  translate?: (key: TranslationKey) => string,
+): SettingId[] {
   const category = categoryById(categoryId);
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return SEARCHABLE_SETTINGS.filter((id) => {
     const copy = settingCopy(id);
     if (copy.category !== categoryId) return false;
-    const text = `${category.label} ${category.description} ${category.keywords.join(" ")} ${copy.label} ${copy.description}`.toLowerCase();
+    // Search matches the English source copy plus, when a translator is
+    // provided, the localized label/description the user actually sees.
+    const localized = translate
+      ? ` ${translate(categoryLabelKey(categoryId))} ${translate(settingLabelKey(id))} ${translate(settingDescKey(id))}`
+      : "";
+    const text =
+      `${category.label} ${category.description} ${category.keywords.join(" ")} ${copy.label} ${copy.description}${localized}`.toLowerCase();
     return words.every((word) => text.includes(word));
   });
 }

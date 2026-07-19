@@ -6,20 +6,26 @@ const workflowPanelSource = readFileSync(
   resolve(__dirname, "../src/web/client/src/features/workflows/workflow-panel.tsx"),
   "utf8",
 );
+// UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted
+// against en.ts rather than the component source.
+const catalog = readFileSync(
+  resolve(__dirname, "../src/web/client/src/lib/i18n/en.ts"),
+  "utf8",
+);
 
 describe("workflow run AI actions", () => {
   test("keeps one active or recent workflow reachable from the main workflows page", () => {
     expect(workflowPanelSource).toContain("viewingRun");
     expect(workflowPanelSource).toContain("WorkflowRunBanner");
-    expect(workflowPanelSource).toContain("View run");
-    expect(workflowPanelSource).toContain("Last workflow");
+    expect(catalog).toContain("View run");
+    expect(catalog).toContain("Last workflow");
     expect(workflowPanelSource).toContain("formatRunTimestamp");
     expect(workflowPanelSource).toContain("lastRun={run?.workflow.id === workflow.id ? run : null}");
     expect(workflowPanelSource).toMatch(/onBack=\{\(\) => setViewingRun\(false\)\}/);
   });
 
   test("offers AI debug for blocked or failed workflow steps", () => {
-    expect(workflowPanelSource).toContain("Debug this workflow step with AI");
+    expect(catalog).toContain("Debug this workflow step with AI");
     expect(workflowPanelSource).toContain("buildWorkflowStepDebugPrompt");
     expect(workflowPanelSource).toMatch(
       /source: \{ type: "workflow-debug"[\s\S]*?background: true/,
@@ -28,16 +34,17 @@ describe("workflow run AI actions", () => {
   });
 
   test("keeps a stop control in the active step detail", () => {
-    expect(workflowPanelSource).toContain('aria-label="Stop workflow run from step detail"');
-    expect(workflowPanelSource).toContain("Stop after this step");
+    expect(workflowPanelSource).toContain('aria-label={t("workflows.run.stopAria")}');
+    expect(catalog).toContain("Stop workflow run from step detail");
+    expect(catalog).toContain("Stop after this step");
   });
 
   test("lets a blocked PR branch guard recover through an AI-native branch flow", () => {
     expect(workflowPanelSource).toContain("PrBranchRecovery");
-    expect(workflowPanelSource).toContain("Recommend branch with AI");
-    expect(workflowPanelSource).toContain("Recommended branch");
-    expect(workflowPanelSource).toContain("Create this branch");
-    expect(workflowPanelSource).toContain("Ask for another");
+    expect(catalog).toContain("Recommend branch with AI");
+    expect(catalog).toContain("Recommended branch");
+    expect(catalog).toContain("Create this branch");
+    expect(catalog).toContain("Ask for another");
     expect(workflowPanelSource).toContain("runHeadlessAgentTask");
     expect(workflowPanelSource).toContain("gitCreateBranch");
     expect(workflowPanelSource).toContain("parseRecommendedBranchName");

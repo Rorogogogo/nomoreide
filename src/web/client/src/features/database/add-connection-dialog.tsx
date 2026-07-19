@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
 import {
   addDatabase,
@@ -50,6 +51,7 @@ export function AddConnectionDialog({
   /** Registered git projects the connection can be classified under. */
   projects?: GitRepositoryDefinition[];
 }) {
+  const t = useT();
   const { error: showError, success: showSuccess } = useToasts();
   const isEditing = Boolean(initial);
   const seed = useMemo(() => seedState(initial), [initial]);
@@ -151,13 +153,13 @@ export function AddConnectionDialog({
   }
 
   function validate(): string | null {
-    if (!name.trim()) return "Name is required.";
+    if (!name.trim()) return t("database.dialog.errNameRequired");
     if (isSqlite) {
-      if (!url.trim()) return "Database file path is required.";
+      if (!url.trim()) return t("database.dialog.errFilePathRequired");
       return null;
     }
-    if (!fields.host.trim()) return "Host is required.";
-    if (!fields.database.trim()) return "Database name is required.";
+    if (!fields.host.trim()) return t("database.dialog.errHostRequired");
+    if (!fields.database.trim()) return t("database.dialog.errDatabaseRequired");
     return null;
   }
 
@@ -169,8 +171,8 @@ export function AddConnectionDialog({
       const result = await testDatabase({ engine, url: submitUrl });
       setTestState(
         result.ok
-          ? { status: "ok", message: "Connected" }
-          : { status: "fail", message: result.error ?? "Connection failed" },
+          ? { status: "ok", message: t("database.dialog.connected") }
+          : { status: "fail", message: result.error ?? t("database.dialog.connectionFailed") },
       );
     } catch (caught) {
       setTestState({
@@ -191,7 +193,7 @@ export function AddConnectionDialog({
     setSaving(true);
     try {
       await addDatabase({ name: name.trim(), engine, url: submitUrl, projectPath });
-      showSuccess(`Saved connection "${name.trim()}".`);
+      showSuccess(t("database.dialog.savedToast", { name: name.trim() }));
       onSaved();
       onClose();
     } catch (caught) {
@@ -205,14 +207,14 @@ export function AddConnectionDialog({
     <ComposerDialog
       icon={<Database />}
       onClose={onClose}
-      title={isEditing ? "Edit database connection" : "Add database connection"}
+      title={isEditing ? t("database.dialog.editTitle") : t("database.dialog.addTitle")}
     >
       <div className="flex flex-col gap-4">
         {detected.length > 0 ? (
           <section>
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Wand2 className="size-3.5" />
-              Found in your services
+              {t("database.dialog.foundInServices")}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {detected.map((candidate) => (
@@ -235,7 +237,7 @@ export function AddConnectionDialog({
         ) : null}
 
         <section>
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Engine</p>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("database.dialog.engine")}</p>
           <div className="flex gap-1.5">
             {ENGINES.map((option) => (
               <Button
@@ -253,16 +255,16 @@ export function AddConnectionDialog({
         </section>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Name</span>
+          <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.name")}</span>
           <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. shop-db"
+            placeholder={t("database.dialog.namePlaceholder")}
             disabled={isEditing}
           />
           {isEditing ? (
             <span className="text-[11px] text-muted-foreground">
-              The name identifies the connection and can't be changed here.
+              {t("database.dialog.nameLocked")}
             </span>
           ) : null}
         </label>
@@ -298,7 +300,7 @@ export function AddConnectionDialog({
           <section className="flex flex-col gap-3">
             <div className="flex gap-3">
               <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Host</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.host")}</span>
                 <Input
                   value={fields.host}
                   onChange={(event) => changeField({ host: event.target.value })}
@@ -307,7 +309,7 @@ export function AddConnectionDialog({
                 />
               </label>
               <label className="flex w-24 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Port</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.port")}</span>
                 <Input
                   value={fields.port}
                   onChange={(event) => changeField({ port: event.target.value })}
@@ -318,7 +320,7 @@ export function AddConnectionDialog({
             </div>
             <div className="flex gap-3">
               <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">User</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.user")}</span>
                 <Input
                   value={fields.user}
                   onChange={(event) => changeField({ user: event.target.value })}
@@ -327,18 +329,18 @@ export function AddConnectionDialog({
                 />
               </label>
               <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Password</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.password")}</span>
                 <Input
                   type="password"
                   value={fields.password}
                   onChange={(event) => changeField({ password: event.target.value })}
-                  placeholder={isEditing ? "leave blank to keep current" : "••••••••"}
+                  placeholder={isEditing ? t("database.dialog.passwordKeep") : "••••••••"}
                   className="font-mono text-xs"
                 />
               </label>
             </div>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">Database</span>
+              <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.database")}</span>
               <Input
                 value={fields.database}
                 onChange={(event) => changeField({ database: event.target.value })}
@@ -354,7 +356,9 @@ export function AddConnectionDialog({
                   onChange={(event) => changeField({ ssl: event.target.checked })}
                   className="size-3.5 accent-primary"
                 />
-                Require SSL (adds <span className="font-mono">?sslmode=require</span>)
+                {t("database.dialog.requireSslPre")}{" "}
+                <span className="font-mono">?sslmode=require</span>
+                {t("database.dialog.requireSslPost")}
               </label>
             ) : null}
           </section>
@@ -362,7 +366,7 @@ export function AddConnectionDialog({
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">
-            {isSqlite ? "Database file path" : "Connection URL"}
+            {isSqlite ? t("database.dialog.filePath") : t("database.dialog.connectionUrl")}
           </span>
           <Input
             value={url}
@@ -377,9 +381,7 @@ export function AddConnectionDialog({
             className="font-mono text-xs"
           />
           <span className="text-[11px] text-muted-foreground">
-            {isSqlite
-              ? "Read-only. Stored like a secret and masked in the UI and API."
-              : "Synced with the fields above; the password stays in its field and is never shown here. Stored like a secret and masked in the UI and API."}
+            {isSqlite ? t("database.dialog.sqliteHint") : t("database.dialog.urlHint")}
           </span>
         </label>
 
@@ -409,11 +411,11 @@ export function AddConnectionDialog({
             type="button"
           >
             {testing ? <Loader2 className="animate-spin" /> : null}
-            Test connection
+            {t("database.dialog.testConnection")}
           </Button>
           <Button size="sm" onClick={() => void save()} disabled={saving} type="button">
             {saving ? <Loader2 className="animate-spin" /> : null}
-            {isEditing ? "Save changes" : "Save"}
+            {isEditing ? t("database.dialog.saveChanges") : t("common.save")}
           </Button>
         </div>
       </div>

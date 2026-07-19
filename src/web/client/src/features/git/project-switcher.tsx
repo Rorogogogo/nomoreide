@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { FolderPickerDialog } from "./repository-selector";
 import { pathName } from "./path-utils";
 import { ProjectMenuList } from "./project-menu";
+import { useT } from "@/lib/i18n";
 
 /**
  * Persistent project context: lives at the top of the sidebar on every page.
@@ -47,30 +48,31 @@ export function ProjectSwitcher({
   onScopeChange: (scopeAll: boolean) => void;
   onRefresh: () => Promise<void>;
 }) {
+  const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const selectedRepository = data.git.selectedRepository;
   const label = scopeAll
-    ? "All projects"
-    : selectedRepository?.name ?? "Pick a project";
+    ? t("app.allProjects")
+    : selectedRepository?.name ?? t("app.pickProject");
   const projectCount = data.config.gitRepositories.length;
   const subtitle = scopeAll
-    ? `${projectCount} project${projectCount === 1 ? "" : "s"}`
+    ? t(projectCount === 1 ? "app.projectCountOne" : "app.projectCountMany", { count: projectCount })
     : selectedRepository
       ? data.git.status?.branch ?? selectedRepository.path
-      : "set the context";
+      : t("app.setContext");
 
   return (
     <>
       <button
-        aria-label={`Project scope: ${label}`}
+        aria-label={t("app.projectScope", { label })}
         className={cn(
           "relative grid h-11 grid-cols-[48px_minmax(0,1fr)] items-center overflow-hidden rounded-md text-left transition-[background-color,width] duration-150 hover:bg-muted",
           docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
         )}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((value) => !value)}
-        title={`Project scope: ${label}`}
+        title={t("app.projectScope", { label })}
         type="button"
       >
         <span className="flex h-11 w-12 items-center justify-center">
@@ -144,6 +146,7 @@ function ProjectSwitcherDialog({
   onScopeChange: (scopeAll: boolean) => void;
   scopeAll: boolean;
 }) {
+  const t = useT();
   const [addMode, setAddMode] = useState<"path" | "url">("path");
   const [path, setPath] = useState(data.git.cwd);
   const [cloneUrl, setCloneUrl] = useState("");
@@ -160,7 +163,7 @@ function ProjectSwitcherDialog({
       onScopeChange(false);
       onClose();
       await onRefresh();
-      showSuccessToast(`Switched to ${name}.`);
+      showSuccessToast(t("git.repo.switchedToast", { name }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
     }
@@ -169,14 +172,13 @@ function ProjectSwitcherDialog({
   function selectAllProjects() {
     onScopeChange(true);
     onClose();
-    showSuccessToast("Showing all projects.");
+    showSuccessToast(t("app.showingAllProjects"));
   }
 
   async function registerPath(nextPath: string): Promise<boolean> {
     const trimmed = nextPath.trim();
     if (!trimmed.startsWith("/")) {
-      const message =
-        "Please add an absolute path. Paths beginning with ~ are not expanded here.";
+      const message = t("git.repo.absPathError");
       setAddError(message);
       showErrorToast(message);
       return false;
@@ -186,7 +188,7 @@ function ProjectSwitcherDialog({
       await registerGitRepository(repoName, trimmed);
       setAddError(null);
       await onRefresh();
-      showSuccessToast(`Added Git project ${repoName}.`);
+      showSuccessToast(t("git.repo.addedToast", { name: repoName }));
       return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -200,7 +202,7 @@ function ProjectSwitcherDialog({
     try {
       await deleteGitRepository(name);
       await onRefresh();
-      showSuccessToast(`Removed Git project ${name}.`);
+      showSuccessToast(t("git.repo.removedToast", { name }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
     }
@@ -222,7 +224,7 @@ function ProjectSwitcherDialog({
       const { name } = await cloneGitRepository(url);
       setCloneUrl("");
       await onRefresh();
-      showSuccessToast(`Cloned and added ${name}.`);
+      showSuccessToast(t("git.repo.clonedToast", { name }));
       onClose();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -243,12 +245,12 @@ function ProjectSwitcherDialog({
       <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-xl">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Globe2 className="size-4 text-muted-foreground" />
-          <div className="text-sm font-semibold">Projects</div>
+          <div className="text-sm font-semibold">{t("git.repo.projectsShort")}</div>
           <Badge className="h-5 px-1.5 text-[10px]" variant="outline">
             {data.config.gitRepositories.length}
           </Badge>
           <Button
-            aria-label="Close project switcher"
+            aria-label={t("git.repo.closeSwitcher")}
             className="ml-auto size-7"
             onClick={onClose}
             size="icon"
@@ -271,10 +273,10 @@ function ProjectSwitcherDialog({
               <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium leading-tight">
-                  All projects
+                  {t("app.allProjects")}
                 </span>
                 <span className="block truncate text-[10px] leading-tight text-muted-foreground">
-                  Everything the daemon runs, across every repo
+                  {t("app.allProjectsHint")}
                 </span>
               </span>
             </span>
@@ -308,11 +310,11 @@ function ProjectSwitcherDialog({
                     </button>
                     {selected ? <Check className="size-3.5" /> : <span className="size-3.5" />}
                     <Button
-                      aria-label={`Remove ${repository.name}`}
+                      aria-label={t("git.repo.removeName", { name: repository.name })}
                       className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
                       onClick={() => void removeProject(repository.name)}
                       size="icon"
-                      title={`Remove ${repository.name}`}
+                      title={t("git.repo.removeName", { name: repository.name })}
                       type="button"
                       variant="ghost"
                     >
@@ -324,7 +326,7 @@ function ProjectSwitcherDialog({
             </div>
           ) : (
             <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-              No saved Git projects yet.
+              {t("git.repo.noProjects")}
             </div>
           )}
         </div>
@@ -345,7 +347,7 @@ function ProjectSwitcherDialog({
               type="button"
             >
               <Folder className="size-3" />
-              Local path
+              {t("git.repo.localPath")}
             </button>
             <button
               className={cn(
@@ -361,14 +363,14 @@ function ProjectSwitcherDialog({
               type="button"
             >
               <Download className="size-3" />
-              Clone URL
+              {t("git.repo.cloneUrl")}
             </button>
           </div>
 
           {addMode === "path" ? (
             <form className="flex gap-1.5" onSubmit={addFromInput}>
               <Input
-                aria-label="Paste absolute path"
+                aria-label={t("git.repo.pasteAbsPath")}
                 className="h-7 flex-1 px-2 font-mono text-[11px]"
                 onChange={(event) => {
                   setPath(event.target.value);
@@ -379,10 +381,10 @@ function ProjectSwitcherDialog({
               />
               <Button className="h-7 px-2 text-[11px]" size="sm" type="submit">
                 <Plus className="size-3" />
-                Add
+                {t("common.add")}
               </Button>
               <Button
-                aria-label="Browse and add Git project"
+                aria-label={t("git.repo.browseAdd")}
                 className="h-7 px-2"
                 onClick={() => {
                   setAddError(null);
@@ -399,7 +401,7 @@ function ProjectSwitcherDialog({
           ) : (
             <form className="flex gap-1.5" onSubmit={addFromUrl}>
               <Input
-                aria-label="Git remote URL"
+                aria-label={t("git.repo.remoteUrl")}
                 className="h-7 flex-1 px-2 font-mono text-[11px]"
                 onChange={(event) => {
                   setCloneUrl(event.target.value);
@@ -415,7 +417,7 @@ function ProjectSwitcherDialog({
                 type="submit"
               >
                 <Download className="size-3" />
-                {cloning ? "Cloning…" : "Clone"}
+                {cloning ? t("git.repo.cloning") : t("git.repo.clone")}
               </Button>
             </form>
           )}
@@ -424,19 +426,18 @@ function ProjectSwitcherDialog({
           ) : null}
           {addMode === "url" ? (
             <div className="mt-1 text-[10px] text-muted-foreground">
-              Private github.com repos reuse your GitHub login; SSH uses your
-              machine's keys. Clones into ~/.nomoreide/repos.
+              {t("git.repo.cloneHint")}
             </div>
           ) : null}
         </div>
       </div>
       {browseOpen ? (
         <FolderPickerDialog
-          confirmLabel="Add Git project"
+          confirmLabel={t("git.repo.addProject")}
           errorMessage={addError}
           initialPath={data.git.cwd}
           selectedPath={draftPath}
-          title="Add Git Project"
+          title={t("git.repo.addProjectTitle")}
           onCancel={() => setBrowseOpen(false)}
           onSelect={setDraftPath}
           onUse={async () => {

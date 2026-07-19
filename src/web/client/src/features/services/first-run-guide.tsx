@@ -1,4 +1,5 @@
 import { GitBranch, Plus } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { AgentMark } from "../agent/ai-spark";
 
 /**
@@ -18,34 +19,31 @@ export function FirstRunGuide({
   onCreateService: () => void;
   onCreateWithAi: () => void;
 }) {
+  const t = useT();
   return (
     <div className="flex h-full min-h-0 items-center justify-center overflow-auto bg-card/85 p-6">
       <div className="w-full max-w-xl space-y-6">
         <div className="space-y-2 text-center">
-          <h2 className="text-xl font-semibold">Set up your first service</h2>
-          <p className="text-sm text-muted-foreground">
-            NoMoreIDE runs and watches your services so you don't have to babysit
-            terminals. Add your first one to get started — or let the agent do it
-            for you.
-          </p>
+          <h2 className="text-xl font-semibold">{t("services.firstRun.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("services.firstRun.desc")}</p>
         </div>
 
         <div className="space-y-3">
           <GuideStep
             icon={<GitBranch className="size-5" />}
-            title="Add from GitHub"
-            description="Point at a repo — we detect how to run it and register it for you."
+            title={t("services.addFromGithub")}
+            description={t("services.firstRun.githubDesc")}
             onClick={onOnboardRepo}
             onAi={onOnboardWithAi}
-            aiTitle="Onboard with AI — the agent clones, detects and runs it for you"
+            aiTitle={t("services.onboardWithAiHint")}
           />
           <GuideStep
             icon={<Plus className="size-5" />}
-            title="Create a service"
-            description="Define the command, working directory and port yourself."
+            title={t("services.firstRun.createTitle")}
+            description={t("services.firstRun.createDesc")}
             onClick={onCreateService}
             onAi={onCreateWithAi}
-            aiTitle="Set up with AI — the agent walks you through it, one step at a time"
+            aiTitle={t("services.firstRun.createAiHint")}
           />
         </div>
       </div>

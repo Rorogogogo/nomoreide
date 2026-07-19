@@ -1,3 +1,4 @@
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo, GeminiLogo } from "./agent-logos";
 import { useAgentDock } from "./chat/agent-context";
@@ -35,7 +36,8 @@ export function AiSpark({
   className?: string;
 }) {
   const { provider } = useAgentDock();
-  const title = label ?? `Ask ${provider?.label ?? "Claude"}`;
+  const t = useT();
+  const title = label ?? t("agent.ask.askProvider", { label: provider?.label ?? "Claude" });
   return (
     <button
       aria-label={title}

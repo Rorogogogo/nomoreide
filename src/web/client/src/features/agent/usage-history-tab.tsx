@@ -1,5 +1,6 @@
 import { Alert } from "@/components/ui/alert";
 import type { UsageDayBucket, UsageHistorySummary } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { useUsageHistory } from "./use-usage-history";
 
 /**
@@ -9,15 +10,16 @@ import { useUsageHistory } from "./use-usage-history";
  */
 export function UsageHistoryTab() {
   const { data, error, loading } = useUsageHistory();
+  const t = useT();
 
   if (loading && !data) {
-    return <Section><Alert variant="muted">Loading usage history…</Alert></Section>;
+    return <Section><Alert variant="muted">{t("agent.usageHistory.loading")}</Alert></Section>;
   }
   if (error) {
     return (
       <Section>
         <Alert variant="muted" className="border-destructive/40 text-destructive">
-          Failed to load usage history: {error}
+          {t("agent.usageHistory.loadFailed", { error })}
         </Alert>
       </Section>
     );
@@ -27,7 +29,7 @@ export function UsageHistoryTab() {
     return (
       <Section>
         <Alert variant="muted">
-          No usage recorded yet. History accrues as you run the in-dock agent — check back after a session.
+          {t("agent.usageHistory.empty")}
         </Alert>
       </Section>
     );
@@ -36,16 +38,16 @@ export function UsageHistoryTab() {
   return (
     <Section>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Total cost" value={`$${summary.totalCostUSD.toFixed(2)}`} accent />
-        <Stat label="Agent runs" value={String(summary.runs)} />
-        <Stat label="Tokens (in+out)" value={formatTokens(summary.totalTokens)} />
-        <Stat label="Codex tokens" value={formatTokens(summary.codexTotalTokens)} />
+        <Stat label={t("agent.usageHistory.totalCost")} value={`$${summary.totalCostUSD.toFixed(2)}`} accent />
+        <Stat label={t("agent.usageHistory.runs")} value={String(summary.runs)} />
+        <Stat label={t("agent.usageHistory.tokensInOut")} value={formatTokens(summary.totalTokens)} />
+        <Stat label={t("agent.usageHistory.codexTokens")} value={formatTokens(summary.codexTotalTokens)} />
       </div>
 
       {summary.byDay.length > 0 ? (
         <div className="rounded-md border border-border p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Cost by day
+            {t("agent.usageHistory.costByDay")}
           </div>
           <DayCostChart days={summary.byDay} />
         </div>
@@ -57,6 +59,7 @@ export function UsageHistoryTab() {
 }
 
 function DayCostChart({ days }: { days: UsageDayBucket[] }) {
+  const t = useT();
   const max = Math.max(...days.map((d) => d.costUSD), 0.0001);
   return (
     <div className="space-y-1.5">
@@ -73,7 +76,7 @@ function DayCostChart({ days }: { days: UsageDayBucket[] }) {
             ${day.costUSD.toFixed(2)}
           </span>
           <span className="w-12 shrink-0 text-right text-muted-foreground">
-            {day.runs} run{day.runs === 1 ? "" : "s"}
+            {t("agent.usageHistory.runsCount", { count: day.runs })}
           </span>
         </div>
       ))}
@@ -82,13 +85,16 @@ function DayCostChart({ days }: { days: UsageDayBucket[] }) {
 }
 
 function SpanNote({ summary }: { summary: UsageHistorySummary }) {
+  const t = useT();
   if (!summary.firstAt || !summary.lastAt) return null;
   const first = summary.firstAt.slice(0, 10);
   const last = summary.lastAt.slice(0, 10);
   return (
     <p className="text-[11px] text-muted-foreground">
-      {first === last ? `Recorded on ${first}.` : `Recorded ${first} → ${last}.`} Costs are
-      Claude per-session figures; Codex reports lifetime token totals only.
+      {first === last
+        ? t("agent.usageHistory.recordedOn", { date: first })
+        : t("agent.usageHistory.recordedRange", { first, last })}{" "}
+      {t("agent.usageHistory.costNote")}
     </p>
   );
 }

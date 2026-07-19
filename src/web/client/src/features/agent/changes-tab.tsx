@@ -10,6 +10,7 @@ import {
   type AgentChangeSession,
   type SnapshotChange,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ChangedFilesWithDiff } from "../git/snapshots/snapshots-view";
 
@@ -24,6 +25,7 @@ export function ChangesTab() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   const refresh = useCallback(async () => {
     try {
@@ -51,11 +53,11 @@ export function ChangesTab() {
       const result = await restoreChangeSet(id);
       await refresh();
       setNotice(
-        `Restored ${result.restoredFiles} file(s)` +
+        t("agent.changes.restored", { count: result.restoredFiles }) +
           (result.deletedPaths.length
-            ? `, removed ${result.deletedPaths.length} created by the session`
+            ? t("agent.changes.restoredRemoved", { count: result.deletedPaths.length })
             : "") +
-          `. Undo via pre-restore snapshot ${result.preRestore.sha.slice(0, 7)} in Git → Snapshots.`,
+          t("agent.changes.restoredUndo", { sha: result.preRestore.sha.slice(0, 7) }),
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -68,8 +70,7 @@ export function ChangesTab() {
     return (
       <div className="p-4">
         <Alert variant="muted" className="border-dashed p-8 text-center">
-          {error ??
-            "No agent sessions recorded yet. Sessions appear here once an agent calls a nomoreide MCP tool; each one starts with a working-tree snapshot you can roll back to."}
+          {error ?? t("agent.changes.empty")}
         </Alert>
       </div>
     );
@@ -99,13 +100,13 @@ export function ChangesTab() {
                     {new Date(session.startedAt).toLocaleString()}
                   </span>
                   <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>{session.toolCount} tool call(s)</span>
+                    <span>{t("agent.changes.toolCalls", { count: session.toolCount })}</span>
                     {session.snapshotSha ? (
                       <span className="font-mono">
                         {session.snapshotSha.slice(0, 7)}
                       </span>
                     ) : (
-                      <span>no snapshot</span>
+                      <span>{t("agent.changes.noSnapshot")}</span>
                     )}
                   </span>
                 </button>
@@ -142,6 +143,7 @@ function ChangeSetDetail({
   const [diff, setDiff] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const t = useT();
 
   useEffect(() => {
     let active = true;
@@ -190,8 +192,8 @@ function ChangeSetDetail({
         <div className="min-w-0">
           <h2 className="truncate text-[13px] font-semibold tracking-tight">
             {files.length
-              ? `${files.length} file(s) changed since this session started`
-              : "No working-tree changes since this session started"}
+              ? t("agent.changes.filesChanged", { count: files.length })
+              : t("agent.changes.noChanges")}
           </h2>
           <p className="truncate text-[10px] text-muted-foreground">
             {session?.repoPath ?? ""}
@@ -210,7 +212,7 @@ function ChangeSetDetail({
                 type="button"
                 variant="destructive"
               >
-                Confirm restore
+                {t("agent.changes.confirmRestore")}
               </Button>
               <Button
                 onClick={() => setConfirming(false)}
@@ -218,7 +220,7 @@ function ChangeSetDetail({
                 type="button"
                 variant="outline"
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </span>
           ) : (
@@ -226,12 +228,12 @@ function ChangeSetDetail({
               disabled={busy || files.length === 0}
               onClick={() => setConfirming(true)}
               size="sm"
-              title="Reset the working tree to before this session (a pre-restore snapshot is taken first)"
+              title={t("agent.changes.restoreTitle")}
               type="button"
               variant="outline"
             >
               <RotateCcw className="size-3.5" />
-              Restore to before this session…
+              {t("agent.changes.restoreButton")}
             </Button>
           )
         ) : null}

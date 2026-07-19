@@ -14,6 +14,7 @@ import {
   type PortConflictDetail,
 } from "@/lib/api";
 import { openExternal } from "@/lib/tauri";
+import { useT, type Translate } from "@/lib/i18n";
 import { ComposerDialog } from "./service-forms";
 
 type LifecycleOp = "start" | "stop" | "restart";
@@ -70,6 +71,7 @@ export function LifecycleActions({
   solidStart?: boolean;
   targetLabel: string;
 }) {
+  const t = useT();
   if (!active) {
     return (
       <ActionButton
@@ -77,7 +79,7 @@ export function LifecycleActions({
         compact={compact}
         intent={solidStart ? "startSolid" : "start"}
         icon={<Play />}
-        label="Start"
+        label={t("common.start")}
         op="start"
         resourceKind={resourceKind}
         resourceName={resourceName}
@@ -95,7 +97,7 @@ export function LifecycleActions({
         compact={compact}
         intent="restart"
         icon={<RotateCcw />}
-        label="Restart"
+        label={t("common.restart")}
         op="restart"
         resourceKind={resourceKind}
         resourceName={resourceName}
@@ -108,7 +110,7 @@ export function LifecycleActions({
         compact={compact}
         intent="stop"
         icon={<Square />}
-        label="Stop"
+        label={t("common.stop")}
         op="stop"
         resourceKind={resourceKind}
         resourceName={resourceName}
@@ -120,12 +122,13 @@ export function LifecycleActions({
 }
 
 export function actionErrorMessage(
+  t: Translate,
   label: string,
   targetLabel: string,
   caught: unknown,
 ): string {
   const message = caught instanceof Error ? caught.message : String(caught);
-  return `${label} failed for ${targetLabel}: ${message}`;
+  return t("services.actions.failed", { label, target: targetLabel, message });
 }
 
 function ActionButton({
@@ -154,6 +157,7 @@ function ActionButton({
   /** Fired after the action succeeds (e.g. select the service that was started). */
   onSuccess?: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState<PortConflictDetail | null>(null);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
@@ -170,7 +174,7 @@ function ActionButton({
         // Refresh after each service so a bundle start lights up progressively.
         await performLifecycle(op, resourceKind, resourceName, () => onRefresh());
       }
-      showSuccessToast(`${label} requested for ${targetLabel}.`);
+      showSuccessToast(t("services.actions.requested", { label, target: targetLabel }));
       await onRefresh();
       setConflict(null);
       onSuccess?.();
@@ -178,7 +182,7 @@ function ActionButton({
       if (caught instanceof PortConflictResponseError) {
         setConflict(caught.conflict);
       } else {
-        showErrorToast(actionErrorMessage(label, targetLabel, caught));
+        showErrorToast(actionErrorMessage(t, label, targetLabel, caught));
       }
     } finally {
       setBusy(false);
@@ -228,28 +232,29 @@ function PortConflictDialog({
   onKillAndStart: () => void;
   targetLabel: string;
 }) {
+  const t = useT();
   const holder = conflict.holder;
   const browserUrl = `http://localhost:${conflict.port}/`;
   return (
     <ComposerDialog
       icon={<Zap />}
       onClose={busy ? () => undefined : onCancel}
-      title={`Port ${conflict.port} is already in use`}
+      title={t("services.portConflict.title", { port: conflict.port })}
     >
       <div className="space-y-3 p-4 text-sm">
         <p>
-          <span className="font-medium">{targetLabel}</span> wants port{" "}
-          <span className="font-mono">{conflict.port}</span>, but it's already
-          held by:
+          <span className="font-medium">{targetLabel}</span> {t("services.portConflict.wantsPort")}{" "}
+          <span className="font-mono">{conflict.port}</span>
+          {t("services.portConflict.heldBy")}
         </p>
         <pre className="overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-3 font-mono text-xs">
           {holder
             ? `pid ${holder.pid}${holder.pgid ? ` (pgid ${holder.pgid})` : ""}\n${holder.command}`
-            : "unknown process"}
+            : t("services.portConflict.unknownProcess")}
         </pre>
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           <Button onClick={onCancel} size="sm" type="button" variant="outline" disabled={busy}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             onClick={() => void openExternal(browserUrl)}
@@ -259,7 +264,7 @@ function PortConflictDialog({
             disabled={busy}
           >
             <ExternalLink />
-            Open in browser
+            {t("services.portConflict.openBrowser")}
           </Button>
           <Button
             className="border-red-600 bg-red-600 text-white hover:bg-red-700"
@@ -268,7 +273,7 @@ function PortConflictDialog({
             size="sm"
             type="button"
           >
-            Stop holder &amp; start
+            {t("services.portConflict.stopHolderStart")}
           </Button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { AiSpark } from "@/features/agent/ai-spark";
 import { buildRowPrompt } from "@/features/agent/prompts";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { type RowSample } from "@/lib/api";
 
 export function TableGrid({
@@ -13,6 +14,7 @@ export function TableGrid({
   connection: string;
   sample: RowSample;
 }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const { success: showSuccess, error: showError } = useToasts();
   const columnNames = sample.columns.map((col) => col.name);
@@ -22,7 +24,7 @@ export function TableGrid({
   function askRow(row: Record<string, unknown>) {
     sendToAgent({
       prompt: buildRowPrompt(connection, sample.engine, sample.table, sample.columns, row),
-      source: { type: "database-row", label: `${sample.table} row` },
+      source: { type: "database-row", label: t("database.grid.rowSource", { table: sample.table.name }) },
       mode: "draft",
     });
   }
@@ -30,7 +32,7 @@ export function TableGrid({
   async function copy(text: string, what: string) {
     try {
       await navigator.clipboard.writeText(text);
-      showSuccess(`Copied ${what}.`);
+      showSuccess(t("database.grid.copiedWhat", { what }));
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
     }
@@ -58,7 +60,7 @@ export function TableGrid({
   if (sample.columns.length === 0) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        This table has no columns.
+        {t("database.grid.noColumnsTable")}
       </div>
     );
   }
@@ -110,24 +112,26 @@ export function TableGrid({
                   swap, so it can't reintroduce transparency. */}
               <td className="sticky right-0 z-[1] border-l border-border/60 bg-card px-2 py-1 align-top before:pointer-events-none before:absolute before:inset-0 before:bg-muted/40 before:opacity-0 group-hover:before:opacity-100">
                 <div className="relative z-[1] flex items-center justify-end gap-0.5">
-                  <AiSpark label="Ask AI about this row" onAsk={() => askRow(row)} />
+                  <AiSpark label={t("database.grid.askAiRow")} onAsk={() => askRow(row)} />
                   <OverflowMenu
-                    label="Row actions"
+                    label={t("database.grid.rowActions")}
                     items={[
                       {
-                        label: "Copy as JSON",
+                        label: t("database.grid.copyJson"),
                         icon: <Braces className="size-3.5" />,
-                        onSelect: () => void copy(JSON.stringify(row, null, 2), "row as JSON"),
+                        onSelect: () =>
+                          void copy(JSON.stringify(row, null, 2), t("database.grid.rowAsJson")),
                       },
                       {
-                        label: "Copy as CSV",
+                        label: t("database.grid.copyCsv"),
                         icon: <FileSpreadsheet className="size-3.5" />,
-                        onSelect: () => void copy(toCsv(row), "row as CSV"),
+                        onSelect: () => void copy(toCsv(row), t("database.grid.rowAsCsv")),
                       },
                       {
-                        label: "Copy as SQL INSERT",
+                        label: t("database.grid.copySqlInsert"),
                         icon: <Database className="size-3.5" />,
-                        onSelect: () => void copy(toSqlInsert(row), "INSERT statement"),
+                        onSelect: () =>
+                          void copy(toSqlInsert(row), t("database.grid.insertStatement")),
                       },
                     ]}
                   />
@@ -141,7 +145,7 @@ export function TableGrid({
                 colSpan={sample.columns.length + 1}
                 className="px-3 py-6 text-center text-muted-foreground"
               >
-                No rows.
+                {t("database.grid.noRows")}
               </td>
             </tr>
           ) : null}

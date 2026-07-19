@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   getClaudeAgentSettings,
@@ -36,6 +37,7 @@ export function OverviewTab({
   isDetected: boolean;
 }) {
   const { usage, error } = useUsage();
+  const t = useT();
   const meta = AGENT_META[agentId];
   const isCodex = agentId === "codex";
 
@@ -44,17 +46,17 @@ export function OverviewTab({
       <CardHeader className="border-b border-border px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Gauge className="size-4 text-muted-foreground" />
-          <CardTitle>{isCodex ? "Token Usage & Rate Limits" : "Token & Cost Usage"}</CardTitle>
+          <CardTitle>{isCodex ? t("agent.overview.titleCodex") : t("agent.overview.titleClaude")}</CardTitle>
           <Badge variant="outline" size="small" icon={meta.icon}>
             {meta.label}
           </Badge>
           {isDetected ? (
             <Badge variant="outline" size="small">
-              active session
+              {t("agent.overview.activeSession")}
             </Badge>
           ) : (
             <span className="text-[11px] text-muted-foreground">
-              Not the active agent in this session
+              {t("agent.overview.notActive")}
             </span>
           )}
           {!isCodex ? <CoAuthorButton className="ml-auto" /> : null}
@@ -62,11 +64,13 @@ export function OverviewTab({
         <CardDescription className="truncate text-xs">
           {isCodex ? (
             <>
-              Session metrics from <code className="font-mono">~/.codex/sessions</code>
+              {t("agent.overview.metricsCodexPre")}
+              <code className="font-mono">~/.codex/sessions</code>
             </>
           ) : (
             <>
-              Last-session metrics from <code className="font-mono">~/.claude.json</code>
+              {t("agent.overview.metricsClaudePre")}
+              <code className="font-mono">~/.claude.json</code>
             </>
           )}
           {" · "}
@@ -96,6 +100,7 @@ function CoAuthorButton({ className }: { className?: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const toasts = useToasts();
+  const t = useT();
 
   useEffect(() => {
     let active = true;
@@ -117,12 +122,12 @@ function CoAuthorButton({ className }: { className?: string }) {
       setEnabled(updated.coAuthorWithClaude);
       toasts.success(
         updated.coAuthorWithClaude
-          ? "Claude co-author trailer enabled for commits"
-          : "Claude co-author trailer disabled for commits",
+          ? t("agent.overview.coAuthorEnabled")
+          : t("agent.overview.coAuthorDisabled"),
       );
     } catch (err) {
       setEnabled(!next);
-      toasts.error(err instanceof Error ? err.message : "Failed to update setting");
+      toasts.error(err instanceof Error ? err.message : t("agent.overview.coAuthorFailed"));
     } finally {
       setSaving(false);
     }
@@ -138,21 +143,22 @@ function CoAuthorButton({ className }: { className?: string }) {
       aria-pressed={enabled}
       title={
         enabled
-          ? "Claude will be added as commit co-author. Click to disable."
-          : "Co-author trailer disabled. Click to enable."
+          ? t("agent.overview.coAuthorTitleOn")
+          : t("agent.overview.coAuthorTitleOff")
       }
       className={cn("gap-1.5", className)}
     >
       <ClaudeLogo className="size-3.5" />
-      Co-author
+      {t("agent.overview.coAuthor")}
     </Button>
   );
 }
 
 function EmptyUsage({ agent }: { agent: string }) {
+  const t = useT();
   return (
     <p className="text-xs text-muted-foreground">
-      No usage data yet. Run a session with {agent} in this project.
+      {t("agent.overview.noUsage", { agent })}
     </p>
   );
 }

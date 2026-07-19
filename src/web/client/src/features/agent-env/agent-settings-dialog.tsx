@@ -10,6 +10,7 @@ import {
   type AgentEnvSettings,
 } from "@/lib/api";
 import { AGENT_LABELS } from "./agent-column";
+import { useT } from "@/lib/i18n";
 import { maskSecrets } from "./mask-secrets";
 
 /** Datalist hints only — free text is always allowed so the list can't go stale. */
@@ -31,6 +32,7 @@ export function AgentSettingsDialog({
   agent: AgentEnvAgentName;
   onClose: () => void;
 }) {
+  const t = useT();
   const [settings, setSettings] = useState<AgentEnvSettings | null>(null);
   const [content, setContent] = useState("");
   const [model, setModel] = useState("");
@@ -116,9 +118,9 @@ export function AgentSettingsDialog({
               <Settings2 />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold">{AGENT_LABELS[agent]} settings</h2>
+              <h2 className="text-sm font-semibold">{t("agentEnv.settingsTitle", { name: AGENT_LABELS[agent] })}</h2>
               <p className="truncate font-mono text-[11px] text-muted-foreground" title={settings?.path}>
-                {settings?.path ?? "Loading..."}
+                {settings?.path ?? t("agentEnv.settings.loading")}
               </p>
             </div>
           </div>
@@ -126,7 +128,7 @@ export function AgentSettingsDialog({
           {settings?.modelEditable ? (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium" htmlFor={`model-${agent}`}>
-                Model
+                {t("agentEnv.settings.model")}
               </label>
               <input
                 className="h-8 w-56 rounded-md border border-border bg-background px-2 font-mono text-xs"
@@ -134,7 +136,7 @@ export function AgentSettingsDialog({
                 id={`model-${agent}`}
                 list={`model-suggestions-${agent}`}
                 onChange={(event) => setModel(event.target.value)}
-                placeholder="default"
+                placeholder={t("agentEnv.settings.modelPlaceholder")}
                 value={model}
               />
               <datalist id={`model-suggestions-${agent}`}>
@@ -146,23 +148,23 @@ export function AgentSettingsDialog({
                 disabled={busy || !modelDirty || dirty}
                 onClick={() => void applyModel()}
                 size="sm"
-                title={dirty ? "Save or revert the file edits below first" : undefined}
+                title={dirty ? t("agentEnv.settings.applyBlocked") : undefined}
                 variant="outline"
               >
-                Apply
+                {t("agentEnv.settings.apply")}
               </Button>
             </div>
           ) : null}
 
           <div className="relative">
             <textarea
-              aria-label="Settings file content"
+              aria-label={t("agentEnv.settings.contentAria")}
               className="h-72 w-full resize-y rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed focus:outline-none"
               disabled={busy || !settings}
               onChange={(event) => !showMasked && setContent(event.target.value)}
               placeholder={
                 settings && !settings.exists
-                  ? "File doesn't exist yet — saving will create it."
+                  ? t("agentEnv.settings.missingFile")
                   : undefined
               }
               readOnly={showMasked}
@@ -174,30 +176,25 @@ export function AgentSettingsDialog({
                 className="absolute right-2 top-2 h-7 gap-1.5 px-2 text-[11px] text-muted-foreground"
                 onClick={() => setRevealed((current) => !current)}
                 size="sm"
-                title={
-                  showMasked
-                    ? "Secret-looking values are hidden; reveal to edit the file"
-                    : "Hide secret-looking values"
-                }
+                title={showMasked ? t("agentEnv.settings.revealTitle") : t("agentEnv.settings.hideTitle")}
                 type="button"
                 variant="ghost"
               >
                 {showMasked ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                {showMasked ? "Reveal secrets" : "Hide secrets"}
+                {showMasked ? t("agentEnv.settings.reveal") : t("agentEnv.settings.hide")}
               </Button>
             ) : null}
           </div>
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
           <p className="text-[11px] text-muted-foreground">
-            Saves are validated ({settings?.format === "toml" ? "TOML" : "JSON"}) and a
-            timestamped .bak backup of the current file is written first.
+            {t("agentEnv.settings.footnote", { format: settings?.format === "toml" ? "TOML" : "JSON" })}
           </p>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3">
           <Button disabled={busy} onClick={onClose} size="sm" type="button" variant="outline">
-            Close
+            {t("agentEnv.settings.close")}
           </Button>
           <Button
             disabled={busy || !dirty}
@@ -205,7 +202,7 @@ export function AgentSettingsDialog({
             size="sm"
             type="button"
           >
-            {busy ? "Saving..." : "Save file"}
+            {busy ? t("agentEnv.settings.savingFile") : t("agentEnv.settings.saveFile")}
           </Button>
         </div>
       </div>

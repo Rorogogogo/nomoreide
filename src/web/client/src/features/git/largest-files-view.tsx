@@ -14,6 +14,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { getFileSizeRanking, type FileSizeRank } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -76,6 +77,7 @@ export function LargestFilesView({
   onOpenFile: (path: string) => void;
   root: string;
 }) {
+  const t = useT();
   const [files, setFiles] = useState<FileSizeRank[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,11 +109,15 @@ export function LargestFilesView({
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <FileWarning className="size-4" />
-          <span className="font-semibold text-foreground">Largest files</span>
+          <span className="font-semibold text-foreground">{t("git.largest.title")}</span>
           {!loading && !error ? (
             <span>
-              {visible.length} files · {overBudget} over {WARN_LINES} lines
-              {codeOnly && hidden > 0 ? ` · ${hidden} data/docs hidden` : ""}
+              {t("git.largest.summary", {
+                visible: visible.length,
+                over: overBudget,
+                warn: WARN_LINES,
+              })}
+              {codeOnly && hidden > 0 ? t("git.largest.hiddenSuffix", { hidden }) : ""}
             </span>
           ) : null}
         </div>
@@ -121,11 +127,11 @@ export function LargestFilesView({
             variant={codeOnly ? "default" : "outline"}
             className="h-7"
             onClick={() => setCodeOnly((value) => !value)}
-            title="Hide docs, data, config and generated files"
+            title={t("git.largest.codeOnlyTitle")}
             type="button"
           >
             <Code2 />
-            Code only
+            {t("git.largest.codeOnly")}
           </Button>
           <Button
             size="sm"
@@ -136,7 +142,7 @@ export function LargestFilesView({
             type="button"
           >
             {loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-            Refresh
+            {t("common.refresh")}
           </Button>
         </div>
       </div>
@@ -148,13 +154,13 @@ export function LargestFilesView({
       ) : loading && files.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 size-4 animate-spin" />
-          Scanning tracked files…
+          {t("git.largest.scanning")}
         </div>
       ) : visible.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           {files.length === 0
-            ? "No tracked text files found."
-            : "No code files — toggle off “Code only” to see data & docs."}
+            ? t("git.largest.noTextFiles")
+            : t("git.largest.noCodeFiles")}
         </div>
       ) : (
         <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-auto">
@@ -178,7 +184,7 @@ export function LargestFilesView({
                       <span className="truncate font-mono text-[11px]">{file.path}</span>
                       <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", TEXT_CLASS[band])}>
                         {file.truncated ? "≥" : ""}
-                        {file.lines.toLocaleString()} lines
+                        {t("git.largest.linesCount", { count: file.lines.toLocaleString() })}
                       </span>
                     </div>
                     <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -203,6 +209,7 @@ export function LargestFilesView({
 }
 
 function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const fullPath = absolutePath(root, file.path);
   const fileName = file.path.split("/").pop() ?? file.path;
@@ -215,7 +222,10 @@ function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
         relativePath: file.path,
       }),
       source: { label: fileName, type: "large-file" },
-      label: `Help me split \`${file.path}\` (${file.lines.toLocaleString()} lines).`,
+      label: t("git.largest.splitLabel", {
+        path: file.path,
+        count: file.lines.toLocaleString(),
+      }),
       mode: "send",
     });
   }
@@ -230,7 +240,7 @@ function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
 
   return (
     <LargeFileActionPopover
-      label={`AI actions for ${file.path}`}
+      label={t("git.largest.aiActions", { path: file.path })}
       trigger={<AgentMark className="size-3.5" />}
     >
       {(close) => (
@@ -242,7 +252,7 @@ function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
               askToSplitFile();
             }}
           >
-            Ask AI to split this file
+            {t("git.largest.askSplit")}
           </ActionMenuButton>
           <ActionMenuButton
             icon={<FileCode2 className="size-3.5" />}
@@ -251,7 +261,7 @@ function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
               draftPathForAgent();
             }}
           >
-            Send file path to AI
+            {t("git.largest.sendPath")}
           </ActionMenuButton>
         </>
       )}
@@ -260,26 +270,29 @@ function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
 }
 
 function LargeFileCopyMenu({ file, root }: { file: FileSizeRank; root: string }) {
+  const t = useT();
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
   const fullPath = absolutePath(root, file.path);
   const fileName = file.path.split("/").pop() ?? file.path;
 
-  async function copy(value: string, label: string) {
+  async function copy(value: string, what: string) {
     try {
       await navigator.clipboard.writeText(value);
-      showSuccessToast(`Copied ${label}.`);
+      showSuccessToast(t("git.largest.copiedWhat", { what }));
     } catch (caught) {
-      showErrorToast(caught instanceof Error ? caught.message : `Could not copy ${label}.`);
+      showErrorToast(
+        caught instanceof Error ? caught.message : t("git.largest.couldNotCopy", { what }),
+      );
     }
   }
 
   return (
     <LargeFileActionPopover
-      label={`Copy path for ${file.path}`}
+      label={t("git.largest.copyPathFor", { path: file.path })}
       trigger={
         <>
           <MoreHorizontal className="size-3.5" />
-          <span className="sr-only">More actions</span>
+          <span className="sr-only">{t("common.moreActions")}</span>
         </>
       }
     >
@@ -289,28 +302,28 @@ function LargeFileCopyMenu({ file, root }: { file: FileSizeRank; root: string })
             icon={<FileText className="size-3.5" />}
             onSelect={() => {
               close();
-              void copy(fileName, "file name");
+              void copy(fileName, t("git.largest.whatFileName"));
             }}
           >
-            Copy file name
+            {t("git.largest.copyFileName")}
           </ActionMenuButton>
           <ActionMenuButton
             icon={<Copy className="size-3.5" />}
             onSelect={() => {
               close();
-              void copy(file.path, "relative path");
+              void copy(file.path, t("git.largest.whatRelPath"));
             }}
           >
-            Copy relative path
+            {t("git.largest.copyRelPath")}
           </ActionMenuButton>
           <ActionMenuButton
             icon={<Copy className="size-3.5" />}
             onSelect={() => {
               close();
-              void copy(fullPath, "absolute path");
+              void copy(fullPath, t("git.largest.whatAbsPath"));
             }}
           >
-            Copy absolute path
+            {t("git.largest.copyAbsPath")}
           </ActionMenuButton>
         </>
       )}

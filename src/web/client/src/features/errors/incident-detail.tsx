@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
 import { startFix, type ErrorIncident } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -16,6 +17,7 @@ export function IncidentDetail({
   /** Deep-link to Agent → Changes for the session the fix run snapshotted. */
   onReviewChanges?: (sessionId: string) => void;
 }) {
+  const t = useT();
   const { error: showErrorToast } = useToasts();
   const { sendToAgent } = useAgentDock();
   const [sending, setSending] = useState(false);
@@ -33,7 +35,11 @@ export function IncidentDetail({
       sendToAgent({
         prompt,
         source: { type: "error", label: `${incident.service} — ${incident.level}` },
-        label: `Fix this ${incident.level} in \`${incident.service}\`: ${incident.title}`,
+        label: t("errors.incident.fixLabel", {
+          level: incident.level,
+          service: incident.service,
+          title: incident.title,
+        }),
       });
       setFixedSessionId(sessionId);
     } catch (err) {
@@ -69,7 +75,7 @@ export function IncidentDetail({
             variant="outline"
           >
             <AgentMark className="size-3.5" />
-            {sending ? "Starting…" : "Fix with AI"}
+            {sending ? t("errors.incident.starting") : t("errors.incident.fixWithAi")}
           </Button>
         </div>
         <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
@@ -81,8 +87,10 @@ export function IncidentDetail({
           </p>
         ) : null}
         <p className="mt-1 font-mono text-[10px] text-muted-foreground/80">
-          first {new Date(incident.firstSeen).toLocaleString()} · last{" "}
-          {new Date(incident.lastSeen).toLocaleTimeString()}
+          {t("errors.incident.firstLast", {
+            first: new Date(incident.firstSeen).toLocaleString(),
+            last: new Date(incident.lastSeen).toLocaleTimeString(),
+          })}
         </p>
       </div>
 
@@ -90,10 +98,7 @@ export function IncidentDetail({
         {fixedSessionId ? (
           <Alert variant="muted" className="mb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs">
-                The agent is working on this in the dock. A snapshot was taken first — review or
-                undo its edits as one change-set.
-              </span>
+              <span className="text-xs">{t("errors.incident.working")}</span>
               {onReviewChanges ? (
                 <Button
                   onClick={() => onReviewChanges(fixedSessionId)}
@@ -101,21 +106,17 @@ export function IncidentDetail({
                   variant="outline"
                 >
                   <FileDiff className="size-3.5" />
-                  Review changes
+                  {t("errors.incident.reviewChanges")}
                 </Button>
               ) : null}
             </div>
           </Alert>
         ) : null}
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">Log excerpt</p>
+        <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("errors.incident.logExcerpt")}</p>
         <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed">
           {incident.logExcerpt.join("\n")}
         </pre>
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          "Fix with AI" snapshots the working tree, then sends the agent a repro bundle (this error,
-          the affected file's diff, recent logs, service state, and masked env) so it can fix it —
-          and you can revert the whole change-set if it goes sideways.
-        </p>
+        <p className="mt-3 text-[11px] text-muted-foreground">{t("errors.incident.explain")}</p>
       </div>
     </div>
   );

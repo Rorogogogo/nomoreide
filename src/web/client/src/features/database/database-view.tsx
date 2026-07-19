@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useOptionalSettings } from "@/features/settings/settings-context";
 import {
@@ -47,6 +48,7 @@ export function DatabaseView({
   /** Active project scope; unassigned connections stay visible when set. */
   scopePath?: string | null;
 } = {}) {
+  const t = useT();
   const settings = useOptionalSettings();
   const databasePreferences = settings?.confirmedProject.database ?? {
     confirmWrites: true,
@@ -117,7 +119,7 @@ export function DatabaseView({
   async function remove(name: string) {
     try {
       await deleteDatabase(name);
-      showSuccess(`Removed connection "${name}".`);
+      showSuccess(t("database.toast.removed", { name }));
       await refresh();
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
@@ -133,7 +135,7 @@ export function DatabaseView({
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
           <Database className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Databases</span>
+          <span className="text-sm font-semibold">{t("database.title")}</span>
           {loading && connections.length === 0 ? (
             <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
           ) : null}
@@ -203,9 +205,10 @@ function ViewModeToggle({
   mode: ViewMode;
   onChange: (mode: ViewMode) => void;
 }) {
+  const t = useT();
   const options: Array<{ value: ViewMode; label: string; icon: typeof Table2 }> = [
-    { value: "browse", label: "Browse", icon: Table2 },
-    { value: "query", label: "SQL", icon: Terminal },
+    { value: "browse", label: t("database.browse"), icon: Table2 },
+    { value: "query", label: t("database.sql"), icon: Terminal },
   ];
   return (
     <div className="flex items-center rounded-md border border-border p-0.5">
@@ -233,6 +236,7 @@ function ViewModeToggle({
 }
 
 function ConnectionBrowser({ connection, resultLimit }: { connection: string; resultLimit: number }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const {
     tables,
@@ -278,7 +282,7 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
       <div className="flex w-56 shrink-0 flex-col border-r border-border">
         <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
           <Table2 className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">Tables</span>
+          <span className="text-sm font-semibold">{t("database.tables")}</span>
           <Badge variant="outline" size="small">
             {tables.length}
           </Badge>
@@ -311,13 +315,13 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
                   {table.qualifiedName}
                 </button>
                 <AiSpark
-                  label={`Ask AI about \`${table.qualifiedName}\``}
+                  label={t("database.askAiAbout", { name: table.qualifiedName })}
                   onAsk={() => askTableByName(table)}
                 />
               </li>
             ))}
             {!loadingTables && tables.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-muted-foreground">No tables.</li>
+              <li className="px-3 py-2 text-xs text-muted-foreground">{t("database.noTables")}</li>
             ) : null}
           </ul>
         )}
@@ -327,11 +331,11 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
         <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="flex min-w-0 items-center gap-1">
             <span className="truncate font-mono text-xs font-semibold">
-              {selectedTable ?? "Select a table"}
+              {selectedTable ?? t("database.selectTable")}
             </span>
             {sample ? (
               <AiSpark
-                label={`Ask AI about \`${sample.table.qualifiedName}\``}
+                label={t("database.askAiAbout", { name: sample.table.qualifiedName })}
                 onAsk={() => askTable(sample)}
               />
             ) : null}
@@ -340,18 +344,21 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
             <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
               <span className="tabular-nums">
                 {sample.rowCount === 0
-                  ? "no rows"
-                  : `rows ${offset + 1}–${offset + sample.rowCount}`}
+                  ? t("database.noRows")
+                  : t("database.rowsRange", {
+                      from: offset + 1,
+                      to: offset + sample.rowCount,
+                    })}
               </span>
               <select
-                aria-label="Rows per page"
+                aria-label={t("database.rowsPerPage")}
                 className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[11px]"
                 value={limit}
                 onChange={(event) => changePageSize(Number(event.target.value))}
               >
                 {databaseLimitOptions(resultLimit).map((size) => (
                   <option key={size} value={size}>
-                    {size} / page
+                    {t("database.perPage", { size })}
                   </option>
                 ))}
               </select>
@@ -363,7 +370,7 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
                 disabled={!canPrev}
                 type="button"
               >
-                Prev
+                {t("database.prev")}
               </Button>
               <Button
                 size="sm"
@@ -373,7 +380,7 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
                 disabled={!canNext}
                 type="button"
               >
-                Next
+                {t("database.next")}
               </Button>
             </div>
           ) : null}
@@ -387,13 +394,13 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
         ) : loadingRows ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 size-4 animate-spin" />
-            Loading rows…
+            {t("database.loadingRows")}
           </div>
         ) : sample ? (
           <TableGrid connection={connection} sample={sample} />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            Pick a table to sample its rows.
+            {t("database.pickTable")}
           </div>
         )}
       </div>
@@ -402,23 +409,23 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
 }
 
 function EmptyState({ onAdd, onAddWithAi }: { onAdd: () => void; onAddWithAi: () => void }) {
+  const t = useT();
   return (
     <div className="flex h-full items-center justify-center p-8 text-center">
       <div className="max-w-sm">
         <Database className="mx-auto size-8 text-muted-foreground/50" />
-        <p className="mt-3 text-sm font-medium">No connections yet</p>
+        <p className="mt-3 text-sm font-medium">{t("database.emptyTitle")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Add a read-only Postgres, MySQL, or SQLite connection to browse tables and sample rows.
-          NoMoreIDE can auto-detect connection strings from your services' <code>.env</code> files.
+          {t("database.emptyBody1")} <code>.env</code> {t("database.emptyBody2")}
         </p>
         <div className="mt-4 flex items-center justify-center gap-2">
           <Button size="sm" onClick={onAdd} type="button">
             <Plus />
-            Add connection
+            {t("database.addConnection")}
           </Button>
           <Button size="sm" variant="outline" onClick={onAddWithAi} type="button">
             <Sparkles />
-            Add with AI
+            {t("database.addWithAi")}
           </Button>
         </div>
       </div>

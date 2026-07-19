@@ -35,6 +35,8 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n/en";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { runHeadlessAgentTask } from "../agent/headless/run-headless-agent-task";
@@ -59,6 +61,7 @@ import type { RunState, StepStatus } from "./use-workflow-runner";
  * pauses at each gate for your approval.
  */
 export function WorkflowPanel() {
+  const t = useT();
   const { run, start, resume, approve, skip, stop, dismiss } = useWorkflowRun();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
@@ -110,7 +113,7 @@ export function WorkflowPanel() {
 
   async function removeSavedWorkflow(workflow: Workflow) {
     if (workflow.builtin) return;
-    if (!window.confirm(`Delete workflow "${workflow.name}"?`)) return;
+    if (!window.confirm(t("workflows.deleteConfirm", { name: workflow.name }))) return;
     setError(null);
     try {
       setWorkflows(await deleteWorkflow(workflow.id));
@@ -167,10 +170,10 @@ export function WorkflowPanel() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-1.5 text-[13px] font-semibold">
-              <AgentMark className="size-4" /> AI Workflows
+              <AgentMark className="size-4" /> {t("workflows.title")}
             </h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">
-              One-click rituals that exceed the IDE — agent steps do the work, pausing at each gate for your OK.
+              {t("workflows.subtitle")}
             </p>
           </div>
           <Button
@@ -179,7 +182,7 @@ export function WorkflowPanel() {
             type="button"
             variant="outline"
           >
-            <Plus className="size-3.5" /> New
+            <Plus className="size-3.5" /> {t("workflows.new")}
           </Button>
         </div>
         <label className="mt-2 flex w-fit items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -189,8 +192,8 @@ export function WorkflowPanel() {
             onChange={(event) => setAutoApprove(event.target.checked)}
             type="checkbox"
           />
-          Run without step-by-step prompts
-          <span className="text-muted-foreground/60">— gates still pause; risky shell still asks.</span>
+          {t("workflows.autoApprove")}
+          <span className="text-muted-foreground/60">{t("workflows.autoApproveHint")}</span>
         </label>
       </div>
 
@@ -200,7 +203,7 @@ export function WorkflowPanel() {
         </Alert>
       ) : loading ? (
         <div className="flex flex-1 items-center justify-center text-[12px] text-muted-foreground">
-          <Loader2 className="mr-2 size-4 animate-spin" /> Loading workflows…
+          <Loader2 className="mr-2 size-4 animate-spin" /> {t("workflows.loading")}
         </div>
       ) : (
         <>
@@ -240,6 +243,7 @@ function WorkflowRunBanner({
   onView: () => void;
   run: RunState;
 }) {
+  const t = useT();
   const running = run.outcome === "running";
   return (
     <section className="mx-4 mt-4 rounded-md border border-border bg-background p-3 shadow-sm">
@@ -247,22 +251,24 @@ function WorkflowRunBanner({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-              {running ? "Workflow running" : "Last workflow"}
+              {running ? t("workflows.banner.running") : t("workflows.banner.last")}
             </span>
             <OutcomeBadge outcome={run.outcome} />
           </div>
           <p className="mt-1 truncate text-[13px] font-medium">{run.workflow.name}</p>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            {running ? "Started" : "Ran"} {formatRunTimestamp(run.startedAt)}
+            {running
+              ? t("workflows.banner.startedAt", { time: formatRunTimestamp(run.startedAt) })
+              : t("workflows.banner.ranAt", { time: formatRunTimestamp(run.startedAt) })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Button onClick={onView} size="sm" type="button">
-            <Terminal className="size-3.5" /> View run
+            <Terminal className="size-3.5" /> {t("workflows.viewRun")}
           </Button>
           {!running ? (
             <Button onClick={onClear} size="sm" type="button" variant="outline">
-              <X className="size-3.5" /> Clear
+              <X className="size-3.5" /> {t("workflows.clear")}
             </Button>
           ) : null}
         </div>
@@ -286,6 +292,7 @@ function WorkflowCard({
   onEdit: () => void;
   onRun: () => void;
 }) {
+  const t = useT();
   // Steps stay collapsed by default so a wall of cards reads as a clean list;
   // expand to peek at the pipeline without opening the editor.
   const [stepsOpen, setStepsOpen] = useState(false);
@@ -296,7 +303,7 @@ function WorkflowCard({
         <h3 className="text-[13px] font-semibold">{workflow.name}</h3>
         {workflow.builtin ? (
           <span className="rounded-full border border-border px-1.5 py-px text-[9px] uppercase tracking-wide text-muted-foreground">
-            Template
+            {t("workflows.template")}
           </span>
         ) : null}
       </div>
@@ -306,7 +313,9 @@ function WorkflowCard({
       {lastRun ? (
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Terminal className="size-3" />
-          {lastRun.outcome === "running" ? "Running now" : `Last run ${formatRunTimestamp(lastRun.startedAt)}`}
+          {lastRun.outcome === "running"
+            ? t("workflows.runningNow")
+            : t("workflows.lastRun", { time: formatRunTimestamp(lastRun.startedAt) })}
         </p>
       ) : null}
 
@@ -321,7 +330,7 @@ function WorkflowCard({
           aria-hidden
         />
         <span>
-          {stepCount} {stepCount === 1 ? "step" : "steps"}
+          {t(stepCount === 1 ? "workflows.stepOne" : "workflows.stepMany", { count: stepCount })}
         </span>
       </button>
       {stepsOpen ? (
@@ -336,24 +345,24 @@ function WorkflowCard({
       ) : null}
 
       <Button className="mt-3 w-full" onClick={onRun} size="sm" type="button">
-        <Play className="size-3.5" /> Run
+        <Play className="size-3.5" /> {t("workflows.run")}
       </Button>
       <div className="mt-2 grid grid-cols-3 gap-1.5">
         <Button onClick={onEdit} size="sm" type="button" variant="outline">
-          <Edit3 className="size-3.5" /> Edit
+          <Edit3 className="size-3.5" /> {t("common.edit")}
         </Button>
         <Button onClick={onDuplicate} size="sm" type="button" variant="outline">
-          <Copy className="size-3.5" /> Copy
+          <Copy className="size-3.5" /> {t("common.copy")}
         </Button>
         <Button
           disabled={workflow.builtin}
           onClick={onDelete}
           size="sm"
-          title={workflow.builtin ? "Duplicate or edit to create your own version first" : "Delete workflow"}
+          title={workflow.builtin ? t("workflows.deleteBuiltinHint") : t("workflows.deleteTitle")}
           type="button"
           variant="outline"
         >
-          <Trash2 className="size-3.5" /> Delete
+          <Trash2 className="size-3.5" /> {t("common.delete")}
         </Button>
       </div>
     </div>
@@ -373,6 +382,7 @@ function WorkflowBuilder({
   onCancel: () => void;
   onSave: (workflow: Workflow) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState<Workflow>(() => structuredClone(initial));
   const [intent, setIntent] = useState(initial.description ?? "");
   // The canvas is the point — keep the AI-compose controls tucked away by
@@ -431,7 +441,7 @@ function WorkflowBuilder({
   function askAiToDraft() {
     sendToAgent({
       prompt: buildWorkflowAiDraftPrompt(intent || draft.description || draft.name),
-      source: { type: "workflow", label: "Workflow composer" },
+      source: { type: "workflow", label: t("workflows.builder.composerSource") },
       mode: "draft",
     });
   }
@@ -455,7 +465,7 @@ function WorkflowBuilder({
           <AgentMark className="size-4 shrink-0" />
           <div className="min-w-0">
             <input
-              aria-label="Workflow name"
+              aria-label={t("workflows.builder.nameAria")}
               className="w-full bg-transparent text-[14px] font-semibold outline-none"
               onChange={(event) =>
                 setDraft((current) => ({
@@ -464,7 +474,7 @@ function WorkflowBuilder({
                   id: slugify(event.target.value) || current.id,
                 }))
               }
-              placeholder="Name your workflow"
+              placeholder={t("workflows.builder.namePlaceholder")}
               value={draft.name}
             />
             <span className="font-mono text-[10px] text-muted-foreground">{draft.id}</span>
@@ -477,13 +487,13 @@ function WorkflowBuilder({
             type="button"
             variant={composeOpen ? "default" : "outline"}
           >
-            <Sparkles className="size-3.5" /> AI compose
+            <Sparkles className="size-3.5" /> {t("workflows.builder.aiCompose")}
           </Button>
           <Button onClick={onCancel} size="sm" type="button" variant="outline">
-            <ArrowLeft className="size-3.5" /> Back
+            <ArrowLeft className="size-3.5" /> {t("common.back")}
           </Button>
           <Button disabled={saveDisabled} onClick={save} size="sm" type="button">
-            <Check className="size-3.5" /> Save
+            <Check className="size-3.5" /> {t("common.save")}
           </Button>
         </div>
       </div>
@@ -492,20 +502,22 @@ function WorkflowBuilder({
         <section className="shrink-0 border-b border-border bg-muted/20 p-4">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div className="rounded-lg border border-border bg-background p-3 shadow-sm">
-              <Label>Describe workflow</Label>
+              <Label>{t("workflows.builder.describe")}</Label>
               <textarea
                 className="min-h-16 w-full resize-none bg-transparent text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground"
                 onChange={(event) => setIntent(event.target.value)}
-                placeholder="Review my changes with code-review, ask before commit, push, then open a PR with GitHub..."
+                placeholder={t("workflows.builder.describePlaceholder")}
                 value={intent}
               />
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Button onClick={() => composeDraft()} size="sm" type="button">
-                  <Sparkles className="size-3.5" /> Draft timeline
+                  <Sparkles className="size-3.5" /> {t("workflows.builder.draftTimeline")}
                 </Button>
                 <Button onClick={askAiToDraft} size="sm" type="button" variant="outline">
-                  <MessageSquarePlus className="size-3.5" /> Ask AI
+                  <MessageSquarePlus className="size-3.5" /> {t("workflows.builder.askAi")}
                 </Button>
+                {/* Seed phrases stay English — the composer matches them against
+                    English keyword regexes to build the timeline. */}
                 {["Commit safely", "Review then push", "Fix CI then PR", "File issue from changes"].map((example) => (
                   <button
                     className="rounded-md border border-border bg-muted/30 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -561,7 +573,7 @@ function WorkflowBuilder({
             ))
           ) : (
             <div className="ml-[3.25rem] flex h-24 items-center justify-center rounded-lg border border-dashed border-border text-[12px] text-muted-foreground">
-              Pick a step kind above to start building.
+              {t("workflows.builder.emptyCanvas")}
             </div>
           )}
         </div>
@@ -582,18 +594,15 @@ function StepInserter({
   defaultOpen?: boolean;
   onInsert: (kind: WorkflowStep["kind"]) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(defaultOpen);
-  const kinds: Array<{ kind: WorkflowStep["kind"]; label: string }> = [
-    { kind: "gate", label: "Gate" },
-    { kind: "agent", label: "AI" },
-    { kind: "action", label: "Auto" },
-  ];
+  const kinds: Array<WorkflowStep["kind"]> = ["gate", "agent", "action"];
   return (
     <div className="flex gap-4">
       <div className="relative flex w-9 shrink-0 justify-center">
         <span aria-hidden className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border" />
         <button
-          aria-label={open ? "Cancel adding step" : "Add step here"}
+          aria-label={open ? t("workflows.builder.cancelAddStep") : t("workflows.builder.addStepHere")}
           className={cn(
             "relative z-10 my-1.5 flex size-5 items-center justify-center rounded-full border bg-card text-muted-foreground transition-colors",
             open ? "border-primary/50 text-primary" : "border-border hover:border-primary/50 hover:text-primary",
@@ -607,7 +616,7 @@ function StepInserter({
       <div className="flex-1 py-1">
         {open ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            {kinds.map(({ kind, label }) => (
+            {kinds.map((kind) => (
               <button
                 className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                 key={kind}
@@ -617,7 +626,7 @@ function StepInserter({
                 }}
                 type="button"
               >
-                <StepIcon kind={kind} /> {label}
+                <StepIcon kind={kind} /> {t(KIND_LABEL_KEY[kind])}
               </button>
             ))}
           </div>
@@ -656,6 +665,7 @@ function newStep(kind: WorkflowStep["kind"], existing: WorkflowStep[]): Workflow
 }
 
 function AddStepComposer({ onAdd }: { onAdd: (intent: string) => void }) {
+  const t = useT();
   const [value, setValue] = useState("");
   return (
     <form
@@ -668,16 +678,16 @@ function AddStepComposer({ onAdd }: { onAdd: (intent: string) => void }) {
         setValue("");
       }}
     >
-      <Label>Add a step</Label>
+      <Label>{t("workflows.builder.addStepLabel")}</Label>
       <div className="flex gap-2">
         <input
           className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
           onChange={(event) => setValue(event.target.value)}
-          placeholder="ask before merge, run tests, open an issue..."
+          placeholder={t("workflows.builder.addStepPlaceholder")}
           value={value}
         />
         <Button size="sm" type="submit" variant="outline">
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> {t("common.add")}
         </Button>
       </div>
     </form>
@@ -685,6 +695,7 @@ function AddStepComposer({ onAdd }: { onAdd: (intent: string) => void }) {
 }
 
 function CapabilityShelf({ capabilities }: { capabilities: CapabilityOptions }) {
+  const t = useT();
   const chips = [
     ...capabilities.skills.map((value) => `@skill:${value}`),
     ...capabilities.mcpServers.map((value) => `@mcp:${value}`),
@@ -693,7 +704,7 @@ function CapabilityShelf({ capabilities }: { capabilities: CapabilityOptions }) 
   if (!chips.length) return null;
   return (
     <div className="rounded-lg border border-border bg-background p-3">
-      <Label>Detected capabilities</Label>
+      <Label>{t("workflows.builder.detectedCapabilities")}</Label>
       <div className="flex max-h-20 flex-wrap gap-1.5 overflow-hidden">
         {chips.map((chip) => (
           <span
@@ -727,6 +738,7 @@ function TimelineStepEditor({
   onUpdate: (index: number, updater: (step: WorkflowStep) => WorkflowStep) => void;
   step: WorkflowStep;
 }) {
+  const t = useT();
   return (
     <section className="group rounded-lg border border-border bg-background p-3 shadow-sm">
       <div className="flex items-start gap-3">
@@ -749,7 +761,7 @@ function TimelineStepEditor({
                   current.kind === "gate" ? { ...current, message: event.target.value } : current,
                 )
               }
-              placeholder="Question to ask before continuing…"
+              placeholder={t("workflows.builder.gatePlaceholder")}
               value={step.message}
             />
           ) : step.kind === "action" ? (
@@ -764,13 +776,13 @@ function TimelineStepEditor({
                 }}
                 value={step.op}
               >
-                <option value="commit">Commit staged changes</option>
-                <option value="push">Push branch</option>
-                <option value="assert-pr-branch">Check PR branch</option>
-                <option value="checkout-default-and-pull">Return to default branch</option>
+                <option value="commit">{t("workflows.op.commit")}</option>
+                <option value="push">{t("workflows.op.push")}</option>
+                <option value="assert-pr-branch">{t("workflows.op.assertPrBranch")}</option>
+                <option value="checkout-default-and-pull">{t("workflows.op.checkoutDefault")}</option>
               </select>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                {actionDescription(step.op)}
+                {t(ACTION_DESC_KEY[step.op])}
               </p>
             </div>
           ) : (
@@ -782,7 +794,7 @@ function TimelineStepEditor({
                     current.kind === "agent" ? { ...current, prompt: event.target.value } : current,
                   )
                 }
-                placeholder="What should the agent do at this step?"
+                placeholder={t("workflows.builder.agentPromptPlaceholder")}
                 value={step.prompt}
               />
               <CapabilityPicker
@@ -836,6 +848,7 @@ function CapabilityPicker({
   onToggle: (key: CapabilityKey, value: string) => void;
   selected?: WorkflowCapabilities;
 }) {
+  const t = useT();
   const groups: Array<{ key: CapabilityKey; label: string; values: string[] }> = [
     { key: "skills", label: "Skills", values: capabilities.skills },
     { key: "mcpServers", label: "MCP", values: capabilities.mcpServers },
@@ -845,7 +858,7 @@ function CapabilityPicker({
 
   return (
     <div className="space-y-2">
-      <Label>Capabilities</Label>
+      <Label>{t("workflows.builder.capabilities")}</Label>
       {groups.map((group) => (
         <div key={group.key}>
           <div className="mb-1 text-[10px] text-muted-foreground">{group.label}</div>
@@ -871,7 +884,7 @@ function CapabilityPicker({
               })}
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground/70">None detected.</p>
+            <p className="text-[11px] text-muted-foreground/70">{t("workflows.builder.noneDetected")}</p>
           )}
         </div>
       ))}
@@ -896,6 +909,7 @@ function RunView({
   onResume: () => void;
   onRestart: () => void;
 }) {
+  const t = useT();
   const { sendToAgent } = useAgentDock();
   const finished = run.outcome !== "running";
   const [selectedIndex, setSelectedIndex] = useState(run.index);
@@ -922,17 +936,17 @@ function RunView({
             <AgentMark className="size-4" /> {run.workflow.name}
           </h2>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Terminal className="size-3" /> Watch the agent workflow run.
+            <Terminal className="size-3" /> {t("workflows.run.watchDock")}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           <OutcomeBadge outcome={run.outcome} />
           <Button onClick={onBack} size="sm" type="button" variant="outline">
-            <ArrowLeft className="size-3.5" /> Workflows
+            <ArrowLeft className="size-3.5" /> {t("workflows.run.workflows")}
           </Button>
           {!finished ? (
             <Button onClick={onStop} size="sm" type="button" variant="outline">
-              <Square className="size-3.5" /> Stop
+              <Square className="size-3.5" /> {t("common.stop")}
             </Button>
           ) : null}
         </div>
@@ -980,7 +994,7 @@ function RunView({
                       <span className="mt-0.5 flex items-center gap-1.5">
                         <StepKindBadge kind={step.kind} />
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                          {statusLabel(status)}
+                          {t(STATUS_LABEL_KEY[status])}
                         </span>
                       </span>
                     </span>
@@ -1020,24 +1034,24 @@ function RunView({
                   <div className="mt-1 flex items-center gap-1.5">
                     <StepKindBadge kind={selectedStep.kind} />
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                      {statusLabel(selectedStatus)}
+                      {t(STATUS_LABEL_KEY[selectedStatus])}
                     </span>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {finished && canDebugSelectedStep && selectedIndex === run.index && !canRecoverPrBranch ? (
                     <Button
-                      aria-label="Resume the workflow from this step"
+                      aria-label={t("workflows.run.resumeAria")}
                       onClick={onResume}
                       size="sm"
                       type="button"
                     >
-                      <Play className="size-3.5" /> Resume workflow
+                      <Play className="size-3.5" /> {t("workflows.run.resume")}
                     </Button>
                   ) : null}
                   {canDebugSelectedStep ? (
                     <Button
-                      aria-label="Debug this workflow step with AI"
+                      aria-label={t("workflows.run.debugAria")}
                       onClick={() =>
                         sendToAgent({
                           prompt: buildWorkflowStepDebugPrompt({
@@ -1050,7 +1064,7 @@ function RunView({
                           }),
                           source: { type: "workflow-debug", label: selectedStep.title },
                           mode: "send",
-                          label: `Debug workflow step: ${selectedStep.title}`,
+                          label: t("workflows.run.debugLabel", { title: selectedStep.title }),
                           background: true,
                         })
                       }
@@ -1058,18 +1072,18 @@ function RunView({
                       type="button"
                       variant="outline"
                     >
-                      <AgentMark className="size-3.5" /> Debug with AI
+                      <AgentMark className="size-3.5" /> {t("workflows.run.debugWithAi")}
                     </Button>
                   ) : null}
                   {!finished ? (
                     <Button
-                      aria-label="Stop workflow run from step detail"
+                      aria-label={t("workflows.run.stopAria")}
                       onClick={onStop}
                       size="sm"
                       type="button"
                       variant="outline"
                     >
-                      <Square className="size-3.5" /> Stop after this step
+                      <Square className="size-3.5" /> {t("workflows.run.stopAfter")}
                     </Button>
                   ) : null}
                 </div>
@@ -1086,13 +1100,13 @@ function RunView({
                 {isCurrentGate ? (
                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                     <Button onClick={onApprove} size="sm" type="button">
-                      <Check className="size-3.5" /> Approve
+                      <Check className="size-3.5" /> {t("workflows.run.approve")}
                     </Button>
                     <Button onClick={onSkip} size="sm" type="button" variant="outline">
-                      <SkipForward className="size-3.5" /> Skip
+                      <SkipForward className="size-3.5" /> {t("workflows.run.skip")}
                     </Button>
                     <Button onClick={onStop} size="sm" type="button" variant="outline">
-                      <X className="size-3.5" /> Stop
+                      <X className="size-3.5" /> {t("common.stop")}
                     </Button>
                   </div>
                 ) : null}
@@ -1128,6 +1142,7 @@ function PrBranchRecovery({
   onRestart: () => void;
   workflowName: string;
 }) {
+  const t = useT();
   const { provider } = useAgentDock();
   const [agentOutput, setAgentOutput] = useState("");
   const [branchRecoveryInProgress, setBranchRecoveryInProgress] = useState(false);
@@ -1185,28 +1200,28 @@ function PrBranchRecovery({
 
   return (
     <div className="mt-3 rounded-md border border-border bg-muted/35 p-3">
-      <Label>Recover with AI</Label>
+      <Label>{t("workflows.recover.title")}</Label>
       <p className="mb-2 text-[11px] text-muted-foreground">
-        Let the agent inspect the change and suggest a feature branch. You approve before anything changes.
+        {t("workflows.recover.desc")}
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         <Button onClick={() => void askAgentForBranchName()} size="sm" type="button">
-          <AgentMark className="size-3.5" /> Recommend branch with AI
+          <AgentMark className="size-3.5" /> {t("workflows.recover.recommend")}
         </Button>
         {createdBranch ? (
           <Button onClick={onRestart} size="sm" type="button" variant="outline">
-            <Play className="size-3.5" /> Run again
+            <Play className="size-3.5" /> {t("workflows.recover.runAgain")}
           </Button>
         ) : null}
       </div>
       {branchRecoveryInProgress ? (
         <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Loader2 className="size-3 animate-spin" /> Choosing a branch name in the background.
+          <Loader2 className="size-3 animate-spin" /> {t("workflows.recover.choosing")}
         </p>
       ) : null}
       {recommendedBranch ? (
         <div className="mt-3 rounded-md border border-border bg-background p-2.5">
-          <Label>Recommended branch</Label>
+          <Label>{t("workflows.recover.recommendedBranch")}</Label>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <code className="min-w-0 rounded bg-muted px-2 py-1 font-mono text-[12px] text-foreground">
               {recommendedBranch}
@@ -1219,7 +1234,7 @@ function PrBranchRecovery({
                 type="button"
               >
                 {creatingBranch ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                Create this branch
+                {t("workflows.recover.createBranch")}
               </Button>
               <Button
                 disabled={creatingBranch}
@@ -1232,7 +1247,7 @@ function PrBranchRecovery({
                 type="button"
                 variant="outline"
               >
-                <AgentMark className="size-3.5" /> Ask for another
+                <AgentMark className="size-3.5" /> {t("workflows.recover.askAnother")}
               </Button>
             </div>
           </div>
@@ -1240,7 +1255,7 @@ function PrBranchRecovery({
       ) : agentOutput && !branchRecoveryInProgress ? (
         <div className="mt-3 rounded-md border border-border bg-background p-2.5">
           <p className="text-[11px] text-muted-foreground">
-            The agent did not return a branch name the workflow could read.
+            {t("workflows.recover.noBranch")}
           </p>
           <Button
             className="mt-2"
@@ -1253,13 +1268,15 @@ function PrBranchRecovery({
             type="button"
             variant="outline"
           >
-            <AgentMark className="size-3.5" /> Ask for another
+            <AgentMark className="size-3.5" /> {t("workflows.recover.askAnother")}
           </Button>
         </div>
       ) : null}
       {createdBranch ? (
         <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-400">
-          Branch created: <code className="font-mono">{createdBranch}</code>. Run the workflow again from here.
+          {t("workflows.recover.createdPre")}
+          <code className="font-mono">{createdBranch}</code>
+          {t("workflows.recover.createdPost")}
         </p>
       ) : null}
       {branchError ? (
@@ -1269,15 +1286,28 @@ function PrBranchRecovery({
   );
 }
 
-function statusLabel(status: StepStatus): string {
-  if (status === "running") return "Running";
-  if (status === "waiting") return "Waiting";
-  if (status === "done") return "Done";
-  if (status === "blocked") return "Needs you";
-  if (status === "failed") return "Failed";
-  if (status === "skipped") return "Skipped";
-  return "Queued";
-}
+const STATUS_LABEL_KEY: Record<StepStatus, TranslationKey> = {
+  running: "workflows.status.running",
+  waiting: "workflows.status.waiting",
+  done: "workflows.status.done",
+  blocked: "workflows.status.needsYou",
+  failed: "workflows.status.failed",
+  skipped: "workflows.status.skipped",
+  pending: "workflows.status.queued",
+};
+
+const KIND_LABEL_KEY: Record<WorkflowStep["kind"], TranslationKey> = {
+  gate: "workflows.kind.gate",
+  agent: "workflows.kind.agent",
+  action: "workflows.kind.action",
+};
+
+const OP_LABEL_KEY: Record<Extract<WorkflowStep, { kind: "action" }>["op"], TranslationKey> = {
+  commit: "workflows.op.commit",
+  push: "workflows.op.push",
+  "assert-pr-branch": "workflows.op.assertPrBranch",
+  "checkout-default-and-pull": "workflows.op.checkoutDefault",
+};
 
 /**
  * The body of a step section. For an agent step this shows its *result* (the
@@ -1295,6 +1325,7 @@ function StepBody({
   status: StepStatus;
   step: WorkflowStep;
 }) {
+  const t = useT();
   if (step.kind === "gate") {
     const proposedCommitMessage = step.id === "gate-commit" ? previousOutput?.trim() : "";
     return (
@@ -1302,7 +1333,7 @@ function StepBody({
         <p className="text-muted-foreground">{step.message}</p>
         {proposedCommitMessage ? (
           <div className="mt-3">
-            <Label>Generated commit message</Label>
+            <Label>{t("workflows.step.generatedCommitMessage")}</Label>
             <div className="whitespace-pre-wrap break-words rounded-md border border-border bg-muted/50 px-2.5 py-2 font-mono text-[11px] text-foreground">
               {proposedCommitMessage}
             </div>
@@ -1314,7 +1345,7 @@ function StepBody({
   if (step.kind === "action") {
     return (
       <p className="text-muted-foreground">
-        {actionDescription(step.op)}
+        {t(ACTION_DESC_KEY[step.op])}
       </p>
     );
   }
@@ -1324,7 +1355,7 @@ function StepBody({
   if (output) {
     return (
       <div>
-        <Label>Result</Label>
+        <Label>{t("workflows.step.result")}</Label>
         <div className="whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-[11px] text-foreground">
           {output}
         </div>
@@ -1333,17 +1364,17 @@ function StepBody({
   }
   return (
     <div>
-      <Label>{ran ? "Result" : "Task"}</Label>
+      <Label>{ran ? t("workflows.step.result") : t("workflows.step.task")}</Label>
       {ran ? (
         <p className="italic text-muted-foreground">
-          The agent returned no text result.
+          {t("workflows.step.noReply")}
         </p>
       ) : (
         <>
           <p className="text-muted-foreground">{step.prompt}</p>
           {status === "running" ? (
             <p className="mt-1.5 flex items-center gap-1 text-muted-foreground/80">
-              <Loader2 className="size-3 animate-spin" /> Running agent step…
+              <Loader2 className="size-3 animate-spin" /> {t("workflows.step.working")}
             </p>
           ) : null}
         </>
@@ -1410,16 +1441,12 @@ function normalizeStep(step: WorkflowStep): WorkflowStep {
   };
 }
 
-function actionDescription(op: Extract<WorkflowStep, { kind: "action" }>["op"]): string {
-  if (op === "assert-pr-branch") {
-    return "Checks that PR workflows are running from a feature branch, not main or master.";
-  }
-  if (op === "checkout-default-and-pull") {
-    return "Switches back to the default branch and pulls the latest changes.";
-  }
-  if (op === "push") return "Pushes the current branch to its remote.";
-  return "Commits the staged changes with the approved generated message.";
-}
+const ACTION_DESC_KEY: Record<Extract<WorkflowStep, { kind: "action" }>["op"], TranslationKey> = {
+  "assert-pr-branch": "workflows.opDesc.assertPrBranch",
+  "checkout-default-and-pull": "workflows.opDesc.checkoutDefault",
+  push: "workflows.opDesc.push",
+  commit: "workflows.opDesc.commit",
+};
 
 function normalizeCapabilities(capabilities?: WorkflowCapabilities): WorkflowCapabilities | undefined {
   if (!capabilities) return undefined;
@@ -1482,17 +1509,18 @@ function formatRunTimestamp(timestamp: number): string {
 }
 
 function OutcomeBadge({ outcome }: { outcome: RunState["outcome"] }) {
-  const map = {
-    running: { label: "Running", className: "border-primary/40 text-primary" },
-    done: { label: "Done", className: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" },
-    stopped: { label: "Stopped", className: "border-border text-muted-foreground" },
-    failed: { label: "Failed", className: "border-destructive/40 text-destructive" },
-    blocked: { label: "Needs you", className: "border-amber-500/40 text-amber-700 dark:text-amber-400" },
-  } as const;
-  const { label, className } = map[outcome];
+  const t = useT();
+  const map: Record<RunState["outcome"], { labelKey: TranslationKey; className: string }> = {
+    running: { labelKey: "workflows.status.running", className: "border-primary/40 text-primary" },
+    done: { labelKey: "workflows.status.done", className: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400" },
+    stopped: { labelKey: "workflows.status.stopped", className: "border-border text-muted-foreground" },
+    failed: { labelKey: "workflows.status.failed", className: "border-destructive/40 text-destructive" },
+    blocked: { labelKey: "workflows.status.needsYou", className: "border-amber-500/40 text-amber-700 dark:text-amber-400" },
+  };
+  const { labelKey, className } = map[outcome];
   return (
     <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", className)}>
-      {label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -1524,7 +1552,7 @@ function StepKindDot(_props: { kind: WorkflowStep["kind"] }) {
 }
 
 function StepKindBadge({ kind }: { kind: WorkflowStep["kind"] }) {
-  const label = kind === "agent" ? "AI" : kind === "gate" ? "Gate" : "Auto";
+  const t = useT();
   const className =
     kind === "agent"
       ? "border-primary/30 text-primary"
@@ -1533,7 +1561,7 @@ function StepKindBadge({ kind }: { kind: WorkflowStep["kind"] }) {
         : "border-border text-muted-foreground";
   return (
     <span className={cn("shrink-0 rounded-full border px-1.5 py-px text-[9px] uppercase tracking-wide", className)}>
-      {label}
+      {t(KIND_LABEL_KEY[kind])}
     </span>
   );
 }

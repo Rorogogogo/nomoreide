@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDatabaseTables, type DatabaseEngine, type TableRef } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { buildGenerateSqlPrompt } from "../agent/prompts";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { runHeadlessAgentTask } from "../agent/headless/run-headless-agent-task";
@@ -17,6 +18,7 @@ export function useSqlGenerate(
   unlocked: boolean,
   onGenerated: (sql: string) => void,
 ) {
+  const t = useT();
   const { provider } = useAgentDock();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function useSqlGenerate(
         if (sql) {
           onGenerated(sql);
         } else {
-          setError("The agent didn't return a SQL block.");
+          setError(t("database.sql.noSqlBlock"));
         }
       } catch (caught) {
         if (mountedRef.current && !controller.signal.aborted) {
@@ -68,7 +70,7 @@ export function useSqlGenerate(
         if (mountedRef.current) setGenerating(false);
       }
     },
-    [connection, engine, unlocked, generating, onGenerated, provider?.id],
+    [connection, engine, unlocked, generating, onGenerated, provider?.id, t],
   );
 
   return { generate, generating, error };

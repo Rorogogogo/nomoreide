@@ -16,6 +16,7 @@ import {
   type DatabaseConnection,
   type ErrorIncident,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ComposerDialog } from "../services/service-form/composer-dialog";
 import { StateBadge } from "../services/service-list";
@@ -37,6 +38,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
   const [incidents, setIncidents] = useState<ErrorIncident[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { sendToAgent } = useAgentDock();
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +55,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
       }
       const failures = results.filter((result) => result.status === "rejected");
       if (failures.length) {
-        setLoadError("Some AI context could not be loaded. You can still send available context.");
+        setLoadError(t("agent.diagnose.loadError"));
       }
     });
     return () => {
@@ -95,7 +97,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
         note,
         selection,
       }),
-      source: { type: "workspace-context", label: "AI Diagnose" },
+      source: { type: "workspace-context", label: t("agent.diagnose.title") },
       label: buildAiContextLabel({ note, selection }),
     });
     setOpen(false);
@@ -106,33 +108,35 @@ export function AiContextAction({ data }: { data: DashboardData }) {
   return (
     <>
       <button
-        aria-label="Open AI Diagnose"
+        aria-label={t("agent.diagnose.open")}
         className={headerActionClassName()}
         onClick={() => setOpen(true)}
-        title="Open AI Diagnose"
+        title={t("agent.diagnose.open")}
         type="button"
       >
         <span className={headerActionIconClassName()}>
           <AgentMark className="size-4" />
         </span>
-        <span className={headerActionLabelClassName()}>Diagnose</span>
+        <span className={headerActionLabelClassName()}>{t("agent.diagnose.label")}</span>
       </button>
       {open ? (
         <ComposerDialog
           icon={<AgentMark />}
           onClose={() => setOpen(false)}
           size="xl"
-          title="AI Diagnose"
+          title={t("agent.diagnose.title")}
         >
           <div className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <div className="text-sm font-medium">Pick the context the agent should inspect</div>
+                <div className="text-sm font-medium">{t("agent.diagnose.pick")}</div>
                 <div className="text-xs text-muted-foreground">
-                  Combine services, databases, incidents, and repositories into one focused prompt.
+                  {t("agent.diagnose.pickDesc")}
                 </div>
               </div>
-              <Badge variant={selectedCount ? "secondary" : "outline"}>{selectedCount} selected</Badge>
+              <Badge variant={selectedCount ? "secondary" : "outline"}>
+                {t("agent.diagnose.selected", { count: selectedCount })}
+              </Badge>
             </div>
 
             {loadError ? <Alert variant="muted">{loadError}</Alert> : null}
@@ -141,7 +145,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
               <ContextSection
                 count={data.config.services.length}
                 icon={<Server />}
-                title="Services"
+                title={t("agent.diagnose.services")}
               >
                 <div className="grid gap-2">
                   {data.config.services.map((service) => {
@@ -171,7 +175,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
                 </div>
               </ContextSection>
 
-              <ContextSection count={databases.length} icon={<Database />} title="Databases">
+              <ContextSection count={databases.length} icon={<Database />} title={t("agent.diagnose.databases")}>
                 {databases.length ? (
                   <div className="grid gap-2">
                     {databases.map((database) => (
@@ -188,11 +192,11 @@ export function AiContextAction({ data }: { data: DashboardData }) {
                     ))}
                   </div>
                 ) : (
-                  <EmptyContext text="No database connections detected." />
+                  <EmptyContext text={t("agent.diagnose.noDatabases")} />
                 )}
               </ContextSection>
 
-              <ContextSection count={incidents.length} icon={<Inbox />} title="Error Inbox">
+              <ContextSection count={incidents.length} icon={<Inbox />} title={t("agent.diagnose.errorInbox")}>
                 {incidents.length ? (
                   <div className="grid gap-2">
                     {incidents.map((incident) => (
@@ -220,11 +224,11 @@ export function AiContextAction({ data }: { data: DashboardData }) {
                     ))}
                   </div>
                 ) : (
-                  <EmptyContext text="No recent incidents." />
+                  <EmptyContext text={t("agent.diagnose.noIncidents")} />
                 )}
               </ContextSection>
 
-              <ContextSection count={repositories.length} icon={<GitBranch />} title="Git Repositories">
+              <ContextSection count={repositories.length} icon={<GitBranch />} title={t("agent.diagnose.gitRepositories")}>
                 <div className="grid gap-2">
                   {repositories.map((repository) => {
                     const selected = selection.repositoryPaths.includes(repository.path);
@@ -242,7 +246,7 @@ export function AiContextAction({ data }: { data: DashboardData }) {
                           </span>
                           {current ? (
                             <Badge className="shrink-0" size="small" variant="outline">
-                              current
+                              {t("agent.current")}
                             </Badge>
                           ) : null}
                         </span>
@@ -251,7 +255,9 @@ export function AiContextAction({ data }: { data: DashboardData }) {
                         </span>
                         {fileCount !== undefined ? (
                           <span className="mt-1 block truncate text-[11px] text-muted-foreground">
-                            {fileCount ? `${fileCount} changed file${fileCount === 1 ? "" : "s"}` : "No changed files"}
+                            {fileCount
+                              ? t("agent.diagnose.changedFiles", { count: fileCount })
+                              : t("agent.diagnose.noChangedFiles")}
                           </span>
                         ) : null}
                       </ContextTile>
@@ -262,22 +268,22 @@ export function AiContextAction({ data }: { data: DashboardData }) {
             </div>
 
             <label className="block space-y-2">
-              <span className="text-sm font-medium">Extra context</span>
+              <span className="text-sm font-medium">{t("agent.diagnose.extraContext")}</span>
               <textarea
                 className="min-h-24 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/40 focus:ring-2 focus:ring-ring"
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Example: checkout is failing after login, API exits when DB is selected..."
+                placeholder={t("agent.diagnose.notePlaceholder")}
                 value={note}
               />
             </label>
 
             <div className="flex items-center justify-end gap-2">
               <Button onClick={() => setOpen(false)} type="button" variant="outline">
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button className="gap-2" disabled={!canSend} onClick={sendContext} type="button">
                 <SendHorizontal className="size-4" />
-                Send
+                {t("common.send")}
               </Button>
             </div>
           </div>

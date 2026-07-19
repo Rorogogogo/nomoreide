@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { CommitCIStatus } from "@/lib/api";
+import { useT } from "@/lib/i18n";
 import { fetchCiStatus, getCachedCiStatus } from "./ci-status-cache";
 
 export function CiStatusBadge({ sha }: { sha: string }) {
+  const t = useT();
   const [status, setStatus] = useState<CommitCIStatus | null>(
     () => getCachedCiStatus(sha) ?? null,
   );
@@ -38,7 +40,7 @@ export function CiStatusBadge({ sha }: { sha: string }) {
   }
 
   const dot = ciDotClass(status.state);
-  const label = `CI: ${status.state} (${status.totalCount} check${status.totalCount !== 1 ? "s" : ""})`;
+  const label = t("github.ci.badgeLabel", { state: status.state, count: status.totalCount });
 
   return (
     <span
