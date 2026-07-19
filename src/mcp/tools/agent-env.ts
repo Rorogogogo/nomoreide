@@ -161,7 +161,7 @@ export function registerAgentEnvTools(server: FastMCP, _ctx: ToolContext): void 
   server.addTool({
     name: "nomoreide_agents_move_skill_scope",
     description:
-      "Move a skill between user and project scope (Claude only — other agents have no project skills). The removed source directory is backed up; the backup path is returned.",
+      "Move a skill between user and project scope (Claude reads .claude/skills/, Codex reads .agents/skills/; Antigravity has no project skills). The removed source directory is backed up; the backup path is returned.",
     parameters: z.object({
       agent: agentSchema,
       skillName: z.string().min(1),

@@ -64,9 +64,9 @@ export interface AgentEnvDoctorResult {
 
 export type AgentEnvScope = "user" | "project";
 
-/** One staged mutation. `name` is the MCP key or the skill directory name. */
+/** One staged mutation. `name` is the MCP key, skill directory, or plugin name. */
 export interface AgentEnvPendingChange {
-  category: "mcp" | "skill";
+  category: "mcp" | "skill" | "plugin";
   action: "copy" | "move" | "remove";
   name: string;
   sourceAgent: AgentEnvAgentName;

@@ -221,9 +221,11 @@ describe("agent-env staged writes", () => {
       homeDir,
       changes: [
         change({ category: "skill", name: "reviewer", targetAgent: "codex" }),
-        change({ category: "skill", name: "local-skill", targetAgent: "codex", targetScope: "project" }),
+        change({ category: "skill", name: "local-skill", targetAgent: "antigravity", targetScope: "project" }),
         change({ targetAgent: "claude", targetScope: "user" }),
         change({ name: "docs", targetAgent: "codex" }),
+        // Codex reads .agents/skills/ from the workspace — project targets are valid.
+        change({ category: "skill", name: "local-skill", targetAgent: "codex", targetScope: "project" }),
       ],
     });
 
@@ -232,6 +234,39 @@ describe("agent-env staged writes", () => {
     expect(preview.items[2].error).toContain("Source and target are the same");
     expect(preview.items[3].ok).toBe(true);
     expect(preview.items[3].warnings[0]).toContain("transport and headers will be dropped");
+    expect(preview.items[4].ok).toBe(true);
+  });
+
+  it("writes Codex skills to ~/.agents/skills and clears the legacy dir on remove", async () => {
+    const skillDir = path.join(homeDir, ".claude", "skills", "commit-push");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(path.join(skillDir, "SKILL.md"), "# commit-push\n", "utf8");
+
+    const copied = await applyChanges({
+      cwd,
+      homeDir,
+      changes: [
+        change({ category: "skill", action: "copy", name: "commit-push", targetAgent: "codex" }),
+      ],
+    });
+    expect(copied.ok).toBe(true);
+    await expect(
+      stat(path.join(homeDir, ".agents", "skills", "commit-push")),
+    ).resolves.toBeDefined();
+
+    // A stale copy in the legacy dir is cleared by the same remove.
+    await mkdir(path.join(homeDir, ".codex", "skills", "commit-push"), { recursive: true });
+    const removed = await applyChanges({
+      cwd,
+      homeDir,
+      changes: [
+        change({ category: "skill", action: "remove", name: "commit-push", sourceAgent: "codex" }),
+      ],
+    });
+    expect(removed.ok).toBe(true);
+    expect(removed.backups).toHaveLength(2); // standard + legacy dirs both backed up
+    await expect(stat(path.join(homeDir, ".agents", "skills", "commit-push"))).rejects.toThrow();
+    await expect(stat(path.join(homeDir, ".codex", "skills", "commit-push"))).rejects.toThrow();
   });
 
   it("snapshots an agent's config file to a .bak copy", async () => {

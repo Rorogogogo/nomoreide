@@ -382,23 +382,56 @@ export interface SkillLocation {
 }
 
 /**
- * Resolve the directory holding a skill's SKILL.md. Project scope is
- * Claude-only — Codex and Antigravity have no project-skills concept.
+ * Resolve the directory a skill's SKILL.md is written to. Claude reads
+ * `.claude/skills/`, Codex the Agent Skills standard `.agents/skills/` (user
+ * and project); Antigravity has no project-skills concept. New Codex skills
+ * always land in `~/.agents/skills/` — the legacy `~/.codex/skills/` dir is
+ * only consulted when resolving an existing skill (see
+ * `resolveExistingSkillDirs`).
  */
 export function getSkillDir(location: SkillLocation, cwd: string, homeDir?: string): string {
   const { agent, scope } = location;
   const safeName = path.basename(location.skillName);
   if (scope === "project") {
-    if (agent !== "claude") {
+    if (agent === "antigravity") {
       throw new Error(
-        `Project-scoped skills are not supported for ${agent}; only Claude reads .claude/skills/ from the workspace.`,
+        "Project-scoped skills are not supported for antigravity; Claude reads .claude/skills/ and Codex reads .agents/skills/ from the workspace.",
       );
     }
-    return path.join(cwd, ".claude", "skills", safeName);
+    const subdir = agent === "claude" ? ".claude" : ".agents";
+    return path.join(cwd, subdir, "skills", safeName);
   }
   const home = homeDir ?? homedir();
-  const agentDir = { claude: ".claude", codex: ".codex", antigravity: ".gemini" }[agent];
+  const agentDir = { claude: ".claude", codex: ".agents", antigravity: ".gemini" }[agent];
   return path.join(home, agentDir, "skills", safeName);
+}
+
+/**
+ * Every directory the skill currently exists at. For Codex user skills this
+ * checks the standard `~/.agents/skills/` dir first, then the legacy
+ * `~/.codex/skills/` dir — a remove/move must clear both or the legacy copy
+ * resurfaces after the standard one is deleted.
+ */
+async function resolveExistingSkillDirs(
+  location: SkillLocation,
+  cwd: string,
+  homeDir?: string,
+): Promise<string[]> {
+  const candidates = [getSkillDir(location, cwd, homeDir)];
+  if (location.agent === "codex" && location.scope === "user") {
+    const home = homeDir ?? homedir();
+    candidates.push(path.join(home, ".codex", "skills", path.basename(location.skillName)));
+  }
+  const existing: string[] = [];
+  for (const dir of candidates) {
+    try {
+      await stat(dir);
+      existing.push(dir);
+    } catch {
+      // not present at this candidate
+    }
+  }
+  return existing;
 }
 
 export interface CopySkillOptions extends WriterOptions {
@@ -407,13 +440,11 @@ export interface CopySkillOptions extends WriterOptions {
 }
 
 export async function copySkill(options: CopySkillOptions): Promise<WriteOutcome> {
-  const sourceDir = getSkillDir(options.source, options.cwd, options.homeDir);
+  const [sourceDir] = await resolveExistingSkillDirs(options.source, options.cwd, options.homeDir);
   const targetDir = getSkillDir(options.target, options.cwd, options.homeDir);
-  try {
-    await stat(sourceDir);
-  } catch {
+  if (!sourceDir) {
     throw new Error(
-      `Skill "${options.source.skillName}" not found for ${options.source.agent} at ${sourceDir}.`,
+      `Skill "${options.source.skillName}" not found for ${options.source.agent} at ${getSkillDir(options.source, options.cwd, options.homeDir)}.`,
     );
   }
   await mkdir(path.dirname(targetDir), { recursive: true });
@@ -427,36 +458,43 @@ export interface RemoveSkillOptions extends WriterOptions {
 }
 
 export async function removeSkill(options: RemoveSkillOptions): Promise<WriteOutcome> {
-  const skillDir = getSkillDir(options.location, options.cwd, options.homeDir);
-  const backup = await backupSkillDir(options, skillDir);
-  await rm(skillDir, { recursive: true, force: true });
-  return { backups: backup ? [backup] : [] };
+  const skillDirs = await resolveExistingSkillDirs(options.location, options.cwd, options.homeDir);
+  const backups: string[] = [];
+  for (const skillDir of skillDirs) {
+    const backup = await backupSkillDir(options, skillDir);
+    if (backup) backups.push(backup);
+    await rm(skillDir, { recursive: true, force: true });
+  }
+  return { backups };
 }
 
 export async function moveSkill(options: CopySkillOptions): Promise<WriteOutcome> {
-  const sourceDir = getSkillDir(options.source, options.cwd, options.homeDir);
+  const sourceDirs = await resolveExistingSkillDirs(options.source, options.cwd, options.homeDir);
   const targetDir = getSkillDir(options.target, options.cwd, options.homeDir);
 
-  try {
-    await stat(sourceDir);
-  } catch {
+  if (sourceDirs.length === 0) {
     // Idempotent: source already gone but destination present → done.
     try {
       await stat(targetDir);
       return { backups: [] };
     } catch {
       throw new Error(
-        `Skill "${options.source.skillName}" not found for ${options.source.agent} at ${sourceDir}.`,
+        `Skill "${options.source.skillName}" not found for ${options.source.agent} at ${getSkillDir(options.source, options.cwd, options.homeDir)}.`,
       );
     }
   }
 
   await mkdir(path.dirname(targetDir), { recursive: true });
   await rm(targetDir, { recursive: true, force: true });
-  await cp(sourceDir, targetDir, { recursive: true });
-  const backup = await backupSkillDir(options, sourceDir);
-  await rm(sourceDir, { recursive: true, force: true });
-  return { backups: backup ? [backup] : [] };
+  await cp(sourceDirs[0], targetDir, { recursive: true });
+  const backups: string[] = [];
+  for (const sourceDir of sourceDirs) {
+    if (sourceDir === targetDir) continue;
+    const backup = await backupSkillDir(options, sourceDir);
+    if (backup) backups.push(backup);
+    await rm(sourceDir, { recursive: true, force: true });
+  }
+  return { backups };
 }
 
 /**

@@ -338,11 +338,26 @@ async function collectClaudeSkills(home: string, cwd: string): Promise<AgentSkil
 async function collectCodexSkills(codexHome: string, cwd: string): Promise<AgentSkill[]> {
   const skills: AgentSkill[] = [];
 
+  // Codex reads the Agent Skills standard dirs (~/.agents/skills, .agents/skills)
+  // alongside its legacy CODEX_HOME locations.
   await Promise.all([
+    readSkillsDir(join(homedir(), ".agents", "skills"), "user", skills, true),
     readSkillsDir(join(codexHome, "skills"), "user", skills, true),
     readSkillsDir(join(codexHome, "skills", ".system"), "system", skills),
+    readSkillsDir(join(cwd, ".agents", "skills"), "project", skills),
     readSkillsDir(join(cwd, ".codex", "skills"), "project", skills),
   ]);
+
+  // Same skill name in the standard and legacy dir → keep one entry.
+  const seen = new Set<string>();
+  const deduped = skills.filter((skill) => {
+    const key = `${skill.scope}:${skill.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  skills.length = 0;
+  skills.push(...deduped);
 
   skills.sort((a, b) => {
     if (a.scope !== b.scope) return a.scope.localeCompare(b.scope);
