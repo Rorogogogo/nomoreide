@@ -48,20 +48,64 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { id: "about", label: "About", description: "Version, runtime, documentation, and support.", icon: Info, scope: "global", keywords: ["version", "docs", "runtime", "issues"] },
 ];
 
-/** Search copy for implemented controls. Keep this beside category metadata so
- * adding a setting also requires making its label and description discoverable. */
-export const SETTING_SEARCH_TEXT: Record<SettingsCategoryId, string> = {
-  general: "Language language preference Dock sidebar keep navigation expanded Default project scope run pages all projects selected project",
-  appearance: "Theme system light dark Interface density adjust spacing Code font size code and log surfaces Reduced motion movement animated transitions",
-  terminal: "Terminal font size text sessions Cursor style active cursor Scrollback limit previous terminal lines memory Copy on select clipboard Confirm before terminating closing stopping restarting running process danger confirmation",
-  "services-logs": "Show timestamps time gutter log entry Wrap log lines long output horizontal scrolling",
-  "git-github": "GitHub connection credentials repository defaults Git preferences",
-  "agents-mcp": "Agent environments installed agents MCP servers skills profiles project agent context",
-  "database-safety": "Confirm before writes danger confirmation write statements Default result limit maximum rows query connections write access",
-  notifications: "Desktop notifications browser permission alerts",
-  "data-privacy": "Local settings storage browser operational config export reset controls",
-  about: "Version console documentation runtime docs support",
+export interface SearchableSettingCopy { label: string; description: string }
+
+/** Exact visible setting copy used to build the search index. */
+export const SEARCHABLE_SETTINGS: Record<SettingsCategoryId, SearchableSettingCopy[]> = {
+  general: [
+    { label: "Language", description: "Choose the language preference for this console." },
+    { label: "Dock sidebar", description: "Keep the navigation expanded while you work." },
+    { label: "Default project scope", description: "Choose whether Run pages open across every project or the selected project." },
+  ],
+  appearance: [
+    { label: "Theme", description: "Follow your system or choose an explicit dashboard theme." },
+    { label: "Interface density", description: "Adjust spacing throughout the control surface." },
+    { label: "Code font size", description: "Size used by code and log surfaces." },
+    { label: "Reduced motion", description: "Reduce non-essential movement and animated transitions." },
+  ],
+  terminal: [
+    { label: "Terminal font size", description: "Text size for terminal sessions." },
+    { label: "Cursor style", description: "Shape of the active terminal cursor." },
+    { label: "Scrollback limit", description: "Number of previous terminal lines kept in memory." },
+    { label: "Copy on select", description: "Copy selected terminal text to the clipboard." },
+    { label: "Confirm before terminating", description: "Ask before closing, stopping, or restarting a running process. Danger confirmation." },
+  ],
+  "services-logs": [
+    { label: "Show timestamps", description: "Show the time gutter beside each log entry." },
+    { label: "Wrap log lines", description: "Wrap long output instead of scrolling horizontally." },
+  ],
+  "git-github": [
+    { label: "GitHub connection", description: "Review the current GitHub connection without exposing credentials here." },
+    { label: "Repository defaults", description: "Repository-specific Git preferences will appear when their behavior is available." },
+  ],
+  "agents-mcp": [
+    { label: "Agent environments", description: "Manage installed agents, MCP servers, skills, and profiles." },
+    { label: "Project agent context", description: "Project-specific agent configuration remains in Agent Environments." },
+  ],
+  "database-safety": [
+    { label: "Confirm before writes", description: "Show a danger confirmation before write statements are submitted." },
+    { label: "Default result limit", description: "Maximum rows requested for a default browse or query." },
+    { label: "Connections", description: "Manage connections and write access in the Database workbench." },
+  ],
+  notifications: [{ label: "Desktop notifications", description: "Browser notification capability, permission, and alerts." }],
+  "data-privacy": [
+    { label: "Local settings storage", description: "UI preferences stay in local browser storage; operational settings live in your NoMoreIDE config directory." },
+    { label: "Export and reset", description: "Export and reset controls are coming in a later delivery." },
+  ],
+  about: [
+    { label: "Version", description: "Application version." },
+    { label: "Console", description: "Local runtime address." },
+    { label: "Documentation", description: "NoMoreIDE documentation and support." },
+  ],
 };
+
+export const SETTING_SEARCH_TEXT = Object.fromEntries(
+  Object.entries(SEARCHABLE_SETTINGS).map(([id, items]) => [
+    id,
+    items.flatMap((item) => [item.label, item.description]).join(" "),
+  ]),
+) as Record<SettingsCategoryId, string>;
+
 
 export function categoryById(id: SettingsCategoryId): SettingsCategory {
   return SETTINGS_CATEGORIES.find((category) => category.id === id) ?? SETTINGS_CATEGORIES[0];

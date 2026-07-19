@@ -182,6 +182,22 @@ describe("SettingsView", () => {
     expect(host.textContent).toContain("Dock sidebar");
   });
 
+  test.each([
+    ["explicit", "Theme"],
+    ["throughout", "Interface density"],
+    ["horizontally", "Wrap log lines"],
+    ["submitted", "Confirm before writes"],
+    ["workbench", "Connections"],
+  ])("finds the visible description term %s", async (term, label) => {
+    await renderView();
+    const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
+
+    await typeInto(search, term);
+
+    expect(host.textContent).toContain("Search results");
+    expect(host.textContent).toContain(label);
+  });
+
   test("disables project settings with a visible reason when no project is active", async () => {
     await renderView({ activeProject: null });
     await click(button("Services & Logs"));
