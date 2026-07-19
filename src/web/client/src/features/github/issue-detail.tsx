@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { GitHubComment, GitHubIssue } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { Alert } from "@/components/ui/alert";
-import { Loading, Spinner } from "@/components/ui/loading";
+import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { AiAskInline } from "../agent/ai-ask-inline";
@@ -34,6 +35,9 @@ export function IssueDetail({
   const [draft, setDraft] = useState("");
   const [asking, setAsking] = useState(false);
   const { sendToAgent } = useAgentDock();
+  const { isPending, runOperation } = useOperations();
+  const commentKey = issue ? `github:issue:${issue.number}:comment` : "";
+  const posting = submitting || (commentKey ? isPending(commentKey) : false);
 
   useEffect(() => {
     setAsking(false);
@@ -57,7 +61,13 @@ export function IssueDetail({
     e.preventDefault();
     const trimmed = draft.trim();
     if (!trimmed) return;
-    await onAddComment(trimmed);
+    await runOperation(
+      {
+        key: commentKey,
+        label: t("github.issue.postingOperation", { number: issue.number }),
+      },
+      () => onAddComment(trimmed),
+    );
     setDraft("");
   }
 
@@ -136,14 +146,14 @@ export function IssueDetail({
         <form className="flex flex-col gap-2" onSubmit={(e) => void handleSubmit(e)}>
           <NotchedCommentBox
             action={
-              <Button disabled={!draft.trim() || submitting} size="sm" type="submit">
-                {submitting ? (
-                  <>
-                    <Spinner size="sm" /> {t("github.issue.posting")}
-                  </>
-                ) : (
-                  t("github.issue.comment")
-                )}
+              <Button
+                disabled={!draft.trim()}
+                loading={posting}
+                loadingLabel={t("github.issue.posting")}
+                size="sm"
+                type="submit"
+              >
+                {t("github.issue.comment")}
               </Button>
             }
             onChange={setDraft}

@@ -802,6 +802,7 @@ export const en = {
   "github.issue.opened": "Opened: ",
   "github.issue.loadingComments": "Loading comments…",
   "github.issue.posting": "Posting…",
+  "github.issue.postingOperation": "Posting comment to issue #{number}…",
   "github.issue.comment": "Comment",
   "github.issue.addComment": "Add a comment…",
 
@@ -816,6 +817,7 @@ export const en = {
     "What should the agent do with this PR? (review, summarize, find regressions…)",
   "github.pr.noDiff": "No diff available.",
   "github.pr.merging": "Merging…",
+  "github.pr.mergingOperation": "Merging pull request #{number}…",
   "github.pr.confirmPre": "Squash & merge PR ",
   "github.pr.confirmInto": " into ",
   "github.pr.confirmQ": "?",
@@ -1415,6 +1417,8 @@ export const en = {
   "services.list.savePort": "Save port",
   // Service lifecycle actions + port-conflict dialog
   "services.actions.requested": "{label} requested for {target}.",
+  "services.actions.pending": "{label} {target}…",
+  "services.actions.saving": "Saving {name}…",
   "services.actions.failed": "{label} failed for {target}: {message}",
   "services.actions.serviceFallback": "service",
   "services.actions.groupFallback": "group",

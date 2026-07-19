@@ -49,6 +49,7 @@ export function ServiceForm({
     setDependsOn,
     testResult,
     testing,
+    saving,
     submit,
     testCommand,
   } = useServiceForm({ cwd, onRefresh, onSaved, initialService });
@@ -302,7 +303,13 @@ export function ServiceForm({
             {testing ? t("services.form.testing") : t("services.form.testCommand")}
           </Button>
         ) : null}
-        <Button type="submit">{editing ? t("services.form.saveService") : t("services.addService")}</Button>
+        <Button
+          loading={saving}
+          loadingLabel={t("common.saving")}
+          type="submit"
+        >
+          {editing ? t("services.form.saveService") : t("services.addService")}
+        </Button>
       </div>
     </form>
   );

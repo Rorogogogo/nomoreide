@@ -778,6 +778,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "github.issue.opened": "创建于：",
   "github.issue.loadingComments": "正在加载评论…",
   "github.issue.posting": "正在发布…",
+  "github.issue.postingOperation": "正在向 Issue #{number} 发布评论…",
   "github.issue.comment": "评论",
   "github.issue.addComment": "添加评论…",
 
@@ -791,6 +792,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "github.pr.askPlaceholder": "让 Agent 对这个 PR 做什么？（审阅、总结、查找回归问题…）",
   "github.pr.noDiff": "没有可用的差异。",
   "github.pr.merging": "正在合并…",
+  "github.pr.mergingOperation": "正在合并 Pull Request #{number}…",
   "github.pr.confirmPre": "将 PR ",
   "github.pr.confirmInto": " 压缩合并到 ",
   "github.pr.confirmQ": " 吗？",
@@ -1372,6 +1374,8 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "services.list.savePort": "保存端口",
   // Service lifecycle actions + port-conflict dialog
   "services.actions.requested": "已请求对 {target} 执行{label}。",
+  "services.actions.pending": "正在对 {target} 执行{label}…",
+  "services.actions.saving": "正在保存 {name}…",
   "services.actions.failed": "对 {target} 执行{label}失败：{message}",
   "services.actions.serviceFallback": "服务",
   "services.actions.groupFallback": "分组",

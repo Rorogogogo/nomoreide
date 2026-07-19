@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ExternalLink, Play, RotateCcw, Square, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import {
@@ -158,43 +159,51 @@ function ActionButton({
   onSuccess?: () => void;
 }) {
   const t = useT();
-  const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState<PortConflictDetail | null>(null);
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const { isPending, runOperation } = useOperations();
+  const operationKey = `${resourceKind}:${resourceName}:${op}`;
+  const busy = isPending(operationKey);
 
   async function run(killHolder = false) {
-    setBusy(true);
-    try {
-      if (killHolder) {
-        // Port conflicts are a Node-backend concept; force the holder kill via
-        // the HTTP endpoint (the Rust backend does no port pre-check, so this
-        // path is web-only and never reached in the desktop app).
-        await postForm(`${baseUrl}/start`, { strategy: "killHolder" });
-      } else {
-        // Refresh after each service so a bundle start lights up progressively.
-        await performLifecycle(op, resourceKind, resourceName, () => onRefresh());
+    await runOperation(
+      {
+        key: operationKey,
+        label: t("services.actions.pending", { label, target: targetLabel }),
+      },
+      async () => {
+        try {
+          if (killHolder) {
+            // Port conflicts are a Node-backend concept; force the holder kill via
+            // the HTTP endpoint (the Rust backend does no port pre-check, so this
+            // path is web-only and never reached in the desktop app).
+            await postForm(`${baseUrl}/start`, { strategy: "killHolder" });
+          } else {
+            // Refresh after each service so a bundle start lights up progressively.
+            await performLifecycle(op, resourceKind, resourceName, () => onRefresh());
+          }
+          showSuccessToast(t("services.actions.requested", { label, target: targetLabel }));
+          await onRefresh();
+          setConflict(null);
+          onSuccess?.();
+        } catch (caught) {
+          if (caught instanceof PortConflictResponseError) {
+            setConflict(caught.conflict);
+          } else {
+            showErrorToast(actionErrorMessage(t, label, targetLabel, caught));
+          }
+        }
       }
-      showSuccessToast(t("services.actions.requested", { label, target: targetLabel }));
-      await onRefresh();
-      setConflict(null);
-      onSuccess?.();
-    } catch (caught) {
-      if (caught instanceof PortConflictResponseError) {
-        setConflict(caught.conflict);
-      } else {
-        showErrorToast(actionErrorMessage(t, label, targetLabel, caught));
-      }
-    } finally {
-      setBusy(false);
-    }
+    );
   }
 
   const button = (
     <Button
       aria-label={label}
       className={`${actionButtonClass[intent]} ${compact ? "size-7" : ""}`.trim()}
-      disabled={busy}
-      onClick={() => run()}
+      loading={busy}
+      loadingLabel={t("services.actions.pending", { label, target: targetLabel })}
+      onClick={() => void run()}
       size={compact ? "icon" : "sm"}
       variant="outline"
     >

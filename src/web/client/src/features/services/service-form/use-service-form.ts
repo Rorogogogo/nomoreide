@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useToasts } from "@/components/ui/toast";
+import { useOperations } from "@/components/operations/operation-context";
 import { useT } from "@/lib/i18n";
 import {
   postForm,
@@ -29,7 +30,10 @@ export function useServiceForm({
 }) {
   const t = useT();
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+  const { isPending, runOperation } = useOperations();
   const editing = Boolean(initialService);
+  const operationKey = `service-form:${initialService?.name ?? "new"}:save`;
+  const saving = isPending(operationKey);
   const [kind, setKind] = useState<ServiceKindOption>(initialService?.kind ?? "local");
   const [name, setName] = useState(initialService?.name ?? "");
   const [command, setCommand] = useState(initialService?.command ?? "");
@@ -63,31 +67,41 @@ export function useServiceForm({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      const payload: Record<string, string> = {
-        name,
-        kind,
-        cwd: formCwd,
-        port,
-        description,
-      };
-      if (kind === "local" || kind === "ssh") payload.command = command;
-      if (kind === "docker-compose") {
-        payload.composeFile = composeFile;
-        payload.composeService = composeService;
-      }
-      if (kind === "ssh") payload.host = host;
-      // Joined here; the server splits, trims, and drops self/blank references.
-      payload.dependsOn = dependsOn.filter((dep) => dep !== name).join(",");
+      await runOperation(
+        {
+          key: operationKey,
+          label: t("services.actions.saving", {
+            name: name || t("services.actions.serviceFallback"),
+          }),
+        },
+        async () => {
+          const payload: Record<string, string> = {
+            name,
+            kind,
+            cwd: formCwd,
+            port,
+            description,
+          };
+          if (kind === "local" || kind === "ssh") payload.command = command;
+          if (kind === "docker-compose") {
+            payload.composeFile = composeFile;
+            payload.composeService = composeService;
+          }
+          if (kind === "ssh") payload.host = host;
+          // Joined here; the server splits, trims, and drops self/blank references.
+          payload.dependsOn = dependsOn.filter((dep) => dep !== name).join(",");
 
-      await postForm("/api/services", payload);
-      if (!editing) resetForm();
-      showSuccessToast(
-        editing
-          ? t("services.actions.updated", { name })
-          : t("services.actions.added", { name }),
+          await postForm("/api/services", payload);
+          if (!editing) resetForm();
+          showSuccessToast(
+            editing
+              ? t("services.actions.updated", { name })
+              : t("services.actions.added", { name }),
+          );
+          await onRefresh();
+          onSaved?.();
+        },
       );
-      await onRefresh();
-      onSaved?.();
     } catch (caught) {
       showErrorToast(
         actionErrorMessage(
@@ -159,6 +173,7 @@ export function useServiceForm({
     setDependsOn,
     testResult,
     testing,
+    saving,
     submit,
     testCommand,
   };
