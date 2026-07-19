@@ -10,9 +10,11 @@ import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 
 export function IncidentDetail({
+  detailId,
   incident,
   onReviewChanges,
 }: {
+  detailId?: string;
   incident: ErrorIncident;
   /** Deep-link to Agent → Changes for the session the fix run snapshotted. */
   onReviewChanges?: (sessionId: string) => void;
@@ -50,8 +52,12 @@ export function IncidentDetail({
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col">
-      <div className="shrink-0 border-b border-border px-4 py-3">
+    <div
+      className="min-w-0 rounded-lg border border-border bg-background"
+      data-incident-detail="true"
+      id={detailId}
+    >
+      <div className="px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Badge
@@ -59,7 +65,11 @@ export function IncidentDetail({
               appearance="subtle"
               size="small"
             >
-              {incident.level}
+              {t(
+                incident.level === "error"
+                  ? "errors.level.error"
+                  : "errors.level.warning",
+              )}
             </Badge>
             <span className="truncate font-mono text-xs font-semibold">{incident.service}</span>
             {incident.count > 1 ? (
@@ -94,7 +104,7 @@ export function IncidentDetail({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="border-t border-border p-4">
         {fixedSessionId ? (
           <Alert variant="muted" className="mb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
