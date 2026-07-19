@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, EyeOff, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import {
   getAgentEnvSettings,
   saveAgentEnvSettings,
@@ -33,12 +34,17 @@ export function AgentSettingsDialog({
   onClose: () => void;
 }) {
   const t = useT();
+  const { isPending, runOperation } = useOperations();
   const [settings, setSettings] = useState<AgentEnvSettings | null>(null);
   const [content, setContent] = useState("");
   const [model, setModel] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const modelOperationKey = `agent-env:${agent}:model`;
+  const settingsOperationKey = `agent-env:${agent}:settings`;
+  const applyingModel = isPending(modelOperationKey);
+  const savingFile = isPending(settingsOperationKey);
+  const busy = applyingModel || savingFile;
 
   useEffect(() => {
     let cancelled = false;
@@ -71,32 +77,37 @@ export function AgentSettingsDialog({
   const masked = maskSecrets(content);
   const showMasked = !revealed && masked !== content;
   const modelDirty = settings !== null && model.trim() !== (settings.model ?? "");
-
   const applyModel = async () => {
-    setBusy(true);
     setError(null);
     try {
-      const { settings: updated } = await setAgentEnvModel(agent, model);
+      const { settings: updated } = await runOperation(
+        {
+          key: modelOperationKey,
+          label: t("agentEnv.settings.applyingModel", { name: AGENT_LABELS[agent] }),
+        },
+        () => setAgentEnvModel(agent, model),
+      );
       setSettings(updated);
       setContent(updated.content);
       setModel(updated.model ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
     }
   };
 
   const saveFile = async () => {
-    setBusy(true);
     setError(null);
     try {
-      await saveAgentEnvSettings(agent, content);
+      await runOperation(
+        {
+          key: settingsOperationKey,
+          label: t("agentEnv.settings.savingSettings", { name: AGENT_LABELS[agent] }),
+        },
+        () => saveAgentEnvSettings(agent, content),
+      );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -146,6 +157,8 @@ export function AgentSettingsDialog({
               </datalist>
               <Button
                 disabled={busy || !modelDirty || dirty}
+                loading={applyingModel}
+                loadingLabel={t("agentEnv.settings.applying")}
                 onClick={() => void applyModel()}
                 size="sm"
                 title={dirty ? t("agentEnv.settings.applyBlocked") : undefined}
@@ -198,11 +211,13 @@ export function AgentSettingsDialog({
           </Button>
           <Button
             disabled={busy || !dirty}
+            loading={savingFile}
+            loadingLabel={t("agentEnv.settings.savingFile")}
             onClick={() => void saveFile()}
             size="sm"
             type="button"
           >
-            {busy ? t("agentEnv.settings.savingFile") : t("agentEnv.settings.saveFile")}
+            {t("agentEnv.settings.saveFile")}
           </Button>
         </div>
       </div>

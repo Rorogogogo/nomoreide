@@ -3,24 +3,27 @@ import { FileDiff, FileWarning } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useToasts } from "@/components/ui/toast";
+import { useOperations } from "@/components/operations/operation-context";
 import { useT } from "@/lib/i18n";
 import { startFix, type ErrorIncident } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 
 export function IncidentDetail({
+  detailId,
   incident,
   onReviewChanges,
 }: {
+  detailId?: string;
   incident: ErrorIncident;
   /** Deep-link to Agent → Changes for the session the fix run snapshotted. */
   onReviewChanges?: (sessionId: string) => void;
 }) {
   const t = useT();
-  const { error: showErrorToast } = useToasts();
   const { sendToAgent } = useAgentDock();
-  const [sending, setSending] = useState(false);
+  const { isPending, runOperation } = useOperations();
+  const operationKey = `error:${incident.id}:fix`;
+  const fixing = isPending(operationKey);
   // Set after a fix is dispatched: the recorded session whose change-set the
   // user can review/revert once the agent finishes editing.
   const [fixedSessionId, setFixedSessionId] = useState<string | null>(null);
@@ -29,29 +32,38 @@ export function IncidentDetail({
   // hand the agent the full repro bundle. Whatever it edits then surfaces as a
   // reviewable, one-click-revertable change-set in Agent → Changes.
   async function fixWithAi() {
-    setSending(true);
-    try {
-      const { prompt, sessionId } = await startFix(incident.id);
-      sendToAgent({
-        prompt,
-        source: { type: "error", label: `${incident.service} — ${incident.level}` },
-        label: t("errors.incident.fixLabel", {
-          level: incident.level,
+    await runOperation(
+      {
+        errorMessage: (error) =>
+          error instanceof Error ? error.message : String(error),
+        key: operationKey,
+        label: t("errors.incident.fixingOperation", {
           service: incident.service,
-          title: incident.title,
         }),
-      });
-      setFixedSessionId(sessionId);
-    } catch (err) {
-      showErrorToast(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSending(false);
-    }
+      },
+      async () => {
+        const { prompt, sessionId } = await startFix(incident.id);
+        sendToAgent({
+          prompt,
+          source: { type: "error", label: `${incident.service} — ${incident.level}` },
+          label: t("errors.incident.fixLabel", {
+            level: incident.level,
+            service: incident.service,
+            title: incident.title,
+          }),
+        });
+        setFixedSessionId(sessionId);
+      },
+    );
   }
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col">
-      <div className="shrink-0 border-b border-border px-4 py-3">
+    <div
+      className="min-w-0 rounded-lg border border-border bg-background"
+      data-incident-detail="true"
+      id={detailId}
+    >
+      <div className="px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Badge
@@ -59,7 +71,11 @@ export function IncidentDetail({
               appearance="subtle"
               size="small"
             >
-              {incident.level}
+              {t(
+                incident.level === "error"
+                  ? "errors.level.error"
+                  : "errors.level.warning",
+              )}
             </Badge>
             <span className="truncate font-mono text-xs font-semibold">{incident.service}</span>
             {incident.count > 1 ? (
@@ -69,13 +85,14 @@ export function IncidentDetail({
             ) : null}
           </div>
           <Button
-            onClick={() => void fixWithAi()}
-            disabled={sending}
+            loading={fixing}
+            loadingLabel={t("errors.incident.starting")}
+            onClick={() => void fixWithAi().catch(() => undefined)}
             size="sm"
             variant="outline"
           >
             <AgentMark className="size-3.5" />
-            {sending ? t("errors.incident.starting") : t("errors.incident.fixWithAi")}
+            {t("errors.incident.fixWithAi")}
           </Button>
         </div>
         <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
@@ -94,7 +111,7 @@ export function IncidentDetail({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-4">
+      <div className="border-t border-border p-4">
         {fixedSessionId ? (
           <Alert variant="muted" className="mb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">

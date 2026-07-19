@@ -13,6 +13,7 @@ import { AiSpark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { buildPrAskPrompt, buildPrFileAskPrompt } from "../agent/prompts";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loading, Spinner } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
@@ -37,12 +38,14 @@ export function PrDetail({
   const [cockpit, setCockpit] = useState<GitHubPRReviewCockpit | null>(null);
   const [cockpitLoading, setCockpitLoading] = useState(false);
   const [cockpitError, setCockpitError] = useState<string | null>(null);
-  const [merging, setMerging] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const { sendToAgent } = useAgentDock();
+  const { isPending, runOperation } = useOperations();
+  const mergeKey = pr ? `github:pr:${pr.number}:merge` : "";
+  const merging = mergeKey ? isPending(mergeKey) : false;
 
   const fileDiffs = useMemo(() => splitDiffByFile(diff), [diff]);
 
@@ -108,17 +111,22 @@ export function PrDetail({
 
   async function squashMerge() {
     if (!pr || merging) return;
-    setMerging(true);
     setMergeError(null);
     try {
-      await mergeGitHubPR(pr.number, { method: "squash" });
+      await runOperation(
+        {
+          errorMessage: (error) =>
+            error instanceof Error ? error.message : String(error),
+          key: mergeKey,
+          label: t("github.pr.mergingOperation", { number: pr.number }),
+        },
+        () => mergeGitHubPR(pr.number, { method: "squash" }),
+      );
       setConfirmingMerge(false);
       onMerged?.();
     } catch (caught) {
       setMergeError(caught instanceof Error ? caught.message : String(caught));
       setConfirmingMerge(false);
-    } finally {
-      setMerging(false);
     }
   }
 
@@ -143,7 +151,8 @@ export function PrDetail({
         {canMerge ? (
           <Button
             className="shrink-0"
-            disabled={merging}
+            loading={merging}
+            loadingLabel={t("github.pr.merging")}
             onClick={() => setConfirmingMerge(true)}
             size="sm"
             title={t("github.pr.squashTitle")}
