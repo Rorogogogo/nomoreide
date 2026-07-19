@@ -4,23 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { SettingsSaveState } from "./settings-context";
+import { useT } from "@/lib/i18n";
 
 export function ScopeBadge({ scope }: { scope: "global" | "project" }) {
+  const t = useT();
   return (
     <span className={cn("rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide", scope === "project" ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" : "border-border bg-muted/60 text-muted-foreground") }>
-      {scope === "project" ? "Current project" : "Global"}
+      {scope === "project" ? t("settingsHub.currentProject") : t("settingsHub.global")}
     </span>
   );
 }
 
 export function SaveStatus({ state, error }: { state: SettingsSaveState; error: string | null }) {
+  const t = useT();
   if (state === "idle") return null;
   return (
     <div aria-live="polite" className={cn("flex items-center gap-1.5 text-xs", state === "error" ? "text-destructive" : "text-muted-foreground")}>
       {state === "saving" ? <Loader2 className="size-3.5 animate-spin" /> : null}
       {state === "saved" ? <Check className="size-3.5 text-emerald-600" /> : null}
       {state === "error" ? <AlertCircle className="size-3.5" /> : null}
-      <span>{state === "saving" ? "Saving…" : state === "saved" ? "Saved" : error}</span>
+      <span>{state === "saving" ? t("settingsHub.saving") : state === "saved" ? t("settingsHub.saved") : error}</span>
     </div>
   );
 }
@@ -56,6 +59,7 @@ export function SettingSelect({ id, label, description, value, options, onChange
 }
 
 export function SettingNumberInput({ id, label, description, value, min, max, onSave, disabled = false, scopeKey }: { id: string; label: string; description: string; value: number; min: number; max: number; onSave: (value: number) => void | Promise<void>; disabled?: boolean; scopeKey?: string | null }) {
+  const t = useT();
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -65,7 +69,7 @@ export function SettingNumberInput({ id, label, description, value, min, max, on
   function save() {
     const parsed = Number(draft);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-      setError(`Enter a value from ${min} to ${max}`);
+      setError(t("settingsHub.numberRange", { min, max }));
       return;
     }
     setError(null);
@@ -76,7 +80,7 @@ export function SettingNumberInput({ id, label, description, value, min, max, on
       <div className="flex flex-col items-start gap-1 sm:items-end">
         <div className="flex items-center gap-2">
           <Input aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`} aria-invalid={Boolean(error)} className="h-8 w-24 font-mono text-xs" disabled={disabled} id={id} max={max} min={min} onChange={(event) => setDraft(event.target.value)} type="number" value={draft} />
-          <Button aria-label={`Save ${label}`} disabled={disabled} onClick={save} size="sm" type="button" variant="outline">Save</Button>
+          <Button aria-label={t("settingsHub.saveAria", { label })} disabled={disabled} onClick={save} size="sm" type="button" variant="outline">{t("settingsHub.save")}</Button>
         </div>
         {error ? <span className="text-[11px] text-destructive" id={`${id}-error`} role="alert">{error}</span> : null}
       </div>
