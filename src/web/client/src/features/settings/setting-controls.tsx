@@ -58,7 +58,10 @@ export function SettingSelect({ id, label, description, value, options, onChange
 export function SettingNumberInput({ id, label, description, value, min, max, onSave, disabled = false }: { id: string; label: string; description: string; value: number; min: number; max: number; onSave: (value: number) => void | Promise<void>; disabled?: boolean }) {
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => setDraft(String(value)), [value]);
+  useEffect(() => {
+    setDraft(String(value));
+    setError(null);
+  }, [value]);
   function save() {
     const parsed = Number(draft);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
@@ -72,17 +75,17 @@ export function SettingNumberInput({ id, label, description, value, min, max, on
     <SettingRow description={description} disabled={disabled} id={id} label={label}>
       <div className="flex flex-col items-start gap-1 sm:items-end">
         <div className="flex items-center gap-2">
-          <Input aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`} className="h-8 w-24 font-mono text-xs" disabled={disabled} id={id} max={max} min={min} onChange={(event) => setDraft(event.target.value)} type="number" value={draft} />
+          <Input aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`} aria-invalid={Boolean(error)} className="h-8 w-24 font-mono text-xs" disabled={disabled} id={id} max={max} min={min} onChange={(event) => setDraft(event.target.value)} type="number" value={draft} />
           <Button aria-label={`Save ${label}`} disabled={disabled} onClick={save} size="sm" type="button" variant="outline">Save</Button>
         </div>
-        {error ? <span className="text-[11px] text-destructive" id={`${id}-error`}>{error}</span> : null}
+        {error ? <span className="text-[11px] text-destructive" id={`${id}-error`} role="alert">{error}</span> : null}
       </div>
     </SettingRow>
   );
 }
 
 export function ManagementRow({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return <div className="flex items-center justify-between gap-4 border-b border-border/50 px-4 py-3.5 last:border-b-0"><div><div className="text-sm font-medium">{title}</div><p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p></div>{action}</div>;
+  return <div className="flex flex-col items-stretch justify-between gap-3 border-b border-border/50 px-4 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-4"><div className="min-w-0"><div className="text-sm font-medium">{title}</div><p className="mt-0.5 break-words text-xs leading-5 text-muted-foreground">{description}</p></div>{action ? <div className="w-full shrink-0 [&_button]:w-full sm:w-auto sm:[&_button]:w-auto">{action}</div> : null}</div>;
 }
 
 export function UnavailableSetting({ children }: { children: ReactNode }) {

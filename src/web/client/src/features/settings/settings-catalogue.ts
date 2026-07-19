@@ -48,63 +48,56 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { id: "about", label: "About", description: "Version, runtime, documentation, and support.", icon: Info, scope: "global", keywords: ["version", "docs", "runtime", "issues"] },
 ];
 
-export interface SearchableSettingCopy { label: string; description: string }
+export const SETTING_COPY = {
+  language: { category: "general", label: "Language", description: "Choose the language preference for this console." },
+  "sidebar-docked": { category: "general", label: "Dock sidebar", description: "Keep the navigation expanded while you work." },
+  "project-scope": { category: "general", label: "Default project scope", description: "Choose whether Run pages open across every project or the selected project." },
+  theme: { category: "appearance", label: "Theme", description: "Follow your system or choose an explicit dashboard theme." },
+  density: { category: "appearance", label: "Interface density", description: "Adjust spacing throughout the control surface." },
+  "code-font": { category: "appearance", label: "Code font size", description: "Size used by code and log surfaces." },
+  "reduced-motion": { category: "appearance", label: "Reduced motion", description: "Reduce non-essential movement and animated transitions." },
+  "terminal-font": { category: "terminal", label: "Terminal font size", description: "Text size for terminal sessions." },
+  cursor: { category: "terminal", label: "Cursor style", description: "Shape of the active terminal cursor." },
+  scrollback: { category: "terminal", label: "Scrollback limit", description: "Number of previous terminal lines kept in memory." },
+  "copy-on-select": { category: "terminal", label: "Copy on select", description: "Copy selected terminal text to the clipboard." },
+  "confirm-terminate": { category: "terminal", label: "Confirm before terminating", description: "Ask before closing, stopping, or restarting a running process. Danger confirmation." },
+  "log-timestamps": { category: "services-logs", label: "Show timestamps", description: "Show the time gutter beside each log entry." },
+  "wrap-lines": { category: "services-logs", label: "Wrap log lines", description: "Wrap long output instead of scrolling horizontally." },
+  "github-connection": { category: "git-github", label: "GitHub connection", description: "Review the current GitHub connection without exposing credentials here." },
+  "repository-defaults": { category: "git-github", label: "Repository defaults", description: "Repository-specific Git preferences will appear when their behavior is available." },
+  "agent-environments": { category: "agents-mcp", label: "Agent environments", description: "Manage installed agents, MCP servers, skills, and profiles." },
+  "project-agent-context": { category: "agents-mcp", label: "Project agent context", description: "Project-specific agent configuration remains in Agent Environments." },
+  "confirm-writes": { category: "database-safety", label: "Confirm before writes", description: "Show a danger confirmation before write statements are submitted." },
+  "result-limit": { category: "database-safety", label: "Default result limit", description: "Maximum rows requested for a default browse or query." },
+  connections: { category: "database-safety", label: "Connections", description: "Manage connections and write access in the Database workbench." },
+  "desktop-notifications": { category: "notifications", label: "Desktop notifications", description: "Shows whether desktop notifications are supported in this environment. Permission controls arrive with notification events." },
+  "local-storage": { category: "data-privacy", label: "Local settings storage", description: "UI preferences stay in local browser storage; operational settings live in your NoMoreIDE config directory." },
+  "export-reset": { category: "data-privacy", label: "Export and reset", description: "Export and reset controls are coming in a later delivery." },
+  version: { category: "about", label: "Version", description: "Application version." },
+  console: { category: "about", label: "Console", description: "Local runtime address." },
+  documentation: { category: "about", label: "Documentation", description: "NoMoreIDE documentation and support." },
+} as const satisfies Record<string, { category: SettingsCategoryId; label: string; description: string }>;
 
-/** Exact visible setting copy used to build the search index. */
-export const SEARCHABLE_SETTINGS: Record<SettingsCategoryId, SearchableSettingCopy[]> = {
-  general: [
-    { label: "Language", description: "Choose the language preference for this console." },
-    { label: "Dock sidebar", description: "Keep the navigation expanded while you work." },
-    { label: "Default project scope", description: "Choose whether Run pages open across every project or the selected project." },
-  ],
-  appearance: [
-    { label: "Theme", description: "Follow your system or choose an explicit dashboard theme." },
-    { label: "Interface density", description: "Adjust spacing throughout the control surface." },
-    { label: "Code font size", description: "Size used by code and log surfaces." },
-    { label: "Reduced motion", description: "Reduce non-essential movement and animated transitions." },
-  ],
-  terminal: [
-    { label: "Terminal font size", description: "Text size for terminal sessions." },
-    { label: "Cursor style", description: "Shape of the active terminal cursor." },
-    { label: "Scrollback limit", description: "Number of previous terminal lines kept in memory." },
-    { label: "Copy on select", description: "Copy selected terminal text to the clipboard." },
-    { label: "Confirm before terminating", description: "Ask before closing, stopping, or restarting a running process. Danger confirmation." },
-  ],
-  "services-logs": [
-    { label: "Show timestamps", description: "Show the time gutter beside each log entry." },
-    { label: "Wrap log lines", description: "Wrap long output instead of scrolling horizontally." },
-  ],
-  "git-github": [
-    { label: "GitHub connection", description: "Review the current GitHub connection without exposing credentials here." },
-    { label: "Repository defaults", description: "Repository-specific Git preferences will appear when their behavior is available." },
-  ],
-  "agents-mcp": [
-    { label: "Agent environments", description: "Manage installed agents, MCP servers, skills, and profiles." },
-    { label: "Project agent context", description: "Project-specific agent configuration remains in Agent Environments." },
-  ],
-  "database-safety": [
-    { label: "Confirm before writes", description: "Show a danger confirmation before write statements are submitted." },
-    { label: "Default result limit", description: "Maximum rows requested for a default browse or query." },
-    { label: "Connections", description: "Manage connections and write access in the Database workbench." },
-  ],
-  notifications: [{ label: "Desktop notifications", description: "Desktop notifications are not supported in this environment. Browser permission controls arrive with notification events." }],
-  "data-privacy": [
-    { label: "Local settings storage", description: "UI preferences stay in local browser storage; operational settings live in your NoMoreIDE config directory." },
-    { label: "Export and reset", description: "Export and reset controls are coming in a later delivery." },
-  ],
-  about: [
-    { label: "Version", description: "Application version." },
-    { label: "Console", description: "Local runtime address." },
-    { label: "Documentation", description: "NoMoreIDE documentation and support." },
-  ],
-};
+export type SettingId = keyof typeof SETTING_COPY;
 
-export const SETTING_SEARCH_TEXT = Object.fromEntries(
-  Object.entries(SEARCHABLE_SETTINGS).map(([id, items]) => [
-    id,
-    items.flatMap((item) => [item.label, item.description]).join(" "),
-  ]),
-) as Record<SettingsCategoryId, string>;
+export function settingCopy(id: SettingId | string): (typeof SETTING_COPY)[SettingId] {
+  const copy = SETTING_COPY[id as SettingId];
+  if (!copy) throw new Error(`Missing settings copy for "${id}".`);
+  return copy;
+}
+
+export const SEARCHABLE_SETTINGS = Object.keys(SETTING_COPY) as SettingId[];
+
+export function matchingSettingIds(categoryId: SettingsCategoryId, query: string): SettingId[] {
+  const category = categoryById(categoryId);
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return SEARCHABLE_SETTINGS.filter((id) => {
+    const copy = settingCopy(id);
+    if (copy.category !== categoryId) return false;
+    const text = `${category.label} ${category.description} ${category.keywords.join(" ")} ${copy.label} ${copy.description}`.toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
 
 
 export function categoryById(id: SettingsCategoryId): SettingsCategory {

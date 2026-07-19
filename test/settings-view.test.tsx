@@ -185,6 +185,26 @@ describe("SettingsView", () => {
     expect(host.textContent).toContain("Dock sidebar");
   });
 
+  test("shows only the matching terminal row for an individual setting query", async () => {
+    await renderView();
+    await typeInto(host.querySelector<HTMLInputElement>('input[type="search"]')!, "clipboard");
+
+    expect(host.textContent).toContain("Copy on select");
+    expect(host.textContent).not.toContain("Terminal font size");
+    expect(host.textContent).not.toContain("Cursor style");
+    expect(host.textContent).not.toContain("Scrollback limit");
+    expect(host.textContent).not.toContain("Confirm before terminating");
+  });
+
+  test("shows only the matching database row for an individual description query", async () => {
+    await renderView();
+    await typeInto(host.querySelector<HTMLInputElement>('input[type="search"]')!, "submitted");
+
+    expect(host.textContent).toContain("Confirm before writes");
+    expect(host.textContent).not.toContain("Default result limit");
+    expect(host.textContent).not.toContain("Connections");
+  });
+
   test.each([
     ["explicit", "Theme"],
     ["throughout", "Interface density"],
@@ -273,6 +293,7 @@ describe("SettingsView", () => {
     const retry = vi.fn(async () => undefined);
     await renderView({}, { loadError: "daemon unavailable", retry });
     expect(host.textContent).toContain("daemon unavailable");
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("daemon unavailable");
     await click(button("Retry"));
     expect(retry).toHaveBeenCalledOnce();
   });
