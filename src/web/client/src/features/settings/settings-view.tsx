@@ -203,7 +203,9 @@ function CategoryContent({
         <ScopeSection scope="global">
           {visible("theme") ? <SettingSelect {...copy("theme")} id="setting-theme" onChange={(value) => settings.updateUi({ theme: value as "system" | "light" | "dark" })} options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} value={settings.ui.theme} /> : null}
           {visible("density") ? <SettingSelect {...copy("density")} id="setting-density" onChange={(value) => settings.updateUi({ density: value as "comfortable" | "compact" })} options={[{ value: "comfortable", label: "Comfortable" }, { value: "compact", label: "Compact" }]} value={settings.ui.density} /> : null}
-          {visible("code-font") ? <SettingNumberInput {...copy("code-font")} id="setting-code-font" max={18} min={10} onSave={(value) => settings.updateUi({ codeFontSize: value })} value={settings.ui.codeFontSize} /> : null}
+          {visible("code-font") ? <SettingNumberInput {...copy("code-font")} id="setting-code-font" max={18} min={10} onSave={(value) => {
+                settings.updateUi({ codeFontSize: value });
+              }} value={settings.ui.codeFontSize} /> : null}
           {visible("reduced-motion") ? <SettingToggle {...copy("reduced-motion")} checked={settings.ui.reducedMotion} id="setting-reduced-motion" onChange={(value) => settings.updateUi({ reducedMotion: value })} /> : null}
         </ScopeSection>
       );
