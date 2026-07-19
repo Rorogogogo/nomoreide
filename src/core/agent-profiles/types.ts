@@ -46,6 +46,8 @@ export const PROFILE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export const profileSchema = z.object({
   name: z.string().regex(PROFILE_NAME_PATTERN),
   description: z.string().optional(),
+  /** Agent this profile was snapshotted from. Absent on older/imported profiles. */
+  sourceAgent: z.enum(["claude", "codex", "antigravity"]).optional(),
   mcps: z.record(profileMcpSchema).default({}),
   skills: z.array(profileSkillSchema).default([]),
 });
@@ -74,6 +76,7 @@ export type ProfileManifest = z.infer<typeof profileManifestSchema>;
 export interface ProfileSummary {
   name: string;
   description?: string;
+  sourceAgent?: Profile["sourceAgent"];
   mcpCount: number;
   skillCount: number;
   updatedAt: string;

@@ -677,6 +677,7 @@ const agentEnvProfiles = [
   {
     name: "fullstack-dev",
     description: "GitHub + Linear + docs MCPs with the commit-push skill",
+    sourceAgent: "codex",
     mcpCount: 3,
     skillCount: 1,
     updatedAt: "2026-07-05T09:30:00.000Z",
@@ -684,6 +685,7 @@ const agentEnvProfiles = [
   {
     name: "backup-claude",
     description: "Snapshot of Claude Code before the last bulk change",
+    sourceAgent: "claude",
     mcpCount: 2,
     skillCount: 2,
     updatedAt: "2026-07-01T18:12:00.000Z",
@@ -844,6 +846,56 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
         skills: [{ name: "commit-push" }],
       },
     });
+  }
+  {
+    // Agent settings dialog (fetch-on-open) + save/model-switch actions.
+    const settingsMatch = path.match(/^\/api\/agent-env\/settings\/([^/]+)(\/model)?$/);
+    if (settingsMatch) {
+      const agent = settingsMatch[1];
+      const format = agent === "codex" ? "toml" : "json";
+      return json({
+        ok: true,
+        settings: {
+          agent,
+          path:
+            agent === "codex"
+              ? "~/.codex/config.toml"
+              : agent === "claude"
+                ? "~/.claude/settings.json"
+                : "~/.gemini/settings.json",
+          exists: true,
+          format,
+          content:
+            format === "toml"
+              ? 'model = "gpt-5-codex"\n\n[mcp_servers.github]\ncommand = "npx"\nargs = ["-y", "server-github"]\n'
+              : '{\n  "model": "opus",\n  "permissions": {\n    "defaultMode": "acceptEdits"\n  }\n}\n',
+          model: format === "toml" ? "gpt-5-codex" : "opus",
+          modelEditable: agent !== "antigravity",
+        },
+        backup: null,
+      });
+    }
+  }
+  {
+    // GET (expand-to-view) and PATCH (inline edit) of a single profile.
+    const profileExact = path.match(/^\/api\/agent-env\/profiles\/([^/]+)$/);
+    if (profileExact && (method === "GET" || method === "PATCH")) {
+      const name = decodeURIComponent(profileExact[1]);
+      const summary = agentEnvProfiles.find((profile) => profile.name === name);
+      return json({
+        ok: true,
+        profile: {
+          name,
+          description: summary?.description,
+          sourceAgent: (summary as { sourceAgent?: string } | undefined)?.sourceAgent,
+          mcps: {
+            github: { kind: "local", command: "npx", args: ["-y", "server-github"] },
+            linear: { kind: "remote", transport: "http", url: "https://mcp.linear.app/mcp" },
+          },
+          skills: [{ name: "commit-push" }],
+        },
+      });
+    }
   }
   if (path === "/api/agent-env/profiles/import") {
     return json({ ok: true, name: "imported-demo", mcpCount: 2, skillCount: 1, missingCredentials: [] });
