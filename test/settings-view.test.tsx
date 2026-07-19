@@ -188,6 +188,8 @@ describe("SettingsView", () => {
     ["horizontally", "Wrap log lines"],
     ["submitted", "Confirm before writes"],
     ["workbench", "Connections"],
+    ["supported", "Desktop notifications"],
+    ["arrive", "Desktop notifications"],
   ])("finds the visible description term %s", async (term, label) => {
     await renderView();
     const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;

@@ -87,7 +87,7 @@ export const SEARCHABLE_SETTINGS: Record<SettingsCategoryId, SearchableSettingCo
     { label: "Default result limit", description: "Maximum rows requested for a default browse or query." },
     { label: "Connections", description: "Manage connections and write access in the Database workbench." },
   ],
-  notifications: [{ label: "Desktop notifications", description: "Browser notification capability, permission, and alerts." }],
+  notifications: [{ label: "Desktop notifications", description: "Desktop notifications are not supported in this environment. Browser permission controls arrive with notification events." }],
   "data-privacy": [
     { label: "Local settings storage", description: "UI preferences stay in local browser storage; operational settings live in your NoMoreIDE config directory." },
     { label: "Export and reset", description: "Export and reset controls are coming in a later delivery." },
