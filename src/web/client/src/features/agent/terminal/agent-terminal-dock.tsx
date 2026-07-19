@@ -38,6 +38,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const { activeTaskId, closeTask, draft, focusNonce, insertPrompt, onboarding, open, pendingTaskIds, provider, setActiveTaskId, setOpen, stopTask, tasks, terminalError, updateTaskStatus } = useAgentDock();
   const [compose, setCompose] = useState(() => Boolean(draft || focusNonce || onboarding || tasks.length === 0)); const [height, setHeight] = useState<number | null>(null); const [resizing, setResizing] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  const [splitTaskId, setSplitTaskId] = useState<string | null>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const viewportHandlesRef = useRef(new Map<string, TerminalViewportHandle>());
   const previousFocusNonceRef = useRef(focusNonce);
@@ -78,6 +79,8 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   // Counts follow what the user is looking at: the selected provider while
   // composing, the active task's provider while a terminal is showing.
   const composing = compose || tasks.length === 0;
+  // The right pane only survives while its task exists and is not the active one.
+  const splitId = splitTaskId && splitTaskId !== activeTaskId && tasks.some((task) => task.id === splitTaskId) ? splitTaskId : null;
   const capabilities = useAgentCapabilities(
     ((composing ? provider?.id : (active?.provider ?? provider?.id)) ?? "claude") === "codex" ? "codex" : "claude",
     open,
@@ -99,7 +102,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {fullScreen ? <nav aria-label={t("dock.fullscreenNavAria")} className="flex h-11 shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-background px-2">{FULLSCREEN_NAV.map((item) => <button aria-current={currentPage === item.page ? "page" : undefined} aria-label={t(item.labelKey)} className={cn("flex h-8 shrink-0 items-center gap-2 rounded-md px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-4", currentPage === item.page && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground")} key={item.page} onClick={() => navigate(item.page)} type="button">{item.icon}<span>{t(item.labelKey)}</span></button>)}</nav> : null}
     <div aria-hidden className={cn("absolute inset-x-0 -top-1 z-20 h-2 cursor-ns-resize", fullScreen && "hidden")} data-agent-resize-grip onDoubleClick={() => setHeight(null)} onPointerDown={resizeStart} />
     <div className="flex h-9 shrink-0 items-stretch border-b border-border bg-muted/25">
-      <AgentTerminalTabs activeTaskId={activeTaskId} onActivate={(id) => { setActiveTaskId(id); setCompose(false); }} onClose={(id) => void closeTask(id)} pendingTaskIds={pendingTaskIds} tasks={tasks} />
+      <AgentTerminalTabs activeTaskId={activeTaskId} onActivate={(id) => { setActiveTaskId(id); setCompose(false); }} onClose={(id) => void closeTask(id)} onSplit={(id) => { setSplitTaskId((current) => (current === id ? null : id)); setCompose(false); }} pendingTaskIds={pendingTaskIds} splitTaskId={splitId} tasks={tasks} />
       <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} />
       <div className="flex shrink-0 items-center border-l border-border px-1">
         <button aria-label={t("dock.newTask")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setCompose(true)} type="button"><Plus className="size-3.5" /></button>
@@ -111,7 +114,11 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
     {git && (compose || tasks.length === 0) ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}
     <div className="relative min-h-0 flex-1 bg-[#101214]">
-      {tasks.map((task) => <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-0", (!open || compose || task.id !== activeTaskId) && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={open && !compose && task.id === activeTaskId} displaySettings={settings?.confirmedGlobal.terminal} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} /></div>)}
+      {tasks.map((task) => {
+        const shown = open && !compose && (task.id === activeTaskId || task.id === splitId);
+        const pane = splitId ? (task.id === splitId ? "left-1/2 right-0 border-l border-border" : "left-0 right-1/2") : "inset-x-0";
+        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-y-0", pane, !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={shown} displaySettings={settings?.confirmedGlobal.terminal} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} /></div>;
+      })}
       {open && (compose || tasks.length === 0) ? <div className="absolute inset-0 bg-background"><AgentTerminalComposer capabilities={capabilities} onNavigate={onNavigate ? navigate : undefined} onSubmitted={() => setCompose(false)} /></div> : null}
     </div>
   </div></>;

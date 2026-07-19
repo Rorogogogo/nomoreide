@@ -1487,6 +1487,8 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "dock.taskFallback": "{provider} 任务",
   "dock.openTaskAria": "打开任务 {label}",
   "dock.closeTaskAria": "关闭任务 {label}",
+  "dock.splitTaskAria": "在当前任务旁并排显示任务 {label}",
+  "dock.unsplitTaskAria": "取消并排显示任务 {label}",
   "dock.checkingAvailability": "正在检查 {name} 可用性…",
   "dock.notInstalled": "{name} 未安装。",
   "dock.sourceLabel": "来源",

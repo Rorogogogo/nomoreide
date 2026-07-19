@@ -1528,6 +1528,8 @@ export const en = {
   "dock.taskFallback": "{provider} task",
   "dock.openTaskAria": "Open task {label}",
   "dock.closeTaskAria": "Close task {label}",
+  "dock.splitTaskAria": "Show task {label} beside the active one",
+  "dock.unsplitTaskAria": "Stop showing task {label} beside the active one",
   "dock.checkingAvailability": "Checking {name} availability…",
   "dock.notInstalled": "{name} is not installed.",
   "dock.sourceLabel": "Source",
