@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -10,12 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { type ColumnInfo, type DatabaseEngine } from "@/lib/api";
+import type { ColumnInfo, DatabaseEngine } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { buildDebugSqlPrompt } from "../agent/prompts";
 import {
-  PAGE_SIZES,
+  databaseLimitOptions,
   isReadStatement,
   useSqlQuery,
   useSqlWrite,
@@ -28,8 +28,9 @@ import { UnlockDialog, WritePreviewDialog } from "./sql-write-dialogs";
 /**
  * Ad-hoc SQL console. Locked by default: every statement runs read-only and
  * writes are rejected by the engine. When the user unlocks writes for this
- * connection, non-SELECT statements preview their affected rows before they
- * commit. This surface is human-only — the agent never reaches the write path.
+ * connection, non-SELECT statements either use the configured preview approval
+ * or commit directly. This surface is human-only — the agent never reaches the
+ * write path, and the server-side connection lock remains authoritative.
  */
 export function SqlConsole({
   connection,
@@ -37,6 +38,7 @@ export function SqlConsole({
   unlocked,
   seed,
   onWriteAccessChange,
+  preferences = { confirmWrites: true, resultLimit: 100 },
 }: {
   connection: string;
   engine?: DatabaseEngine;
@@ -44,6 +46,7 @@ export function SqlConsole({
   /** A statement staged from the dock agent, dropped into the editor (not run). */
   seed?: { sql: string; nonce: number } | null;
   onWriteAccessChange: () => void;
+  preferences?: { confirmWrites: boolean; resultLimit: number };
 }) {
   const { success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
@@ -51,7 +54,12 @@ export function SqlConsole({
   const write = useSqlWrite(connection);
   const access = useWriteAccess(connection, onWriteAccessChange);
   const [sql, setSql] = useState(seed?.sql ?? "");
-  const [limit, setLimit] = useState<number>(100);
+  const [limit, setLimit] = useState<number>(() => preferences.resultLimit);
+  const customizedLimitRef = useRef(false);
+
+  useEffect(() => {
+    if (!customizedLimitRef.current) setLimit(preferences.resultLimit);
+  }, [preferences.resultLimit]);
 
   // Re-seed the editor when the dock stages another write into this same
   // connection (a new connection remounts via `key`, picking up the seed above).
@@ -68,7 +76,7 @@ export function SqlConsole({
   const isWriteStatement = sql.trim().length > 0 && !isReadStatement(sql);
   const isWrite = unlocked && isWriteStatement;
   const needsUnlock = isWriteStatement && !unlocked;
-  const running = read.running || write.previewing;
+  const running = read.running || write.previewing || write.committing;
 
   function submit() {
     if (!sql.trim()) return;
@@ -80,7 +88,8 @@ export function SqlConsole({
     }
     if (isWrite) {
       read.reset();
-      void write.preview(sql);
+      if (preferences.confirmWrites) void write.preview(sql);
+      else void commitWrite(sql);
     } else {
       write.reset();
       void read.run(sql, limit);
@@ -104,8 +113,8 @@ export function SqlConsole({
     });
   }
 
-  async function confirmCommit() {
-    const outcome = await write.commit();
+  async function commitWrite(statement?: string) {
+    const outcome = await write.commit(statement);
     if (outcome?.committed) {
       const affected = outcome.affectedRows ?? 0;
       showSuccess(`Committed — ${affected} row${affected === 1 ? "" : "s"} affected.`);
@@ -126,7 +135,7 @@ export function SqlConsole({
               ? "SELECT … / INSERT … / UPDATE …   (Cmd/Ctrl+Enter to run)"
               : "SELECT * FROM …   (read-only — Cmd/Ctrl+Enter to run)"
           }
-          className="h-24 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[12px] outline-none focus:border-ring"
+          className="code-font-size h-24 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono outline-none focus:border-ring"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
           <LockControl
@@ -141,9 +150,12 @@ export function SqlConsole({
                 aria-label="Max rows"
                 className="rounded-md border border-border bg-background px-1.5 py-1 text-[11px]"
                 value={limit}
-                onChange={(event) => setLimit(Number(event.target.value))}
+                onChange={(event) => {
+                  customizedLimitRef.current = true;
+                  setLimit(Number(event.target.value));
+                }}
               >
-                {PAGE_SIZES.map((size) => (
+                {databaseLimitOptions(preferences.resultLimit).map((size) => (
                   <option key={size} value={size}>
                     {size} rows
                   </option>
@@ -162,7 +174,7 @@ export function SqlConsole({
               ) : (
                 <Play className="size-3.5" />
               )}
-              {isWrite ? "Preview write" : "Run"}
+              {isWrite ? (preferences.confirmWrites ? "Preview write" : "Run write") : "Run"}
             </Button>
           </div>
         </div>
@@ -187,7 +199,7 @@ export function SqlConsole({
           sql={write.pending.sql}
           preview={write.pending.preview}
           busy={write.committing}
-          onConfirm={() => void confirmCommit()}
+          onConfirm={() => void commitWrite()}
           onClose={write.cancel}
         />
       ) : null}
@@ -304,7 +316,7 @@ function ResultArea({
     <div className="min-h-0 flex-1 overflow-auto">
       {error ? (
         <div className="space-y-3 p-4">
-          <p className="whitespace-pre-wrap font-mono text-[12px] text-destructive">{error}</p>
+          <p className="code-font-size whitespace-pre-wrap font-mono text-destructive">{error}</p>
           <Button
             size="sm"
             variant="outline"
@@ -370,7 +382,7 @@ function ResultGrid({
         </div>
       ) : null}
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-max min-w-full border-collapse text-left font-mono text-[11px]">
+        <table className="code-font-size w-max min-w-full border-collapse text-left font-mono">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b border-border">
               {columns.map((col) => (

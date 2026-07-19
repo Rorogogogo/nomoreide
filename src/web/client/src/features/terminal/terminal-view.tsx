@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useSettings } from "@/features/settings/settings-context";
 import {
   createTerminalSession,
   closeTerminalSession,
@@ -15,9 +17,11 @@ import { TerminalPane } from "./terminal-pane";
  * every shell that is still running.
  */
 export function TerminalView() {
+  const { confirmedGlobal } = useSettings();
   const [tabs, setTabs] = useState<TerminalSessionInfo[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingClose, setPendingClose] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +76,17 @@ export function TerminalView() {
     [tabs, activeId],
   );
 
+  const requestClose = useCallback(
+    (id: string, name: string) => {
+      if (confirmedGlobal.terminal.confirmTerminate) {
+        setPendingClose({ id, name });
+        return;
+      }
+      void closeTab(id);
+    },
+    [closeTab, confirmedGlobal.terminal.confirmTerminate],
+  );
+
   return (
     <section className="flex h-full min-h-0 flex-col bg-[#090909] text-white">
       <div
@@ -104,7 +119,7 @@ export function TerminalView() {
               aria-label={`Close ${name}`}
               className="rounded p-0.5 text-white/40 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
               disabled={busy}
-              onClick={() => void closeTab(tab.id)}
+              onClick={() => requestClose(tab.id, name)}
               type="button"
             >
               <X className="size-3" />
@@ -135,6 +150,21 @@ export function TerminalView() {
           ))
         )}
       </div>
+      {pendingClose ? (
+        <ConfirmDialog
+          confirmLabel={`Close ${pendingClose.name}`}
+          loading={busy}
+          message="The running shell process will be terminated and this terminal tab will be closed."
+          onCancel={() => setPendingClose(null)}
+          onConfirm={() => {
+            const id = pendingClose.id;
+            setPendingClose(null);
+            void closeTab(id);
+          }}
+          title={`Close ${pendingClose.name}?`}
+          tone="danger"
+        />
+      ) : null}
     </section>
   );
 }

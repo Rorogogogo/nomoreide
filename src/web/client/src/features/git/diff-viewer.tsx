@@ -83,7 +83,7 @@ export function DiffViewer({
 
   return (
     <div
-      className="absolute inset-0 overflow-auto bg-card text-xs leading-6 text-foreground"
+      className="code-font-size absolute inset-0 overflow-auto bg-card leading-6 text-foreground"
       ref={scrollContainerRef}
     >
       <div className="min-w-full font-mono">

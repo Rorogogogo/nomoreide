@@ -7,6 +7,7 @@ import { useToasts } from "@/components/ui/toast";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
 import { usePersistentState } from "@/lib/use-persistent-state";
+import { useOptionalSettings } from "@/features/settings/settings-context";
 import {
   deleteDatabase,
   type DatabaseConnection,
@@ -23,7 +24,11 @@ import { ConnectionSelector } from "./connection-selector";
 import { DbAddMenu } from "./db-add-menu";
 import { SqlConsole } from "./sql-console";
 import { TableGrid } from "./table-grid";
-import { PAGE_SIZES, useDatabases, useTableBrowser } from "./use-databases";
+import {
+  databaseLimitOptions,
+  useDatabases,
+  useTableBrowser,
+} from "./use-databases";
 
 type Dialog = { mode: "add" } | { mode: "edit"; target: EditTarget } | null;
 type ViewMode = "browse" | "query";
@@ -42,6 +47,11 @@ export function DatabaseView({
   /** Active project scope; unassigned connections stay visible when set. */
   scopePath?: string | null;
 } = {}) {
+  const settings = useOptionalSettings();
+  const databasePreferences = settings?.confirmedProject.database ?? {
+    confirmWrites: true,
+    resultLimit: 100,
+  };
   const { connections: allConnections, loading, error, refresh } = useDatabases();
   const connections = useMemo(
     () =>
@@ -161,9 +171,13 @@ export function DatabaseView({
               }
               seed={seed}
               onWriteAccessChange={refresh}
+              preferences={databasePreferences}
             />
           ) : (
-            <ConnectionBrowser connection={selected} />
+            <ConnectionBrowser
+              connection={selected}
+              resultLimit={databasePreferences.resultLimit}
+            />
           )
         ) : (
           <EmptyState onAdd={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
@@ -218,7 +232,7 @@ function ViewModeToggle({
   );
 }
 
-function ConnectionBrowser({ connection }: { connection: string }) {
+function ConnectionBrowser({ connection, resultLimit }: { connection: string; resultLimit: number }) {
   const { sendToAgent } = useAgentDock();
   const {
     tables,
@@ -236,7 +250,7 @@ function ConnectionBrowser({ connection }: { connection: string }) {
     changePageSize,
     nextPage,
     prevPage,
-  } = useTableBrowser(connection);
+  } = useTableBrowser(connection, resultLimit);
 
   // Prefill the dock input with the table's schema so the user can ask away.
   function askTable(table: RowSample) {
@@ -335,7 +349,7 @@ function ConnectionBrowser({ connection }: { connection: string }) {
                 value={limit}
                 onChange={(event) => changePageSize(Number(event.target.value))}
               >
-                {PAGE_SIZES.map((size) => (
+                {databaseLimitOptions(resultLimit).map((size) => (
                   <option key={size} value={size}>
                     {size} / page
                   </option>

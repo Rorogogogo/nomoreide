@@ -3,6 +3,7 @@ import { ChevronUp, Filter, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getLogSourceLogs, getServiceLogs, type LogEntry, type LogQuery } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useOptionalSettings } from "@/features/settings/settings-context";
 import { LogSearchInput, LogViewer, logEntryText } from "../log-viewer";
 import { type LogTarget, useLogs } from "./use-logs";
 
@@ -53,6 +54,11 @@ export function LogConsole({
   /** Optional node pinned to the end of the control row (e.g. expand/remove). */
   trailing?: ReactNode;
 }) {
+  const settings = useOptionalSettings();
+  const logPreferences = settings?.confirmedProject.logs ?? {
+    showTimestamps: true,
+    wrapLines: true,
+  };
   const isSource = target.kind === "source";
   const [since, setSince] = useState("");
   const [level, setLevel] = useState<LevelFilter>("");
@@ -230,6 +236,8 @@ export function LogConsole({
         emptyText={emptyText}
         logs={visibleLogs}
         query={query}
+        showTimestamps={logPreferences.showTimestamps}
+        wrapLines={logPreferences.wrapLines}
       />
     </div>
   );

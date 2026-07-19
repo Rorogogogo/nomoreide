@@ -11,6 +11,7 @@ import { AgentTerminalTabs } from "./agent-terminal-tabs";
 import { initialAgentInputSequence, initialAgentSubmitDelay } from "./agent-terminal-input";
 import { GitHubLogo } from "../../github/github-logo";
 import { isTauri } from "@/lib/tauri";
+import { useOptionalSettings } from "@/features/settings/settings-context";
 
 export type AgentDockPage = "services" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
 
@@ -30,6 +31,7 @@ export function clampAgentDockHeight(height: number, viewportHeight: number) { c
 function stateLabel(state: string) { return `${state.charAt(0).toUpperCase()}${state.slice(1)}`; }
 
 export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onNavigate?: (page: AgentDockPage) => void }) {
+  const settings = useOptionalSettings();
   const { activeTaskId, claimInitialPrompt, closeTask, draft, focusNonce, onboarding, open, pendingTaskIds, provider, providers, selectProvider, setActiveTaskId, setOpen, stopTask, tasks, terminalError, updateTaskStatus } = useAgentDock();
   const [compose, setCompose] = useState(() => Boolean(draft || focusNonce || onboarding || tasks.length === 0)); const [height, setHeight] = useState<number | null>(null); const [resizing, setResizing] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
@@ -85,7 +87,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
     {git && (compose || tasks.length === 0) ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}
     <div className="relative min-h-0 flex-1 bg-[#101214]">
-      {tasks.map((task) => <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-0", (!open || compose || task.id !== activeTaskId) && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={open && !compose && task.id === activeTaskId} claimInitialInput={() => { const prompt = claimInitialPrompt(task.id); return prompt ? initialAgentInputSequence(prompt) : undefined; }} initialInputIntervalMs={initialAgentSubmitDelay(task.provider ?? "claude")} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} sessionId={task.id} /></div>)}
+      {tasks.map((task) => <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute inset-0", (!open || compose || task.id !== activeTaskId) && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} role="tabpanel"><TerminalViewport active={open && !compose && task.id === activeTaskId} claimInitialInput={() => { const prompt = claimInitialPrompt(task.id); return prompt ? initialAgentInputSequence(prompt) : undefined; }} displaySettings={settings?.confirmedGlobal.terminal} initialInputIntervalMs={initialAgentSubmitDelay(task.provider ?? "claude")} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} sessionId={task.id} /></div>)}
       {open && (compose || tasks.length === 0) ? <div className="absolute inset-0 bg-background"><AgentTerminalComposer onSubmitted={() => setCompose(false)} /></div> : null}
     </div>
   </div></>;

@@ -15,20 +15,24 @@ const productHtml = readFileSync(
 const websiteHtml = readFileSync(resolve(__dirname, "../website/index.html"), "utf8");
 
 describe("default theme", () => {
-  test("defaults the product theme to dark when no preference is saved", () => {
+  test("models system as a first-class product theme", () => {
     expect(themeStoreSource).toContain('const STORAGE_KEY = "nomoreide-theme-choice";');
-    expect(themeStoreSource).toContain('if (typeof window === "undefined") return "dark";');
-    expect(themeStoreSource).toContain('return "dark";');
-    expect(themeStoreSource).not.toContain("prefers-color-scheme: dark");
+    expect(themeStoreSource).toContain('export type Theme = "light" | "dark" | "system";');
+    expect(themeStoreSource).toContain("prefers-color-scheme: dark");
   });
 
-  test("boots both HTML shells in dark mode before React renders", () => {
-    for (const html of [productHtml, websiteHtml]) {
-      expect(html).toContain('<html lang="en" class="dark" style="color-scheme: dark">');
-      expect(html).toContain('window.localStorage.getItem("nomoreide-theme-choice")');
-      expect(html).toContain('const theme = stored === "light" ? "light" : "dark";');
-      expect(html).toContain('document.documentElement.classList.toggle("dark", theme === "dark");');
-      expect(html).not.toContain('window.localStorage.getItem("nomoreide-theme")');
-    }
+  test("boots the product's canonical appearance before React renders", () => {
+    expect(productHtml).toContain('window.localStorage.getItem("nomoreide:ui-preferences")');
+    expect(productHtml).toContain('window.localStorage.getItem("nomoreide-theme-choice")');
+    expect(productHtml).toContain("prefers-color-scheme: dark");
+    expect(productHtml).toContain("dataset.density");
+    expect(productHtml).toContain("dataset.reducedMotion");
+    expect(productHtml).toContain('style.setProperty("--code-font-size"');
+  });
+
+  test("keeps the standalone website's existing dark bootstrap", () => {
+    expect(websiteHtml).toContain('<html lang="en" class="dark" style="color-scheme: dark">');
+    expect(websiteHtml).toContain('window.localStorage.getItem("nomoreide-theme-choice")');
+    expect(websiteHtml).not.toContain('window.localStorage.getItem("nomoreide-theme")');
   });
 });

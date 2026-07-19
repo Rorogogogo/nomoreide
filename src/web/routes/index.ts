@@ -14,6 +14,7 @@ import { logSourceRoutes } from "./log-sources-routes.js";
 import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
 import { serviceRoutes } from "./service-routes.js";
+import { settingsRoutes } from "./settings-routes.js";
 import { shellRoutes } from "./shell-routes.js";
 import { snapshotRoutes } from "./snapshot-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
@@ -47,6 +48,7 @@ export const routes: Route[] = [
   ...workflowTriggerRoutes,
   ...onboardRoutes,
   ...serviceRoutes,
+  ...settingsRoutes,
   ...snapshotRoutes,
   ...terminalRoutes,
   ...shellRoutes,
