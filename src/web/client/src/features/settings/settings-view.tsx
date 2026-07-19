@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LANGUAGE_OPTIONS, type Language } from "@/lib/language";
-import { SETTINGS_CATEGORIES, categoryById, type SettingsCategoryId } from "./settings-catalogue";
+import { SETTINGS_CATEGORIES, SETTING_SEARCH_TEXT, categoryById, type SettingsCategoryId } from "./settings-catalogue";
 import { ManagementRow, ScopeBadge, SettingNumberInput, SettingSelect, SettingToggle, UnavailableSetting } from "./setting-controls";
 import { useSettings } from "./settings-context";
 import { SettingsLayout } from "./settings-layout";
@@ -34,10 +34,9 @@ export function SettingsView({ activeProject = null, onNavigate }: SettingsViewP
 
   const searchMatches = useMemo(() => {
     if (!query) return [];
-    const ids = SETTINGS_CATEGORIES.filter((category) => matches(category.id, "")).map((item) => item.id);
-    if (matches("terminal", "danger confirmation confirm before terminating running process")) ids.push("terminal");
-    if (matches("database-safety", "danger confirmation confirm before writes")) ids.push("database-safety");
-    return [...new Set(ids)];
+    return SETTINGS_CATEGORIES.filter((category) =>
+      matches(category.id, SETTING_SEARCH_TEXT[category.id]),
+    ).map((item) => item.id);
   }, [query]);
 
   let content: ReactNode;

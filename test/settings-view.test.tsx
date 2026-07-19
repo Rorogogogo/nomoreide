@@ -172,6 +172,16 @@ describe("SettingsView", () => {
     expect(search.value).toBe("");
   });
 
+  test("searches every setting description rather than a hard-coded subset", async () => {
+    await renderView();
+    const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
+
+    await typeInto(search, "expanded");
+
+    expect(host.textContent).toContain("Search results");
+    expect(host.textContent).toContain("Dock sidebar");
+  });
+
   test("disables project settings with a visible reason when no project is active", async () => {
     await renderView({ activeProject: null });
     await click(button("Services & Logs"));
@@ -205,6 +215,16 @@ describe("SettingsView", () => {
     expect(document.activeElement).toBe(button("Data & Privacy"));
     await act(async () => button("Data & Privacy").dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })));
     expect(document.activeElement).toBe(button("General"));
+  });
+
+  test("uses a single tab stop for desktop category navigation", async () => {
+    await renderView();
+    expect(button("General").tabIndex).toBe(0);
+    expect(button("Appearance").tabIndex).toBe(-1);
+
+    await click(button("Terminal"));
+    expect(button("General").tabIndex).toBe(-1);
+    expect(button("Terminal").tabIndex).toBe(0);
   });
 
   test("provides a labeled narrow-layout category select", async () => {

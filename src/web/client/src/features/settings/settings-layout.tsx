@@ -42,7 +42,7 @@ export function SettingsLayout({ selected, onSelect, search, onSearch, saveState
             {SETTINGS_CATEGORIES.map((category, index) => {
               const Icon = category.icon;
               const active = selected === category.id;
-              return <button aria-current={active ? "page" : undefined} className={cn("flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground")} key={category.id} onClick={() => onSelect(category.id)} onKeyDown={(event) => navigate(event, index)} ref={(node) => { buttonRefs.current[index] = node; }} type="button"><Icon className="size-3.5" /><span>{category.label}</span></button>;
+              return <button aria-current={active ? "page" : undefined} className={cn("flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring", active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:bg-muted hover:text-foreground")} key={category.id} onClick={() => onSelect(category.id)} onKeyDown={(event) => navigate(event, index)} ref={(node) => { buttonRefs.current[index] = node; }} tabIndex={active ? 0 : -1} type="button"><Icon className="size-3.5" /><span>{category.label}</span></button>;
             })}
           </nav>
         </aside>
