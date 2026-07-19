@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Save } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
@@ -44,5 +45,21 @@ describe("Button loading state", () => {
     expect(html).toContain(">Save changes<");
     expect(html).not.toContain("animate-spin");
     expect(html).not.toContain("aria-busy");
+  });
+
+  test("keeps toast actions on the canonical button primitive", () => {
+    const toast = readFileSync(
+      "src/web/client/src/components/ui/toast.tsx",
+      "utf8",
+    );
+    const demo = readFileSync(
+      "src/web/client/src/components/ui/toast-demo.tsx",
+      "utf8",
+    );
+    const productionSources = `${toast}\n${demo}`;
+
+    expect(productionSources).toContain('from "@/components/ui/button"');
+    expect(productionSources).not.toContain("button-1");
+    expect(productionSources).not.toContain("spinner-1");
   });
 });
