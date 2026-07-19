@@ -3,6 +3,7 @@ import { Check, Database, Loader2, Wand2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useOperations } from "@/components/operations/operation-context";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
@@ -52,6 +53,7 @@ export function AddConnectionDialog({
   projects?: GitRepositoryDefinition[];
 }) {
   const t = useT();
+  const { isPending, runOperation } = useOperations();
   const { error: showError, success: showSuccess } = useToasts();
   const isEditing = Boolean(initial);
   const seed = useMemo(() => seedState(initial), [initial]);
@@ -66,7 +68,8 @@ export function AddConnectionDialog({
   const [projectPath, setProjectPath] = useState(initial?.projectPath ?? "");
   const [testState, setTestState] = useState<TestState>({ status: "idle" });
   const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const saveOperationKey = `database:${initial?.name ?? "new"}:save`;
+  const saving = isPending(saveOperationKey);
 
   useEffect(() => {
     // Auto-detect is only useful when creating a fresh connection.
@@ -190,16 +193,19 @@ export function AddConnectionDialog({
       showError(problem);
       return;
     }
-    setSaving(true);
     try {
-      await addDatabase({ name: name.trim(), engine, url: submitUrl, projectPath });
+      await runOperation(
+        {
+          key: saveOperationKey,
+          label: t("database.dialog.savingConnection", { name: name.trim() }),
+        },
+        () => addDatabase({ name: name.trim(), engine, url: submitUrl, projectPath }),
+      );
       showSuccess(t("database.dialog.savedToast", { name: name.trim() }));
       onSaved();
       onClose();
     } catch (caught) {
       showError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -413,8 +419,13 @@ export function AddConnectionDialog({
             {testing ? <Loader2 className="animate-spin" /> : null}
             {t("database.dialog.testConnection")}
           </Button>
-          <Button size="sm" onClick={() => void save()} disabled={saving} type="button">
-            {saving ? <Loader2 className="animate-spin" /> : null}
+          <Button
+            size="sm"
+            onClick={() => void save()}
+            loading={saving}
+            loadingLabel={t("common.saving")}
+            type="button"
+          >
             {isEditing ? t("database.dialog.saveChanges") : t("common.save")}
           </Button>
         </div>

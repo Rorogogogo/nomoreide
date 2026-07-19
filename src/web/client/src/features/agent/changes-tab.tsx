@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import {
   getChangeSet,
   getChangeSetDiff,
@@ -24,8 +25,8 @@ export function ChangesTab() {
   const [selectedId, setSelectedId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const t = useT();
+  const { isPending, runOperation } = useOperations();
 
   const refresh = useCallback(async () => {
     try {
@@ -47,10 +48,15 @@ export function ChangesTab() {
   }, [refresh]);
 
   async function handleRestore(id: string) {
-    setBusy(true);
     setNotice(null);
     try {
-      const result = await restoreChangeSet(id);
+      const result = await runOperation(
+        {
+          key: `agent:changes:${id}:restore`,
+          label: t("agent.changes.restoring"),
+        },
+        () => restoreChangeSet(id),
+      );
       await refresh();
       setNotice(
         t("agent.changes.restored", { count: result.restoredFiles }) +
@@ -61,8 +67,6 @@ export function ChangesTab() {
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -117,7 +121,7 @@ export function ChangesTab() {
         <section className="flex min-h-0 min-w-0 flex-col">
           {selectedId ? (
             <ChangeSetDetail
-              busy={busy}
+              busy={isPending(`agent:changes:${selectedId}:restore`)}
               id={selectedId}
               onRestore={handleRestore}
             />
@@ -203,7 +207,8 @@ function ChangeSetDetail({
           confirming ? (
             <span className="flex shrink-0 items-center gap-1.5">
               <Button
-                disabled={busy}
+                loading={busy}
+                loadingLabel={t("agent.changes.restoring")}
                 onClick={() => {
                   setConfirming(false);
                   void onRestore(id);

@@ -276,4 +276,67 @@ describe("global mutation feedback", () => {
     expect(sources).not.toContain('key: "github:load-more"');
     expect(sources).not.toContain('key: "service:test-command"');
   });
+
+  test("tracks remaining destructive and save mutations with resource-specific keys", () => {
+    const contracts = [
+      [
+        "src/web/client/src/features/database/add-connection-dialog.tsx",
+        'database:${initial?.name ?? "new"}:save',
+        "loading={saving}",
+      ],
+      [
+        "src/web/client/src/features/database/sql-console.tsx",
+        'database:${connection}:write',
+        "loading={isWrite && writePending}",
+      ],
+      [
+        "src/web/client/src/features/agent/changes-tab.tsx",
+        'agent:changes:${id}:restore',
+        "loading={busy}",
+      ],
+      [
+        "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
+        'agent-env:${agent}:model',
+        "loading={applyingModel}",
+      ],
+      [
+        "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
+        'agent-env:${agent}:settings',
+        "loading={savingFile}",
+      ],
+      [
+        "src/web/client/src/features/agent-env/profile-contents.tsx",
+        'agent-env:profile:${name}:update',
+        "disabled={busy}",
+      ],
+      [
+        "src/web/client/src/features/settings/setting-controls.tsx",
+        'settings:${scopeKey ?? "global"}:${id}:save',
+        "loading={saving}",
+      ],
+    ] as const;
+
+    for (const [path, key, pendingControl] of contracts) {
+      const source = readFileSync(path, "utf8");
+      expect(source, path).toContain("runOperation");
+      expect(source, path).toContain(key);
+      expect(source, path).toContain(pendingControl);
+    }
+  });
+
+  test("keeps read-only database and agent refresh work out of global operations", () => {
+    const sources = [
+      "src/web/client/src/features/database/add-connection-dialog.tsx",
+      "src/web/client/src/features/database/sql-console.tsx",
+      "src/web/client/src/features/agent/changes-tab.tsx",
+      "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
+      "src/web/client/src/features/agent-env/profile-contents.tsx",
+    ].map((path) => readFileSync(path, "utf8")).join("\n");
+
+    expect(sources).not.toContain('database:${connection}:query');
+    expect(sources).not.toContain('database:${connection}:preview');
+    expect(sources).not.toContain('database:${connection}:generate');
+    expect(sources).not.toContain('agent:changes:refresh');
+    expect(sources).not.toContain('agent-env:${agent}:load');
+  });
 });
