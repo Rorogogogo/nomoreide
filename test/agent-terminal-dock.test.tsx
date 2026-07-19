@@ -34,9 +34,18 @@ vi.mock("@/features/git/git-situation-banner", () => ({ GitSituationBanner: () =
 
 import { AgentTerminalDock, clampAgentDockHeight } from "../src/web/client/src/features/agent/terminal/agent-terminal-dock";
 
+/**
+ * Roots mounted by the current test. An unmounted root can still hold work in
+ * React's scheduler, which then fires against a torn-down happy-dom and throws
+ * "window is not defined" as an unhandled error — so every root gets unmounted
+ * before the environment goes away.
+ */
+let mountedRoots: Array<ReturnType<typeof createRoot>> = [];
+
 async function render(props: ComponentProps<typeof AgentTerminalDock> = {}) {
   const host = document.createElement("div"); document.body.append(host);
-  const root = createRoot(host); await act(async () => root.render(<AgentTerminalDock {...props} />));
+  const root = createRoot(host); mountedRoots.push(root);
+  await act(async () => root.render(<AgentTerminalDock {...props} />));
   return { host, root };
 }
 
@@ -47,10 +56,14 @@ async function rerender(mounted: { root: ReturnType<typeof createRoot> }) {
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-  vi.clearAllMocks(); document.body.replaceChildren();
+  vi.clearAllMocks(); document.body.replaceChildren(); mountedRoots = [];
   Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, onboarding: false, open: false, pendingTaskIds: new Set(), tasks: [], terminalError: null });
 });
-afterEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = false; });
+afterEach(async () => {
+  const roots = mountedRoots; mountedRoots = [];
+  await act(async () => { for (const root of roots) root.unmount(); });
+  globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+});
 
 describe("AgentTerminalDock", () => {
   test("renders a 36px collapsed task rail and expands from the whole rail", async () => {
