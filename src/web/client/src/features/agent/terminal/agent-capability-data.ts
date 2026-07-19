@@ -97,9 +97,9 @@ export function summarizeMcpAuth(statuses: McpAuthStatus[]): McpAuthSummary {
   return { checked: statuses.length, needsAuth, failed };
 }
 
-/** Claude skills are slash-invocable; Codex skills are addressed in prose. */
+/** Claude skills are slash-invocable; Codex skills are @-mentions. */
 export function skillInsertText(name: string, provider: CapabilityProviderId): string {
-  return provider === "claude" ? `/${name} ` : `Use the "${name}" skill: `;
+  return provider === "claude" ? `/${name} ` : `@${name} `;
 }
 
 export function mcpInsertText(name: string): string {
