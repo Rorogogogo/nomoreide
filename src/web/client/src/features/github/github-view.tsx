@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
@@ -127,8 +128,9 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
   );
   const [createPRHead, setCreatePRHead] = useState<string | null>(null);
   const [actionsBranch, setActionsBranch] = useState<string | null>(null);
-  const [disconnecting, setDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
+  const { isPending, runOperation } = useOperations();
+  const disconnecting = isPending("github:disconnect");
 
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
@@ -156,15 +158,22 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
     }`;
 
   async function handleDisconnect() {
-    setDisconnecting(true);
     setDisconnectError(null);
     try {
-      await removeGitHubToken("github.com");
-      token.refresh();
+      await runOperation(
+        {
+          errorMessage: (error) =>
+            error instanceof Error ? error.message : String(error),
+          key: "github:disconnect",
+          label: t("github.disconnecting"),
+        },
+        async () => {
+          await removeGitHubToken("github.com");
+          token.refresh();
+        },
+      );
     } catch (caught) {
       setDisconnectError(caught instanceof Error ? caught.message : String(caught));
-    } finally {
-      setDisconnecting(false);
     }
   }
 
@@ -191,13 +200,14 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
             {t("github.reconnect")}
           </Button>
           <Button
-            disabled={disconnecting}
+            loading={disconnecting}
+            loadingLabel={t("github.disconnecting")}
             onClick={() => void handleDisconnect()}
             size="sm"
             type="button"
             variant="outline"
           >
-            {disconnecting ? t("github.disconnecting") : t("github.disconnect")}
+            {t("github.disconnect")}
           </Button>
         </div>
 

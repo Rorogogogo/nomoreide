@@ -4,6 +4,7 @@ import { act, createRef, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
 import { SqlConsole } from "../src/web/client/src/features/database/sql-console";
 import { useTableBrowser } from "../src/web/client/src/features/database/use-databases";
 import {
@@ -46,7 +47,7 @@ async function mount(node: ReactNode): Promise<{ host: HTMLDivElement; root: Roo
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => root.render(node));
+  await act(async () => root.render(<OperationProvider>{node}</OperationProvider>));
   return { host, root };
 }
 
@@ -130,7 +131,11 @@ describe("project database preferences", () => {
 
     act(() => browser.changePageSize(50));
     expect(browser.limit).toBe(50);
-    await act(async () => mounted.root.render(<Harness resultLimit={500} />));
+    await act(async () => mounted.root.render(
+      <OperationProvider>
+        <Harness resultLimit={500} />
+      </OperationProvider>,
+    ));
     expect(browser.limit).toBe(50);
     await act(async () => mounted.root.unmount());
   });

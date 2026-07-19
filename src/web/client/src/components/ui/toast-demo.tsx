@@ -1,5 +1,5 @@
 import { useToasts } from "@/components/ui/toast";
-import { Button } from "@/components/ui/button-1";
+import { Button } from "@/components/ui/button";
 
 export default function ToastDemo() {
   const toasts = useToasts();

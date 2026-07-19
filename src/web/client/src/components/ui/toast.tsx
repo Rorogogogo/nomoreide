@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import clsx from "clsx";
-import { Button } from "@/components/ui/button-1";
+import { Button } from "@/components/ui/button";
 
 const CloseIcon = ({ className }: { className: string }) => (
   <svg height="16" strokeLinejoin="round" viewBox="0 0 16 16" width="16" className={className}>
@@ -229,9 +229,11 @@ const ToastContainer = () => {
                     <div className="flex gap-1">
                       {toast.onUndoAction && (
                         <Button
-                          type="tertiary"
-                          svgOnly
-                          size="small"
+                          aria-label="Undo"
+                          className="size-8"
+                          size="icon-sm"
+                          type="button"
+                          variant="ghost"
                           onClick={() => {
                             toast.onUndoAction?.();
                             toastStore.remove(toast.id);
@@ -241,9 +243,11 @@ const ToastContainer = () => {
                         </Button>
                       )}
                       <Button
-                        type="tertiary"
-                        svgOnly
-                        size="small"
+                        aria-label="Dismiss"
+                        className="size-8"
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
                         onClick={() => toastStore.remove(toast.id)}
                       >
                         <CloseIcon
@@ -262,12 +266,17 @@ const ToastContainer = () => {
                 </div>
                 {toast.action && (
                   <div className="flex w-full items-center justify-end gap-2">
-                    <Button type="tertiary" size="small" onClick={() => toastStore.remove(toast.id)}>
+                    <Button
+                      onClick={() => toastStore.remove(toast.id)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
                       Dismiss
                     </Button>
                     <Button
-                      type="primary"
-                      size="small"
+                      size="sm"
+                      type="button"
                       onClick={() => {
                         toast.onAction?.();
                         toastStore.remove(toast.id);

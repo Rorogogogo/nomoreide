@@ -1,12 +1,17 @@
 // @vitest-environment happy-dom
 
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
+import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
 import {
   ManagementRow,
   SettingNumberInput,
 } from "../src/web/client/src/features/settings/setting-controls";
+
+function withOperations(node: ReactNode) {
+  return <OperationProvider>{node}</OperationProvider>;
+}
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -30,7 +35,7 @@ test("announces invalid numeric input and clears stale validation on confirmed r
       value={value}
     />
   );
-  await act(async () => root.render(render(100)));
+  await act(async () => root.render(withOperations(render(100))));
   const input = host.querySelector<HTMLInputElement>("#row-limit")!;
 
   await act(async () => {
@@ -43,7 +48,7 @@ test("announces invalid numeric input and clears stale validation on confirmed r
   expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("Enter a value");
 
-  await act(async () => root.render(render(250)));
+  await act(async () => root.render(withOperations(render(250))));
   expect(input.value).toBe("250");
   expect(input.getAttribute("aria-invalid")).toBe("false");
   expect(host.querySelector('[role="alert"]')).toBeNull();
@@ -67,7 +72,7 @@ test("resets an equal numeric value when its project scope changes", async () =>
       value={100}
     />
   );
-  await act(async () => root.render(render("/work/a")));
+  await act(async () => root.render(withOperations(render("/work/a"))));
   const input = host.querySelector<HTMLInputElement>("#project-row-limit")!;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -76,7 +81,7 @@ test("resets an equal numeric value when its project scope changes", async () =>
   });
   expect(input.value).toBe("250");
 
-  await act(async () => root.render(render("/work/b")));
+  await act(async () => root.render(withOperations(render("/work/b"))));
 
   expect(input.value).toBe("100");
   await act(async () => root.unmount());

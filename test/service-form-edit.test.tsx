@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
 import { ServiceForm } from "../src/web/client/src/features/services/service-form/service-form";
+import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
 import type { ServiceDefinition } from "../src/web/client/src/lib/api";
 
 describe("ServiceForm edit mode", () => {
@@ -15,7 +16,9 @@ describe("ServiceForm edit mode", () => {
     };
 
     const markup = renderToStaticMarkup(
-      <ServiceForm cwd="/repo" initialService={service} onRefresh={async () => undefined} />,
+      <OperationProvider>
+        <ServiceForm cwd="/repo" initialService={service} onRefresh={async () => undefined} />
+      </OperationProvider>,
     );
 
     expect(markup).toContain('value="backend"');
@@ -30,7 +33,9 @@ describe("ServiceForm edit mode", () => {
 
   test("starts blank when creating a new service", () => {
     const markup = renderToStaticMarkup(
-      <ServiceForm cwd="/repo" onRefresh={async () => undefined} />,
+      <OperationProvider>
+        <ServiceForm cwd="/repo" onRefresh={async () => undefined} />
+      </OperationProvider>,
     );
 
     expect(markup).toContain("Add Service");

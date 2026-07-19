@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { SettingsSaveState } from "./settings-context";
@@ -60,27 +61,40 @@ export function SettingSelect({ id, label, description, value, options, onChange
 
 export function SettingNumberInput({ id, label, description, value, min, max, onSave, disabled = false, scopeKey }: { id: string; label: string; description: string; value: number; min: number; max: number; onSave: (value: number) => void | Promise<void>; disabled?: boolean; scopeKey?: string | null }) {
   const t = useT();
+  const { isPending, runOperation } = useOperations();
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState<string | null>(null);
+  const operationKey = `settings:${scopeKey ?? "global"}:${id}:save`;
+  const saving = isPending(operationKey);
   useEffect(() => {
     setDraft(String(value));
     setError(null);
   }, [scopeKey, value]);
-  function save() {
+  async function save() {
     const parsed = Number(draft);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
       setError(t("settingsHub.numberRange", { min, max }));
       return;
     }
     setError(null);
-    void onSave(parsed);
+    try {
+      await runOperation(
+        {
+          key: operationKey,
+          label: t("settingsHub.savingSetting", { label }),
+        },
+        async () => onSave(parsed),
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    }
   }
   return (
     <SettingRow description={description} disabled={disabled} id={id} label={label}>
       <div className="flex flex-col items-start gap-1 sm:items-end">
         <div className="flex items-center gap-2">
           <Input aria-describedby={`${id}-description${error ? ` ${id}-error` : ""}`} aria-invalid={Boolean(error)} className="h-8 w-24 font-mono text-xs" disabled={disabled} id={id} max={max} min={min} onChange={(event) => setDraft(event.target.value)} type="number" value={draft} />
-          <Button aria-label={t("settingsHub.saveAria", { label })} disabled={disabled} onClick={save} size="sm" type="button" variant="outline">{t("settingsHub.save")}</Button>
+          <Button aria-label={t("settingsHub.saveAria", { label })} disabled={disabled} loading={saving} loadingLabel={t("settingsHub.saving")} onClick={() => void save()} size="sm" type="button" variant="outline">{t("settingsHub.save")}</Button>
         </div>
         {error ? <span className="text-[11px] text-destructive" id={`${id}-error`} role="alert">{error}</span> : null}
       </div>

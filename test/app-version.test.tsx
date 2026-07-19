@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
@@ -11,6 +12,26 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("application operation feedback", () => {
+  test("keeps the provider above page content and mounts one strip in the shell", () => {
+    const source = readFileSync(
+      new URL("../src/web/client/src/app.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(source).toMatch(
+      /<OperationProvider>\s*<AppContent syncLocation=\{syncLocation\} \/>\s*<\/OperationProvider>/,
+    );
+    expect(source.match(/<OperationStrip \/>/g)).toHaveLength(1);
+    expect(source.indexOf("<OperationStrip />")).toBeGreaterThan(
+      source.indexOf("</header>"),
+    );
+    expect(source.indexOf("<OperationStrip />")).toBeLessThan(
+      source.indexOf("<RunningStripe"),
+    );
+  });
 });
 
 describe("AppIdentity", () => {

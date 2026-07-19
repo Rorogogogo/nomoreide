@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Spinner } from "@/components/ui/loading";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -31,14 +32,41 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  loading?: boolean;
+  loadingLabel?: React.ReactNode;
+}
 
-export function Button({ className, variant, size, ...props }: ButtonProps) {
+export function Button({
+  children,
+  className,
+  disabled,
+  loading = false,
+  loadingLabel,
+  size,
+  variant,
+  ...props
+}: ButtonProps) {
+  const iconOnly = size === "icon" || size === "icon-sm";
+
   return (
     <button
-      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+      aria-busy={loading || undefined}
+      className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || loading}
+    >
+      <span className="inline-flex items-center justify-center gap-2">
+        {loading ? (
+          <>
+            <Spinner size="sm" />
+            {iconOnly ? null : (loadingLabel ?? children)}
+          </>
+        ) : (
+          children
+        )}
+      </span>
+    </button>
   );
 }
 

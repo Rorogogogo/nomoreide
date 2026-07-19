@@ -7,6 +7,7 @@ import {
   type AgentEnvProfileMcp,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { useOperations } from "@/components/operations/operation-context";
 
 /**
  * Expanded profile row: view the bundled MCPs/skills and lightly edit them —
@@ -22,9 +23,11 @@ export function ProfileContents({
   onChanged: () => void;
 }) {
   const t = useT();
+  const { isPending, runOperation } = useOperations();
   const [profile, setProfile] = useState<AgentEnvProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const operationKey = `agent-env:profile:${name}:update`;
+  const busy = isPending(operationKey);
   const [description, setDescription] = useState("");
 
   useEffect(() => {
@@ -47,17 +50,20 @@ export function ProfileContents({
   const patch = async (
     input: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills">>,
   ) => {
-    setBusy(true);
     setError(null);
     try {
-      const updated = await updateAgentEnvProfile(name, input);
+      const updated = await runOperation(
+        {
+          key: operationKey,
+          label: t("agentEnv.updatingProfile", { name }),
+        },
+        () => updateAgentEnvProfile(name, input),
+      );
       setProfile(updated);
       setDescription(updated.description ?? "");
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
     }
   };
 

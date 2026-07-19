@@ -59,6 +59,8 @@ import {
 import { cn } from "@/lib/utils";
 import { TauriTitleBar } from "@/components/tauri-titlebar";
 import { useT, type TranslationKey } from "@/lib/i18n";
+import { OperationProvider } from "@/components/operations/operation-context";
+import { OperationStrip } from "@/components/operations/operation-strip";
 
 type Page =
   | "services"
@@ -259,7 +261,9 @@ export function AppIdentity({ className }: { className?: string }) {
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   return (
     <SettingsProvider>
-      <AppContent syncLocation={syncLocation} />
+      <OperationProvider>
+        <AppContent syncLocation={syncLocation} />
+      </OperationProvider>
     </SettingsProvider>
   );
 }
@@ -572,6 +576,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               </div>
             </div>
           </header>
+
+          <div className="relative z-30 shrink-0 px-4 pt-2">
+            <OperationStrip />
+          </div>
 
           {data ? (
             <RunningStripe

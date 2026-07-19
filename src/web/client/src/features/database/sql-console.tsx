@@ -8,6 +8,7 @@ import {
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOperations } from "@/components/operations/operation-context";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ export function SqlConsole({
   preferences?: { confirmWrites: boolean; resultLimit: number };
 }) {
   const t = useT();
+  const { isPending, runOperation } = useOperations();
   const { success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
   const read = useSqlQuery(connection);
@@ -79,6 +81,8 @@ export function SqlConsole({
   const isWrite = unlocked && isWriteStatement;
   const needsUnlock = isWriteStatement && !unlocked;
   const running = read.running || write.previewing || write.committing;
+  const writeOperationKey = `database:${connection}:write`;
+  const writePending = isPending(writeOperationKey);
 
   function submit() {
     if (!sql.trim()) return;
@@ -116,7 +120,13 @@ export function SqlConsole({
   }
 
   async function commitWrite(statement?: string) {
-    const outcome = await write.commit(statement);
+    const outcome = await runOperation(
+      {
+        key: writeOperationKey,
+        label: t("database.sql.committingWrite", { connection }),
+      },
+      () => write.commit(statement),
+    );
     if (outcome?.committed) {
       const affected = outcome.affectedRows ?? 0;
       showSuccess(t("database.sql.committed", { count: affected }));
@@ -169,6 +179,8 @@ export function SqlConsole({
               className={cn("h-7 px-3", isWrite && "bg-amber-600 text-white hover:bg-amber-600/90")}
               onClick={submit}
               disabled={running || !sql.trim()}
+              loading={isWrite && writePending}
+              loadingLabel={t("database.sql.runWrite")}
               type="button"
             >
               {running ? (
