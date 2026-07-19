@@ -19,7 +19,7 @@ import {
   type ProjectPreferencesPatch,
 } from "@/lib/api";
 import { setLanguage, useLanguage } from "@/lib/language";
-import { setTheme, useTheme } from "@/lib/theme";
+import { setTheme, useTheme, type Theme } from "@/lib/theme";
 import {
   applyUiPreferences,
   loadUiPreferences,
@@ -133,7 +133,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const saveCycleErrorRef = useRef<string | null>(null);
   const compatibilityTimerRef = useRef<number | null>(null);
   const compatibilityReadyRef = useRef(false);
-  const appliedThemeRef = useRef<"light" | "dark" | null>(null);
+  const appliedThemeRef = useRef<Theme | null>(null);
   const appliedLanguageRef = useRef(ui.language);
 
   const clearSavedTimer = useCallback(() => {
@@ -376,9 +376,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     applyUiPreferences(validated);
     setUi(validated);
 
-    const effectiveTheme = resolveTheme(validated.theme);
-    appliedThemeRef.current = effectiveTheme;
-    setTheme(effectiveTheme);
+    appliedThemeRef.current = validated.theme;
+    setTheme(validated.theme);
     appliedLanguageRef.current = validated.language;
     setLanguage(validated.language);
     return true;
@@ -386,26 +385,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyUiPreferences(ui);
-    const effectiveTheme = resolveTheme(ui.theme);
-    appliedThemeRef.current = effectiveTheme;
-    setTheme(effectiveTheme);
+    appliedThemeRef.current = ui.theme;
+    setTheme(ui.theme);
     appliedLanguageRef.current = ui.language;
     setLanguage(ui.language);
   }, []);
-
-  useEffect(() => {
-    if (ui.theme !== "system" || typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const applySystemTheme = (matches: boolean) => {
-      const resolved = matches ? "dark" : "light";
-      appliedThemeRef.current = resolved;
-      setTheme(resolved);
-    };
-    applySystemTheme(media.matches);
-    const onChange = (event: MediaQueryListEvent) => applySystemTheme(event.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, [ui.theme]);
 
   // Keep the pre-hub header toggle and language hook on the same stored values.
   useEffect(() => {
@@ -600,12 +584,4 @@ export function useSettings(): SettingsContextValue {
   const value = useContext(SettingsContext);
   if (!value) throw new Error("useSettings must be used within SettingsProvider");
   return value;
-}
-
-function resolveTheme(theme: UiPreferences["theme"]): "light" | "dark" {
-  if (theme !== "system") return theme;
-  return typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
 }

@@ -4,6 +4,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  --code-font-size: 12px;
+  --settings-row-padding: 0.875rem;
   --background: 0 0% 99%;
   --foreground: 24 10% 10%;
   --card: 0 0% 100%;
@@ -49,6 +51,27 @@
   --ds-shadow-border: 0 0 0 1px rgba(0, 0, 0, 0.08);
   --ds-shadow-small: 0px 2px 2px rgba(0, 0, 0, 0.04);
   --ds-shadow-border-small: var(--ds-shadow-border), var(--ds-shadow-small);
+}
+
+[data-density="compact"] {
+  --settings-row-padding: 0.5rem;
+}
+
+.settings-row {
+  padding-block: var(--settings-row-padding);
+}
+
+.code-font-size {
+  font-size: var(--code-font-size);
+}
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
 }
 
 @theme inline {

@@ -41,7 +41,7 @@ export function LogViewer({
   return (
     <div
       className={cn(
-        "h-full max-w-full overflow-auto bg-background font-mono text-[11px] leading-5 dark:bg-zinc-950",
+        "code-font-size h-full max-w-full overflow-auto bg-background font-mono leading-5 dark:bg-zinc-950",
         className,
       )}
       ref={containerRef}

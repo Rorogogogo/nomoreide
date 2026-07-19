@@ -5,14 +5,15 @@ import {
   headerActionIconClassName,
   headerActionLabelClassName,
 } from "@/components/header-action";
-import { useTheme, type Theme } from "@/lib/theme";
+import { useResolvedTheme, useTheme, type Theme } from "@/lib/theme";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useTheme();
+  const [, setTheme] = useTheme();
+  const resolvedTheme = useResolvedTheme();
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const toggle = useCallback(() => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
+    const next: Theme = resolvedTheme === "dark" ? "light" : "dark";
     const btn = buttonRef.current;
     const doc = document as Document & {
       startViewTransition?: (cb: () => void) => { ready: Promise<void> };
@@ -50,19 +51,19 @@ export function ThemeToggle() {
         },
       );
     });
-  }, [theme]);
+  }, [resolvedTheme, setTheme]);
 
   return (
     <button
       ref={buttonRef}
       type="button"
       onClick={toggle}
-      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       aria-label="Toggle theme"
       className={headerActionClassName()}
     >
       <span className={headerActionIconClassName()}>
-        {theme === "dark" ? <Sun /> : <Moon />}
+        {resolvedTheme === "dark" ? <Sun /> : <Moon />}
       </span>
       <span className={headerActionLabelClassName()}>Theme</span>
     </button>

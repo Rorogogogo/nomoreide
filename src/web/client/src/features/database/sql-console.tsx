@@ -126,7 +126,7 @@ export function SqlConsole({
               ? "SELECT … / INSERT … / UPDATE …   (Cmd/Ctrl+Enter to run)"
               : "SELECT * FROM …   (read-only — Cmd/Ctrl+Enter to run)"
           }
-          className="h-24 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono text-[12px] outline-none focus:border-ring"
+          className="code-font-size h-24 w-full resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono outline-none focus:border-ring"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
           <LockControl
@@ -304,7 +304,7 @@ function ResultArea({
     <div className="min-h-0 flex-1 overflow-auto">
       {error ? (
         <div className="space-y-3 p-4">
-          <p className="whitespace-pre-wrap font-mono text-[12px] text-destructive">{error}</p>
+          <p className="code-font-size whitespace-pre-wrap font-mono text-destructive">{error}</p>
           <Button
             size="sm"
             variant="outline"
@@ -370,7 +370,7 @@ function ResultGrid({
         </div>
       ) : null}
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-max min-w-full border-collapse text-left font-mono text-[11px]">
+        <table className="code-font-size w-max min-w-full border-collapse text-left font-mono">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b border-border">
               {columns.map((col) => (

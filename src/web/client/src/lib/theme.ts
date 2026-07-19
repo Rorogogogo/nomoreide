@@ -1,22 +1,44 @@
 import { useSyncExternalStore } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "system";
+export type ResolvedTheme = Exclude<Theme, "system">;
 
 /** Same key ThemeToggle has always used, so existing choices carry over. */
 const STORAGE_KEY = "nomoreide-theme-choice";
+const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
 
 function readStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "system";
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark") return stored;
+    const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
+    const stored = raw ? (JSON.parse(raw) as { theme?: unknown; version?: unknown }) : null;
+    if (
+      stored?.version === 1 &&
+      (stored.theme === "light" || stored.theme === "dark" || stored.theme === "system")
+    ) return stored.theme;
+  } catch {
+    // Malformed or unavailable canonical storage can still fall back to legacy.
+  }
+  try {
+    const legacy = window.localStorage.getItem(STORAGE_KEY);
+    if (legacy === "light" || legacy === "dark" || legacy === "system") return legacy;
   } catch {
     // Storage unavailable — use the safe product default.
   }
-  return "dark";
+  return "system";
 }
 
-function applyTheme(theme: Theme) {
+function resolveTheme(theme: Theme): ResolvedTheme {
+  if (theme !== "system") return theme;
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function applyTheme(theme: ResolvedTheme) {
+  if (typeof document === "undefined") return;
   const root = document.documentElement;
   root.classList.toggle("dark", theme === "dark");
   root.style.colorScheme = theme;
@@ -27,30 +49,81 @@ function applyTheme(theme: Theme) {
  * sees one source of truth — a change in either place updates both.
  */
 let current: Theme = readStoredTheme();
+let resolved = resolveTheme(current);
 const listeners = new Set<() => void>();
+let stopSystemListener: (() => void) | null = null;
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+function syncSystemTheme() {
+  stopSystemListener?.();
+  stopSystemListener = null;
+  resolved = resolveTheme(current);
+  applyTheme(resolved);
+  if (
+    current !== "system" ||
+    typeof window === "undefined" ||
+    typeof window.matchMedia !== "function"
+  ) return;
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = (event: MediaQueryListEvent) => {
+    resolved = event.matches ? "dark" : "light";
+    applyTheme(resolved);
+    notify();
+  };
+  media.addEventListener("change", onChange);
+  stopSystemListener = () => media.removeEventListener("change", onChange);
+}
+
+syncSystemTheme();
 
 export function getTheme(): Theme {
   return current;
 }
 
+export function getResolvedTheme(): ResolvedTheme {
+  return resolved;
+}
+
 export function setTheme(next: Theme) {
-  if (next === current) return;
+  const changed = next !== current;
+  if (!changed) {
+    if (next === "system" && !stopSystemListener) syncSystemTheme();
+    else {
+      resolved = resolveTheme(next);
+      applyTheme(resolved);
+    }
+    return;
+  }
   current = next;
-  applyTheme(next);
+  syncSystemTheme();
   try {
     window.localStorage.setItem(STORAGE_KEY, next);
   } catch {
     // Storage unavailable (private mode / quota) — keep in-memory state.
   }
-  for (const listener of listeners) listener();
+  notify();
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  if (current === "system" && !stopSystemListener) syncSystemTheme();
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      stopSystemListener?.();
+      stopSystemListener = null;
+    }
+  };
 }
 
 export function useTheme(): [Theme, (next: Theme) => void] {
-  const theme = useSyncExternalStore(subscribe, getTheme, () => "dark" as Theme);
+  const theme = useSyncExternalStore(subscribe, getTheme, () => "system" as Theme);
   return [theme, setTheme];
+}
+
+export function useResolvedTheme(): ResolvedTheme {
+  return useSyncExternalStore(subscribe, getResolvedTheme, () => "dark");
 }
