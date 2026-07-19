@@ -581,7 +581,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 }
 
 export function useSettings(): SettingsContextValue {
-  const value = useContext(SettingsContext);
+  const value = useOptionalSettings();
   if (!value) throw new Error("useSettings must be used within SettingsProvider");
   return value;
+}
+
+export function useOptionalSettings(): SettingsContextValue | null {
+  return useContext(SettingsContext);
 }
