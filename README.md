@@ -9,7 +9,7 @@
 [![npm version](https://img.shields.io/npm/v/nomoreide?style=flat-square&color=0ea5e9&label=npm)](https://www.npmjs.com/package/nomoreide)
 [![npm downloads](https://img.shields.io/npm/dm/nomoreide?style=flat-square&color=6366f1)](https://www.npmjs.com/package/nomoreide)
 [![GitHub stars](https://img.shields.io/github/stars/Rorogogogo/nomoreide?style=flat-square&color=f59e0b)](https://github.com/Rorogogogo/nomoreide/stargazers)
-[![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20NC-22c55e?style=flat-square)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0%20%2B%20Commercial-22c55e?style=flat-square)](LICENSE)
 [![Node.js ≥20](https://img.shields.io/badge/node-%E2%89%A520-3b82f6?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![MCP Ready](https://img.shields.io/badge/MCP-ready-a855f7?style=flat-square)](https://modelcontextprotocol.io)
 
