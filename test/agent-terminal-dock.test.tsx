@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const dock = vi.hoisted(() => ({
   activeSource: null as null | { type: string; label: string }, activeTaskId: null as string | null,
-  clearSource: vi.fn(), closeTask: vi.fn(), configured: true, createTask: vi.fn(), creating: 0,
+  claimInitialInput: vi.fn(), clearSource: vi.fn(), closeTask: vi.fn(), configured: true,
+  createShellTask: vi.fn(), createTask: vi.fn(), creating: 0,
   draft: "", focusNonce: 0, insertPath: vi.fn(), onboarding: false, open: false,
   provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
   pendingTaskIds: new Set<string>(),
@@ -15,7 +16,10 @@ const dock = vi.hoisted(() => ({
     { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "", configured: true },
     { id: "codex", label: "Codex", commandName: "codex", installHint: "npm i codex", intro: "", configured: false },
   ],
-  selectProvider: vi.fn(), setActiveTaskId: vi.fn(), setDraft: vi.fn(), setOnboarding: vi.fn(),
+  // Selection lives in the provider, so the mock must actually hold it — the
+  // dock reads it back to decide whether the compose tab is the current one.
+  selectProvider: vi.fn(), setActiveTaskId: vi.fn((id: string | null) => { dock.activeTaskId = id; }),
+  setDraft: vi.fn(), setOnboarding: vi.fn(),
   setOpen: vi.fn(), stopTask: vi.fn(), tasks: [] as Array<Record<string, unknown>>,
   terminalError: null as string | null, updateTaskStatus: vi.fn(),
 }));
@@ -34,6 +38,11 @@ async function render(props: ComponentProps<typeof AgentTerminalDock> = {}) {
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host); await act(async () => root.render(<AgentTerminalDock {...props} />));
   return { host, root };
+}
+
+/** Flush a provider-state change the way a real re-render would. */
+async function rerender(mounted: { root: ReturnType<typeof createRoot> }) {
+  await act(async () => mounted.root.render(<AgentTerminalDock />));
 }
 
 beforeEach(() => {
@@ -112,7 +121,11 @@ describe("AgentTerminalDock", () => {
     const mounted = await render();
     expect(mounted.host.querySelector('[aria-label="Agent task prompt"]')).toBeNull();
     await act(async () => (mounted.host.querySelector('[aria-label="New agent task"]') as HTMLButtonElement).click());
+    expect(dock.setActiveTaskId).toHaveBeenCalledWith("new");
+    await rerender(mounted);
     expect(mounted.host.querySelector('[aria-label="Agent task prompt"]')).not.toBeNull();
+    // The compose tab is the selected tab, so the strip cannot disagree with it.
+    expect(mounted.host.querySelector('#agent-tab-new')?.getAttribute("aria-selected")).toBe("true");
     await act(async () => mounted.root.unmount());
     Object.assign(dock, { draft: "staged", focusNonce: 2 });
     const staged = await render();
@@ -129,6 +142,7 @@ describe("AgentTerminalDock", () => {
     });
     dock.createTask.mockResolvedValue({ id: "two" });
     const mounted = await render();
+    await rerender(mounted);
     expect(mounted.host.querySelector('[aria-label="Agent task prompt"]')).not.toBeNull();
     await act(async () => (mounted.host.querySelector('[aria-label="Run agent task"]') as HTMLButtonElement).click());
 
@@ -192,7 +206,8 @@ describe("AgentTerminalDock", () => {
     expect(mounted.host.querySelector('[aria-label="Repository URL"]')).toBeNull();
 
     dock.onboarding = true;
-    await act(async () => mounted.root.render(<AgentTerminalDock />));
+    await rerender(mounted);
+    await rerender(mounted);
 
     expect(mounted.host.querySelector('[aria-label="Repository URL"]')).not.toBeNull();
     expect(mounted.host.querySelector('[aria-label="Agent task prompt"]')).not.toBeNull();
@@ -232,6 +247,57 @@ describe("AgentTerminalDock", () => {
 
     act(() => (host.querySelector('[aria-label="Stop showing task Second task beside the active one"]') as HTMLButtonElement).click());
     expect((host.querySelector('#agent-panel-two') as HTMLElement).className).toContain("invisible");
+  });
+
+  test("shell mode opens a plain terminal with no prompt and no agent install", async () => {
+    Object.assign(dock, { open: true, configured: false });
+    dock.createShellTask.mockResolvedValue({ id: "sh1" });
+    const { host } = await render();
+    const run = host.querySelector('[aria-label="Run agent task"]') as HTMLButtonElement;
+    expect(run.disabled).toBe(true);
+
+    const shell = host.querySelector('[aria-label="Shell"]') as HTMLButtonElement;
+    await act(async () => shell.click());
+
+    // Missing agent is irrelevant to a shell, and an empty draft is valid.
+    const open = host.querySelector('[aria-label="Open shell"]') as HTMLButtonElement;
+    expect(open.disabled).toBe(false);
+    expect(host.querySelector('[aria-label="Shell command"]')).not.toBeNull();
+    await act(async () => open.click());
+    expect(dock.createShellTask).toHaveBeenCalledWith("");
+    expect(dock.createTask).not.toHaveBeenCalled();
+  });
+
+  test("labels a shell tab by kind rather than an agent provider", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "sh1", tasks: [
+      { id: "sh1", kind: "shell", label: "npm run build", state: "running" },
+    ] });
+    const { host } = await render();
+    expect(host.textContent).toContain("npm run build");
+    // No agent capability chips against a plain shell.
+    expect(host.querySelector('[aria-label="Agent provider"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Open task npm run build"]')).not.toBeNull();
+  });
+
+  test("composing keeps the split pane alive and takes the left half itself", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", label: "First task", state: "running", provider: "claude" },
+      { id: "two", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const mounted = await render();
+    act(() => (mounted.host.querySelector('[aria-label="Show task Second task beside the active one"]') as HTMLButtonElement).click());
+
+    await act(async () => (mounted.host.querySelector('[aria-label="New agent task"]') as HTMLButtonElement).click());
+    await rerender(mounted);
+
+    const composer = mounted.host.querySelector("#agent-panel-new") as HTMLElement;
+    expect(composer.className).toContain("right-1/2");
+    // The whole point: the task you split out stays readable while you type.
+    const right = mounted.host.querySelector("#agent-panel-two") as HTMLElement;
+    expect(right.className).toContain("left-1/2");
+    expect(right.className).not.toContain("invisible");
+    expect(mounted.host.querySelector('[data-session="two"]')?.getAttribute("data-active")).toBe("true");
+    expect((mounted.host.querySelector("#agent-panel-one") as HTMLElement).className).toContain("invisible");
   });
 
   test("activating the split task collapses back to a single pane", async () => {
@@ -335,10 +401,12 @@ describe("AgentTerminalDock", () => {
     Object.assign(dock, { open: true }); const { host } = await render();
     const group = host.querySelector('[aria-label="Agent provider"]') as HTMLElement;
     const toggles = Array.from(group.querySelectorAll("button")) as HTMLButtonElement[];
-    expect(toggles).toHaveLength(2);
+    // Two agent providers plus Shell, which is never gated on an install.
+    expect(toggles).toHaveLength(3);
     expect(toggles[0].getAttribute("aria-pressed")).toBe("true");
     expect(toggles[1].disabled).toBe(true);
     expect(toggles[1].title).toContain("npm i codex");
+    expect(toggles[2].disabled).toBe(false);
 
     dock.providers[1].configured = true;
     const { host: enabledHost } = await render();

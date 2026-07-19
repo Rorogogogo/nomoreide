@@ -63,7 +63,7 @@ export const terminalRoutes: Route[] = [
 
       // No service named → a plain workspace shell (the `+` tab behavior).
       if (!serviceName) {
-        const session = terminalManager.create();
+        const session = terminalManager.create({}, { kind: "shell" });
         sendJson(response, { ok: true, session }, 201);
         return;
       }
@@ -86,10 +86,10 @@ export const terminalRoutes: Route[] = [
 
       // Stable id per service so reopening the tab reattaches to the same
       // shell instead of spawning a duplicate.
-      const session = terminalManager.createWithId(
-        `svc:${service.name}`,
-        resolved.options,
-      );
+      const session = terminalManager.createWithId(`svc:${service.name}`, {
+        ...resolved.options,
+        kind: "service",
+      });
       sendJson(response, { ok: true, session }, 201);
     },
   ),
