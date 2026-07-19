@@ -1,5 +1,14 @@
 import net from "node:net";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
@@ -195,6 +204,59 @@ describe("web server", () => {
     ]);
     await expect(
       readFile(join(unregistered, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  test("rejects a delayed project patch when the validated root becomes a symlink", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const projectPath = join(tempDir, "repo");
+    const movedProjectPath = join(tempDir, "repo-before-swap");
+    const outsidePath = join(tempDir, "outside");
+    await registerSettingsProjects(configPath, [projectPath]);
+    await mkdir(outsidePath);
+    server = await createWebServer({
+      configPath,
+      settingsPath: join(tempDir, "settings.json"),
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    let request!: ReturnType<typeof httpRequest>;
+    const responsePromise = new Promise<{ status: number; body: string }>(
+      (resolveResponse, rejectResponse) => {
+        request = httpRequest(
+          `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+          {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+          },
+          (response) => {
+            const chunks: Buffer[] = [];
+            response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+            response.on("end", () => {
+              resolveResponse({
+                status: response.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString("utf8"),
+              });
+            });
+          },
+        );
+        request.on("error", rejectResponse);
+        request.flushHeaders();
+      },
+    );
+    await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 50));
+    await rename(projectPath, movedProjectPath);
+    await symlink(outsidePath, projectPath, "dir");
+    request.end(JSON.stringify({ logs: { wrapLines: false } }));
+
+    const response = await responsePromise;
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toMatchObject({ ok: false });
+    await expect(
+      readFile(join(outsidePath, "nomoreide.config.json"), "utf8"),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 

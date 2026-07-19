@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { appSettingsPatchSchema } from "../../core/app-settings.js";
@@ -18,11 +18,11 @@ export const settingsRoutes: Route[] = [
     "/api/settings",
     async ({ appSettings, configStore, response, url }) => {
       await respond(response, async () => {
-        const projectStore = await projectConfigStore(configStore, url, false);
+        const projectScope = await projectConfigScope(configStore, url, false);
         const [global, project] = await Promise.all([
           appSettings.load(),
-          projectStore
-            ? projectStore.getPreferences()
+          projectScope
+            ? projectScope.store.getPreferences()
             : Promise.resolve(structuredClone(DEFAULT_PROJECT_PREFERENCES)),
         ]);
         return { ok: true, global, project };
@@ -49,11 +49,21 @@ export const settingsRoutes: Route[] = [
     "/api/settings/project",
     async ({ configStore, request, response, url }) => {
       await respond(response, async () => {
-        const projectStore = await projectConfigStore(configStore, url, true);
         const patch = projectPreferencesPatchSchema.parse(
           await readJsonObject(request),
         );
-        const project = await projectStore.updatePreferences(patch);
+        const projectScope = await projectConfigScope(
+          configStore,
+          url,
+          true,
+          true,
+        );
+        const project = await withRevalidatedProjectScope(
+          configStore,
+          url,
+          projectScope.root,
+          (store) => store.updatePreferences(patch),
+        );
         return { ok: true, project };
       });
     },
@@ -74,31 +84,50 @@ export const settingsRoutes: Route[] = [
     "POST",
     "/api/settings/project/reset",
     async ({ configStore, response, url }) => {
-      await respond(response, async () => ({
-        ok: true,
-        project: await (
-          await projectConfigStore(configStore, url, true)
-        ).resetPreferences(),
-      }));
+      await respond(response, async () => {
+        const projectScope = await projectConfigScope(
+          configStore,
+          url,
+          true,
+          true,
+        );
+        return {
+          ok: true,
+          project: await withRevalidatedProjectScope(
+            configStore,
+            url,
+            projectScope.root,
+            (store) => store.resetPreferences(),
+          ),
+        };
+      });
     },
   ),
 ];
 
-async function projectConfigStore(
+interface ProjectConfigScope {
+  root: string;
+  store: ConfigStore;
+}
+
+async function projectConfigScope(
   registryStore: ConfigStore,
   url: URL,
   required: true,
-): Promise<ConfigStore>;
-async function projectConfigStore(
+  forWrite?: boolean,
+): Promise<ProjectConfigScope>;
+async function projectConfigScope(
   registryStore: ConfigStore,
   url: URL,
   required: false,
-): Promise<ConfigStore | undefined>;
-async function projectConfigStore(
+  forWrite?: boolean,
+): Promise<ProjectConfigScope | undefined>;
+async function projectConfigScope(
   registryStore: ConfigStore,
   url: URL,
   required: boolean,
-): Promise<ConfigStore | undefined> {
+  forWrite = false,
+): Promise<ProjectConfigScope | undefined> {
   const rawProjectPath = url.searchParams.get("projectPath");
   if (rawProjectPath === null) {
     if (required) {
@@ -121,15 +150,57 @@ async function projectConfigStore(
       continue;
     }
     if (registeredCanonicalPath === requestedCanonicalPath) {
-      return new ConfigStore(
-        join(registeredCanonicalPath, "nomoreide.config.json"),
-      );
+      if (forWrite) {
+        await requireDirectProjectDirectory(requestedPath, repository.path);
+      }
+      return {
+        root: registeredCanonicalPath,
+        store: new ConfigStore(
+          join(registeredCanonicalPath, "nomoreide.config.json"),
+        ),
+      };
     }
   }
 
   throw new ConfigValidationError(
     "projectPath must exactly match a registered repository.",
   );
+}
+
+async function withRevalidatedProjectScope<T>(
+  registryStore: ConfigStore,
+  url: URL,
+  expectedRoot: string,
+  mutation: (store: ConfigStore) => Promise<T>,
+): Promise<T> {
+  // Node has no portable openat/dirfd mutation API. Rechecking here closes the
+  // request-body delay window and keeps the remaining same-user rename race as
+  // short as possible, but cannot make directory identity and the later write
+  // one atomic filesystem operation.
+  const currentScope = await projectConfigScope(registryStore, url, true, true);
+  if (currentScope.root !== expectedRoot) {
+    throw new ConfigValidationError("Registered project scope changed.");
+  }
+  return mutation(currentScope.store);
+}
+
+async function requireDirectProjectDirectory(
+  requestedPath: string,
+  registeredPath: string,
+): Promise<void> {
+  try {
+    const [requestedStats, registeredStats] = await Promise.all([
+      lstat(resolve(requestedPath)),
+      lstat(resolve(registeredPath)),
+    ]);
+    if (!requestedStats.isDirectory() || !registeredStats.isDirectory()) {
+      throw new Error("Project root is not a direct directory.");
+    }
+  } catch {
+    throw new ConfigValidationError(
+      "Project writes require an unchanged registered directory.",
+    );
+  }
 }
 
 async function canonicalProjectPath(projectPath: string): Promise<string> {
