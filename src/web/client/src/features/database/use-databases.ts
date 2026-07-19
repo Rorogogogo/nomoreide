@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   executeDatabaseWrite,
   getDatabaseRows,
@@ -38,6 +38,10 @@ export function useDatabases() {
 }
 
 export const PAGE_SIZES = [50, 100, 500, 1000] as const;
+
+export function databaseLimitOptions(resultLimit: number): number[] {
+  return [...new Set<number>([...PAGE_SIZES, resultLimit])].sort((a, b) => a - b);
+}
 
 /** Runs an ad-hoc read-only query and tracks the in-flight / result / error state. */
 export function useSqlQuery(connection: string | null) {
@@ -122,12 +126,13 @@ export function useSqlWrite(connection: string | null) {
     [connection],
   );
 
-  const commit = useCallback(async (): Promise<WriteOutcome | null> => {
-    if (!connection || !pending) return null;
+  const commit = useCallback(async (sql?: string): Promise<WriteOutcome | null> => {
+    const statement = sql ?? pending?.sql;
+    if (!connection || !statement) return null;
     setCommitting(true);
     setError(null);
     try {
-      const outcome = await executeDatabaseWrite(connection, pending.sql, "commit");
+      const outcome = await executeDatabaseWrite(connection, statement, "commit");
       setCommitted(outcome);
       setPending(null);
       return outcome;
@@ -183,7 +188,7 @@ export function useWriteAccess(connection: string | null, onChange: () => void) 
 }
 
 /** Tables for a connection + the sampled rows of the currently selected table. */
-export function useTableBrowser(connection: string | null) {
+export function useTableBrowser(connection: string | null, initialResultLimit = 100) {
   const [tables, setTables] = useState<TableRef[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [sample, setSample] = useState<RowSample | null>(null);
@@ -191,11 +196,15 @@ export function useTableBrowser(connection: string | null) {
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [loadingTables, setLoadingTables] = useState(false);
   const [loadingRows, setLoadingRows] = useState(false);
-  const [limit, setLimit] = useState<number>(100);
+  const [limit, setLimit] = useState<number>(() => initialResultLimit);
+  const customizedLimitRef = useRef(false);
   const [offset, setOffset] = useState(0);
 
+  useEffect(() => {
+    if (!customizedLimitRef.current) setLimit(initialResultLimit);
+  }, [initialResultLimit]);
+
   // A new table or connection always starts back at the first page.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on table switch
   useEffect(() => {
     setOffset(0);
   }, [connection, selectedTable]);
@@ -257,6 +266,7 @@ export function useTableBrowser(connection: string | null) {
   const canNext = sample ? sample.rowCount === limit : false;
 
   function changePageSize(next: number) {
+    customizedLimitRef.current = true;
     setLimit(next);
     setOffset(0);
   }

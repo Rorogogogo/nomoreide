@@ -12,7 +12,7 @@ export function LogSearchInput({
   value: string;
 }) {
   return (
-    <label className="relative block">
+    <div className="relative block">
       <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
         aria-label="Search logs"
@@ -21,7 +21,7 @@ export function LogSearchInput({
         placeholder="Search logs"
         value={value}
       />
-    </label>
+    </div>
   );
 }
 
@@ -31,12 +31,16 @@ export function LogViewer({
   emptyText,
   logs,
   query,
+  showTimestamps = true,
+  wrapLines = true,
 }: {
   className?: string;
   containerRef: RefObject<HTMLDivElement | null>;
   emptyText: string;
   logs: LogEntry[];
   query: string;
+  showTimestamps?: boolean;
+  wrapLines?: boolean;
 }) {
   return (
     <div
@@ -51,17 +55,22 @@ export function LogViewer({
         logs.map((entry, index) => (
           <div
             className={cn(
-              "grid min-w-max grid-cols-[88px_minmax(420px,1fr)] gap-2 border-b border-border/45 px-3 py-0.5 dark:border-zinc-800/80",
+              "grid min-w-max gap-2 border-b border-border/45 px-3 py-0.5 dark:border-zinc-800/80",
+              showTimestamps
+                ? "grid-cols-[88px_minmax(420px,1fr)]"
+                : "grid-cols-[minmax(420px,1fr)]",
               entry.stream === "stderr"
                 ? "bg-red-50/70 text-red-800 dark:bg-red-950/35 dark:text-red-100"
                 : "bg-emerald-50/35 text-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:odd:bg-zinc-900/45",
             )}
-            key={`${entry.timestamp}-${entry.stream}-${index}`}
+            key={logEntryKey(entry, index)}
           >
-            <span className="text-muted-foreground dark:text-zinc-500" title={entry.timestamp}>
-              {formatLogTime(entry.timestamp)}
-            </span>
-            <span className="whitespace-pre-wrap break-words">
+            {showTimestamps ? (
+              <span className="text-muted-foreground dark:text-zinc-500" title={entry.timestamp}>
+                {formatLogTime(entry.timestamp)}
+              </span>
+            ) : null}
+            <span className={wrapLines ? "whitespace-pre-wrap break-words" : "whitespace-pre"}>
               {entry.stream === "stderr" ? (
                 <span className="mr-2 rounded bg-red-100 px-1 font-semibold uppercase text-red-700 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-400/20">
                   stderr
@@ -92,6 +101,10 @@ function formatLogTime(timestamp: string): string {
 
 export function logEntryText(entry: LogEntry): string {
   return `${entry.timestamp} ${entry.stream} ${entry.text}`;
+}
+
+function logEntryKey(entry: LogEntry, index: number): string {
+  return entry.cursor ?? `${entry.service}-${entry.timestamp}-${entry.stream}-${index}`;
 }
 
 function highlightText(text: string, query: string): ReactNode {

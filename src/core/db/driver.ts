@@ -92,7 +92,7 @@ export function assertSafeIdentifier(value: string): string {
 /** Clamp a caller-supplied row limit into a sane range. */
 export function clampLimit(limit: number | undefined, fallback = 100): number {
   if (!Number.isFinite(limit) || limit === undefined) return fallback;
-  return Math.min(Math.max(Math.trunc(limit), 1), 1000);
+  return Math.min(Math.max(Math.trunc(limit), 1), 5_000);
 }
 
 /** Clamp a caller-supplied page offset to a non-negative integer. */
