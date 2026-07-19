@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
 import { SettingsView } from "../src/web/client/src/features/settings/settings-view";
 import type { SettingsContextValue } from "../src/web/client/src/features/settings/settings-context";
 
@@ -88,7 +89,14 @@ async function renderView(
   document.body.append(host);
   root = createRoot(host);
   await act(async () => {
-    root.render(<SettingsView activeProject={{ name: "Workbench", path: "/tmp/workbench" }} {...props} />);
+    root.render(
+      <OperationProvider>
+        <SettingsView
+          activeProject={{ name: "Workbench", path: "/tmp/workbench" }}
+          {...props}
+        />
+      </OperationProvider>,
+    );
   });
 }
 
