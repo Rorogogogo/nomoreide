@@ -24,6 +24,8 @@ const xtermMocks = vi.hoisted(() => ({
     dispose: ReturnType<typeof vi.fn>;
     focus: ReturnType<typeof vi.fn>;
     inputDispose: ReturnType<typeof vi.fn>;
+    options: Record<string, unknown>;
+    selectionDispose: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
   }>,
 }));
@@ -32,15 +34,22 @@ vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     dispose = vi.fn();
     focus = vi.fn();
+    getSelection = vi.fn(() => "");
     inputDispose = vi.fn();
+    options: Record<string, unknown>;
+    selectionDispose = vi.fn();
     write = vi.fn();
-    constructor() {
+    constructor(options: Record<string, unknown>) {
+      this.options = { ...options };
       xtermMocks.terminals.push(this);
     }
     loadAddon() {}
     open() {}
     onData() {
       return { dispose: this.inputDispose };
+    }
+    onSelectionChange() {
+      return { dispose: this.selectionDispose };
     }
   },
 }));
@@ -53,6 +62,21 @@ vi.mock("@xterm/addon-fit", () => ({
       xtermMocks.fits.push(this);
     }
   },
+}));
+
+vi.mock("../src/web/client/src/features/settings/settings-context", () => ({
+  useSettings: () => ({
+    confirmedGlobal: {
+      version: 1,
+      terminal: {
+        fontSize: 13,
+        cursorStyle: "block",
+        scrollback: 5_000,
+        copyOnSelect: false,
+        confirmTerminate: false,
+      },
+    },
+  }),
 }));
 
 afterEach(() => {

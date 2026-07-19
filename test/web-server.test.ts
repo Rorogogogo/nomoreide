@@ -1,5 +1,14 @@
 import net from "node:net";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
@@ -34,6 +43,398 @@ afterEach(async () => {
 });
 
 describe("web server", () => {
+  test("serves and updates scoped settings without replacing untouched fields", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    const projectPath = join(tempDir, "repo");
+    await registerSettingsProjects(configPath, [projectPath]);
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    let response = await fetch(`${server.url}/api/settings`);
+    expect(await response.json()).toEqual({
+      ok: true,
+      global: {
+        version: 1,
+        terminal: {
+          fontSize: 13,
+          cursorStyle: "block",
+          scrollback: 5_000,
+          copyOnSelect: false,
+          confirmTerminate: true,
+        },
+      },
+      project: {
+        logs: { showTimestamps: true, wrapLines: true },
+        database: { confirmWrites: true, resultLimit: 100 },
+      },
+    });
+    await expect(
+      readFile(join(projectPath, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    response = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 16 } }),
+    });
+    expect((await response.json()).global.terminal).toEqual({
+      fontSize: 16,
+      cursorStyle: "block",
+      scrollback: 5_000,
+      copyOnSelect: false,
+      confirmTerminate: true,
+    });
+
+    response = await fetch(
+      `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ logs: { wrapLines: false } }),
+      },
+    );
+    expect((await response.json()).project).toEqual({
+      logs: { showTimestamps: true, wrapLines: false },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    expect(
+      JSON.parse(
+        await readFile(join(projectPath, "nomoreide.config.json"), "utf8"),
+      ),
+    ).toMatchObject({
+      preferences: { logs: { showTimestamps: true, wrapLines: false } },
+    });
+    expect(JSON.parse(await readFile(configPath, "utf8"))).not.toHaveProperty(
+      "preferences",
+    );
+  });
+
+  test("keeps project settings independent across registered repositories", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    const repoA = join(tempDir, "repo-a");
+    const repoB = join(tempDir, "repo-b");
+    const unregistered = join(tempDir, "unregistered");
+    await registerSettingsProjects(configPath, [repoA, repoB]);
+    await mkdir(unregistered);
+    await new ConfigStore(join(repoA, "nomoreide.config.json")).updatePreferences({
+      database: { resultLimit: 250 },
+    });
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const repoAGet = await fetch(
+      `${server.url}/api/settings?projectPath=${encodeURIComponent(repoA)}`,
+    );
+    expect((await repoAGet.json()).project.database.resultLimit).toBe(250);
+
+    const repoBGet = await fetch(
+      `${server.url}/api/settings?projectPath=${encodeURIComponent(repoB)}`,
+    );
+    expect((await repoBGet.json()).project).toEqual({
+      logs: { showTimestamps: true, wrapLines: true },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    await expect(
+      readFile(join(repoB, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+
+    await fetch(
+      `${server.url}/api/settings/project?projectPath=${encodeURIComponent(repoB)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ logs: { showTimestamps: false } }),
+      },
+    );
+    await fetch(
+      `${server.url}/api/settings/project/reset?projectPath=${encodeURIComponent(repoA)}`,
+      { method: "POST" },
+    );
+
+    expect(
+      await new ConfigStore(join(repoA, "nomoreide.config.json")).getPreferences(),
+    ).toEqual({
+      logs: { showTimestamps: true, wrapLines: true },
+      database: { confirmWrites: true, resultLimit: 100 },
+    });
+    expect(
+      (await new ConfigStore(join(repoB, "nomoreide.config.json")).getPreferences())
+        .logs.showTimestamps,
+    ).toBe(false);
+    expect(JSON.parse(await readFile(configPath, "utf8"))).not.toHaveProperty(
+      "preferences",
+    );
+
+    const rejectedResponses = await Promise.all([
+      fetch(`${server.url}/api/settings/project`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ logs: { wrapLines: false } }),
+      }),
+      fetch(`${server.url}/api/settings/project/reset`, { method: "POST" }),
+      fetch(
+        `${server.url}/api/settings/project?projectPath=${encodeURIComponent(unregistered)}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ logs: { wrapLines: false } }),
+        },
+      ),
+      fetch(
+        `${server.url}/api/settings/project/reset?projectPath=${encodeURIComponent(join(repoA, ".."))}`,
+        { method: "POST" },
+      ),
+      fetch(`${server.url}/api/settings?projectPath=%00`),
+      fetch(`${server.url}/api/settings?projectPath=`),
+    ]);
+    expect(rejectedResponses.map((response) => response.status)).toEqual([
+      400, 400, 400, 400, 400, 400,
+    ]);
+    await expect(
+      readFile(join(unregistered, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  test("rejects a delayed project patch when the validated root becomes a symlink", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const projectPath = join(tempDir, "repo");
+    const movedProjectPath = join(tempDir, "repo-before-swap");
+    const outsidePath = join(tempDir, "outside");
+    await registerSettingsProjects(configPath, [projectPath]);
+    await mkdir(outsidePath);
+    server = await createWebServer({
+      configPath,
+      settingsPath: join(tempDir, "settings.json"),
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    let request!: ReturnType<typeof httpRequest>;
+    const responsePromise = new Promise<{ status: number; body: string }>(
+      (resolveResponse, rejectResponse) => {
+        request = httpRequest(
+          `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+          {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+          },
+          (response) => {
+            const chunks: Buffer[] = [];
+            response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+            response.on("end", () => {
+              resolveResponse({
+                status: response.statusCode ?? 0,
+                body: Buffer.concat(chunks).toString("utf8"),
+              });
+            });
+          },
+        );
+        request.on("error", rejectResponse);
+        request.flushHeaders();
+      },
+    );
+    await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, 50));
+    await rename(projectPath, movedProjectPath);
+    await symlink(outsidePath, projectPath, "dir");
+    request.end(JSON.stringify({ logs: { wrapLines: false } }));
+
+    const response = await responsePromise;
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.body)).toMatchObject({ ok: false });
+    await expect(
+      readFile(join(outsidePath, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  test("rejects invalid scoped settings without persisting them", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    const projectPath = join(tempDir, "repo");
+    await registerSettingsProjects(configPath, [projectPath]);
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const globalResponse = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 2 } }),
+    });
+    const projectResponse = await fetch(
+      `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database: { resultLimit: 5 } }),
+      },
+    );
+    const unknownResponse = await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ secret: true }),
+    });
+    const malformedResponse = await fetch(
+      `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: "{not-json",
+      },
+    );
+
+    expect(globalResponse.status).toBe(400);
+    expect(projectResponse.status).toBe(400);
+    expect(unknownResponse.status).toBe(400);
+    expect(malformedResponse.status).toBe(400);
+    await expect(readFile(settingsPath, "utf8")).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(
+      readFile(join(projectPath, "nomoreide.config.json"), "utf8"),
+    ).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(JSON.parse(await readFile(configPath, "utf8"))).not.toHaveProperty(
+      "preferences",
+    );
+  });
+
+  test("resets global and project settings to defaults", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    const projectPath = join(tempDir, "repo");
+    await registerSettingsProjects(configPath, [projectPath]);
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+    await fetch(`${server.url}/api/settings/global`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ terminal: { fontSize: 18 } }),
+    });
+    await fetch(
+      `${server.url}/api/settings/project?projectPath=${encodeURIComponent(projectPath)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ database: { resultLimit: 300 } }),
+      },
+    );
+
+    const globalResponse = await fetch(
+      `${server.url}/api/settings/global/reset`,
+      { method: "POST" },
+    );
+    const projectResponse = await fetch(
+      `${server.url}/api/settings/project/reset?projectPath=${encodeURIComponent(projectPath)}`,
+      { method: "POST" },
+    );
+
+    expect((await globalResponse.json()).global.terminal.fontSize).toBe(13);
+    expect((await projectResponse.json()).project.database.resultLimit).toBe(100);
+    expect(
+      JSON.parse(
+        await readFile(join(projectPath, "nomoreide.config.json"), "utf8"),
+      ),
+    ).not.toHaveProperty("preferences");
+  });
+
+  test("returns 400 when stored settings fail schema validation", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        version: 1,
+        terminal: {
+          fontSize: 2,
+          cursorStyle: "block",
+          scrollback: 5_000,
+          copyOnSelect: false,
+          confirmTerminate: true,
+        },
+      }),
+    );
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/settings`);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ ok: false });
+  });
+
+  test("returns 400 when stored project config is invalid on get and reset", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const settingsPath = join(tempDir, "settings.json");
+    const projectPath = join(tempDir, "repo");
+    await registerSettingsProjects(configPath, [projectPath]);
+    await writeFile(
+      join(projectPath, "nomoreide.config.json"),
+      JSON.stringify({
+        version: 1,
+        services: [],
+        bundles: [],
+        gitRepositories: [],
+        databases: [],
+        logSources: [],
+        githubTokens: [],
+        workflows: [],
+        workflowTriggers: [],
+        preferences: {
+          logs: { showTimestamps: true, wrapLines: true },
+          database: { confirmWrites: true, resultLimit: 5 },
+        },
+      }),
+    );
+    server = await createWebServer({
+      configPath,
+      settingsPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const getResponse = await fetch(
+      `${server.url}/api/settings?projectPath=${encodeURIComponent(projectPath)}`,
+    );
+    const resetResponse = await fetch(
+      `${server.url}/api/settings/project/reset?projectPath=${encodeURIComponent(projectPath)}`,
+      { method: "POST" },
+    );
+
+    expect(getResponse.status).toBe(400);
+    expect(resetResponse.status).toBe(400);
+    await expect(resetResponse.json()).resolves.toMatchObject({ ok: false });
+  });
+
   test("serves the React web app shell from the dashboard route", async () => {
     const configPath = join(tempDir, "nomoreide.config.json");
     server = await createWebServer({
@@ -1587,6 +1988,27 @@ describe("web server", () => {
 async function readConfig(path: string): Promise<string> {
   const { readFile } = await import("node:fs/promises");
   return readFile(path, "utf8");
+}
+
+async function registerSettingsProjects(
+  configPath: string,
+  projectPaths: string[],
+): Promise<void> {
+  await Promise.all(projectPaths.map((projectPath) => mkdir(projectPath)));
+  await new ConfigStore(configPath).save({
+    version: 1,
+    services: [],
+    bundles: [],
+    gitRepositories: projectPaths.map((projectPath, index) => ({
+      name: `repo-${index + 1}`,
+      path: projectPath,
+    })),
+    databases: [],
+    logSources: [],
+    githubTokens: [],
+    workflows: [],
+    workflowTriggers: [],
+  });
 }
 
 async function createFile(path: string, contents: string): Promise<void> {

@@ -67,7 +67,7 @@ export function TableGrid({
     <div className="min-h-0 flex-1 overflow-auto">
       {/* w-max lets wide tables exceed the viewport so the container scrolls
           horizontally; min-w-full keeps narrow tables filling the space. */}
-      <table className="w-max min-w-full border-collapse text-left font-mono text-[11px]">
+      <table className="code-font-size w-max min-w-full border-collapse text-left font-mono">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-border">
             {sample.columns.map((col) => (
@@ -81,7 +81,7 @@ export function TableGrid({
                   ) : null}
                   {col.name}
                 </span>
-                <span className="block text-[10px] font-normal text-muted-foreground">
+                <span className="block font-normal text-muted-foreground">
                   {col.dataType}
                 </span>
               </th>

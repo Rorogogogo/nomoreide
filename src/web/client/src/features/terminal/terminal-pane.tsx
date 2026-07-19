@@ -1,6 +1,8 @@
 import { RotateCcw, Square } from "lucide-react";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useSettings } from "@/features/settings/settings-context";
 import { cn } from "@/lib/utils";
 import {
   TerminalViewport,
@@ -33,11 +35,28 @@ const INITIAL_STATUS: TerminalViewportStatus = {
 
 /** Terminal page chrome around one reusable raw PTY viewport. */
 export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPaneProps) {
+  const { confirmedGlobal } = useSettings();
   const viewportRef = useRef<TerminalViewportHandle>(null);
   const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
+  const [pendingAction, setPendingAction] = useState<"restart" | "stop" | null>(null);
   const handleStatusChange = useCallback(
     (nextStatus: TerminalViewportStatus) => setStatus(nextStatus),
     [],
+  );
+
+  const runAction = useCallback((action: "restart" | "stop") => {
+    viewportRef.current?.[action]();
+  }, []);
+
+  const requestAction = useCallback(
+    (action: "restart" | "stop") => {
+      if (confirmedGlobal.terminal.confirmTerminate) {
+        setPendingAction(action);
+        return;
+      }
+      runAction(action);
+    },
+    [confirmedGlobal.terminal.confirmTerminate, runAction],
   );
 
   return (
@@ -80,7 +99,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
-            onClick={() => viewportRef.current?.restart()}
+            onClick={() => requestAction("restart")}
             title="Restart terminal"
             type="button"
           >
@@ -91,7 +110,7 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
             className="text-white/60 hover:bg-white/10 hover:text-white"
             size="icon-sm"
             variant="ghost"
-            onClick={() => viewportRef.current?.stop()}
+            onClick={() => requestAction("stop")}
             title="Stop terminal"
             type="button"
           >
@@ -103,11 +122,25 @@ export function TerminalPane({ sessionId, active, toolbarExtra }: TerminalPanePr
       <div className="min-h-0 flex-1">
         <TerminalViewport
           active={active}
+          displaySettings={confirmedGlobal.terminal}
           onStatusChange={handleStatusChange}
           ref={viewportRef}
           sessionId={sessionId}
         />
       </div>
+      {pendingAction ? (
+        <ConfirmDialog
+          confirmLabel={pendingAction === "restart" ? "Restart terminal" : "Stop terminal"}
+          message={`The running shell process will be terminated${pendingAction === "restart" ? " and a new shell will be started" : ""}.`}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            runAction(pendingAction);
+            setPendingAction(null);
+          }}
+          title={pendingAction === "restart" ? "Restart terminal?" : "Stop terminal?"}
+          tone="danger"
+        />
+      ) : null}
     </section>
   );
 }

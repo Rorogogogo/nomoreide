@@ -127,6 +127,17 @@ export interface GitHubToken {
   token: string;
 }
 
+export interface ProjectPreferences {
+  logs: {
+    showTimestamps: boolean;
+    wrapLines: boolean;
+  };
+  database: {
+    confirmWrites: boolean;
+    resultLimit: number;
+  };
+}
+
 export interface NoMoreIdeConfig {
   version: 1;
   services: ServiceDefinition[];
@@ -150,6 +161,7 @@ export interface NoMoreIdeConfig {
    * back to startup-agent detection.
    */
   chatProvider?: "claude" | "codex";
+  preferences?: ProjectPreferences;
 }
 
 export type ServiceState = "stopped" | "starting" | "running" | "exited";

@@ -26,8 +26,12 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
 
 function readStoredLanguage(): Language {
   if (typeof window === "undefined") return "en";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "en" || stored === "zh") return stored;
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored === "en" || stored === "zh") return stored;
+  } catch {
+    // Storage unavailable — use English in memory.
+  }
   return "en";
 }
 

@@ -1,5 +1,6 @@
 import type {
   AgentInfo,
+  AppSettings,
   ColumnInfo,
   DashboardData,
   DatabaseConnection,
@@ -12,6 +13,7 @@ import type {
   GitHubWorkflowJob,
   GitHubWorkflowRun,
   LogEntry,
+  ProjectPreferences,
   RowSample,
   ServiceStatus,
   TableRef,
@@ -25,6 +27,34 @@ let serviceStates: Record<string, ServiceStatus["state"]> = {
   api: "running",
   worker: "stopped",
 };
+
+const createMockGlobalSettings = (): AppSettings => ({
+  version: 1 as const,
+  terminal: {
+    fontSize: 13,
+    cursorStyle: "block" as const,
+    scrollback: 5_000,
+    copyOnSelect: false,
+    confirmTerminate: true,
+  },
+});
+
+const createMockProjectSettings = (): ProjectPreferences => ({
+  logs: { showTimestamps: true, wrapLines: true },
+  database: { confirmWrites: true, resultLimit: 100 },
+});
+
+let mockGlobalSettings = createMockGlobalSettings();
+const mockProjectSettingsByPath = new Map<string, ProjectPreferences>();
+
+function projectSettings(url: URL): ProjectPreferences {
+  const path = url.searchParams.get("projectPath") ?? "";
+  const existing = mockProjectSettingsByPath.get(path);
+  if (existing) return existing;
+  const created = createMockProjectSettings();
+  mockProjectSettingsByPath.set(path, created);
+  return created;
+}
 
 const serviceDefinitions = [
   {
@@ -719,6 +749,40 @@ export function installWebsiteMockApi() {
 
 function handleApi(url: URL, method: string, init?: RequestInit): Response {
   const path = url.pathname;
+
+  if (path === "/api/settings" && method === "GET") {
+    return json({ ok: true, global: mockGlobalSettings, project: projectSettings(url) });
+  }
+  if (path === "/api/settings/global" && method === "PATCH") {
+    const patch = parseJsonBody(init) as { terminal?: Partial<typeof mockGlobalSettings.terminal> };
+    mockGlobalSettings = {
+      ...mockGlobalSettings,
+      terminal: { ...mockGlobalSettings.terminal, ...patch.terminal },
+    };
+    return json({ ok: true, global: mockGlobalSettings });
+  }
+  if (path === "/api/settings/project" && method === "PATCH") {
+    const current = projectSettings(url);
+    const patch = parseJsonBody(init) as {
+      logs?: Partial<ProjectPreferences["logs"]>;
+      database?: Partial<ProjectPreferences["database"]>;
+    };
+    const updated = {
+      logs: { ...current.logs, ...patch.logs },
+      database: { ...current.database, ...patch.database },
+    };
+    mockProjectSettingsByPath.set(url.searchParams.get("projectPath") ?? "", updated);
+    return json({ ok: true, project: updated });
+  }
+  if (path === "/api/settings/global/reset" && method === "POST") {
+    mockGlobalSettings = createMockGlobalSettings();
+    return json({ ok: true, global: mockGlobalSettings });
+  }
+  if (path === "/api/settings/project/reset" && method === "POST") {
+    const project = createMockProjectSettings();
+    mockProjectSettingsByPath.set(url.searchParams.get("projectPath") ?? "", project);
+    return json({ ok: true, project });
+  }
 
   if (path === "/api/dashboard") return json(dashboard());
 
@@ -1946,6 +2010,15 @@ function parseAgentEnvChanges(init?: RequestInit): MockAgentEnvChange[] {
     return Array.isArray(body.changes) ? body.changes : [];
   } catch {
     return [];
+  }
+}
+
+function parseJsonBody(init?: RequestInit): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(String(init?.body ?? "{}"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 

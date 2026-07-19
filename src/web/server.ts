@@ -3,6 +3,10 @@ import { dirname, resolve } from "node:path";
 import WebSocket, { WebSocketServer, type RawData } from "ws";
 import { AgentSessionStore } from "../core/agent-sessions.js";
 import {
+  AppSettingsStore,
+  defaultAppSettingsPath,
+} from "../core/app-settings.js";
+import {
   ConfigStore,
   ConfigValidationError,
   defaultGlobalConfigPath,
@@ -42,6 +46,7 @@ import { errorMessage } from "./routes/context.js";
 
 export interface WebServerOptions {
   configPath?: string;
+  settingsPath?: string;
   cwd?: string;
   logDir?: string;
   port?: number;
@@ -64,6 +69,9 @@ export interface WebServerApp {
 export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const configStore = new ConfigStore(
     options.configPath ?? defaultGlobalConfigPath(),
+  );
+  const appSettings = new AppSettingsStore(
+    options.settingsPath ?? defaultAppSettingsPath(),
   );
   const timelineStore = new TimelineStore({
     baseDir: timelineBaseDir(options.logDir),
@@ -124,6 +132,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   const services: RouteServices = {
     agentApprovals,
     agentSessions,
+    appSettings,
     configStore,
     cwd,
     dbPeek,

@@ -35,6 +35,10 @@ import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-c
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
 import { DatabaseView } from "@/features/database/database-view";
 import { SettingsView } from "@/features/settings/settings-view";
+import {
+  SettingsProvider,
+  useSettings,
+} from "@/features/settings/settings-context";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
 import { RunningStripe } from "@/features/services/running-stripe";
@@ -250,6 +254,27 @@ export function AppIdentity({ className }: { className?: string }) {
 }
 
 export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
+  return (
+    <SettingsProvider>
+      <AppContent syncLocation={syncLocation} />
+    </SettingsProvider>
+  );
+}
+
+export function SettingsProjectSync({
+  projectPath,
+  selectProject,
+}: {
+  projectPath: string | null;
+  selectProject: (path: string | null) => Promise<void>;
+}) {
+  useEffect(() => {
+    void selectProject(projectPath);
+  }, [projectPath, selectProject]);
+  return null;
+}
+
+function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? pageFromPath(window.location.pathname) : "services",
   );
@@ -273,15 +298,16 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     message: showMessageToast,
     success: showSuccessToast,
   } = useToasts();
-  const [sidebarDocked, setSidebarDocked] = useState(() => {
-    return window.localStorage.getItem("nomoreide:sidebar-docked") === "true";
-  });
+  const { ui, updateUi, selectProject } = useSettings();
+  const sidebarDocked = ui.sidebarDocked;
   // Project scope: "All projects" (default) leaves the Run pages machine-wide;
   // picking a project filters them to services under that repo. Git/GitHub
   // always follow the daemon-selected repository.
-  const [scopeAll, setScopeAll] = useState(() => {
-    return window.localStorage.getItem("nomoreide:project-scope") !== "project";
-  });
+  const scopeAll = ui.projectScope === "all";
+  const setScopeAll = useCallback(
+    (next: boolean) => updateUi({ projectScope: next ? "all" : "project" }),
+    [updateUi],
+  );
 
   const refreshRegistry = useRefreshRegistry();
 
@@ -350,17 +376,6 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
     }
   }, [page, syncLocation]);
 
-  useEffect(() => {
-    window.localStorage.setItem("nomoreide:sidebar-docked", String(sidebarDocked));
-  }, [sidebarDocked]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      "nomoreide:project-scope",
-      scopeAll ? "all" : "project",
-    );
-  }, [scopeAll]);
-
   const activeProject = (!scopeAll && data?.git.selectedRepository) || null;
   const scopedData = useMemo(
     () => (data && activeProject ? scopeDashboard(data, activeProject) : data),
@@ -386,9 +401,14 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
   );
   const githubPageKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
+  const settingsProjectPath = data?.git.selectedRepository?.path ?? null;
 
   return (
     <AgentProvider>
+    <SettingsProjectSync
+      projectPath={settingsProjectPath}
+      selectProject={selectProject}
+    />
     <RefreshRegistryProvider value={refreshRegistry}>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <WorkflowTriggerProvider>
@@ -485,7 +505,7 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
           </div>
           <SidebarCredit
             docked={sidebarDocked}
-            onToggleDock={() => setSidebarDocked((docked) => !docked)}
+            onToggleDock={() => updateUi({ sidebarDocked: !sidebarDocked })}
           />
         </aside>
 
@@ -618,7 +638,12 @@ export function App({ syncLocation = true }: { syncLocation?: boolean } = {}) {
               />
             ) : null}
             {page === "terminal" ? <TerminalView /> : null}
-            {page === "settings" ? <SettingsView /> : null}
+            {page === "settings" ? (
+              <SettingsView
+                activeProject={data?.git.selectedRepository ?? null}
+                onNavigate={(nextPage) => setPage(nextPage)}
+              />
+            ) : null}
           </div>
         </main>
       </div>

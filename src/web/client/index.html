@@ -7,15 +7,32 @@
     <title>NoMoreIDE</title>
     <script>
       (() => {
+        let theme = "system";
+        let density = "comfortable";
+        let codeFontSize = 12;
+        let reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
         try {
-          const stored = window.localStorage.getItem("nomoreide-theme-choice");
-          const theme = stored === "light" ? "light" : "dark";
-          document.documentElement.classList.toggle("dark", theme === "dark");
-          document.documentElement.style.colorScheme = theme;
-        } catch {
-          document.documentElement.classList.add("dark");
-          document.documentElement.style.colorScheme = "dark";
-        }
+          const raw = window.localStorage.getItem("nomoreide:ui-preferences");
+          const stored = raw ? JSON.parse(raw) : null;
+          if (stored?.version === 1) {
+            if (["light", "dark", "system"].includes(stored.theme)) theme = stored.theme;
+            if (["comfortable", "compact"].includes(stored.density)) density = stored.density;
+            if (Number.isInteger(stored.codeFontSize) && stored.codeFontSize >= 10 && stored.codeFontSize <= 18) codeFontSize = stored.codeFontSize;
+            if (typeof stored.reducedMotion === "boolean") reducedMotion = stored.reducedMotion;
+          } else {
+            const legacyTheme = window.localStorage.getItem("nomoreide-theme-choice");
+            if (["light", "dark", "system"].includes(legacyTheme)) theme = legacyTheme;
+          }
+        } catch {}
+        const resolvedTheme = theme === "system"
+          ? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+          : theme;
+        const root = document.documentElement;
+        root.classList.toggle("dark", resolvedTheme === "dark");
+        root.style.colorScheme = resolvedTheme;
+        root.dataset.density = density;
+        root.dataset.reducedMotion = String(reducedMotion);
+        root.style.setProperty("--code-font-size", `${codeFontSize}px`);
       })();
     </script>
   </head>

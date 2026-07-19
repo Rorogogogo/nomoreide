@@ -47,7 +47,23 @@ export interface TerminalViewportProps {
   claimInitialInput?: () => readonly string[] | undefined;
   /** Delay between composed initial input and its submit key. */
   initialInputIntervalMs?: number;
+  /** Confirmed display preferences; optional for isolated consumers/tests. */
+  displaySettings?: TerminalDisplaySettings;
 }
+
+export interface TerminalDisplaySettings {
+  fontSize: number;
+  cursorStyle: "block" | "underline" | "bar";
+  scrollback: number;
+  copyOnSelect: boolean;
+}
+
+export const DEFAULT_TERMINAL_DISPLAY_SETTINGS: TerminalDisplaySettings = {
+  fontSize: 13,
+  cursorStyle: "block",
+  scrollback: 5_000,
+  copyOnSelect: false,
+};
 
 type StatusUpdate =
   | TerminalViewportStatus
@@ -248,7 +264,9 @@ export function connectWebTerminal(options: {
       if (disposed) return;
       disposed = true;
       cancelInitialInput?.();
-      cancelStaggeredInputs.forEach((cancel) => cancel());
+      cancelStaggeredInputs.forEach((cancel) => {
+        cancel();
+      });
       inputSubscription.dispose();
       socket.close();
     },
@@ -263,7 +281,14 @@ export const TerminalViewport = forwardRef<
   TerminalViewportHandle,
   TerminalViewportProps
 >(function TerminalViewport(
-  { sessionId, active, claimInitialInput, initialInputIntervalMs, onStatusChange },
+  {
+    sessionId,
+    active,
+    claimInitialInput,
+    initialInputIntervalMs,
+    onStatusChange,
+    displaySettings = DEFAULT_TERMINAL_DISPLAY_SETTINGS,
+  },
   forwardedRef,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -271,6 +296,7 @@ export const TerminalViewport = forwardRef<
   const fitRef = useRef<FitAddon | null>(null);
   const socketRef = useRef<TerminalSocketLike | null>(null);
   const statusCallbackRef = useRef(onStatusChange);
+  const displaySettingsRef = useRef(displaySettings);
   const statusRef = useRef<TerminalViewportStatus>(INITIAL_STATUS);
   // Desktop owns its PTY in Rust; the web build attaches to the Node server.
   const tauriMode = isTauri();
@@ -307,6 +333,22 @@ export const TerminalViewport = forwardRef<
     );
   }, [tauriMode, sessionId]);
 
+  useEffect(() => {
+    displaySettingsRef.current = displaySettings;
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    terminal.options.fontSize = displaySettings.fontSize;
+    terminal.options.cursorStyle = displaySettings.cursorStyle;
+    terminal.options.scrollback = displaySettings.scrollback;
+    sendResize();
+  }, [
+    displaySettings.copyOnSelect,
+    displaySettings.cursorStyle,
+    displaySettings.fontSize,
+    displaySettings.scrollback,
+    sendResize,
+  ]);
+
   const sendControl = useCallback(
     (type: "restart" | "stop") => {
       // The Rust PTY has no restart/stop commands yet, matching the existing
@@ -335,10 +377,11 @@ export const TerminalViewport = forwardRef<
     const terminal = new Terminal({
       allowProposedApi: true,
       cursorBlink: true,
+      cursorStyle: displaySettingsRef.current.cursorStyle,
       fontFamily: '"SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace',
-      fontSize: 12,
+      fontSize: displaySettingsRef.current.fontSize,
       lineHeight: 1.25,
-      scrollback: 4000,
+      scrollback: displaySettingsRef.current.scrollback,
       theme: {
         background: "#090909",
         black: "#090909",
@@ -366,6 +409,16 @@ export const TerminalViewport = forwardRef<
     terminal.open(container);
     terminalRef.current = terminal;
     fitRef.current = fit;
+    const selectionSubscription = terminal.onSelectionChange(() => {
+      if (!displaySettingsRef.current.copyOnSelect) return;
+      const selection = terminal.getSelection();
+      if (!selection) return;
+      try {
+        void navigator.clipboard?.writeText(selection).catch(() => {});
+      } catch {
+        // Clipboard access can be denied; selection should remain non-fatal.
+      }
+    });
 
     let cleanupTransport: () => void;
 
@@ -454,6 +507,7 @@ export const TerminalViewport = forwardRef<
       window.clearTimeout(initialResizeTimer);
       observer.disconnect();
       cleanupTransport();
+      selectionSubscription.dispose();
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;
