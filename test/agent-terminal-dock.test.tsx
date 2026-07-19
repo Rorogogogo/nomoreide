@@ -211,6 +211,46 @@ describe("AgentTerminalDock", () => {
     expect(dock.setActiveTaskId).toHaveBeenCalledWith("two");
   });
 
+  test("splits a second task beside the active one and unsplits from the same control", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", label: "First task", state: "running", provider: "claude" },
+      { id: "two", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const { host } = await render();
+    expect(host.querySelector('[aria-label="Show task First task beside the active one"]')).toBeNull();
+
+    const split = host.querySelector('[aria-label="Show task Second task beside the active one"]') as HTMLButtonElement;
+    act(() => split.click());
+
+    const left = host.querySelector('#agent-panel-one') as HTMLElement;
+    const right = host.querySelector('#agent-panel-two') as HTMLElement;
+    expect(left.className).toContain("right-1/2");
+    expect(right.className).toContain("left-1/2");
+    expect(left.className).not.toContain("invisible");
+    expect(right.className).not.toContain("invisible");
+    expect(host.querySelector('[data-session="two"]')?.getAttribute("data-active")).toBe("true");
+
+    act(() => (host.querySelector('[aria-label="Stop showing task Second task beside the active one"]') as HTMLButtonElement).click());
+    expect((host.querySelector('#agent-panel-two') as HTMLElement).className).toContain("invisible");
+  });
+
+  test("activating the split task collapses back to a single pane", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", label: "First task", state: "running", provider: "claude" },
+      { id: "two", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const mounted = await render();
+    act(() => (mounted.host.querySelector('[aria-label="Show task Second task beside the active one"]') as HTMLButtonElement).click());
+
+    dock.activeTaskId = "two";
+    await act(async () => mounted.root.render(<AgentTerminalDock />));
+
+    const panel = mounted.host.querySelector('#agent-panel-two') as HTMLElement;
+    expect(panel.className).toContain("inset-x-0");
+    expect(panel.className).not.toContain("left-1/2");
+    expect((mounted.host.querySelector('#agent-panel-one') as HTMLElement).className).toContain("invisible");
+  });
+
   test("offers accessible task controls and maps viewport status", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
     const { host } = await render();
@@ -291,13 +331,20 @@ describe("AgentTerminalDock", () => {
     expect(source).not.toContain("<AgentDock");
   });
 
-  test("disables missing providers and selects an installed provider", async () => {
+  test("disables missing providers and switches with the segmented control", async () => {
     Object.assign(dock, { open: true }); const { host } = await render();
-    const select = host.querySelector('[aria-label="Agent provider"]') as HTMLSelectElement;
-    expect((select.querySelector('option[value="codex"]') as HTMLOptionElement).disabled).toBe(true);
+    const group = host.querySelector('[aria-label="Agent provider"]') as HTMLElement;
+    const toggles = Array.from(group.querySelectorAll("button")) as HTMLButtonElement[];
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0].getAttribute("aria-pressed")).toBe("true");
+    expect(toggles[1].disabled).toBe(true);
+    expect(toggles[1].title).toContain("npm i codex");
+
     dock.providers[1].configured = true;
-    select.value = "codex";
-    act(() => select.dispatchEvent(new Event("change", { bubbles: true })));
+    const { host: enabledHost } = await render();
+    const codex = enabledHost.querySelectorAll('[aria-label="Agent provider"] button')[1] as HTMLButtonElement;
+    expect(codex.disabled).toBe(false);
+    act(() => codex.click());
     expect(dock.selectProvider).toHaveBeenCalledWith("codex");
     dock.providers[1].configured = false;
   });

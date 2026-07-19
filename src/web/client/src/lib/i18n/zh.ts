@@ -1524,6 +1524,8 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "dock.taskFallback": "{provider} 任务",
   "dock.openTaskAria": "打开任务 {label}",
   "dock.closeTaskAria": "关闭任务 {label}",
+  "dock.splitTaskAria": "在当前任务旁并排显示任务 {label}",
+  "dock.unsplitTaskAria": "取消并排显示任务 {label}",
   "dock.checkingAvailability": "正在检查 {name} 可用性…",
   "dock.notInstalled": "{name} 未安装。",
   "dock.sourceLabel": "来源",
@@ -1536,6 +1538,14 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "dock.repoUrlToggle": "仓库 URL",
   "dock.shiftEnterHint": "Shift+Enter 换行",
   "dock.runAria": "运行 agent 任务",
+  "dock.capabilitiesAria": "{name} 能力",
+  "dock.capabilityEmpty": "尚未配置",
+  "dock.capabilityManage": "管理",
+  "dock.hooks": "Hooks",
+  "dock.mcpAuthChecking": "正在检查 MCP 服务器状态…",
+  "dock.mcpConnected": "所有 MCP 服务器已连接",
+  "dock.mcpFailed": "{count} 个 MCP 服务器连接失败",
+  "dock.mcpNeedsAuth": "{count} 个 MCP 服务器需要登录",
 
   // Agent Environments
   "agentEnv.title": "Agent 环境",

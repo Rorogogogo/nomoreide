@@ -58,14 +58,16 @@ fn derive_agent_invocation(
         return Err("Prompt is required".to_string());
     }
 
+    // Both CLIs accept a positional initial prompt and queue it until the TUI
+    // is ready — far more reliable than injecting keystrokes after spawn.
     match provider {
         "claude" => Ok(AgentInvocation {
             executable: claude_bin.to_string(),
-            args: Vec::new(),
+            args: vec![prompt.to_string()],
         }),
         "codex" => Ok(AgentInvocation {
             executable: codex_bin.to_string(),
-            args: vec!["--no-alt-screen".to_string()],
+            args: vec!["--no-alt-screen".to_string(), prompt.to_string()],
         }),
         _ => Err(format!("Unsupported agent provider: {provider}")),
     }
@@ -1403,23 +1405,23 @@ mod tests {
     }
 
     #[test]
-    fn claude_invocation_starts_interactively_without_a_prompt_argument() {
+    fn claude_invocation_passes_the_prompt_as_a_positional_argument() {
         let prompt = "  inspect this project\nthen explain it  ";
 
         let invocation = derive_agent_invocation("claude", prompt, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "claude");
-        assert!(invocation.args.is_empty());
+        assert_eq!(invocation.args, vec![prompt]);
     }
 
     #[test]
-    fn codex_invocation_disables_alt_screen_without_a_prompt_argument() {
+    fn codex_invocation_disables_alt_screen_and_passes_the_prompt() {
         let prompt = "  inspect this project\nthen explain it  ";
 
         let invocation = derive_agent_invocation("codex", prompt, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "codex");
-        assert_eq!(invocation.args, vec!["--no-alt-screen"]);
+        assert_eq!(invocation.args, vec!["--no-alt-screen", prompt]);
     }
 
     #[test]

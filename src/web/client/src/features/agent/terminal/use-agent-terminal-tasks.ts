@@ -18,7 +18,6 @@ export interface AgentTerminalTaskSource {
 export interface AgentTerminalTask extends TerminalSessionInfo {
   source?: AgentTerminalTaskSource;
   createdAt?: number;
-  initialPrompt?: string;
 }
 
 export interface CreateAgentTerminalTaskOptions {
@@ -72,7 +71,6 @@ export function useAgentTerminalTasks() {
   const taskOrderRef = useRef(new Map<string, AgentTaskOrder>());
   const pendingCreateCountRef = useRef(0);
   const closedIdsRef = useRef(new Set<string>());
-  const claimedInitialPromptIdsRef = useRef(new Set<string>());
 
   const sortTasks = useCallback((items: AgentTerminalTask[]) => {
     return [...items].sort((left, right) => {
@@ -233,7 +231,6 @@ export function useAgentTerminalTasks() {
           label: session.label ?? label,
           source,
           createdAt,
-          initialPrompt: prompt,
         };
         taskOrderRef.current.set(task.id, { group: "created", index: sequence });
         const withoutDuplicate = tasksRef.current.filter(
@@ -335,14 +332,6 @@ export function useAgentTerminalTasks() {
     [setTasks],
   );
 
-  const claimInitialPrompt = useCallback((id: string) => {
-    if (claimedInitialPromptIdsRef.current.has(id)) return undefined;
-    const prompt = tasksRef.current.find((task) => task.id === id)?.initialPrompt;
-    if (!prompt) return undefined;
-    claimedInitialPromptIdsRef.current.add(id);
-    return prompt;
-  }, []);
-
   return {
     tasks,
     activeTaskId,
@@ -359,6 +348,5 @@ export function useAgentTerminalTasks() {
     closeTask,
     stopTask,
     updateTaskStatus,
-    claimInitialPrompt,
   };
 }
