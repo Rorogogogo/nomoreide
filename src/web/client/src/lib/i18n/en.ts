@@ -1310,6 +1310,7 @@ export const en = {
   // Error incident detail
   "errors.incident.fixLabel": "Fix this {level} in `{service}`: {title}",
   "errors.incident.starting": "Starting…",
+  "errors.incident.fixingOperation": "Fixing {service} incident…",
   "errors.incident.fixWithAi": "Fix with AI",
   "errors.incident.firstLast": "first {first} · last {last}",
   "errors.incident.working":

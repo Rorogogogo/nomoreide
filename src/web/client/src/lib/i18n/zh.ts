@@ -1269,6 +1269,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   // Error incident detail
   "errors.incident.fixLabel": "修复 `{service}` 中的此 {level}：{title}",
   "errors.incident.starting": "正在启动…",
+  "errors.incident.fixingOperation": "正在修复 {service} 事件…",
   "errors.incident.fixWithAi": "用 AI 修复",
   "errors.incident.firstLast": "首次 {first} · 最近 {last}",
   "errors.incident.working":

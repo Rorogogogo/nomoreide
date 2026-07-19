@@ -15,6 +15,11 @@ import {
 import type { ErrorIncident } from "../src/web/client/src/lib/api";
 import { IncidentTable } from "../src/web/client/src/features/errors/incident-table";
 import { ErrorInboxView } from "../src/web/client/src/features/errors/error-inbox-view";
+import {
+  OperationProvider,
+  useOperations,
+  type OperationContextValue,
+} from "../src/web/client/src/components/operations/operation-context";
 
 const incidentFeed = vi.hoisted(() => ({
   value: {
@@ -24,12 +29,24 @@ const incidentFeed = vi.hoisted(() => ({
   },
 }));
 
+const actions = vi.hoisted(() => ({
+  sendToAgent: vi.fn(),
+  startFix: vi.fn(),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+}));
+
 vi.mock("@/components/ui/toast", () => ({
-  useToasts: () => ({ error: vi.fn(), success: vi.fn() }),
+  useToasts: () => ({ error: actions.toastError, success: actions.toastSuccess }),
 }));
 
 vi.mock("@/features/agent/chat/agent-context", () => ({
-  useAgentDock: () => ({ sendToAgent: vi.fn() }),
+  useAgentDock: () => ({ sendToAgent: actions.sendToAgent }),
+}));
+
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/web/client/src/lib/api")>()),
+  startFix: actions.startFix,
 }));
 
 vi.mock("@/features/errors/use-error-incidents", () => ({
@@ -60,6 +77,16 @@ const incidents = [
 ];
 
 const noFilters: IncidentFilters = { levels: [], services: [] };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, reject, resolve };
+}
 
 describe("Error Inbox incident filtering", () => {
   test("searches service, title, file, and excerpts case-insensitively", () => {
@@ -112,16 +139,20 @@ async function renderTable(
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
+  let operationContext: OperationContextValue | undefined;
   const render = async (next: Partial<ComponentProps<typeof IncidentTable>> = {}) => {
     await act(async () => {
       root.render(
-        <IncidentTable
-          connected
-          error={null}
-          incidents={incidents}
-          {...props}
-          {...next}
-        />,
+        <OperationProvider>
+          <CaptureOperations onValue={(value) => { operationContext = value; }} />
+          <IncidentTable
+            connected
+            error={null}
+            incidents={incidents}
+            {...props}
+            {...next}
+          />
+        </OperationProvider>,
       );
     });
   };
@@ -129,12 +160,26 @@ async function renderTable(
   return {
     host,
     render,
+    get operations() {
+      if (!operationContext) throw new Error("operation provider has not rendered");
+      return operationContext;
+    },
     async unmount() {
       await act(async () => root.unmount());
       host.remove();
       globalThis.IS_REACT_ACT_ENVIRONMENT = false;
     },
   };
+}
+
+function CaptureOperations({
+  onValue,
+}: {
+  onValue: (value: OperationContextValue) => void;
+}) {
+  const value = useOperations();
+  onValue(value);
+  return null;
 }
 
 function inputValue(input: HTMLInputElement, value: string) {
@@ -272,6 +317,64 @@ describe("IncidentTable", () => {
     expect(source).not.toContain("SAMPLE_LOGS");
     expect(source).not.toContain("duration_ms");
     expect(source).toContain("useReducedMotion");
+  });
+
+  test("tracks Fix with AI as a keyed operation and reveals review changes", async () => {
+    vi.clearAllMocks();
+    const fix = deferred<{ prompt: string; sessionId: string; repoPath: string }>();
+    actions.startFix.mockReturnValue(fix.promise);
+    const onReviewChanges = vi.fn();
+    const mounted = await renderTable({ onReviewChanges });
+    act(() =>
+      mounted.host
+        .querySelector<HTMLButtonElement>('button[aria-label^="Expand incident"]')
+        ?.click(),
+    );
+    const fixButton = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Fix with AI"));
+
+    act(() => fixButton?.click());
+
+    expect(mounted.operations.operations[0]).toMatchObject({
+      key: "error:3:fix",
+      label: "Fixing web incident…",
+    });
+    expect(fixButton?.getAttribute("aria-busy")).toBe("true");
+    expect(fixButton?.textContent).toContain("Starting…");
+    act(() => fixButton?.click());
+    expect(actions.startFix).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      fix.resolve({ prompt: "fix it", sessionId: "fix-session", repoPath: "/repo" }),
+    );
+    expect(actions.sendToAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "fix it" }),
+    );
+    const review = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Review changes"));
+    act(() => review?.click());
+    expect(onReviewChanges).toHaveBeenCalledWith("fix-session");
+    await mounted.unmount();
+  });
+
+  test("restores Fix with AI and reports a normalized failure", async () => {
+    vi.clearAllMocks();
+    actions.startFix.mockRejectedValue(new Error("snapshot failed"));
+    const mounted = await renderTable();
+    act(() =>
+      mounted.host
+        .querySelector<HTMLButtonElement>('button[aria-label^="Expand incident"]')
+        ?.click(),
+    );
+    const fixButton = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Fix with AI"));
+
+    await act(async () => fixButton?.click());
+
+    expect(actions.toastError).toHaveBeenCalledWith("snapshot failed");
+    expect(fixButton?.disabled).toBe(false);
+    expect(fixButton?.getAttribute("aria-busy")).toBeNull();
+    await mounted.unmount();
   });
 });
 
