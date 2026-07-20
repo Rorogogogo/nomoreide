@@ -59,6 +59,8 @@ export function IssueDetail({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // The early `if (!issue) return` above doesn't narrow inside this closure.
+    if (!issue) return;
     const trimmed = draft.trim();
     if (!trimmed) return;
     await runOperation(
