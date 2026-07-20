@@ -1601,6 +1601,18 @@ export const en = {
   "dock.mcpConnected": "All MCP servers connected",
   "dock.mcpFailed": "{count} MCP server(s) failed",
   "dock.mcpNeedsAuth": "{count} MCP server(s) need sign-in",
+  // Dock status strip (glanceable branch / CI / rate-limit / context info)
+  "dock.status.fiveHour": "5h",
+  "dock.status.weekly": "wk",
+  "dock.status.ci": "CI",
+  "dock.status.context": "ctx",
+  "dock.status.noUpstream": "no upstream",
+  "dock.status.limitTitle": "{label} rate limit: {pct}% used",
+  "dock.status.resetsSuffix": " · resets {time}",
+  "dock.status.ciTitle": "CI: {state} · {count} check(s)",
+  "dock.status.branchTitle": "Branch {branch} (tracking {upstream})",
+  "dock.status.contextTitle": "{pct}% of the context window used last turn",
+  "dock.status.costTitle": "Last agent session cost: ${cost}",
   // Agent Environments
   "agentEnv.title": "Agent Environments",
   "agentEnv.tabAgents": "Agents",

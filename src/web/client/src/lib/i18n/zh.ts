@@ -1561,6 +1561,19 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "dock.mcpFailed": "{count} 个 MCP 服务器连接失败",
   "dock.mcpNeedsAuth": "{count} 个 MCP 服务器需要登录",
 
+  // Dock 状态条（分支 / CI / 用量 / 上下文速览）
+  "dock.status.fiveHour": "5小时",
+  "dock.status.weekly": "本周",
+  "dock.status.ci": "CI",
+  "dock.status.context": "上下文",
+  "dock.status.noUpstream": "无上游",
+  "dock.status.limitTitle": "{label} 用量限制：已用 {pct}%",
+  "dock.status.resetsSuffix": " · {time} 重置",
+  "dock.status.ciTitle": "CI：{state} · {count} 项检查",
+  "dock.status.branchTitle": "分支 {branch}（跟踪 {upstream}）",
+  "dock.status.contextTitle": "上一轮使用了 {pct}% 的上下文窗口",
+  "dock.status.costTitle": "上次 Agent 会话费用：${cost}",
+
   // Agent Environments
   "agentEnv.title": "Agent 环境",
   "agentEnv.tabAgents": "Agent",

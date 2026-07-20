@@ -320,7 +320,22 @@ const incidents: ErrorIncident[] = [
   },
 ];
 
-let terminalSessions = [
+// Shell and agent tabs share these fields; `provider` is agent-only. Typed as a
+// union so pushing an agent session into the array typechecks (it seeds with a
+// single shell session, which would otherwise pin the element type to shell).
+type DemoTerminalSession = {
+  id: string;
+  cwd: string;
+  cols: number;
+  rows: number;
+  shell: string;
+  state: "running";
+  kind: "shell" | "agent";
+  label: string;
+  provider?: "claude" | "codex";
+};
+
+let terminalSessions: DemoTerminalSession[] = [
   {
     id: "demo-terminal",
     cwd: "/Users/demo/projects/acme",
