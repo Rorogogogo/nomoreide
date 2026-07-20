@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   Bot,
   BookOpen,
+  Container,
   Database,
   GitBranch,
   Heart,
@@ -41,6 +42,7 @@ import {
 } from "@/features/settings/settings-context";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
 import { ServicesView } from "@/features/services/services-view";
+import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
 import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
@@ -64,6 +66,7 @@ import { OperationStrip } from "@/components/operations/operation-strip";
 
 type Page =
   | "services"
+  | "docker"
   | "git"
   | "github"
   | "workflows"
@@ -76,6 +79,7 @@ type Page =
 
 const PAGE_PATHS: Record<Page, string> = {
   services: "/",
+  docker: "/docker",
   git: "/git",
   github: "/github",
   workflows: "/workflows",
@@ -90,6 +94,7 @@ const PAGE_PATHS: Record<Page, string> = {
 /** Header title translation key per page. */
 const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   services: "nav.services",
+  docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
   workflows: "nav.workflows",
@@ -124,6 +129,7 @@ const NAV_SECTIONS: Array<{
     labelKey: "nav.section.run",
     items: [
       { page: "services", labelKey: "nav.services", icon: <Server /> },
+      { page: "docker", labelKey: "nav.docker", icon: <Container /> },
       { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
       { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },
     ],
@@ -616,6 +622,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 scopeName={activeProject?.name ?? null}
               />
             ) : null}
+            {page === "docker" ? <DockerView /> : null}
             {data && page === "git" ? (
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}

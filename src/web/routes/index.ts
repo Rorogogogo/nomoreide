@@ -7,6 +7,7 @@ import { agentProfileRoutes } from "./agent-profile-routes.js";
 import { agentRegistryRoutes } from "./agent-registry-routes.js";
 import { agentSettingsRoutes } from "./agent-settings-routes.js";
 import { databaseRoutes } from "./database-routes.js";
+import { dockerRoutes } from "./docker-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
 import { githubRoutes } from "./github-routes.js";
@@ -39,6 +40,7 @@ export const routes: Route[] = [
   ...agentProfileRoutes,
   ...agentSettingsRoutes,
   ...databaseRoutes,
+  ...dockerRoutes,
   ...errorRoutes,
   ...githubRoutes,
   ...gitRoutes,

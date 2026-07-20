@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Compass, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,10 +19,12 @@ import {
 } from "../prompts";
 import type { AgentId } from "../agent-types";
 import { AddButton, AddInline, RowActions } from "./tools-shared";
+import { TrendingSkills, type StarterSkillIdea } from "./trending-skills";
 
 export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
   const { sendToAgent } = useAgentDock();
   const [adding, setAdding] = useState(false);
+  const [trending, setTrending] = useState(false);
   const t = useT();
 
   function add(input: string) {
@@ -30,6 +33,16 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
       prompt: buildAddSkillPrompt(agentId, input),
       source: { type: "agent-skill", label: t("agent.skills.sourceNew") },
       label: t("agent.skills.addAction", { input }),
+    });
+  }
+
+  function installTrending(idea: StarterSkillIdea) {
+    setTrending(false);
+    const input = `${idea.name} — ${idea.description}`;
+    sendToAgent({
+      prompt: buildAddSkillPrompt(agentId, input),
+      source: { type: "agent-skill", label: t("agent.skills.sourceTrending", { name: idea.name }) },
+      label: t("agent.skills.addAction", { input: idea.name }),
     });
   }
 
@@ -61,6 +74,18 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
             <Badge variant="outline" size="small">
               {agent.skills.length}
             </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-1.5 text-[11px] font-medium"
+              onClick={() => setTrending((value) => !value)}
+              title={t("agent.skills.trendingLabel")}
+              aria-label={t("agent.skills.trendingLabel")}
+              aria-pressed={trending}
+            >
+              <Compass className="size-3.5" />
+            </Button>
             <AddButton label={t("agent.tools.addSkillLabel")} onClick={() => setAdding((value) => !value)} />
           </div>
         </div>
@@ -77,6 +102,7 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
           </CardDescription>
         )}
       </CardHeader>
+      {trending ? <TrendingSkills onInstall={installTrending} /> : null}
       <CardContent className="p-0">
         {agent.skills.length ? (
           <ul className="divide-y divide-border">
