@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Bot, ChevronDown, ChevronUp, Database, GitBranch, Inbox, Maximize2, Minimize2, Plus, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Container, Database, GitBranch, Inbox, Maximize2, Minimize2, Plus, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
 // SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import type { DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -17,10 +17,11 @@ import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
 import { useT, type TranslationKey } from "@/lib/i18n";
 
-export type AgentDockPage = "services" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
+export type AgentDockPage = "services" | "docker" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
 
 const FULLSCREEN_NAV: Array<{ page: AgentDockPage; labelKey: TranslationKey; icon: ReactNode }> = [
   { page: "services", labelKey: "nav.services", icon: <Server /> },
+  { page: "docker", labelKey: "nav.docker", icon: <Container /> },
   { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
   { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
   { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },

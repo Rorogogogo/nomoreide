@@ -1397,6 +1397,45 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, settings: { coAuthorWithClaude: false } });
   }
 
+  if (path === "/api/docker/status") {
+    return json({ ok: true, status: { available: true, version: "27.3.1" } });
+  }
+  if (path === "/api/docker/containers") {
+    return json({
+      ok: true,
+      containers: [
+        {
+          id: "8f2c1a9b3d4e",
+          name: "app-api-1",
+          image: "app-api",
+          state: "running",
+          status: "Up 2 hours",
+          ports: "0.0.0.0:3000->3000/tcp",
+          project: "app",
+          service: "api",
+        },
+        {
+          id: "1a7e5b6c2f90",
+          name: "app-postgres-1",
+          image: "postgres:16",
+          state: "running",
+          status: "Up 2 hours",
+          ports: "0.0.0.0:5432->5432/tcp",
+          project: "app",
+          service: "postgres",
+        },
+        {
+          id: "b4d9f0a1c2e3",
+          name: "standalone-redis",
+          image: "redis:7",
+          state: "exited",
+          status: "Exited (0) 3 days ago",
+          ports: "",
+        },
+      ],
+    });
+  }
+
   if (path === "/api/databases") return json({ ok: true, connections: databases() });
   if (path === "/api/databases/detect") {
     return json({

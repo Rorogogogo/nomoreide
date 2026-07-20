@@ -5,6 +5,7 @@
  */
 export const en = {
   "nav.services": "Services",
+  "nav.docker": "Docker",
   "nav.git": "Git Review",
   "nav.github": "GitHub",
   "nav.errors": "Error Inbox",
@@ -1723,6 +1724,20 @@ export const en = {
   "app.addManageProjects": "Add or manage projects",
   "git.repo.projectsShort": "Projects",
   "git.repo.closeSwitcher": "Close project switcher",
+
+  "docker.desc": "Every container on this machine, registered as a nomoreide service or not.",
+  "docker.loading": "Checking Docker…",
+  "docker.empty": "No containers found.",
+  "docker.otherContainers": "Other containers",
+  "docker.unavailable.title": "Docker not found",
+  "docker.unavailable.body":
+    "Couldn't reach the Docker CLI or daemon. Install Docker or start it, then refresh.",
+  "docker.actions.logs": "View logs",
+  "docker.actions.done": "{label} requested for {name}.",
+  "docker.actions.failed": "{label} failed for {name}: {message}",
+  "docker.logs.title": "Logs · {name}",
+  "docker.logs.loading": "Loading logs…",
+  "docker.logs.empty": "No log output.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

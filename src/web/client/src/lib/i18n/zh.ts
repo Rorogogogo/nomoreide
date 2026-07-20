@@ -6,6 +6,7 @@ import type { TranslationKey } from "./en";
  */
 export const zh: Partial<Record<TranslationKey, string>> = {
   "nav.services": "服务",
+  "nav.docker": "Docker",
   "nav.git": "Git 审阅",
   "nav.github": "GitHub",
   "nav.errors": "错误收件箱",
@@ -1684,4 +1685,17 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "app.addManageProjects": "添加或管理项目",
   "git.repo.projectsShort": "项目",
   "git.repo.closeSwitcher": "关闭项目切换器",
+
+  "docker.desc": "本机上的所有容器，无论是否已注册为 nomoreide 服务。",
+  "docker.loading": "正在检查 Docker…",
+  "docker.empty": "未找到容器。",
+  "docker.otherContainers": "其他容器",
+  "docker.unavailable.title": "未找到 Docker",
+  "docker.unavailable.body": "无法连接到 Docker CLI 或守护进程。请安装或启动 Docker 后刷新。",
+  "docker.actions.logs": "查看日志",
+  "docker.actions.done": "已为 {name} 请求{label}。",
+  "docker.actions.failed": "{name} 的{label}失败：{message}",
+  "docker.logs.title": "日志 · {name}",
+  "docker.logs.loading": "正在加载日志…",
+  "docker.logs.empty": "没有日志输出。",
 };
