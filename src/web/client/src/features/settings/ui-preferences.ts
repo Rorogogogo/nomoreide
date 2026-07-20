@@ -1,9 +1,15 @@
 import type { Language } from "@/lib/language";
+import {
+  applyAccent,
+  DEFAULT_ACCENT,
+  isValidAccent,
+  type AccentChoice,
+} from "@/lib/accent";
 
 export const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
 
 export interface UiPreferences {
-  version: 1;
+  version: 2;
   theme: "light" | "dark" | "system";
   language: Language;
   density: "comfortable" | "compact";
@@ -11,6 +17,10 @@ export interface UiPreferences {
   reducedMotion: boolean;
   sidebarDocked: boolean;
   projectScope: "all" | "project";
+  /** Global accent choice (preset id or `custom:<hue>`). */
+  accent: AccentChoice;
+  /** Per-project accent overrides, keyed by repository path. */
+  projectAccents: Record<string, AccentChoice>;
 }
 
 function prefersReducedMotion(): boolean {
@@ -21,7 +31,7 @@ function prefersReducedMotion(): boolean {
 
 export function defaultUiPreferences(): UiPreferences {
   return {
-    version: 1,
+    version: 2,
     theme: "system",
     language: "en",
     density: "comfortable",
@@ -29,7 +39,19 @@ export function defaultUiPreferences(): UiPreferences {
     reducedMotion: prefersReducedMotion(),
     sidebarDocked: false,
     projectScope: "all",
+    accent: DEFAULT_ACCENT,
+    projectAccents: {},
   };
+}
+
+/** Keep only well-formed `path -> accent` entries; drop anything invalid. */
+function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: Record<string, AccentChoice> = {};
+  for (const [path, accent] of Object.entries(value as Record<string, unknown>)) {
+    if (path && isValidAccent(accent)) out[path] = accent;
+  }
+  return out;
 }
 
 function readLegacyPreferences(): Partial<UiPreferences> {
@@ -60,8 +82,9 @@ function safeGetItem(key: string): string | null {
 export function parseUiPreferences(value: unknown): UiPreferences | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
+  // Accept v1 (pre-accent) and v2; v1 is migrated by defaulting the new fields.
   if (
-    input.version !== 1 ||
+    (input.version !== 1 && input.version !== 2) ||
     !["light", "dark", "system"].includes(String(input.theme)) ||
     !["en", "zh"].includes(String(input.language)) ||
     !["comfortable", "compact"].includes(String(input.density)) ||
@@ -75,7 +98,12 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
   ) {
     return null;
   }
-  return input as unknown as UiPreferences;
+  return {
+    ...(input as unknown as UiPreferences),
+    version: 2,
+    accent: isValidAccent(input.accent) ? input.accent : DEFAULT_ACCENT,
+    projectAccents: sanitizeProjectAccents(input.projectAccents),
+  };
 }
 
 export function mergeUiPreferences(
@@ -122,4 +150,7 @@ export function applyUiPreferences(preferences: UiPreferences): void {
   root.dataset.density = preferences.density;
   root.dataset.reducedMotion = String(preferences.reducedMotion);
   root.style.setProperty("--code-font-size", `${preferences.codeFontSize}px`);
+  // Baseline (global) accent so there's no flash before the settings context
+  // refines it with any per-project override.
+  applyAccent(preferences.accent);
 }
