@@ -21,6 +21,7 @@ import {
 } from "./setting-controls";
 import { useSettings } from "./settings-context";
 import { SettingsLayout } from "./settings-layout";
+import { AccentSettings } from "./accent-settings";
 import { useT } from "@/lib/i18n";
 
 export interface SettingsViewProps {
@@ -213,6 +214,13 @@ function CategoryContent({
                 settings.updateUi({ codeFontSize: value });
               }} value={settings.ui.codeFontSize} /> : null}
           {visible("reduced-motion") ? <SettingToggle {...copy("reduced-motion")} checked={settings.ui.reducedMotion} id="setting-reduced-motion" onChange={(value) => settings.updateUi({ reducedMotion: value })} /> : null}
+          {visible("accent") ? (
+            <AccentSettings
+              activeProject={activeProject?.path ? { name: activeProject.name, path: activeProject.path } : null}
+              ui={settings.ui}
+              updateUi={settings.updateUi}
+            />
+          ) : null}
         </ScopeSection>
       );
     case "terminal":

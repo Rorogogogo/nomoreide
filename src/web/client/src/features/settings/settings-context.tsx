@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { setLanguage, useLanguage } from "@/lib/language";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
+import { applyAccent, effectiveAccent } from "@/lib/accent";
 import {
   applyUiPreferences,
   loadUiPreferences,
@@ -390,6 +391,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     appliedLanguageRef.current = ui.language;
     setLanguage(ui.language);
   }, []);
+
+  // Resolve the accent per active project: a repo with its own override re-tints
+  // the whole UI on switch, otherwise the global choice applies.
+  useEffect(() => {
+    applyAccent(effectiveAccent(ui.accent, ui.projectAccents, activeProjectPath));
+  }, [ui.accent, ui.projectAccents, activeProjectPath]);
 
   // Keep the pre-hub header toggle and language hook on the same stored values.
   useEffect(() => {
