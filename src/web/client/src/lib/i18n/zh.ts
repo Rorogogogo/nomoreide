@@ -974,6 +974,11 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "agent.skills.sourceSkill": "{name} skill",
   "agent.skills.sourceRemove": "移除 {name}",
   "agent.skills.removeAction": "移除 skill：{name}",
+  "agent.skills.trendingLabel": "浏览热门",
+  "agent.skills.trendingHint":
+    "在下面的目录里看到喜欢的 skill？把它的 URL 粘贴到上方“添加”里即可，无需任何配置。或者直接生成一个热门创意：",
+  "agent.skills.trendingInstall": "使用",
+  "agent.skills.sourceTrending": "热门 skill：{name}",
 
   "agent.mcp.addLabel": "用 AI 注册 MCP 服务器",
   "agent.mcp.addPlaceholder": "粘贴 MCP 安装命令或 URL…",

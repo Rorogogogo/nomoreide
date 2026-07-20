@@ -1006,6 +1006,11 @@ export const en = {
   "agent.skills.sourceSkill": "{name} skill",
   "agent.skills.sourceRemove": "Remove {name}",
   "agent.skills.removeAction": "Remove skill: {name}",
+  "agent.skills.trendingLabel": "Browse trending",
+  "agent.skills.trendingHint":
+    "Found one on a directory below? Paste its URL into Add above — no config needed. Or scaffold a starter idea:",
+  "agent.skills.trendingInstall": "Use",
+  "agent.skills.sourceTrending": "Trending: {name}",
 
   "agent.mcp.addLabel": "Register an MCP server with AI",
   "agent.mcp.addPlaceholder": "Paste the MCP install command or URL…",
