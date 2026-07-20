@@ -7,13 +7,17 @@ import { isTauri } from "@/lib/tauri";
 import type { CreateAgentTerminalOptions, TerminalSessionInfo } from "./terminal-api.js";
 
 // Lazy-loaded to avoid bundling tauri APIs in the web build.
-let _invoke: ((cmd: string, args?: Record<string, unknown>) => Promise<unknown>) | null = null;
-let _listen: ((event: string, handler: (e: { payload: unknown }) => void) => Promise<() => void>) | null = null;
+type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+type ListenFn = (event: string, handler: (e: { payload: unknown }) => void) => Promise<() => void>;
+let _invoke: InvokeFn | null = null;
+let _listen: ListenFn | null = null;
 
 async function getInvoke() {
   if (!_invoke) {
     const mod = await import("@tauri-apps/api/core");
-    _invoke = mod.invoke as typeof _invoke;
+    // Cast to the named type, not `typeof _invoke` — inside this guard the latter
+    // is narrowed to `null`, so the cast would target `null` and fail tsc.
+    _invoke = mod.invoke as unknown as InvokeFn;
   }
   return _invoke!;
 }
@@ -21,7 +25,7 @@ async function getInvoke() {
 async function getListen() {
   if (!_listen) {
     const mod = await import("@tauri-apps/api/event");
-    _listen = mod.listen as typeof _listen;
+    _listen = mod.listen as unknown as ListenFn;
   }
   return _listen!;
 }

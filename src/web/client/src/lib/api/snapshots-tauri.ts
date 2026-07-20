@@ -30,8 +30,9 @@ export const tauriSnapshotsApi: SnapshotsApi = {
   getSnapshotDiff: (sha, path) => tauri_getSnapshotDiff(sha, path),
   async restoreSnapshot(sha) {
     await tauri_restoreSnapshot(sha);
-    // The Rust restore command returns no pre-restore snapshot payload.
-    return { ok: true } as RestoreResult;
+    // The Rust restore command returns no pre-restore snapshot payload, so this
+    // desktop path can't produce a real RestoreResult — cast through `unknown`.
+    return { ok: true } as unknown as RestoreResult;
   },
   listChangeSets: async () => [],
   getChangeSet: async () => {
