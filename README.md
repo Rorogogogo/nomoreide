@@ -15,7 +15,7 @@
 
 Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, GitHub workflows, database work, and MCP workflows — no IDE required.
 
-[MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
+[Download for macOS](#macos-desktop-app) · [MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
 
 </div>
 
@@ -23,7 +23,7 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 ## What Is NoMoreIDE?
 
-NoMoreIDE is a lightweight process manager, Git reviewer, GitHub workflow surface, database workbench, log aggregator, and MCP server — all in one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a terminal UI and a local React web dashboard for humans.
+NoMoreIDE is a lightweight process manager, Git reviewer, GitHub workflow surface, database workbench, log aggregator, and MCP server — available through a native macOS app or one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a desktop app, terminal UI, and local React web dashboard for humans.
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -41,11 +41,34 @@ NoMoreIDE is a lightweight process manager, Git reviewer, GitHub workflow surfac
 │     HTTP API            └──────────────────────┘    │
 │           │                                          │
 │   ┌───────▼──────────────────────────┐              │
+│   │  macOS Desktop App               │              │
 │   │  Web UI  (localhost:4317)        │              │
 │   │  Terminal UI (nomoreide tui)     │              │
 │   └──────────────────────────────────┘              │
 └──────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Download or Run NoMoreIDE
+
+### macOS Desktop App
+
+Prefer a native app? Download the latest universal DMG for both Apple silicon and Intel Macs:
+
+**[Download NoMoreIDE for macOS](https://www.nomoreide.com/#download)** · [View all releases](https://github.com/Rorogogogo/nomoreide/releases)
+
+> **First launch:** NoMoreIDE is currently unsigned and not notarized, so macOS will block it the first time you open it. After dragging NoMoreIDE to Applications, try to open it once, then go to **System Settings → Privacy & Security**, click **Open Anyway**, and confirm with Touch ID or your password.
+
+### CLI, Web UI, TUI, and MCP Server
+
+No global installation is required. Run the latest version with Node.js 20 or newer:
+
+```bash
+npx -y nomoreide
+```
+
+Use the agent-specific commands below to connect NoMoreIDE as an MCP server.
 
 ---
 
