@@ -23,7 +23,9 @@ export function RealProductDemo() {
         </div>
 
         <div className="website-real-demo relative h-[760px] overflow-hidden rounded-lg border border-border bg-background shadow-2xl">
-          <WorkbenchApp syncLocation={false} />
+          <div className="website-real-demo-canvas">
+            <WorkbenchApp syncLocation={false} />
+          </div>
         </div>
       </div>
     </section>

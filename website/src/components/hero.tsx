@@ -221,7 +221,9 @@ export function Hero() {
           className="website-real-demo relative mt-7 h-[560px] overflow-hidden rounded-lg border border-border bg-background shadow-2xl md:h-[680px]"
           id="hero-demo"
         >
-          <WorkbenchApp syncLocation={false} />
+          <div className="website-real-demo-canvas">
+            <WorkbenchApp syncLocation={false} />
+          </div>
         </div>
 
         <div

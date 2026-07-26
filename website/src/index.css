@@ -152,6 +152,7 @@ body {
 }
 
 .website-real-demo {
+  --demo-scale: 0.8;
   --background: 0 0% 99%;
   --foreground: 24 10% 10%;
   --card: 0 0% 100%;
@@ -178,6 +179,14 @@ body {
   --ds-shadow-small: 0px 2px 2px rgba(0, 0, 0, 0.04);
   --ds-shadow-border-small: var(--ds-shadow-border), var(--ds-shadow-small);
   color: hsl(var(--foreground));
+}
+
+.website-real-demo-canvas {
+  position: relative;
+  width: calc(100% / var(--demo-scale));
+  height: calc(100% / var(--demo-scale));
+  transform: scale(var(--demo-scale));
+  transform-origin: top left;
 }
 
 .dark .website-real-demo {
