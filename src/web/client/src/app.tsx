@@ -308,6 +308,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   // Bumped when an Error Inbox fix asks to review its change-set, so the Agent
   // page opens its Changes tab (which auto-selects the newest session).
   const [changesFocusNonce, setChangesFocusNonce] = useState(0);
+  const [agentDockInset, setAgentDockInset] = useState<{
+    placement: "bottom" | "right";
+    size: number;
+  }>({ placement: "bottom", size: 36 });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const {
@@ -324,6 +328,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const setScopeAll = useCallback(
     (next: boolean) => updateUi({ projectScope: next ? "all" : "project" }),
     [updateUi],
+  );
+  const handleAgentDockInsetChange = useCallback(
+    (placement: "bottom" | "right", size: number) => {
+      setAgentDockInset((current) =>
+        current.placement === placement && current.size === size
+          ? current
+          : { placement, size },
+      );
+    },
+    [],
   );
 
   const refreshRegistry = useRefreshRegistry();
@@ -439,7 +453,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     <div className="flex flex-col h-screen overflow-hidden">
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
     <TauriTitleBar />
-    <div className="flex-1 overflow-hidden pb-9">
+    <div
+      className="flex-1 overflow-hidden transition-[padding] duration-150"
+      style={agentDockInset.placement === "right"
+        ? { paddingRight: agentDockInset.size }
+        : { paddingBottom: agentDockInset.size }}
+    >
       <div className="mx-auto flex h-full max-w-[1500px]">
         <aside className={sidebarShellClassName(sidebarDocked)}>
           <div
@@ -688,6 +707,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       <AgentTerminalDock
         currentPage={page}
         git={data?.git}
+        onInsetChange={handleAgentDockInsetChange}
         onNavigate={(nextPage: AgentDockPage) => setPage(nextPage)}
         onGitRefresh={() => void refresh({ silent: true })}
       />

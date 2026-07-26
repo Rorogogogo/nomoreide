@@ -37,7 +37,7 @@ export interface SettingsCategory {
 }
 
 export const SETTINGS_CATEGORIES: SettingsCategory[] = [
-  { id: "general", label: "General", description: "Language, navigation, and startup context.", icon: Languages, scope: "global", keywords: ["language", "sidebar", "project scope"] },
+  { id: "general", label: "General", description: "Language, navigation, and startup context.", icon: Languages, scope: "global", keywords: ["language", "sidebar", "dock", "agent", "project scope"] },
   { id: "appearance", label: "Appearance", description: "Theme, density, type size, and motion.", icon: Palette, scope: "global", keywords: ["theme", "dark", "light", "font", "motion", "accent", "color", "colour"] },
   { id: "terminal", label: "Terminal", description: "Terminal rendering and process safeguards.", icon: SquareTerminal, scope: "global", keywords: ["shell", "cursor", "scrollback", "copy", "terminate"] },
   { id: "services-logs", label: "Services & Logs", description: "How this project presents runtime output.", icon: Server, scope: "project", keywords: ["timestamps", "wrap", "runtime", "services"] },
@@ -52,6 +52,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
 export const SETTING_COPY = {
   language: { category: "general", label: "Language", description: "Choose the language preference for this console." },
   "sidebar-docked": { category: "general", label: "Dock sidebar", description: "Keep the navigation expanded while you work." },
+  "agent-dock-placement": { category: "general", label: "Agent dock position", description: "Place the agent workspace along the bottom or right edge." },
   "project-scope": { category: "general", label: "Default project scope", description: "Choose whether Run pages open across every project or the selected project." },
   theme: { category: "appearance", label: "Theme", description: "Follow your system or choose an explicit dashboard theme." },
   density: { category: "appearance", label: "Interface density", description: "Adjust spacing throughout the control surface." },

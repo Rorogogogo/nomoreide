@@ -30,8 +30,16 @@ const dock = vi.hoisted(() => ({
   transcriptsLoading: false,
   updateTaskStatus: vi.fn(),
 }));
+const uiSettings = vi.hoisted(() => ({
+  confirmedGlobal: { terminal: undefined },
+  ui: { agentDockPlacement: "bottom" as "bottom" | "right" },
+  updateUi: vi.fn(),
+}));
 
 vi.mock("@/features/agent/chat/agent-context", () => ({ useAgentDock: () => dock }));
+vi.mock("@/features/settings/settings-context", () => ({
+  useOptionalSettings: () => uiSettings,
+}));
 vi.mock("@/features/terminal/terminal-viewport", () => ({
   TerminalViewport: ({ sessionId, active, onStatusChange }: { sessionId: string; active: boolean; onStatusChange: (s: unknown) => void }) =>
     <button data-active={String(active)} data-session={sessionId} onClick={() => onStatusChange({ state: "running", cwd: "/repo", detail: "claude" })}>viewport</button>,
@@ -39,7 +47,7 @@ vi.mock("@/features/terminal/terminal-viewport", () => ({
 vi.mock("@/features/agent/chat/file-picker", () => ({ FilePicker: () => null }));
 vi.mock("@/features/git/git-situation-banner", () => ({ GitSituationBanner: () => null }));
 
-import { AgentTerminalDock, clampAgentDockHeight } from "../src/web/client/src/features/agent/terminal/agent-terminal-dock";
+import { AgentTerminalDock, clampAgentDockHeight, clampAgentDockWidth } from "../src/web/client/src/features/agent/terminal/agent-terminal-dock";
 
 /**
  * Roots mounted by the current test. An unmounted root can still hold work in
@@ -92,6 +100,15 @@ async function dragTaskToLeft(host: HTMLElement, taskId: string) {
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   vi.clearAllMocks(); document.body.replaceChildren(); mountedRoots = [];
+  uiSettings.ui.agentDockPlacement = "bottom";
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn(() => ({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  });
   Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, onboarding: false, open: false, pendingTaskIds: new Set(), tasks: [], terminalError: null });
   Object.assign(dock, { transcripts: [], transcriptsError: null, transcriptsLoading: false });
   dock.loadTranscripts.mockResolvedValue([]);
@@ -670,6 +687,129 @@ describe("AgentTerminalDock", () => {
     expect(clampAgentDockHeight(1000, 900)).toBe(852);
     expect(clampAgentDockHeight(450, 900)).toBe(450);
     expect(clampAgentDockHeight(180, 100)).toBe(52);
+  });
+
+  test("clamps side dock width while preserving room for the workbench", () => {
+    expect(clampAgentDockWidth(200, 1440)).toBe(340);
+    expect(clampAgentDockWidth(1400, 1440)).toBe(1120);
+    expect(clampAgentDockWidth(520, 1440)).toBe(520);
+    expect(clampAgentDockWidth(340, 500)).toBe(180);
+  });
+
+  test("renders the saved right-side layout and reports its workbench inset", async () => {
+    Object.assign(dock, { open: true });
+    uiSettings.ui.agentDockPlacement = "right";
+    const onInsetChange = vi.fn();
+    const { host } = await render({ onInsetChange });
+    const panel = host.firstElementChild as HTMLElement;
+
+    expect(panel.className).toContain("border-l");
+    expect(panel.style.width).toBe("480px");
+    expect(panel.querySelector('[data-agent-resize-grip]')?.className).toContain("cursor-ew-resize");
+    expect(panel.querySelector('[data-agent-side-utilities]')).not.toBeNull();
+    expect(onInsetChange).toHaveBeenLastCalledWith("right", 480);
+  });
+
+  test("opens the new-session menu downward from a right-side toolbar", async () => {
+    Object.assign(dock, {
+      open: true,
+      activeTaskId: "one",
+      tasks: [{ id: "one", label: "One", state: "running", provider: "claude" }],
+    });
+    uiSettings.ui.agentDockPlacement = "right";
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
+    );
+    const menu = document.body.querySelector(
+      '[role="menu"][aria-label="Choose a new session"]',
+    ) as HTMLElement;
+    expect(menu.style.top).not.toBe("");
+    expect(menu.style.bottom).toBe("");
+  });
+
+  test("uses a compact vertical rail when a right-side dock is collapsed", async () => {
+    uiSettings.ui.agentDockPlacement = "right";
+    const { host } = await render();
+    const rail = host.querySelector('[aria-label="Open agent terminal"]') as HTMLButtonElement;
+
+    expect(rail.className).toContain("w-9");
+    expect(rail.className).toContain("border-l");
+    expect(rail.querySelector('[class*="writing-mode"]')).not.toBeNull();
+  });
+
+  test("resizes a right-side dock by width", async () => {
+    Object.assign(dock, { open: true });
+    uiSettings.ui.agentDockPlacement = "right";
+    const { host } = await render();
+    const panel = host.firstElementChild as HTMLElement;
+    const grip = host.querySelector('[data-agent-resize-grip]') as HTMLElement;
+
+    act(() => {
+      grip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+      window.dispatchEvent(new PointerEvent("pointermove", {
+        pointerId: 1,
+        clientX: window.innerWidth - 420,
+      }));
+    });
+    expect(panel.style.width).toBe("420px");
+  });
+
+  test("temporarily falls back to the bottom without replacing a saved side preference", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    uiSettings.ui.agentDockPlacement = "right";
+    const onInsetChange = vi.fn();
+    const { host } = await render({ onInsetChange });
+    const rail = host.querySelector('[aria-label="Open agent terminal"]') as HTMLButtonElement;
+
+    expect(rail.className).toContain("inset-x-0");
+    expect(onInsetChange).toHaveBeenLastCalledWith("bottom", 36);
+    expect(uiSettings.updateUi).not.toHaveBeenCalled();
+  });
+
+  test("the position grip toggles and persists dock placement", async () => {
+    Object.assign(dock, { open: true });
+    const { host } = await render();
+    const grip = host.querySelector('[aria-label="Drag to move dock"]') as HTMLButtonElement;
+
+    act(() => grip.click());
+    expect(uiSettings.updateUi).toHaveBeenCalledWith({ agentDockPlacement: "right" });
+  });
+
+  test("dragging the position grip to the right previews and persists the snap target", async () => {
+    Object.assign(dock, { open: true });
+    const { host } = await render();
+    const grip = host.querySelector('[aria-label="Drag to move dock"]') as HTMLButtonElement;
+
+    act(() => {
+      grip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
+      window.dispatchEvent(new PointerEvent("pointermove", {
+        pointerId: 1,
+        clientX: window.innerWidth - 10,
+      }));
+    });
+    expect(host.textContent).toContain("Dock at right");
+
+    act(() => {
+      window.dispatchEvent(new PointerEvent("pointerup", {
+        pointerId: 1,
+        clientX: window.innerWidth - 10,
+      }));
+      // Browsers emit a click after the pointer sequence. It must not toggle
+      // the dock straight back to its previous position.
+      grip.click();
+    });
+    expect(uiSettings.updateUi).toHaveBeenCalledWith({ agentDockPlacement: "right" });
+    expect(uiSettings.updateUi).not.toHaveBeenCalledWith({ agentDockPlacement: "bottom" });
+    expect(host.textContent).not.toContain("Dock at right");
   });
 
   test("double-clicking the resize grip resets the dock to 50vh", async () => {

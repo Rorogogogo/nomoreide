@@ -198,7 +198,7 @@ export function DockStatusStrip({
 }: {
   git?: DashboardData["git"];
   provider?: string;
-  variant?: "strip" | "dock";
+  variant?: "strip" | "dock" | "side";
 }) {
   const t = useT();
   const { usage } = useUsage(15_000);
@@ -292,6 +292,7 @@ export function DockStatusStrip({
       className={cn(
         "flex shrink-0 items-center gap-2",
         variant === "dock" && "hidden border-l border-border px-2 lg:flex",
+        variant === "side" && "min-w-max px-2",
       )}
     >
       {variant === "strip" ? <Divider /> : null}

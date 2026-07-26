@@ -117,6 +117,7 @@ describe("UI preference migration", () => {
       density: "comfortable",
       codeFontSize: 12,
       sidebarDocked: true,
+      agentDockPlacement: "bottom",
       projectScope: "project",
     });
     expect(JSON.parse(window.localStorage.getItem(UI_PREFERENCES_KEY) ?? "null")).toEqual(
@@ -136,6 +137,7 @@ describe("UI preference migration", () => {
       theme: "system",
       language: "zh",
       sidebarDocked: false,
+      agentDockPlacement: "bottom",
       projectScope: "project",
     });
   });
@@ -151,6 +153,7 @@ describe("UI preference migration", () => {
         codeFontSize: 30,
         reducedMotion: "yes",
         sidebarDocked: "yes",
+        agentDockPlacement: "left",
         projectScope: "workspace",
       }),
     );
@@ -161,6 +164,7 @@ describe("UI preference migration", () => {
       density: "comfortable",
       codeFontSize: 12,
       sidebarDocked: false,
+      agentDockPlacement: "bottom",
       projectScope: "all",
     });
   });
@@ -177,6 +181,7 @@ describe("UI preference migration", () => {
         theme: "system",
         language: "en",
         sidebarDocked: false,
+        agentDockPlacement: "bottom",
         projectScope: "all",
       });
       const mounted = await mountProvider();

@@ -8,28 +8,39 @@ import { ClaudeLogo, CodexLogo } from "../agent-logos";
 
 export function AgentNewSessionMenu({
   creating,
+  direction = "up",
   onCreateAgent,
   onCreateShell,
   providers,
 }: {
   creating: boolean;
+  direction?: "up" | "down";
   onCreateAgent: (provider: AgentChatProviderOption) => void;
   onCreateShell: () => void;
   providers: AgentChatProviderOption[];
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ bottom: 36, right: 8 });
+  const [position, setPosition] = useState<{
+    bottom?: number;
+    right: number;
+    top?: number;
+  }>({ bottom: 36, right: 8 });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   function toggle() {
     const trigger = rootRef.current?.getBoundingClientRect();
     if (trigger) {
-      setPosition({
-        bottom: window.innerHeight - trigger.top + 4,
-        right: Math.max(8, window.innerWidth - trigger.right),
-      });
+      setPosition(direction === "down"
+        ? {
+            top: trigger.bottom + 4,
+            right: Math.max(8, window.innerWidth - trigger.right),
+          }
+        : {
+            bottom: window.innerHeight - trigger.top + 4,
+            right: Math.max(8, window.innerWidth - trigger.right),
+          });
     }
     setOpen((value) => !value);
   }

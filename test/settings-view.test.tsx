@@ -67,6 +67,7 @@ const baseSettings: SettingsContextValue = {
     codeFontSize: 12,
     reducedMotion: false,
     sidebarDocked: false,
+    agentDockPlacement: "bottom",
     projectScope: "all",
     accent: "classic",
     projectAccents: {},
@@ -348,6 +349,11 @@ describe("SettingsView", () => {
     expect(document.getElementById(`${sidebar.id}-description`)?.textContent).toContain("expanded");
     await click(sidebar);
     expect(updateUi).toHaveBeenCalledWith({ sidebarDocked: true });
+
+    const placement = host.querySelector<HTMLSelectElement>('#setting-agent-dock-placement')!;
+    placement.value = "right";
+    act(() => placement.dispatchEvent(new Event("change", { bubbles: true })));
+    expect(updateUi).toHaveBeenCalledWith({ agentDockPlacement: "right" });
 
     await click(button("Terminal"));
     const copy = host.querySelector<HTMLInputElement>('#setting-copy-on-select')!;
