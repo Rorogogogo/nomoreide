@@ -11,6 +11,17 @@ export interface CreateAgentTerminalOptions {
   provider: "claude" | "codex";
   prompt: string;
   label?: string;
+  /** Provider session id to reopen instead of starting a fresh conversation. */
+  resumeId?: string;
+}
+
+export interface AgentTranscriptInfo {
+  id: string;
+  provider: "claude" | "codex";
+  cwd: string;
+  title: string;
+  startedAt: string;
+  updatedAt: string;
 }
 
 /** One terminal tab as tracked by the server's session manager. */
@@ -30,7 +41,9 @@ export interface TerminalSessionInfo {
 
 export interface TerminalApi {
   listTerminalSessions(): Promise<TerminalSessionInfo[]>;
+  listAgentTranscripts(): Promise<AgentTranscriptInfo[]>;
   createTerminalSession(opts?: { serviceName?: string }): Promise<TerminalSessionInfo>;
   createAgentTerminalSession(opts: CreateAgentTerminalOptions): Promise<TerminalSessionInfo>;
+  renameTerminalSession(id: string, label: string): Promise<TerminalSessionInfo>;
   closeTerminalSession(id: string): Promise<void>;
 }

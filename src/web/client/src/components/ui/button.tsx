@@ -56,7 +56,18 @@ export function Button({
       className={cn(buttonVariants({ variant, size, className }))}
       disabled={disabled || loading}
     >
-      <span className="inline-flex items-center justify-center gap-2">
+      {/* The wrapper exists only to group the spinner with the label while
+          loading. Outside that state it must not form a box of its own, or it
+          collapses every child into a single grid/flex item and breaks buttons
+          whose className drives their own layout (e.g. the sidebar nav's
+          grid-cols-[48px_minmax(0,1fr)] icon/label split). */}
+      <span
+        className={
+          loading
+            ? "inline-flex items-center justify-center gap-2"
+            : "contents"
+        }
+      >
         {loading ? (
           <>
             <Spinner size="sm" />

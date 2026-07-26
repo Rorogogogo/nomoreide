@@ -40,6 +40,13 @@ const baseServiceSchema = z.object({
   test: z.string().min(1).optional(),
   /** Services that must be running/healthy before this one (bundle start order). */
   dependsOn: z.array(z.string().min(1)).optional(),
+  /**
+   * Explicit project assignment, overriding the cwd-containment inference.
+   * Needed because a remote service's `cwd` is a path on another machine
+   * (`/var/www/...`, `/root`) and can never sit under a local repo root, so
+   * inference alone leaves those services in no project at all.
+   */
+  projectPath: z.string().min(1).optional(),
 });
 
 const localServiceSchema = baseServiceSchema.extend({
@@ -355,6 +362,37 @@ export class ConfigStore {
     });
   }
 
+  /**
+   * Patches only the project assignment. Reassignment goes through here rather
+   * than `registerService` because that replaces the whole definition by name —
+   * a caller would have to resend every field, and any field it did not know
+   * about would be silently dropped.
+   *
+   * A blank or absent `projectPath` clears the assignment back to cwd inference.
+   */
+  async setServiceProject(
+    name: string,
+    projectPath: string | undefined,
+  ): Promise<NoMoreIdeConfig> {
+    const serviceName = name.trim();
+    if (!serviceName) {
+      throw new ConfigValidationError("service name is required");
+    }
+    const assigned = projectPath?.trim();
+
+    return this.mutateConfig((config) => {
+      const service = config.services.find((item) => item.name === serviceName);
+      if (!service) {
+        throw new Error(`Service "${serviceName}" is not registered.`);
+      }
+      if (assigned) {
+        service.projectPath = assigned;
+      } else {
+        delete service.projectPath;
+      }
+    });
+  }
+
   async removeService(name: string): Promise<NoMoreIdeConfig> {
     const serviceName = name.trim();
     if (!serviceName) {
@@ -591,6 +629,25 @@ export async function isGitWorktree(path: string): Promise<boolean> {
     return stdout.trim() === "true";
   } catch {
     return false;
+  }
+}
+
+/**
+ * The worktree root enclosing `path`, or null when it is not inside a repo.
+ *
+ * Registering a service's own `cwd` is usually the wrong granularity — a service
+ * often runs from a subdirectory (`repo/frontend`), and a project pinned there
+ * would fight the path-based grouping. Resolving to the root first is what makes
+ * "adopt this service's folder" produce the project the user actually meant.
+ */
+export async function gitToplevel(path: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: path,
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
   }
 }
 

@@ -14,7 +14,9 @@ const api = vi.hoisted(() => ({
   createAgentTerminalSession: vi.fn(),
   createTerminalSession: vi.fn(),
   getAgentChatStatus: vi.fn(),
+  listAgentTranscripts: vi.fn(),
   listTerminalSessions: vi.fn(),
+  renameTerminalSession: vi.fn(),
   setChatProvider: vi.fn(),
   streamAgentChat: vi.fn(),
 }));
@@ -115,7 +117,11 @@ beforeEach(() => {
     providers,
   });
   api.listTerminalSessions.mockResolvedValue([]);
+  api.listAgentTranscripts.mockResolvedValue([]);
   api.closeTerminalSession.mockResolvedValue(undefined);
+  api.renameTerminalSession.mockImplementation(
+    async (id: string, label: string) => ({ ...session(id), label }),
+  );
   api.setChatProvider.mockImplementation(async (id: "claude" | "codex") =>
     id === "codex" ? codex : claude,
   );
@@ -300,6 +306,62 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("creates a blank interactive session with an explicit provider", async () => {
+    api.createAgentTerminalSession.mockResolvedValue(
+      session("blank-codex", "agent", "codex"),
+    );
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.createTask({
+        prompt: "",
+        provider: "codex",
+        label: "Codex task",
+      });
+    });
+
+    expect(api.createAgentTerminalSession).toHaveBeenCalledWith({
+      provider: "codex",
+      prompt: "",
+      label: "Codex task",
+    });
+    expect(mounted.value.activeTaskId).toBe("blank-codex");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("loads repository conversations and resumes the selected provider session", async () => {
+    const transcript = {
+      id: "dce2b69c-0fb4-4bd3-b456-b2bef4230c81",
+      provider: "codex" as const,
+      cwd: "/repo",
+      title: "Continue the dock implementation",
+      startedAt: "2026-07-24T01:00:00.000Z",
+      updatedAt: "2026-07-25T01:00:00.000Z",
+    };
+    api.listAgentTranscripts.mockResolvedValue([transcript]);
+    api.createAgentTerminalSession.mockResolvedValue(
+      session("resumed", "agent", "codex"),
+    );
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.loadTranscripts();
+    });
+    expect(mounted.value.transcripts).toEqual([transcript]);
+
+    await act(async () => {
+      await mounted.value.resumeTask(transcript);
+    });
+    expect(api.createAgentTerminalSession).toHaveBeenCalledWith({
+      provider: "codex",
+      prompt: "",
+      resumeId: transcript.id,
+      label: transcript.title,
+    });
+    expect(mounted.value.activeTaskId).toBe("resumed");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("surfaces provider persistence failures without reverting the optimistic choice", async () => {
     api.setChatProvider.mockRejectedValue(new Error("Cannot save provider"));
     const mounted = await mountProvider();
@@ -395,6 +457,44 @@ describe("AgentProvider terminal tasks", () => {
     await act(async () => mounted.value.closeTask("one"));
     expect(mounted.value.tasks.map((task) => task.id)).toEqual(["two"]);
     expect(mounted.value.terminalError).toBeNull();
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("renames optimistically and reconciles the server label", async () => {
+    api.listTerminalSessions.mockResolvedValue([session("one")]);
+    const renamed = deferred<ReturnType<typeof session>>();
+    api.renameTerminalSession.mockReturnValue(renamed.promise);
+    const mounted = await mountProvider();
+
+    let result!: Promise<boolean>;
+    act(() => {
+      result = mounted.value.renameTask("one", "  Local name  ");
+    });
+    expect(mounted.value.tasks[0]?.label).toBe("Local name");
+    expect(mounted.value.pendingTaskIds.has("one")).toBe(true);
+
+    await act(async () => {
+      renamed.resolve({ ...session("one"), label: "Server name" });
+      await result;
+    });
+
+    expect(api.renameTerminalSession).toHaveBeenCalledWith("one", "Local name");
+    expect(mounted.value.tasks[0]?.label).toBe("Server name");
+    expect(mounted.value.pendingTaskIds.has("one")).toBe(false);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("rolls an optimistic rename back when persistence fails", async () => {
+    api.listTerminalSessions.mockResolvedValue([session("one")]);
+    api.renameTerminalSession.mockRejectedValue(new Error("Rename failed"));
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      await mounted.value.renameTask("one", "Temporary");
+    });
+
+    expect(mounted.value.tasks[0]?.label).toBe("one");
+    expect(mounted.value.terminalError).toBe("Rename failed");
     await unmount(mounted.root, mounted.host);
   });
 

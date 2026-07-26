@@ -19,10 +19,15 @@ describe("agent terminal client API", () => {
     expect(contractSource).toMatch(/provider:\s*"claude"\s*\|\s*"codex"/);
     expect(contractSource).toMatch(/prompt:\s*string/);
     expect(contractSource).toMatch(/label\?:\s*string/);
+    expect(contractSource).toMatch(/resumeId\?:\s*string/);
+    expect(contractSource).toContain("listAgentTranscripts(): Promise<AgentTranscriptInfo[]>");
     expect(contractSource).toMatch(/kind\?:\s*"shell"\s*\|\s*"service"\s*\|\s*"agent"/);
     expect(contractSource).toMatch(/provider\?:\s*"claude"\s*\|\s*"codex"/);
     expect(contractSource).toContain(
       "createAgentTerminalSession(opts: CreateAgentTerminalOptions): Promise<TerminalSessionInfo>",
+    );
+    expect(contractSource).toContain(
+      "renameTerminalSession(id: string, label: string): Promise<TerminalSessionInfo>",
     );
   });
 
@@ -67,24 +72,105 @@ describe("agent terminal client API", () => {
     });
   });
 
+  test("HTTP lists transcripts and sends resume ids through agent creation", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, transcripts: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            session: {
+              id: "agent-2",
+              cwd: "/repo",
+              cols: 100,
+              rows: 28,
+              shell: "codex",
+              state: "running",
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+    vi.stubGlobal("fetch", fetch);
+
+    await httpTerminalApi.listAgentTranscripts();
+    await httpTerminalApi.createAgentTerminalSession({
+      provider: "codex",
+      prompt: "",
+      resumeId: "dce2b69c-0fb4-4bd3-b456-b2bef4230c81",
+    });
+
+    expect(fetch).toHaveBeenNthCalledWith(1, "/api/terminal/transcripts", undefined);
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({
+      agent: {
+        provider: "codex",
+        prompt: "",
+        resumeId: "dce2b69c-0fb4-4bd3-b456-b2bef4230c81",
+      },
+    });
+  });
+
+  test("HTTP rename patches the encoded session id and returns the session", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          session: {
+            id: "agent/1",
+            cwd: "/repo",
+            cols: 100,
+            rows: 28,
+            shell: "codex",
+            state: "running",
+            label: "Review tests",
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    const renamed = await httpTerminalApi.renameTerminalSession(
+      "agent/1",
+      "Review tests",
+    );
+
+    expect(renamed.label).toBe("Review tests");
+    expect(fetch).toHaveBeenCalledWith("/api/terminal/sessions/agent%2F1", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ label: "Review tests" }),
+    });
+  });
+
   test("Tauri delegates a nested typed agent request through the bridge", () => {
     expect(tauriSource).toContain("createAgentTerminalSession");
+    expect(tauriSource).toContain("listAgentTranscripts");
     expect(tauriSource).toMatch(/tauri_createTerminalSession\(\{\s*agent:\s*opts\s*\}\)/);
     expect(bridgeSource).toContain("agent?: CreateAgentTerminalOptions");
     expect(bridgeSource).toMatch(/agent:\s*opts\?\.agent\s*\?\?\s*null/);
+    expect(tauriSource).toContain("tauri_renameTerminalSession");
+    expect(bridgeSource).toContain('"rename_terminal_session"');
   });
 
   test("Tauri list and create adapters preserve agent labels", () => {
     const labelFallbacks = bridgeSource.match(
-      /label:\s*session\.serviceName\s*\?\?\s*session\.label\s*\?\?\s*undefined/g,
+      /label:\s*session\.label\s*\?\?\s*session\.serviceName\s*\?\?\s*undefined/g,
     );
 
-    expect(labelFallbacks).toHaveLength(2);
+    expect(labelFallbacks).toHaveLength(3);
   });
 
   test("the terminal entry point exports and dispatches agent creation", () => {
     expect(terminalSource).toContain("export function createAgentTerminalSession");
     expect(terminalSource).toContain("terminalApi().createAgentTerminalSession(opts)");
+    expect(terminalSource).toContain("terminalApi().renameTerminalSession(id, label)");
     expect(terminalSource).toContain("CreateAgentTerminalOptions");
   });
 });

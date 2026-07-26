@@ -3,9 +3,10 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ServiceDefinition } from "@/lib/api";
+import type { GitRepositoryDefinition, ServiceDefinition } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { ProcessBadge } from "../process-badge";
+import { pathInScope } from "../project-scope";
 import { kindOptions, serviceCommandPresets } from "./presets";
 import { ServiceTestAlert } from "./service-test-alert";
 import { useServiceForm } from "./use-service-form";
@@ -16,6 +17,7 @@ export function ServiceForm({
   onSaved,
   initialService,
   availableServices = [],
+  repositories = [],
 }: {
   cwd: string;
   onRefresh: () => Promise<void>;
@@ -23,6 +25,8 @@ export function ServiceForm({
   initialService?: ServiceDefinition;
   /** Other registered service names, offered as start-order dependencies. */
   availableServices?: string[];
+  /** Registered projects a service can be pinned to. */
+  repositories?: GitRepositoryDefinition[];
 }) {
   const t = useT();
   const {
@@ -47,6 +51,8 @@ export function ServiceForm({
     setHost,
     dependsOn,
     setDependsOn,
+    projectPath,
+    setProjectPath,
     testResult,
     testing,
     saving,
@@ -57,6 +63,11 @@ export function ServiceForm({
   const activeKind = kindOptions.find((option) => option.value === kind)!;
   // Can't depend on itself; everything else registered is fair game.
   const dependencyChoices = availableServices.filter((service) => service !== name);
+  // What leaving the select on "inferred" would actually resolve to, so the
+  // default option can say so rather than making the user work it out.
+  const inferredProject = repositories.find((repository) =>
+    pathInScope(formCwd, repository.path),
+  );
   const toggleDependency = (service: string) =>
     setDependsOn((current) =>
       current.includes(service)
@@ -264,6 +275,32 @@ export function ServiceForm({
               {t("services.form.sshBody", { alias: host || "<alias>" })}
             </div>
           </Alert>
+        </fieldset>
+      ) : null}
+
+      {repositories.length > 0 ? (
+        <fieldset className={`${sectionClass} sm:col-span-2`}>
+          <legend className={legendClass}>{t("services.form.projectStep")}</legend>
+          <select
+            aria-label={t("services.form.projectLabel")}
+            className="h-9 w-full rounded-md border border-border bg-background px-2 text-xs"
+            onChange={(event) => setProjectPath(event.target.value)}
+            value={projectPath}
+          >
+            <option value="">
+              {inferredProject
+                ? t("services.form.projectInferredAs", { name: inferredProject.name })
+                : t("services.form.projectInferredNone")}
+            </option>
+            {repositories.map((repository) => (
+              <option key={repository.path} value={repository.path}>
+                {repository.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground">
+            {t("services.form.projectHint")}
+          </p>
         </fieldset>
       ) : null}
 

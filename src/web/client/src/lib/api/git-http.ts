@@ -188,4 +188,20 @@ export const httpGitApi: GitApi = {
     );
     return { name: response.name, path: response.path };
   },
+
+  async adoptGitRepository(path) {
+    const response = await postFormForJson<{ ok: true; name: string; path: string }>(
+      "/api/git/adopt",
+      { path },
+    );
+    return { name: response.name, path: response.path };
+  },
+
+  async createGitRepository(name, parentPath) {
+    const response = await postFormForJson<{ ok: true; name: string; path: string }>(
+      "/api/git/create",
+      parentPath ? { name, parentPath } : { name },
+    );
+    return { name: response.name, path: response.path };
+  },
 };

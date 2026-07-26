@@ -19,6 +19,11 @@ export interface ServiceDefinition {
   description?: string;
   test?: string;
   dependsOn?: string[];
+  /**
+   * Project this service is pinned to, overriding the inference from `cwd`.
+   * Absent means infer; see `features/services/project-scope`.
+   */
+  projectPath?: string;
   composeFile?: string;
   composeService?: string;
   host?: string;
@@ -323,6 +328,12 @@ export interface ServicesApi {
   stopBundle(name: string): Promise<void>;
   /** Unregister a service. Rejects (409) if it is still running. */
   deleteService(name: string): Promise<void>;
+  /**
+   * Pin a service to a project, or pass `undefined` to clear the pin back to
+   * inference from `cwd`. Patches only the assignment, leaving the rest of the
+   * definition untouched.
+   */
+  setServiceProject(name: string, projectPath: string | undefined): Promise<void>;
   /** Persist a bundle's full membership (create or replace in place). */
   registerBundle(bundle: BundleDefinition): Promise<void>;
   getServiceLogs(name: string, query?: LogQuery): Promise<ServiceLogsResult>;

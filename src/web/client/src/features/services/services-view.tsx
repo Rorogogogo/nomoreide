@@ -36,6 +36,7 @@ import { LifecycleActions } from "./service-actions";
 import { MultiLogView } from "./multi-log-view";
 import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
+import { unassignedServices } from "./project-scope";
 import { OnboardDialog } from "../onboard/onboard-dialog";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -107,6 +108,10 @@ export function ServicesView({
   const serviceNames = useMemo(
     () => data.config.services.map((service) => service.name),
     [data.config.services],
+  );
+  const unassigned = useMemo(
+    () => unassignedServices(data.config.services, data.config.gitRepositories),
+    [data.config.services, data.config.gitRepositories],
   );
   const hasDependencies = useMemo(
     () => data.config.services.some((service) => (service.dependsOn?.length ?? 0) > 0),
@@ -358,6 +363,30 @@ export function ServicesView({
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              {/* Only in the all-projects view: a service belonging to no
+                  project is invisible from every scoped view, so this is the
+                  one place it can be found and assigned. */}
+              {!scopeName && unassigned.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs">
+                  <span className="text-muted-foreground">
+                    {t("services.unassignedNotice", { count: unassigned.length })}
+                  </span>
+                  {unassigned.map((service) => (
+                    <Button
+                      className="h-6 px-2 text-[11px]"
+                      key={service.name}
+                      onClick={() => {
+                        setSelectedService(service.name);
+                        setEditOpen(true);
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {service.name}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
               {hasVisibleServices ? (
                 <div className="divide-y divide-border">
                   {data.config.bundles.map((group) => (
@@ -580,6 +609,7 @@ export function ServicesView({
             initialService={selectedServiceDef}
             availableServices={serviceNames}
             onRefresh={onRefresh}
+            repositories={data.config.gitRepositories}
             onSaved={() => setEditOpen(false)}
           />
         </ComposerDialog>
@@ -597,6 +627,7 @@ export function ServicesView({
               availableServices={serviceNames}
               onRefresh={onRefresh}
               onSaved={() => setServiceComposer(null)}
+              repositories={data.config.gitRepositories}
             />
           ) : (
             <GroupForm

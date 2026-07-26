@@ -1,6 +1,10 @@
 /** Node HTTP-server implementation of {@link TerminalApi} (the web/MCP backend). */
 import { requestJson } from "./client.js";
-import type { TerminalApi, TerminalSessionInfo } from "./terminal-api.js";
+import type {
+  AgentTranscriptInfo,
+  TerminalApi,
+  TerminalSessionInfo,
+} from "./terminal-api.js";
 
 export const httpTerminalApi: TerminalApi = {
   async listTerminalSessions() {
@@ -8,6 +12,14 @@ export const httpTerminalApi: TerminalApi = {
       "/api/terminal/sessions",
     );
     return res.sessions;
+  },
+
+  async listAgentTranscripts() {
+    const res = await requestJson<{
+      ok: true;
+      transcripts: AgentTranscriptInfo[];
+    }>("/api/terminal/transcripts");
+    return res.transcripts;
   },
 
   async createTerminalSession(opts) {
@@ -33,6 +45,18 @@ export const httpTerminalApi: TerminalApi = {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agent: opts }),
+      },
+    );
+    return res.session;
+  },
+
+  async renameTerminalSession(id, label) {
+    const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
+      `/api/terminal/sessions/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ label }),
       },
     );
     return res.session;

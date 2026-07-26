@@ -52,6 +52,12 @@ export const httpServicesApi: ServicesApi = {
     await requestJson(`/api/services/${encodeURIComponent(name)}`, { method: "DELETE" });
   },
 
+  async setServiceProject(name, projectPath) {
+    await postForm(`/api/services/${encodeURIComponent(name)}/project`, {
+      projectPath: projectPath ?? "",
+    });
+  },
+
   async registerBundle(bundle) {
     await postForm("/api/bundles", {
       name: bundle.name,

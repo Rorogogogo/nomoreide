@@ -38,6 +38,7 @@ export interface TerminalSessionManagerLike {
   touch(id: string): void;
   /** A client socket disconnected; reap the session after the grace window. */
   detach(id: string): void;
+  rename(id: string, label: string): TerminalSessionInfo | undefined;
   close(id: string): boolean;
   disposeAll(): void;
 }
@@ -160,6 +161,12 @@ export class TerminalSessionManager implements TerminalSessionManagerLike {
     // tab reattaches to it. The idle timer is the only soft reaper; a full
     // process shutdown disposes everything (see `disposeAll`).
     managed.connections = Math.max(0, managed.connections - 1);
+  }
+
+  rename(id: string, label: string): TerminalSessionInfo | undefined {
+    const managed = this.sessions.get(id);
+    if (!managed) return undefined;
+    return { id, ...managed.session.setLabel(label) };
   }
 
   close(id: string): boolean {

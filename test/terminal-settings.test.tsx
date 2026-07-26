@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     copyOnSelect: false,
   },
   confirmTerminate: true,
+  resolvedTheme: "light" as "light" | "dark",
   fits: [] as Array<{ fit: ReturnType<typeof vi.fn>; proposeDimensions: ReturnType<typeof vi.fn> }>,
   listSessions: vi.fn(),
   sockets: [] as BrowserFakeSocket[],
@@ -29,6 +30,10 @@ const mocks = vi.hoisted(() => ({
     selectionDispose: ReturnType<typeof vi.fn>;
     selectionListener?: () => void;
   }>,
+}));
+
+vi.mock("../src/web/client/src/lib/theme", () => ({
+  useResolvedTheme: () => mocks.resolvedTheme,
 }));
 
 vi.mock("../src/web/client/src/features/settings/settings-context", () => ({
@@ -127,6 +132,7 @@ beforeEach(() => {
     copyOnSelect: false,
   };
   mocks.confirmTerminate = true;
+  mocks.resolvedTheme = "light";
   mocks.closeSession.mockReset().mockResolvedValue(undefined);
   mocks.createSession.mockReset().mockResolvedValue({ id: "term_new", label: "New shell" });
   mocks.listSessions.mockReset().mockResolvedValue([{ id: "term_1", label: "Shell" }]);
@@ -156,6 +162,10 @@ describe("terminal display preferences", () => {
       fontSize: 14,
       cursorStyle: "bar",
       scrollback: 9_000,
+      theme: expect.objectContaining({
+        background: "#fcfcfc",
+        foreground: "#24211f",
+      }),
     });
 
     fit.fit.mockClear();
@@ -171,6 +181,20 @@ describe("terminal display preferences", () => {
       scrollback: 12_000,
     });
     expect(fit.fit).toHaveBeenCalled();
+
+    mocks.resolvedTheme = "dark";
+    await act(async () => {
+      mounted.root.render(
+        <TerminalViewport active displaySettings={updated} sessionId="term_settings" />,
+      );
+    });
+    expect(terminal.options.theme).toEqual(
+      expect.objectContaining({
+        background: "#090909",
+        foreground: "#f2f2f2",
+      }),
+    );
+    expect(mocks.terminals).toHaveLength(1);
     await act(async () => mounted.root.unmount());
   });
 

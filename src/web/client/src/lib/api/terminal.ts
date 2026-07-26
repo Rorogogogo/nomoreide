@@ -24,6 +24,10 @@ export function listTerminalSessions() {
   return terminalApi().listTerminalSessions();
 }
 
+export function listAgentTranscripts() {
+  return terminalApi().listAgentTranscripts();
+}
+
 export function createTerminalSession(opts?: { serviceName?: string }) {
   return terminalApi().createTerminalSession(opts);
 }
@@ -32,11 +36,16 @@ export function createAgentTerminalSession(opts: CreateAgentTerminalOptions) {
   return terminalApi().createAgentTerminalSession(opts);
 }
 
+export function renameTerminalSession(id: string, label: string) {
+  return terminalApi().renameTerminalSession(id, label);
+}
+
 export function closeTerminalSession(id: string) {
   return terminalApi().closeTerminalSession(id);
 }
 
 export type {
+  AgentTranscriptInfo,
   CreateAgentTerminalOptions,
   TerminalApi,
   TerminalState,

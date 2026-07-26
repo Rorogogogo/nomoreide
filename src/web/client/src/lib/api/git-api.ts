@@ -129,4 +129,17 @@ export interface GitApi {
    * it as a Git project. Returns the derived name and local clone path.
    */
   cloneGitRepository(url: string): Promise<{ name: string; path: string }>;
+  /**
+   * Create a brand-new git-initialised project and register it. `parentPath`
+   * defaults to the managed repos dir when omitted.
+   */
+  createGitRepository(
+    name: string,
+    parentPath?: string,
+  ): Promise<{ name: string; path: string }>;
+  /**
+   * Register the Git worktree that `path` sits inside as a project — the repo
+   * root, not `path` itself.
+   */
+  adoptGitRepository(path: string): Promise<{ name: string; path: string }>;
 }

@@ -10,6 +10,46 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Single entry point for every `docker` invocation in this feature. Sibling
+ * modules (stats/resources/inspect) go through here so argument handling and
+ * the no-shell-interpolation guarantee stay in one place.
+ */
+export async function execDocker(args: string[]): Promise<string> {
+  // Docker can emit a lot on `inspect`/`logs`; the default 1MB buffer truncates.
+  const { stdout } = await execFileAsync("docker", args, { maxBuffer: 32 * 1024 * 1024 });
+  return stdout;
+}
+
+/**
+ * Most `docker ... --format "{{json .}}"` commands emit one JSON object per
+ * line. Parse leniently: a single malformed line shouldn't blank the view.
+ */
+export function parseDockerJsonLines<T>(
+  stdout: string,
+  map: (raw: Record<string, unknown>) => T | null,
+): T[] {
+  const rows: T[] = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let raw: Record<string, unknown>;
+    try {
+      raw = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const mapped = map(raw);
+    if (mapped !== null) rows.push(mapped);
+  }
+  return rows;
+}
+
+/** Read a string field off a `docker ... --format "{{json .}}"` row. */
+export function readString(raw: Record<string, unknown>, key: string): string {
+  return typeof raw[key] === "string" ? (raw[key] as string) : "";
+}
+
 export interface DockerStatus {
   available: boolean;
   version?: string;
@@ -134,7 +174,7 @@ function splitNonEmptyLines(text: string): string[] {
 }
 
 /** Docker container IDs/names are alphanumeric plus `_.-`; reject anything else. */
-function validateContainerId(id: string): void {
+export function validateContainerId(id: string): void {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(id)) {
     throw new Error(`Invalid container id: "${id}"`);
   }

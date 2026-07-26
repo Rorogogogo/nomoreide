@@ -1,4 +1,5 @@
 pub mod config;
+pub mod agent_transcripts;
 pub mod git_manager;
 pub mod log_store;
 pub mod port_utils;

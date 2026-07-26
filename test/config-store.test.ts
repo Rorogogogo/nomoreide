@@ -258,6 +258,93 @@ describe("ConfigStore", () => {
     await expect(store.registerLogSource({ name: "bad", kind: "ssh", host: "prod" })).rejects.toThrow();
   });
 
+  test("persists an explicit project assignment", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.registerService({
+      name: "jobjourney-prod-logs",
+      kind: "ssh",
+      host: "prod",
+      command: "tail -f app.log",
+      cwd: "/var/www/jobjourney-server",
+      projectPath: "/Users/dev/work/JJ/JobJourney",
+    });
+
+    const [service] = (await store.load()).services;
+    expect(service.projectPath).toBe("/Users/dev/work/JJ/JobJourney");
+  });
+
+  test("leaves the project assignment absent when not given", async () => {
+    // Absent means "infer from cwd", so it must not be persisted as empty.
+    const store = new ConfigStore(configPath);
+
+    await store.registerService({ name: "web", command: "npm run dev", cwd: "/repo" });
+
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw.services[0]).not.toHaveProperty("projectPath");
+  });
+
+  test("rejects a blank project assignment", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(
+      store.registerService({ name: "web", command: "npm run dev", cwd: "/repo", projectPath: "" }),
+    ).rejects.toThrow();
+  });
+
+  test("setServiceProject patches only the assignment", async () => {
+    // Reassignment must not require resending the definition, or fields the
+    // caller does not know about would be dropped.
+    const store = new ConfigStore(configPath);
+    await store.registerService({
+      name: "api",
+      kind: "ssh",
+      host: "prod",
+      command: "npm start",
+      cwd: "/srv/api",
+      port: 3000,
+      description: "API",
+      dependsOn: [],
+      test: "npm run check",
+    });
+
+    await store.setServiceProject("api", "/repos/acme");
+
+    const [service] = (await store.load()).services;
+    expect(service).toMatchObject({
+      projectPath: "/repos/acme",
+      host: "prod",
+      command: "npm start",
+      cwd: "/srv/api",
+      port: 3000,
+      description: "API",
+      test: "npm run check",
+    });
+  });
+
+  test("setServiceProject clears the assignment when blank", async () => {
+    const store = new ConfigStore(configPath);
+    await store.registerService({
+      name: "api",
+      command: "npm start",
+      cwd: "/repo",
+      projectPath: "/repos/acme",
+    });
+
+    await store.setServiceProject("api", "   ");
+
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw.services[0]).not.toHaveProperty("projectPath");
+  });
+
+  test("setServiceProject rejects an unknown service", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(store.setServiceProject("ghost", "/repos/acme")).rejects.toThrow(
+      'Service "ghost" is not registered.',
+    );
+  });
+
   test("registers a service and persists it", async () => {
     const store = new ConfigStore(configPath);
 

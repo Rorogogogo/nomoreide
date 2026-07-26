@@ -22,6 +22,7 @@ export const {
   startBundle,
   stopBundle,
   deleteService,
+  setServiceProject,
   getServiceLogs,
   getDirectories,
   browseServiceConfig,

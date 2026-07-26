@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "Symbols Nerd Font Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("./assets/fonts/SymbolsNerdFontMono-Regular.ttf") format("truetype");
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -99,6 +107,8 @@
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
@@ -168,6 +178,12 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+/* Keep panels scrollable without the native scrollbar consuming layout space. */
+*::-webkit-scrollbar {
+  display: none;
 }
 
 /* Tailwind v4 Preflight defaults buttons to cursor:default; restore the hand. */

@@ -63,10 +63,33 @@ export interface TerminalSessionOptions {
 
 type Listener<T> = (value: T) => void;
 
+/**
+ * Every xterm-backed PTY should advertise its real capabilities even when
+ * NoMoreIDE itself was launched by a parent process that suppresses colour.
+ * This also covers Claude or Codex launched later from an ordinary shell.
+ */
+export function interactiveTerminalEnv(
+  inherited: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...inherited,
+    COLORTERM: "truecolor",
+    TERM: "xterm-256color",
+  };
+  delete env.NO_COLOR;
+  // The machine-global daemon may be auto-started by the Claude Code MCP.
+  // That parent exports CLAUDECODE=1, but a terminal opened in NoMoreIDE is a
+  // new top-level session. Forwarding the marker makes Claude reject its own
+  // launch as a nested session before the terminal can render.
+  delete env.CLAUDECODE;
+  return env;
+}
+
 export interface TerminalSessionLike {
   dispose(): void;
   onOutput(listener: Listener<string>): { dispose(): void };
   onState(listener: Listener<TerminalSnapshot>): { dispose(): void };
+  setLabel(label: string): TerminalSnapshot;
   resize(cols: number, rows: number): TerminalSnapshot;
   restart(size?: Partial<TerminalSize>): TerminalSnapshot;
   snapshot(): TerminalSnapshot;
@@ -81,7 +104,7 @@ export class TerminalSession implements TerminalSessionLike {
   private readonly env: NodeJS.ProcessEnv;
   private readonly shell: string;
   private readonly args: string[];
-  private readonly label: string | undefined;
+  private label: string | undefined;
   private readonly kind: "shell" | "service" | "agent" | undefined;
   private readonly provider: InteractiveAgentProvider | undefined;
   private cols = 80;
@@ -97,7 +120,7 @@ export class TerminalSession implements TerminalSessionLike {
   constructor(options: TerminalSessionOptions) {
     this.adapter = options.adapter ?? new NodePtyAdapter();
     this.cwd = options.cwd;
-    this.env = options.env ?? process.env;
+    this.env = interactiveTerminalEnv(options.env ?? process.env);
     this.shell = options.shell ?? defaultShell();
     this.args = options.args ?? [];
     this.label = options.label;
@@ -136,6 +159,11 @@ export class TerminalSession implements TerminalSessionLike {
         this.stateListeners.delete(listener);
       },
     };
+  }
+
+  setLabel(label: string): TerminalSnapshot {
+    this.label = label;
+    return this.snapshot();
   }
 
   start(size: Partial<TerminalSize> = {}): TerminalSnapshot {

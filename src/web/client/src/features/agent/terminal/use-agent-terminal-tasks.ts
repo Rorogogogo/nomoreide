@@ -4,10 +4,13 @@ import {
   createAgentTerminalSession,
   createTerminalSession,
   getAgentChatStatus,
+  listAgentTranscripts,
   listTerminalSessions,
+  renameTerminalSession,
   setChatProvider as setChatProviderApi,
   type AgentChatProviderInfo,
   type AgentChatProviderOption,
+  type AgentTranscriptInfo,
   type TerminalSessionInfo,
 } from "@/lib/api";
 
@@ -26,6 +29,8 @@ export interface AgentTerminalTask extends TerminalSessionInfo {
 
 export interface CreateAgentTerminalTaskOptions {
   prompt: string;
+  /** Explicit provider for direct session creation; defaults to the saved one. */
+  provider?: AgentProviderId;
   label?: string;
   source?: AgentTerminalTaskSource;
   background?: boolean;
@@ -68,6 +73,9 @@ export function useAgentTerminalTasks() {
   const activeTaskIdRef = useRef<string | null>(null);
   const [creating, setCreating] = useState(0);
   const [terminalError, setTerminalError] = useState<string | null>(null);
+  const [transcripts, setTranscripts] = useState<AgentTranscriptInfo[]>([]);
+  const [transcriptsLoading, setTranscriptsLoading] = useState(false);
+  const [transcriptsError, setTranscriptsError] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const pendingTaskIdsRef = useRef(new Set<string>());
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -280,8 +288,8 @@ export function useAgentTerminalTasks() {
   );
 
   const createTask = useCallback(
-    ({ prompt, label, source, background }: CreateAgentTerminalTaskOptions) => {
-      const selectedProvider = providerRef.current ?? "claude";
+    ({ prompt, provider: requestedProvider, label, source, background }: CreateAgentTerminalTaskOptions) => {
+      const selectedProvider = requestedProvider ?? providerRef.current ?? "claude";
       return runCreate(
         () =>
           createAgentTerminalSession({ provider: selectedProvider, prompt, label }),
@@ -291,15 +299,46 @@ export function useAgentTerminalTasks() {
     [runCreate],
   );
 
+  const loadTranscripts = useCallback(async () => {
+    setTranscriptsLoading(true);
+    setTranscriptsError(null);
+    try {
+      const listed = await listAgentTranscripts();
+      if (mountedRef.current) setTranscripts(listed);
+      return listed;
+    } catch (error) {
+      if (mountedRef.current) setTranscriptsError(errorMessage(error));
+      return [];
+    } finally {
+      if (mountedRef.current) setTranscriptsLoading(false);
+    }
+  }, []);
+
+  const resumeTask = useCallback(
+    (transcript: AgentTranscriptInfo, options?: { background?: boolean }) =>
+      runCreate(
+        () =>
+          createAgentTerminalSession({
+            provider: transcript.provider,
+            prompt: "",
+            resumeId: transcript.id,
+            label: transcript.title,
+          }),
+        { background: options?.background, label: transcript.title },
+      ),
+    [runCreate],
+  );
+
   /**
    * A plain workspace shell in the dock. An optional command is typed in as the
    * first line once the PTY is up — the session itself is an ordinary shell, so
    * nothing here can run a program the user did not type.
    */
   const createShellTask = useCallback(
-    (command?: string) => {
+    (command?: string, options?: { background?: boolean }) => {
       const trimmed = command?.trim();
       return runCreate(() => createTerminalSession(), {
+        background: options?.background,
         initialInput: trimmed ? [trimmed, "\r"] : undefined,
         label: trimmed ? shellTaskLabel(trimmed) : undefined,
       });
@@ -315,14 +354,14 @@ export function useAgentTerminalTasks() {
   }, []);
 
   const closeTask = useCallback(
-    async (id: string) => {
-      if (pendingTaskIdsRef.current.has(id)) return;
+    async (id: string, nextActiveId?: string | null) => {
+      if (pendingTaskIdsRef.current.has(id)) return false;
       pendingTaskIdsRef.current.add(id);
       setPendingTaskIds(new Set(pendingTaskIdsRef.current));
       closedIdsRef.current.add(id);
       try {
         await closeTerminalSession(id);
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return false;
         const current = tasksRef.current;
         const closedIndex = current.findIndex((task) => task.id === id);
         const next = current.filter((task) => task.id !== id);
@@ -330,9 +369,13 @@ export function useAgentTerminalTasks() {
         initialInputRef.current.delete(id);
         setTasks(next);
         if (activeTaskIdRef.current === id) {
-          const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
-          setActiveTaskId(adjacent?.id ?? null);
+          const adjacent =
+            nextActiveId === undefined
+              ? next[Math.min(Math.max(closedIndex, 0), next.length - 1)]?.id
+              : nextActiveId;
+          setActiveTaskId(adjacent ?? null);
         }
+        return true;
       } catch (error) {
         // Stop intentionally terminates the remote PTY while retaining its
         // local tab. A later close may therefore see an already-gone session;
@@ -345,13 +388,17 @@ export function useAgentTerminalTasks() {
           initialInputRef.current.delete(id);
           setTasks(next);
           if (activeTaskIdRef.current === id) {
-            const adjacent = next[Math.min(Math.max(closedIndex, 0), next.length - 1)];
-            setActiveTaskId(adjacent?.id ?? null);
+            const adjacent =
+              nextActiveId === undefined
+                ? next[Math.min(Math.max(closedIndex, 0), next.length - 1)]?.id
+                : nextActiveId;
+            setActiveTaskId(adjacent ?? null);
           }
-          return;
+          return true;
         }
         closedIdsRef.current.delete(id);
         if (mountedRef.current) setTerminalError(errorMessage(error));
+        return false;
       } finally {
         pendingTaskIdsRef.current.delete(id);
         if (mountedRef.current) setPendingTaskIds(new Set(pendingTaskIdsRef.current));
@@ -383,6 +430,51 @@ export function useAgentTerminalTasks() {
     [setTasks],
   );
 
+  const renameTask = useCallback(
+    async (id: string, requestedLabel: string) => {
+      const label = requestedLabel.trim();
+      if (!label || pendingTaskIdsRef.current.has(id)) return false;
+      const previous = tasksRef.current.find((task) => task.id === id);
+      if (!previous || previous.label === label) return Boolean(previous);
+      pendingTaskIdsRef.current.add(id);
+      setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+      setTerminalError(null);
+      setTasks(
+        tasksRef.current.map((task) =>
+          task.id === id ? { ...task, label } : task,
+        ),
+      );
+      try {
+        const session = await renameTerminalSession(id, label);
+        if (!mountedRef.current) return false;
+        setTasks(
+          tasksRef.current.map((task) =>
+            task.id === id ? { ...task, ...session, id } : task,
+          ),
+        );
+        return true;
+      } catch (error) {
+        if (mountedRef.current) {
+          setTasks(
+            tasksRef.current.map((task) =>
+              task.id === id && task.label === label
+                ? { ...task, label: previous.label }
+                : task,
+            ),
+          );
+          setTerminalError(errorMessage(error));
+        }
+        return false;
+      } finally {
+        pendingTaskIdsRef.current.delete(id);
+        if (mountedRef.current) {
+          setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+        }
+      }
+    },
+    [setTasks],
+  );
+
   const updateTaskStatus = useCallback(
     (id: string, patch: AgentTaskPatch) => {
       const next = tasksRef.current.map((task) =>
@@ -405,11 +497,17 @@ export function useAgentTerminalTasks() {
     configured,
     providers,
     selectProvider,
+    transcripts,
+    transcriptsLoading,
+    transcriptsError,
+    loadTranscripts,
+    resumeTask,
     createTask,
     createShellTask,
     claimInitialInput,
     closeTask,
     stopTask,
+    renameTask,
     updateTaskStatus,
   };
 }

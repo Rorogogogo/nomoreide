@@ -51,6 +51,10 @@ export const serviceRoutes: Route[] = [
       .map((value) => value.trim())
       .filter((value) => value.length > 0 && value !== name);
     const dependsOnField = dependsOn.length > 0 ? { dependsOn } : {};
+    // Absent or blank both mean "infer the project from cwd", so the field is
+    // omitted rather than stored empty — clearing an assignment is a real edit.
+    const projectPath = optionalFormValue(form, "projectPath");
+    const projectField = projectPath ? { projectPath } : {};
 
     const definition =
       kind === "docker-compose"
@@ -63,6 +67,7 @@ export const serviceRoutes: Route[] = [
             port,
             description,
             ...dependsOnField,
+            ...projectField,
           }
         : kind === "ssh"
           ? {
@@ -74,6 +79,7 @@ export const serviceRoutes: Route[] = [
               port,
               description,
               ...dependsOnField,
+              ...projectField,
             }
           : {
               name,
@@ -82,11 +88,33 @@ export const serviceRoutes: Route[] = [
               port,
               description,
               ...dependsOnField,
+              ...projectField,
             };
 
     const config = await configStore.registerService(definition);
     sendJson(response, { ok: true, config });
   }),
+
+  patternRoute(
+    /^\/api\/services\/([^/]+)\/project$/,
+    ["name"],
+    async ({ request, response, configStore, params }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const form = await readForm(request);
+      try {
+        const config = await configStore.setServiceProject(
+          decodeURIComponent(params.name),
+          optionalFormValue(form, "projectPath"),
+        );
+        sendJson(response, { ok: true, config });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 404);
+      }
+    },
+  ),
 
   route("GET", "/api/services/graph", async ({ response, configStore }) => {
     // Structural dependency graph only — the UI overlays live state/health from

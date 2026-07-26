@@ -44,6 +44,8 @@ export function useServiceForm({
   const [composeService, setComposeService] = useState(initialService?.composeService ?? "");
   const [host, setHost] = useState(initialService?.host ?? "");
   const [dependsOn, setDependsOn] = useState<string[]>(initialService?.dependsOn ?? []);
+  // "" means infer the project from cwd — the default for local services.
+  const [projectPath, setProjectPath] = useState(initialService?.projectPath ?? "");
   const [testResult, setTestResult] = useState<ServiceTestResult | null>(null);
   const [testing, setTesting] = useState(false);
 
@@ -61,6 +63,7 @@ export function useServiceForm({
     setComposeService("");
     setHost("");
     setDependsOn([]);
+    setProjectPath("");
     setTestResult(null);
   }
 
@@ -90,6 +93,8 @@ export function useServiceForm({
           if (kind === "ssh") payload.host = host;
           // Joined here; the server splits, trims, and drops self/blank references.
           payload.dependsOn = dependsOn.filter((dep) => dep !== name).join(",");
+          // Blank is meaningful: it clears an assignment back to cwd inference.
+          payload.projectPath = projectPath;
 
           await postForm("/api/services", payload);
           if (!editing) resetForm();
@@ -171,6 +176,8 @@ export function useServiceForm({
     setHost,
     dependsOn,
     setDependsOn,
+    projectPath,
+    setProjectPath,
     testResult,
     testing,
     saving,

@@ -1111,6 +1111,12 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       board: ["acme"],
     });
   }
+  if (path === "/api/git/adopt" && method === "POST") {
+    return json({ ok: true, name: "portfolio", path: "/home/demo/code/portfolio" });
+  }
+  if (path === "/api/git/create" && method === "POST") {
+    return json({ ok: true, name: "new-project", path: "/home/demo/.nomoreide/repos/new-project" });
+  }
   if (path === "/api/git/branches") {
     if (method === "POST") return json({ ok: true, output: "Created branch." });
     return json({
@@ -1450,6 +1456,123 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       ],
     });
   }
+  if (path === "/api/docker/stats") {
+    return json({
+      ok: true,
+      stats: [
+        {
+          id: "8f2c1a9b3d4e",
+          cpuPercent: 2.4,
+          memoryPercent: 9.1,
+          memoryUsage: "184MiB / 2GiB",
+          netIo: "1.2kB / 648B",
+          blockIo: "0B / 4.1kB",
+        },
+        {
+          id: "1a7e5b6c2f90",
+          cpuPercent: 0.6,
+          memoryPercent: 3.4,
+          memoryUsage: "68MiB / 2GiB",
+          netIo: "820B / 1.1kB",
+          blockIo: "12MB / 3.2MB",
+        },
+      ],
+    });
+  }
+  if (path === "/api/docker/images") {
+    return json({
+      ok: true,
+      images: [
+        {
+          id: "sha256:a1b2c3d4",
+          repository: "postgres",
+          tag: "16",
+          size: "417MB",
+          createdSince: "2 days ago",
+          dangling: false,
+        },
+        {
+          id: "sha256:e5f6a7b8",
+          repository: "node",
+          tag: "22-alpine",
+          size: "142MB",
+          createdSince: "1 week ago",
+          dangling: false,
+        },
+        {
+          id: "sha256:c9d0e1f2",
+          repository: "<none>",
+          tag: "<none>",
+          size: "88MB",
+          createdSince: "3 weeks ago",
+          dangling: true,
+        },
+      ],
+    });
+  }
+  if (path === "/api/docker/volumes") {
+    return json({
+      ok: true,
+      volumes: [
+        {
+          name: "app_pgdata",
+          driver: "local",
+          mountpoint: "/var/lib/docker/volumes/app_pgdata/_data",
+          scope: "local",
+        },
+        {
+          name: "app_redis",
+          driver: "local",
+          mountpoint: "/var/lib/docker/volumes/app_redis/_data",
+          scope: "local",
+        },
+      ],
+    });
+  }
+  if (path === "/api/docker/networks") {
+    return json({
+      ok: true,
+      networks: [
+        { id: "n1a2b3c4", name: "app_default", driver: "bridge", scope: "local" },
+        { id: "n5d6e7f8", name: "bridge", driver: "bridge", scope: "local" },
+        { id: "n9a0b1c2", name: "host", driver: "host", scope: "local" },
+      ],
+    });
+  }
+  if (path.match(/^\/api\/docker\/containers\/[^/]+\/inspect$/)) {
+    return json({
+      ok: true,
+      detail: {
+        id: "8f2c1a9b3d4e5a6b7c8d9e0f1a2b3c4d",
+        name: "app-api-1",
+        image: "app-api",
+        command: "node dist/server.js",
+        created: "2026-07-18T09:14:22.000Z",
+        state: "running",
+        startedAt: "2026-07-20T06:02:10.000Z",
+        restartCount: 0,
+        env: [
+          { key: "NODE_ENV", value: "production", secret: false },
+          { key: "PORT", value: "3000", secret: false },
+          { key: "DATABASE_PASSWORD", value: "••••••••", secret: true },
+        ],
+        mounts: [
+          {
+            type: "volume",
+            source: "app_pgdata",
+            destination: "/var/lib/postgresql/data",
+            readOnly: false,
+          },
+        ],
+        ports: [{ containerPort: "3000/tcp", hostPort: "0.0.0.0:3000" }],
+        networks: ["app_default"],
+        labels: {
+          "com.docker.compose.project": "app",
+          "com.docker.compose.service": "api",
+        },
+      },
+    });
+  }
 
   if (path === "/api/databases") return json({ ok: true, connections: databases() });
   if (path === "/api/databases/detect") {
@@ -1555,6 +1678,40 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     }
     return json({ ok: true, sessions: terminalSessions, session: terminalSessions[0] });
   }
+  const terminalSession = path.match(/^\/api\/terminal\/sessions\/([^/]+)$/);
+  if (terminalSession) {
+    const id = decodeURIComponent(terminalSession[1]);
+    if (method === "PATCH") {
+      let label = "";
+      if (typeof init?.body === "string") {
+        try {
+          label = (JSON.parse(init.body) as { label?: string }).label?.trim() ?? "";
+        } catch {
+          // Match the real endpoint's validation response below.
+        }
+      }
+      if (!label || label.length > 60) {
+        return json(
+          { ok: false, error: "Terminal session label must be 1–60 characters." },
+          400,
+        );
+      }
+      const index = terminalSessions.findIndex((session) => session.id === id);
+      if (index < 0) {
+        return json({ ok: false, error: `Unknown terminal session: ${id}` }, 404);
+      }
+      const session = { ...terminalSessions[index], label };
+      terminalSessions = terminalSessions.map((item, itemIndex) =>
+        itemIndex === index ? session : item,
+      );
+      return json({ ok: true, session });
+    }
+    if (method === "DELETE") {
+      const before = terminalSessions.length;
+      terminalSessions = terminalSessions.filter((session) => session.id !== id);
+      return json({ ok: terminalSessions.length < before, sessions: terminalSessions });
+    }
+  }
 
   const serviceAction = path.match(/^\/api\/services\/([^/]+)\/(start|stop|restart)$/);
   if (serviceAction) {
@@ -1638,6 +1795,12 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
         },
       });
     }
+  }
+
+  // Project assignment is a click-action returning only { ok }, but mocking it
+  // explicitly keeps the demo console free of the unhandled-path warning below.
+  if (/^\/api\/services\/[^/]+\/project$/.test(path)) {
+    return json({ ok: true });
   }
 
   if (path === "/api/services" || path === "/api/bundles" || path === "/api/fs/directories") {

@@ -110,7 +110,9 @@ pub fn run() {
             commands::logs::get_logs,
             // terminal
             commands::terminal::list_terminal_sessions,
+            commands::terminal::list_agent_transcripts,
             commands::terminal::create_terminal_session,
+            commands::terminal::rename_terminal_session,
             commands::terminal::start_terminal_stream,
             commands::terminal::write_terminal_input,
             commands::terminal::resize_terminal,

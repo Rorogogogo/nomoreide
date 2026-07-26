@@ -47,7 +47,9 @@ export function OperationStrip() {
   return (
     <aside
       aria-live="polite"
-      className="rounded-lg border border-border bg-card px-3 py-2 text-card-foreground shadow-sm transition-all motion-reduce:transition-none"
+      // Own margin/stacking rather than a wrapper, so nothing reserves space
+      // for this strip on the pages where it never appears.
+      className="relative z-30 mx-4 mt-2 shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-card-foreground shadow-sm transition-all motion-reduce:transition-none"
       role="status"
     >
       <div className="flex min-h-7 items-center gap-2">

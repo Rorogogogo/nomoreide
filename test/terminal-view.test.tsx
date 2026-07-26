@@ -94,6 +94,8 @@ describe("TerminalView", () => {
 
     expect(markup).toContain("Terminal tabs");
     expect(markup).toContain("New terminal");
+    expect(markup).toContain("bg-background");
+    expect(markup).toContain("border-border bg-card");
     // Effects don't run under SSR, so the page shows its pre-fetch placeholder.
     expect(markup).toContain("Starting terminal");
   });
@@ -107,6 +109,8 @@ describe("TerminalPane", () => {
 
     expect(markup).toContain("Restart");
     expect(markup).toContain("Stop");
+    expect(markup).toContain("bg-background text-foreground");
+    expect(markup).toContain("border-border bg-card");
     expect(markup).toContain("terminal viewport");
   });
 
@@ -127,6 +131,8 @@ describe("TerminalViewport", () => {
     );
 
     expect(markup).toContain("terminal viewport");
+    expect(markup).toContain("bg-[#fcfcfc]");
+    expect(markup).toContain("dark:bg-[#090909]");
     expect(markup).not.toContain("Restart");
     expect(markup).not.toContain("Stop");
   });

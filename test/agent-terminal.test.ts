@@ -46,11 +46,55 @@ describe("interactive agent terminal invocation", () => {
     );
   });
 
-  test("rejects a blank prompt", async () => {
+  test("opens an interactive provider session with a blank prompt", async () => {
     const buildInteractiveAgentInvocation = await loadInvocationBuilder();
 
-    expect(() => buildInteractiveAgentInvocation("claude", "  \n\t ")).toThrow(
-      "Prompt is required",
-    );
+    expect(buildInteractiveAgentInvocation("claude", "  \n\t ")).toEqual({
+      shell: "claude",
+      args: [],
+    });
+    expect(buildInteractiveAgentInvocation("codex", "")).toEqual({
+      shell: "codex",
+      args: ["--no-alt-screen"],
+    });
+  });
+
+  test("reopens a prior session with no prompt", async () => {
+    const buildInvocation = await loadInvocationBuilder();
+    const id = "dce2b69c-0fb4-4bd3-b456-b2bef4230c81";
+
+    expect(buildInvocation("claude", "", { resumeId: id })).toEqual({
+      shell: "claude",
+      args: ["--resume", id],
+    });
+    expect(buildInvocation("codex", "", { resumeId: id })).toEqual({
+      shell: "codex",
+      args: ["--no-alt-screen", "resume", id],
+    });
+  });
+
+  test("appends a prompt to a resumed session", async () => {
+    const buildInvocation = await loadInvocationBuilder();
+    const id = "019f7c82-cb32-73d3-9ffd-7425ddb8dbb4";
+
+    expect(buildInvocation("claude", "carry on", { resumeId: id }).args).toEqual([
+      "--resume",
+      id,
+      "carry on",
+    ]);
+    expect(buildInvocation("codex", "carry on", { resumeId: id }).args).toEqual([
+      "--no-alt-screen",
+      "resume",
+      id,
+      "carry on",
+    ]);
+  });
+
+  test("refuses a session id that could be read as a flag", async () => {
+    const buildInteractiveAgentInvocation = await loadInvocationBuilder();
+
+    expect(() =>
+      buildInteractiveAgentInvocation("claude", "", { resumeId: "--dangerously-skip-permissions" }),
+    ).toThrow("Invalid session id");
   });
 });

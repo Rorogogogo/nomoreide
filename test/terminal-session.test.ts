@@ -119,6 +119,33 @@ describe("TerminalSession", () => {
     expect(session.snapshot().provider).toBeUndefined();
   });
 
+  test.each(["agent", "shell", "service"] as const)(
+    "%s terminals normalize inherited interactive environment flags",
+    (kind) => {
+      const adapter = new FakePtyAdapter();
+      const session = new TerminalSession({
+        adapter,
+        cwd: "/repo",
+        env: {
+          CLAUDECODE: "1",
+          NO_COLOR: "1",
+          PATH: "/usr/bin",
+        },
+        kind,
+      });
+
+      session.start();
+
+      expect(adapter.active?.options.env).toMatchObject({
+        COLORTERM: "truecolor",
+        PATH: "/usr/bin",
+        TERM: "xterm-256color",
+      });
+      expect(adapter.active?.options.env.CLAUDECODE).toBeUndefined();
+      expect(adapter.active?.options.env.NO_COLOR).toBeUndefined();
+    },
+  );
+
   test("retains agent metadata in every snapshot", () => {
     const adapter = new FakePtyAdapter();
     const session = new TerminalSession({
@@ -138,6 +165,20 @@ describe("TerminalSession", () => {
       kind: "agent",
       provider: "codex",
     });
+  });
+
+  test("renames a live session without restarting its pty", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      label: "Original",
+    });
+    session.start();
+
+    expect(session.setLabel("Renamed")).toMatchObject({ label: "Renamed" });
+    expect(session.snapshot().label).toBe("Renamed");
+    expect(adapter.spawned).toHaveLength(1);
   });
 
   test("writes input and resizes the active pty", () => {

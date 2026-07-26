@@ -8,8 +8,10 @@ import { useOperations } from "@/components/operations/operation-context";
 import {
   runDockerContainerAction,
   type DockerContainerAction,
+  type DockerContainerStats,
   type DockerContainerSummary,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { DockerLogsDialog } from "./docker-logs-dialog";
 
@@ -25,30 +27,78 @@ const STATE_BADGE_VARIANT: Record<string, "success" | "danger" | "warning" | "ou
 export function DockerContainerRow({
   container,
   onRefresh,
+  onSelect,
+  selected,
+  stats,
 }: {
   container: DockerContainerSummary;
   onRefresh: () => Promise<void>;
+  onSelect: (container: DockerContainerSummary) => void;
+  selected: boolean;
+  stats?: DockerContainerStats;
 }) {
   const t = useT();
   const [logsOpen, setLogsOpen] = useState(false);
   const running = container.state === "running" || container.state === "restarting";
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 hover:bg-muted/40">
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
+    <div
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2",
+        selected ? "bg-muted/70" : "hover:bg-muted/40",
+      )}
+    >
+      {/* Only the info block opens the detail panel. Scoping the handler here
+          rather than to the whole row means the action buttons need no
+          stopPropagation, and the target stays a real keyboard stop. */}
+      {/* A real <button>, so it only holds phrasing content — hence spans with
+          `block`/`flex` rather than divs. */}
+      <button
+        aria-pressed={selected}
+        className="min-w-0 cursor-pointer rounded-sm text-left"
+        onClick={() => onSelect(container)}
+        type="button"
+      >
+        <span className="flex items-center gap-1.5">
           <span className="truncate text-sm font-medium" title={container.name}>
             {container.name}
           </span>
           <Badge size="small" variant={STATE_BADGE_VARIANT[container.state] ?? "outline"}>
             {container.state}
           </Badge>
-        </div>
-        <div className="truncate text-[11px] text-muted-foreground" title={container.image}>
-          {container.image}
-          {container.ports ? ` · ${container.ports}` : ""}
-        </div>
-      </div>
+          {/* `status` carries the uptime Docker already computed ("Up 2 hours"). */}
+          {container.status ? (
+            <span className="truncate text-[11px] font-normal text-muted-foreground">
+              {container.status}
+            </span>
+          ) : null}
+        </span>
+        <span className="block truncate text-[11px] text-muted-foreground">
+          <span title={container.image}>{container.image}</span>
+          {container.service ? ` · ${container.service}` : ""}
+          <span className="font-mono"> · {container.id.slice(0, 12)}</span>
+        </span>
+        {container.ports ? (
+          <span
+            className="block truncate font-mono text-[11px] text-muted-foreground"
+            title={container.ports}
+          >
+            {container.ports}
+          </span>
+        ) : null}
+        {stats && running ? (
+          <span className="flex flex-wrap items-center gap-x-3 text-[11px] tabular-nums text-muted-foreground">
+            <span>{t("docker.stats.cpu", { value: formatPercent(stats.cpuPercent) })}</span>
+            <span>
+              {t("docker.stats.mem", {
+                usage: stats.memoryUsage || "—",
+                percent: formatPercent(stats.memoryPercent),
+              })}
+            </span>
+            {stats.netIo ? <span>{t("docker.stats.net", { value: stats.netIo })}</span> : null}
+          </span>
+        ) : null}
+      </button>
       <div className="flex shrink-0 items-center gap-1">
         <Tooltip label={t("docker.actions.logs")}>
           <Button
@@ -84,6 +134,10 @@ export function DockerContainerRow({
       ) : null}
     </div>
   );
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? "—" : `${value.toFixed(1)}%`;
 }
 
 function ContainerActionButton({

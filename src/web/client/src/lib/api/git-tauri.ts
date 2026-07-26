@@ -60,4 +60,12 @@ export const tauriGitApi: GitApi = {
     await tauri_registerGitRepository({ name, path });
   },
   cloneGitRepository: (url) => tauri_cloneGitRepository(url),
+  adoptGitRepository: () => {
+    // The Rust core has no adopt-by-path command yet.
+    throw new Error("Adopting a folder as a project is not supported in desktop mode");
+  },
+  createGitRepository: () => {
+    // The Rust core has no create-project command yet.
+    throw new Error("Creating a project is not supported in desktop mode");
+  },
 };

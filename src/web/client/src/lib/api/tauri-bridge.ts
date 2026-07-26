@@ -4,7 +4,11 @@
  */
 
 import { isTauri } from "@/lib/tauri";
-import type { CreateAgentTerminalOptions, TerminalSessionInfo } from "./terminal-api.js";
+import type {
+  AgentTranscriptInfo,
+  CreateAgentTerminalOptions,
+  TerminalSessionInfo,
+} from "./terminal-api.js";
 
 // Lazy-loaded to avoid bundling tauri APIs in the web build.
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -733,8 +737,12 @@ export async function tauri_listTerminalSessions() {
   return sessions.map((session) => ({
     ...session,
     serviceName: session.serviceName ?? undefined,
-    label: session.serviceName ?? session.label ?? undefined,
+    label: session.label ?? session.serviceName ?? undefined,
   }));
+}
+
+export async function tauri_listAgentTranscripts() {
+  return tauriInvoke<AgentTranscriptInfo[]>("list_agent_transcripts");
 }
 
 export async function tauri_createTerminalSession(opts?: {
@@ -753,7 +761,19 @@ export async function tauri_createTerminalSession(opts?: {
   return {
     ...session,
     serviceName: session.serviceName ?? undefined,
-    label: session.serviceName ?? session.label ?? undefined,
+    label: session.label ?? session.serviceName ?? undefined,
+  };
+}
+
+export async function tauri_renameTerminalSession(id: string, label: string) {
+  const session = await tauriInvoke<TerminalSessionInfo & { serviceName?: string | null }>(
+    "rename_terminal_session",
+    { id, label },
+  );
+  return {
+    ...session,
+    serviceName: session.serviceName ?? undefined,
+    label: session.label ?? session.serviceName ?? undefined,
   };
 }
 

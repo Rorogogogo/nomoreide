@@ -1,6 +1,7 @@
-import type { ConfigStore } from "../../core/config-store.js";
+import { gitToplevel, type ConfigStore } from "../../core/config-store.js";
 import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
+import { createRepository } from "../../core/repo-create.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
@@ -344,6 +345,43 @@ export const gitRoutes: Route[] = [
       const { name, clonePath } = await cloneRepository(url, undefined, githubToken);
       await configStore.registerGitRepository({ name, path: clonePath });
       sendJson(response, { ok: true, name, path: clonePath });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+    }
+  }),
+
+  // Adopt the repo a path already sits in — used by the "this service has no
+  // project" affordance. Resolves to the worktree root first so a service that
+  // runs from `repo/frontend` registers `repo`, not the subdirectory.
+  route("POST", "/api/git/adopt", async ({ request, response, configStore }) => {
+    const form = await readForm(request);
+    const from = requiredFormValue(form, "path");
+    const root = await gitToplevel(from);
+    if (!root) {
+      sendJson(response, { ok: false, error: `Not inside a Git repository: ${from}` }, 422);
+      return;
+    }
+    try {
+      const name = root.split("/").filter(Boolean).pop() ?? root;
+      await configStore.registerGitRepository({ name, path: root });
+      sendJson(response, { ok: true, name, path: root });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+    }
+  }),
+
+  // Create a brand-new project: mkdir + `git init` + register. Lives in the
+  // guarded `repo-create` core module for the same reason cloning does.
+  route("POST", "/api/git/create", async ({ request, response, configStore }) => {
+    const form = await readForm(request);
+    try {
+      const parent = form.get("parentPath")?.trim();
+      const { name, path } = await createRepository(
+        requiredFormValue(form, "name"),
+        parent || undefined,
+      );
+      await configStore.registerGitRepository({ name, path });
+      sendJson(response, { ok: true, name, path });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 422);
     }

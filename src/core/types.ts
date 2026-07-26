@@ -17,6 +17,12 @@ export interface ServiceDefinition {
    * to order `startBundle`. Self/unknown references are ignored at start time.
    */
   dependsOn?: string[];
+  /**
+   * Root path of the project this service belongs to. Overrides the default
+   * inference from `cwd`; set it when `cwd` cannot identify the project, as
+   * for remote services whose cwd lives on another machine.
+   */
+  projectPath?: string;
   // local + ssh
   command?: string;
   cwd?: string;

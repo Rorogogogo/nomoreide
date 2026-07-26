@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
   Bot,
   BookOpen,
+  ChevronRight,
   Container,
   Database,
   GitBranch,
@@ -49,7 +50,7 @@ import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubLogo } from "@/features/github/github-logo";
-import { ProjectSwitcher } from "@/features/git/project-switcher";
+import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
 import { scopeDashboard } from "@/features/services/project-scope";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
@@ -63,6 +64,7 @@ import { TauriTitleBar } from "@/components/tauri-titlebar";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
+import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
 
 type Page =
   | "services"
@@ -289,6 +291,7 @@ export function SettingsProjectSync({
 
 function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const t = useT();
+  const [, startTransition] = useTransition();
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? pageFromPath(window.location.pathname) : "services",
   );
@@ -331,7 +334,14 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     }
     setError(null);
     try {
-      setData(await getDashboard());
+      const nextData = await getDashboard();
+      if (options.silent) {
+        // Polling keeps status current, but it must not interrupt typing or
+        // terminal interactions with a synchronous whole-dashboard render.
+        startTransition(() => setData(nextData));
+      } else {
+        setData(nextData);
+      }
       if (options.notify) {
         showSuccessToast(t("app.dashboardRefreshed"));
       }
@@ -342,7 +352,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, [showErrorToast, showSuccessToast, t]);
+  }, [showErrorToast, showSuccessToast, startTransition, t]);
 
   // Header Refresh: reload the shared dashboard state *and* whatever the active
   // page fetches on its own (GitHub, Database, commit graph), so it always
@@ -427,6 +437,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <WorkflowTriggerProvider>
     <div className="flex flex-col h-screen overflow-hidden">
+    <ScrollProgressBar key={page} type="bar" strokeSize={2} />
     <TauriTitleBar />
     <div className="flex-1 overflow-hidden pb-9">
       <div className="mx-auto flex h-full max-w-[1500px]">
@@ -474,18 +485,9 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               )}
             />
           </div>
-          {data ? (
-            <div className="mt-3 border-b border-border/60 pb-2">
-              <ProjectSwitcher
-                data={data}
-                docked={sidebarDocked}
-                onRefresh={() => refresh({ silent: true })}
-                onScopeChange={setScopeAll}
-                scopeAll={scopeAll}
-              />
-            </div>
-          ) : null}
-          <nav className="mt-2 flex-1 content-start overflow-y-auto overflow-x-hidden">
+          {/* Project scope lives in the header breadcrumb, not here — one
+              control for one piece of state. */}
+          <nav className="mt-3 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {NAV_SECTIONS.map((section, index) => (
               <div
                 className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
@@ -528,22 +530,27 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
         >
           <header
             className={cn(
-              "relative z-40 flex shrink-0 flex-wrap items-center justify-between gap-3 border border-border bg-card/90 px-4 py-3 backdrop-blur",
+              "relative z-40 flex shrink-0 flex-wrap items-center justify-between gap-3 border border-border bg-card/90 px-3 py-1.5 backdrop-blur",
               "border-x-0 border-t-0 border-b",
             )}
           >
-            <div className="flex items-center gap-3">
-              <PanelLeft className="size-4 text-muted-foreground md:hidden" />
-              <div>
-                <h1 className="text-lg font-semibold tracking-tight">
-                  {t(PAGE_TITLE_KEY[page])}
-                </h1>
-                <p className="font-mono text-xs text-muted-foreground">
-                  {page === "git" || page === "github"
-                    ? data?.git.selectedRepository?.name ?? data?.git.cwd ?? t("app.localWorkspace")
-                    : activeProject?.name ?? t("app.allProjects")}
-                </p>
-              </div>
+            {/* One line: project scope, then the page it scopes. The project
+                crumb is the picker itself, so scope is both shown and set in
+                the place it applies. */}
+            <div className="flex min-w-0 items-center gap-1">
+              <PanelLeft className="mr-1 size-4 shrink-0 text-muted-foreground md:hidden" />
+              {data ? (
+                <ProjectBreadcrumb
+                  data={data}
+                  onRefresh={() => refresh({ silent: true })}
+                  onScopeChange={setScopeAll}
+                  scopeAll={scopeAll}
+                />
+              ) : null}
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+              <h1 className="truncate px-1 text-sm font-semibold tracking-tight">
+                {t(PAGE_TITLE_KEY[page])}
+              </h1>
             </div>
             <div className="flex items-center gap-2">
               {error ? <Badge variant="danger">{error}</Badge> : null}
@@ -583,9 +590,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             </div>
           </header>
 
-          <div className="relative z-30 shrink-0 px-4 pt-2">
-            <OperationStrip />
-          </div>
+          {/* No wrapper here: OperationStrip renders nothing while idle, and a
+              padded wrapper around it left an empty strip under the header on
+              every page. It carries its own spacing instead. */}
+          <OperationStrip />
 
           {data ? (
             <RunningStripe

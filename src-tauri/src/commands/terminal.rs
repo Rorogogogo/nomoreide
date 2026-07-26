@@ -1,3 +1,6 @@
+use crate::core::agent_transcripts::{
+    list_agent_transcripts as read_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
+};
 #[cfg(target_os = "macos")]
 use crate::core::process_manager::service_path;
 use crate::AppState;
@@ -40,6 +43,7 @@ pub struct AgentTerminalRequest {
     provider: String,
     prompt: String,
     label: Option<String>,
+    resume_id: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,24 +55,50 @@ struct AgentInvocation {
 fn derive_agent_invocation(
     provider: &str,
     prompt: &str,
+    resume_id: Option<&str>,
     claude_bin: &str,
     codex_bin: &str,
 ) -> Result<AgentInvocation, String> {
-    if prompt.trim().is_empty() {
-        return Err("Prompt is required".to_string());
+    if let Some(id) = resume_id {
+        if !(8..=64).contains(&id.len())
+            || !id
+                .chars()
+                .all(|character| character.is_ascii_hexdigit() || character == '-')
+        {
+            return Err(format!("Invalid session id: {id}"));
+        }
     }
 
     // Both CLIs accept a positional initial prompt and queue it until the TUI
-    // is ready — far more reliable than injecting keystrokes after spawn.
+    // is ready — far more reliable than injecting keystrokes after spawn. A
+    // blank prompt simply opens the provider's interactive TUI.
     match provider {
-        "claude" => Ok(AgentInvocation {
-            executable: claude_bin.to_string(),
-            args: vec![prompt.to_string()],
-        }),
-        "codex" => Ok(AgentInvocation {
-            executable: codex_bin.to_string(),
-            args: vec!["--no-alt-screen".to_string(), prompt.to_string()],
-        }),
+        "claude" => {
+            let mut args = Vec::new();
+            if let Some(id) = resume_id {
+                args.extend(["--resume".to_string(), id.to_string()]);
+            }
+            if !prompt.trim().is_empty() {
+                args.push(prompt.to_string());
+            }
+            Ok(AgentInvocation {
+                executable: claude_bin.to_string(),
+                args,
+            })
+        }
+        "codex" => {
+            let mut args = vec!["--no-alt-screen".to_string()];
+            if let Some(id) = resume_id {
+                args.extend(["resume".to_string(), id.to_string()]);
+            }
+            if !prompt.trim().is_empty() {
+                args.push(prompt.to_string());
+            }
+            Ok(AgentInvocation {
+                executable: codex_bin.to_string(),
+                args,
+            })
+        }
         _ => Err(format!("Unsupported agent provider: {provider}")),
     }
 }
@@ -133,6 +163,23 @@ fn normalize_agent_label(provider: &str, label: Option<&str>) -> String {
         "Claude task"
     };
     requested.unwrap_or(fallback).chars().take(60).collect()
+}
+
+fn normalize_session_label(label: &str) -> Result<String, String> {
+    let trimmed = label.trim();
+    if trimmed.is_empty() {
+        return Err("Terminal session label must not be empty".to_string());
+    }
+    if trimmed.encode_utf16().count() > 60 {
+        return Err("Terminal session label must be at most 60 characters".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+fn configure_interactive_terminal_environment(command: &mut CommandBuilder) {
+    command.env_remove("NO_COLOR");
+    command.env("TERM", "xterm-256color");
+    command.env("COLORTERM", "truecolor");
 }
 
 #[derive(Debug, PartialEq)]
@@ -221,6 +268,22 @@ impl TerminalManager {
             .values()
             .map(|session| session.metadata.clone())
             .collect()
+    }
+
+    fn rename_session(&self, id: &str, label: String) -> Result<TerminalSession, String> {
+        let mut registry = self.registry.0.lock().unwrap();
+        if registry.shutting_down {
+            return Err("Terminal manager is shutting down".to_string());
+        }
+        if registry.closing.contains_key(id) {
+            return Err(format!("Terminal session is closing; retry shortly: {id}"));
+        }
+        let session = registry
+            .sessions
+            .get_mut(id)
+            .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
+        session.metadata.label = Some(label);
+        Ok(session.metadata.clone())
     }
 
     fn reserve_id(&self, id: &str) -> Result<IdReservation, String> {
@@ -565,6 +628,43 @@ pub async fn list_terminal_sessions(
 }
 
 #[tauri::command]
+pub async fn list_agent_transcripts(
+    state: State<'_, AppState>,
+) -> Result<Vec<AgentTranscript>, String> {
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repo_path = config
+        .selected_git_repository
+        .as_ref()
+        .and_then(|selected| {
+            config
+                .git_repositories
+                .iter()
+                .find(|repo| &repo.name == selected)
+        })
+        .or_else(|| config.git_repositories.first())
+        .map(|repo| repo.path.clone())
+        .unwrap_or(
+            std::env::current_dir()
+                .map_err(|error| error.to_string())?
+                .to_string_lossy()
+                .into_owned(),
+        );
+    let home = dirs::home_dir().ok_or_else(|| "Home directory is unavailable".to_string())?;
+    let codex_home = std::env::var_os("CODEX_HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| home.join(".codex"));
+    tauri::async_runtime::spawn_blocking(move || {
+        read_agent_transcripts(&home, &codex_home, &repo_path, DEFAULT_TRANSCRIPT_LIMIT)
+    })
+    .await
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn create_terminal_session(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -632,8 +732,13 @@ pub async fn create_terminal_session(
     let (shell, args, label, kind, provider) = if let Some(request) = &agent {
         let claude_bin = agent_binary("NOMOREIDE_CLAUDE_BIN", "claude");
         let codex_bin = agent_binary("NOMOREIDE_CODEX_BIN", "codex");
-        let invocation =
-            derive_agent_invocation(&request.provider, &request.prompt, &claude_bin, &codex_bin)?;
+        let invocation = derive_agent_invocation(
+            &request.provider,
+            &request.prompt,
+            request.resume_id.as_deref(),
+            &claude_bin,
+            &codex_bin,
+        )?;
         (
             OsString::from(invocation.executable),
             invocation.args,
@@ -685,6 +790,10 @@ pub async fn create_terminal_session(
     let mut cmd = CommandBuilder::new(&shell);
     cmd.args(&args);
     cmd.cwd(&work_dir);
+    // The app may itself be launched by a tool that sets NO_COLOR. Every PTY
+    // rendered by xterm.js must advertise its actual capabilities, including
+    // shells that launch Claude or Codex later.
+    configure_interactive_terminal_environment(&mut cmd);
     // Finder-launched macOS apps inherit a minimal PATH. Other platforms keep
     // the environment copied by CommandBuilder unchanged.
     if let Some(path) = agent_path_override() {
@@ -754,6 +863,17 @@ pub async fn create_terminal_session(
         .start_child_waiter(id, generation, child);
 
     Ok(session)
+}
+
+#[tauri::command]
+pub async fn rename_terminal_session(
+    state: State<'_, AppState>,
+    id: String,
+    label: String,
+) -> Result<TerminalSession, String> {
+    state
+        .terminal_manager
+        .rename_session(&id, normalize_session_label(&label)?)
 }
 
 /// Flush buffered startup output and switch the session to live emission. The
@@ -834,7 +954,8 @@ use std::io::Write;
 #[cfg(test)]
 mod tests {
     use super::{
-        derive_agent_invocation, normalize_agent_label, resolve_config_load, resolve_session_scope,
+        configure_interactive_terminal_environment, derive_agent_invocation, normalize_agent_label,
+        normalize_session_label, resolve_config_load, resolve_session_scope,
     };
 
     #[test]
@@ -888,6 +1009,24 @@ mod tests {
     #[test]
     fn non_macos_agent_path_preserves_inherited_environment() {
         assert!(super::agent_path_override().is_none());
+    }
+
+    #[test]
+    fn interactive_terminal_enables_color_when_the_parent_suppresses_it() {
+        let mut command = portable_pty::CommandBuilder::new("shell");
+        command.env("NO_COLOR", "1");
+
+        configure_interactive_terminal_environment(&mut command);
+
+        assert!(command.get_env("NO_COLOR").is_none());
+        assert_eq!(
+            command.get_env("TERM"),
+            Some(std::ffi::OsStr::new("xterm-256color"))
+        );
+        assert_eq!(
+            command.get_env("COLORTERM"),
+            Some(std::ffi::OsStr::new("truecolor"))
+        );
     }
 
     #[cfg(unix)]
@@ -1408,7 +1547,8 @@ mod tests {
     fn claude_invocation_passes_the_prompt_as_a_positional_argument() {
         let prompt = "  inspect this project\nthen explain it  ";
 
-        let invocation = derive_agent_invocation("claude", prompt, "claude", "codex").unwrap();
+        let invocation =
+            derive_agent_invocation("claude", prompt, None, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "claude");
         assert_eq!(invocation.args, vec![prompt]);
@@ -1418,22 +1558,25 @@ mod tests {
     fn codex_invocation_disables_alt_screen_and_passes_the_prompt() {
         let prompt = "  inspect this project\nthen explain it  ";
 
-        let invocation = derive_agent_invocation("codex", prompt, "claude", "codex").unwrap();
+        let invocation = derive_agent_invocation("codex", prompt, None, "claude", "codex").unwrap();
 
         assert_eq!(invocation.executable, "codex");
         assert_eq!(invocation.args, vec!["--no-alt-screen", prompt]);
     }
 
     #[test]
-    fn blank_agent_prompt_is_rejected() {
-        let error = derive_agent_invocation("claude", " \n\t ", "claude", "codex").unwrap_err();
+    fn blank_agent_prompt_opens_an_interactive_session() {
+        let claude = derive_agent_invocation("claude", " \n\t ", None, "claude", "codex").unwrap();
+        let codex = derive_agent_invocation("codex", "", None, "claude", "codex").unwrap();
 
-        assert_eq!(error, "Prompt is required");
+        assert!(claude.args.is_empty());
+        assert_eq!(codex.args, vec!["--no-alt-screen"]);
     }
 
     #[test]
     fn unknown_agent_provider_is_rejected() {
-        let error = derive_agent_invocation("other", "do work", "claude", "codex").unwrap_err();
+        let error =
+            derive_agent_invocation("other", "do work", None, "claude", "codex").unwrap_err();
 
         assert_eq!(error, "Unsupported agent provider: other");
     }
@@ -1443,6 +1586,7 @@ mod tests {
         let claude = derive_agent_invocation(
             "claude",
             "do work",
+            None,
             "/custom/bin/claude",
             "/custom/bin/codex",
         )
@@ -1450,6 +1594,7 @@ mod tests {
         let codex = derive_agent_invocation(
             "codex",
             "do work",
+            None,
             "/custom/bin/claude",
             "/custom/bin/codex",
         )
@@ -1457,6 +1602,16 @@ mod tests {
 
         assert_eq!(claude.executable, "/custom/bin/claude");
         assert_eq!(codex.executable, "/custom/bin/codex");
+    }
+
+    #[test]
+    fn agent_invocation_resumes_provider_sessions_without_a_prompt() {
+        let id = "dce2b69c-0fb4-4bd3-b456-b2bef4230c81";
+        let claude = derive_agent_invocation("claude", "", Some(id), "claude", "codex").unwrap();
+        let codex = derive_agent_invocation("codex", "", Some(id), "claude", "codex").unwrap();
+
+        assert_eq!(claude.args, vec!["--resume", id]);
+        assert_eq!(codex.args, vec!["--no-alt-screen", "resume", id]);
     }
 
     #[test]
@@ -1473,5 +1628,42 @@ mod tests {
     fn agent_label_uses_provider_default_when_missing_or_blank() {
         assert_eq!(normalize_agent_label("claude", None), "Claude task");
         assert_eq!(normalize_agent_label("codex", Some(" \t ")), "Codex task");
+    }
+
+    #[test]
+    fn session_rename_requires_a_trimmed_label_within_sixty_characters() {
+        assert_eq!(
+            normalize_session_label("  Build watcher  ").unwrap(),
+            "Build watcher"
+        );
+        assert!(normalize_session_label(" \t ").is_err());
+        assert!(normalize_session_label(&"A".repeat(61)).is_err());
+        assert!(normalize_session_label(&"😀".repeat(30)).is_ok());
+        assert!(normalize_session_label(&"😀".repeat(31)).is_err());
+    }
+
+    #[test]
+    fn session_rename_rejects_closing_and_shutting_down_managers() {
+        let manager = super::TerminalManager::new();
+        {
+            let mut registry = manager.registry.0.lock().unwrap();
+            registry
+                .closing
+                .insert("term_closing".to_string(), "generation".to_string());
+        }
+        assert!(manager
+            .rename_session("term_closing", "Renamed".to_string())
+            .unwrap_err()
+            .contains("closing"));
+
+        {
+            let mut registry = manager.registry.0.lock().unwrap();
+            registry.closing.clear();
+            registry.shutting_down = true;
+        }
+        assert!(manager
+            .rename_session("term_missing", "Renamed".to_string())
+            .unwrap_err()
+            .contains("shutting down"));
     }
 }

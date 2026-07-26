@@ -19,6 +19,7 @@ import { createWebServer } from "../src/web/server.js";
 class FakeTerminalSession {
   readonly cwd: string;
   readonly shell = "/bin/zsh";
+  label?: string;
   readonly writes: string[] = [];
   readonly resizes: TerminalSize[] = [];
   startedWith?: TerminalSize;
@@ -30,14 +31,16 @@ class FakeTerminalSession {
   private outputListeners = new Set<(chunk: string) => void>();
   private stateListeners = new Set<(snapshot: TerminalSnapshot) => void>();
 
-  constructor(cwd: string) {
+  constructor(cwd: string, label?: string) {
     this.cwd = cwd;
+    this.label = label;
   }
 
   snapshot(): TerminalSnapshot {
     return {
       cols: this.cols,
       cwd: this.cwd,
+      label: this.label,
       rows: this.rows,
       shell: this.shell,
       state: this.state,
@@ -78,6 +81,11 @@ class FakeTerminalSession {
     this.rows = rows;
     this.resizes.push({ cols, rows });
     this.emitState();
+    return this.snapshot();
+  }
+
+  setLabel(label: string): TerminalSnapshot {
+    this.label = label;
     return this.snapshot();
   }
 
@@ -134,10 +142,10 @@ class FakeTerminalManager implements TerminalSessionManagerLike {
   ): TerminalSessionInfo {
     this.lastCreateOptions = options;
     const id = `term_${++this.counter}`;
-    const session = new FakeTerminalSession(options.cwd ?? this.cwd);
+    const session = new FakeTerminalSession(options.cwd ?? this.cwd, options.label);
     session.start(size);
     this.sessions.set(id, session);
-    return { id, ...session.snapshot(), label: options.label };
+    return { id, ...session.snapshot() };
   }
 
   createWithId(
@@ -147,15 +155,20 @@ class FakeTerminalManager implements TerminalSessionManagerLike {
     const existing = this.sessions.get(id);
     if (existing) return { id, ...existing.snapshot() };
     this.lastCreateOptions = options;
-    const session = new FakeTerminalSession(options.cwd ?? this.cwd);
+    const session = new FakeTerminalSession(options.cwd ?? this.cwd, options.label);
     session.start();
     this.sessions.set(id, session);
-    return { id, ...session.snapshot(), label: options.label };
+    return { id, ...session.snapshot() };
   }
 
   touch(): void {}
 
   detach(): void {}
+
+  rename(id: string, label: string): TerminalSessionInfo | undefined {
+    const session = this.sessions.get(id);
+    return session ? { id, ...session.setLabel(label) } : undefined;
+  }
 
   get(id: string): FakeTerminalSession | undefined {
     return this.sessions.get(id);
@@ -350,12 +363,64 @@ describe("web terminal socket", () => {
       "term_1",
     ]);
 
+    const renamed = await fetch(
+      `${server.url}/api/terminal/sessions/term_1`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ label: "Build watcher" }),
+      },
+    );
+    expect(renamed.status).toBe(200);
+    expect((await renamed.json()).session.label).toBe("Build watcher");
+    expect(manager.list()[0]?.label).toBe("Build watcher");
+
     const deleted = await fetch(
       `${server.url}/api/terminal/sessions/term_1`,
       { method: "DELETE" },
     );
     expect((await deleted.json()).ok).toBe(true);
     expect(manager.get("term_1")).toBeUndefined();
+  });
+
+  test("validates session rename requests and unknown ids", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const invalid = await fetch(
+      `${server.url}/api/terminal/sessions/missing`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ label: "   " }),
+      },
+    );
+    expect(invalid.status).toBe(400);
+
+    const missing = await fetch(
+      `${server.url}/api/terminal/sessions/missing`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ label: "New name" }),
+      },
+    );
+    expect(missing.status).toBe(404);
+
+    const unicodeBoundary = await fetch(
+      `${server.url}/api/terminal/sessions/missing`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ label: "😀".repeat(31) }),
+      },
+    );
+    expect(unicodeBoundary.status).toBe(400);
   });
 });
 
@@ -537,9 +602,60 @@ describe("agent terminal sessions", () => {
     expect(manager.sessions.get("term_1")?.writes).toEqual([]);
   });
 
+  test("resumes an existing provider conversation without a new prompt", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+    const resumeId = "dce2b69c-0fb4-4bd3-b456-b2bef4230c81";
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        agent: { provider: "claude", prompt: "", resumeId },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions).toMatchObject({
+      args: ["--resume", resumeId],
+      kind: "agent",
+      provider: "claude",
+      shell: "claude",
+    });
+  });
+
+  test("opens an interactive provider session without an initial prompt", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent: { provider: "codex", prompt: "" } }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions).toMatchObject({
+      args: ["--no-alt-screen"],
+      kind: "agent",
+      label: "Codex task",
+      provider: "codex",
+      shell: "codex",
+    });
+  });
+
   test.each([
     ["unknown provider", { provider: "other", prompt: "Do work" }],
-    ["blank prompt", { provider: "codex", prompt: "   " }],
     ["null agent", null],
   ])("returns 400 for an %s", async (_name, agent) => {
     const manager = new FakeTerminalManager(tempDir);

@@ -16,6 +16,7 @@ import {
   tauri_writeTerminalInput,
 } from "@/lib/api";
 import { isTauri } from "@/lib/tauri";
+import { useResolvedTheme, type ResolvedTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export type TerminalConnectionState =
@@ -44,6 +45,8 @@ export interface TerminalViewportProps {
   sessionId: string;
   /** Hidden viewports remain mounted to preserve their PTY and scrollback. */
   active: boolean;
+  /** Only the focused visible pane should claim keyboard focus. */
+  focused?: boolean;
   /** Reports transport status for optional chrome rendered by a parent. */
   onStatusChange?: (status: TerminalViewportStatus) => void;
   /** Claims one-time inputs after the PTY has finished its startup output. */
@@ -105,6 +108,55 @@ const INITIAL_STATUS: TerminalViewportStatus = {
   detail: translate("terminal.openingShell"),
 };
 const WEB_SOCKET_OPEN = 1;
+
+export function terminalTheme(theme: ResolvedTheme) {
+  if (theme === "light") {
+    return {
+      background: "#fcfcfc",
+      black: "#24211f",
+      blue: "#2869b8",
+      brightBlack: "#6e6964",
+      brightBlue: "#3478c9",
+      brightCyan: "#188e88",
+      brightGreen: "#2c8d49",
+      brightMagenta: "#925db6",
+      brightRed: "#d94747",
+      brightWhite: "#ffffff",
+      brightYellow: "#9a7200",
+      cursor: "#24211f",
+      cyan: "#147d78",
+      foreground: "#24211f",
+      green: "#247a3c",
+      magenta: "#8050a6",
+      red: "#c43d3d",
+      selectionBackground: "#147d7830",
+      white: "#d9d5d0",
+      yellow: "#8a6500",
+    };
+  }
+  return {
+    background: "#090909",
+    black: "#090909",
+    blue: "#69a7ff",
+    brightBlack: "#5f6368",
+    brightBlue: "#8ab4f8",
+    brightCyan: "#7ddfd7",
+    brightGreen: "#8fdc8a",
+    brightMagenta: "#d7a2ff",
+    brightRed: "#ff8a80",
+    brightWhite: "#ffffff",
+    brightYellow: "#ffd166",
+    cursor: "#f2f2f2",
+    cyan: "#62d0c8",
+    foreground: "#f2f2f2",
+    green: "#7ac77f",
+    magenta: "#c792ea",
+    red: "#ff6b6b",
+    selectionBackground: "#ffffff33",
+    white: "#e8eaed",
+    yellow: "#f7c948",
+  };
+}
 
 export function createTerminalViewportHandle(options: {
   focus: () => void;
@@ -289,6 +341,7 @@ export const TerminalViewport = forwardRef<
   {
     sessionId,
     active,
+    focused = active,
     claimInitialInput,
     initialInputIntervalMs,
     onStatusChange,
@@ -296,6 +349,7 @@ export const TerminalViewport = forwardRef<
   },
   forwardedRef,
 ) {
+  const resolvedTheme = useResolvedTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -397,31 +451,12 @@ export const TerminalViewport = forwardRef<
       allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: displaySettingsRef.current.cursorStyle,
-      fontFamily: '"SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace',
+      fontFamily:
+        '"SF Mono", "Symbols Nerd Font Mono", "JetBrains Mono", ui-monospace, Menlo, monospace',
       fontSize: displaySettingsRef.current.fontSize,
       lineHeight: 1.25,
       scrollback: displaySettingsRef.current.scrollback,
-      theme: {
-        background: "#090909",
-        black: "#090909",
-        blue: "#69a7ff",
-        brightBlack: "#5f6368",
-        brightBlue: "#8ab4f8",
-        brightCyan: "#7ddfd7",
-        brightGreen: "#8fdc8a",
-        brightMagenta: "#d7a2ff",
-        brightRed: "#ff8a80",
-        brightWhite: "#ffffff",
-        brightYellow: "#ffd166",
-        cyan: "#62d0c8",
-        foreground: "#f2f2f2",
-        green: "#7ac77f",
-        magenta: "#c792ea",
-        red: "#ff6b6b",
-        selectionBackground: "#ffffff33",
-        white: "#e8eaed",
-        yellow: "#f7c948",
-      },
+      theme: terminalTheme(resolvedTheme),
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
@@ -533,21 +568,29 @@ export const TerminalViewport = forwardRef<
     };
   }, [reportStatus, sessionId, sendResize, tauriMode]);
 
-  // A hidden xterm has zero dimensions. Refit and focus after it is revealed.
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (terminal) terminal.options.theme = terminalTheme(resolvedTheme);
+  }, [resolvedTheme]);
+
+  // A hidden xterm has zero dimensions. Refit after it is revealed, but only
+  // the pane the user last interacted with should claim keyboard focus.
   useEffect(() => {
     return scheduleTerminalActivation(active, {
       cancel: (id) => window.clearTimeout(id),
-      focus: () => terminalRef.current?.focus(),
+      focus: () => {
+        if (focused) terminalRef.current?.focus();
+      },
       refit: sendResize,
       schedule: (callback) => window.setTimeout(callback, 0),
     });
-  }, [active, sendResize]);
+  }, [active, focused, sendResize]);
 
   return (
     <section
       aria-label="terminal viewport"
       className={cn(
-        "h-full min-h-0 overflow-hidden bg-[#090909] px-3 py-0.5",
+        "h-full min-h-0 overflow-hidden bg-[#fcfcfc] px-3 py-0.5 dark:bg-[#090909]",
         !active && "hidden",
       )}
     >

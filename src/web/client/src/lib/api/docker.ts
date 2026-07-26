@@ -8,6 +8,11 @@ const api: DockerApi = isTauri() ? tauriDockerApi : httpDockerApi;
 export const {
   getDockerStatus,
   getDockerContainers,
+  getDockerStats,
+  getDockerImages,
+  getDockerVolumes,
+  getDockerNetworks,
+  getDockerContainerDetail,
   runDockerContainerAction,
   getDockerContainerLogs,
 } = api;
@@ -15,6 +20,14 @@ export const {
 export type {
   DockerApi,
   DockerContainerAction,
+  DockerContainerDetail,
+  DockerContainerStats,
   DockerContainerSummary,
+  DockerEnvVar,
+  DockerImageSummary,
+  DockerMountInfo,
+  DockerNetworkSummary,
+  DockerPortBinding,
   DockerStatus,
+  DockerVolumeSummary,
 } from "./docker-api.js";

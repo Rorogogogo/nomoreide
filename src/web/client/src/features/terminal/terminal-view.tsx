@@ -90,10 +90,10 @@ export function TerminalView() {
   );
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-[#090909] text-white">
+    <section className="flex h-full min-h-0 flex-col bg-background text-foreground">
       <div
         aria-label={t("terminal.tabs")}
-        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/10 bg-[#111111] px-2 py-1.5"
+        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-card px-2 py-1.5"
         role="tablist"
       >
         {tabs.map((tab, index) => {
@@ -104,8 +104,8 @@ export function TerminalView() {
             className={cn(
               "group flex items-center gap-1 rounded-md border border-transparent px-2 py-1 text-xs",
               tab.id === activeId
-                ? "border-white/15 bg-white/10 text-white"
-                : "text-white/60 hover:bg-white/5",
+                ? "border-border bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
             <button
@@ -119,7 +119,7 @@ export function TerminalView() {
             </button>
             <button
               aria-label={t("terminal.closeTab", { name })}
-              className="rounded p-0.5 text-white/40 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
+              className="rounded p-0.5 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100"
               disabled={busy}
               onClick={() => requestClose(tab.id, name)}
               type="button"
@@ -131,7 +131,7 @@ export function TerminalView() {
         })}
         <button
           aria-label={t("terminal.newTerminal")}
-          className="ml-1 rounded-md p-1 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-40"
+          className="ml-1 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
           disabled={busy}
           onClick={() => void addTab()}
           type="button"
@@ -141,7 +141,7 @@ export function TerminalView() {
       </div>
       <div className="relative min-h-0 flex-1">
         {tabs.length === 0 ? (
-          <div className="flex h-full items-center justify-center font-mono text-[11px] text-white/40">
+          <div className="flex h-full items-center justify-center font-mono text-[11px] text-muted-foreground">
             {t("terminal.starting")}
           </div>
         ) : (

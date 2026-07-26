@@ -129,6 +129,21 @@ describe("TerminalSessionManager", () => {
     expect(first.provider).toBeUndefined();
   });
 
+  test("renames a live session in place and keeps it in subsequent lists", () => {
+    const { manager, adapters } = makeManager();
+    const created = manager.create({}, { label: "Original" });
+
+    expect(manager.rename(created.id, "Renamed")).toMatchObject({
+      id: created.id,
+      label: "Renamed",
+    });
+    expect(manager.list()).toContainEqual(
+      expect.objectContaining({ id: created.id, label: "Renamed" }),
+    );
+    expect(manager.rename("missing", "Ignored")).toBeUndefined();
+    expect(adapters).toHaveLength(1);
+  });
+
   test("detach keeps the session alive so a reopen can reattach", () => {
     const { manager } = makeManager();
     manager.ensure("term_x");
