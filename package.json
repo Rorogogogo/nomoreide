@@ -37,6 +37,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
     "video:render": "npm --prefix video run render",
     "video:still": "npm --prefix video run still",
     "video:studio": "npm --prefix video run studio"

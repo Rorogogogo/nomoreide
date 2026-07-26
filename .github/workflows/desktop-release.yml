@@ -1,9 +1,9 @@
 name: Desktop Release (macOS)
 
-# Builds the Tauri desktop app and publishes a universal macOS .dmg to a GitHub
-# Release. Kept separate from the npm publish workflow so it only runs when you
-# deliberately cut a desktop build — either by pushing a `desktop-v*` tag or by
-# triggering it manually — not on every npm patch bump.
+# Builds the Tauri desktop app and attaches a universal macOS .dmg to the same
+# GitHub Release as the npm version. The npm publish workflow pushes a `v*` tag,
+# which automatically starts this workflow. Manual dispatch remains available
+# for retrying a release.
 #
 # The app is UNSIGNED (no paid Apple Developer account). The .dmg works fine;
 # users just have to allow it once via System Settings → Privacy & Security.
@@ -14,11 +14,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. desktop-v0.1.59)"
+        description: "Release tag to publish (e.g. v0.1.89)"
         required: true
   push:
     tags:
-      - "desktop-v*"
+      - "v*"
 
 permissions:
   contents: write
@@ -28,6 +28,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -49,13 +51,12 @@ jobs:
         run: npm ci
 
       - name: Sync app version to the release tag
-        # Derive the app version from the tag (desktop-v0.1.60 -> 0.1.60) so the
-        # bundled .dmg filename always matches the release it's published under.
+        # Keep retries safe even for tags created before version synchronization
+        # was added to the npm release commit.
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#desktop-v}"
-          node -e "const f='src-tauri/tauri.conf.json',fs=require('fs');const j=JSON.parse(fs.readFileSync(f,'utf8'));j.version=process.argv[1];fs.writeFileSync(f,JSON.stringify(j,null,2)+'\n');" "$VERSION"
-          echo "Set tauri.conf.json version to $VERSION"
+          VERSION="${TAG#v}"
+          node scripts/sync-version.mjs "$VERSION"
 
       - name: Build & publish universal macOS app
         uses: tauri-apps/tauri-action@v0

@@ -60,7 +60,7 @@ const baseSettings: SettingsContextValue = {
     database: { confirmWrites: true, resultLimit: 100 },
   },
   ui: {
-    version: 1,
+    version: 2,
     theme: "system",
     language: "en",
     density: "comfortable",
@@ -68,6 +68,8 @@ const baseSettings: SettingsContextValue = {
     reducedMotion: false,
     sidebarDocked: false,
     projectScope: "all",
+    accent: "classic",
+    projectAccents: {},
   },
   updateGlobal: vi.fn(async () => undefined),
   updateProject: vi.fn(async () => undefined),

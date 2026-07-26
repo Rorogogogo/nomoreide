@@ -1,7 +1,11 @@
+import { useEffect, useState } from "react";
 import { Download as DownloadIcon, ShieldAlert } from "lucide-react";
+import {
+  findLatestMacosRelease,
+  RELEASES_URL,
+  type MacosRelease,
+} from "../lib/latest-macos-release";
 import { Button } from "./ui/button";
-
-const RELEASES_URL = "https://github.com/Rorogogogo/nomoreide/releases/latest";
 
 const TECH_STACK = ["Tauri", "React", "Rust"];
 
@@ -13,6 +17,23 @@ const OPEN_STEPS = [
 ];
 
 export function Download() {
+  const [release, setRelease] = useState<MacosRelease | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void findLatestMacosRelease()
+      .then((latest) => {
+        if (active) setRelease(latest);
+      })
+      .catch(() => {
+        // Keep the releases-page fallback when GitHub is unavailable or
+        // rate-limits an unauthenticated browser request.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="relative border-t border-border/60" id="download">
       <div className="relative mx-auto max-w-4xl px-6 py-24 text-center md:py-28">
@@ -43,9 +64,11 @@ export function Download() {
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">
-            <a className="gap-2" href={RELEASES_URL}>
+            <a className="gap-2" href={release?.downloadUrl ?? RELEASES_URL}>
               <DownloadIcon className="size-4" />
-              Download for macOS
+              {release?.version
+                ? `Download v${release.version} for macOS`
+                : "Download for macOS"}
             </a>
           </Button>
           <Button asChild size="lg" variant="outline">
