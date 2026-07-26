@@ -2253,7 +2253,7 @@ dependencies = [
 
 [[package]]
 name = "nomoreide"
-version = "0.1.91"
+version = "0.1.92"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
