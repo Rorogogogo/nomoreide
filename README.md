@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/nomoreide-logo.png" alt="NoMoreIDE Logo" width="120" />
+<img src="assets/nomoreide-logo.svg" alt="NoMoreIDE Logo" width="120" />
 
 # NoMoreIDE
 
@@ -15,7 +15,21 @@
 
 Give your coding agents and yourself a **shared local control surface** for services, ports, logs, Git review, GitHub workflows, database work, and MCP workflows — no IDE required.
 
-[Download for macOS](#macos-desktop-app) · [MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [MCP Tools](#mcp-tools) · [Architecture](#architecture)
+[Product Tour](#product-tour) · [Download for macOS](#macos-desktop-app) · [MCP Setup](#connect-your-ai-agent) · [CLI Reference](#cli) · [Architecture](#architecture)
+
+</div>
+
+---
+
+## Product Tour
+
+<div align="center">
+
+<a href="https://www.nomoreide.com/#hero-demo">
+  <img src="assets/screenshots/product-tour.png" alt="NoMoreIDE Git Review showing running services, changed and staged files, an inline diff, commit controls, and the agent terminal dock" width="1200" />
+</a>
+
+<sub>Review a repository, inspect a diff, stage and commit changes, watch running services, and hand context to an agent without leaving the workbench. <a href="https://www.nomoreide.com/#hero-demo">Try the interactive demo</a>—it uses safe mock data.</sub>
 
 </div>
 
@@ -23,30 +37,11 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 ## What Is NoMoreIDE?
 
-NoMoreIDE is a lightweight process manager, Git reviewer, GitHub workflow surface, database workbench, log aggregator, and MCP server — available through a native macOS app or one `npx` command. It gives AI coding agents (Claude Code, Codex CLI, Gemini CLI, and others) a safe, structured window into your running dev environment through the **Model Context Protocol (MCP)**, while also providing a desktop app, terminal UI, and local React web dashboard for humans.
+NoMoreIDE is the shared local control plane between you and your coding agents. The native macOS app, web dashboard, TUI, CLI, and MCP server all operate on the same services, repositories, logs, databases, workflows, and agent configuration.
 
-```
-┌──────────────────────────────────────────────────────┐
-│                    Your Project                       │
-│                                                      │
-│   Claude Code / Codex CLI / Gemini CLI               │
-│           │                                          │
-│     MCP (stdio)                                      │
-│           │                                          │
-│   ┌───────▼────────┐    ┌──────────────────────┐    │
-│   │  NoMoreIDE MCP │◄──►│  Process Manager      │    │
-│   │  Server        │    │  Log Store            │    │
-│   └───────┬────────┘    │  Git Manager          │    │
-│           │             │  Config Store         │    │
-│     HTTP API            └──────────────────────┘    │
-│           │                                          │
-│   ┌───────▼──────────────────────────┐              │
-│   │  macOS Desktop App               │              │
-│   │  Web UI  (localhost:4317)        │              │
-│   │  Terminal UI (nomoreide tui)     │              │
-│   └──────────────────────────────────┘              │
-└──────────────────────────────────────────────────────┘
-```
+- **For humans:** one place to run services, inspect logs and ports, review Git changes, manage GitHub work, browse databases, and open terminals.
+- **For agents:** structured MCP tools expose the same live project state to Claude Code, Codex CLI, Gemini CLI, and other MCP clients.
+- **For safety:** destructive Git operations are omitted, database writes require human approval, secrets are redacted from shared profiles, and NoMoreIDE does not kill processes it did not start.
 
 ---
 
@@ -191,6 +186,7 @@ graph TD
         GM[Git Manager]
         LS[Log Store]
         CS[Config Store<br/>nomoreide.config.json]
+        Desktop[macOS Desktop App]
         WS[Web Server<br/>:4317]
         TUI[Terminal UI]
     end
@@ -210,6 +206,9 @@ graph TD
     PM --> S2
     PM --> S3
     LS --> PM
+    Desktop --> PM
+    Desktop --> GM
+    Desktop --> LS
     WS --> PM
     WS --> GM
     WS --> LS
@@ -221,7 +220,7 @@ graph TD
 
 ## Feature Overview
 
-| Feature | CLI | TUI | Web UI | MCP |
+| Feature | CLI | TUI | Desktop / Web | MCP |
 |---|:---:|:---:|:---:|:---:|
 | Start / stop / restart services | ✓ | ✓ | ✓ | ✓ |
 | Bundle orchestration | ✓ | | ✓ | ✓ |
