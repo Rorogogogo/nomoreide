@@ -202,6 +202,7 @@ function CategoryContent({
         <ScopeSection scope="global">
           {visible("language") ? <SettingSelect {...copy("language")} id="setting-language" onChange={(value) => settings.updateUi({ language: value as Language })} options={LANGUAGE_OPTIONS.map((item) => ({ value: item.value, label: item.nativeLabel, disabled: !item.available }))} value={settings.ui.language} /> : null}
           {visible("sidebar-docked") ? <SettingToggle {...copy("sidebar-docked")} checked={settings.ui.sidebarDocked} id="setting-sidebar-docked" onChange={(value) => settings.updateUi({ sidebarDocked: value })} /> : null}
+          {visible("agent-dock-placement") ? <SettingSelect {...copy("agent-dock-placement")} id="setting-agent-dock-placement" onChange={(value) => settings.updateUi({ agentDockPlacement: value as "bottom" | "right" })} options={[{ value: "bottom", label: t("settingsHub.opt.bottom") }, { value: "right", label: t("settingsHub.opt.right") }]} value={settings.ui.agentDockPlacement} /> : null}
           {visible("project-scope") ? <SettingSelect {...copy("project-scope")} id="setting-project-scope" onChange={(value) => settings.updateUi({ projectScope: value as "all" | "project" })} options={[{ value: "all", label: t("settingsHub.opt.allProjects") }, { value: "project", label: t("settingsHub.currentProject") }]} value={settings.ui.projectScope} /> : null}
         </ScopeSection>
       );

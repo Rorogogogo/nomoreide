@@ -16,6 +16,7 @@ export interface UiPreferences {
   codeFontSize: number;
   reducedMotion: boolean;
   sidebarDocked: boolean;
+  agentDockPlacement: "bottom" | "right";
   projectScope: "all" | "project";
   /** Global accent choice (preset id or `custom:<hue>`). */
   accent: AccentChoice;
@@ -38,6 +39,7 @@ export function defaultUiPreferences(): UiPreferences {
     codeFontSize: 12,
     reducedMotion: prefersReducedMotion(),
     sidebarDocked: false,
+    agentDockPlacement: "bottom",
     projectScope: "all",
     accent: DEFAULT_ACCENT,
     projectAccents: {},
@@ -101,6 +103,8 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
   return {
     ...(input as unknown as UiPreferences),
     version: 2,
+    agentDockPlacement:
+      input.agentDockPlacement === "right" ? "right" : "bottom",
     accent: isValidAccent(input.accent) ? input.accent : DEFAULT_ACCENT,
     projectAccents: sanitizeProjectAccents(input.projectAccents),
   };
