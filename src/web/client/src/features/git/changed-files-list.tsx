@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/en";
 import { cn } from "@/lib/utils";
 import { absolutePath, agentPathDragProps } from "../agent/chat/drag-to-agent";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { BranchNameBadge } from "./branch-name-badge";
 import { FileKindIcon } from "./file-kind-icon";
 
@@ -176,6 +177,18 @@ function FileButton({
   const dragProps = root ? agentPathDragProps(absolutePath(root, file.path)) : {};
   const staged = group === "staged";
   return (
+    <AiContextTarget
+      target={{
+        label: file.path,
+        intents: root ? [{
+          id: "inspect-changed-file",
+          label: t("git.sendToAiTitle"),
+          resolvePrompt: () =>
+            `Review the current changes to this file. Explain what changed, identify risks, and recommend the safest next action:\n${absolutePath(root, file.path)}`,
+          source: { type: "git-file", label: file.path },
+        }] : [],
+      }}
+    >
     <div
       className={cn(
         "group flex w-full items-center gap-1.5 px-1 py-0.5 text-[12px] hover:bg-muted",
@@ -231,6 +244,7 @@ function FileButton({
         {statusLabel(file, group)}
       </span>
     </div>
+    </AiContextTarget>
   );
 }
 

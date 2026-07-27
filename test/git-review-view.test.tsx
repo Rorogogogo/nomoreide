@@ -43,7 +43,7 @@ describe("GitReviewView", () => {
     expect(markup).toContain("Show changed files as a list");
     expect(markup).toContain("Show changed files as a tree");
     expect(markup).toContain("Open all tracked files");
-    expect(markup).toContain("Send selected file to AI input");
+    expect(markup).toContain("data-ai-context-target");
     expect(markup).not.toContain("Show all tracked files");
   });
 });

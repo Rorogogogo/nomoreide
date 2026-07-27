@@ -5,9 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useOperations } from "@/components/operations/operation-context";
 import { useT } from "@/lib/i18n";
-import { startFix, type ErrorIncident } from "@/lib/api";
-import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { getErrorPrompt, startFix, type ErrorIncident } from "@/lib/api";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 
 export function IncidentDetail({
   detailId,
@@ -20,7 +19,6 @@ export function IncidentDetail({
   onReviewChanges?: (sessionId: string) => void;
 }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
   const { isPending, runOperation } = useOperations();
   const operationKey = `error:${incident.id}:fix`;
   const fixing = isPending(operationKey);
@@ -28,11 +26,8 @@ export function IncidentDetail({
   // user can review/revert once the agent finishes editing.
   const [fixedSessionId, setFixedSessionId] = useState<string | null>(null);
 
-  // The AI-native loop: snapshot the working tree, record an agent session, and
-  // hand the agent the full repro bundle. Whatever it edits then surfaces as a
-  // reviewable, one-click-revertable change-set in Agent → Changes.
-  async function fixWithAi() {
-    await runOperation(
+  async function prepareFixPrompt() {
+    const result = await runOperation(
       {
         errorMessage: (error) =>
           error instanceof Error ? error.message : String(error),
@@ -43,21 +38,35 @@ export function IncidentDetail({
       },
       async () => {
         const { prompt, sessionId } = await startFix(incident.id);
-        sendToAgent({
-          prompt,
+        setFixedSessionId(sessionId);
+        return prompt;
+      },
+    );
+    if (!result) throw new Error(t("agent.contextMenu.failed"));
+    return result;
+  }
+
+  return (
+    <AiContextTarget
+      target={{
+        label: incident.title,
+        intents: [{
+          id: "fix-incident",
+          label: t("errors.incident.fixWithAi"),
+          resolvePrompt: async (delivery) =>
+            delivery === "send"
+              ? prepareFixPrompt()
+              : (await getErrorPrompt(incident.id)).prompt,
+          reportError: (delivery) => delivery === "copy",
           source: { type: "error", label: `${incident.service} — ${incident.level}` },
-          label: t("errors.incident.fixLabel", {
+          agentLabel: t("errors.incident.fixLabel", {
             level: incident.level,
             service: incident.service,
             title: incident.title,
           }),
-        });
-        setFixedSessionId(sessionId);
-      },
-    );
-  }
-
-  return (
+        }],
+      }}
+    >
     <div
       className="min-w-0 rounded-lg border border-border bg-background"
       data-incident-detail="true"
@@ -84,16 +93,7 @@ export function IncidentDetail({
               </Badge>
             ) : null}
           </div>
-          <Button
-            loading={fixing}
-            loadingLabel={t("errors.incident.starting")}
-            onClick={() => void fixWithAi().catch(() => undefined)}
-            size="sm"
-            variant="outline"
-          >
-            <AgentMark className="size-3.5" />
-            {t("errors.incident.fixWithAi")}
-          </Button>
+          {fixing ? <span className="text-xs text-muted-foreground">{t("errors.incident.starting")}</span> : null}
         </div>
         <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
         {incident.file ? (
@@ -136,5 +136,6 @@ export function IncidentDetail({
         <p className="mt-3 text-[11px] text-muted-foreground">{t("errors.incident.explain")}</p>
       </div>
     </div>
+    </AiContextTarget>
   );
 }

@@ -20,6 +20,7 @@ const browserPackageAliases = [
   "@lezer/highlight",
   "@xterm/addon-fit",
   "@xterm/xterm",
+  "@radix-ui/react-context-menu",
   "@radix-ui/react-slot",
   "@tauri-apps/api",
   "class-variance-authority",

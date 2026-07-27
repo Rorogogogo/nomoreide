@@ -1,13 +1,10 @@
-import { useState } from "react";
 import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
-import { AiAskInline } from "../agent/ai-ask-inline";
-import { AgentMark, AiSpark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildFixRunPrompt } from "../agent/prompts";
 import { useGitHubActions } from "./hooks/use-github-actions";
 import { LoadMoreButton } from "./load-more-button";
@@ -48,24 +45,6 @@ export function ActionsView({
   // button below still does an explicit full reload.
   useRegisterRefresh(syncLatest);
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
-  const { sendToAgent } = useAgentDock();
-  // Which failed run has its inline "what should I do?" field open, if any.
-  const [askingRunId, setAskingRunId] = useState<number | null>(null);
-
-  // Send the fix request straight to the dock; the agent pulls the failing logs
-  // itself via `gh run view --log-failed`. No input → the default "fix it" task.
-  function askRun(run: GitHubWorkflowRun, input?: string) {
-    setAskingRunId(null);
-    sendToAgent({
-      prompt: buildFixRunPrompt(run, input),
-      source: { type: "github-run", label: t("github.actions.runLabel", { number: run.run_number }) },
-      label: t("github.actions.runInputLabel", {
-        number: run.run_number,
-        input: input ?? t("github.actions.fixDefault"),
-      }),
-    });
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
@@ -107,7 +86,26 @@ export function ActionsView({
             <div className="min-h-0 overflow-auto">
             <ul className="divide-y divide-border">
               {runs.map((run) => (
-                <li className="group flex flex-col" key={run.id}>
+                <AiContextTarget
+                  key={run.id}
+                  target={{
+                    label: `${run.name} #${run.run_number}`,
+                    intents: isFailedRun(run) ? [{
+                      id: "fix-run",
+                      label: t("github.actions.fixRunAi", { number: run.run_number }),
+                      resolvePrompt: () => buildFixRunPrompt(run),
+                      source: {
+                        type: "github-run",
+                        label: t("github.actions.runLabel", { number: run.run_number }),
+                      },
+                      agentLabel: t("github.actions.runInputLabel", {
+                        number: run.run_number,
+                        input: t("github.actions.fixDefault"),
+                      }),
+                    }] : [],
+                  }}
+                >
+                <li className="group flex flex-col">
                   <div
                     className={`flex items-center transition-colors hover:bg-muted/60 ${
                       run.id === selectedRunId ? "bg-muted/70" : ""
@@ -130,26 +128,9 @@ export function ActionsView({
                       </span>
                       <RunConclusionStatus run={run} />
                     </button>
-                    {isFailedRun(run) ? (
-                      <AiSpark
-                        className={`mr-2 shrink-0 ${askingRunId === run.id ? "opacity-100" : ""}`}
-                        label={t("github.actions.fixRunAi", { number: run.run_number })}
-                        onAsk={() =>
-                          setAskingRunId((current) => (current === run.id ? null : run.id))
-                        }
-                      />
-                    ) : null}
                   </div>
-                  {askingRunId === run.id ? (
-                    <div className="px-3 pb-2 pt-0.5">
-                      <AiAskInline
-                        onCancel={() => setAskingRunId(null)}
-                        onSubmit={(value) => askRun(run, value)}
-                        placeholder={t("github.actions.askPlaceholder")}
-                      />
-                    </div>
-                  ) : null}
                 </li>
+                </AiContextTarget>
               ))}
             </ul>
             <LoadMoreButton hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
@@ -159,7 +140,6 @@ export function ActionsView({
               error={jobsError}
               jobs={jobs}
               loading={jobsLoading}
-              onFix={(run) => askRun(run)}
               run={selectedRun}
             />
           </div>
@@ -205,13 +185,11 @@ function RunJobsDetail({
   jobs,
   loading,
   error,
-  onFix,
 }: {
   run: GitHubWorkflowRun | null;
   jobs: GitHubWorkflowJob[];
   loading: boolean;
   error: string | null;
-  onFix: (run: GitHubWorkflowRun) => void;
 }) {
   const t = useT();
   if (!run) {
@@ -219,6 +197,24 @@ function RunJobsDetail({
   }
 
   return (
+    <AiContextTarget
+      target={{
+        label: `${run.name} #${run.run_number}`,
+        intents: isFailedRun(run) ? [{
+          id: "fix-run",
+          label: t("github.actions.fixWithAi"),
+          resolvePrompt: () => buildFixRunPrompt(run),
+          source: {
+            type: "github-run",
+            label: t("github.actions.runLabel", { number: run.run_number }),
+          },
+          agentLabel: t("github.actions.runInputLabel", {
+            number: run.run_number,
+            input: t("github.actions.fixDefault"),
+          }),
+        }] : [],
+      }}
+    >
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1">
@@ -227,19 +223,6 @@ function RunJobsDetail({
             Run #{run.run_number} · {run.head_branch} · {run.head_sha.slice(0, 7)}
           </span>
         </span>
-        {isFailedRun(run) ? (
-          <Button
-            className="shrink-0 gap-1"
-            onClick={() => onFix(run)}
-            size="sm"
-            title={t("github.actions.fixTitle")}
-            type="button"
-            variant="outline"
-          >
-            <AgentMark className="size-3.5" />
-            {t("github.actions.fixWithAi")}
-          </Button>
-        ) : null}
         <a
           aria-label={t("github.actions.openRun")}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -301,6 +284,7 @@ function RunJobsDetail({
         )}
       </div>
     </div>
+    </AiContextTarget>
   );
 }
 

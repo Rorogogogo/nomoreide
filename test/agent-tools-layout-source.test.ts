@@ -29,7 +29,7 @@ describe("agent tools layout source", () => {
     expect(hooksCard).toContain("md:border-l lg:border-t-0");
   });
 
-  test("keeps row actions next to names and exposes truncated names on hover", () => {
+  test("registers tool rows with the AI context menu and exposes truncated names on hover", () => {
     const files = [
       {
         source: readFileSync(
@@ -37,7 +37,7 @@ describe("agent tools layout source", () => {
           "utf8",
         ),
         title: "title={skill.name}",
-        actionCluster: "<RowActions",
+        targetLabel: "label: skill.name",
       },
       {
         source: readFileSync(
@@ -45,7 +45,7 @@ describe("agent tools layout source", () => {
           "utf8",
         ),
         title: "title={server.name}",
-        actionCluster: "<RowActions",
+        targetLabel: "label: server.name",
       },
       {
         source: readFileSync(
@@ -53,7 +53,7 @@ describe("agent tools layout source", () => {
           "utf8",
         ),
         title: "title={plugin.name}",
-        actionCluster: "<RowActions",
+        targetLabel: "label: plugin.name",
       },
       {
         source: readFileSync(
@@ -61,18 +61,16 @@ describe("agent tools layout source", () => {
           "utf8",
         ),
         title: "title={hook.event}",
-        actionCluster: "<RowActions",
+        targetLabel: "label: hook.event",
       },
     ];
 
     for (const file of files) {
       expect(file.source).toContain(file.title);
       expect(file.source).not.toContain("ToolDetailDialog");
-      const nameIndex = file.source.indexOf(file.title);
-      const actionIndex = file.source.indexOf(file.actionCluster, nameIndex);
-      const badgeIndex = file.source.indexOf("<Badge", nameIndex);
-      expect(actionIndex).toBeGreaterThan(nameIndex);
-      expect(actionIndex).toBeLessThan(badgeIndex);
+      expect(file.source).toContain("<AiContextTarget");
+      expect(file.source).toContain(file.targetLabel);
+      expect(file.source).not.toContain("<RowActions");
     }
   });
 

@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import {
   Code2,
   Copy,
-  FileCode2,
   FileText,
   FileWarning,
   Loader2,
@@ -16,8 +15,7 @@ import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { getFileSizeRanking, type FileSizeRank } from "@/lib/api";
-import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { absolutePath } from "../agent/chat/drag-to-agent";
 import { buildLargeFileSplitPrompt } from "../agent/prompts";
 
@@ -167,10 +165,37 @@ export function LargestFilesView({
           {visible.map((file, index) => {
             const band = bandFor(file.lines);
             return (
-              <li
-                className="group flex items-center gap-3 px-3 transition-colors hover:bg-muted/50"
+              <AiContextTarget
                 key={file.path}
+                target={{
+                  label: file.path,
+                  intents: [
+                    {
+                      id: "split-large-file",
+                      label: t("git.largest.askSplit"),
+                      resolvePrompt: () =>
+                        buildLargeFileSplitPrompt({
+                          absolutePath: absolutePath(root, file.path),
+                          lines: file.lines,
+                          relativePath: file.path,
+                        }),
+                      source: { label: file.path.split("/").pop() ?? file.path, type: "large-file" },
+                      agentLabel: t("git.largest.splitLabel", {
+                        path: file.path,
+                        count: file.lines.toLocaleString(),
+                      }),
+                    },
+                    {
+                      id: "inspect-large-file",
+                      label: t("git.largest.sendPath"),
+                      resolvePrompt: () =>
+                        `Inspect this file and explain its responsibilities, risks, and sensible refactoring opportunities:\n${absolutePath(root, file.path)}`,
+                      source: { label: file.path.split("/").pop() ?? file.path, type: "large-file" },
+                    },
+                  ],
+                }}
               >
+              <li className="group flex items-center gap-3 px-3 transition-colors hover:bg-muted/50">
                 <span className="w-6 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
                   {index + 1}
                 </span>
@@ -196,76 +221,15 @@ export function LargestFilesView({
                   </div>
                 </button>
                 <div className="flex shrink-0 items-center justify-end gap-0.5">
-                  <LargeFileAiMenu file={file} root={root} />
                   <LargeFileCopyMenu file={file} root={root} />
                 </div>
               </li>
+              </AiContextTarget>
             );
           })}
         </ul>
       )}
     </div>
-  );
-}
-
-function LargeFileAiMenu({ file, root }: { file: FileSizeRank; root: string }) {
-  const t = useT();
-  const { sendToAgent } = useAgentDock();
-  const fullPath = absolutePath(root, file.path);
-  const fileName = file.path.split("/").pop() ?? file.path;
-
-  function askToSplitFile() {
-    sendToAgent({
-      prompt: buildLargeFileSplitPrompt({
-        absolutePath: fullPath,
-        lines: file.lines,
-        relativePath: file.path,
-      }),
-      source: { label: fileName, type: "large-file" },
-      label: t("git.largest.splitLabel", {
-        path: file.path,
-        count: file.lines.toLocaleString(),
-      }),
-      mode: "send",
-    });
-  }
-
-  function draftPathForAgent() {
-    sendToAgent({
-      prompt: fullPath,
-      source: { label: fileName, type: "large-file" },
-      mode: "draft",
-    });
-  }
-
-  return (
-    <LargeFileActionPopover
-      label={t("git.largest.aiActions", { path: file.path })}
-      trigger={<AgentMark className="size-3.5" />}
-    >
-      {(close) => (
-        <>
-          <ActionMenuButton
-            icon={<AgentMark className="size-3.5" />}
-            onSelect={() => {
-              close();
-              askToSplitFile();
-            }}
-          >
-            {t("git.largest.askSplit")}
-          </ActionMenuButton>
-          <ActionMenuButton
-            icon={<FileCode2 className="size-3.5" />}
-            onSelect={() => {
-              close();
-              draftPathForAgent();
-            }}
-          >
-            {t("git.largest.sendPath")}
-          </ActionMenuButton>
-        </>
-      )}
-    </LargeFileActionPopover>
   );
 }
 

@@ -27,9 +27,9 @@ describe("workflow run AI actions", () => {
   test("offers AI debug for blocked or failed workflow steps", () => {
     expect(catalog).toContain("Debug this workflow step with AI");
     expect(workflowPanelSource).toContain("buildWorkflowStepDebugPrompt");
-    expect(workflowPanelSource).toMatch(
-      /source: \{ type: "workflow-debug"[\s\S]*?background: true/,
-    );
+    expect(workflowPanelSource).toContain('id: "debug-workflow-step"');
+    expect(workflowPanelSource).toContain('source: { type: "workflow-debug"');
+    expect(workflowPanelSource).not.toContain("background: true");
     expect(workflowPanelSource).toContain('selectedStatus === "failed" || selectedStatus === "blocked"');
   });
 

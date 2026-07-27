@@ -152,6 +152,23 @@ describe("AgentTerminalDock", () => {
     expect(host.textContent).toContain("Active task status: Exited");
   });
 
+  test("collapsed rail keeps the latest task status after the task is gone", async () => {
+    Object.assign(dock, {
+      activeTaskId: "latest",
+      tasks: [{ id: "latest", label: "Review changes", state: "exited", provider: "codex" }],
+    });
+    const mounted = await render();
+    expect(mounted.host.textContent).toContain("Review changes");
+    expect(mounted.host.textContent).toContain("Exited");
+
+    Object.assign(dock, { activeTaskId: null, tasks: [] });
+    await rerender(mounted);
+
+    expect(mounted.host.textContent).toContain("Codex");
+    expect(mounted.host.textContent).toContain("Review changes");
+    expect(mounted.host.textContent).toContain("Latest task status: Exited");
+  });
+
   test("collapsed rail preserves mounted inactive viewports", async () => {
     Object.assign(dock, {
       activeTaskId: "one",

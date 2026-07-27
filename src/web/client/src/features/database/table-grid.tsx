@@ -1,11 +1,10 @@
 import { Braces, Database, FileSpreadsheet, KeyRound } from "lucide-react";
-import { useAgentDock } from "@/features/agent/chat/agent-context";
-import { AiSpark } from "@/features/agent/ai-spark";
+import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
 import { buildRowPrompt } from "@/features/agent/prompts";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { type RowSample } from "@/lib/api";
+import type { RowSample } from "@/lib/api";
 
 export function TableGrid({
   connection,
@@ -15,19 +14,8 @@ export function TableGrid({
   sample: RowSample;
 }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
   const { success: showSuccess, error: showError } = useToasts();
   const columnNames = sample.columns.map((col) => col.name);
-
-  // Draft the row into the dock input — the user reviews and sends it, the same
-  // as the table-level "Ask AI" buttons. Nothing auto-runs.
-  function askRow(row: Record<string, unknown>) {
-    sendToAgent({
-      prompt: buildRowPrompt(connection, sample.engine, sample.table, sample.columns, row),
-      source: { type: "database-row", label: t("database.grid.rowSource", { table: sample.table.name }) },
-      mode: "draft",
-    });
-  }
 
   async function copy(text: string, what: string) {
     try {
@@ -95,9 +83,30 @@ export function TableGrid({
         </thead>
         <tbody>
           {sample.rows.map((row, index) => (
-            // Sampled rows have no stable key; index is fine for a read-only view.
-            // biome-ignore lint/suspicious/noArrayIndexKey: read-only sample
-            <tr key={index} className="group border-b border-border/60 hover:bg-muted/40">
+            <AiContextTarget
+              // biome-ignore lint/suspicious/noArrayIndexKey: sampled rows have no stable key
+              key={index}
+              target={{
+                label: t("database.grid.rowSource", { table: sample.table.name }),
+                intents: [{
+                  id: "ask-row",
+                  label: t("database.grid.askAiRow"),
+                  resolvePrompt: () =>
+                    buildRowPrompt(
+                      connection,
+                      sample.engine,
+                      sample.table,
+                      sample.columns,
+                      row,
+                    ),
+                  source: {
+                    type: "database-row",
+                    label: t("database.grid.rowSource", { table: sample.table.name }),
+                  },
+                }],
+              }}
+            >
+            <tr className="group border-b border-border/60 hover:bg-muted/40">
               {sample.columns.map((col) => (
                 <td
                   key={col.name}
@@ -112,7 +121,6 @@ export function TableGrid({
                   swap, so it can't reintroduce transparency. */}
               <td className="sticky right-0 z-[1] border-l border-border/60 bg-card px-2 py-1 align-top before:pointer-events-none before:absolute before:inset-0 before:bg-muted/40 before:opacity-0 group-hover:before:opacity-100">
                 <div className="relative z-[1] flex items-center justify-end gap-0.5">
-                  <AiSpark label={t("database.grid.askAiRow")} onAsk={() => askRow(row)} />
                   <OverflowMenu
                     label={t("database.grid.rowActions")}
                     items={[
@@ -138,6 +146,7 @@ export function TableGrid({
                 </div>
               </td>
             </tr>
+            </AiContextTarget>
           ))}
           {sample.rows.length === 0 ? (
             <tr>

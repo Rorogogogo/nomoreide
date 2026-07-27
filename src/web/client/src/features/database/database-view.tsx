@@ -13,12 +13,10 @@ import {
   deleteDatabase,
   type DatabaseConnection,
   type GitRepositoryDefinition,
-  type RowSample,
-  type TableRef,
 } from "@/lib/api";
 import { connectionInScope, pathInScope } from "../services/project-scope";
 import { useAgentDock } from "../agent/chat/agent-context";
-import { AiSpark } from "../agent/ai-spark";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { DATABASE_SETUP_PROMPT, buildTablePrompt } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
 import { ConnectionSelector } from "./connection-selector";
@@ -237,7 +235,6 @@ function ViewModeToggle({
 
 function ConnectionBrowser({ connection, resultLimit }: { connection: string; resultLimit: number }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
   const {
     tables,
     selectedTable,
@@ -255,27 +252,6 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
     nextPage,
     prevPage,
   } = useTableBrowser(connection, resultLimit);
-
-  // Prefill the dock input with the table's schema so the user can ask away.
-  function askTable(table: RowSample) {
-    sendToAgent({
-      prompt: buildTablePrompt(connection, table.table, {
-        engine: table.engine,
-        columns: table.columns,
-      }),
-      source: { type: "database-table", label: `${table.table.name} table` },
-      mode: "draft",
-    });
-  }
-
-  // Sidebar version: we only know the table name here, so the agent inspects it.
-  function askTableByName(table: TableRef) {
-    sendToAgent({
-      prompt: buildTablePrompt(connection, table),
-      source: { type: "database-table", label: `${table.name} table` },
-      mode: "draft",
-    });
-  }
 
   return (
     <div className="flex h-full min-h-0">
@@ -297,8 +273,19 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
         ) : (
           <ul className="min-h-0 flex-1 overflow-auto">
             {tables.map((table) => (
-              <li
+              <AiContextTarget
                 key={table.qualifiedName}
+                target={{
+                  label: table.qualifiedName,
+                  intents: [{
+                    id: "ask-table",
+                    label: t("database.askAiAbout", { name: table.qualifiedName }),
+                    resolvePrompt: () => buildTablePrompt(connection, table),
+                    source: { type: "database-table", label: `${table.name} table` },
+                  }],
+                }}
+              >
+              <li
                 className={cn(
                   "group flex items-center gap-1 pr-1 transition-colors hover:bg-muted/50",
                   table.qualifiedName === selectedTable && "bg-muted/70",
@@ -314,11 +301,8 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
                 >
                   {table.qualifiedName}
                 </button>
-                <AiSpark
-                  label={t("database.askAiAbout", { name: table.qualifiedName })}
-                  onAsk={() => askTableByName(table)}
-                />
               </li>
+              </AiContextTarget>
             ))}
             {!loadingTables && tables.length === 0 ? (
               <li className="px-3 py-2 text-xs text-muted-foreground">{t("database.noTables")}</li>
@@ -328,17 +312,27 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+        {sample ? (
+          <AiContextTarget
+            target={{
+              label: sample.table.qualifiedName,
+              intents: [{
+                id: "ask-table",
+                label: t("database.askAiAbout", { name: sample.table.qualifiedName }),
+                resolvePrompt: () =>
+                  buildTablePrompt(connection, sample.table, {
+                    engine: sample.engine,
+                    columns: sample.columns,
+                  }),
+                source: { type: "database-table", label: `${sample.table.name} table` },
+              }],
+            }}
+          >
+          <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="flex min-w-0 items-center gap-1">
             <span className="truncate font-mono text-xs font-semibold">
               {selectedTable ?? t("database.selectTable")}
             </span>
-            {sample ? (
-              <AiSpark
-                label={t("database.askAiAbout", { name: sample.table.qualifiedName })}
-                onAsk={() => askTable(sample)}
-              />
-            ) : null}
           </span>
           {sample ? (
             <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
@@ -385,6 +379,14 @@ function ConnectionBrowser({ connection, resultLimit }: { connection: string; re
             </div>
           ) : null}
         </div>
+          </AiContextTarget>
+        ) : (
+          <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <span className="truncate font-mono text-xs font-semibold">
+              {selectedTable ?? t("database.selectTable")}
+            </span>
+          </div>
+        )}
         {rowsError ? (
           <div className="p-4">
             <Alert variant="muted" className="border-destructive/40 text-destructive">

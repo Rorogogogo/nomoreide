@@ -9,7 +9,6 @@ import {
   Copy,
   Edit3,
   Loader2,
-  MessageSquarePlus,
   Plus,
   Play,
   ShieldQuestion,
@@ -39,6 +38,7 @@ import { useT } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/en";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { runHeadlessAgentTask } from "../agent/headless/run-headless-agent-task";
 import {
   buildWorkflowAiDraftPrompt,
@@ -389,7 +389,6 @@ function WorkflowBuilder({
   // default so the graph owns the space.
   const [composeOpen, setComposeOpen] = useState(false);
   const capabilities = capabilityOptions(agent);
-  const { sendToAgent } = useAgentDock();
   const saveDisabled = !draft.id.trim() || !draft.name.trim() || draft.steps.length === 0;
 
   function updateStep(index: number, updater: (step: WorkflowStep) => WorkflowStep) {
@@ -438,14 +437,6 @@ function WorkflowBuilder({
     }));
   }
 
-  function askAiToDraft() {
-    sendToAgent({
-      prompt: buildWorkflowAiDraftPrompt(intent || draft.description || draft.name),
-      source: { type: "workflow", label: t("workflows.builder.composerSource") },
-      mode: "draft",
-    });
-  }
-
   function save() {
     const id = slugify(draft.id) || uniqueWorkflowId(slugify(draft.name) || "workflow", existing);
     onSave({
@@ -459,6 +450,18 @@ function WorkflowBuilder({
   }
 
   return (
+    <AiContextTarget
+      target={{
+        label: draft.name || t("workflows.builder.composerSource"),
+        intents: [{
+          id: "draft-workflow",
+          label: t("workflows.builder.askAi"),
+          resolvePrompt: () =>
+            buildWorkflowAiDraftPrompt(intent || draft.description || draft.name),
+          source: { type: "workflow", label: t("workflows.builder.composerSource") },
+        }],
+      }}
+    >
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
@@ -512,9 +515,6 @@ function WorkflowBuilder({
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Button onClick={() => composeDraft()} size="sm" type="button">
                   <Sparkles className="size-3.5" /> {t("workflows.builder.draftTimeline")}
-                </Button>
-                <Button onClick={askAiToDraft} size="sm" type="button" variant="outline">
-                  <MessageSquarePlus className="size-3.5" /> {t("workflows.builder.askAi")}
                 </Button>
                 {/* Seed phrases stay English — the composer matches them against
                     English keyword regexes to build the timeline. */}
@@ -579,6 +579,7 @@ function WorkflowBuilder({
         </div>
       </main>
     </div>
+    </AiContextTarget>
   );
 }
 
@@ -910,7 +911,6 @@ function RunView({
   onRestart: () => void;
 }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
   const finished = run.outcome !== "running";
   const [selectedIndex, setSelectedIndex] = useState(run.index);
   useEffect(() => {
@@ -1013,6 +1013,26 @@ function RunView({
 
         <main className="min-h-0 overflow-auto p-4">
           {selectedStep ? (
+            <AiContextTarget
+              target={{
+                label: selectedStep.title,
+                intents: canDebugSelectedStep ? [{
+                  id: "debug-workflow-step",
+                  label: t("workflows.run.debugWithAi"),
+                  resolvePrompt: () =>
+                    buildWorkflowStepDebugPrompt({
+                      workflowName: run.workflow.name,
+                      step: selectedStep,
+                      status: selectedStatus,
+                      error: run.error,
+                      previousOutput,
+                      output: selectedOutput,
+                    }),
+                  source: { type: "workflow-debug", label: selectedStep.title },
+                  agentLabel: t("workflows.run.debugLabel", { title: selectedStep.title }),
+                }] : [],
+              }}
+            >
             <section
               className={cn(
                 "min-h-full rounded-lg border bg-background p-4 shadow-sm",
@@ -1047,32 +1067,6 @@ function RunView({
                       type="button"
                     >
                       <Play className="size-3.5" /> {t("workflows.run.resume")}
-                    </Button>
-                  ) : null}
-                  {canDebugSelectedStep ? (
-                    <Button
-                      aria-label={t("workflows.run.debugAria")}
-                      onClick={() =>
-                        sendToAgent({
-                          prompt: buildWorkflowStepDebugPrompt({
-                            workflowName: run.workflow.name,
-                            step: selectedStep,
-                            status: selectedStatus,
-                            error: run.error,
-                            previousOutput,
-                            output: selectedOutput,
-                          }),
-                          source: { type: "workflow-debug", label: selectedStep.title },
-                          mode: "send",
-                          label: t("workflows.run.debugLabel", { title: selectedStep.title }),
-                          background: true,
-                        })
-                      }
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      <AgentMark className="size-3.5" /> {t("workflows.run.debugWithAi")}
                     </Button>
                   ) : null}
                   {!finished ? (
@@ -1126,6 +1120,7 @@ function RunView({
                 ) : null}
               </div>
             </section>
+            </AiContextTarget>
           ) : null}
         </main>
       </div>

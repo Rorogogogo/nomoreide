@@ -142,3 +142,7 @@ export function useAgentDock(): AgentContextValue {
   if (!ctx) throw new Error("useAgentDock must be used within an AgentProvider");
   return ctx;
 }
+
+export function useOptionalAgentDock(): AgentContextValue | null {
+  return useContext(AgentContext);
+}

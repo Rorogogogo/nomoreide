@@ -20,9 +20,10 @@ import {
 import { useT } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/en";
 import { useAgentDock } from "../chat/agent-context";
+import { AiContextTarget } from "../context-menu/ai-context-menu";
 import { buildAddMcpPrompt, buildAskMcpPrompt, buildRemoveMcpPrompt } from "../prompts";
 import type { AgentId } from "../agent-types";
-import { AddButton, AddInline, RowActions } from "./tools-shared";
+import { AddButton, AddInline } from "./tools-shared";
 
 /**
  * A server row to render. `synthetic` ones are reported by the agent CLI
@@ -76,22 +77,6 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
       prompt: buildAddMcpPrompt(agentId, input),
       source: { type: "agent-mcp", label: t("agent.mcp.sourceNew") },
       label: t("agent.mcp.addAction", { input }),
-    });
-  }
-
-  function ask(server: DisplayServer) {
-    sendToAgent({
-      prompt: buildAskMcpPrompt(server),
-      source: { type: "agent-mcp", label: t("agent.mcp.sourceServer", { name: server.name }) },
-      mode: "draft",
-    });
-  }
-
-  function remove(server: DisplayServer) {
-    sendToAgent({
-      prompt: buildRemoveMcpPrompt(server, agentId),
-      source: { type: "agent-mcp", label: t("agent.mcp.sourceRemove", { name: server.name }) },
-      label: t("agent.mcp.removeAction", { name: server.name }),
     });
   }
 
@@ -149,8 +134,28 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
         {servers.length ? (
           <ul className="divide-y divide-border">
             {servers.map((server) => (
-              <li
+              <AiContextTarget
                 key={`${server.scope}:${server.name}`}
+                target={{
+                  label: server.name,
+                  intents: [
+                    {
+                      id: "ask-mcp",
+                      label: t("agent.mcp.askLabel", { name: server.name }),
+                      resolvePrompt: () => buildAskMcpPrompt(server),
+                      source: { type: "agent-mcp", label: t("agent.mcp.sourceServer", { name: server.name }) },
+                    },
+                    {
+                      id: "remove-mcp",
+                      label: t("agent.mcp.removeLabel", { name: server.name }),
+                      resolvePrompt: () => buildRemoveMcpPrompt(server, agentId),
+                      source: { type: "agent-mcp", label: t("agent.mcp.sourceRemove", { name: server.name }) },
+                      agentLabel: t("agent.mcp.removeAction", { name: server.name }),
+                    },
+                  ],
+                }}
+              >
+              <li
                 className="group px-3 py-2 hover:bg-muted/40"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -161,12 +166,6 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
                     >
                       {server.name}
                     </span>
-                    <RowActions
-                      askLabel={t("agent.mcp.askLabel", { name: server.name })}
-                      removeLabel={t("agent.mcp.removeLabel", { name: server.name })}
-                      onAsk={() => ask(server)}
-                      onRemove={() => remove(server)}
-                    />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <AuthStatusBadge state={statuses[server.name]} loading={loading} />
@@ -182,6 +181,7 @@ export function McpServersCard({ agent, agentId }: { agent: AgentProfile; agentI
                   {server.synthetic ? t("agent.mcp.managedConnector") : formatMcpServer(server)}
                 </div>
               </li>
+              </AiContextTarget>
             ))}
           </ul>
         ) : (

@@ -11,13 +11,14 @@ import {
 import type { AgentPlugin, AgentProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
+import { AiContextTarget } from "../context-menu/ai-context-menu";
 import {
   buildAddPluginPrompt,
   buildAskPluginPrompt,
   buildRemovePluginPrompt,
 } from "../prompts";
 import type { AgentId } from "../agent-types";
-import { AddButton, AddInline, RowActions } from "./tools-shared";
+import { AddButton, AddInline } from "./tools-shared";
 
 export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
   const { sendToAgent } = useAgentDock();
@@ -31,22 +32,6 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
       prompt: buildAddPluginPrompt(agentId, input),
       source: { type: "agent-plugin", label: t("agent.plugins.sourceNew") },
       label: t("agent.plugins.installAction", { input }),
-    });
-  }
-
-  function ask(plugin: AgentPlugin) {
-    sendToAgent({
-      prompt: buildAskPluginPrompt(plugin),
-      source: { type: "agent-plugin", label: t("agent.plugins.sourcePlugin", { name: plugin.name }) },
-      mode: "draft",
-    });
-  }
-
-  function remove(plugin: AgentPlugin) {
-    sendToAgent({
-      prompt: buildRemovePluginPrompt(plugin),
-      source: { type: "agent-plugin", label: t("agent.plugins.sourceRemove", { name: plugin.name }) },
-      label: t("agent.plugins.uninstallAction", { name: plugin.name }),
     });
   }
 
@@ -85,8 +70,28 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
         {plugins.length ? (
           <ul className="divide-y divide-border">
             {plugins.map((plugin) => (
-              <li
+              <AiContextTarget
                 key={`${plugin.name}@${plugin.marketplace ?? ""}`}
+                target={{
+                  label: plugin.name,
+                  intents: [
+                    {
+                      id: "ask-plugin",
+                      label: t("agent.plugins.askLabel", { name: plugin.name }),
+                      resolvePrompt: () => buildAskPluginPrompt(plugin),
+                      source: { type: "agent-plugin", label: t("agent.plugins.sourcePlugin", { name: plugin.name }) },
+                    },
+                    {
+                      id: "remove-plugin",
+                      label: t("agent.plugins.removeLabel", { name: plugin.name }),
+                      resolvePrompt: () => buildRemovePluginPrompt(plugin),
+                      source: { type: "agent-plugin", label: t("agent.plugins.sourceRemove", { name: plugin.name }) },
+                      agentLabel: t("agent.plugins.uninstallAction", { name: plugin.name }),
+                    },
+                  ],
+                }}
+              >
+              <li
                 className="group px-3 py-2 hover:bg-muted/40"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -97,12 +102,6 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
                     >
                       {plugin.name}
                     </span>
-                    <RowActions
-                      askLabel={t("agent.plugins.askLabel", { name: plugin.name })}
-                      removeLabel={t("agent.plugins.removeLabel", { name: plugin.name })}
-                      onAsk={() => ask(plugin)}
-                      onRemove={() => remove(plugin)}
-                    />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {plugin.version && plugin.version !== "unknown" ? (
@@ -124,6 +123,7 @@ export function PluginsCard({ agent, agentId }: { agent: AgentProfile; agentId: 
                 ) : null}
                 <PluginContributions plugin={plugin} />
               </li>
+              </AiContextTarget>
             ))}
           </ul>
         ) : (

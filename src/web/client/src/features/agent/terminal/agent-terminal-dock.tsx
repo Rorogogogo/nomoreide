@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Container, Database, GitBranch, Grip, Inbox, Maximize2, Minimize2, PanelBottom, PanelRight, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
+import { Activity, Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Container, Database, GitBranch, Grip, Inbox, Maximize2, Minimize2, PanelBottom, PanelRight, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
 // SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import type { DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -16,14 +16,16 @@ import { AgentTerminalTabs } from "./agent-terminal-tabs";
 import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
 import { GitHubLogo } from "../../github/github-logo";
+import { requestGitHubActions } from "../../github/github-navigation";
 import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
 import { useT, type TranslationKey } from "@/lib/i18n";
 
-export type AgentDockPage = "services" | "docker" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
+export type AgentDockPage = "services" | "activity" | "docker" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
 
 const FULLSCREEN_NAV: Array<{ page: AgentDockPage; labelKey: TranslationKey; icon: ReactNode }> = [
   { page: "services", labelKey: "nav.services", icon: <Server /> },
+  { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
   { page: "docker", labelKey: "nav.docker", icon: <Container /> },
   { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
   { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
@@ -58,6 +60,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const [splitPercent, setSplitPercent] = useState(50);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [shellMode, setShellMode] = useState(false);
+  const [latestRailTask, setLatestRailTask] = useState<(typeof tasks)[number] | null>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const positionCleanupRef = useRef<(() => void) | null>(null);
   const suppressPositionClickRef = useRef(false);
@@ -141,6 +144,10 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   }, [tasks]);
   const collapse = () => { setFullScreen(false); setOpen(false); };
   const navigate = (page: AgentDockPage) => { onNavigate?.(page); collapse(); };
+  const openGitHubActions = (branch: string) => {
+    requestGitHubActions(branch);
+    navigate("github");
+  };
   function resizeStart(event: ReactPointerEvent<HTMLDivElement>) {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -237,8 +244,16 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const split = rightTasks.length > 0;
   const focusedTask =
     focusedPane === "right" && rightActive ? rightActive : leftActive;
+  const currentRailTask =
+    focusedTask ??
+    tasks.findLast((task) => task.state === "running") ??
+    tasks.at(-1) ??
+    null;
   const layoutSplit = split && !sideDocked;
   const sideActiveTaskId = composing ? COMPOSE_TAB_ID : focusedTask?.id ?? activeTaskId;
+  useEffect(() => {
+    if (currentRailTask) setLatestRailTask(currentRailTask);
+  }, [currentRailTask]);
   useEffect(() => {
     if (rightActive?.id !== activeRightTaskId) {
       setActiveRightTaskId(rightActive?.id ?? null);
@@ -248,9 +263,29 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
 
   const railProviderId = focusedTask?.provider ?? provider?.id;
   const activeShell = focusedTask?.kind === "shell";
-  const Logo = activeShell ? SquareTerminal : railProviderId === "codex" ? CodexLogo : ClaudeLogo;
   const railProviderLabel = activeShell ? t("dock.shell") : focusedTask ? (focusedTask.provider === "codex" ? "Codex" : "Claude Code") : (provider?.label ?? "Agent");
   const activeTaskLabel = focusedTask?.label || (activeShell ? t("dock.shellFallback") : t("dock.newTask"));
+  const collapsedTask = currentRailTask ?? latestRailTask;
+  const collapsedShell = collapsedTask?.kind === "shell";
+  const collapsedProviderId = collapsedTask?.provider ?? provider?.id;
+  const CollapsedLogo = collapsedShell
+    ? SquareTerminal
+    : collapsedProviderId === "codex"
+      ? CodexLogo
+      : ClaudeLogo;
+  const collapsedProviderLabel = collapsedShell
+    ? t("dock.shell")
+    : collapsedTask
+      ? collapsedTask.provider === "codex"
+        ? "Codex"
+        : "Claude Code"
+      : provider?.label ?? "Agent";
+  const collapsedTaskLabel =
+    collapsedTask?.label ||
+    (collapsedShell ? t("dock.shellFallback") : t("dock.newTask"));
+  const collapsedStatusLabel = focusedTask
+    ? t("dock.activeStatusSr")
+    : t("dock.latestStatusSr");
   // Counts follow what the user is looking at: the selected provider while
   // composing, the active task's provider while a terminal is showing.
   // With no sessions the composer is the dock's start page. Once a session
@@ -413,18 +448,37 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         className="fixed bottom-0 right-0 z-50 flex w-9 flex-col items-center gap-2 border-l border-border bg-card/95 py-3 shadow-[-4px_0_18px_-14px_rgba(0,0,0,.45)] backdrop-blur"
         onClick={() => setOpen(true)}
         style={{ top: isTauri() ? 32 : 0 }}
-        title={activeTaskLabel}
+        title={collapsedTaskLabel}
         type="button"
       >
-        <Logo className="size-4 text-primary" />
-        {focusedTask ? <span className={cn("size-1.5 rounded-full bg-muted-foreground", focusedTask.state === "running" && "bg-emerald-500", focusedTask.state === "error" && "bg-destructive")}><span className="sr-only">{t("dock.activeStatusSr")}{stateLabel(focusedTask.state)}</span></span> : null}
+        <CollapsedLogo className="size-4 text-primary" />
+        {collapsedTask ? <span className={cn("size-1.5 rounded-full bg-muted-foreground", collapsedTask.state === "running" && "bg-emerald-500", collapsedTask.state === "error" && "bg-destructive")}><span className="sr-only">{collapsedStatusLabel}{stateLabel(collapsedTask.state)}</span></span> : null}
         <span className="h-px w-4 bg-border" />
-        <span className="min-h-0 flex-1 [writing-mode:vertical-rl] truncate font-mono text-[10px] text-muted-foreground">{activeTaskLabel}</span>
+        <span className="min-h-0 flex-1 [writing-mode:vertical-rl] truncate font-mono text-[10px] text-muted-foreground">{collapsedTaskLabel}</span>
         {tasks.length > 1 ? <span className="grid size-5 place-items-center rounded-full bg-muted font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}
         <ChevronLeft className="size-3.5 text-muted-foreground" />
       </button>
     ) : (
-      <button aria-label={t("dock.openAria")} className="fixed inset-x-0 bottom-0 z-50 flex h-9 w-full items-center gap-2 border-t border-border bg-card/95 px-3 text-left shadow-[0_-4px_18px_-14px_rgba(0,0,0,.45)] backdrop-blur" onClick={() => setOpen(true)} type="button"><Logo className="size-3.5 text-primary" /><span className="text-xs font-medium">{railProviderLabel}</span><span className="h-3 w-px bg-border" /><span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{activeTaskLabel}</span><DockStatusStrip git={git} provider={railProviderId} variant="strip" />{focusedTask ? <span className={cn("font-mono text-[10px] text-muted-foreground", focusedTask.state === "running" && "text-emerald-600", focusedTask.state === "error" && "text-destructive")}><span className="sr-only">{t("dock.activeStatusSr")}</span>{stateLabel(focusedTask.state)}</span> : null}{tasks.length > 1 ? <span className="font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}<ChevronUp className="size-3.5 text-muted-foreground" /></button>
+      <div className="fixed inset-x-0 bottom-0 z-50 h-9 w-full border-t border-border bg-card/95 shadow-[0_-4px_18px_-14px_rgba(0,0,0,.45)] backdrop-blur">
+        <button
+          aria-label={t("dock.openAria")}
+          className="absolute inset-x-0 inset-y-0 h-9 w-full text-left"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <span className="sr-only">{collapsedProviderLabel}</span>
+        </button>
+        <div className="pointer-events-none relative flex h-full items-center gap-2 px-3">
+          <CollapsedLogo className="size-3.5 text-primary" />
+          <span className="text-xs font-medium">{collapsedProviderLabel}</span>
+          <span className="h-3 w-px bg-border" />
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{collapsedTaskLabel}</span>
+          <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={collapsedProviderId} variant="strip" />
+          {collapsedTask ? <span className={cn("font-mono text-[10px] text-muted-foreground", collapsedTask.state === "running" && "text-emerald-600", collapsedTask.state === "error" && "text-destructive")}><span className="sr-only">{collapsedStatusLabel}</span>{stateLabel(collapsedTask.state)}</span> : null}
+          {tasks.length > 1 ? <span className="font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}
+          <ChevronUp className="size-3.5 text-muted-foreground" />
+        </div>
+      </div>
     ) : null}
     <div
       aria-hidden={!open || undefined}
@@ -477,7 +531,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       ><Grip className="size-3.5" /></button> : null}
       {layoutSplit ? <span className="min-w-0 flex-1" /> : <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />}
       {!sideDocked && agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} /> : <span className="flex-1" />}
-      {!sideDocked ? <DockStatusStrip git={git} provider={railProviderId} variant="dock" /> : null}
+      {!sideDocked ? <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="dock" /> : null}
       <div className="flex shrink-0 items-center border-l border-border px-1">
         <AgentConversationPicker error={transcriptsError} loading={transcriptsLoading} onLoad={loadTranscripts} onResume={resumeInFocusedPane} transcripts={transcripts} />
         <AgentNewSessionMenu
@@ -495,7 +549,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {sideDocked ? <div className="flex min-h-9 shrink-0 items-center overflow-x-auto border-b border-border bg-muted/10" data-agent-side-utilities>
       {agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} /> : null}
       <span className="min-w-2 flex-1" />
-      <DockStatusStrip git={git} provider={railProviderId} variant="side" />
+      <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="side" />
     </div> : null}
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
     {git && composing ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}

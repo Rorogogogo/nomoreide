@@ -5,6 +5,8 @@ import { prefixRoute, type Route } from "./context.js";
 /** Paths that serve the SPA shell (client-side routing handles the rest). */
 const shellPaths = new Set([
   "/",
+  "/activity",
+  "/docker",
   "/git",
   "/github",
   "/workflows",

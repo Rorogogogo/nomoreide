@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { GitHubComment, GitHubIssue } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,7 @@ import { useOperations } from "@/components/operations/operation-context";
 import { Alert } from "@/components/ui/alert";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
-import { AiAskInline } from "../agent/ai-ask-inline";
-import { AiSpark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildIssueAskPrompt } from "../agent/prompts";
 import { MarkdownBody } from "./markdown-body";
 import { MarkdownPreview } from "../git/visualizers/markdown-preview";
@@ -33,25 +30,9 @@ export function IssueDetail({
 }) {
   const t = useT();
   const [draft, setDraft] = useState("");
-  const [asking, setAsking] = useState(false);
-  const { sendToAgent } = useAgentDock();
   const { isPending, runOperation } = useOperations();
   const commentKey = issue ? `github:issue:${issue.number}:comment` : "";
   const posting = submitting || (commentKey ? isPending(commentKey) : false);
-
-  useEffect(() => {
-    setAsking(false);
-  }, [issue?.number]);
-
-  function askAgent(input: string) {
-    if (!issue) return;
-    setAsking(false);
-    sendToAgent({
-      prompt: buildIssueAskPrompt(issue, input),
-      source: { type: "github-issue", label: `Issue #${issue.number}` },
-      label: `Issue #${issue.number}: ${input}`,
-    });
-  }
 
   if (!issue) {
     return <div className="flex h-full items-center justify-center text-[12px] text-muted-foreground">{t("github.issue.selectPrompt")}</div>;
@@ -74,14 +55,25 @@ export function IssueDetail({
   }
 
   return (
+    <AiContextTarget
+      target={{
+        label: `Issue #${issue.number}`,
+        intents: [{
+          id: "review-issue",
+          label: t("github.issue.askLabel", { number: issue.number }),
+          resolvePrompt: () =>
+            buildIssueAskPrompt(
+              issue,
+              "Review this issue, summarize the problem, and recommend the next action.",
+            ),
+          source: { type: "github-issue", label: `Issue #${issue.number}` },
+          agentLabel: `Issue #${issue.number}: ${issue.title}`,
+        }],
+      }}
+    >
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="group flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{issue.title}</span>
-        <AiSpark
-          className={cn("shrink-0", asking && "opacity-100")}
-          label={t("github.issue.askLabel", { number: issue.number })}
-          onAsk={() => setAsking((open) => !open)}
-        />
         <a
           aria-label={t("github.openOnGithub")}
           className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -92,16 +84,6 @@ export function IssueDetail({
           <ExternalLink className="size-3.5" />
         </a>
       </div>
-      {asking ? (
-        <div className="shrink-0 border-b border-border px-3 py-1.5">
-          <AiAskInline
-            placeholder={t("github.issue.askPlaceholder")}
-            onSubmit={askAgent}
-            onCancel={() => setAsking(false)}
-          />
-        </div>
-      ) : null}
-
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12px]">
@@ -166,5 +148,6 @@ export function IssueDetail({
         </form>
       </div>
     </div>
+    </AiContextTarget>
   );
 }

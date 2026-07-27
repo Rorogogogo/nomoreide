@@ -20,6 +20,10 @@ import {
   useOperations,
   type OperationContextValue,
 } from "../src/web/client/src/components/operations/operation-context";
+import {
+  AiContextMenuProvider,
+  useAiContextMenuRegistry,
+} from "../src/web/client/src/features/agent/context-menu/ai-context-menu";
 
 const incidentFeed = vi.hoisted(() => ({
   value: {
@@ -140,19 +144,23 @@ async function renderTable(
   document.body.append(host);
   const root = createRoot(host);
   let operationContext: OperationContextValue | undefined;
+  let aiRegistry: ReturnType<typeof useAiContextMenuRegistry> | undefined;
   const render = async (next: Partial<ComponentProps<typeof IncidentTable>> = {}) => {
     await act(async () => {
       root.render(
-        <OperationProvider>
-          <CaptureOperations onValue={(value) => { operationContext = value; }} />
-          <IncidentTable
-            connected
-            error={null}
-            incidents={incidents}
-            {...props}
-            {...next}
-          />
-        </OperationProvider>,
+        <AiContextMenuProvider>
+          <OperationProvider>
+            <CaptureAiRegistry onValue={(value) => { aiRegistry = value; }} />
+            <CaptureOperations onValue={(value) => { operationContext = value; }} />
+            <IncidentTable
+              connected
+              error={null}
+              incidents={incidents}
+              {...props}
+              {...next}
+            />
+          </OperationProvider>
+        </AiContextMenuProvider>,
       );
     });
   };
@@ -164,12 +172,25 @@ async function renderTable(
       if (!operationContext) throw new Error("operation provider has not rendered");
       return operationContext;
     },
+    resolveAiTarget(element: Element) {
+      if (!aiRegistry) throw new Error("AI context registry has not rendered");
+      return aiRegistry.resolve(element);
+    },
     async unmount() {
       await act(async () => root.unmount());
       host.remove();
       globalThis.IS_REACT_ACT_ENVIRONMENT = false;
     },
   };
+}
+
+function CaptureAiRegistry({
+  onValue,
+}: {
+  onValue: (value: ReturnType<typeof useAiContextMenuRegistry>) => void;
+}) {
+  onValue(useAiContextMenuRegistry());
+  return null;
 }
 
 function CaptureOperations({
@@ -253,7 +274,11 @@ describe("IncidentTable", () => {
     expect(mounted.host.textContent).toContain("Hydration mismatch");
     expect(mounted.host.textContent).toContain("/app/checkout.tsx");
     expect(mounted.host.textContent).toContain("first");
-    expect(mounted.host.textContent).toContain("Fix with AI");
+    expect(
+      mounted.host.querySelector('[data-incident-detail="true"]')?.getAttribute(
+        "data-ai-context-target",
+      ),
+    ).toBeTruthy();
 
     const second = mounted.host.querySelectorAll<HTMLButtonElement>(
       'button[aria-label^="Expand incident"]',
@@ -330,26 +355,23 @@ describe("IncidentTable", () => {
         .querySelector<HTMLButtonElement>('button[aria-label^="Expand incident"]')
         ?.click(),
     );
-    const fixButton = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Fix with AI"));
-
-    act(() => fixButton?.click());
+    const detail = mounted.host.querySelector<HTMLElement>('[data-incident-detail="true"]');
+    const fixIntent = detail ? mounted.resolveAiTarget(detail)?.intents[0] : undefined;
+    let promptPromise: Promise<string> | undefined;
+    act(() => {
+      promptPromise = Promise.resolve(fixIntent?.resolvePrompt("send") ?? "");
+    });
 
     expect(mounted.operations.operations[0]).toMatchObject({
       key: "error:3:fix",
       label: "Fixing web incident…",
     });
-    expect(fixButton?.getAttribute("aria-busy")).toBe("true");
-    expect(fixButton?.textContent).toContain("Starting…");
-    act(() => fixButton?.click());
     expect(actions.startFix).toHaveBeenCalledTimes(1);
 
     await act(async () =>
       fix.resolve({ prompt: "fix it", sessionId: "fix-session", repoPath: "/repo" }),
     );
-    expect(actions.sendToAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: "fix it" }),
-    );
+    await expect(promptPromise).resolves.toBe("fix it");
     const review = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
       .find((button) => button.textContent?.includes("Review changes"));
     act(() => review?.click());
@@ -366,14 +388,14 @@ describe("IncidentTable", () => {
         .querySelector<HTMLButtonElement>('button[aria-label^="Expand incident"]')
         ?.click(),
     );
-    const fixButton = Array.from(mounted.host.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Fix with AI"));
-
-    await act(async () => fixButton?.click());
+    const detail = mounted.host.querySelector<HTMLElement>('[data-incident-detail="true"]');
+    const fixIntent = detail ? mounted.resolveAiTarget(detail)?.intents[0] : undefined;
+    await act(async () => {
+      await expect(fixIntent?.resolvePrompt("send")).rejects.toThrow("snapshot failed");
+    });
 
     expect(actions.toastError).toHaveBeenCalledWith("snapshot failed");
-    expect(fixButton?.disabled).toBe(false);
-    expect(fixButton?.getAttribute("aria-busy")).toBeNull();
+    expect(mounted.operations.operations).toHaveLength(0);
     await mounted.unmount();
   });
 });

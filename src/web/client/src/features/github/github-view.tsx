@@ -17,6 +17,7 @@ import { useT } from "@/lib/i18n";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
+import { subscribeToGitHubActions } from "./github-navigation";
 import { GitHubLogo } from "./github-logo";
 import { GitHubTokenSetup } from "./github-token-setup";
 import { PrList } from "./pr-list";
@@ -127,13 +128,25 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
     "open",
   );
   const [createPRHead, setCreatePRHead] = useState<string | null>(null);
-  const [actionsBranch, setActionsBranch] = useState<string | null>(null);
+  const [actionsBranch, setActionsBranch] = usePersistentState<string | null>(
+    "github:actions-branch",
+    null,
+  );
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
   const { isPending, runOperation } = useOperations();
   const disconnecting = isPending("github:disconnect");
 
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
+
+  useEffect(
+    () =>
+      subscribeToGitHubActions((intent) => {
+        setActionsBranch(intent.branch);
+        setTab("actions");
+      }),
+    [setActionsBranch, setTab],
+  );
 
   // Header Refresh / the 5s dashboard poll reloads the active tab's data.
   // Branches/Actions own their own hooks in nested components and register

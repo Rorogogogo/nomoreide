@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { isValidElement, useEffect, useState, type ReactNode } from "react";
 import { GitBranch } from "lucide-react";
-import type { CommitCIStatus, DashboardData, UsageInfo } from "@/lib/api";
-import { getGitGraph } from "@/lib/api";
+import { Tooltip } from "@/components/ui/tooltip";
+import type { DashboardData, GitHubWorkflowRun, UsageInfo } from "@/lib/api";
 import { useT, type Translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { fetchCiStatus } from "../../github/ci-status-cache";
+import { fetchLatestWorkflowRun } from "../../github/latest-action-cache";
 import { useUsage } from "../use-usage";
 
 /** A rate-limit window from either provider — the two agree on this shape. */
@@ -53,64 +53,66 @@ function pickUsage(usage: UsageInfo | null, provider?: string): PickedUsage | nu
   return claudeView ?? codexView ?? null;
 }
 
-/** Resolve the selected repo's HEAD sha, then poll its CI status. */
-function useHeadCi(git?: DashboardData["git"]): CommitCIStatus | null {
+/** Poll the newest Actions run on the selected repository's current branch. */
+function useLatestAction(git?: DashboardData["git"]): GitHubWorkflowRun | null {
   const repo = git?.selectedRepository?.name ?? null;
   const branch = git?.status?.branch ?? null;
-  const ahead = git?.status?.ahead ?? 0;
-  const [sha, setSha] = useState<string | null>(null);
-  const [ci, setCi] = useState<CommitCIStatus | null>(null);
+  const [run, setRun] = useState<GitHubWorkflowRun | null>(null);
 
-  // Re-resolve the HEAD sha whenever the repo, branch, or commit count moves.
   useEffect(() => {
     if (!repo) {
-      setSha(null);
+      setRun(null);
       return;
     }
-    let active = true;
-    getGitGraph(1)
-      .then((commits) => {
-        if (active) setSha(commits[0]?.hash ?? null);
-      })
-      .catch(() => {
-        if (active) setSha(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [repo, branch, ahead]);
-
-  // Poll CI for that sha; the shared cache dedupes and lets "pending" refresh.
-  useEffect(() => {
-    if (!sha) {
-      setCi(null);
-      return;
-    }
+    setRun(null);
     let active = true;
     const load = () =>
-      fetchCiStatus(sha)
-        .then((status) => {
-          if (active) setCi(status);
+      fetchLatestWorkflowRun(repo, branch ?? undefined)
+        .then((latest) => {
+          if (active) setRun(latest);
         })
         .catch(() => {
-          if (active) setCi(null);
+          // Keep the last good result through transient GitHub errors.
         });
     load();
-    const timer = window.setInterval(load, 30_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 30_000);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
-  }, [sha]);
+  }, [repo, branch]);
 
-  return ci;
+  return run;
 }
 
 function toneFor(pct: number): string {
   return pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
 }
 
-function ciDot(state: CommitCIStatus["state"]): string {
+type ActionState = "pending" | "success" | "failure" | "error";
+
+export function actionState(run: GitHubWorkflowRun): ActionState {
+  if (run.status !== "completed") return "pending";
+  if (
+    run.conclusion === "success" ||
+    run.conclusion === "neutral" ||
+    run.conclusion === "skipped"
+  ) {
+    return "success";
+  }
+  if (
+    run.conclusion === "failure" ||
+    run.conclusion === "timed_out" ||
+    run.conclusion === "cancelled"
+  ) {
+    return "failure";
+  }
+  return "error";
+}
+
+function actionDot(state: ActionState): string {
   switch (state) {
     case "success":
       return "bg-emerald-500";
@@ -181,33 +183,84 @@ function Divider() {
   return <span aria-hidden className="h-3 w-px shrink-0 bg-border" />;
 }
 
+function LatestActionItem({
+  onOpen,
+  run,
+  variant,
+}: {
+  onOpen?: (branch: string) => void;
+  run: GitHubWorkflowRun;
+  variant: "strip" | "dock" | "side";
+}) {
+  const t = useT();
+  const state = actionState(run);
+  const updated = new Date(run.updated_at).toLocaleString();
+  const stateLabel = t(`dock.status.actionState.${state}`);
+
+  return (
+    <Tooltip
+      label={
+        <span className="block min-w-52 space-y-1 whitespace-normal text-left">
+          <span className="flex items-center justify-between gap-3">
+            <span className="font-semibold">{run.name}</span>
+            <span>{stateLabel}</span>
+          </span>
+          <span className="block font-mono text-[10px] opacity-75">
+            {t("dock.status.actionMeta", {
+              branch: run.head_branch,
+              number: run.run_number,
+            })}
+          </span>
+          <span className="block text-[10px] opacity-75">
+            {state === "pending"
+              ? t("dock.status.actionRunning")
+              : t("dock.status.actionLatest")}{" "}
+            · {t("dock.status.actionUpdated", { time: updated })}
+          </span>
+        </span>
+      }
+      side={variant === "strip" ? "top" : variant === "side" ? "left" : "bottom"}
+    >
+      <button
+        aria-label={t("dock.status.openAction", { name: run.name, number: run.run_number })}
+        className="pointer-events-auto hidden max-w-36 items-center gap-1 rounded-sm font-mono text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:flex"
+        onClick={() => onOpen?.(run.head_branch)}
+        type="button"
+      >
+        <span className={cn("size-2 shrink-0 rounded-full", actionDot(state))} />
+        <span className="truncate">{t("dock.status.actions")}</span>
+      </button>
+    </Tooltip>
+  );
+}
+
 /**
  * Glanceable status cluster for the agent dock: current branch + ahead/behind,
- * HEAD CI status, the 5-hour and weekly rate-limit meters, and the active
- * session's context/cost. Every element is a display-only span so the whole
- * cluster can live inside the collapsed strip's button without nesting.
+ * latest GitHub Actions status, the 5-hour and weekly rate-limit meters, and
+ * the active session's context/cost.
  *
  * `variant` tunes density: "strip" (the collapsed bar) shows everything as room
  * allows; "dock" (the open terminal's tab row) keeps only the compact limits +
- * CI so it never crowds the tabs.
+ * Actions status so it never crowds the tabs.
  */
 export function DockStatusStrip({
   git,
+  onOpenActions,
   provider,
   variant = "strip",
 }: {
   git?: DashboardData["git"];
+  onOpenActions?: (branch: string) => void;
   provider?: string;
   variant?: "strip" | "dock" | "side";
 }) {
   const t = useT();
   const { usage } = useUsage(15_000);
-  const ci = useHeadCi(git);
+  const latestAction = useLatestAction(git);
   const picked = pickUsage(usage, provider);
 
   const status = git?.status ?? null;
   const upstream = status?.upstream ?? t("dock.status.noUpstream");
-  const showCi = ci && ci.state !== "unknown" && ci.totalCount > 0;
   const showBranch = variant === "strip" && !!status?.branch;
   const showContext =
     variant === "strip" && (picked?.contextPercent != null || picked?.costUSD != null);
@@ -229,16 +282,14 @@ export function DockStatusStrip({
     );
   }
 
-  if (showCi && ci) {
+  if (latestAction) {
     items.push(
-      <StatItem
-        className="hidden sm:flex"
-        key="ci"
-        title={t("dock.status.ciTitle", { state: ci.state, count: ci.totalCount })}
-      >
-        <span className={cn("size-2 shrink-0 rounded-full", ciDot(ci.state))} />
-        <span>{t("dock.status.ci")}</span>
-      </StatItem>,
+      <LatestActionItem
+        key="action"
+        onOpen={onOpenActions}
+        run={latestAction}
+        variant={variant}
+      />,
     );
   }
 
@@ -297,7 +348,10 @@ export function DockStatusStrip({
     >
       {variant === "strip" ? <Divider /> : null}
       {items.map((item, index) => (
-        <span className="flex items-center gap-2" key={index}>
+        <span
+          className="flex items-center gap-2"
+          key={isValidElement(item) ? item.key : String(item)}
+        >
           {index > 0 ? <Divider /> : null}
           {item}
         </span>
