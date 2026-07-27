@@ -1,0 +1,23 @@
+{
+  "skill_name": "nomoreide-debug",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The frontend is not loading. Can you debug it and run the dev server?",
+      "expected_output": "Discovers the registered service, uses NoMoreIDE to inspect and start it, diagnoses logs, and verifies health without launching a duplicate shell process.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Why does my API keep crashing after startup?",
+      "expected_output": "Uses NoMoreIDE health, service context, logs, and timeline before proposing or applying a fix, then restarts and verifies through NoMoreIDE when authorized.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Something is already using port 5173. Fix the conflict.",
+      "expected_output": "Checks registered services and NoMoreIDE runtime evidence, avoids unmanaged process killing or duplicate startup, and explains any shared-state mutation before acting.",
+      "files": []
+    }
+  ]
+}

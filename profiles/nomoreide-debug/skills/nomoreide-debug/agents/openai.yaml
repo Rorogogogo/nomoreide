@@ -1,0 +1,13 @@
+interface:
+  display_name: "NoMoreIDE Debug"
+  short_description: "Debug services through the shared daemon"
+  default_prompt: "Use $nomoreide-debug to diagnose and verify this development service."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "nomoreide"
+      description: "Shared NoMoreIDE service runtime, health, context, and logs"
+
+policy:
+  allow_implicit_invocation: true

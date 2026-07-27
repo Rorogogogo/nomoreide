@@ -20,6 +20,14 @@ import {
 
 export { NOMOREIDE_TOOL_NAMES } from "./tools/index.js";
 
+export const NOMOREIDE_MCP_INSTRUCTIONS = [
+  "Use NoMoreIDE whenever the user asks to run, start, restart, debug, diagnose, or troubleshoot a local development service.",
+  "First call nomoreide_list_services and nomoreide_status to identify an equivalent registered service or bundle.",
+  "Run registered services through nomoreide_start_service or nomoreide_start_bundle in the shared daemon; do not launch duplicate ad-hoc development processes.",
+  "For failures, inspect nomoreide_service_health, nomoreide_read_logs, nomoreide_timeline, and nomoreide_service_context before restarting, then verify health and logs afterward.",
+  "If the project is not registered, explain that and use the NoMoreIDE onboarding or registration flow before managing it.",
+].join(" ");
+
 interface CreateNoMoreIdeMcpServerOptions {
   configPath?: string;
   logDir?: string;
@@ -73,6 +81,7 @@ export function createNoMoreIdeMcpServer(
   const server = new FastMCP({
     name: "NoMoreIDE MCP",
     version: "0.1.0",
+    instructions: NOMOREIDE_MCP_INSTRUCTIONS,
   });
   registerNoMoreIdeTools({
     server,

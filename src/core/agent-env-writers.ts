@@ -14,6 +14,7 @@ import { constants } from "node:fs";
 import { copyFile, cp, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { parse as parseToml } from "smol-toml";
 import {
   readAntigravityConfig,
   readCodexConfig,
@@ -119,6 +120,97 @@ export async function addMcp(options: AddMcpOptions): Promise<WriteOutcome> {
   });
 }
 
+/** Add a local MCP server to Gemini CLI's `~/.gemini/settings.json`. */
+export async function addGeminiMcp(
+  options: WriterOptions & { key: string; entry: AgentMcpEntry },
+): Promise<WriteOutcome> {
+  const homeDir = options.homeDir ?? homedir();
+  const configPath = path.join(homeDir, ".gemini", "settings.json");
+  const backups: string[] = [];
+  let existing: Record<string, unknown> = {};
+  let source: string | undefined;
+
+  try {
+    source = await readFile(configPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (source !== undefined) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(source);
+    } catch {
+      throw new Error(`Gemini CLI settings contain invalid JSON: ${configPath}`);
+    }
+    if (!isRecord(parsed)) {
+      throw new Error(`Gemini CLI settings must contain a JSON object: ${configPath}`);
+    }
+    existing = parsed;
+    if (existing.mcpServers !== undefined && !isRecord(existing.mcpServers)) {
+      throw new Error(`Gemini CLI mcpServers must contain a JSON object: ${configPath}`);
+    }
+    const backup = await backupFile(configPath);
+    if (backup) backups.push(backup);
+  }
+
+  const servers = (existing.mcpServers ?? {}) as Record<string, unknown>;
+  servers[options.key] = {
+    command: options.entry.command,
+    args: options.entry.args ?? [],
+    ...(options.entry.env ? { env: options.entry.env } : {}),
+  };
+  existing.mcpServers = servers;
+
+  await mkdir(path.dirname(configPath), { recursive: true });
+  await atomicWriteJson(configPath, existing);
+  return { backups };
+}
+
+/** Add one local Codex MCP table without rebuilding unrelated MCP sections. */
+export async function addCodexMcpPreservingConfig(
+  options: WriterOptions & { key: string; entry: AgentMcpEntry },
+): Promise<WriteOutcome> {
+  const homeDir = options.homeDir ?? homedir();
+  const configPath = path.join(homeDir, ".codex", "config.toml");
+  const backups: string[] = [];
+  let existingContent = "";
+
+  try {
+    existingContent = await readFile(configPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const section = buildCodexLocalMcpSection(options.key, options.entry);
+  if (existingContent.trim()) {
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = parseToml(existingContent) as Record<string, unknown>;
+    } catch {
+      throw new Error(`Codex configuration contains invalid TOML: ${configPath}`);
+    }
+    const servers = isRecord(parsed.mcp_servers) ? parsed.mcp_servers : undefined;
+    existingContent = replaceCodexMcpSection(
+      existingContent,
+      options.key,
+      section,
+      servers ? options.key in servers : false,
+    );
+    try {
+      parseToml(existingContent);
+    } catch {
+      throw new Error(`Codex MCP "${options.key}" could not be replaced safely in ${configPath}`);
+    }
+    const backup = await backupFile(configPath);
+    if (backup) backups.push(backup);
+  } else {
+    existingContent = section;
+  }
+
+  await mkdir(path.dirname(configPath), { recursive: true });
+  await atomicWrite(configPath, `${existingContent.trimEnd()}\n`);
+  return { backups };
+}
+
 export async function removeMcp(options: McpMutationOptions): Promise<WriteOutcome> {
   const { agent, key, scope } = options;
 
@@ -154,13 +246,29 @@ async function mutateClaudeConfig(
   const configPath = path.join(homeDir, ".claude.json");
   const backups: string[] = [];
   let existing: Record<string, unknown> = {};
+  let source: string | undefined;
 
   try {
-    existing = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+    source = await readFile(configPath, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  if (source !== undefined) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(source);
+    } catch {
+      throw new Error(`Claude configuration contains invalid JSON: ${configPath}`);
+    }
+    if (!isRecord(parsed)) {
+      throw new Error(`Claude configuration must contain a JSON object: ${configPath}`);
+    }
+    existing = parsed;
+    if (scope === "user" && existing.mcpServers !== undefined && !isRecord(existing.mcpServers)) {
+      throw new Error(`Claude mcpServers must contain a JSON object: ${configPath}`);
+    }
     const backup = await backupFile(configPath);
     if (backup) backups.push(backup);
-  } catch {
-    // fresh config
   }
 
   if (scope === "user") {
@@ -289,8 +397,90 @@ function buildCodexMcpToml(state: {
   return lines.join("\n").trim();
 }
 
+function buildCodexLocalMcpSection(name: string, entry: AgentMcpEntry): string {
+  const lines = [
+    `[mcp_servers.${name}]`,
+    `command = ${tomlStr(entry.command)}`,
+  ];
+  if (entry.args && entry.args.length > 0) {
+    lines.push(`args = [${entry.args.map(tomlStr).join(", ")}]`);
+  }
+  if (entry.env && Object.keys(entry.env).length > 0) {
+    lines.push("", `[mcp_servers.${name}.env]`);
+    for (const [key, value] of Object.entries(entry.env)) {
+      lines.push(`${key} = ${tomlStr(value)}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+function replaceCodexMcpSection(
+  content: string,
+  name: string,
+  section: string,
+  hasExistingTarget = false,
+): string {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const key = `(?:${escaped}|"${escaped}"|'${escaped}')`;
+  const targetTable = new RegExp(
+    `^\\s*\\[mcp_servers\\.${key}(?:\\.[^\\]]+)?\\]\\s*(?:#.*)?$`,
+  );
+  const dottedAssignment = new RegExp(`^\\s*mcp_servers\\.${key}\\s*=`);
+  const rootAssignment = new RegExp(`^\\s*${key}\\s*=`);
+  const lines = content.split("\n");
+  const result: string[] = [];
+  let skipping = false;
+  let inserted = false;
+  let appendSection = false;
+  let inRootMcpTable = false;
+  let atTopLevel = true;
+
+  for (const line of lines) {
+    if (/^\s*\[[^\]]+\]\s*(?:#.*)?$/.test(line)) {
+      if (targetTable.test(line)) {
+        if (!inserted) {
+          result.push(section);
+          inserted = true;
+        }
+        skipping = true;
+        continue;
+      }
+      skipping = false;
+      inRootMcpTable = /^\s*\[mcp_servers\]\s*(?:#.*)?$/.test(line);
+      atTopLevel = false;
+    }
+    if (
+      !skipping &&
+      ((atTopLevel && dottedAssignment.test(line)) ||
+        (inRootMcpTable && rootAssignment.test(line)))
+    ) {
+      inserted = true;
+      appendSection = true;
+      continue;
+    }
+    if (!skipping) result.push(line);
+  }
+
+  if (appendSection) {
+    const prefix = result.join("\n").trimEnd();
+    return prefix ? `${prefix}\n\n${section}` : section;
+  }
+  if (!inserted) {
+    if (hasExistingTarget) {
+      throw new Error(`Codex MCP "${name}" uses an unsupported TOML layout.`);
+    }
+    const prefix = result.join("\n").trimEnd();
+    return prefix ? `${prefix}\n\n${section}` : section;
+  }
+  return result.join("\n");
+}
+
 function tomlStr(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /* ---- Antigravity: JSON mcpServers at the live candidate path ---- */
@@ -439,6 +629,35 @@ export interface CopySkillOptions extends WriterOptions {
   target: SkillLocation;
 }
 
+export interface InstallSkillFromDirectoryOptions extends WriterOptions {
+  sourceDir: string;
+  target: SkillLocation;
+}
+
+/**
+ * Install a skill from a packaged directory, preserving any replaced skill in
+ * the central backup area and preparing the new copy before removing the old.
+ */
+export async function installSkillFromDirectory(
+  options: InstallSkillFromDirectoryOptions,
+): Promise<WriteOutcome> {
+  const targetDir = getSkillDir(options.target, options.cwd, options.homeDir);
+  const stagingDir = `${targetDir}.tmp.${process.pid}.${Date.now()}`;
+  await mkdir(path.dirname(targetDir), { recursive: true });
+  await rm(stagingDir, { recursive: true, force: true });
+  await cp(options.sourceDir, stagingDir, { recursive: true });
+
+  const backup = await backupSkillDir(options, targetDir);
+  try {
+    await rm(targetDir, { recursive: true, force: true });
+    await rename(stagingDir, targetDir);
+  } catch (error) {
+    await rm(stagingDir, { recursive: true, force: true });
+    throw error;
+  }
+  return { backups: backup ? [backup] : [] };
+}
+
 export async function copySkill(options: CopySkillOptions): Promise<WriteOutcome> {
   const [sourceDir] = await resolveExistingSkillDirs(options.source, options.cwd, options.homeDir);
   const targetDir = getSkillDir(options.target, options.cwd, options.homeDir);
@@ -509,16 +728,31 @@ async function backupSkillDir(options: WriterOptions, skillDir: string): Promise
     return null;
   }
   const homeDir = options.homeDir ?? homedir();
-  const backupDir = path.join(
+  const backupBase = path.join(
     homeDir,
     ".config",
     "nomoreide",
     "agent-env-backups",
     `${path.basename(skillDir)}.${formatTimestamp()}`,
   );
-  await mkdir(path.dirname(backupDir), { recursive: true });
-  await cp(skillDir, backupDir, { recursive: true });
-  return backupDir;
+  await mkdir(path.dirname(backupBase), { recursive: true });
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const backupDir = attempt === 0 ? backupBase : `${backupBase}-${attempt}`;
+    try {
+      await mkdir(backupDir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") continue;
+      throw error;
+    }
+    try {
+      await cp(skillDir, backupDir, { recursive: true });
+      return backupDir;
+    } catch (error) {
+      await rm(backupDir, { recursive: true, force: true });
+      throw error;
+    }
+  }
+  throw new Error(`Could not allocate a unique backup path for skill "${path.basename(skillDir)}".`);
 }
 
 /* ---- Snapshot: back up an agent's config file before bulk operations ---- */

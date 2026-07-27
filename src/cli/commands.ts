@@ -7,6 +7,11 @@ import {
   createDaemonConnection,
   type DaemonConnection,
 } from "../core/daemon-client.js";
+import {
+  DebugSetupConflictError,
+  installBundledDebugSetup,
+  type DebugSetupAgent,
+} from "../core/agent-profiles/index.js";
 import { runAgentsCli } from "./agents.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
@@ -17,9 +22,14 @@ const USAGE =
   "Usage: nomoreide [mcp|setup|tui|web|daemon|git|agents|profile|list|logs|start|stop|restart|add]";
 
 const MCP_SETUP_LINES = [
-  "NoMoreIDE MCP setup",
+  "NoMoreIDE MCP + automatic debugging setup",
   "",
-  "Claude Code:",
+  "Recommended (installs the MCP and nomoreide-debug skill):",
+  "  npx -y nomoreide setup codex [--force]",
+  "  npx -y nomoreide setup claude [--force]",
+  "  npx -y nomoreide setup gemini [--force]",
+  "",
+  "Manual MCP-only setup — Claude Code:",
   "  claude mcp add --transport stdio nomoreide -- npx -y nomoreide",
   "",
   "Codex CLI:",
@@ -38,6 +48,8 @@ const MCP_SETUP_LINES = [
 
 export interface CliOptions {
   configPath?: string;
+  cwd?: string;
+  homeDir?: string;
   stdout?: (line: string) => void;
   stderr?: (line: string) => void;
   /** Injectable for tests; defaults to the machine-global daemon. */
@@ -61,6 +73,21 @@ export async function runCli(
     const [command, subcommand, ...rest] = args;
 
     if (command === "setup") {
+      if (subcommand) {
+        const agent = setupAgent(subcommand);
+        const result = await installBundledDebugSetup({
+          cwd: options.cwd ?? process.cwd(),
+          homeDir: options.homeDir,
+          agent,
+          force: rest.includes("--force"),
+        });
+        stdout(
+          `Installed NoMoreIDE debugging for ${subcommand}: MCP ${result.mcp}, skill ${result.skill}`,
+        );
+        for (const backup of result.backups) stdout(`Backup: ${backup}`);
+        stdout(`Start a new ${subcommand} session, then verify the nomoreide MCP is connected.`);
+        return 0;
+      }
       for (const line of MCP_SETUP_LINES) {
         stdout(line);
       }
@@ -197,6 +224,15 @@ export async function runCli(
     throw new UsageError(USAGE);
   } catch (error) {
     stderr(error instanceof Error ? error.message : String(error));
-    return error instanceof UsageError || error instanceof ConfigValidationError ? 1 : 2;
+    return error instanceof UsageError ||
+      error instanceof ConfigValidationError ||
+      error instanceof DebugSetupConflictError
+      ? 1
+      : 2;
   }
+}
+
+function setupAgent(value: string): DebugSetupAgent {
+  if (value === "claude" || value === "codex" || value === "gemini") return value;
+  throw new UsageError("setup agent must be one of: claude, codex, gemini");
 }

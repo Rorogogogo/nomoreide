@@ -8,6 +8,7 @@ import {
 } from "../src/core/daemon-client.js";
 import {
   createNoMoreIdeMcpServer,
+  NOMOREIDE_MCP_INSTRUCTIONS,
   NOMOREIDE_TOOL_NAMES,
   startNoMoreIdeMcpServer,
 } from "../src/mcp/server.js";
@@ -62,6 +63,20 @@ describe("NoMoreIDE MCP server", () => {
     expect(mcp.toolNames).toContain("nomoreide_close_ui");
     expect(mcp.server).toBeDefined();
     expect(mcp.daemon).toBeDefined();
+  });
+
+  test("advertises automatic run and debugging guidance to MCP clients", () => {
+    const mcp = createNoMoreIdeMcpServer({
+      configPath: join(tempDir, "nomoreide.config.json"),
+      logDir: join(tempDir, "logs"),
+      daemon: fakeDaemon([]),
+    });
+
+    expect(mcp.server.options.instructions).toBe(NOMOREIDE_MCP_INSTRUCTIONS);
+    expect(NOMOREIDE_MCP_INSTRUCTIONS).toContain("debug");
+    expect(NOMOREIDE_MCP_INSTRUCTIONS).toContain("nomoreide_list_services");
+    expect(NOMOREIDE_MCP_INSTRUCTIONS).toContain("shared daemon");
+    expect(NOMOREIDE_MCP_INSTRUCTIONS).toContain("do not launch duplicate");
   });
 
   test("ensures the shared daemon before starting the MCP transport", async () => {

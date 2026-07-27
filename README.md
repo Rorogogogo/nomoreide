@@ -69,7 +69,28 @@ Use the agent-specific commands below to connect NoMoreIDE as an MCP server.
 
 ## Connect Your AI Agent
 
-NoMoreIDE runs as a **local stdio MCP server**. Pick your agent CLI and paste the one-liner — that's it.
+Install the NoMoreIDE MCP server together with its triggerable debugging skill:
+
+```bash
+npx -y nomoreide setup codex
+npx -y nomoreide setup claude
+npx -y nomoreide setup gemini
+```
+
+Run the command for your agent, then start a new agent session. The skill routes
+run, start, debug, crash, log, health, and port-conflict requests through the
+shared NoMoreIDE daemon instead of launching duplicate development processes.
+NoMoreIDE also advertises the same behavior through MCP initialization
+instructions for clients that support them.
+
+Setup is idempotent. If an existing user-level `nomoreide` MCP or
+`nomoreide-debug` skill has different contents, setup stops without changing
+it. Review the conflict, then rerun with `--force` to replace it and preserve a
+backup. Project-scoped MCPs and skills are not changed by this user-level setup
+and can override it inside that project.
+
+The agent-specific commands below install only the local stdio MCP server and
+remain available for manual setup.
 
 ### Claude Code
 

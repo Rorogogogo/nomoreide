@@ -24,6 +24,7 @@
   },
   "files": [
     "dist",
+    "profiles/nomoreide-debug",
     "README.md"
   ],
   "scripts": {

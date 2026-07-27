@@ -4,13 +4,21 @@ This guide is written for AI coding agents using NoMoreIDE through MCP.
 
 ## Setup Prompt
 
-Use this prompt when the user asks you to install or connect NoMoreIDE:
+Prefer the combined setup command so the agent receives both the MCP server and
+the triggerable `nomoreide-debug` skill:
 
-```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
+```bash
+npx -y nomoreide setup codex
+npx -y nomoreide setup claude
+npx -y nomoreide setup gemini
 ```
 
-Agent-specific setup commands:
+Start a new agent session after installation so its skill catalogue reloads.
+Setup leaves differing user-level MCP or skill customizations untouched unless
+the user explicitly reruns it with `--force`; replacements are backed up.
+Project-scoped definitions are not changed and may override the user-level
+installation inside that project.
+For manual MCP-only setup:
 
 ```bash
 claude mcp add --transport stdio nomoreide -- npx -y nomoreide
@@ -62,12 +70,13 @@ Use NoMoreIDE as the shared local workbench for this session. Start by calling n
 
 When a service is unhealthy or fails to start:
 
-1. Call `nomoreide_service_health` for the service.
-2. Call `nomoreide_read_logs` with a reasonable limit such as 80 to 200 lines.
+1. Call `nomoreide_list_services` and `nomoreide_status` to identify the registered target.
+2. Call `nomoreide_service_health`, `nomoreide_service_context`, and recent logs for the service.
 3. Call `nomoreide_timeline` filtered to the service.
-4. Identify whether the issue is command failure, missing dependency, environment variable, port conflict, or application error.
-5. If a restart is appropriate, call `nomoreide_restart_service` only after explaining why.
-6. Re-check health and logs after the change.
+4. Start registered services through `nomoreide_start_service` or `nomoreide_start_bundle`; do not launch the same command in a separate shell.
+5. Identify whether the issue is command failure, missing dependency, environment variable, port conflict, or application error.
+6. If a restart is appropriate, call `nomoreide_restart_service` only after explaining why.
+7. Re-check health and logs after the change.
 
 ## Git Review Workflow
 

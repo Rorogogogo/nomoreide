@@ -2,6 +2,7 @@ import type { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { buildServiceAgentContext } from "../../core/agent-context.js";
 import { computeServiceHealth } from "../../core/service-health.js";
+import type { NoMoreIdeConfig } from "../../core/types.js";
 import { stringify, type ToolContext } from "./context.js";
 
 export const SERVICE_TOOL_NAMES = [
@@ -28,6 +29,18 @@ const bundleNameSchema = z.object({
   name: z.string().min(1).describe("Registered bundle name."),
 });
 
+export function buildServiceDiscovery(
+  config: Pick<NoMoreIdeConfig, "services" | "bundles">,
+): Record<string, unknown> {
+  return {
+    services: config.services.map(({ env, ...service }) => ({
+      ...service,
+      ...(env ? { envKeys: Object.keys(env).sort() } : {}),
+    })),
+    bundles: config.bundles,
+  };
+}
+
 /**
  * Runtime tools (start/stop/logs/status/…) call the machine-global daemon
  * over HTTP so every session shares the same services; registration tools
@@ -41,8 +54,9 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_list_services",
-    description: "List registered NoMoreIDE services and bundles.",
-    execute: async () => stringify(await configStore.load()),
+    description:
+      "Discover registered NoMoreIDE services and bundles before running, starting, debugging, diagnosing, or troubleshooting a development project.",
+    execute: async () => stringify(buildServiceDiscovery(await configStore.load())),
   });
 
   server.addTool({
@@ -66,7 +80,8 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_start_service",
-    description: "Start a registered service (runs in the shared daemon, so it survives this session).",
+    description:
+      "Run or start a registered development service in the shared NoMoreIDE daemon so it survives this session; prefer this over launching a duplicate ad-hoc process.",
     parameters: serviceNameSchema,
     execute: async ({ name }) =>
       stringify(await (await daemon.client()).startService(name)),
@@ -82,7 +97,8 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_restart_service",
-    description: "Restart a registered service.",
+    description:
+      "Restart a registered service through the shared daemon while debugging or recovering an unhealthy service.",
     parameters: serviceNameSchema,
     execute: async ({ name }) =>
       stringify(await (await daemon.client()).restartService(name)),
@@ -90,7 +106,8 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_read_logs",
-    description: "Read recent logs for a registered service (from the shared daemon, regardless of which session started it).",
+    description:
+      "Inspect recent logs while debugging or troubleshooting a registered service, regardless of which session started it in the shared daemon.",
     parameters: z.object({
       name: z.string().min(1),
       limit: z.number().int().positive().max(1000).optional(),
@@ -111,7 +128,8 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_start_bundle",
-    description: "Start every service in a registered bundle.",
+    description:
+      "Run or start every service in a registered development bundle through the shared NoMoreIDE daemon.",
     parameters: bundleNameSchema,
     execute: async ({ name }) =>
       stringify(await (await daemon.client()).startBundle(name)),
@@ -127,14 +145,15 @@ export function registerServiceTools(
 
   server.addTool({
     name: "nomoreide_status",
-    description: "Show current NoMoreIDE runtime status.",
+    description:
+      "Inspect current shared runtime status before running, debugging, restarting, or troubleshooting services.",
     execute: async () => stringify(await (await daemon.client()).status()),
   });
 
   server.addTool({
     name: "nomoreide_service_context",
     description:
-      "Build a copy-paste agent context packet (service definition, runtime status, health summary, recent logs and timeline) for a registered service.",
+      "Build a debugging context packet with the service definition, runtime status, health summary, recent logs, and timeline for a registered service.",
     parameters: serviceNameSchema,
     execute: async ({ name }) => {
       const config = await configStore.load();
@@ -170,7 +189,7 @@ export function registerServiceTools(
   server.addTool({
     name: "nomoreide_service_health",
     description:
-      "Return computed health summaries for one service or all registered services.",
+      "Diagnose one or all registered services with computed health summaries before restart or repair decisions.",
     parameters: z.object({
       service: z.string().min(1).optional(),
     }),

@@ -5,9 +5,12 @@
  * `applyProfile` snapshots the agent's config, writes through the
  * write-guarded agent-env-writers layer, and reports every backup created.
  */
-import { cp, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { addMcp, getSkillDir, snapshotAgentConfig } from "../agent-env-writers.js";
+import {
+  addMcp,
+  installSkillFromDirectory,
+  snapshotAgentConfig,
+} from "../agent-env-writers.js";
 import {
   readAllAgentConfigs,
   type AgentLiveConfig,
@@ -39,6 +42,14 @@ export interface ProfileApplyOptions extends ProfileStoreOptions {
   name: string;
   agent: AgentName;
   /** Item names (per category) to leave untouched — typically conflicts the user kept. */
+  skip?: { mcps?: string[]; skills?: string[] };
+}
+
+export interface ProfileContentsApplyOptions extends ProfileStoreOptions {
+  cwd: string;
+  profile: Profile;
+  skillsDir: string;
+  agent: AgentName;
   skip?: { mcps?: string[]; skills?: string[] };
 }
 
@@ -104,6 +115,24 @@ export interface ProfileApplyResult {
 
 export async function applyProfile(options: ProfileApplyOptions): Promise<ProfileApplyResult> {
   const profile = await getProfile(options.name, options);
+  return await applyProfileContents({
+    cwd: options.cwd,
+    homeDir: options.homeDir,
+    profile,
+    skillsDir: profileSkillsDir(options.name, options),
+    agent: options.agent,
+    skip: options.skip,
+  });
+}
+
+/**
+ * Apply an already-loaded profile. Built-in profiles use this path directly
+ * so their read-only package assets never collide with user-created profiles.
+ */
+export async function applyProfileContents(
+  options: ProfileContentsApplyOptions,
+): Promise<ProfileApplyResult> {
+  const { profile } = options;
   const base = { cwd: options.cwd, homeDir: options.homeDir };
   const skipMcps = new Set(options.skip?.mcps ?? []);
   const skipSkills = new Set(options.skip?.skills ?? []);
@@ -146,14 +175,20 @@ export async function applyProfile(options: ProfileApplyOptions): Promise<Profil
       continue;
     }
     const sourceDir = path.join(
-      profileSkillsDir(options.name, options),
+      options.skillsDir,
       path.basename(skill.name),
     );
     if (!(await pathExists(sourceDir))) {
       skipped.push(`skill "${skill.name}" (missing from profile bundle)`);
       continue;
     }
-    await installProfileSkill(sourceDir, skill.name, options);
+    const outcome = await installSkillFromDirectory({
+      cwd: options.cwd,
+      homeDir: options.homeDir,
+      sourceDir,
+      target: { agent: options.agent, skillName: skill.name, scope: "user" },
+    });
+    backups.push(...outcome.backups);
     skillsApplied.push(skill.name);
   }
 
@@ -165,22 +200,6 @@ export async function applyProfile(options: ProfileApplyOptions): Promise<Profil
     skipped,
     backups,
   };
-}
-
-/** Copy a bundled skill dir into the agent's user skills dir (idempotent overwrite). */
-async function installProfileSkill(
-  sourceDir: string,
-  skillName: string,
-  options: ProfileApplyOptions,
-): Promise<void> {
-  const targetDir = getSkillDir(
-    { agent: options.agent, skillName, scope: "user" },
-    options.cwd,
-    options.homeDir,
-  );
-  await mkdir(path.dirname(targetDir), { recursive: true });
-  await rm(targetDir, { recursive: true, force: true });
-  await cp(sourceDir, targetDir, { recursive: true });
 }
 
 async function readLiveConfig(options: {

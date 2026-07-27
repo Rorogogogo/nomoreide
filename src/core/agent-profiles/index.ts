@@ -5,12 +5,26 @@
  */
 export {
   applyProfile,
+  applyProfileContents,
   previewProfileApply,
+  type ProfileContentsApplyOptions,
   type ProfileApplyItem,
   type ProfileApplyPreview,
   type ProfileApplyResult,
   type ProfileItemStatus,
 } from "./apply.js";
+export {
+  loadBundledDebugProfile,
+  NOMOREIDE_DEBUG_PROFILE_NAME,
+  type BundledAgentProfile,
+} from "./builtin.js";
+export {
+  DebugSetupConflictError,
+  installBundledDebugSetup,
+  type DebugSetupAgent,
+  type DebugSetupResult,
+  type DebugSetupStatus,
+} from "./debug-setup.js";
 export {
   findUnresolvedCredentialKeys,
   redactMcpCredentials,

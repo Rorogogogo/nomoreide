@@ -1,0 +1,19 @@
+{
+  "name": "nomoreide-debug",
+  "description": "NoMoreIDE MCP plus automatic shared-service debugging workflow.",
+  "mcps": {
+    "nomoreide": {
+      "kind": "local",
+      "command": "npx",
+      "args": [
+        "-y",
+        "nomoreide"
+      ]
+    }
+  },
+  "skills": [
+    {
+      "name": "nomoreide-debug"
+    }
+  ]
+}
