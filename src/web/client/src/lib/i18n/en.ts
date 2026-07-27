@@ -1708,6 +1708,7 @@ export const en = {
   "dock.shellEnterHint": "Enter opens a shell",
   "dock.openShellAria": "Open shell",
   "dock.activeStatusSr": "Active task status: ",
+  "dock.latestStatusSr": "Latest task status: ",
   "dock.fullscreenNavAria": "Full-screen navigation",
   "dock.providerAria": "Agent provider",
   "dock.notInstalledSuffix": " · not installed",

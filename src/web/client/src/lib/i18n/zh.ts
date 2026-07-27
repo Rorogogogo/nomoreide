@@ -1661,6 +1661,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "dock.shellEnterHint": "回车打开终端",
   "dock.openShellAria": "打开终端",
   "dock.activeStatusSr": "当前任务状态：",
+  "dock.latestStatusSr": "最近任务状态：",
   "dock.fullscreenNavAria": "全屏导航",
   "dock.providerAria": "Agent 提供方",
   "dock.notInstalledSuffix": " · 未安装",
