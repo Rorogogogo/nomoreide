@@ -814,6 +814,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
 
   if (path === "/api/dashboard") return json(dashboard());
+  if (path === "/api/metrics") return json({ ok: true, metrics: activityMetrics() });
 
   // Agent Environments (ROR-60). All three endpoints are read-on-mount.
   if (path === "/api/agent-env/agents") {
@@ -1952,6 +1953,60 @@ function metrics(service: string) {
         rss: profile.rssBase + profile.rssGrowth * phase + profile.rssGrowth * 0.15 * wave,
       };
     }),
+  };
+}
+
+function activityMetrics() {
+  const now = Date.now();
+  const hostSamples = Array.from({ length: 48 }, (_, index) => {
+    const phase = index / 48;
+    const cpuPercent = 31 + Math.sin(phase * Math.PI * 5) * 13;
+    const memoryUsedPercent = 57 + Math.sin(phase * Math.PI * 2) * 3;
+    return {
+      t: now - (47 - index) * 3000,
+      cpuPercent,
+      memoryUsedBytes: (memoryUsedPercent / 100) * 16 * 1024 ** 3,
+      memoryTotalBytes: 16 * 1024 ** 3,
+      memoryUsedPercent,
+      loadAverage: [2.1, 1.8, 1.4] as [number, number, number],
+      uptimeSeconds: 60 * 60 * 9,
+      logicalCpuCount: 8,
+      disk: {
+        path: "/Users/demo/projects/acme",
+        totalBytes: 512 * 1024 ** 3,
+        usedBytes: 286 * 1024 ** 3,
+        availableBytes: 210 * 1024 ** 3,
+        usedPercent: 55.9,
+      },
+    };
+  });
+  return {
+    sampleIntervalMs: 3000,
+    host: {
+      current: hostSamples.at(-1) ?? null,
+      samples: hostSamples,
+    },
+    services: Object.fromEntries(
+      serviceDefinitions.flatMap((service) => {
+        if (serviceStates[service.name] !== "running") return [];
+        const series = metrics(service.name);
+        const latest = series.samples.at(-1);
+        if (!latest) return [];
+        return [
+          [
+            service.name,
+            {
+              service: service.name,
+              startedAt,
+              sampledAt: latest.t,
+              cpuPercent: latest.cpu,
+              rssMb: latest.rss,
+              processCount: 3,
+            },
+          ],
+        ];
+      }),
+    ),
   };
 }
 

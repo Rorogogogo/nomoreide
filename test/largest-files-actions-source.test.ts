@@ -13,13 +13,15 @@ const catalog = readFileSync(
 );
 
 describe("LargestFilesView row actions", () => {
-  test("splits large-file row actions into AI and copy popovers", () => {
-    expect(source).toContain("LargeFileAiMenu");
+  test("moves AI actions to the context menu and keeps the copy popover", () => {
+    expect(source).toContain("<AiContextTarget");
+    expect(source).toContain('id: "split-large-file"');
+    expect(source).toContain('id: "inspect-large-file"');
     expect(source).toContain("LargeFileCopyMenu");
     expect(catalog).toContain("Ask AI to split this file");
     expect(catalog).toContain("Send file path to AI");
     expect(catalog).toContain("Copy absolute path");
     expect(source).toContain("MoreHorizontal");
-    expect(source).not.toContain("Sparkles");
+    expect(source).not.toContain("LargeFileAiMenu");
   });
 });

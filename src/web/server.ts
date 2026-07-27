@@ -90,9 +90,9 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     registry,
   });
   manager.installShutdownHandlers();
-  const metricsStore = new MetricsStore({ manager });
-  metricsStore.start();
   const cwd = options.cwd ?? process.cwd();
+  const metricsStore = new MetricsStore({ cwd, manager });
+  metricsStore.start();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
   const dbPeek = new DbPeek({ configStore });

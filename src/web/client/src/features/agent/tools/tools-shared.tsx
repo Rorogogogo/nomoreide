@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { Check, Plus, Trash2, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
-import { AiSpark } from "../ai-spark";
 
 /** The Tools cards' "paste a URL / command" field is the shared inline ask input. */
 export { AiAskInline as AddInline } from "../ai-ask-inline";
@@ -23,76 +21,5 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
       <Plus className="size-3.5" />
       {t("common.add")}
     </Button>
-  );
-}
-
-/**
- * Per-row AI affordances: the violet "ask AI" spark plus a delete control. Both
- * fade in on hover (the host row must carry `group`). Delete is AI-native — it
- * hands a removal prompt to the agent rather than mutating config directly — and
- * clicking the bin swaps in a check/cross confirm pair first.
- */
-export function RowActions({
-  askLabel,
-  removeLabel,
-  onAsk,
-  onRemove,
-}: {
-  askLabel: string;
-  removeLabel: string;
-  onAsk: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <AiSpark label={askLabel} onAsk={onAsk} />
-      <DeleteConfirm label={removeLabel} onConfirm={onRemove} />
-    </div>
-  );
-}
-
-/** Bin button that expands into a confirm (check) / cancel (cross) pair. */
-function DeleteConfirm({ label, onConfirm }: { label: string; onConfirm: () => void }) {
-  const [confirming, setConfirming] = useState(false);
-  const t = useT();
-
-  if (confirming) {
-    return (
-      <span className="flex items-center gap-0.5">
-        <button
-          type="button"
-          aria-label={label}
-          title={label}
-          onClick={() => {
-            setConfirming(false);
-            onConfirm();
-          }}
-          className="flex size-6 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-500/10"
-        >
-          <Check className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          aria-label={t("common.cancel")}
-          title={t("common.cancel")}
-          onClick={() => setConfirming(false)}
-          className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted"
-        >
-          <X className="size-3.5" />
-        </button>
-      </span>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={() => setConfirming(true)}
-      className="flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-    >
-      <Trash2 className="size-3.5" />
-    </button>
   );
 }

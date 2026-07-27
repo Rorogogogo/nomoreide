@@ -1,11 +1,9 @@
-import { useState, type MutableRefObject } from "react";
+import type { MutableRefObject } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { GitGraphCommit } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { AiAskInline } from "../../agent/ai-ask-inline";
-import { AiSpark } from "../../agent/ai-spark";
-import { useAgentDock } from "../../agent/chat/agent-context";
+import { AiContextTarget } from "../../agent/context-menu/ai-context-menu";
 import { buildCommitPrompt } from "../../agent/prompts";
 import { GitGraphSvgRow } from "../git-graph-svg";
 import { CiStatusBadge } from "../../github/ci-status-badge";
@@ -32,21 +30,6 @@ export function CommitList({
   onLoadMore: () => void;
 }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
-  // Which commit row has its inline "what should I do?" field open, if any.
-  const [askingHash, setAskingHash] = useState<string | null>(null);
-
-  // Submit the inline intent straight to the agent (no dock round-trip); the
-  // chat shows a short label while the agent pulls the diff itself via `git show`.
-  function askCommit(commit: GitGraphCommit, input: string) {
-    setAskingHash(null);
-    sendToAgent({
-      prompt: buildCommitPrompt(commit, input),
-      source: { type: "git-commit", label: commit.hash.slice(0, 7) },
-      label: `${commit.hash.slice(0, 7)}: ${input}`,
-    });
-  }
-
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden border-r border-border">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
@@ -81,8 +64,24 @@ export function CommitList({
         ) : (
           <ul className="divide-y divide-border">
             {commits.map((commit) => (
-              <li
+              <AiContextTarget
                 key={commit.hash}
+                target={{
+                  label: commit.subject,
+                  intents: [{
+                    id: "review-commit",
+                    label: t("git.graph.askCommitLabel", { sha: commit.hash.slice(0, 7) }),
+                    resolvePrompt: () =>
+                      buildCommitPrompt(
+                        commit,
+                        "Review this commit, explain its purpose, and identify any risks.",
+                      ),
+                    source: { type: "git-commit", label: commit.hash.slice(0, 7) },
+                    agentLabel: `${commit.hash.slice(0, 7)}: ${commit.subject}`,
+                  }],
+                }}
+              >
+              <li
                 ref={(el) => {
                   if (el) rowRefs.current.set(commit.hash, el);
                   else rowRefs.current.delete(commit.hash);
@@ -134,26 +133,9 @@ export function CommitList({
                     {formatRelativeTime(commit.timestamp)}
                   </span>
                 </button>
-                <AiSpark
-                  className={`mr-1 shrink-0 ${askingHash === commit.hash ? "opacity-100" : ""}`}
-                  label={t("git.graph.askCommitLabel", { sha: commit.hash.slice(0, 7) })}
-                  onAsk={() =>
-                    setAskingHash((current) =>
-                      current === commit.hash ? null : commit.hash,
-                    )
-                  }
-                />
                 </div>
-                {askingHash === commit.hash ? (
-                  <div className="px-2 pb-1.5 pt-0.5">
-                    <AiAskInline
-                      placeholder={t("git.graph.askPlaceholder")}
-                      onSubmit={(value) => askCommit(commit, value)}
-                      onCancel={() => setAskingHash(null)}
-                    />
-                  </div>
-                ) : null}
               </li>
+              </AiContextTarget>
             ))}
           </ul>
         )}

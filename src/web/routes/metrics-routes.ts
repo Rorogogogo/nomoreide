@@ -1,8 +1,12 @@
 import { sendJson } from "../http-utils.js";
-import { patternRoute, type Route } from "./context.js";
+import { patternRoute, route, type Route } from "./context.js";
 
-/** Per-service CPU/RSS time series for the metrics chart. */
+/** Host activity and per-service CPU/RSS time series. */
 export const metricsRoutes: Route[] = [
+  route("GET", "/api/metrics", ({ response, metricsStore }) => {
+    sendJson(response, { ok: true, metrics: metricsStore.readActivity() });
+  }),
+
   patternRoute(
     /^\/api\/services\/([^/]+)\/metrics$/,
     ["name"],

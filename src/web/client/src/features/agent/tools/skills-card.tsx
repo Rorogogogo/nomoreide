@@ -9,16 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { AgentProfile, AgentSkill } from "@/lib/api";
+import type { AgentProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
+import { AiContextTarget } from "../context-menu/ai-context-menu";
 import {
   buildAddSkillPrompt,
   buildAskSkillPrompt,
   buildRemoveSkillPrompt,
 } from "../prompts";
 import type { AgentId } from "../agent-types";
-import { AddButton, AddInline, RowActions } from "./tools-shared";
+import { AddButton, AddInline } from "./tools-shared";
 import { TrendingSkills, type StarterSkillIdea } from "./trending-skills";
 
 export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: AgentId }) {
@@ -43,22 +44,6 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
       prompt: buildAddSkillPrompt(agentId, input),
       source: { type: "agent-skill", label: t("agent.skills.sourceTrending", { name: idea.name }) },
       label: t("agent.skills.addAction", { input: idea.name }),
-    });
-  }
-
-  function ask(skill: AgentSkill) {
-    sendToAgent({
-      prompt: buildAskSkillPrompt(skill),
-      source: { type: "agent-skill", label: t("agent.skills.sourceSkill", { name: skill.name }) },
-      mode: "draft",
-    });
-  }
-
-  function remove(skill: AgentSkill) {
-    sendToAgent({
-      prompt: buildRemoveSkillPrompt(skill),
-      source: { type: "agent-skill", label: t("agent.skills.sourceRemove", { name: skill.name }) },
-      label: t("agent.skills.removeAction", { name: skill.name }),
     });
   }
 
@@ -107,8 +92,28 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
         {agent.skills.length ? (
           <ul className="divide-y divide-border">
             {agent.skills.map((skill) => (
-              <li
+              <AiContextTarget
                 key={`${skill.scope}:${skill.name}`}
+                target={{
+                  label: skill.name,
+                  intents: [
+                    {
+                      id: "ask-skill",
+                      label: t("agent.skills.askLabel", { name: skill.name }),
+                      resolvePrompt: () => buildAskSkillPrompt(skill),
+                      source: { type: "agent-skill", label: t("agent.skills.sourceSkill", { name: skill.name }) },
+                    },
+                    {
+                      id: "remove-skill",
+                      label: t("agent.skills.removeLabel", { name: skill.name }),
+                      resolvePrompt: () => buildRemoveSkillPrompt(skill),
+                      source: { type: "agent-skill", label: t("agent.skills.sourceRemove", { name: skill.name }) },
+                      agentLabel: t("agent.skills.removeAction", { name: skill.name }),
+                    },
+                  ],
+                }}
+              >
+              <li
                 className="group px-3 py-2 hover:bg-muted/40"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -119,12 +124,6 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
                     >
                       {skill.name}
                     </span>
-                    <RowActions
-                      askLabel={t("agent.skills.askLabel", { name: skill.name })}
-                      removeLabel={t("agent.skills.removeLabel", { name: skill.name })}
-                      onAsk={() => ask(skill)}
-                      onRemove={() => remove(skill)}
-                    />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <Badge variant="outline" size="small">
@@ -138,6 +137,7 @@ export function SkillsCard({ agent, agentId }: { agent: AgentProfile; agentId: A
                   </p>
                 ) : null}
               </li>
+              </AiContextTarget>
             ))}
           </ul>
         ) : (

@@ -16,6 +16,14 @@ const aiContextSource = readFileSync(
   resolve(root, "src/web/client/src/features/agent/ai-context-action.tsx"),
   "utf8",
 );
+const appContextMenuSource = readFileSync(
+  resolve(root, "src/web/client/src/components/app-context-menu.tsx"),
+  "utf8",
+);
+const aiContextMenuSource = readFileSync(
+  resolve(root, "src/web/client/src/features/agent/context-menu/ai-context-menu.tsx"),
+  "utf8",
+);
 const shellRoutesSource = readFileSync(
   resolve(root, "src/web/routes/shell-routes.ts"),
   "utf8",
@@ -51,9 +59,13 @@ describe("product header action dock", () => {
     expect(headerActionSource).toContain("flex size-7");
   });
 
-  test("adds a global AI context action for services, databases, errors, and git", () => {
-    expect(appSource).toContain("<AiContextAction");
-    expect(appSource).toContain("data={data}");
+  test("adds global AI context menus for services, databases, errors, and git", () => {
+    expect(appSource).toContain("<AiContextMenuProvider>");
+    expect(appSource).toContain("<AppContextMenu onRefresh={refreshAll}>");
+    expect(appContextMenuSource).toContain("useOptionalAiContextMenuRegistry");
+    expect(appContextMenuSource).toContain("deliverAiIntent");
+    expect(appContextMenuSource).toContain("sendToAgent");
+    expect(aiContextMenuSource).toContain("AiContextTarget");
     expect(catalog).toContain("AI Diagnose");
     expect(catalog).toContain("Diagnose");
     expect(aiContextSource).toContain('size="xl"');

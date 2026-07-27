@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
+  Activity,
   Bot,
   BookOpen,
   ChevronRight,
@@ -19,7 +20,10 @@ import {
   SquareTerminal,
   Workflow,
 } from "lucide-react";
-import { getDashboard, type DashboardData } from "@/lib/api";
+import {
+  getDashboard,
+  type DashboardData,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
@@ -30,8 +34,8 @@ import {
 } from "@/components/header-action";
 import { AgentView } from "@/features/agent/agent-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
-import { AiContextAction } from "@/features/agent/ai-context-action";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
+import { AiContextMenuProvider } from "@/features/agent/context-menu/ai-context-menu";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
 import { AgentTerminalDock, type AgentDockPage } from "@/features/agent/terminal/agent-terminal-dock";
@@ -65,9 +69,12 @@ import { useT, type TranslationKey } from "@/lib/i18n";
 import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
+import { AppContextMenu } from "@/components/app-context-menu";
+import { ActivityView } from "@/features/activity/activity-view";
 
 type Page =
   | "services"
+  | "activity"
   | "docker"
   | "git"
   | "github"
@@ -81,6 +88,7 @@ type Page =
 
 const PAGE_PATHS: Record<Page, string> = {
   services: "/",
+  activity: "/activity",
   docker: "/docker",
   git: "/git",
   github: "/github",
@@ -96,6 +104,7 @@ const PAGE_PATHS: Record<Page, string> = {
 /** Header title translation key per page. */
 const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   services: "nav.services",
+  activity: "nav.activity",
   docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
@@ -115,7 +124,7 @@ const PAGE_PATH_MATCHERS = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
 
 export function pageFromPath(pathname: string): Page {
   for (const [page, path] of PAGE_PATH_MATCHERS) {
-    if (pathname.startsWith(path)) return page;
+    if (pathname === path) return page;
   }
   return "services";
 }
@@ -131,6 +140,7 @@ const NAV_SECTIONS: Array<{
     labelKey: "nav.section.run",
     items: [
       { page: "services", labelKey: "nav.services", icon: <Server /> },
+      { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
       { page: "docker", labelKey: "nav.docker", icon: <Container /> },
       { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
       { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },
@@ -443,6 +453,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
 
   return (
     <AgentProvider>
+    <AiContextMenuProvider>
     <SettingsProjectSync
       projectPath={settingsProjectPath}
       selectProject={selectProject}
@@ -450,6 +461,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     <RefreshRegistryProvider value={refreshRegistry}>
     <WorkflowRunProvider onRefresh={() => void refresh({ silent: true })}>
     <WorkflowTriggerProvider>
+    <AppContextMenu onRefresh={refreshAll}>
     <div className="flex flex-col h-screen overflow-hidden">
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
     <TauriTitleBar />
@@ -604,7 +616,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                   </span>
                   <span className={headerActionLabelClassName()}>{t("action.docs")}</span>
                 </a>
-                {data ? <AiContextAction data={data} /> : null}
               </div>
             </div>
           </header>
@@ -646,6 +657,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 onRefresh={refresh}
                 focusService={focusService}
                 onServiceFocused={() => setFocusService(null)}
+                scopeName={activeProject?.name ?? null}
+              />
+            ) : null}
+            {scopedData && page === "activity" ? (
+              <ActivityView
+                data={scopedData}
+                onOpenService={(name) => {
+                  setFocusService(name);
+                  setPage("services");
+                }}
                 scopeName={activeProject?.name ?? null}
               />
             ) : null}
@@ -713,9 +734,11 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       />
     </div>
     </div>
+    </AppContextMenu>
     </WorkflowTriggerProvider>
     </WorkflowRunProvider>
     </RefreshRegistryProvider>
+    </AiContextMenuProvider>
     </AgentProvider>
   );
 }

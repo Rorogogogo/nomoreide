@@ -496,6 +496,35 @@ describe("web server", () => {
     });
   });
 
+  test("serves activity metrics and the Activity Monitor app shell", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const metricsResponse = await fetch(`${server.url}/api/metrics`);
+    expect(metricsResponse.status).toBe(200);
+    await expect(metricsResponse.json()).resolves.toMatchObject({
+      ok: true,
+      metrics: {
+        sampleIntervalMs: 3000,
+        host: { samples: expect.any(Array) },
+        services: {},
+      },
+    });
+
+    const shellResponse = await fetch(`${server.url}/activity`);
+    expect(shellResponse.status).toBe(200);
+    expect(shellResponse.headers.get("content-type")).toContain("text/html");
+    expect(await shellResponse.text()).toContain('<div id="root"></div>');
+
+    const headResponse = await fetch(`${server.url}/activity`, { method: "HEAD" });
+    expect(headResponse.status).toBe(200);
+  });
+
   test("reports GitHub device flow available from bundled OAuth client ID", async () => {
     const originalClientId = process.env.NOMOREIDE_GITHUB_CLIENT_ID;
     try {

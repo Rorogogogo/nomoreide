@@ -10,8 +10,6 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
-import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
 import { absolutePath } from "../agent/chat/drag-to-agent";
 import { DiffViewer, diffStats } from "./diff-viewer";
 import { ChangedFilesList, type StagingHandlers } from "./changed-files-list";
@@ -42,7 +40,6 @@ export function GitReviewView({
   onRefresh?: () => void;
 }) {
   const t = useT();
-  const { insertPath } = useAgentDock();
   const [stagingBusy, setStagingBusy] = useState(false);
   const [tab, setTab] = useState<GitTab>("changes");
   const [mode, setMode] = useState<ChangesMode>("changes");
@@ -236,11 +233,6 @@ export function GitReviewView({
     setTab("all");
   }
 
-  function sendFilePathToAgentInput(path: string) {
-    if (!path) return;
-    insertPath(absolutePath(data.git.cwd, path));
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
       <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/95 px-3 py-1">
@@ -318,9 +310,9 @@ export function GitReviewView({
               )}
             </aside>
             <FileViewer
+              agentPath={absolutePath(data.git.cwd, selectedTreeFile)}
               isModified={modifiedPaths.has(selectedTreeFile)}
               onFileSaved={handleTreeFileSaved}
-              onSendToAi={() => sendFilePathToAgentInput(selectedTreeFile)}
               onViewDiff={viewDiffForTreeFile}
               path={selectedTreeFile}
             />
@@ -419,18 +411,6 @@ export function GitReviewView({
                   >
                     <ArrowDown />
                     {t("git.next")}
-                  </Button>
-                  <Button
-                    aria-label={t("git.sendToAiAria")}
-                    className="size-8"
-                    disabled={!selectedFile}
-                    onClick={() => sendFilePathToAgentInput(selectedFile)}
-                    size="icon"
-                    title={t("git.sendToAiTitle")}
-                    type="button"
-                    variant="outline"
-                  >
-                    <AgentMark className="size-4" />
                   </Button>
                 </div>
               </div>

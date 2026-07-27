@@ -8,9 +8,7 @@ import {
 } from "@/lib/api";
 import { DiffViewer, splitDiffByFile, type FileDiff } from "../git/diff-viewer";
 import { MarkdownBody } from "./markdown-body";
-import { AiAskInline } from "../agent/ai-ask-inline";
-import { AiSpark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildPrAskPrompt, buildPrFileAskPrompt } from "../agent/prompts";
 import { Button } from "@/components/ui/button";
 import { useOperations } from "@/components/operations/operation-context";
@@ -41,8 +39,6 @@ export function PrDetail({
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [confirmingMerge, setConfirmingMerge] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [asking, setAsking] = useState(false);
-  const { sendToAgent } = useAgentDock();
   const { isPending, runOperation } = useOperations();
   const mergeKey = pr ? `github:pr:${pr.number}:merge` : "";
   const merging = mergeKey ? isPending(mergeKey) : false;
@@ -67,22 +63,7 @@ export function PrDetail({
     setTab("diff");
   }
 
-  // Send the inline intent straight to the dock; the agent pulls the diff itself
-  // via `gh pr diff` so the transcript stays light. A path scopes it to one file.
-  function askAgent(input: string, path?: string) {
-    if (!pr) return;
-    setAsking(false);
-    sendToAgent({
-      prompt: path
-        ? buildPrFileAskPrompt(pr, path, input)
-        : buildPrAskPrompt(pr, input),
-      source: { type: "github-pr", label: `PR #${pr.number}${path ? ` · ${basename(path)}` : ""}` },
-      label: `PR #${pr.number}${path ? ` (${basename(path)})` : ""}: ${input}`,
-    });
-  }
-
   useEffect(() => {
-    setAsking(false);
     if (!pr) {
       setCockpit(null);
       return;
@@ -136,14 +117,25 @@ export function PrDetail({
     }`;
 
   return (
+    <AiContextTarget
+      target={{
+        label: `PR #${pr.number}`,
+        intents: [{
+          id: "review-pr",
+          label: t("github.pr.askLabel", { number: pr.number }),
+          resolvePrompt: () =>
+            buildPrAskPrompt(
+              pr,
+              "Review this pull request, summarize the changes, and identify risks or blockers.",
+            ),
+          source: { type: "github-pr", label: `PR #${pr.number}` },
+          agentLabel: `PR #${pr.number}: ${pr.title}`,
+        }],
+      }}
+    >
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="group flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{pr.title}</span>
-        <AiSpark
-          className={cn("shrink-0", asking && "opacity-100")}
-          label={t("github.pr.askLabel", { number: pr.number })}
-          onAsk={() => setAsking((open) => !open)}
-        />
         <div className="flex shrink-0 items-center gap-1">
           <button className={tabClass(tab === "cockpit")} onClick={() => setTab("cockpit")} type="button">{t("github.pr.tabReview")}</button>
           <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">{t("github.pr.tabDiff")}</button>
@@ -180,16 +172,6 @@ export function PrDetail({
         </div>
       ) : null}
 
-      {asking ? (
-        <div className="shrink-0 border-b border-border px-3 py-1.5">
-          <AiAskInline
-            placeholder={t("github.pr.askPlaceholder")}
-            onSubmit={(value) => askAgent(value)}
-            onCancel={() => setAsking(false)}
-          />
-        </div>
-      ) : null}
-
       {tab === "cockpit" ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <PRReviewCockpit
@@ -208,7 +190,7 @@ export function PrDetail({
         <div className="flex min-h-0 min-w-0 flex-1">
           <FileDiffList
             files={fileDiffs}
-            onAsk={(path, input) => askAgent(input, path)}
+            pr={pr}
             onSelect={setSelectedFile}
             selected={activeFileDiff?.path ?? null}
           />
@@ -247,6 +229,7 @@ export function PrDetail({
         />
       ) : null}
     </div>
+    </AiContextTarget>
   );
 }
 
@@ -409,20 +392,40 @@ function FileDiffList({
   files,
   selected,
   onSelect,
-  onAsk,
+  pr,
 }: {
   files: FileDiff[];
   selected: string | null;
   onSelect: (path: string) => void;
-  onAsk: (path: string, input: string) => void;
+  pr: GitHubPR;
 }) {
   const t = useT();
-  const [askingPath, setAskingPath] = useState<string | null>(null);
   return (
     <div className="w-44 shrink-0 overflow-y-auto border-r border-border bg-card/60">
       <ul className="py-1">
         {files.map((file) => (
-          <li className="group flex flex-col" key={file.path}>
+          <AiContextTarget
+            key={file.path}
+            target={{
+              label: basename(file.path),
+              intents: [{
+                id: "review-pr-file",
+                label: t("github.pr.askFileLabel", { name: basename(file.path) }),
+                resolvePrompt: () =>
+                  buildPrFileAskPrompt(
+                    pr,
+                    file.path,
+                    "Review this file's changes and identify correctness, security, or maintainability risks.",
+                  ),
+                source: {
+                  type: "github-pr",
+                  label: `PR #${pr.number} · ${basename(file.path)}`,
+                },
+                agentLabel: `PR #${pr.number} (${basename(file.path)}): review changes`,
+              }],
+            }}
+          >
+          <li className="group flex flex-col">
             <div
               className={cn(
                 "flex items-center transition-colors",
@@ -442,27 +445,9 @@ function FileDiffList({
                 <span className="shrink-0 font-mono text-[10px] text-emerald-600">+{file.additions}</span>
                 <span className="shrink-0 font-mono text-[10px] text-red-500">-{file.deletions}</span>
               </button>
-              <AiSpark
-                className={cn("mr-1 shrink-0", askingPath === file.path && "opacity-100")}
-                label={t("github.pr.askFileLabel", { name: basename(file.path) })}
-                onAsk={() =>
-                  setAskingPath((current) => (current === file.path ? null : file.path))
-                }
-              />
             </div>
-            {askingPath === file.path ? (
-              <div className="px-2 pb-1.5 pt-0.5">
-                <AiAskInline
-                  placeholder={t("github.pr.askFilePlaceholder")}
-                  onSubmit={(value) => {
-                    setAskingPath(null);
-                    onAsk(file.path, value);
-                  }}
-                  onCancel={() => setAskingPath(null)}
-                />
-              </div>
-            ) : null}
           </li>
+          </AiContextTarget>
         ))}
       </ul>
     </div>

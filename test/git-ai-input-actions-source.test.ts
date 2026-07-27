@@ -21,9 +21,10 @@ const catalog = readFileSync(
 );
 
 describe("Git file AI input actions", () => {
-  test("keeps file AI actions in viewer controls instead of file rows", () => {
+  test("moves file AI actions from viewer buttons to contextual file targets", () => {
     expect(catalog).toContain("Send selected file to AI input");
-    expect(gitReviewSource).toContain("onSendToAi");
+    expect(gitReviewSource).toContain("agentPath=");
+    expect(gitReviewSource).not.toContain("onSendToAi");
   });
 
   test("appends inserted file paths on a new line and focuses the caret at the end", () => {

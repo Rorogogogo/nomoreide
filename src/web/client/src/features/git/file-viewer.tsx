@@ -7,7 +7,7 @@ import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { getGitFile, type GitFileContent, updateGitFile } from "@/lib/api";
-import { AgentMark } from "../agent/ai-spark";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { MarkdownPreview } from "./visualizers/markdown-preview";
 import { YamlTree } from "./visualizers/yaml-tree";
 import "./file-viewer-theme.css";
@@ -128,13 +128,13 @@ export function FileViewer({
   isModified,
   onViewDiff,
   onFileSaved,
-  onSendToAi,
+  agentPath,
 }: {
   path: string;
   isModified: boolean;
   onViewDiff: () => void;
   onFileSaved?: (path: string) => void;
-  onSendToAi?: () => void;
+  agentPath?: string;
 }) {
   const [file, setFile] = useState<GitFileContent | null>(null);
   const [draft, setDraft] = useState("");
@@ -217,6 +217,18 @@ export function FileViewer({
   }
 
   return (
+    <AiContextTarget
+      target={{
+        label: path,
+        intents: agentPath ? [{
+          id: "inspect-file",
+          label: t("git.fileViewer.sendPathToAi"),
+          resolvePrompt: () =>
+            `Inspect this file and explain its responsibilities, relevant risks, and the most useful next action:\n${agentPath}`,
+          source: { type: "git-file", label: path },
+        }] : [],
+      }}
+    >
     <section className="flex min-h-0 min-w-0 flex-col border-l border-border bg-card">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-1.5">
         <div className="min-w-0">
@@ -265,20 +277,6 @@ export function FileViewer({
           {isModified ? (
             <Button onClick={onViewDiff} size="sm" type="button" variant="outline">
               {t("git.fileViewer.viewDiff")}
-            </Button>
-          ) : null}
-          {onSendToAi ? (
-            <Button
-              aria-label={t("git.fileViewer.sendToAi")}
-              className="size-8"
-              disabled={!path}
-              onClick={onSendToAi}
-              size="icon"
-              title={t("git.fileViewer.sendPathToAi")}
-              type="button"
-              variant="outline"
-            >
-              <AgentMark className="size-4" />
             </Button>
           ) : null}
           {editing ? (
@@ -353,5 +351,6 @@ export function FileViewer({
         ) : null}
       </div>
     </section>
+    </AiContextTarget>
   );
 }

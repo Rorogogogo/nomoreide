@@ -11,13 +11,14 @@ import {
 import type { AgentHook, AgentProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
+import { AiContextTarget } from "../context-menu/ai-context-menu";
 import {
   buildAddHookPrompt,
   buildAskHookPrompt,
   buildRemoveHookPrompt,
 } from "../prompts";
 import type { AgentId } from "../agent-types";
-import { AddButton, AddInline, RowActions } from "./tools-shared";
+import { AddButton, AddInline } from "./tools-shared";
 
 export function HooksCard({
   agent,
@@ -39,22 +40,6 @@ export function HooksCard({
       prompt: buildAddHookPrompt(agentId, input),
       source: { type: "agent-hook", label: t("agent.hooks.sourceNew") },
       label: t("agent.hooks.addAction", { input }),
-    });
-  }
-
-  function ask(hook: AgentHook) {
-    sendToAgent({
-      prompt: buildAskHookPrompt(hook),
-      source: { type: "agent-hook", label: t("agent.hooks.sourceHook", { event: hook.event }) },
-      mode: "draft",
-    });
-  }
-
-  function remove(hook: AgentHook) {
-    sendToAgent({
-      prompt: buildRemoveHookPrompt(hook),
-      source: { type: "agent-hook", label: t("agent.hooks.sourceRemove", { event: hook.event }) },
-      label: t("agent.hooks.removeAction", { event: hook.event }),
     });
   }
 
@@ -90,8 +75,28 @@ export function HooksCard({
         {hooks.length ? (
           <ul className="divide-y divide-border">
             {hooks.map((hook) => (
-              <li
+              <AiContextTarget
                 key={hook.id}
+                target={{
+                  label: hook.event,
+                  intents: [
+                    {
+                      id: "ask-hook",
+                      label: t("agent.hooks.askLabel", { event: hook.event }),
+                      resolvePrompt: () => buildAskHookPrompt(hook),
+                      source: { type: "agent-hook", label: t("agent.hooks.sourceHook", { event: hook.event }) },
+                    },
+                    {
+                      id: "remove-hook",
+                      label: t("agent.hooks.removeLabel", { event: hook.event }),
+                      resolvePrompt: () => buildRemoveHookPrompt(hook),
+                      source: { type: "agent-hook", label: t("agent.hooks.sourceRemove", { event: hook.event }) },
+                      agentLabel: t("agent.hooks.removeAction", { event: hook.event }),
+                    },
+                  ],
+                }}
+              >
+              <li
                 className="group px-3 py-2 hover:bg-muted/40"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -102,12 +107,6 @@ export function HooksCard({
                     >
                       {hook.event}
                     </span>
-                    <RowActions
-                      askLabel={t("agent.hooks.askLabel", { event: hook.event })}
-                      removeLabel={t("agent.hooks.removeLabel", { event: hook.event })}
-                      onAsk={() => ask(hook)}
-                      onRemove={() => remove(hook)}
-                    />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <HookStatusBadge hook={hook} />
@@ -124,6 +123,7 @@ export function HooksCard({
                   {formatHookSummary(hook)}
                 </div>
               </li>
+              </AiContextTarget>
             ))}
           </ul>
         ) : (

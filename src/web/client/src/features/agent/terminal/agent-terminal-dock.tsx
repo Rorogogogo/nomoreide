@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Container, Database, GitBranch, Grip, Inbox, Maximize2, Minimize2, PanelBottom, PanelRight, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
+import { Activity, Bot, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Container, Database, GitBranch, Grip, Inbox, Maximize2, Minimize2, PanelBottom, PanelRight, Puzzle, Server, Square, SquareTerminal, Workflow } from "lucide-react";
 // SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import type { DashboardData } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -16,14 +16,16 @@ import { AgentTerminalTabs } from "./agent-terminal-tabs";
 import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
 import { GitHubLogo } from "../../github/github-logo";
+import { requestGitHubActions } from "../../github/github-navigation";
 import { isTauri } from "@/lib/tauri";
 import { useOptionalSettings } from "@/features/settings/settings-context";
 import { useT, type TranslationKey } from "@/lib/i18n";
 
-export type AgentDockPage = "services" | "docker" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
+export type AgentDockPage = "services" | "activity" | "docker" | "git" | "github" | "workflows" | "errors" | "database" | "terminal" | "agent" | "agent-env" | "settings";
 
 const FULLSCREEN_NAV: Array<{ page: AgentDockPage; labelKey: TranslationKey; icon: ReactNode }> = [
   { page: "services", labelKey: "nav.services", icon: <Server /> },
+  { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
   { page: "docker", labelKey: "nav.docker", icon: <Container /> },
   { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
   { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
@@ -141,6 +143,10 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   }, [tasks]);
   const collapse = () => { setFullScreen(false); setOpen(false); };
   const navigate = (page: AgentDockPage) => { onNavigate?.(page); collapse(); };
+  const openGitHubActions = (branch: string) => {
+    requestGitHubActions(branch);
+    navigate("github");
+  };
   function resizeStart(event: ReactPointerEvent<HTMLDivElement>) {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -424,7 +430,26 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         <ChevronLeft className="size-3.5 text-muted-foreground" />
       </button>
     ) : (
-      <button aria-label={t("dock.openAria")} className="fixed inset-x-0 bottom-0 z-50 flex h-9 w-full items-center gap-2 border-t border-border bg-card/95 px-3 text-left shadow-[0_-4px_18px_-14px_rgba(0,0,0,.45)] backdrop-blur" onClick={() => setOpen(true)} type="button"><Logo className="size-3.5 text-primary" /><span className="text-xs font-medium">{railProviderLabel}</span><span className="h-3 w-px bg-border" /><span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{activeTaskLabel}</span><DockStatusStrip git={git} provider={railProviderId} variant="strip" />{focusedTask ? <span className={cn("font-mono text-[10px] text-muted-foreground", focusedTask.state === "running" && "text-emerald-600", focusedTask.state === "error" && "text-destructive")}><span className="sr-only">{t("dock.activeStatusSr")}</span>{stateLabel(focusedTask.state)}</span> : null}{tasks.length > 1 ? <span className="font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}<ChevronUp className="size-3.5 text-muted-foreground" /></button>
+      <div className="fixed inset-x-0 bottom-0 z-50 h-9 w-full border-t border-border bg-card/95 shadow-[0_-4px_18px_-14px_rgba(0,0,0,.45)] backdrop-blur">
+        <button
+          aria-label={t("dock.openAria")}
+          className="absolute inset-x-0 inset-y-0 h-9 w-full text-left"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <span className="sr-only">{railProviderLabel}</span>
+        </button>
+        <div className="pointer-events-none relative flex h-full items-center gap-2 px-3">
+          <Logo className="size-3.5 text-primary" />
+          <span className="text-xs font-medium">{railProviderLabel}</span>
+          <span className="h-3 w-px bg-border" />
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{activeTaskLabel}</span>
+          <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="strip" />
+          {focusedTask ? <span className={cn("font-mono text-[10px] text-muted-foreground", focusedTask.state === "running" && "text-emerald-600", focusedTask.state === "error" && "text-destructive")}><span className="sr-only">{t("dock.activeStatusSr")}</span>{stateLabel(focusedTask.state)}</span> : null}
+          {tasks.length > 1 ? <span className="font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}
+          <ChevronUp className="size-3.5 text-muted-foreground" />
+        </div>
+      </div>
     ) : null}
     <div
       aria-hidden={!open || undefined}
@@ -477,7 +502,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       ><Grip className="size-3.5" /></button> : null}
       {layoutSplit ? <span className="min-w-0 flex-1" /> : <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />}
       {!sideDocked && agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} /> : <span className="flex-1" />}
-      {!sideDocked ? <DockStatusStrip git={git} provider={railProviderId} variant="dock" /> : null}
+      {!sideDocked ? <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="dock" /> : null}
       <div className="flex shrink-0 items-center border-l border-border px-1">
         <AgentConversationPicker error={transcriptsError} loading={transcriptsLoading} onLoad={loadTranscripts} onResume={resumeInFocusedPane} transcripts={transcripts} />
         <AgentNewSessionMenu
@@ -495,7 +520,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     {sideDocked ? <div className="flex min-h-9 shrink-0 items-center overflow-x-auto border-b border-border bg-muted/10" data-agent-side-utilities>
       {agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} providerLabel={railProviderLabel} /> : null}
       <span className="min-w-2 flex-1" />
-      <DockStatusStrip git={git} provider={railProviderId} variant="side" />
+      <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="side" />
     </div> : null}
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
     {git && composing ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}

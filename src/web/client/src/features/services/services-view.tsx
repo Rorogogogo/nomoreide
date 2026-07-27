@@ -40,6 +40,7 @@ import { unassignedServices } from "./project-scope";
 import { OnboardDialog } from "../onboard/onboard-dialog";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import {
   buildGroupServicesPrompt,
   buildServiceDebugPrompt,
@@ -463,6 +464,22 @@ export function ServicesView({
         <div className="min-h-0 min-w-0 overflow-auto">
           {selectedServiceDef ? (
             <div className="flex h-full min-h-0 flex-col">
+              <AiContextTarget
+                target={{
+                  label: selectedServiceDef.name,
+                  intents: selectedHealth?.agentContext ? [{
+                    id: "debug-service",
+                    label: t("services.debugWithAi"),
+                    resolvePrompt: () =>
+                      buildServiceDebugPrompt({
+                        service: selectedServiceDef.name,
+                        context: selectedHealth.agentContext ?? "",
+                      }),
+                    source: { type: "service-debug", label: selectedServiceDef.name },
+                    agentLabel: `Debug \`${selectedServiceDef.name}\` with its current context.`,
+                  }] : [],
+                }}
+              >
               <div className="shrink-0 space-y-2 border-b border-border bg-background/60 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <h2 className="min-w-0 truncate text-base font-semibold">
@@ -489,29 +506,6 @@ export function ServicesView({
                         </Tooltip>
                       ) : null;
                     })()}
-                    {selectedHealth?.agentContext && selectedServiceDef ? (
-                      <Tooltip label={t("services.debugWithAi")}>
-                        <Button
-                          aria-label={t("services.debugWithAi")}
-                          className="size-7"
-                          onClick={() =>
-                            sendToAgent({
-                              prompt: buildServiceDebugPrompt({
-                                service: selectedServiceDef.name,
-                                context: selectedHealth.agentContext,
-                              }),
-                              source: { type: "service-debug", label: selectedServiceDef.name },
-                              label: `Debug \`${selectedServiceDef.name}\` with its current context.`,
-                            })
-                          }
-                          size="icon"
-                          type="button"
-                          variant="outline"
-                        >
-                          <AgentMark className="size-3.5" />
-                        </Button>
-                      </Tooltip>
-                    ) : null}
                     <LifecycleActions
                       active={isServiceOn(selectedStatus?.state)}
                       baseUrl={`/api/services/${encodeURIComponent(selectedServiceDef.name)}`}
@@ -570,6 +564,7 @@ export function ServicesView({
                 ) : null}
                 <HealthSummary health={selectedHealth} />
               </div>
+              </AiContextTarget>
               <div className="min-h-0 flex-1 overflow-auto">
                 <ServiceDetailPanel
                   // Key by service so switching tears down the panel and

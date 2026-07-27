@@ -4,8 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { gitCommit, gitPush, type GitFileStatus } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildCommitMessagePrompt } from "../agent/prompts";
 
 /** Deterministic commit + push, with an AI assist for the message only. */
@@ -23,7 +22,6 @@ export function CommitComposer({
   repo?: string;
 }) {
   const t = useT();
-  const { sendToAgent } = useAgentDock();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<"commit" | "push" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,36 +56,26 @@ export function CommitComposer({
     }
   }
 
-  function suggestMessage() {
-    sendToAgent({
-      prompt: buildCommitMessagePrompt({ branch, stagedFiles }),
-      source: { type: "git-commit", label: t("git.commit.sourceLabel") },
-      mode: "send",
-      label: t("git.commit.suggestLabel"),
-    });
-  }
-
   return (
+    <AiContextTarget
+      target={{
+        label: t("git.commit.title"),
+        intents: stagedFiles.length > 0 ? [{
+          id: "suggest-commit-message",
+          label: t("git.commit.aiMessage"),
+          resolvePrompt: () => buildCommitMessagePrompt({ branch, stagedFiles }),
+          source: { type: "git-commit", label: t("git.commit.sourceLabel") },
+          agentLabel: t("git.commit.suggestLabel"),
+        }] : [],
+      }}
+    >
     <div className="shrink-0 space-y-2 border-t border-border bg-card/95 p-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground">
           {t("git.commit.title")}
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-[11px] text-muted-foreground">
-            {t("git.commit.stagedCount", { count: stagedFiles.length })}
-          </span>
-          <button
-            aria-label={t("git.commit.suggestAria")}
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-            disabled={stagedFiles.length === 0}
-            onClick={suggestMessage}
-            title={t("git.commit.suggestTitle")}
-            type="button"
-          >
-            <AgentMark className="size-3.5" />
-            {t("git.commit.aiMessage")}
-          </button>
+        <span className="text-[11px] text-muted-foreground">
+          {t("git.commit.stagedCount", { count: stagedFiles.length })}
         </span>
       </div>
 
@@ -135,5 +123,6 @@ export function CommitComposer({
         </Alert>
       ) : null}
     </div>
+    </AiContextTarget>
   );
 }

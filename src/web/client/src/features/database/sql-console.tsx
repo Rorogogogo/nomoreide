@@ -14,7 +14,10 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ColumnInfo, DatabaseEngine } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
-import { useAgentDock } from "../agent/chat/agent-context";
+import {
+  AiContextTarget,
+  type AiContextTargetDescriptor,
+} from "../agent/context-menu/ai-context-menu";
 import { buildDebugSqlPrompt } from "../agent/prompts";
 import {
   databaseLimitOptions,
@@ -53,7 +56,6 @@ export function SqlConsole({
   const t = useT();
   const { isPending, runOperation } = useOperations();
   const { success: showSuccess } = useToasts();
-  const { sendToAgent } = useAgentDock();
   const read = useSqlQuery(connection);
   const write = useSqlWrite(connection);
   const access = useWriteAccess(connection, onWriteAccessChange);
@@ -107,16 +109,6 @@ export function SqlConsole({
       event.preventDefault();
       submit();
     }
-  }
-
-  // Hand the failed statement + engine error to the dock so the agent can
-  // explain the cause and propose a fix. Opens the dock (mode "send").
-  function debugError(error: string) {
-    sendToAgent({
-      prompt: buildDebugSqlPrompt(connection, engine, sql, error),
-      source: { type: "database-sql-debug", label: "Debug SQL" },
-      label: t("database.sql.debugLabel"),
-    });
   }
 
   async function commitWrite(statement?: string) {
@@ -198,7 +190,20 @@ export function SqlConsole({
         </div>
       </div>
 
-      <ResultArea read={read} write={write} onDebug={debugError} />
+      <ResultArea
+        read={read}
+        write={write}
+        debugTarget={(error) => ({
+          label: t("database.sql.debugLabel"),
+          intents: [{
+            id: "debug-sql",
+            label: t("database.sql.debugWithAi"),
+            resolvePrompt: () => buildDebugSqlPrompt(connection, engine, sql, error),
+            source: { type: "database-sql-debug", label: "Debug SQL" },
+            agentLabel: t("database.sql.debugLabel"),
+          }],
+        })}
+      />
 
       {showUnlock ? (
         <UnlockDialog
@@ -325,30 +330,22 @@ function LockControl({
 function ResultArea({
   read,
   write,
-  onDebug,
+  debugTarget,
 }: {
   read: ReturnType<typeof useSqlQuery>;
   write: ReturnType<typeof useSqlWrite>;
-  onDebug: (error: string) => void;
+  debugTarget: (error: string) => AiContextTargetDescriptor;
 }) {
   const t = useT();
   const error = write.error ?? read.error;
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       {error ? (
+        <AiContextTarget target={debugTarget(error)}>
         <div className="space-y-3 p-4">
           <p className="code-font-size whitespace-pre-wrap font-mono text-destructive">{error}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-3"
-            onClick={() => onDebug(error)}
-            type="button"
-          >
-            <AgentMark className="size-3.5" />
-            {t("database.sql.debugWithAi")}
-          </Button>
         </div>
+        </AiContextTarget>
       ) : write.committed ? (
         <WriteSummary outcome={write.committed} />
       ) : read.result ? (
