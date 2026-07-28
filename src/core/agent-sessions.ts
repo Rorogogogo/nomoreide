@@ -18,9 +18,10 @@ export interface AgentSession {
 const MAX_SESSIONS = 50;
 
 /**
- * Sessions are persisted to `.nomoreide/agent-sessions.json` (not kept only
- * in memory) because the MCP server and the web UI may run in different
- * processes — the UI must be able to list change-sets it didn't record.
+ * By default, sessions are persisted to `~/.nomoreide/agent-sessions.json`
+ * (not kept only in memory) because the MCP server and the web UI may run in
+ * different processes — the UI must be able to list change-sets it didn't
+ * record.
  */
 export class AgentSessionStore {
   constructor(private readonly filePath: string) {}

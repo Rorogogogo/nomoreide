@@ -381,7 +381,7 @@ NoMoreIDE is designed to be safe for AI-assisted development:
 - Database writes require explicit unlock, preview, and commit.
 - GitHub merge/comment/create tools require a configured token and explicit user intent.
 - SSH services rely on the user's local SSH config and agent; NoMoreIDE does not store key material.
-- Logs are scoped to `.nomoreide/logs/` for managed services.
+- Logs are scoped to `~/.nomoreide/logs/` for managed services.
 
 ## Troubleshooting
 
@@ -416,7 +416,7 @@ Logs are empty:
 
 - Confirm the service was started by NoMoreIDE in this runtime.
 - Confirm the process writes to stdout or stderr.
-- Check `.nomoreide/logs/`.
+- Check `~/.nomoreide/logs/`.
 
 Git repository is not registered:
 
