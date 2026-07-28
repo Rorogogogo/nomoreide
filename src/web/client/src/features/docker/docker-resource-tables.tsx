@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { HardDrive, Layers3, Loader2, Network, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   getDockerImages,
@@ -17,9 +17,19 @@ import { useDockerResource } from "./use-docker";
  * removal are destructive and stay out of this surface deliberately, the same
  * way GitManager stays read-safe.
  */
-export function DockerImagesTable({ active }: { active: boolean }) {
+export function DockerImagesTable({
+  active,
+  refreshVersion = 0,
+}: {
+  active: boolean;
+  refreshVersion?: number;
+}) {
   const t = useT();
-  const { rows, loading, error } = useDockerResource(getDockerImages, active);
+  const { rows, loading, error } = useDockerResource(
+    getDockerImages,
+    active,
+    refreshVersion,
+  );
 
   return (
     <ResourceShell
@@ -31,11 +41,14 @@ export function DockerImagesTable({ active }: { active: boolean }) {
       ]}
       empty={t("docker.images.empty")}
       error={error}
+      icon={Layers3}
       loading={loading}
       rowCount={rows.length}
+      subtitle={t("docker.images.desc")}
+      title={t("docker.tabImages")}
     >
       {rows.map((image: DockerImageSummary) => (
-        <tr className="hover:bg-muted/40" key={image.id + image.tag}>
+        <tr className="transition-colors hover:bg-muted/20" key={image.id + image.tag}>
           <Cell>
             <span className="flex items-center gap-1.5">
               <span className="truncate">{image.repository}</span>
@@ -55,9 +68,19 @@ export function DockerImagesTable({ active }: { active: boolean }) {
   );
 }
 
-export function DockerVolumesTable({ active }: { active: boolean }) {
+export function DockerVolumesTable({
+  active,
+  refreshVersion = 0,
+}: {
+  active: boolean;
+  refreshVersion?: number;
+}) {
   const t = useT();
-  const { rows, loading, error } = useDockerResource(getDockerVolumes, active);
+  const { rows, loading, error } = useDockerResource(
+    getDockerVolumes,
+    active,
+    refreshVersion,
+  );
 
   return (
     <ResourceShell
@@ -68,11 +91,14 @@ export function DockerVolumesTable({ active }: { active: boolean }) {
       ]}
       empty={t("docker.volumes.empty")}
       error={error}
+      icon={HardDrive}
       loading={loading}
       rowCount={rows.length}
+      subtitle={t("docker.volumes.desc")}
+      title={t("docker.tabVolumes")}
     >
       {rows.map((volume: DockerVolumeSummary) => (
-        <tr className="hover:bg-muted/40" key={volume.name}>
+        <tr className="transition-colors hover:bg-muted/20" key={volume.name}>
           <Cell mono>{volume.name}</Cell>
           <Cell>{volume.driver}</Cell>
           <Cell mono muted>
@@ -84,9 +110,19 @@ export function DockerVolumesTable({ active }: { active: boolean }) {
   );
 }
 
-export function DockerNetworksTable({ active }: { active: boolean }) {
+export function DockerNetworksTable({
+  active,
+  refreshVersion = 0,
+}: {
+  active: boolean;
+  refreshVersion?: number;
+}) {
   const t = useT();
-  const { rows, loading, error } = useDockerResource(getDockerNetworks, active);
+  const { rows, loading, error } = useDockerResource(
+    getDockerNetworks,
+    active,
+    refreshVersion,
+  );
 
   return (
     <ResourceShell
@@ -97,11 +133,14 @@ export function DockerNetworksTable({ active }: { active: boolean }) {
       ]}
       empty={t("docker.networks.empty")}
       error={error}
+      icon={Network}
       loading={loading}
       rowCount={rows.length}
+      subtitle={t("docker.networks.desc")}
+      title={t("docker.tabNetworks")}
     >
       {rows.map((network: DockerNetworkSummary) => (
-        <tr className="hover:bg-muted/40" key={network.id}>
+        <tr className="transition-colors hover:bg-muted/20" key={network.id}>
           <Cell>{network.name}</Cell>
           <Cell>{network.driver}</Cell>
           <Cell muted>{network.scope}</Cell>
@@ -116,23 +155,35 @@ function ResourceShell({
   columns,
   empty,
   error,
+  icon: Icon,
   loading,
   rowCount,
+  subtitle,
+  title,
 }: {
   children: React.ReactNode;
   columns: string[];
   empty: string;
   error: string | null;
+  icon: LucideIcon;
   loading: boolean;
   rowCount: number;
+  subtitle: string;
+  title: string;
 }) {
   const t = useT();
 
-  if (error) return <p className="p-3 text-xs text-destructive">{error}</p>;
+  if (error) {
+    return (
+      <div aria-live="polite" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+        <p className="text-xs text-destructive">{error}</p>
+      </div>
+    );
+  }
   if (loading && rowCount === 0) {
     return (
       <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
+        <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
         {t("docker.loading")}
       </div>
     );
@@ -140,18 +191,38 @@ function ResourceShell({
   if (rowCount === 0) return <EmptyState label={empty} />;
 
   return (
-    <table className="w-full text-left text-xs">
-      <thead className="sticky top-0 z-10 bg-muted/60 text-muted-foreground backdrop-blur">
-        <tr>
-          {columns.map((column) => (
-            <th className="px-3 py-2 font-medium" key={column} scope="col">
-              {column}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-border">{children}</tbody>
-    </table>
+    <section className="w-full overflow-hidden border-y border-border/70">
+      <header className="flex items-center gap-2 px-2 py-2.5">
+        <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <h3 className="text-xs font-semibold">{title}</h3>
+          <p className="truncate text-[10px] text-muted-foreground">{subtitle}</p>
+        </div>
+        <span className="ml-auto font-mono text-[9px] tabular-nums text-muted-foreground">
+          {t(rowCount === 1 ? "docker.resourceCountOne" : "docker.resourceCount", {
+            count: String(rowCount),
+          })}
+        </span>
+      </header>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-left text-xs">
+          <thead className="border-t border-border/60 text-muted-foreground">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  className="px-2 py-2 font-medium tracking-wide"
+                  key={column}
+                  scope="col"
+                >
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">{children}</tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -166,7 +237,7 @@ function Cell({
 }) {
   return (
     <td
-      className={`max-w-0 truncate px-3 py-1.5 ${mono ? "font-mono" : ""} ${
+      className={`max-w-0 truncate px-2 py-2.5 ${mono ? "font-mono" : ""} ${
         muted ? "text-muted-foreground" : ""
       }`}
     >

@@ -18,7 +18,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AgentSettingsDialog } from "./agent-settings-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/overflow-menu";
 import { useT, type Translate } from "@/lib/i18n";
 import type {
@@ -93,13 +92,13 @@ export function AgentColumn({
   ];
 
   return (
-    <Card className="flex min-h-0 flex-col">
-      <CardHeader className="shrink-0">
+    <section className="flex min-h-0 flex-col bg-background">
+      <header className="shrink-0 border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-1.5">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             <AgentLogo agent={config.agent} className="size-4" />
             {AGENT_LABELS[config.agent]}
-          </CardTitle>
+          </h2>
           <span className="flex items-center gap-1">
             {availability ? (
               <Badge size="small" variant={availability.available ? "success" : "warning"}>
@@ -107,12 +106,15 @@ export function AgentColumn({
               </Badge>
             ) : null}
             <button
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              aria-label={t("agentEnv.settingsTitle", {
+                name: AGENT_LABELS[config.agent],
+              })}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setSettingsOpen(true)}
               title={t("agentEnv.settingsTitle", { name: AGENT_LABELS[config.agent] })}
               type="button"
             >
-              <Settings2 className="size-3.5" />
+              <Settings2 aria-hidden="true" className="size-3.5" />
             </button>
           </span>
         </div>
@@ -125,8 +127,8 @@ export function AgentColumn({
         >
           {config.exists ? config.configPath : t("agentEnv.noConfig", { path: config.configPath })}
         </p>
-      </CardHeader>
-      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+      </header>
+      <div className="min-h-0 flex-1 divide-y divide-border/70 overflow-y-auto">
         <McpSection
           agent={config.agent}
           label={t("agentEnv.mcpServers")}
@@ -153,8 +155,8 @@ export function AgentColumn({
           onStage={onStage}
           plugins={config.skills.filter((skill) => skill.kind === "plugin")}
         />
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -196,18 +198,18 @@ function McpSection({
 }) {
   const t = useT();
   return (
-    <section>
-      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <section className="px-3 py-3">
+      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
-      </h4>
+      </h3>
       {mcps.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("agentEnv.noneConfigured")}</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="divide-y divide-border/60 border-y border-border/60">
           {mcps.map((mcp) => (
             <li
               key={mcp.name}
-              className="group flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
+              className="group flex items-start gap-2 px-2 py-2 transition-colors hover:bg-muted/20"
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
                 {mcp.remote ? <Globe /> : <TerminalSquare />}
@@ -250,18 +252,18 @@ function SkillsSection({
 }) {
   const t = useT();
   return (
-    <section>
-      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <section className="px-3 py-3">
+      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {t("agentEnv.skills")}
-      </h4>
+      </h3>
       {skills.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("agentEnv.noneInstalled")}</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="divide-y divide-border/60 border-y border-border/60">
           {skills.map((skill) => (
             <li
               key={`${skill.scope}:${skill.name}`}
-              className="group flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
+              className="group flex items-start gap-2 px-2 py-2 transition-colors hover:bg-muted/20"
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
                 <Sparkles />
@@ -314,11 +316,11 @@ function PluginsSection({
   const t = useT();
   if (plugins.length === 0) return null;
   return (
-    <section>
-      <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <section className="px-3 py-3">
+      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {t("agentEnv.plugins")}
-      </h4>
-      <ul className="space-y-1">
+      </h3>
+      <ul className="divide-y divide-border/60 border-y border-border/60">
         {plugins.map((plugin) => (
           <PluginRow agent={agent} key={plugin.name} onStage={onStage} plugin={plugin} />
         ))}
@@ -346,7 +348,7 @@ function PluginRow({
   ];
 
   return (
-    <li className="group rounded-md border border-border/60 bg-background/60 px-2 py-1.5">
+    <li className="group px-2 py-2 transition-colors hover:bg-muted/20">
       <div className="flex items-start gap-2">
         <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">
           <Package />

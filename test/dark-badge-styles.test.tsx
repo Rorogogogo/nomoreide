@@ -32,7 +32,7 @@ function buildCommit(): GitGraphCommit {
 }
 
 describe("dark badge styles", () => {
-  test("shared badge variants define dark-mode surfaces", () => {
+  test("shared badges use the shadcn shape and token-based surfaces", () => {
     const markup = renderToStaticMarkup(
       <>
         <Badge variant="outline">origin/main</Badge>
@@ -42,10 +42,12 @@ describe("dark badge styles", () => {
       </>,
     );
 
-    expect(markup).toContain("dark:bg-zinc-900/80");
-    expect(markup).toContain("dark:border-zinc-700/80");
+    expect(markup).toContain("rounded-md");
+    expect(markup).toContain("border-border");
+    expect(markup).toContain("bg-secondary");
     expect(markup).toContain("dark:bg-emerald-500/15");
     expect(markup).toContain("dark:bg-amber-500/15");
+    expect(markup).not.toContain("shadow-[");
   });
 
   test("git ref badges avoid light backgrounds in dark mode", () => {
@@ -95,7 +97,7 @@ describe("dark badge styles", () => {
       </OperationProvider>,
     );
 
-    expect(markup).toContain("grid-cols-[1.75rem_minmax(0,1fr)_auto_auto]");
+    expect(markup).toContain("grid-cols-[1.75rem_minmax(0,1fr)_auto]");
     expect(markup).toContain("items-center");
   });
 });

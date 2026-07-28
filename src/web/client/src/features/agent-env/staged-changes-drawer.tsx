@@ -28,8 +28,8 @@ export function StagedChangesDrawer({
   if (count === 0) return null;
 
   return (
-    <div className="shrink-0 border-t border-border bg-card/95">
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+    <div className="shrink-0 border-t border-border bg-background">
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-card/75 px-3 py-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold">
           <Layers className="size-3.5 text-muted-foreground" />
           {t("agentEnv.stagedChanges")}
@@ -55,11 +55,19 @@ export function StagedChangesDrawer({
         <p className="px-3 py-2 text-xs text-muted-foreground">{t("agentEnv.validating")}</p>
       ) : null}
 
-      <ul className="max-h-48 space-y-1 overflow-y-auto p-2">
+      <ul className="max-h-48 divide-y divide-border/60 overflow-y-auto">
         {(preview?.items ?? []).map((item, index) => (
           <li
-            className="flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
-            key={`${item.summary}-${index}`}
+            className="flex items-start gap-2 px-3 py-2 transition-colors hover:bg-muted/20"
+            key={[
+              item.change.action,
+              item.change.category,
+              item.change.sourceAgent,
+              item.change.sourceScope,
+              item.change.name,
+              item.change.targetAgent,
+              item.change.targetScope,
+            ].join(":")}
           >
             <span className="min-w-0 flex-1">
               <span className={`block text-xs ${item.ok ? "" : "text-destructive"}`}>

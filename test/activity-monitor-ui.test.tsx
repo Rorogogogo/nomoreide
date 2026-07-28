@@ -120,6 +120,41 @@ describe("Activity Monitor", () => {
     expect(onOpenService).toHaveBeenCalledWith("frontend");
   });
 
+  test("keeps history labels and boundary values inside the plot", async () => {
+    const current = metrics.host.current;
+    expect(current).not.toBeNull();
+    if (!current) return;
+    api.getActivityMetrics.mockResolvedValue({
+      ...metrics,
+      host: {
+        current,
+        samples: [
+          { ...current, t: current.t - 3000, cpuPercent: 100 },
+          { ...current, cpuPercent: 0 },
+        ],
+      },
+    });
+
+    await act(async () => {
+      root.render(
+        <ActivityView data={dashboard} onOpenService={vi.fn()} scopeName={null} />,
+      );
+    });
+
+    const chart = container.querySelector('svg[role="img"]');
+    expect(chart).not.toBeNull();
+    expect(chart?.querySelector('path[stroke="#10b981"]')?.getAttribute("d")).toBe(
+      "M0.0,4.0 L1000.0,96.0",
+    );
+
+    const labels = [...container.querySelectorAll("span")].filter((element) =>
+      ["100", "50", "0"].includes(element.textContent ?? ""),
+    );
+    expect(labels.map((label) => label.getAttribute("style"))).toEqual(
+      expect.arrayContaining(["top: 4%;", "top: 50%;", "top: 96%;"]),
+    );
+  });
+
   test("ignores an older sample that resolves after a newer refresh", async () => {
     vi.useFakeTimers();
     const first = deferred<ActivityMetrics>();

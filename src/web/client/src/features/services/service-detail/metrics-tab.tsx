@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { getServiceMetrics, type MetricSample, type MetricsSeries } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 
@@ -162,6 +162,9 @@ function StatCard({
 const CHART_HEIGHT = 160;
 const Y_AXIS_W = 44;
 const X_AXIS_H = 20;
+const PLOT_TOP = 40;
+const PLOT_BOTTOM = 960;
+const PLOT_HEIGHT = PLOT_BOTTOM - PLOT_TOP;
 
 function Chart({
   label,
@@ -181,10 +184,7 @@ function Chart({
   unit: "percent" | "mb";
 }) {
   const t = useT();
-  const gradientId = useMemo(
-    () => `metric-grad-${unit}-${Math.random().toString(36).slice(2, 8)}`,
-    [unit],
-  );
+  const gradientId = `metric-grad-${unit}-${useId()}`;
   const values = samples.map(pick);
   const rawMax = Math.max(...values, unit === "percent" ? 10 : 1);
   const max = niceMax(rawMax);
@@ -197,9 +197,12 @@ function Chart({
   // Path uses a normalized 0–1000 × 0–1000 viewBox stretched non-uniformly
   // by the SVG; labels live in HTML so they stay crisp at any width.
   const toX = (t: number) => ((t - firstT) / tSpan) * 1000;
-  const toY = (v: number) => (1 - (v - min) / span) * 1000;
+  const toY = (v: number) =>
+    PLOT_TOP + (1 - (v - min) / span) * PLOT_HEIGHT;
+  const plotTop = (fraction: number) =>
+    (PLOT_TOP + (1 - fraction) * PLOT_HEIGHT) / 10;
   const points = samples.map((s) => `${toX(s.t).toFixed(1)},${toY(pick(s)).toFixed(1)}`);
-  const area = `M0,1000 L${points.join(" L")} L1000,1000 Z`;
+  const area = `M0,${PLOT_BOTTOM} L${points.join(" L")} L1000,${PLOT_BOTTOM} Z`;
   const line = `M${points.join(" L")}`;
   const lastX = toX(lastT);
   const lastY = toY(summary.last);
@@ -224,11 +227,15 @@ function Chart({
         <div className="flex">
           {/* Y-axis labels */}
           <div
-            className="relative flex shrink-0 flex-col justify-between text-right font-mono text-[10px] text-muted-foreground"
+            className="relative shrink-0 text-right font-mono text-[10px] text-muted-foreground"
             style={{ width: Y_AXIS_W, height: CHART_HEIGHT }}
           >
             {yTicks.map((f) => (
-              <span key={f} className="pr-1 leading-none">
+              <span
+                className="absolute right-0 -translate-y-1/2 pr-1 leading-none"
+                key={f}
+                style={{ top: `${plotTop(f)}%` }}
+              >
                 {formatTick(min + f * span, unit)}
               </span>
             ))}
@@ -241,7 +248,7 @@ function Chart({
                 key={f}
                 className="pointer-events-none absolute inset-x-0 border-t border-border/40"
                 style={{
-                  top: `${f === 1 ? 0 : f === 0 ? CHART_HEIGHT - 1 : (1 - f) * CHART_HEIGHT}px`,
+                  top: `${plotTop(f)}%`,
                   borderStyle: i === yTicks.length - 1 ? "solid" : "dashed",
                 }}
               />
@@ -250,7 +257,7 @@ function Chart({
             <div
               className="pointer-events-none absolute inset-x-0 border-t border-dashed"
               style={{
-                top: `${(avgY / 1000) * CHART_HEIGHT}px`,
+                top: `${avgY / 10}%`,
                 borderColor: color,
                 opacity: 0.4,
               }}
@@ -284,7 +291,7 @@ function Chart({
               className="pointer-events-none absolute z-10 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card"
               style={{
                 left: `${(lastX / 1000) * 100}%`,
-                top: `${(lastY / 1000) * CHART_HEIGHT}px`,
+                top: `${lastY / 10}%`,
                 backgroundColor: color,
                 boxShadow: `0 0 0 4px ${color}33`,
               }}
@@ -302,8 +309,8 @@ function Chart({
               const tick = firstT + frac * tSpan;
               return (
                 <span
-                  key={i}
                   className="absolute top-1 whitespace-nowrap"
+                  key={tick}
                   style={{
                     left: `${frac * 100}%`,
                     transform:
@@ -327,7 +334,7 @@ function Chart({
 
 function niceMax(value: number): number {
   if (value <= 1) return 1;
-  const exp = Math.pow(10, Math.floor(Math.log10(value)));
+  const exp = 10 ** Math.floor(Math.log10(value));
   const norm = value / exp;
   const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
   return nice * exp;

@@ -12,7 +12,6 @@ import {
   Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
@@ -305,38 +304,43 @@ export function ServicesView({
       ) : (
       <div
         className={cn(
-          "grid h-full min-h-0 overflow-hidden bg-card/85",
+          "grid h-full min-h-0 overflow-hidden bg-background",
           railCollapsed
             ? "lg:grid-cols-[320px_minmax(0,1fr)]"
             : "lg:grid-cols-[320px_minmax(0,1fr)_340px]",
         )}
       >
         <div className="min-h-0 min-w-0 overflow-auto border-r border-border">
-          <Card className="min-w-0 rounded-none border-0 border-b border-border bg-transparent">
-            <CardHeader className="border-b border-border px-3 py-2">
+          <section className="min-w-0">
+            <header className="border-b border-border bg-card/75 px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-sm">{t("services.title")}</CardTitle>
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-sm font-semibold">{t("services.title")}</h2>
+                  <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+                    {data.config.services.length}
+                  </span>
+                </div>
                 <div className="flex items-center gap-1">
                   <Button
                     aria-haspopup="dialog"
-                    className="h-7 gap-1.5 px-2 text-xs"
+                    className="h-7 gap-1.5 px-2 text-[11px]"
                     onClick={() => setGraphOpen(true)}
                     size="sm"
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                   >
-                    <Workflow className="size-3.5" />
+                    <Workflow aria-hidden="true" className="size-3.5" />
                     {t("services.graph")}
                   </Button>
                   <Button
                     aria-haspopup="dialog"
-                    className="h-7 gap-1.5 px-2 text-xs"
+                    className="h-7 gap-1.5 px-2 text-[11px]"
                     onClick={() => setMultiLogOpen(true)}
                     size="sm"
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                   >
-                    <ScrollText className="size-3.5" />
+                    <ScrollText aria-hidden="true" className="size-3.5" />
                     {t("services.logs")}
                   </Button>
                   <AddMenu
@@ -362,13 +366,13 @@ export function ServicesView({
                   />
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
+            </header>
+            <div>
               {/* Only in the all-projects view: a service belonging to no
                   project is invisible from every scoped view, so this is the
                   one place it can be found and assigned. */}
               {!scopeName && unassigned.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs">
                   <span className="text-muted-foreground">
                     {t("services.unassignedNotice", { count: unassigned.length })}
                   </span>
@@ -409,6 +413,7 @@ export function ServicesView({
                     />
                   ))}
                   {ungroupedServices.length ? (
+                    // biome-ignore lint/a11y/noStaticElementInteractions: Native drag-and-drop target; service controls remain keyboard accessible.
                     <div
                       className={cn(
                         "transition-colors",
@@ -429,7 +434,7 @@ export function ServicesView({
                         if (serviceName) void removeFromGroups(serviceName);
                       }}
                     >
-                      <div className="flex items-center justify-between gap-2 bg-muted/55 px-3 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                      <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                         <span>{t("services.ungrouped")}</span>
                         <span className="text-muted-foreground/80">
                           {ungroupedServices.length}
@@ -456,8 +461,8 @@ export function ServicesView({
               ) : (
                 <EmptyState label={t("services.empty")} />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
         </div>
 
@@ -480,9 +485,9 @@ export function ServicesView({
                   }] : [],
                 }}
               >
-              <div className="shrink-0 space-y-2 border-b border-border bg-background/60 px-4 py-3">
+              <div className="shrink-0 space-y-1.5 border-b border-border bg-card/75 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <h2 className="min-w-0 truncate text-base font-semibold">
+                  <h2 className="min-w-0 truncate text-sm font-semibold tracking-tight">
                     {selectedServiceDef.name}
                   </h2>
                   <StateBadge state={selectedStatus?.state ?? "stopped"} />

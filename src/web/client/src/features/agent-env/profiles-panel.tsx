@@ -65,9 +65,9 @@ export function ProfilesPanel({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
-        <span className="flex items-center gap-1.5 text-xs font-semibold">
-          <Archive className="size-3.5 text-muted-foreground" />
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card/75 px-3 py-2">
+        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <Archive aria-hidden="true" className="size-3.5" />
           {t("agentEnv.profilesTitle")}
           {profiles.length > 0 ? (
             <Badge size="small" variant="outline">
@@ -78,31 +78,35 @@ export function ProfilesPanel({
         <div className="flex flex-wrap items-center gap-2">
           <div
             aria-label={t("agentEnv.snapshotAgentAria")}
-            className="flex h-8 items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5"
+            className="flex h-7 items-center gap-1"
             role="radiogroup"
           >
             {ALL_AGENTS.map((agent) => (
-              <button
-                aria-checked={snapshotAgent === agent}
+              <label
                 className={cn(
-                  "flex h-full w-8 items-center justify-center rounded transition-colors",
+                  "flex h-full w-7 cursor-pointer items-center justify-center rounded transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
                   snapshotAgent === agent
-                    ? "bg-background shadow-sm"
-                    : "opacity-40 hover:bg-muted/60 hover:opacity-100",
+                    ? "bg-foreground text-background"
+                    : "opacity-40 hover:opacity-100",
                 )}
                 key={agent}
-                onClick={() => setSnapshotAgent(agent)}
-                role="radio"
                 title={t("agentEnv.snapshotAgentTitle", { name: AGENT_LABELS[agent] })}
-                type="button"
               >
+                <input
+                  checked={snapshotAgent === agent}
+                  className="sr-only"
+                  name="agent-env-snapshot-agent"
+                  onChange={() => setSnapshotAgent(agent)}
+                  type="radio"
+                  value={agent}
+                />
                 <AgentLogo agent={agent} className="size-4" />
-              </button>
+              </label>
             ))}
           </div>
           <input
             aria-label={t("agentEnv.newProfileAria")}
-            className="h-8 w-36 rounded-md border border-border bg-background px-2 text-xs"
+            className="h-7 w-36 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onChange={(event) => setSnapshotName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") submitSnapshot();
@@ -153,7 +157,7 @@ export function ProfilesPanel({
       ) : (
         <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto">
           {profiles.map((profile) => (
-            <li className="group" key={profile.name}>
+            <li className="group transition-colors hover:bg-muted/20" key={profile.name}>
               <div className="flex items-center gap-2.5 px-3 py-2">
                 <button
                   aria-expanded={expanded === profile.name}

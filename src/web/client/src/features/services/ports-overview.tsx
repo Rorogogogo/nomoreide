@@ -14,11 +14,11 @@ export function PortsOverview({ ports }: { ports: PortOverview[] }) {
   return (
     <Card className="rounded-none border-0 border-b border-border bg-transparent">
       <CardHeader className="border-b border-border px-3 py-2">
-        <CardTitle className="flex items-center gap-2">
-          <Network className="size-3.5" />
+        <CardTitle className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <Network aria-hidden="true" className="size-3.5" />
           {t("services.ports")}
         </CardTitle>
-        <CardDescription className="text-xs">
+        <CardDescription className="text-[10px]">
           {t("services.portsSummary", { managed: managedCount, occupied: occupiedCount })}
         </CardDescription>
       </CardHeader>
@@ -27,7 +27,7 @@ export function PortsOverview({ ports }: { ports: PortOverview[] }) {
           <div className="divide-y divide-border">
             {ports.map((port) => (
               <div
-                className="grid grid-cols-[1fr_auto] items-center gap-2 px-3 py-2"
+                className="grid grid-cols-[1fr_auto] items-center gap-2 px-3 py-2 transition-colors hover:bg-muted/20"
                 key={port.port}
               >
                 <div className="min-w-0">

@@ -14,8 +14,8 @@ export function useDocker() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) setLoading(true);
     setError(null);
     try {
       const nextStatus = await getDockerStatus();
@@ -24,7 +24,7 @@ export function useDocker() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
-      setLoading(false);
+      if (!options.silent) setLoading(false);
     }
   }, []);
 
@@ -120,6 +120,7 @@ export function groupDockerContainers(
 export function useDockerResource<T>(
   load: () => Promise<T[]>,
   enabled: boolean,
+  refreshVersion = 0,
 ): { rows: T[]; loading: boolean; error: string | null; reload: () => Promise<void> } {
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -141,7 +142,7 @@ export function useDockerResource<T>(
 
   useEffect(() => {
     if (enabled) void reload();
-  }, [enabled, reload]);
+  }, [enabled, refreshVersion, reload]);
 
   return useMemo(() => ({ rows, loading, error, reload }), [rows, loading, error, reload]);
 }
