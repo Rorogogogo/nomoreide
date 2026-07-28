@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
   DaemonClient,
@@ -8,6 +8,7 @@ import {
 } from "../src/core/daemon-client.js";
 import {
   createNoMoreIdeMcpServer,
+  defaultMcpLogDir,
   NOMOREIDE_MCP_INSTRUCTIONS,
   NOMOREIDE_TOOL_NAMES,
   startNoMoreIdeMcpServer,
@@ -40,6 +41,11 @@ function fakeDaemon(calls: string[]): DaemonConnection {
 }
 
 describe("NoMoreIDE MCP server", () => {
+  test("keeps default runtime state outside the working repository", () => {
+    expect(defaultMcpLogDir()).toBe(join(homedir(), ".nomoreide", "logs"));
+    expect(defaultMcpLogDir()).not.toContain(process.cwd());
+  });
+
   test("creates a FastMCP server with every expected NoMoreIDE tool", () => {
     const mcp = createNoMoreIdeMcpServer({
       configPath: join(tempDir, "nomoreide.config.json"),

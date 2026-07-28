@@ -522,7 +522,7 @@ NoMoreIDE is designed to be **safe for AI agents to call without guard rails**:
 - Database writes require explicit unlock, preview, and commit
 - GitHub create/comment/merge tools require a configured token and explicit user intent
 - Config is scoped to `~/.config/nomoreide/config.json`
-- Logs are written only to `.nomoreide/logs/`
+- Logs are written only to `~/.nomoreide/logs/`
 
 ---
 

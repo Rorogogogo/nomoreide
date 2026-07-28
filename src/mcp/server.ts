@@ -1,4 +1,5 @@
-import { dirname, resolve } from "node:path";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { FastMCP } from "fastmcp";
 import {
   AgentSessionStore,
@@ -51,6 +52,10 @@ interface StartNoMoreIdeMcpServerOptions {
   createServer?: () => Pick<NoMoreIdeMcpServer, "server" | "daemon">;
 }
 
+export function defaultMcpLogDir(): string {
+  return join(homedir(), ".nomoreide", "logs");
+}
+
 /**
  * The MCP process is a thin client: service operations go to the shared
  * daemon over HTTP; config, git, db, and agent tooling stay local because
@@ -60,7 +65,7 @@ export function createNoMoreIdeMcpServer(
   options: CreateNoMoreIdeMcpServerOptions = {},
 ): NoMoreIdeMcpServer {
   const configPath = options.configPath ?? defaultGlobalConfigPath();
-  const logDir = options.logDir ?? resolve(process.cwd(), ".nomoreide/logs");
+  const logDir = options.logDir ?? defaultMcpLogDir();
   const configStore = new ConfigStore(
     configPath,
   );
