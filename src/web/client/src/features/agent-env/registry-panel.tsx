@@ -36,9 +36,9 @@ export function RegistryPanel({
   };
 
   return (
-    <div className="flex min-w-0 flex-wrap content-start items-center gap-2 px-3 py-2">
-      <span className="flex items-center gap-1.5 text-xs font-semibold">
-        <Globe className="size-3.5 text-muted-foreground" />
+    <section className="flex min-w-0 flex-wrap content-start items-center gap-2 bg-background px-3 py-2">
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <Globe aria-hidden="true" className="size-3.5" />
         {t("agentEnv.registryTitle")}
       </span>
 
@@ -80,7 +80,7 @@ export function RegistryPanel({
 
       <input
         aria-label={t("agentEnv.slugAria")}
-        className="h-8 w-44 rounded-md border border-border bg-background px-2 text-xs"
+        className="h-7 w-44 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onChange={(event) => setSlug(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") submitInstall();
@@ -97,6 +97,6 @@ export function RegistryPanel({
         <Download />
         {t("agentEnv.install")}
       </Button>
-    </div>
+    </section>
   );
 }

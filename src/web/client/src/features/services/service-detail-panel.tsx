@@ -32,8 +32,12 @@ export function ServiceDetailPanel({
   const processes = health?.processTree?.processes ?? [];
 
   return (
-    <div className="border-t border-border bg-muted/30 px-3 py-2 text-xs">
-      <div className="mb-2 flex gap-1">
+    <div className="min-h-full bg-background text-xs">
+      <div
+        aria-label={t("services.title")}
+        className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm"
+        role="tablist"
+      >
         <TabButton active={tab === "logs"} onClick={() => setTab("logs")}>
           {t("services.logs")}
         </TabButton>
@@ -59,28 +63,30 @@ export function ServiceDetailPanel({
           {t("nav.terminal")}
         </TabButton>
       </div>
-      {tab === "processes" ? (
-        <ProcessesTab rows={processes} running={status?.state === "running"} />
-      ) : null}
-      {tab === "metrics" ? <MetricsTab serviceName={serviceName} /> : null}
-      {tab === "http" ? (
-        <HttpTab
+      <div className="p-3">
+        {tab === "processes" ? (
+          <ProcessesTab rows={processes} running={status?.state === "running"} />
+        ) : null}
+        {tab === "metrics" ? <MetricsTab serviceName={serviceName} /> : null}
+        {tab === "http" ? (
+          <HttpTab
+            serviceName={serviceName}
+            status={status}
+            timeline={timeline}
+            onRefresh={onRefresh}
+          />
+        ) : null}
+        {tab === "env" ? <EnvTab serviceName={serviceName} /> : null}
+        {tab === "tests" ? <TestsTab serviceName={serviceName} /> : null}
+        {tab === "logs" ? <LogsTab serviceName={serviceName} /> : null}
+        {/* Kept mounted (hidden when inactive) so the shell survives tab switches;
+            keyed by service so switching services tears down and reopens it. */}
+        <TerminalTab
+          key={serviceName}
+          active={tab === "terminal"}
           serviceName={serviceName}
-          status={status}
-          timeline={timeline}
-          onRefresh={onRefresh}
         />
-      ) : null}
-      {tab === "env" ? <EnvTab serviceName={serviceName} /> : null}
-      {tab === "tests" ? <TestsTab serviceName={serviceName} /> : null}
-      {tab === "logs" ? <LogsTab serviceName={serviceName} /> : null}
-      {/* Kept mounted (hidden when inactive) so the shell survives tab switches;
-          keyed by service so switching services tears down and reopens it. */}
-      <TerminalTab
-        key={serviceName}
-        active={tab === "terminal"}
-        serviceName={serviceName}
-      />
+      </div>
     </div>
   );
 }
@@ -96,13 +102,15 @@ function TabButton({
 }) {
   return (
     <button
+      aria-selected={active}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+        "inline-flex shrink-0 items-center gap-1.5 rounded px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active
-          ? "bg-background text-foreground shadow-sm"
+          ? "bg-foreground text-background"
           : "text-muted-foreground hover:text-foreground",
       )}
       onClick={onClick}
+      role="tab"
       type="button"
     >
       {children}

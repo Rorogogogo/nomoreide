@@ -10,6 +10,20 @@ import { EmptyState } from "./empty-state";
 const WINDOW_MS = 15 * 60 * 1000;
 const BUCKETS = 12;
 const MAX_EVENTS = 200;
+const BUCKET_KEYS = [
+  "bucket-0",
+  "bucket-1",
+  "bucket-2",
+  "bucket-3",
+  "bucket-4",
+  "bucket-5",
+  "bucket-6",
+  "bucket-7",
+  "bucket-8",
+  "bucket-9",
+  "bucket-10",
+  "bucket-11",
+] as const;
 
 export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
   const t = useT();
@@ -24,11 +38,11 @@ export function DebugTimeline({ events }: { events: TimelineEvent[] }) {
     <>
       <Card className="rounded-none border-0 border-b border-border bg-transparent">
         <CardHeader className="border-b border-border px-3 py-2">
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="size-3.5" />
+          <CardTitle className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <Activity aria-hidden="true" className="size-3.5" />
             {t("services.timeline.title")}
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-[10px]">
             {events.length === 0
               ? t("services.timeline.noEvents")
               : t("services.timeline.events", { count: events.length })}
@@ -188,7 +202,7 @@ function ServiceRowButton({
   const maxCount = Math.max(1, ...row.buckets);
   return (
     <button
-      className="timeline-service-row block w-full px-3 py-2 text-left transition-colors hover:bg-muted/40 focus:outline-none focus-visible:bg-muted/40"
+      className="timeline-service-row block w-full px-3 py-2 text-left transition-colors hover:bg-muted/20 focus:outline-none focus-visible:bg-muted/30"
       data-testid="timeline-service-row"
       onClick={onClick}
       type="button"
@@ -218,7 +232,7 @@ function ServiceRowButton({
         {row.buckets.map((count, idx) => (
           <DensityCell
             count={count}
-            key={idx}
+            key={BUCKET_KEYS[idx]}
             max={maxCount}
             severity={row.bucketSeverity[idx]}
           />

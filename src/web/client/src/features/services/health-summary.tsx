@@ -18,7 +18,7 @@ export function HealthSummary({ health }: { health?: ServiceHealth }) {
       <div className="flex min-w-0 items-center gap-2">
         <span
           className={cn(
-            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 font-medium",
+            "inline-flex h-5 shrink-0 items-center gap-1 rounded border px-1.5 text-[10px] font-medium",
             healthClassName(health.status),
           )}
         >
@@ -48,10 +48,16 @@ export function HealthSummary({ health }: { health?: ServiceHealth }) {
 }
 
 function healthClassName(status: ServiceHealth["status"]) {
-  if (status === "healthy") return "bg-emerald-600 text-white";
-  if (status === "warning") return "bg-amber-600 text-white";
-  if (status === "unhealthy") return "bg-red-600 text-white";
-  return "bg-zinc-700 text-white";
+  if (status === "healthy") {
+    return "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "warning") {
+    return "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
+  if (status === "unhealthy") {
+    return "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300";
+  }
+  return "border-border bg-muted text-muted-foreground";
 }
 
 function formatMemory(value: number): string {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { EyeOff, Loader2, X } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { ChevronDown, EyeOff, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -44,7 +44,10 @@ export function DockerDetailPanel({
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-border">
       <header className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={container.name}>
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-semibold"
+          title={container.name}
+        >
           {container.name}
         </span>
         <Tooltip label={t("common.close")}>
@@ -56,7 +59,7 @@ export function DockerDetailPanel({
             type="button"
             variant="ghost"
           >
-            <X />
+            <X aria-hidden="true" />
           </Button>
         </Tooltip>
       </header>
@@ -65,10 +68,7 @@ export function DockerDetailPanel({
         {error ? (
           <p className="p-3 text-xs text-destructive">{error}</p>
         ) : !detail ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-xs text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
-            {t("docker.detail.loading")}
-          </div>
+          <DetailSkeleton t={t} />
         ) : (
           <DetailBody detail={detail} t={t} />
         )}
@@ -111,7 +111,7 @@ function DetailBody({ detail, t }: { detail: DockerContainerDetail; t: Translate
               <li className="min-w-0" key={`${mount.source}:${mount.destination}`}>
                 <div className="flex items-center gap-1.5">
                   <span className="truncate font-mono text-[11px]">{mount.destination}</span>
-                  <Badge size="small" variant="outline">
+                  <Badge variant="outline">
                     {mount.readOnly ? "ro" : "rw"}
                   </Badge>
                 </div>
@@ -126,9 +126,9 @@ function DetailBody({ detail, t }: { detail: DockerContainerDetail; t: Translate
 
       {detail.networks.length ? (
         <DetailSection title={t("docker.detail.networks")}>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {detail.networks.map((network) => (
-              <Badge key={network} size="small" variant="outline">
+              <Badge key={network} variant="outline">
                 {network}
               </Badge>
             ))}
@@ -145,7 +145,10 @@ function DetailBody({ detail, t }: { detail: DockerContainerDetail; t: Translate
                 <span className="break-all">{variable.value}</span>
                 {variable.secret ? (
                   <Tooltip label={t("docker.detail.masked")}>
-                    <EyeOff className="ml-1 inline size-3 text-muted-foreground" />
+                    <EyeOff
+                      aria-hidden="true"
+                      className="ml-1 inline size-3 text-muted-foreground"
+                    />
                   </Tooltip>
                 ) : null}
               </li>
@@ -163,13 +166,77 @@ function DetailBody({ detail, t }: { detail: DockerContainerDetail; t: Translate
   );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSkeleton({ t }: { t: Translate }) {
   return (
-    <section className="border-b border-border px-3 py-2.5">
-      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+    <div
+      aria-label={t("docker.detail.loading")}
+      aria-live="polite"
+      className="animate-pulse motion-reduce:animate-none"
+      role="status"
+    >
+      <SkeletonSection rows={6} title={t("docker.detail.overview")} />
+      <SkeletonSection rows={2} title={t("docker.detail.ports")} />
+      <SkeletonSection rows={2} title={t("docker.detail.mounts")} />
+    </div>
+  );
+}
+
+const SKELETON_ROWS = [
+  { id: "first", width: "82%" },
+  { id: "second", width: "68%" },
+  { id: "third", width: "54%" },
+  { id: "fourth", width: "82%" },
+  { id: "fifth", width: "68%" },
+  { id: "sixth", width: "54%" },
+] as const;
+
+function SkeletonSection({ rows, title }: { rows: number; title: string }) {
+  return (
+    <section className="border-b border-border">
+      <div className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
         {title}
+      </div>
+      <div className="space-y-2 px-3 pb-2.5">
+        {SKELETON_ROWS.slice(0, rows).map((row) => (
+          <div
+            className="grid grid-cols-[minmax(3.5rem,0.22fr)_minmax(0,1fr)] gap-3"
+            key={row.id}
+          >
+            <span className="h-2 rounded-sm bg-muted" />
+            <span className="h-2 rounded-sm bg-muted" style={{ width: row.width }} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const contentId = useId();
+
+  return (
+    <section className="border-b border-border">
+      <h3>
+        <button
+          aria-controls={contentId}
+          aria-expanded={!collapsed}
+          className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          onClick={() => setCollapsed((current) => !current)}
+          type="button"
+        >
+          {title}
+          <ChevronDown
+            aria-hidden="true"
+            className={`size-3.5 shrink-0 transition-transform ${
+              collapsed ? "-rotate-90" : ""
+            }`}
+          />
+        </button>
       </h3>
-      {children}
+      <div className="px-3 pb-2.5" hidden={collapsed} id={contentId}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -196,5 +263,8 @@ function formatTimestamp(value: string): string {
   if (Number.isNaN(parsed.getTime())) return value;
   // A never-started container reports the zero time.
   if (parsed.getUTCFullYear() <= 1) return "";
-  return parsed.toLocaleString();
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
 }

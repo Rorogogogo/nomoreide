@@ -1,0 +1,4 @@
+interface:
+  display_name: "NoMoreIDE UI Polish"
+  short_description: "Apply the project’s restrained, flat UI language"
+  default_prompt: "Use $nomoreide-ui-polish to refine this NoMoreIDE interface while preserving its behavior."

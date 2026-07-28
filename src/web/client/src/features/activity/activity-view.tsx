@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "cpu" | "memory" | "name";
 
+const HISTORY_PLOT_TOP = 4;
+const HISTORY_PLOT_BOTTOM = 96;
+
 export function ActivityView({
   data,
   onOpenService,
@@ -72,55 +75,49 @@ export function ActivityView({
   ).length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-background via-card/70 to-background">
-      <header className="relative shrink-0 overflow-hidden border-b border-border bg-background/70 px-5 py-4">
-        <div className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-primary/5 blur-3xl" />
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="relative">
-            <div className="flex items-center gap-2">
-              <span className="relative flex size-7 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary shadow-[inset_0_0_16px_hsl(var(--primary)/0.08)]">
-                <Activity className="size-3.5" />
-                <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-emerald-500 ring-2 ring-background" />
-              </span>
-              <h2 className="text-base font-semibold tracking-tight">
-                {t("activity.title")}
-              </h2>
-              <HostStateBadge sample={current} />
-            </div>
-            <p className="mt-1.5 max-w-2xl text-xs text-muted-foreground">
-              {scopeName
-                ? t("activity.scopeProject", { project: scopeName })
-                : t("activity.scopeAll")}
-            </p>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-card/75 px-3 py-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Activity aria-hidden="true" className="size-3.5 text-muted-foreground" />
+            <h2 className="truncate text-sm font-semibold tracking-tight">
+              {t("activity.title")}
+            </h2>
+            <HostStateBadge sample={current} />
           </div>
-          <div
-            aria-label={t("activity.managedSummary")}
-            className="relative grid grid-cols-4 overflow-hidden rounded-lg border border-border bg-card/80 font-mono text-[10px] tabular-nums shadow-sm"
-            role="status"
-          >
-            <SummaryStat
-              label={t("activity.running")}
-              value={String(runningCount)}
-            />
-            <SummaryStat
-              label="CPU"
-              tone="text-emerald-600 dark:text-emerald-400"
-              value={`${totals.cpu.toFixed(1)}%`}
-            />
-            <SummaryStat
-              label={t("activity.memory")}
-              tone="text-sky-600 dark:text-sky-400"
-              value={formatMb(totals.memory)}
-            />
-            <SummaryStat
-              label={t("activity.processes")}
-              value={String(totals.processes)}
-            />
-            <span className="sr-only">
-              {runningCount} {t("activity.running")}, {totals.cpu.toFixed(1)}% CPU,{" "}
-              {formatMb(totals.memory)}, {totals.processes} {t("activity.processes")}
-            </span>
-          </div>
+          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+            {scopeName
+              ? t("activity.scopeProject", { project: scopeName })
+              : t("activity.scopeAll")}
+          </p>
+        </div>
+        <div
+          aria-label={t("activity.managedSummary")}
+          className="order-3 ml-auto flex w-full items-center justify-end gap-2 overflow-x-auto whitespace-nowrap font-mono text-[9px] tabular-nums text-muted-foreground sm:order-none sm:w-auto"
+          role="status"
+        >
+          <SummaryStat label={t("activity.running")} value={String(runningCount)} />
+          <SummaryDivider />
+          <SummaryStat
+            label="CPU"
+            tone="text-emerald-600 dark:text-emerald-400"
+            value={`${totals.cpu.toFixed(1)}%`}
+          />
+          <SummaryDivider />
+          <SummaryStat
+            label={t("activity.memory")}
+            tone="text-sky-600 dark:text-sky-400"
+            value={formatMb(totals.memory)}
+          />
+          <SummaryDivider />
+          <SummaryStat
+            label={t("activity.processes")}
+            value={String(totals.processes)}
+          />
+          <span className="sr-only">
+            {runningCount} {t("activity.running")}, {totals.cpu.toFixed(1)}% CPU,{" "}
+            {formatMb(totals.memory)}, {totals.processes} {t("activity.processes")}
+          </span>
         </div>
       </header>
 
@@ -137,7 +134,7 @@ export function ActivityView({
             {t("activity.loading")}
           </div>
         ) : metrics && current ? (
-          <div className="space-y-5 p-5">
+          <div className="space-y-4 p-4">
             <HostOverview current={current} samples={metrics.host.samples} />
             <ServiceActivityTable
               definitions={data.config.services}
@@ -208,18 +205,24 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <span className="min-w-20 border-r border-border px-3 py-2 last:border-r-0">
-      <span className="block text-[8px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </span>
+    <span className="flex items-center gap-1">
       <span
         className={cn(
-          "mt-0.5 block truncate text-[11px] font-semibold text-foreground",
+          "font-semibold text-foreground",
           tone,
         )}
       >
         {value}
       </span>
+      {label}
+    </span>
+  );
+}
+
+function SummaryDivider() {
+  return (
+    <span aria-hidden="true" className="text-border">
+      /
     </span>
   );
 }
@@ -254,8 +257,8 @@ function HostOverview({
           })}
         </span>
       </div>
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="overflow-hidden rounded-xl border border-border bg-card/85 shadow-sm">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="overflow-hidden border-y border-border/70">
           <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
             <GaugeCard
               icon={<Gauge />}
@@ -298,8 +301,8 @@ function HostOverview({
           </div>
           <HostHistoryChart samples={samples} />
         </div>
-        <aside className="overflow-hidden rounded-xl border border-border bg-card/85 shadow-sm">
-          <div className="border-b border-border px-4 py-3">
+        <aside className="overflow-hidden border-y border-border/70">
+          <div className="border-b border-border px-3 py-2.5">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               <Clock3 className="size-3.5" />
               {t("activity.loadUptime")}
@@ -342,7 +345,7 @@ function HostOverview({
 
 function MachineDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
+    <div className="flex items-center justify-between gap-3 border-b border-border/60 px-3 py-2.5 last:border-b-0">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
@@ -367,7 +370,7 @@ function MiniLoadGauge({ percent }: { percent: number | null }) {
           background: `conic-gradient(hsl(var(--primary)) ${progress * 3.6}deg, hsl(var(--muted)) 0deg)`,
         }}
       />
-      <div className="absolute inset-[5px] flex items-center justify-center rounded-full bg-card font-mono text-[9px] font-semibold tabular-nums">
+      <div className="absolute inset-[5px] flex items-center justify-center rounded-full bg-background font-mono text-[9px] font-semibold tabular-nums">
         {percent === null ? "—" : `${Math.round(progress)}%`}
       </div>
     </div>
@@ -393,14 +396,8 @@ function GaugeCard({
   const circumference = 2 * Math.PI * 38;
   const dashOffset = circumference * (1 - progress / 100);
   return (
-    <div className="group relative min-h-40 overflow-hidden px-4 py-4">
-      <div
-        className={cn(
-          "pointer-events-none absolute -right-8 -top-8 size-24 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-30",
-          toneClassName(tone, "glow"),
-        )}
-      />
-      <div className="relative flex items-center justify-between gap-3">
+    <div className="relative min-h-36 overflow-hidden px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 self-stretch">
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             <span
@@ -413,7 +410,7 @@ function GaugeCard({
             </span>
             {label}
           </div>
-          <div className="mt-5 truncate font-mono text-xl font-semibold tracking-tight tabular-nums">
+          <div className="mt-4 truncate font-mono text-xl font-semibold tracking-tight tabular-nums">
             {value}
           </div>
           <div className="mt-1 max-w-36 truncate font-mono text-[10px] text-muted-foreground">
@@ -495,7 +492,7 @@ function HostHistoryChart({ samples }: { samples: HostMetricSample[] }) {
   };
 
   return (
-    <figure className="border-t border-border bg-background/30 px-4 pb-4 pt-3">
+    <figure className="border-t border-border px-3 pb-3 pt-3">
       <figcaption className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -537,14 +534,14 @@ function HostHistoryChart({ samples }: { samples: HostMetricSample[] }) {
           <span
             className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border/50"
             key={value}
-            style={{ top: `${100 - value}%` }}
+            style={{ top: `${historyPlotY(value)}%` }}
           />
         ))}
         {[100, 50, 0].map((value) => (
           <span
             className="pointer-events-none absolute left-2 z-10 -translate-y-1/2 rounded bg-background/70 px-1 font-mono text-[8px] text-muted-foreground"
             key={value}
-            style={{ top: `${100 - value}%` }}
+            style={{ top: `${historyPlotY(value)}%` }}
           >
             {value}
           </span>
@@ -563,7 +560,7 @@ function HostHistoryChart({ samples }: { samples: HostMetricSample[] }) {
             </linearGradient>
           </defs>
           <path
-            d={`${memoryPath} L1000,100 L0,100 Z`}
+            d={`${memoryPath} L1000,${HISTORY_PLOT_BOTTOM} L0,${HISTORY_PLOT_BOTTOM} Z`}
             fill="url(#activity-memory-fill)"
             stroke="none"
           />
@@ -648,17 +645,15 @@ function ServiceActivityTable({
             {t("activity.managedOnly")}
           </p>
         </div>
-        <fieldset
-          className="flex items-center rounded-md border border-border bg-muted/40 p-0.5"
-        >
+        <fieldset className="flex items-center gap-1">
           <legend className="sr-only">{t("activity.sortBy")}</legend>
           {(["cpu", "memory", "name"] as const).map((key) => (
             <button
               aria-pressed={sort === key}
               className={cn(
-                "h-6 rounded px-2 text-[11px] font-medium transition-colors",
+                "rounded px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 sort === key
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground",
               )}
               key={key}
@@ -671,17 +666,17 @@ function ServiceActivityTable({
         </fieldset>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card/85 shadow-sm">
+      <div className="overflow-x-auto border-y border-border/70">
         <table className="w-full min-w-[720px] text-left text-xs">
-          <thead className="border-b border-border bg-background/65 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+          <thead className="border-b border-border/60 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
             <tr>
-              <th className="px-4 py-3 font-semibold">{t("activity.service")}</th>
-              <th className="px-4 py-3 font-semibold">{t("activity.state")}</th>
-              <th className="px-4 py-3 text-right font-semibold">CPU</th>
-              <th className="px-4 py-3 text-right font-semibold">{t("activity.memory")}</th>
-              <th className="px-4 py-3 text-right font-semibold">{t("activity.processes")}</th>
-              <th className="px-4 py-3 text-right font-semibold">{t("activity.uptimeLabel")}</th>
-              <th className="w-10 px-2 py-3" />
+              <th className="px-2 py-2 font-semibold">{t("activity.service")}</th>
+              <th className="px-2 py-2 font-semibold">{t("activity.state")}</th>
+              <th className="px-2 py-2 text-right font-semibold">CPU</th>
+              <th className="px-2 py-2 text-right font-semibold">{t("activity.memory")}</th>
+              <th className="px-2 py-2 text-right font-semibold">{t("activity.processes")}</th>
+              <th className="px-2 py-2 text-right font-semibold">{t("activity.uptimeLabel")}</th>
+              <th className="w-10 px-2 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -691,10 +686,10 @@ function ServiceActivityTable({
               const measurable = local && running && metric;
               return (
                 <tr
-                  className="group border-b border-border/50 transition-colors even:bg-muted/20 hover:bg-primary/[0.035] last:border-b-0"
+                  className="group border-b border-border/50 transition-colors hover:bg-muted/20 last:border-b-0"
                   key={definition.name}
                 >
-                  <td className="max-w-[280px] px-4 py-3">
+                  <td className="max-w-[280px] px-2 py-2.5">
                     <button
                       className="block max-w-full truncate rounded-sm font-semibold tracking-tight hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => onOpenService(definition.name)}
@@ -707,10 +702,10 @@ function ServiceActivityTable({
                       {definition.description ? ` · ${definition.description}` : ""}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-2.5">
                     <ServiceState state={status?.state ?? "stopped"} />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-2.5 text-right">
                     <MetricCell
                       percent={measurable ? metric.cpuPercent : null}
                       tone="emerald"
@@ -718,7 +713,7 @@ function ServiceActivityTable({
                       value={measurable ? `${metric.cpuPercent.toFixed(1)}%` : "—"}
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-2.5 text-right">
                     <MetricCell
                       percent={
                         measurable && totalMemoryBytes > 0
@@ -730,15 +725,15 @@ function ServiceActivityTable({
                       value={measurable ? formatMb(metric.rssMb) : "—"}
                     />
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
+                  <td className="px-2 py-2.5 text-right font-mono tabular-nums">
                     {measurable ? metric.processCount : "—"}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">
+                  <td className="px-2 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
                     {running && status.startedAt
                       ? formatDuration(Date.now() - new Date(status.startedAt).getTime())
                       : "—"}
                   </td>
-                  <td className="px-3 py-3 text-muted-foreground">
+                  <td className="px-2 py-2.5 text-muted-foreground">
                     <span className="flex size-6 items-center justify-center rounded-md transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                       <ArrowUp className="size-3.5 rotate-45 opacity-40 transition-opacity group-hover:opacity-100" />
                     </span>
@@ -825,13 +820,19 @@ function chartPath(
         return "";
       }
       const x = (index / lastIndex) * 1000;
-      const y = 100 - Math.min(100, Math.max(0, value));
+      const y = historyPlotY(value);
       const command = drawing ? "L" : "M";
       drawing = true;
       return `${command}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .filter(Boolean)
     .join(" ");
+}
+
+function historyPlotY(value: number): number {
+  const clamped = Math.min(100, Math.max(0, value));
+  const height = HISTORY_PLOT_BOTTOM - HISTORY_PLOT_TOP;
+  return HISTORY_PLOT_TOP + ((100 - clamped) / 100) * height;
 }
 
 function toneClassName(

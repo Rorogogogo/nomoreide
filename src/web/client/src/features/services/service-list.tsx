@@ -69,6 +69,7 @@ export function ServiceGroupSection({
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Native drag-and-drop target; its controls remain keyboard accessible.
     <section
       className={cn(
         "transition-colors",
@@ -78,7 +79,7 @@ export function ServiceGroupSection({
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
-      <div className="flex items-center gap-1.5 bg-muted/35 px-3 py-1.5">
+      <div className="flex items-center gap-1.5 px-3 py-1.5">
         <button
           aria-expanded={!collapsed}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
@@ -127,7 +128,7 @@ export function ServiceGroupSection({
         />
       </div>
       {editing ? (
-        <div className="border-t border-border bg-background/65 p-3">
+        <div className="border-t border-border p-3">
           <GroupForm
             initialName={group.name}
             initialServices={group.services}
@@ -140,7 +141,7 @@ export function ServiceGroupSection({
         </div>
       ) : null}
       {collapsed ? null : (
-        <div className="divide-y divide-border border-t border-border bg-background/45">
+        <div className="divide-y divide-border/70 border-t border-border/70">
           {services.length ? (
             services.map((service) => (
               <ServiceRow
@@ -187,8 +188,8 @@ export function ServiceRow({
   const [dragging, setDragging] = useState(false);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Native drag source; selection is handled by the nested button.
     <div
-      aria-selected={selected}
       draggable
       onDragStart={(event) => {
         event.dataTransfer.setData(SERVICE_DRAG_TYPE, service.name);
@@ -201,26 +202,32 @@ export function ServiceRow({
       }}
       onDragEnd={() => setDragging(false)}
       className={cn(
-        "group grid cursor-pointer grid-cols-[1.75rem_minmax(0,1fr)_auto_auto] items-center gap-2 border-l-2 px-3 py-1.5 transition-colors",
+        "group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 transition-colors focus-within:bg-muted/30",
         dragging && "opacity-50",
         selected
-          ? "border-l-primary bg-primary/10"
-          : "border-l-transparent hover:bg-muted",
+          ? "bg-muted/45"
+          : "hover:bg-muted/20",
       )}
-      onClick={onSelect}
-      role="option"
     >
-      <ProcessBadge command={service.command ?? ""} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{service.name}</div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <ServiceKindBadge kind={service.kind} />
-          {service.port ? <span>:{service.port}</span> : null}
-        </div>
-      </div>
-      <StateDot state={state} />
-      {/* Stop propagation so acting on a service doesn't also fight row selection. */}
-      <span className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
+      <button
+        aria-pressed={selected}
+        className="grid min-w-0 cursor-pointer grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={onSelect}
+        type="button"
+      >
+        <ProcessBadge command={service.command ?? ""} />
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold tracking-tight">
+            {service.name}
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ServiceKindBadge kind={service.kind} />
+            {service.port ? <span>:{service.port}</span> : null}
+          </span>
+        </span>
+        <StateDot state={state} />
+      </button>
+      <span className="flex items-center gap-1">
         <LifecycleActions
           active={active}
           baseUrl={`/api/services/${encodeURIComponent(service.name)}`}

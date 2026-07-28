@@ -95,7 +95,7 @@ export function ProfileContents({
   };
 
   return (
-    <div className="space-y-2 border-t border-border/40 bg-muted/20 px-3 py-2 pl-9">
+    <div className="space-y-3 border-t border-border/40 px-3 py-3 pl-9">
       <input
         aria-label={t("agentEnv.profileDescAria")}
         className="h-7 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[11px] text-muted-foreground placeholder:text-muted-foreground/60 hover:border-border focus:border-border focus:bg-background focus:text-foreground focus:outline-none"
@@ -161,10 +161,10 @@ function ItemSection({
       {items.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">{t("agentEnv.none")}</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="divide-y divide-border/60 border-y border-border/60">
           {items.map((item) => (
             <li
-              className="group/item flex items-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5"
+              className="group/item flex items-start gap-2 px-2 py-2 transition-colors hover:bg-muted/20"
               key={item.key}
             >
               <span className="mt-0.5 text-muted-foreground [&_svg]:size-3.5">

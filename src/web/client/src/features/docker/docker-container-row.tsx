@@ -44,8 +44,10 @@ export function DockerContainerRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2",
-        selected ? "bg-muted/70" : "hover:bg-muted/40",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-2 py-3 transition-colors",
+        selected
+          ? "bg-muted/45"
+          : "hover:bg-muted/20",
       )}
     >
       {/* Only the info block opens the detail panel. Scoping the handler here
@@ -55,50 +57,59 @@ export function DockerContainerRow({
           `block`/`flex` rather than divs. */}
       <button
         aria-pressed={selected}
-        className="min-w-0 cursor-pointer rounded-sm text-left"
+        className="min-w-0 cursor-pointer rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() => onSelect(container)}
         type="button"
       >
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-medium" title={container.name}>
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-2 shrink-0 rounded-full ring-4",
+              container.state === "restarting"
+                ? "bg-amber-500 ring-amber-500/10"
+                : running
+                  ? "bg-emerald-500 ring-emerald-500/10"
+                  : "bg-rose-500 ring-rose-500/10",
+            )}
+          />
+          <span className="truncate text-sm font-semibold tracking-tight" title={container.name}>
             {container.name}
           </span>
-          <Badge size="small" variant={STATE_BADGE_VARIANT[container.state] ?? "outline"}>
+          <Badge
+            size="small"
+            variant={STATE_BADGE_VARIANT[container.state] ?? "outline"}
+          >
             {container.state}
           </Badge>
-          {/* `status` carries the uptime Docker already computed ("Up 2 hours"). */}
-          {container.status ? (
-            <span className="truncate text-[11px] font-normal text-muted-foreground">
-              {container.status}
-            </span>
-          ) : null}
         </span>
-        <span className="block truncate text-[11px] text-muted-foreground">
-          <span title={container.image}>{container.image}</span>
+        <span className="mt-1 block truncate pl-4 text-[10px] text-muted-foreground">
+          {container.status || t("docker.statusUnknown")}
           {container.service ? ` · ${container.service}` : ""}
-          <span className="font-mono"> · {container.id.slice(0, 12)}</span>
-        </span>
-        {container.ports ? (
-          <span
-            className="block truncate font-mono text-[11px] text-muted-foreground"
-            title={container.ports}
-          >
-            {container.ports}
+          <span className="font-mono" translate="no">
+            {" "}
+            · {container.id.slice(0, 12)}
           </span>
-        ) : null}
+        </span>
+        <span className="mt-1 block truncate pl-4 font-mono text-[10px] text-muted-foreground">
+          <span title={container.image} translate="no">
+            {container.image}
+          </span>
+          {container.ports ? ` · ${container.ports}` : ""}
+        </span>
         {stats && running ? (
-          <span className="flex flex-wrap items-center gap-x-3 text-[11px] tabular-nums text-muted-foreground">
-            <span>{t("docker.stats.cpu", { value: formatPercent(stats.cpuPercent) })}</span>
-            <span>
-              {t("docker.stats.mem", {
-                usage: stats.memoryUsage || "—",
-                percent: formatPercent(stats.memoryPercent),
-              })}
+          <span className="mt-1 flex flex-wrap items-center gap-x-3 pl-4 font-mono text-[9px] tabular-nums text-muted-foreground">
+            <span className="text-emerald-600 dark:text-emerald-400">
+              CPU {formatPercent(stats.cpuPercent)}
+            </span>
+            <span className="text-sky-600 dark:text-sky-400">
+              {t("docker.memoryShort")} {formatPercent(stats.memoryPercent)}
             </span>
             {stats.netIo ? <span>{t("docker.stats.net", { value: stats.netIo })}</span> : null}
           </span>
         ) : null}
       </button>
+
       <div className="flex shrink-0 items-center gap-1">
         <Tooltip label={t("docker.actions.logs")}>
           <Button
@@ -109,13 +120,15 @@ export function DockerContainerRow({
             type="button"
             variant="ghost"
           >
-            <ScrollText />
+            <ScrollText aria-hidden="true" />
           </Button>
         </Tooltip>
         <ContainerActionButton
           action={running ? "restart" : "start"}
           container={container}
-          icon={running ? <RotateCcw /> : <Play />}
+          icon={
+            running ? <RotateCcw aria-hidden="true" /> : <Play aria-hidden="true" />
+          }
           label={running ? t("common.restart") : t("common.start")}
           onRefresh={onRefresh}
         />
@@ -123,7 +136,7 @@ export function DockerContainerRow({
           <ContainerActionButton
             action="stop"
             container={container}
-            icon={<Square />}
+            icon={<Square aria-hidden="true" />}
             label={t("common.stop")}
             onRefresh={onRefresh}
           />
@@ -163,7 +176,12 @@ function ContainerActionButton({
     <Tooltip label={label}>
       <Button
         aria-label={label}
-        className="size-7"
+        className={cn(
+          "size-7",
+          action === "restart" &&
+            "border-amber-600 bg-amber-600 text-white hover:bg-amber-700",
+          action === "stop" && "border-red-600 bg-red-600 text-white hover:bg-red-700",
+        )}
         loading={busy}
         loadingLabel={label}
         onClick={() =>
