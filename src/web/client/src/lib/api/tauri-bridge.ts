@@ -302,7 +302,11 @@ export async function tauri_getDashboard() {
   // has no git block. Fill it here from the selected repo via the bridged git
   // commands; otherwise the desktop git view is permanently stuck on its empty
   // state and never reacts to switching repositories.
-  const repos = (raw.config.gitRepositories ?? []) as Array<{ name: string; path: string }>;
+  const repos = (raw.config.gitRepositories ?? []) as Array<{
+    name: string;
+    path: string;
+    activeWorktreePath?: string;
+  }>;
   const selectedName = raw.config.selectedGitRepository;
   const selected = selectedName ? repos.find((r) => r.name === selectedName) ?? null : null;
   if (!selected) return dash;
@@ -313,7 +317,12 @@ export async function tauri_getDashboard() {
   ]);
   return {
     ...dash,
-    git: { cwd: selected.path, selectedRepository: selected, status, branches },
+    git: {
+      cwd: selected.activeWorktreePath ?? selected.path,
+      selectedRepository: selected,
+      status,
+      branches,
+    },
   };
 }
 
@@ -358,6 +367,34 @@ export async function tauri_getServiceLogs(service: string, limit?: number) {
 
 export async function tauri_gitStatus(repo?: string) {
   return tauriInvoke<RustGitStatus>("git_status", { repo: repo ?? null });
+}
+
+export async function tauri_gitWorktrees() {
+  return tauriInvoke("git_worktrees");
+}
+
+export async function tauri_gitCreateWorktree(options: {
+  branch: string;
+  createBranch: boolean;
+  baseRef?: string;
+}) {
+  return tauriInvoke("git_create_worktree", {
+    branch: options.branch,
+    createBranch: options.createBranch,
+    baseRef: options.baseRef ?? null,
+  });
+}
+
+export async function tauri_gitSelectWorktree(path: string) {
+  await tauriInvoke("git_select_worktree", { path });
+}
+
+export async function tauri_gitRemoveWorktree(path: string) {
+  await tauriInvoke("git_remove_worktree", { path });
+}
+
+export async function tauri_gitPruneWorktrees() {
+  await tauriInvoke("git_prune_worktrees");
 }
 
 export async function tauri_gitDiff(file?: string, repo?: string) {

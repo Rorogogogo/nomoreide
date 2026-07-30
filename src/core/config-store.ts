@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import {
   mkdir,
   open,
+  realpath,
   readFile,
   rename,
   stat,
@@ -24,6 +25,7 @@ import type {
 } from "./types.js";
 import { workflowSchema, type Workflow } from "./workflows.js";
 import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers.js";
+import { GitWorktreeManager } from "./git-worktrees.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -90,6 +92,7 @@ const bundleSchema = z.object({
 const gitRepositorySchema = z.object({
   name: z.string().min(1),
   path: z.string().min(1),
+  activeWorktreePath: z.string().min(1).optional(),
 });
 
 /** Upper bound on board-pinned repos, mirroring the web UI's 5-column cap. */
@@ -492,6 +495,31 @@ export class ConfigStore {
         throw new Error(`Git repository "${name}" is not registered.`);
       }
       config.selectedGitRepository = name;
+    });
+  }
+
+  async selectGitWorktree(name: string, path: string): Promise<NoMoreIdeConfig> {
+    requireAbsolutePath(path);
+    const config = await this.load();
+    const repository = config.gitRepositories.find((item) => item.name === name);
+    if (!repository) {
+      throw new Error(`Git repository "${name}" is not registered.`);
+    }
+    const worktrees = await new GitWorktreeManager(repository.path).list();
+    const canonicalPath = await realpath(path).catch(() => path);
+    const canonicalWorktrees = await Promise.all(
+      worktrees.map((worktree) => realpath(worktree.path).catch(() => worktree.path)),
+    );
+    const selectedIndex = canonicalWorktrees.indexOf(canonicalPath);
+    if (selectedIndex < 0) {
+      throw new ConfigValidationError(
+        "The selected folder is not a worktree of this project.",
+      );
+    }
+    const selectedPath = worktrees[selectedIndex].path;
+    return this.mutateConfig((next) => {
+      const target = next.gitRepositories.find((item) => item.name === name);
+      if (target) target.activeWorktreePath = selectedPath;
     });
   }
 

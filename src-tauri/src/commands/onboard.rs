@@ -223,7 +223,11 @@ pub async fn clone_git_repository(
     let path = dest.to_str().unwrap_or("").to_string();
     state
         .config_store
-        .register_git_repository(GitRepoDef { name: name.clone(), path: path.clone() })
+        .register_git_repository(GitRepoDef {
+            name: name.clone(),
+            path: path.clone(),
+            active_worktree_path: None,
+        })
         .await
         .map_err(|e| e.to_string())?;
     state

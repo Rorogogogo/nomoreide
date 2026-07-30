@@ -23,6 +23,11 @@ import {
   tauri_gitFileSizes,
   tauri_setGitBoard,
   tauri_gitOverview,
+  tauri_gitWorktrees,
+  tauri_gitCreateWorktree,
+  tauri_gitSelectWorktree,
+  tauri_gitRemoveWorktree,
+  tauri_gitPruneWorktrees,
 } from "./tauri-bridge.js";
 import type {
   FileSizeRank,
@@ -35,6 +40,12 @@ import type {
 } from "./git-api.js";
 
 export const tauriGitApi: GitApi = {
+  getGitWorktrees: () => tauri_gitWorktrees() as ReturnType<GitApi["getGitWorktrees"]>,
+  createGitWorktree: (options) =>
+    tauri_gitCreateWorktree(options) as ReturnType<GitApi["createGitWorktree"]>,
+  selectGitWorktree: (path) => tauri_gitSelectWorktree(path),
+  removeGitWorktree: (path) => tauri_gitRemoveWorktree(path),
+  pruneGitWorktrees: () => tauri_gitPruneWorktrees(),
   getGitGraph: (limit = 200) => tauri_gitGraph(limit) as Promise<GitGraphCommit[]>,
   getGitCommitDiff: (hash, file) => tauri_gitCommitDiff(hash, file),
   getGitCommitFiles: (hash) => tauri_gitCommitFiles(hash) as Promise<GitFileStatus[]>,

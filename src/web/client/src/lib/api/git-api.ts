@@ -22,6 +22,25 @@ export interface GitBranch {
   upstream?: string;
 }
 
+export interface GitWorktree {
+  path: string;
+  head: string;
+  branch?: string;
+  bare: boolean;
+  detached: boolean;
+  locked: boolean;
+  lockedReason?: string;
+  prunable: boolean;
+  prunableReason?: string;
+  primary: boolean;
+  dirty: boolean;
+}
+
+export interface GitWorktrees {
+  activePath: string;
+  worktrees: GitWorktree[];
+}
+
 export interface GitGraphRef {
   name: string;
   kind: "head" | "branch" | "remote" | "tag";
@@ -93,6 +112,15 @@ export interface GitCheckoutDefaultAndPullResult {
 }
 
 export interface GitApi {
+  getGitWorktrees(): Promise<GitWorktrees>;
+  createGitWorktree(options: {
+    branch: string;
+    createBranch: boolean;
+    baseRef?: string;
+  }): Promise<GitWorktree>;
+  selectGitWorktree(path: string): Promise<void>;
+  removeGitWorktree(path: string): Promise<void>;
+  pruneGitWorktrees(): Promise<void>;
   getGitGraph(limit?: number): Promise<GitGraphCommit[]>;
   getGitCommitDiff(hash: string, file?: string): Promise<string>;
   getGitCommitFiles(hash: string): Promise<GitFileStatus[]>;

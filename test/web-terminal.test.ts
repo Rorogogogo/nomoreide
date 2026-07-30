@@ -552,6 +552,7 @@ describe("agent terminal sessions", () => {
   test("creates a Codex session from a provider and prompt", async () => {
     const manager = new FakeTerminalManager(tempDir);
     server = await createWebServer({
+      configPath: join(tempDir, "config.json"),
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
       port: 0,
@@ -573,6 +574,7 @@ describe("agent terminal sessions", () => {
     expect(res.status).toBe(201);
     expect(manager.lastCreateOptions).toEqual({
       args: ["--no-alt-screen", "Fix the failing test"],
+      cwd: tempDir,
       kind: "agent",
       label: "Fix failing test",
       provider: "codex",
@@ -680,6 +682,7 @@ describe("agent terminal sessions", () => {
   test("ignores browser-supplied executable and argument fields", async () => {
     const manager = new FakeTerminalManager(tempDir);
     server = await createWebServer({
+      configPath: join(tempDir, "config.json"),
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
       port: 0,
@@ -707,6 +710,7 @@ describe("agent terminal sessions", () => {
     expect(res.status).toBe(201);
     expect(manager.lastCreateOptions).toEqual({
       args: ["--no-alt-screen", "Safe prompt"],
+      cwd: tempDir,
       kind: "agent",
       label: "A".repeat(60),
       provider: "codex",

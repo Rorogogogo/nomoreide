@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ConfigStore } from "./config-store.js";
+import { isGitWorktree, type ConfigStore } from "./config-store.js";
 import { SnapshotManager, type Snapshot } from "./snapshot-manager.js";
 
 export interface AgentSession {
@@ -140,6 +140,12 @@ async function selectedRepoPath(
     const repos = config.gitRepositories ?? [];
     const selected =
       repos.find((repo) => repo.name === config.selectedGitRepository) ?? repos[0];
+    if (
+      selected?.activeWorktreePath &&
+      await isGitWorktree(selected.activeWorktreePath)
+    ) {
+      return selected.activeWorktreePath;
+    }
     return selected?.path ?? fallbackCwd;
   } catch {
     return fallbackCwd;

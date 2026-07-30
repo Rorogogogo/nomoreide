@@ -57,6 +57,8 @@ pub struct BundleDef {
 pub struct GitRepoDef {
     pub name: String,
     pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_worktree_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -235,6 +237,16 @@ impl ConfigStore {
     pub async fn select_git_repository(&self, name: Option<String>) -> Result<Config> {
         let mut config = self.load().await?;
         config.selected_git_repository = name;
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn select_git_worktree(&self, name: &str, path: String) -> Result<Config> {
+        let mut config = self.load().await?;
+        let repo = config.git_repositories.iter_mut()
+            .find(|repo| repo.name == name)
+            .context("Git repository is not registered")?;
+        repo.active_worktree_path = Some(path);
         self.save(&config).await?;
         Ok(config)
     }

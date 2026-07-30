@@ -56,6 +56,22 @@ pub struct FileSizeRank {
     pub truncated: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitWorktree {
+    pub path: String,
+    pub head: String,
+    pub branch: Option<String>,
+    pub bare: bool,
+    pub detached: bool,
+    pub locked: bool,
+    pub locked_reason: Option<String>,
+    pub prunable: bool,
+    pub prunable_reason: Option<String>,
+    pub primary: bool,
+    pub dirty: bool,
+}
+
 // ---------------------------------------------------------------------------
 // Runner helpers
 // ---------------------------------------------------------------------------
@@ -82,6 +98,121 @@ async fn git_lines(cwd: &str, args: &[&str]) -> Result<Vec<String>> {
 pub struct GitManager;
 
 impl GitManager {
+    pub async fn worktrees(cwd: &str) -> Result<Vec<GitWorktree>> {
+        let raw = git(cwd, &["worktree", "list", "--porcelain"]).await?;
+        let mut worktrees = Vec::new();
+        for (index, record) in raw.split("\n\n").filter(|record| !record.trim().is_empty()).enumerate() {
+            let lines: Vec<&str> = record.lines().collect();
+            let value = |key: &str| -> Option<String> {
+                lines.iter()
+                    .find_map(|line| line.strip_prefix(&format!("{key} ")))
+                    .map(str::to_string)
+            };
+            let Some(path) = value("worktree") else { continue };
+            let branch = value("branch")
+                .map(|name| name.strip_prefix("refs/heads/").unwrap_or(&name).to_string());
+            let dirty = if lines.contains(&"bare") {
+                false
+            } else {
+                !git(&path, &["status", "--porcelain=v1", "--untracked-files=all"])
+                    .await
+                    .unwrap_or_default()
+                    .is_empty()
+            };
+            worktrees.push(GitWorktree {
+                path,
+                head: value("HEAD").unwrap_or_default(),
+                branch,
+                bare: lines.contains(&"bare"),
+                detached: lines.contains(&"detached"),
+                locked: lines.iter().any(|line| *line == "locked" || line.starts_with("locked ")),
+                locked_reason: value("locked"),
+                prunable: lines.iter().any(|line| *line == "prunable" || line.starts_with("prunable ")),
+                prunable_reason: value("prunable"),
+                primary: index == 0,
+                dirty,
+            });
+        }
+        Ok(worktrees)
+    }
+
+    pub async fn create_worktree(
+        cwd: &str,
+        project_name: &str,
+        branch: &str,
+        create_branch: bool,
+        base_ref: Option<&str>,
+    ) -> Result<GitWorktree> {
+        let branch = branch.trim();
+        if branch.is_empty() || branch.starts_with('-') || branch.contains('\0') {
+            anyhow::bail!("A valid branch name is required.");
+        }
+        let managed_root = std::env::var("NOMOREIDE_WORKTREES_DIR").ok()
+            .map(std::path::PathBuf::from)
+            .or_else(|| std::env::var("HOME").ok().map(|home| std::path::PathBuf::from(home).join(".nomoreide/worktrees")))
+            .context("Could not resolve the managed worktrees directory")?;
+        let destination = managed_root
+            .join(safe_segment(project_name)?)
+            .join(safe_segment(branch)?);
+        if let Some(parent) = destination.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        let destination_string = destination.to_string_lossy().into_owned();
+        let mut command = Command::new("git");
+        command.arg("worktree").arg("add");
+        if create_branch {
+            command.arg("-b").arg(branch).arg(&destination_string)
+                .arg(base_ref.filter(|value| !value.trim().is_empty()).unwrap_or("HEAD"));
+        } else {
+            command.arg(&destination_string).arg(branch);
+        }
+        let output = command.current_dir(cwd).output().await?;
+        if !output.status.success() {
+            anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        }
+        Self::worktrees(cwd).await?
+            .into_iter()
+            .find(|worktree| worktree.path == destination_string)
+            .context("Git created the worktree but it could not be found")
+    }
+
+    pub async fn remove_worktree(cwd: &str, path: &str) -> Result<()> {
+        let worktree = Self::worktrees(cwd).await?
+            .into_iter()
+            .find(|worktree| worktree.path == path)
+            .context("Unknown worktree")?;
+        if worktree.primary {
+            anyhow::bail!("The primary worktree cannot be removed.");
+        }
+        if worktree.locked {
+            anyhow::bail!("Unlock this worktree before removing it.");
+        }
+        if worktree.dirty {
+            anyhow::bail!("Commit, stash, or discard this worktree's changes before removing it.");
+        }
+        let output = Command::new("git")
+            .args(["worktree", "remove", path])
+            .current_dir(cwd)
+            .output()
+            .await?;
+        if !output.status.success() {
+            anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        }
+        Ok(())
+    }
+
+    pub async fn prune_worktrees(cwd: &str) -> Result<()> {
+        let output = Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(cwd)
+            .output()
+            .await?;
+        if !output.status.success() {
+            anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        }
+        Ok(())
+    }
+
     pub async fn status(cwd: &str) -> Result<GitStatus> {
         // Branch name
         let branch = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"]).await?.trim().to_string();
@@ -357,6 +488,25 @@ impl GitManager {
         ranks.sort_by(|a, b| b.lines.cmp(&a.lines).then(b.bytes.cmp(&a.bytes)));
         Ok(ranks)
     }
+}
+
+fn safe_segment(value: &str) -> Result<String> {
+    let normalized: String = value
+        .trim()
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let normalized = normalized.trim_matches('-').to_string();
+    if normalized.is_empty() || normalized == "." || normalized == ".." {
+        anyhow::bail!("Could not derive a safe worktree folder name.");
+    }
+    Ok(normalized)
 }
 
 /// Read at most `len` bytes from the start of a file (reads fully up to the cap;

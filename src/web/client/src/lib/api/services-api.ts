@@ -37,6 +37,7 @@ export interface BundleDefinition {
 export interface GitRepositoryDefinition {
   name: string;
   path: string;
+  activeWorktreePath?: string;
 }
 
 export interface ServiceStatus {

@@ -572,6 +572,7 @@ export const en = {
   "git.tab.tree": "Tree",
   "git.tab.largest": "Largest files",
   "git.tab.snapshots": "Snapshots",
+  "git.tab.worktrees": "Worktrees",
   "git.tab.workflows": "Workflows",
   "git.boardAria": "Show changed files across all repositories",
   "git.allFilesAria": "Open all tracked files",
@@ -590,6 +591,37 @@ export const en = {
   "git.noRepoTitle": "No Git project registered",
   "git.noRepoBody":
     "Add a folder that is a Git worktree to review changes, browse files, and inspect history. Use the project switcher in the sidebar to add one.",
+
+  // Git — worktrees
+  "git.worktrees.title": "Project worktrees",
+  "git.worktrees.new": "New worktree",
+  "git.worktrees.create": "Create",
+  "git.worktrees.prune": "Prune stale worktree records",
+  "git.worktrees.branch": "Branch",
+  "git.worktrees.base": "Start point",
+  "git.worktrees.createBranch": "Create a new branch",
+  "git.worktrees.launchAgent": "Launch an agent in the new worktree",
+  "git.worktrees.loading": "Loading worktrees…",
+  "git.worktrees.empty": "No worktrees were found for this project.",
+  "git.worktrees.detached": "Detached HEAD",
+  "git.worktrees.active": "Active",
+  "git.worktrees.primary": "Primary",
+  "git.worktrees.dirty": "Dirty",
+  "git.worktrees.locked": "Locked",
+  "git.worktrees.stale": "Stale",
+  "git.worktrees.activate": "Activate",
+  "git.worktrees.activated": "Activated worktree {branch}.",
+  "git.worktrees.created": "Created worktree {branch}.",
+  "git.worktrees.removed": "Removed worktree {branch}.",
+  "git.worktrees.pruned": "Pruned stale worktree records.",
+  "git.worktrees.remove": "Remove worktree {branch}",
+  "git.worktrees.removeConfirm":
+    "Remove the clean worktree for {branch}? The branch and commits will remain.",
+  "git.worktrees.removeBlocked":
+    "Active, primary, dirty, locked, or stale worktrees cannot be removed here.",
+  "git.worktrees.agentLabel": "Worktree: {branch}",
+  "git.worktrees.agentPrompt":
+    "Work in the active worktree for branch {branch} at {path}. Inspect the repository context and wait for my task.",
 
   // Git — branch controls
   "git.branch.fetched": "Fetched latest branch refs.",

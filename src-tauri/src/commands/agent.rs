@@ -164,7 +164,7 @@ pub async fn get_agent_info(state: State<'_, AppState>) -> Result<AgentInfo, Str
         .as_ref()
         .and_then(|name| config.git_repositories.iter().find(|r| &r.name == name))
         .or_else(|| config.git_repositories.first())
-        .map(|r| r.path.clone())
+        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
         .unwrap_or_else(|| home_dir().to_string_lossy().into_owned());
 
     let home = home_dir();

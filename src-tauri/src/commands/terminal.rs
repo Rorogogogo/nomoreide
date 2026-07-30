@@ -207,6 +207,7 @@ fn resolve_session_scope(
         service_name: supplied_service_name,
         work_dir: supplied_cwd
             .or(configured_service_cwd)
+            .or(workspace_cwd)
             .unwrap_or(current_dir),
     }
 }
@@ -646,7 +647,7 @@ pub async fn list_agent_transcripts(
                 .find(|repo| &repo.name == selected)
         })
         .or_else(|| config.git_repositories.first())
-        .map(|repo| repo.path.clone())
+        .map(|repo| repo.active_worktree_path.clone().unwrap_or_else(|| repo.path.clone()))
         .unwrap_or(
             std::env::current_dir()
                 .map_err(|error| error.to_string())?
@@ -673,7 +674,7 @@ pub async fn create_terminal_session(
     agent: Option<AgentTerminalRequest>,
 ) -> Result<TerminalSession, String> {
     let is_agent = agent.is_some();
-    let config = if is_agent || (cwd.is_none() && service_name.is_some()) {
+    let config = if is_agent || cwd.is_none() {
         resolve_config_load(is_agent, state.config_store.load().await)?
     } else {
         None
@@ -688,7 +689,7 @@ pub async fn create_terminal_session(
                 .and_then(|service| service.cwd.clone())
         })
     };
-    let workspace_cwd = if is_agent {
+    let workspace_cwd = if is_agent || service_name.is_none() {
         config.as_ref().and_then(|config| {
             config
                 .selected_git_repository
@@ -700,7 +701,7 @@ pub async fn create_terminal_session(
                         .find(|repo| &repo.name == selected)
                 })
                 .or_else(|| config.git_repositories.first())
-                .map(|repo| repo.path.clone())
+                .map(|repo| repo.active_worktree_path.clone().unwrap_or_else(|| repo.path.clone()))
         })
     } else {
         None
