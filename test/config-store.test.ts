@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rename,
   rm,
   utimes,
@@ -430,6 +431,26 @@ describe("ConfigStore", () => {
       },
     ]);
     expect(config.selectedGitRepository).toBe("app");
+  });
+
+  test("selects a linked worktree without turning it into another project", async () => {
+    const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("app");
+    const worktreePath = join(tempDir, "app-feature");
+    await execFileAsync("git", ["worktree", "add", "-b", "feature/app", worktreePath], {
+      cwd: repoPath,
+    });
+    await store.registerGitRepository({ name: "app", path: repoPath });
+
+    const config = await store.selectGitWorktree("app", worktreePath);
+
+    expect(config.gitRepositories).toEqual([
+      {
+        name: "app",
+        path: repoPath,
+        activeWorktreePath: await realpath(worktreePath),
+      },
+    ]);
   });
 
   test("registers a docker-compose service", async () => {

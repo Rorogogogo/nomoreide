@@ -1,6 +1,7 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { cloneRepository } from "../../core/repo-onboard.js";
+import { GitWorktreeManager } from "../../core/git-worktrees.js";
 import { git, gitActions, stringify, type ToolContext } from "./context.js";
 
 export const GIT_TOOL_NAMES = [
@@ -19,6 +20,10 @@ export const GIT_TOOL_NAMES = [
   "nomoreide_git_clone",
   "nomoreide_git_register_repository",
   "nomoreide_git_select_repository",
+  "nomoreide_git_worktrees",
+  "nomoreide_git_create_worktree",
+  "nomoreide_git_select_worktree",
+  "nomoreide_git_prune_worktrees",
 ] as const;
 
 const gitCwdSchema = z.object({
@@ -165,5 +170,58 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
     }),
     execute: async ({ name }) =>
       stringify(await configStore.selectGitRepository(name)),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_worktrees",
+    description:
+      "List the primary and linked worktrees for a Git repository, including branch, dirty, locked, and stale state.",
+    parameters: gitCwdSchema,
+    execute: async ({ cwd }) =>
+      stringify(await new GitWorktreeManager(cwd ?? process.cwd()).list()),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_create_worktree",
+    description:
+      "Create an isolated managed worktree for a new or existing branch. Write op — creates a fresh directory without changing the current worktree.",
+    parameters: gitCwdSchema.extend({
+      branch: z.string().min(1).describe("New or existing local branch name."),
+      createBranch: z.boolean().default(true),
+      baseRef: z.string().min(1).optional().describe("Start point for a new branch."),
+      projectName: z.string().min(1).optional().describe("Managed folder group name."),
+    }),
+    execute: async ({ cwd, branch, createBranch, baseRef, projectName }) =>
+      stringify(
+        await new GitWorktreeManager(cwd ?? process.cwd()).create({
+          branch,
+          createBranch,
+          baseRef,
+          projectName,
+        }),
+      ),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_select_worktree",
+    description:
+      "Select one registered project's worktree for Git review, new terminals, agents, snapshots, and GitHub workflows.",
+    parameters: z.object({
+      repository: z.string().min(1).describe("Registered NoMoreIDE project name."),
+      path: z.string().min(1).describe("Path returned by nomoreide_git_worktrees."),
+    }),
+    execute: async ({ repository, path }) =>
+      stringify(await configStore.selectGitWorktree(repository, path)),
+  });
+
+  server.addTool({
+    name: "nomoreide_git_prune_worktrees",
+    description:
+      "Prune stale Git worktree administrative records. Does not delete a live worktree directory or branch.",
+    parameters: gitCwdSchema,
+    execute: async ({ cwd }) => {
+      await new GitWorktreeManager(cwd ?? process.cwd()).prune();
+      return stringify({ pruned: true });
+    },
   });
 }

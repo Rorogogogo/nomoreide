@@ -192,15 +192,15 @@ fn resolve_cwd(config: &crate::core::config::Config, repo: Option<&str>) -> Resu
     if let Some(name) = repo {
         return config.git_repositories.iter()
             .find(|r| r.name == name)
-            .map(|r| r.path.clone())
+            .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
             .ok_or_else(|| format!("Repository '{name}' not found"));
     }
     if let Some(sel) = &config.selected_git_repository {
         if let Some(r) = config.git_repositories.iter().find(|r| &r.name == sel) {
-            return Ok(r.path.clone());
+            return Ok(r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()));
         }
     }
     config.git_repositories.first()
-        .map(|r| r.path.clone())
+        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
         .ok_or_else(|| "No git repository configured".to_string())
 }

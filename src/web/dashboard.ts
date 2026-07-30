@@ -45,7 +45,9 @@ export async function buildDashboardPayload(options: {
     }
   }
 
-  const gitCwd = selectedGitRepository?.path ?? "";
+  const gitCwd = selectedGitRepository
+    ? await selectedGitCwd(options.configStore, selectedGitRepository.path)
+    : "";
   const runtime = await options.manager.statusWithResources();
   const [gitStatus, branches, ports] = await Promise.all([
     gitCwd ? readGitStatus(gitCwd) : Promise.resolve(undefined),
@@ -230,5 +232,13 @@ export async function selectedGitCwd(
   fallbackCwd: string,
 ): Promise<string> {
   const config = await configStore.load();
-  return getSelectedGitRepository(config)?.path ?? fallbackCwd;
+  const repository = getSelectedGitRepository(config);
+  if (!repository) return fallbackCwd;
+  if (
+    repository.activeWorktreePath &&
+    await isGitWorktree(repository.activeWorktreePath)
+  ) {
+    return repository.activeWorktreePath;
+  }
+  return repository.path;
 }

@@ -1,6 +1,8 @@
+import { resolve, sep } from "node:path";
 import { gitToplevel, type ConfigStore } from "../../core/config-store.js";
 import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
+import { GitWorktreeManager } from "../../core/git-worktrees.js";
 import { createRepository } from "../../core/repo-create.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
@@ -30,7 +32,7 @@ async function resolveRepoCwd(
   const config = await configStore.load();
   const target = config.gitRepositories.find((repository) => repository.name === repoName);
   if (!target) return { error: `Unknown repository: ${repoName}` };
-  return { cwd: target.path };
+  return { cwd: target.activeWorktreePath ?? target.path };
 }
 
 /** Read-safe Git operations plus repository registration/selection. */
@@ -47,7 +49,10 @@ export const gitRoutes: Route[] = [
       sendJson(response, { ok: false, error: `Unknown repository: ${repoName}` }, 404);
       return;
     }
-    const gitCwd = targetRepository?.path ?? cwd;
+    const gitCwd =
+      targetRepository?.activeWorktreePath ??
+      targetRepository?.path ??
+      cwd;
     const selectedFile = url.searchParams.get("file")?.trim();
     if (!selectedFile) {
       sendJson(response, { ok: false, error: "file is required" }, 400);
@@ -84,10 +89,11 @@ export const gitRoutes: Route[] = [
     const repos = await Promise.all(
       config.gitRepositories.map(async (repository) => {
         try {
-          const status = await new GitManager(repository.path).status();
+          const worktreePath = repository.activeWorktreePath ?? repository.path;
+          const status = await new GitManager(worktreePath).status();
           return {
             name: repository.name,
-            path: repository.path,
+            path: worktreePath,
             branch: status.branch,
             ahead: status.ahead,
             behind: status.behind,
@@ -310,6 +316,136 @@ export const gitRoutes: Route[] = [
     }
   }),
 
+  route("GET", "/api/git/worktrees", async ({ response, configStore }) => {
+    const config = await configStore.load();
+    const repository = getSelectedGitRepository(config);
+    if (!repository) {
+      sendJson(response, { ok: false, error: "No Git project is selected." }, 404);
+      return;
+    }
+    const worktrees = await new GitWorktreeManager(repository.path).list();
+    const configuredActive = repository.activeWorktreePath ?? repository.path;
+    const activePath = worktrees.some(
+      (worktree) => resolve(worktree.path) === resolve(configuredActive),
+    )
+      ? configuredActive
+      : repository.path;
+    sendJson(response, {
+      ok: true,
+      activePath,
+      worktrees,
+    });
+  }),
+
+  route("POST", "/api/git/worktrees", async ({ request, response, configStore }) => {
+    const body = await readJson(request);
+    const config = await configStore.load();
+    const repository = getSelectedGitRepository(config);
+    if (!repository) {
+      sendJson(response, { ok: false, error: "No Git project is selected." }, 404);
+      return;
+    }
+    try {
+      const worktree = await new GitWorktreeManager(repository.path).create({
+        branch: typeof body.branch === "string" ? body.branch : "",
+        createBranch: body.createBranch === true,
+        baseRef: typeof body.baseRef === "string" ? body.baseRef : undefined,
+        projectName: repository.name,
+      });
+      await configStore.selectGitWorktree(repository.name, worktree.path);
+      sendJson(response, { ok: true, worktree }, 201);
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+    }
+  }),
+
+  route("PUT", "/api/git/worktrees/active", async ({ request, response, configStore }) => {
+    const body = await readJson(request);
+    const path = typeof body.path === "string" ? body.path : "";
+    const config = await configStore.load();
+    const repository = getSelectedGitRepository(config);
+    if (!repository) {
+      sendJson(response, { ok: false, error: "No Git project is selected." }, 404);
+      return;
+    }
+    try {
+      await configStore.selectGitWorktree(repository.name, path);
+      sendJson(response, { ok: true, activePath: path });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+    }
+  }),
+
+  route(
+    "DELETE",
+    "/api/git/worktrees",
+    async ({ request, response, configStore, manager, terminalManager }) => {
+      const body = await readJson(request);
+      const path = typeof body.path === "string" ? body.path : "";
+      const config = await configStore.load();
+      const repository = getSelectedGitRepository(config);
+      if (!repository) {
+        sendJson(response, { ok: false, error: "No Git project is selected." }, 404);
+        return;
+      }
+      const activePath = repository.activeWorktreePath ?? repository.path;
+      if (resolve(activePath) === resolve(path)) {
+        sendJson(
+          response,
+          { ok: false, error: "Switch to another worktree before removing this one." },
+          409,
+        );
+        return;
+      }
+      const activeTerminal = terminalManager
+        .list()
+        .find((session) => pathContains(path, session.cwd));
+      if (activeTerminal) {
+        sendJson(
+          response,
+          { ok: false, error: "Close terminals using this worktree before removing it." },
+          409,
+        );
+        return;
+      }
+      const runtime = manager.status().services;
+      const activeService = config.services.find(
+        (service) =>
+          service.cwd &&
+          pathContains(path, service.cwd) &&
+          runtime[service.name]?.state === "running",
+      );
+      if (activeService) {
+        sendJson(
+          response,
+          {
+            ok: false,
+            error: `Stop service "${activeService.name}" before removing this worktree.`,
+          },
+          409,
+        );
+        return;
+      }
+      try {
+        await new GitWorktreeManager(repository.path).remove(path);
+        sendJson(response, { ok: true });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 422);
+      }
+    },
+  ),
+
+  route("POST", "/api/git/worktrees/prune", async ({ response, configStore }) => {
+    const config = await configStore.load();
+    const repository = getSelectedGitRepository(config);
+    if (!repository) {
+      sendJson(response, { ok: false, error: "No Git project is selected." }, 404);
+      return;
+    }
+    await new GitWorktreeManager(repository.path).prune();
+    sendJson(response, { ok: true });
+  }),
+
   route("POST", "/api/git/branches", async ({ request, response, configStore, cwd }) => {
     const form = await readForm(request);
     const gitCwd = await selectedGitCwd(configStore, cwd);
@@ -409,3 +545,12 @@ export const gitRoutes: Route[] = [
     sendJson(response, { ok: true, config });
   }),
 ];
+
+function pathContains(root: string, candidate: string): boolean {
+  const normalizedRoot = resolve(root);
+  const normalizedCandidate = resolve(candidate);
+  return (
+    normalizedCandidate === normalizedRoot ||
+    normalizedCandidate.startsWith(`${normalizedRoot}${sep}`)
+  );
+}

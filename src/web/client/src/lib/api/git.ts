@@ -13,6 +13,11 @@ import { tauriGitApi } from "./git-tauri.js";
 const api: GitApi = isTauri() ? tauriGitApi : httpGitApi;
 
 export const {
+  getGitWorktrees,
+  createGitWorktree,
+  selectGitWorktree,
+  removeGitWorktree,
+  pruneGitWorktrees,
   getGitGraph,
   getGitCommitDiff,
   getGitCommitFiles,
@@ -53,4 +58,6 @@ export type {
   GitOverview,
   GitPushResult,
   GitCheckoutDefaultAndPullResult,
+  GitWorktree,
+  GitWorktrees,
 } from "./git-api.js";

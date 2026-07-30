@@ -10,9 +10,52 @@ import type {
   GitGraphCommit,
   GitOverview,
   GitPushResult,
+  GitWorktree,
+  GitWorktrees,
 } from "./git-api.js";
 
 export const httpGitApi: GitApi = {
+  async getGitWorktrees() {
+    const response = await requestJson<{ ok: true } & GitWorktrees>(
+      "/api/git/worktrees",
+    );
+    return { activePath: response.activePath, worktrees: response.worktrees };
+  },
+
+  async createGitWorktree(options) {
+    const response = await requestJson<{ ok: true; worktree: GitWorktree }>(
+      "/api/git/worktrees",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(options),
+      },
+    );
+    return response.worktree;
+  },
+
+  async selectGitWorktree(path) {
+    await requestJson<{ ok: true }>("/api/git/worktrees/active", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  async removeGitWorktree(path) {
+    await requestJson<{ ok: true }>("/api/git/worktrees", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  async pruneGitWorktrees() {
+    await requestJson<{ ok: true }>("/api/git/worktrees/prune", {
+      method: "POST",
+    });
+  },
+
   async getGitGraph(limit = 200) {
     const response = await requestJson<{ ok: true; commits: GitGraphCommit[] }>(
       `/api/git/graph?limit=${limit}`,

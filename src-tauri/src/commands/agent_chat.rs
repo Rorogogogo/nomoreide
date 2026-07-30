@@ -127,7 +127,7 @@ pub async fn start_agent_chat(
         .as_ref()
         .and_then(|sel| config.git_repositories.iter().find(|r| &r.name == sel))
         .or_else(|| config.git_repositories.first())
-        .map(|r| r.path.clone())
+        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
         .unwrap_or_else(|| {
             std::env::current_dir().unwrap_or_default().to_string_lossy().into_owned()
         });

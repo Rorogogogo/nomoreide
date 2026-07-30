@@ -41,7 +41,10 @@ export interface BundleDefinition {
 
 export interface GitRepositoryDefinition {
   name: string;
+  /** Primary worktree used to identify and configure this logical project. */
   path: string;
+  /** Worktree currently used by Git, agents, shells, and GitHub workflows. */
+  activeWorktreePath?: string;
 }
 
 export type DatabaseEngine = "postgres" | "mysql" | "sqlite";

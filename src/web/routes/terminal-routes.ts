@@ -3,6 +3,7 @@ import { buildInteractiveAgentInvocation } from "../../core/agent-terminal.js";
 import { listAgentTranscripts } from "../../core/agent-transcripts.js";
 import { resolveServiceTerminal } from "../../core/terminal-spawn.js";
 import { readJson, sendJson } from "../http-utils.js";
+import { selectedGitCwd } from "../dashboard.js";
 import { patternRoute, route, type Route } from "./context.js";
 
 const agentSessionSchema = z.object({
@@ -30,7 +31,7 @@ export const terminalRoutes: Route[] = [
         (repository) => repository.name === config.selectedGitRepository,
       ) ?? config.gitRepositories[0];
       const transcripts = await listAgentTranscripts({
-        repoPath: selected?.path ?? cwd,
+        repoPath: selected?.activeWorktreePath ?? selected?.path ?? cwd,
       });
       sendJson(response, { ok: true, transcripts });
     },
@@ -43,8 +44,9 @@ export const terminalRoutes: Route[] = [
   route(
     "POST",
     "/api/terminal/sessions",
-    async ({ request, response, terminalManager, configStore }) => {
+    async ({ request, response, terminalManager, configStore, cwd }) => {
       const body = await readJson(request);
+      const workspaceCwd = await selectedGitCwd(configStore, cwd);
 
       if (Object.hasOwn(body, "agent")) {
         const parsed = agentSessionSchema.safeParse(body.agent);
@@ -71,6 +73,7 @@ export const terminalRoutes: Route[] = [
           {},
           {
             ...invocation,
+            cwd: workspaceCwd,
             kind: "agent",
             provider,
             label,
@@ -85,7 +88,7 @@ export const terminalRoutes: Route[] = [
 
       // No service named → a plain workspace shell (the `+` tab behavior).
       if (!serviceName) {
-        const session = terminalManager.create({}, { kind: "shell" });
+        const session = terminalManager.create({}, { cwd: workspaceCwd, kind: "shell" });
         sendJson(response, { ok: true, session }, 201);
         return;
       }

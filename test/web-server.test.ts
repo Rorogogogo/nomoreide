@@ -1802,6 +1802,71 @@ describe("web server", () => {
     );
   });
 
+  test("creates, activates, lists, and removes managed git worktrees", async () => {
+    await initGitRepo(tempDir);
+    const managedRoot = join(tempDir, "worktrees");
+    vi.stubEnv("NOMOREIDE_WORKTREES_DIR", managedRoot);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+    await fetch(`${server.url}/api/dashboard`);
+
+    const createResponse = await fetch(`${server.url}/api/git/worktrees`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        branch: "feature/worktree-api",
+        createBranch: true,
+        baseRef: "HEAD",
+      }),
+    });
+    const created = await createResponse.json();
+    const dashboard = await (await fetch(`${server.url}/api/dashboard`)).json();
+    const listed = await (await fetch(`${server.url}/api/git/worktrees`)).json();
+
+    expect(createResponse.status).toBe(201);
+    expect(created.worktree).toMatchObject({
+      branch: "feature/worktree-api",
+      primary: false,
+      dirty: false,
+    });
+    expect(dashboard.git.cwd).toBe(created.worktree.path);
+    expect(dashboard.git.status.branch).toBe("feature/worktree-api");
+    expect(listed.activePath).toBe(created.worktree.path);
+    expect(listed.worktrees).toHaveLength(2);
+
+    const activeRemoveResponse = await fetch(`${server.url}/api/git/worktrees`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: created.worktree.path }),
+    });
+    expect(activeRemoveResponse.status).toBe(409);
+    expect((await activeRemoveResponse.json()).error).toMatch(/Switch to another/);
+
+    const primary = listed.worktrees.find(
+      (worktree: { primary: boolean }) => worktree.primary,
+    );
+    await fetch(`${server.url}/api/git/worktrees/active`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: primary.path }),
+    });
+    const removeResponse = await fetch(`${server.url}/api/git/worktrees`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: created.worktree.path }),
+    });
+
+    expect(removeResponse.status).toBe(200);
+    expect(
+      (await (await fetch(`${server.url}/api/git/worktrees`)).json()).worktrees,
+    ).toHaveLength(1);
+  });
+
   test("fetches git branches from the web UI", async () => {
     await initGitRepo(tempDir);
     const remoteDir = join(tempDir, "remote.git");

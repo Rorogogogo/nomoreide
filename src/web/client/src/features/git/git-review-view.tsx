@@ -21,6 +21,7 @@ import { GitGraphView } from "./git-graph-view";
 import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
+import { WorktreesView } from "./worktrees-view";
 
 type GitTab =
   | "changes"
@@ -28,7 +29,8 @@ type GitTab =
   | "all"
   | "graph"
   | "largest"
-  | "snapshots";
+  | "snapshots"
+  | "worktrees";
 type ChangesMode = "changes" | "tree";
 
 export function GitReviewView({
@@ -280,6 +282,13 @@ export function GitReviewView({
         >
           {t("git.tab.snapshots")}
         </button>
+        <button
+          type="button"
+          className={tabButtonClass(tab === "worktrees")}
+          onClick={() => setTab("worktrees")}
+        >
+          {t("git.tab.worktrees")}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
@@ -291,6 +300,11 @@ export function GitReviewView({
           <LargestFilesView onOpenFile={openFileInViewer} root={data.git.cwd} />
         ) : tab === "snapshots" ? (
           <SnapshotsView />
+        ) : tab === "worktrees" ? (
+          <WorktreesView
+            key={data.git.selectedRepository.name}
+            onRefresh={onRefresh}
+          />
         ) : tab === "all" ? (
           <div className="grid h-full min-h-0 overflow-hidden border-0 bg-card/85 xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="flex min-h-0 flex-col overflow-hidden">
