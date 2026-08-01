@@ -333,20 +333,56 @@ type DemoTerminalSession = {
   kind: "shell" | "agent";
   label: string;
   provider?: "claude" | "codex";
+  prompt?: string;
 };
 
 let terminalSessions: DemoTerminalSession[] = [
   {
-    id: "demo-terminal",
+    id: "demo-claude-agent",
     cwd: "/Users/demo/projects/acme",
     cols: 100,
     rows: 28,
-    shell: "zsh",
+    shell: "claude",
     state: "running" as const,
-    kind: "shell" as const,
-    label: "demo shell",
+    kind: "agent" as const,
+    provider: "claude",
+    label: "Investigate service health",
+    prompt: "Check the unhealthy worker and explain the safest next step.",
+  },
+  {
+    id: "demo-codex-agent",
+    cwd: "/Users/demo/projects/acme",
+    cols: 100,
+    rows: 28,
+    shell: "codex",
+    state: "running" as const,
+    kind: "agent" as const,
+    provider: "codex",
+    label: "Review current diff",
+    prompt: "Review the current diff for correctness and credential safety.",
   },
 ];
+
+const mockAgentProviders = [
+  {
+    id: "claude" as const,
+    label: "Claude Code",
+    commandName: "claude",
+    configured: true,
+    installHint: "Mocked in this website demo.",
+    intro: "Ask Claude Code to investigate services, logs, and project context.",
+  },
+  {
+    id: "codex" as const,
+    label: "Codex",
+    commandName: "codex",
+    configured: true,
+    installHint: "Mocked in this website demo.",
+    intro: "Ask Codex to review diffs, run checks, and prepare focused changes.",
+  },
+];
+
+let mockAgentProviderId: "claude" | "codex" = "claude";
 
 let databaseWriteUnlocked = false;
 
@@ -739,6 +775,7 @@ const agentEnvProfiles = [
     sourceAgent: "codex",
     mcpCount: 3,
     skillCount: 1,
+    pluginCount: 1,
     updatedAt: "2026-07-05T09:30:00.000Z",
   },
   {
@@ -747,12 +784,14 @@ const agentEnvProfiles = [
     sourceAgent: "claude",
     mcpCount: 2,
     skillCount: 2,
+    pluginCount: 2,
     updatedAt: "2026-07-01T18:12:00.000Z",
   },
   {
     name: "minimal-review",
     mcpCount: 1,
     skillCount: 0,
+    pluginCount: 0,
     updatedAt: "2026-06-20T08:00:00.000Z",
   },
 ];
@@ -762,6 +801,8 @@ export function installWebsiteMockApi() {
   const currentWindow = window as Window & { __nomoreideWebsiteMockApi?: boolean };
   if (currentWindow.__nomoreideWebsiteMockApi) return;
   currentWindow.__nomoreideWebsiteMockApi = true;
+
+  window.WebSocket = WebsiteDemoWebSocket as unknown as typeof WebSocket;
 
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -815,6 +856,9 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
 
   if (path === "/api/dashboard") return json(dashboard());
   if (path === "/api/metrics") return json({ ok: true, metrics: activityMetrics() });
+  if (path === "/api/processes/terminate" && method === "POST") {
+    return json({ ok: true });
+  }
 
   // Agent Environments (ROR-60). All three endpoints are read-on-mount.
   if (path === "/api/agent-env/agents") {
@@ -901,6 +945,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       name: "registry-demo",
       mcpCount: 2,
       skillCount: 1,
+      pluginCount: 1,
       missingCredentials: [],
       version: "1.0.0",
       sourceKind: "brainctl",
@@ -987,12 +1032,13 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
             linear: { kind: "remote", transport: "http", url: "https://mcp.linear.app/mcp" },
           },
           skills: [{ name: "commit-push" }],
+          plugins: [],
         },
       });
     }
   }
   if (path === "/api/agent-env/profiles/import") {
-    return json({ ok: true, name: "imported-demo", mcpCount: 2, skillCount: 1, missingCredentials: [] });
+    return json({ ok: true, name: "imported-demo", mcpCount: 2, skillCount: 1, pluginCount: 0, missingCredentials: [] });
   }
   {
     const profileAction = path.match(/^\/api\/agent-env\/profiles\/([^/]+)\/(apply-preview|apply|export)$/);
@@ -1018,6 +1064,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
           agent: "codex",
           mcpsApplied: ["github"],
           skillsApplied: ["commit-push"],
+          pluginsApplied: [],
           skipped: ['mcp "linear"'],
           backups: ["/Users/demo/.codex/config.toml.bak.20260706-090000"],
         });
@@ -1039,6 +1086,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
             docs: { kind: "remote", transport: "http", url: "https://developers.openai.com/mcp" },
           },
           skills: [{ name: "commit-push" }],
+          plugins: [],
         },
       });
     }
@@ -1355,20 +1403,36 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
 
   if (path === "/api/agent") return json({ ok: true, agent: agentInfo() });
   if (path === "/api/agent/chat/status") {
+    const provider =
+      mockAgentProviders.find((candidate) => candidate.id === mockAgentProviderId) ??
+      mockAgentProviders[0];
     return json({
       ok: true,
       configured: true,
       approvals: false,
-      provider: {
-        id: "codex",
-        label: "Codex CLI",
-        commandName: "codex",
-        installHint: "This website uses a mocked provider.",
-        intro: "Ask about services, diffs, logs, or placeholder configuration.",
-      },
+      provider,
+      providers: mockAgentProviders,
     });
   }
-  if (path === "/api/agent/chat") return agentStream();
+  if (path === "/api/agent/chat/provider" && method === "POST") {
+    const requested = parseJsonBody(init).provider;
+    if (requested !== "claude" && requested !== "codex") {
+      return json({ ok: false, error: "Unknown mocked agent provider." }, 400);
+    }
+    mockAgentProviderId = requested;
+    const provider = mockAgentProviders.find(
+      (candidate) => candidate.id === mockAgentProviderId,
+    )!;
+    return json({ ok: true, provider });
+  }
+  if (path === "/api/agent/chat") {
+    const requested = parseJsonBody(init).provider;
+    const provider =
+      requested === "claude" || requested === "codex"
+        ? requested
+        : mockAgentProviderId;
+    return agentStream(provider);
+  }
   if (path === "/api/agent/mcp-status") {
     return json({
       ok: true,
@@ -1659,6 +1723,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
           kind: "agent" as const,
           label: agent.label ?? `${agent.provider === "claude" ? "Claude" : "Codex"} agent`,
           state: "running" as const,
+          prompt: agent.prompt,
         };
         terminalSessions = [...terminalSessions, session];
         return json({ ok: true, sessions: terminalSessions, session });
@@ -2007,6 +2072,40 @@ function activityMetrics() {
         ];
       }),
     ),
+    systemProcesses: [
+      {
+        pid: 7421,
+        ppid: 1,
+        uid: 501,
+        user: "demo",
+        cpuPercent: 18.4,
+        rssMb: 624,
+        command: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        canTerminate: true,
+      },
+      {
+        pid: 8102,
+        ppid: 1,
+        uid: 501,
+        user: "demo",
+        cpuPercent: 7.2,
+        rssMb: 318,
+        command: "/Applications/Slack.app/Contents/MacOS/Slack",
+        canTerminate: true,
+      },
+      {
+        pid: 9020,
+        ppid: 1,
+        uid: 501,
+        user: "demo",
+        cpuPercent: 4.8,
+        rssMb: 256,
+        command: "node vite --host 127.0.0.1",
+        managedService: "web-client",
+        canTerminate: false,
+        protection: "managed" as const,
+      },
+    ],
   };
 }
 
@@ -2274,11 +2373,229 @@ export function getWebsiteMockDatabaseRows(
   };
 }
 
-function agentStream(): Response {
+class WebsiteDemoWebSocket extends EventTarget {
+  static readonly CLOSED = 3;
+  static readonly CLOSING = 2;
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+
+  readonly url: string;
+  readyState = WebsiteDemoWebSocket.CONNECTING;
+  private inputBuffer = "";
+  private transcriptSent = false;
+  private readonly session?: DemoTerminalSession;
+
+  constructor(url: string | URL) {
+    super();
+    this.url = String(url);
+    const parsedUrl = new URL(this.url, window.location.href);
+    const id =
+      parsedUrl.pathname === "/api/terminal/socket"
+        ? (parsedUrl.searchParams.get("id") ?? "")
+        : "";
+    this.session = terminalSessions.find((candidate) => candidate.id === id);
+
+    window.setTimeout(() => {
+      if (this.readyState !== WebsiteDemoWebSocket.CONNECTING) return;
+      if (!this.session) {
+        this.dispatchEvent(new Event("error"));
+        this.close();
+        return;
+      }
+      this.readyState = WebsiteDemoWebSocket.OPEN;
+      this.dispatchEvent(new Event("open"));
+      this.message({
+        type: "state",
+        state: "running",
+        cwd: this.session.cwd,
+        shell: this.session.provider === "claude" ? "Claude Code" : "Codex",
+      });
+      // Keep a fallback for browsers that do not notify ResizeObserver while
+      // the embedded dock is clipped below the fold.
+      window.setTimeout(() => this.sendTranscript(), 320);
+    }, 20);
+  }
+
+  send(raw: string) {
+    if (this.readyState !== WebsiteDemoWebSocket.OPEN) return;
+    let message: { data?: string; rows?: number; type?: string };
+    try {
+      message = JSON.parse(String(raw)) as {
+        data?: string;
+        rows?: number;
+        type?: string;
+      };
+    } catch {
+      return;
+    }
+
+    // The dock mounts its xterms while collapsed. Wait until FitAddon reports a
+    // useful viewport so the seeded transcript is visible when the human opens
+    // the panel instead of being written into a zero-height terminal.
+    if (
+      message.type === "resize" &&
+      (message.rows ?? 0) >= 4 &&
+      !this.transcriptSent &&
+      this.session
+    ) {
+      window.setTimeout(() => this.sendTranscript(), 80);
+      return;
+    }
+    if (message.type === "stop") {
+      this.message({ type: "state", state: "exited", cwd: this.session?.cwd });
+      this.close();
+      return;
+    }
+    if (message.type === "restart") {
+      this.message({
+        type: "output",
+        data: "\r\n\x1b[2mRestarted mocked agent session.\x1b[0m\r\n",
+      });
+      return;
+    }
+    if (message.type !== "input" || typeof message.data !== "string") return;
+
+    this.inputBuffer += message.data;
+    if (!/[\r\n]/.test(message.data)) return;
+    const prompt = this.inputBuffer.replace(/[\r\n]+/g, " ").trim();
+    this.inputBuffer = "";
+    if (!prompt) return;
+
+    const provider = this.session?.provider ?? "codex";
+    if (this.session?.id === "demo-claude-agent") {
+      document
+        .querySelector('[data-terminal-session="demo-claude-agent"]')
+        ?.setAttribute("data-terminal-follow-up", "true");
+    }
+    window.setTimeout(() => {
+      this.message({
+        type: "output",
+        data: websiteAgentFollowUp(provider, prompt),
+      });
+    }, 180);
+  }
+
+  close() {
+    if (
+      this.readyState === WebsiteDemoWebSocket.CLOSED ||
+      this.readyState === WebsiteDemoWebSocket.CLOSING
+    ) {
+      return;
+    }
+    this.readyState = WebsiteDemoWebSocket.CLOSING;
+    window.setTimeout(() => {
+      this.readyState = WebsiteDemoWebSocket.CLOSED;
+      this.dispatchEvent(new Event("close"));
+    }, 0);
+  }
+
+  private message(payload: unknown) {
+    if (this.readyState !== WebsiteDemoWebSocket.OPEN) return;
+    this.dispatchEvent(
+      new MessageEvent("message", { data: JSON.stringify(payload) }),
+    );
+  }
+
+  private sendTranscript() {
+    if (this.transcriptSent || !this.session) return;
+    this.transcriptSent = true;
+    this.message({
+      type: "output",
+      data: websiteAgentTranscript(this.session),
+    });
+  }
+}
+
+function websiteAgentTranscript(session: DemoTerminalSession): string {
+  const prompt = session.prompt ?? "Inspect this mocked project.";
+  if (session.provider === "claude") {
+    return [
+      "       \x1b[1mClaude Code\x1b[0m  \x1b[2mv2.1.220\x1b[0m",
+      "       \x1b[2mOpus 5 with high effort · website demo\x1b[0m",
+      "       \x1b[2m~/projects/acme\x1b[0m",
+      `\x1b[1m❯\x1b[0m ${prompt}`,
+      "\x1b[38;5;173m⏺\x1b[0m Read(src/core/worker-health.ts)  \x1b[2m⎿  84 lines\x1b[0m",
+      "\x1b[38;5;173m⏺\x1b[0m Bash(npm test -- worker-health)  \x1b[2m⎿  12 tests passed\x1b[0m",
+      "The worker is healthy at the process level, but its queue check is",
+      "failing because \x1b[36mQUEUE_URL\x1b[0m contains the demo placeholder.",
+      "\x1b[32mNo restart yet.\x1b[0m I’d correct that environment value, re-run the",
+      "health check, then restart only the worker if it stays unhealthy.",
+      "\x1b[2m────────────────────────────────────────────────────────────\x1b[0m",
+      "\x1b[1m❯\x1b[0m \x1b[2mAsk a follow-up…\x1b[0m",
+      "\x1b[2m  acme git:(main) · clean\x1b[0m",
+      "",
+    ].join("\r\n");
+  }
+  return [
+    "\x1b[2m╭────────────────────────────────────────────────────────╮\x1b[0m",
+    "\x1b[2m│\x1b[0m \x1b[1m>_ OpenAI Codex\x1b[0m  \x1b[2m(v0.146.0)                            │\x1b[0m",
+    "\x1b[2m│                                                        │\x1b[0m",
+    "\x1b[2m│ model:     \x1b[0mgpt-5.6-sol medium    \x1b[36m/model\x1b[0m \x1b[2mto change    │\x1b[0m",
+    "\x1b[2m│ directory: \x1b[0m~/projects/acme                 \x1b[2m          │\x1b[0m",
+    "\x1b[2m╰────────────────────────────────────────────────────────╯\x1b[0m",
+    "",
+    "\x1b[1mTip:\x1b[0m \x1b[2mwebsite demo data only; commands and results are fictional.\x1b[0m",
+      "",
+    `\x1b[1m›\x1b[0m ${prompt}`,
+      "",
+    "\x1b[1m•\x1b[0m Explored",
+    "  \x1b[2m└ Ran git status --short\x1b[0m",
+    "    \x1b[2mRead the staged diff and secret-redaction tests\x1b[0m",
+    "",
+    "\x1b[1m•\x1b[0m Ran npm test -- --run secret-redaction",
+    "  \x1b[2m└ 18 tests passed\x1b[0m",
+      "",
+    "\x1b[1m•\x1b[0m Review complete. The changed values are explicit demo placeholders,",
+    "  and the redaction boundary remains covered. I found no real credentials.",
+    "",
+    "\x1b[1m›\x1b[0m \x1b[2mAsk a follow-up…\x1b[0m",
+    "\x1b[2m  acme · main · No changes · Context 4% used\x1b[0m",
+      "",
+  ].join("\r\n");
+}
+
+function websiteAgentFollowUp(
+  provider: "claude" | "codex",
+  prompt: string,
+): string {
+  if (provider === "claude") {
+    return [
+      "",
+      `\x1b[1m❯\x1b[0m ${prompt}`,
+      "",
+      "\x1b[38;5;173m⏺\x1b[0m Read(recent worker logs)",
+      "  \x1b[2m⎿  24 lines\x1b[0m",
+      "",
+      "The logs confirm the process is stable; only the mocked queue check",
+      "is failing. I would update that value and verify before restarting.",
+      "",
+      "\x1b[2m────────────────────────────────────────────────────────────\x1b[0m",
+      "\x1b[1m❯\x1b[0m \x1b[2mAsk a follow-up…\x1b[0m",
+      "",
+    ].join("\r\n");
+  }
+  return [
+    "",
+    `\x1b[1m›\x1b[0m ${prompt}`,
+    "",
+    "\x1b[1m•\x1b[0m Explored",
+    "  \x1b[2m└ Re-read the focused diff and its regression test\x1b[0m",
+    "",
+    "\x1b[1m•\x1b[0m The focused check is the right next step. It keeps the change",
+    "  reviewable and exercises the credential-safety boundary directly.",
+    "",
+    "\x1b[1m›\x1b[0m \x1b[2mAsk a follow-up…\x1b[0m",
+    "\x1b[2m  acme · main · No changes · Context 6% used\x1b[0m",
+    "",
+  ].join("\r\n");
+}
+
+function agentStream(provider: "claude" | "codex"): Response {
   const encoder = new TextEncoder();
+  const label = provider === "claude" ? "Claude Code" : "Codex";
   const events = [
-    { type: "session", sessionId: "website-demo-session" },
-    { type: "text", text: "I checked the mocked services, placeholder env, and git diff. " },
+    { type: "session", sessionId: `website-demo-${provider}-session` },
+    { type: "text", text: `${label} checked the mocked services, placeholder env, and git diff. ` },
     { type: "text", text: "No real credentials are exposed; all sensitive values are demo placeholders." },
     { type: "done", stopReason: "end_turn" },
   ];

@@ -6,6 +6,7 @@
  * agent-env-writers layer).
  */
 import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -19,8 +20,10 @@ import {
   profileSchema,
   type Profile,
   type ProfileMcp,
+  type ProfilePlugin,
   type ProfileSummary,
 } from "./types.js";
+import { pluginBundleDigest } from "./plugin-bundle.js";
 
 export interface ProfileStoreOptions {
   /** Injectable for tmpdir tests, like the agent-env readers. */
@@ -44,6 +47,10 @@ export function profileSkillsDir(name: string, options: ProfileStoreOptions = {}
   return path.join(profileDir(name, options), "skills");
 }
 
+export function profilePluginsDir(name: string, options: ProfileStoreOptions = {}): string {
+  return path.join(profileDir(name, options), "plugins");
+}
+
 export function assertValidProfileName(name: string): string {
   const trimmed = name.trim();
   if (!PROFILE_NAME_PATTERN.test(trimmed)) {
@@ -60,7 +67,7 @@ export async function listProfiles(
   const root = profilesRoot(options);
   const summaries: Array<ProfileSummary & { mtimeMs: number }> = [];
 
-  let entries;
+  let entries: import("node:fs").Dirent[];
   try {
     entries = await readdir(root, { withFileTypes: true });
   } catch {
@@ -79,6 +86,7 @@ export async function listProfiles(
         sourceAgent: profile.sourceAgent,
         mcpCount: Object.keys(profile.mcps).length,
         skillCount: profile.skills.length,
+        pluginCount: profile.plugins.length,
         updatedAt: info.mtime.toISOString(),
         mtimeMs: info.mtimeMs,
       });
@@ -125,6 +133,7 @@ export async function createProfile(
     ...(input.description ? { description: input.description } : {}),
     mcps: {},
     skills: [],
+    plugins: [],
   };
   await writeProfile(profile, options);
   return profile;
@@ -132,7 +141,7 @@ export async function createProfile(
 
 export async function updateProfile(
   name: string,
-  patch: Partial<Pick<Profile, "description" | "mcps" | "skills">>,
+  patch: Partial<Pick<Profile, "description" | "mcps" | "skills" | "plugins">>,
   options: ProfileStoreOptions = {},
 ): Promise<Profile> {
   const existing = await getProfile(name, options);
@@ -144,6 +153,17 @@ export async function updateProfile(
     for (const skill of existing.skills) {
       if (!kept.has(skill.name)) {
         await rm(path.join(profileSkillsDir(name, options), path.basename(skill.name)), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+  }
+  if (patch.plugins) {
+    const kept = new Set(next.plugins.map((plugin) => plugin.bundleKey));
+    for (const plugin of existing.plugins) {
+      if (!kept.has(plugin.bundleKey)) {
+        await rm(path.join(profilePluginsDir(name, options), plugin.bundleKey), {
           recursive: true,
           force: true,
         });
@@ -173,7 +193,7 @@ export async function writeProfile(
   await mkdir(folder, { recursive: true });
   const filePath = profileFile(profile.name, options);
   const tmpPath = `${filePath}.tmp.${Date.now()}`;
-  await writeFile(tmpPath, JSON.stringify(profile, null, 2) + "\n", "utf8");
+  await writeFile(tmpPath, `${JSON.stringify(profile, null, 2)}\n`, "utf8");
   await rename(tmpPath, filePath);
 }
 
@@ -196,12 +216,13 @@ export async function snapshotProfileFromAgent(
   if (!config?.exists && (config?.skills.length ?? 0) === 0) {
     throw new Error(`Agent "${input.agent}" has no live config to snapshot.`);
   }
+  if (!config) throw new Error(`Unknown agent "${input.agent}".`);
 
   const mcps: Record<string, ProfileMcp> = {};
-  for (const [key, entry] of Object.entries(config!.mcpServers)) {
+  for (const [key, entry] of Object.entries(config.mcpServers)) {
     mcps[key] = toLocalProfileMcp(entry);
   }
-  for (const [key, entry] of Object.entries(config!.remoteMcpServers)) {
+  for (const [key, entry] of Object.entries(config.remoteMcpServers)) {
     mcps[key] = toRemoteProfileMcp(entry);
   }
 
@@ -211,16 +232,45 @@ export async function snapshotProfileFromAgent(
     sourceAgent: input.agent,
     mcps,
     skills: [],
+    plugins: [],
   };
 
-  // Bundle plain user-scope skills. Plugins are managed installs (excluded,
-  // same rule as ROR-61 staged writes); project skills belong to their repo.
-  for (const skill of config!.skills) {
-    if (skill.kind === "plugin" || skill.scope !== "user" || !skill.installPath) continue;
+  const pluginOwnedSkills = new Set<string>();
+  const pluginOwnedMcps = new Set<string>();
+
+  // Bundle complete plugin roots first so their contributed skills and MCPs
+  // are not duplicated as standalone profile items.
+  for (const plugin of config.skills.filter((skill) => skill.kind === "plugin")) {
+    if (!plugin.installPath) continue;
+    const bundleKey = pluginBundleKey(input.agent, plugin.name, plugin.source);
+    try {
+      const target = path.join(profilePluginsDir(name, options), bundleKey);
+      await mkdir(path.dirname(target), { recursive: true });
+      await cp(plugin.installPath, target, { recursive: true, filter: profileAssetFilter });
+      const digest = await pluginBundleDigest(target);
+      profile.plugins.push(toProfilePlugin(input.agent, plugin, bundleKey, digest));
+      for (const skill of [...(plugin.pluginSkills ?? []), ...(plugin.pluginCommands ?? [])]) {
+        pluginOwnedSkills.add(skill);
+      }
+      for (const key of plugin.pluginMcps ?? []) pluginOwnedMcps.add(key);
+    } catch {
+      // An unreadable plugin must not make the rest of a snapshot unusable.
+    }
+  }
+  for (const key of pluginOwnedMcps) delete profile.mcps[key];
+
+  // Bundle plain user-scope skills. Project skills belong to their repo.
+  for (const skill of config.skills) {
+    if (
+      skill.kind === "plugin" ||
+      skill.scope !== "user" ||
+      !skill.installPath ||
+      pluginOwnedSkills.has(skill.name)
+    ) continue;
     try {
       const target = path.join(profileSkillsDir(name, options), path.basename(skill.name));
       await mkdir(path.dirname(target), { recursive: true });
-      await cp(skill.installPath, target, { recursive: true });
+      await cp(skill.installPath, target, { recursive: true, filter: profileAssetFilter });
       profile.skills.push({ name: skill.name });
     } catch {
       // unreadable skill dir — skip it rather than failing the snapshot
@@ -229,6 +279,42 @@ export async function snapshotProfileFromAgent(
 
   await writeProfile(profile, options);
   return profile;
+}
+
+function pluginBundleKey(agent: AgentName, name: string, source?: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "plugin";
+  const digest = createHash("sha256")
+    .update(`${agent}\0${source ?? ""}\0${name}`)
+    .digest("hex")
+    .slice(0, 10);
+  return `${slug.slice(0, 60)}-${digest}`;
+}
+
+function toProfilePlugin(
+  sourceAgent: AgentName,
+  plugin: import("../agent-env/index.js").AgentSkillEntry,
+  bundleKey: string,
+  digest: string,
+): ProfilePlugin {
+  const version = plugin.installPath ? path.basename(plugin.installPath) : undefined;
+  return {
+    name: plugin.name,
+    sourceAgent,
+    ...(plugin.source ? { source: plugin.source } : {}),
+    ...(version ? { version } : {}),
+    ...(plugin.managed ? { managed: true } : {}),
+    bundleKey,
+    digest,
+    ...(plugin.pluginSkills?.length ? { pluginSkills: plugin.pluginSkills } : {}),
+    ...(plugin.pluginMcps?.length ? { pluginMcps: plugin.pluginMcps } : {}),
+    ...(plugin.pluginAgents?.length ? { pluginAgents: plugin.pluginAgents } : {}),
+    ...(plugin.pluginCommands?.length ? { pluginCommands: plugin.pluginCommands } : {}),
+  };
+}
+
+function profileAssetFilter(source: string): boolean {
+  const base = path.basename(source);
+  return base !== ".git" && base !== ".DS_Store";
 }
 
 export function toLocalProfileMcp(entry: AgentMcpEntry): ProfileMcp {
@@ -260,6 +346,21 @@ export async function copySkillBetweenProfiles(
   const sourceDir = path.join(profileSkillsDir(from, options), path.basename(skillName));
   if (!(await pathExists(sourceDir))) return;
   const targetDir = path.join(profileSkillsDir(to, options), path.basename(skillName));
+  await mkdir(path.dirname(targetDir), { recursive: true });
+  await rm(targetDir, { recursive: true, force: true });
+  await cp(sourceDir, targetDir, { recursive: true });
+}
+
+export async function copyPluginBetweenProfiles(
+  from: string,
+  to: string,
+  bundleKey: string,
+  options: ProfileStoreOptions = {},
+): Promise<void> {
+  const safeKey = path.basename(bundleKey);
+  const sourceDir = path.join(profilePluginsDir(from, options), safeKey);
+  if (!(await pathExists(sourceDir))) return;
+  const targetDir = path.join(profilePluginsDir(to, options), safeKey);
   await mkdir(path.dirname(targetDir), { recursive: true });
   await rm(targetDir, { recursive: true, force: true });
   await cp(sourceDir, targetDir, { recursive: true });

@@ -18,6 +18,7 @@ import { serviceRoutes } from "./service-routes.js";
 import { settingsRoutes } from "./settings-routes.js";
 import { shellRoutes } from "./shell-routes.js";
 import { snapshotRoutes } from "./snapshot-routes.js";
+import { skillsRoutes } from "./skills-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
 import { workflowRoutes } from "./workflow-routes.js";
 import { workflowTriggerRoutes } from "./workflow-trigger-routes.js";
@@ -51,6 +52,7 @@ export const routes: Route[] = [
   ...onboardRoutes,
   ...serviceRoutes,
   ...settingsRoutes,
+  ...skillsRoutes,
   ...snapshotRoutes,
   ...terminalRoutes,
   ...shellRoutes,

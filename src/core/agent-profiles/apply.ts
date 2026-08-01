@@ -17,14 +17,23 @@ import {
   type AgentName,
 } from "../agent-env/index.js";
 import { findUnresolvedCredentialKeys } from "./credentials.js";
-import { getProfile, profileSkillsDir, pathExists, type ProfileStoreOptions } from "./store.js";
+import {
+  getProfile,
+  profilePluginsDir,
+  profileSkillsDir,
+  pathExists,
+  type ProfileStoreOptions,
+} from "./store.js";
+import { applyPluginBundle, previewPluginApply } from "./plugin-apply.js";
+import { pluginIdentity } from "./plugin-bundle.js";
 import type { Profile, ProfileMcp } from "./types.js";
 
 export type ProfileItemStatus = "add" | "identical" | "conflict";
 
 export interface ProfileApplyItem {
-  category: "mcp" | "skill";
+  category: "mcp" | "skill" | "plugin";
   name: string;
+  id?: string;
   status: ProfileItemStatus;
   warnings: string[];
 }
@@ -42,15 +51,16 @@ export interface ProfileApplyOptions extends ProfileStoreOptions {
   name: string;
   agent: AgentName;
   /** Item names (per category) to leave untouched — typically conflicts the user kept. */
-  skip?: { mcps?: string[]; skills?: string[] };
+  skip?: { mcps?: string[]; skills?: string[]; plugins?: string[] };
 }
 
 export interface ProfileContentsApplyOptions extends ProfileStoreOptions {
   cwd: string;
   profile: Profile;
   skillsDir: string;
+  pluginsDir: string;
   agent: AgentName;
-  skip?: { mcps?: string[]; skills?: string[] };
+  skip?: { mcps?: string[]; skills?: string[]; plugins?: string[] };
 }
 
 export async function previewProfileApply(
@@ -95,6 +105,16 @@ export async function previewProfileApply(
       warnings: [],
     });
   }
+  for (const plugin of profile.plugins) {
+    const plan = await previewPluginApply(plugin, options.agent, live);
+    items.push({
+      category: "plugin",
+      name: plugin.name,
+      id: pluginIdentity(plugin),
+      status: plan.status,
+      warnings: plan.warnings,
+    });
+  }
 
   return {
     profile: profile.name,
@@ -109,6 +129,7 @@ export interface ProfileApplyResult {
   agent: AgentName;
   mcpsApplied: string[];
   skillsApplied: string[];
+  pluginsApplied: string[];
   skipped: string[];
   backups: string[];
 }
@@ -120,6 +141,7 @@ export async function applyProfile(options: ProfileApplyOptions): Promise<Profil
     homeDir: options.homeDir,
     profile,
     skillsDir: profileSkillsDir(options.name, options),
+    pluginsDir: profilePluginsDir(options.name, options),
     agent: options.agent,
     skip: options.skip,
   });
@@ -136,6 +158,7 @@ export async function applyProfileContents(
   const base = { cwd: options.cwd, homeDir: options.homeDir };
   const skipMcps = new Set(options.skip?.mcps ?? []);
   const skipSkills = new Set(options.skip?.skills ?? []);
+  const skipPlugins = new Set(options.skip?.plugins ?? []);
   const backups: string[] = [];
   const skipped: string[] = [];
 
@@ -191,12 +214,34 @@ export async function applyProfileContents(
     backups.push(...outcome.backups);
     skillsApplied.push(skill.name);
   }
+  const pluginsApplied: string[] = [];
+  for (const plugin of profile.plugins) {
+    if (skipPlugins.has(pluginIdentity(plugin)) || skipPlugins.has(plugin.name)) {
+      skipped.push(`plugin "${plugin.name}"`);
+      continue;
+    }
+    const sourceDir = path.join(options.pluginsDir, plugin.bundleKey);
+    if (!(await pathExists(sourceDir))) {
+      skipped.push(`plugin "${plugin.name}" (missing from profile bundle)`);
+      continue;
+    }
+    const outcome = await applyPluginBundle({
+      cwd: options.cwd,
+      homeDir: options.homeDir,
+      plugin,
+      sourceDir,
+      targetAgent: options.agent,
+    });
+    backups.push(...outcome.backups);
+    pluginsApplied.push(plugin.name);
+  }
 
   return {
     profile: profile.name,
     agent: options.agent,
     mcpsApplied,
     skillsApplied,
+    pluginsApplied,
     skipped,
     backups,
   };

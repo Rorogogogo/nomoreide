@@ -15,7 +15,7 @@ import { useToasts } from "@/components/ui/toast";
 
 export interface PendingProfileApply {
   preview: AgentEnvProfileApplyPreview;
-  /** Item keys (`mcp:<name>` / `skill:<name>`) the user chose to skip. */
+  /** Item keys (`mcp:<name>` / `skill:<name>` / `plugin:<name>`) to skip. */
   skipped: Set<string>;
 }
 
@@ -61,7 +61,7 @@ export function useProfiles(onAgentsChanged: () => void) {
       run(async () => {
         const profile = await snapshotAgentEnvProfile({ agent, name });
         toasts.success(
-          `Snapshotted ${agent} into "${profile.name}" (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills)`,
+          `Snapshotted ${agent} into "${profile.name}" (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills, ${profile.plugins?.length ?? 0} plugins)`,
         );
         await refresh();
       }),
@@ -76,7 +76,7 @@ export function useProfiles(onAgentsChanged: () => void) {
         const skipped = new Set(
           preview.items
             .filter((item) => item.status === "conflict")
-            .map((item) => `${item.category}:${item.name}`),
+            .map((item) => `${item.category}:${item.id ?? item.name}`),
         );
         setPendingApply({ preview, skipped });
       }),
@@ -108,11 +108,18 @@ export function useProfiles(onAgentsChanged: () => void) {
             skills: preview.items
               .filter((item) => item.category === "skill" && skipped.has(`skill:${item.name}`))
               .map((item) => item.name),
+            plugins: preview.items
+              .filter(
+                (item) =>
+                  item.category === "plugin" &&
+                  skipped.has(`plugin:${item.id ?? item.name}`),
+              )
+              .map((item) => item.id ?? item.name),
           },
         });
         setPendingApply(null);
         toasts.success(
-          `Applied "${result.profile}" to ${result.agent}: ${result.mcpsApplied.length} MCPs, ${result.skillsApplied.length} skills — ${result.backups.length} backup${result.backups.length === 1 ? "" : "s"} written`,
+          `Applied "${result.profile}" to ${result.agent}: ${result.mcpsApplied.length} MCPs, ${result.skillsApplied.length} skills, ${result.pluginsApplied.length} plugins — ${result.backups.length} backup${result.backups.length === 1 ? "" : "s"} written`,
         );
         onAgentsChanged();
       }),

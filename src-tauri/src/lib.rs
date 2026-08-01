@@ -113,6 +113,9 @@ pub fn run() {
             commands::git::get_github_repo,
             // logs
             commands::logs::get_logs,
+            // remote skills
+            commands::skills::search_skills,
+            commands::skills::load_one_time_skill_prompt,
             // terminal
             commands::terminal::list_terminal_sessions,
             commands::terminal::list_agent_transcripts,

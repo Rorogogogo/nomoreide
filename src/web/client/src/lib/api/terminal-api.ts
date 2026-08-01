@@ -7,10 +7,15 @@
 
 export type TerminalState = "idle" | "running" | "exited" | "error";
 
+import type { OneTimeSkillSelection } from "./skills-api.js";
+export type { OneTimeSkillSelection } from "./skills-api.js";
+
 export interface CreateAgentTerminalOptions {
   provider: "claude" | "codex";
   prompt: string;
   label?: string;
+  /** A remote skill resolved by the backend for this fresh session only. */
+  oneTimeSkill?: OneTimeSkillSelection;
   /** Provider session id to reopen instead of starting a fresh conversation. */
   resumeId?: string;
 }
@@ -23,6 +28,8 @@ export interface AgentTranscriptInfo {
   startedAt: string;
   updatedAt: string;
 }
+
+export type AgentTranscriptScope = "current" | "all";
 
 /** One terminal tab as tracked by the server's session manager. */
 export interface TerminalSessionInfo {
@@ -41,7 +48,7 @@ export interface TerminalSessionInfo {
 
 export interface TerminalApi {
   listTerminalSessions(): Promise<TerminalSessionInfo[]>;
-  listAgentTranscripts(): Promise<AgentTranscriptInfo[]>;
+  listAgentTranscripts(scope?: AgentTranscriptScope): Promise<AgentTranscriptInfo[]>;
   createTerminalSession(opts?: { serviceName?: string }): Promise<TerminalSessionInfo>;
   createAgentTerminalSession(opts: CreateAgentTerminalOptions): Promise<TerminalSessionInfo>;
   renameTerminalSession(id: string, label: string): Promise<TerminalSessionInfo>;

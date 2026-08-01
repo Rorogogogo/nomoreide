@@ -5,7 +5,7 @@
  * per-function `if (isTauri())` branch.
  */
 import { isTauri } from "./tauri-bridge.js";
-import type { CreateAgentTerminalOptions, TerminalApi } from "./terminal-api.js";
+import type { AgentTranscriptScope, CreateAgentTerminalOptions, TerminalApi } from "./terminal-api.js";
 import { httpTerminalApi } from "./terminal-http.js";
 import { tauriTerminalApi } from "./terminal-tauri.js";
 
@@ -24,8 +24,8 @@ export function listTerminalSessions() {
   return terminalApi().listTerminalSessions();
 }
 
-export function listAgentTranscripts() {
-  return terminalApi().listAgentTranscripts();
+export function listAgentTranscripts(scope?: AgentTranscriptScope) {
+  return terminalApi().listAgentTranscripts(scope);
 }
 
 export function createTerminalSession(opts?: { serviceName?: string }) {

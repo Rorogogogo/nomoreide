@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Bot,
   ChevronDown,
@@ -53,6 +53,43 @@ export function AgentLogo({
 const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
 
 type StageChange = (change: AgentEnvPendingChange) => void;
+const AUTO_COLLAPSE_THRESHOLD = 5;
+
+function SectionDisclosure({
+  children,
+  count,
+  expanded,
+  label,
+  onToggle,
+}: {
+  children: ReactNode;
+  count: number;
+  expanded: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <section className="px-3 py-2">
+      <h3>
+        <button
+          aria-expanded={expanded}
+          className="flex h-6 w-full items-center gap-1.5 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+          onClick={onToggle}
+          type="button"
+        >
+          {expanded ? (
+            <ChevronDown aria-hidden="true" className="size-3" />
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-3" />
+          )}
+          <span>{label}</span>
+          <span className="font-mono font-normal tabular-nums">{count}</span>
+        </button>
+      </h3>
+      {expanded ? <div className="mt-1.5">{children}</div> : null}
+    </section>
+  );
+}
 
 /** One agent's live environment: MCP servers by scope, then skills & plugins. */
 export function AgentColumn({
@@ -197,11 +234,16 @@ function McpSection({
   onStage?: StageChange;
 }) {
   const t = useT();
+  const [expanded, setExpanded] = useState(
+    () => mcps.length <= AUTO_COLLAPSE_THRESHOLD,
+  );
   return (
-    <section className="px-3 py-3">
-      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </h3>
+    <SectionDisclosure
+      count={mcps.length}
+      expanded={expanded}
+      label={label}
+      onToggle={() => setExpanded((value) => !value)}
+    >
       {mcps.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("agentEnv.noneConfigured")}</p>
       ) : (
@@ -237,7 +279,7 @@ function McpSection({
           ))}
         </ul>
       )}
-    </section>
+    </SectionDisclosure>
   );
 }
 
@@ -251,11 +293,16 @@ function SkillsSection({
   onStage?: StageChange;
 }) {
   const t = useT();
+  const [expanded, setExpanded] = useState(
+    () => skills.length <= AUTO_COLLAPSE_THRESHOLD,
+  );
   return (
-    <section className="px-3 py-3">
-      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {t("agentEnv.skills")}
-      </h3>
+    <SectionDisclosure
+      count={skills.length}
+      expanded={expanded}
+      label={t("agentEnv.skills")}
+      onToggle={() => setExpanded((value) => !value)}
+    >
       {skills.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("agentEnv.noneInstalled")}</p>
       ) : (
@@ -293,7 +340,7 @@ function SkillsSection({
           ))}
         </ul>
       )}
-    </section>
+    </SectionDisclosure>
   );
 }
 
@@ -314,18 +361,31 @@ function PluginsSection({
   onStage?: StageChange;
 }) {
   const t = useT();
-  if (plugins.length === 0) return null;
+  const [expanded, setExpanded] = useState(
+    () => plugins.length <= AUTO_COLLAPSE_THRESHOLD,
+  );
   return (
-    <section className="px-3 py-3">
-      <h3 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {t("agentEnv.plugins")}
-      </h3>
-      <ul className="divide-y divide-border/60 border-y border-border/60">
-        {plugins.map((plugin) => (
-          <PluginRow agent={agent} key={plugin.name} onStage={onStage} plugin={plugin} />
-        ))}
-      </ul>
-    </section>
+    <SectionDisclosure
+      count={plugins.length}
+      expanded={expanded}
+      label={t("agentEnv.plugins")}
+      onToggle={() => setExpanded((value) => !value)}
+    >
+      {plugins.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t("agentEnv.noneInstalled")}</p>
+      ) : (
+        <ul className="divide-y divide-border/60 border-y border-border/60">
+          {plugins.map((plugin) => (
+            <PluginRow
+              agent={agent}
+              key={`${plugin.name}:${plugin.source ?? ""}`}
+              onStage={onStage}
+              plugin={plugin}
+            />
+          ))}
+        </ul>
+      )}
+    </SectionDisclosure>
   );
 }
 

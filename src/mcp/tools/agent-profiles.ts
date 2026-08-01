@@ -2,6 +2,7 @@ import type { FastMCP } from "fastmcp";
 import { z } from "zod";
 import {
   applyProfile,
+  copyPluginBetweenProfiles,
   copySkillBetweenProfiles,
   createProfile,
   deleteProfile,
@@ -10,7 +11,9 @@ import {
   importProfile,
   listProfiles,
   previewProfileApply,
+  pluginIdentity,
   profileMcpSchema,
+  profilePluginSchema,
   snapshotProfileFromAgent,
   updateProfile,
 } from "../../core/agent-profiles/index.js";
@@ -45,14 +48,14 @@ const cwdField = z
 export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): void {
   server.addTool({
     name: "nomoreide_profiles_list",
-    description: "List saved agent profiles (named bundles of MCP servers + skills).",
+    description: "List saved agent profiles (named bundles of MCP servers, skills, and plugins).",
     parameters: z.object({}),
     execute: async () => stringify(await listProfiles()),
   });
 
   server.addTool({
     name: "nomoreide_profiles_get",
-    description: "Get a profile's full config: MCP servers and bundled skills.",
+    description: "Get a profile's full config: MCP servers, bundled skills, and plugins.",
     parameters: z.object({ name: nameField }),
     execute: async ({ name }) => stringify(await getProfile(name)),
   });
@@ -68,12 +71,13 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
   server.addTool({
     name: "nomoreide_profiles_update",
     description:
-      "Update a profile's description, MCP map, or skill list (name is immutable).",
+      "Update a profile's description, MCP map, skill list, or plugin list (name is immutable).",
     parameters: z.object({
       name: nameField,
       description: z.string().optional(),
       mcps: z.record(profileMcpSchema).optional(),
       skills: z.array(z.object({ name: z.string().min(1) })).optional(),
+      plugins: z.array(profilePluginSchema).optional(),
     }),
     execute: async ({ name, ...patch }) => stringify(await updateProfile(name, patch)),
   });
@@ -91,7 +95,7 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
   server.addTool({
     name: "nomoreide_profiles_snapshot",
     description:
-      "Snapshot an agent's live MCPs and user skills into a new profile — useful as a backup before bulk changes or to capture a setup for sharing.",
+      "Snapshot an agent's live MCPs, user skills, and installed plugins into a new profile.",
     parameters: z.object({
       agent: agentSchema,
       name: nameField,
@@ -107,13 +111,14 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
   server.addTool({
     name: "nomoreide_profiles_apply",
     description:
-      "Apply a profile's MCPs and skills to an agent. Set dryRun=true for a conflict preview (add/identical/conflict per item). A real apply snapshots the agent config first and returns every backup path.",
+      "Apply a profile's MCPs, skills, and plugins to an agent. Set dryRun=true for a conflict preview.",
     parameters: z.object({
       name: nameField,
       agent: agentSchema,
       dryRun: z.boolean().default(false),
       skipMcps: z.array(z.string()).optional().describe("MCP keys to leave untouched."),
       skipSkills: z.array(z.string()).optional().describe("Skill names to leave untouched."),
+      skipPlugins: z.array(z.string()).optional().describe("Plugin names to leave untouched."),
       cwd: cwdField,
     }),
     execute: async (input) => {
@@ -126,7 +131,11 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
           cwd,
           name: input.name,
           agent: input.agent,
-          skip: { mcps: input.skipMcps, skills: input.skipSkills },
+          skip: {
+            mcps: input.skipMcps,
+            skills: input.skipSkills,
+            plugins: input.skipPlugins,
+          },
         }),
       );
     },
@@ -167,12 +176,16 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
   server.addTool({
     name: "nomoreide_profiles_copy_items",
     description:
-      "Copy selected MCPs and/or skills from one profile into another (overwrites same-named items in the target).",
+      "Copy selected MCPs, skills, and/or plugins from one profile into another.",
     parameters: z.object({
       from: z.string().min(1),
       to: z.string().min(1),
       mcps: z.array(z.string()).optional().describe("MCP keys to copy."),
       skills: z.array(z.string()).optional().describe("Skill names to copy."),
+      plugins: z
+        .array(z.string())
+        .optional()
+        .describe("Canonical plugin IDs to copy; an unambiguous plugin name is also accepted."),
     }),
     execute: async (input) => {
       const source = await getProfile(input.from);
@@ -199,9 +212,38 @@ export function registerAgentProfileTools(server: FastMCP, _ctx: ToolContext): v
         }
         copiedSkills.push(skillName);
       }
+      const plugins = [...target.plugins];
+      const copiedPlugins: string[] = [];
+      for (const pluginSelector of input.plugins ?? []) {
+        const pluginById = source.plugins.find(
+          (entry) => pluginIdentity(entry) === pluginSelector,
+        );
+        const pluginsByName = source.plugins.filter(
+          (entry) => entry.name === pluginSelector,
+        );
+        if (!pluginById && pluginsByName.length > 1) {
+          throw new Error(
+            `Plugin name "${pluginSelector}" is ambiguous in profile "${input.from}". Use one of: ${pluginsByName.map(pluginIdentity).join(", ")}.`,
+          );
+        }
+        const plugin = pluginById ?? pluginsByName[0];
+        if (!plugin) {
+          throw new Error(`Plugin "${pluginSelector}" not found in profile "${input.from}".`);
+        }
+        await copyPluginBetweenProfiles(input.from, input.to, plugin.bundleKey);
+        const existing = plugins.findIndex(
+          (entry) =>
+            entry.name === plugin.name &&
+            entry.sourceAgent === plugin.sourceAgent &&
+            entry.source === plugin.source,
+        );
+        if (existing >= 0) plugins[existing] = plugin;
+        else plugins.push(plugin);
+        copiedPlugins.push(pluginIdentity(plugin));
+      }
 
-      await updateProfile(input.to, { mcps, skills });
-      return stringify({ ok: true, copiedMcps, copiedSkills });
+      await updateProfile(input.to, { mcps, skills, plugins });
+      return stringify({ ok: true, copiedMcps, copiedSkills, copiedPlugins });
     },
   });
 }

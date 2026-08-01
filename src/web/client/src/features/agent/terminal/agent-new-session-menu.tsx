@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Plus, SquareTerminal } from "lucide-react";
 import type { AgentChatProviderOption } from "@/lib/api";
@@ -8,13 +8,11 @@ import { ClaudeLogo, CodexLogo } from "../agent-logos";
 
 export function AgentNewSessionMenu({
   creating,
-  direction = "up",
   onCreateAgent,
   onCreateShell,
   providers,
 }: {
   creating: boolean;
-  direction?: "up" | "down";
   onCreateAgent: (provider: AgentChatProviderOption) => void;
   onCreateShell: () => void;
   providers: AgentChatProviderOption[];
@@ -25,25 +23,50 @@ export function AgentNewSessionMenu({
     bottom?: number;
     right: number;
     top?: number;
-  }>({ bottom: 36, right: 8 });
+  }>({ right: 8, top: 8 });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   function toggle() {
-    const trigger = rootRef.current?.getBoundingClientRect();
-    if (trigger) {
-      setPosition(direction === "down"
-        ? {
-            top: trigger.bottom + 4,
-            right: Math.max(8, window.innerWidth - trigger.right),
-          }
-        : {
-            bottom: window.innerHeight - trigger.top + 4,
-            right: Math.max(8, window.innerWidth - trigger.right),
-          });
-    }
     setOpen((value) => !value);
   }
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const placeMenu = () => {
+      const trigger = rootRef.current?.getBoundingClientRect();
+      const menu = menuRef.current?.getBoundingClientRect();
+      if (!trigger || !menu) return;
+      const gap = 4;
+      const viewportPadding = 8;
+      const availableBelow =
+        window.innerHeight - trigger.bottom - gap - viewportPadding;
+      const desiredRight = window.innerWidth - trigger.right;
+      const maximumRight = Math.max(
+        viewportPadding,
+        window.innerWidth - menu.width - viewportPadding,
+      );
+      const right = Math.min(
+        Math.max(viewportPadding, desiredRight),
+        maximumRight,
+      );
+      setPosition(
+        menu.height <= availableBelow
+          ? { right, top: trigger.bottom + gap }
+          : { bottom: window.innerHeight - trigger.top + gap, right },
+      );
+    };
+    placeMenu();
+    window.addEventListener("resize", placeMenu);
+    window.addEventListener("scroll", placeMenu, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("resize", placeMenu);
+      window.removeEventListener("scroll", placeMenu, true);
+    };
+  }, [open, providers.length]);
 
   useEffect(() => {
     if (!open) return;

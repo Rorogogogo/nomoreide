@@ -507,13 +507,23 @@ describe("web server", () => {
 
     const metricsResponse = await fetch(`${server.url}/api/metrics`);
     expect(metricsResponse.status).toBe(200);
-    await expect(metricsResponse.json()).resolves.toMatchObject({
+    const metricsPayload = await metricsResponse.json();
+    expect(metricsPayload).toMatchObject({
       ok: true,
       metrics: {
         sampleIntervalMs: 3000,
         host: { samples: expect.any(Array) },
         services: {},
       },
+    });
+    expect(metricsPayload.metrics.systemProcesses).toBeUndefined();
+
+    const processMetricsResponse = await fetch(
+      `${server.url}/api/metrics?includeProcesses=1`,
+    );
+    await expect(processMetricsResponse.json()).resolves.toMatchObject({
+      ok: true,
+      metrics: { systemProcesses: expect.any(Array) },
     });
 
     const shellResponse = await fetch(`${server.url}/activity`);
@@ -1884,6 +1894,8 @@ describe("web server", () => {
 
     const response = await fetch(`${server.url}/api/git/fetch`, { method: "POST" });
     const dashboard = await (await fetch(`${server.url}/api/dashboard`)).json();
+    const branchesResponse = await fetch(`${server.url}/api/git/branches`);
+    const branches = await branchesResponse.json();
 
     expect(response.status).toBe(200);
     expect(dashboard.git.branches).toContainEqual({
@@ -1891,6 +1903,8 @@ describe("web server", () => {
       current: false,
       remote: true,
     });
+    expect(branchesResponse.status).toBe(200);
+    expect(branches.branches).toEqual(dashboard.git.branches);
   });
 
   test("reports changed files across every repository for the board", async () => {

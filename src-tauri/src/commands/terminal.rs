@@ -1,6 +1,9 @@
 use crate::core::agent_transcripts::{
     list_agent_transcripts as read_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
 };
+use crate::core::one_time_skills::{
+    compose_one_time_skill_prompt, resolve_one_time_skill, OneTimeSkillSelection,
+};
 #[cfg(target_os = "macos")]
 use crate::core::process_manager::service_path;
 use crate::AppState;
@@ -43,6 +46,7 @@ pub struct AgentTerminalRequest {
     provider: String,
     prompt: String,
     label: Option<String>,
+    one_time_skill: Option<OneTimeSkillSelection>,
     resume_id: Option<String>,
 }
 
@@ -631,6 +635,7 @@ pub async fn list_terminal_sessions(
 #[tauri::command]
 pub async fn list_agent_transcripts(
     state: State<'_, AppState>,
+    scope: Option<String>,
 ) -> Result<Vec<AgentTranscript>, String> {
     let config = state
         .config_store
@@ -659,7 +664,12 @@ pub async fn list_agent_transcripts(
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| home.join(".codex"));
     tauri::async_runtime::spawn_blocking(move || {
-        read_agent_transcripts(&home, &codex_home, &repo_path, DEFAULT_TRANSCRIPT_LIMIT)
+        read_agent_transcripts(
+            &home,
+            &codex_home,
+            (scope.as_deref() != Some("all")).then_some(repo_path.as_str()),
+            DEFAULT_TRANSCRIPT_LIMIT,
+        )
     })
     .await
     .map_err(|error| error.to_string())
@@ -731,11 +741,20 @@ pub async fn create_terminal_session(
     };
 
     let (shell, args, label, kind, provider) = if let Some(request) = &agent {
+        if request.resume_id.is_some() && request.one_time_skill.is_some() {
+            return Err("A temporary skill cannot be attached to a resumed session.".into());
+        }
+        let prompt = if let Some(selection) = &request.one_time_skill {
+            let skill_prompt = resolve_one_time_skill(selection).await?;
+            compose_one_time_skill_prompt(&skill_prompt, &request.prompt)?
+        } else {
+            request.prompt.clone()
+        };
         let claude_bin = agent_binary("NOMOREIDE_CLAUDE_BIN", "claude");
         let codex_bin = agent_binary("NOMOREIDE_CODEX_BIN", "codex");
         let invocation = derive_agent_invocation(
             &request.provider,
-            &request.prompt,
+            &prompt,
             request.resume_id.as_deref(),
             &claude_bin,
             &codex_bin,

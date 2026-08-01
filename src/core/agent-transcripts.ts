@@ -28,7 +28,7 @@ export interface AgentTranscript {
 const MAX_HEAD_LINES = 500;
 /** Upper bound on Codex rollout files opened per listing (they carry no path index). */
 const MAX_CODEX_SCAN = 400;
-/** Enough history for the dock picker to be useful without scanning unbounded metadata. */
+/** Enough history per provider for the dock picker without letting one crowd out the other. */
 const DEFAULT_TRANSCRIPT_LIMIT = 100;
 const MAX_TITLE = 200;
 
@@ -138,7 +138,7 @@ async function readClaudeTranscript(filePath: string, fallbackId: string): Promi
  * `expectedCwd` lets a session that belongs to another project stop at its
  * `session_meta` line instead of being read on in search of a prompt.
  */
-async function readCodexTranscript(filePath: string, expectedCwd: string): Promise<AgentTranscript | null> {
+async function readCodexTranscript(filePath: string, expectedCwd?: string): Promise<AgentTranscript | null> {
   let id: string | undefined;
   let cwd: string | undefined;
   let title: string | undefined;
@@ -153,7 +153,7 @@ async function readCodexTranscript(filePath: string, expectedCwd: string): Promi
       else if (typeof body.id === "string") id = body.id;
       if (typeof body.cwd === "string") cwd = body.cwd;
       if (typeof body.timestamp === "string") startedAt = body.timestamp;
-      return cwd !== expectedCwd;
+      return Boolean(expectedCwd && cwd !== expectedCwd);
     }
     if (!title && body.type === "message" && body.role === "user") {
       const text = codexText(body.content);
@@ -162,7 +162,7 @@ async function readCodexTranscript(filePath: string, expectedCwd: string): Promi
     return Boolean(title);
   });
 
-  if (!id || cwd !== expectedCwd) return null;
+  if (!id || !cwd || (expectedCwd && cwd !== expectedCwd)) return null;
   const { mtime } = await stat(filePath);
   return {
     id,
@@ -182,16 +182,20 @@ async function listDir(path: string): Promise<string[]> {
   }
 }
 
-async function claudeTranscripts(homeDir: string, repoPath: string): Promise<AgentTranscript[]> {
+async function claudeTranscripts(homeDir: string, repoPath?: string): Promise<AgentTranscript[]> {
   const root = join(homeDir, ".claude", "projects");
-  const key = pathKey(repoPath);
-  const dirs = (await listDir(root)).filter((name) => pathKey(name) === key);
+  const key = repoPath ? pathKey(repoPath) : null;
+  const dirs = (await listDir(root)).filter(
+    (name) => !key || pathKey(name) === key,
+  );
   const results: AgentTranscript[] = [];
   for (const dir of dirs) {
     const files = (await listDir(join(root, dir))).filter((name) => name.endsWith(".jsonl"));
     for (const file of files) {
       const transcript = await readClaudeTranscript(join(root, dir, file), file.replace(/\.jsonl$/, ""));
-      if (transcript && transcript.cwd === repoPath) results.push(transcript);
+      if (transcript && (!repoPath || transcript.cwd === repoPath)) {
+        results.push(transcript);
+      }
     }
   }
   return results;
@@ -216,7 +220,7 @@ async function codexRolloutFiles(codexHome: string): Promise<string[]> {
   return files;
 }
 
-async function codexTranscripts(codexHome: string, repoPath: string): Promise<AgentTranscript[]> {
+async function codexTranscripts(codexHome: string, repoPath?: string): Promise<AgentTranscript[]> {
   const results: AgentTranscript[] = [];
   for (const filePath of await codexRolloutFiles(codexHome)) {
     const transcript = await readCodexTranscript(filePath, repoPath);
@@ -226,7 +230,8 @@ async function codexTranscripts(codexHome: string, repoPath: string): Promise<Ag
 }
 
 export interface ListAgentTranscriptsOptions {
-  repoPath: string;
+  /** Omit to list recent sessions across every project. */
+  repoPath?: string;
   limit?: number;
   /** Overridable for tests; defaults to the real home directory. */
   homeDir?: string;
@@ -235,9 +240,10 @@ export interface ListAgentTranscriptsOptions {
 }
 
 /**
- * Prior Claude and Codex sessions recorded for `repoPath`, most recently
- * written first. Metadata only — the transcript bodies are never surfaced,
- * because resuming hands the conversation back to the CLI that rendered it.
+ * Prior Claude and Codex sessions for one repository, or every project when
+ * `repoPath` is omitted, most recently written first. Metadata only — the
+ * transcript bodies are never surfaced because resuming hands the conversation
+ * back to the CLI that rendered it.
  */
 export async function listAgentTranscripts(
   options: ListAgentTranscriptsOptions,
@@ -251,8 +257,15 @@ export async function listAgentTranscripts(
     claudeTranscripts(homeDir, repoPath),
     codexTranscripts(codexHome, repoPath),
   ]);
-  return [...claude, ...codex]
-    .filter((transcript) => transcript.title)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, limit);
+  const newest = (transcripts: AgentTranscript[]) =>
+    transcripts
+      .filter((transcript) => transcript.title)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (options.limit !== undefined) {
+    return newest([...claude, ...codex]).slice(0, limit);
+  }
+  return newest([
+    ...newest(claude).slice(0, DEFAULT_TRANSCRIPT_LIMIT),
+    ...newest(codex).slice(0, DEFAULT_TRANSCRIPT_LIMIT),
+  ]);
 }

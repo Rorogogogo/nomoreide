@@ -19,8 +19,9 @@ describe("agent terminal client API", () => {
     expect(contractSource).toMatch(/provider:\s*"claude"\s*\|\s*"codex"/);
     expect(contractSource).toMatch(/prompt:\s*string/);
     expect(contractSource).toMatch(/label\?:\s*string/);
+    expect(contractSource).toMatch(/oneTimeSkill\?:\s*OneTimeSkillSelection/);
     expect(contractSource).toMatch(/resumeId\?:\s*string/);
-    expect(contractSource).toContain("listAgentTranscripts(): Promise<AgentTranscriptInfo[]>");
+    expect(contractSource).toContain("listAgentTranscripts(scope?: AgentTranscriptScope)");
     expect(contractSource).toMatch(/kind\?:\s*"shell"\s*\|\s*"service"\s*\|\s*"agent"/);
     expect(contractSource).toMatch(/provider\?:\s*"claude"\s*\|\s*"codex"/);
     expect(contractSource).toContain(
@@ -69,6 +70,43 @@ describe("agent terminal client API", () => {
           label: "Diagnose API",
         },
       }),
+    });
+  });
+
+  test("HTTP creation carries one temporary skill as typed metadata", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        ok: true,
+        session: {
+          id: "agent-skill",
+          cwd: "/repo",
+          cols: 100,
+          rows: 28,
+          shell: "codex",
+          state: "running",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+
+    await httpTerminalApi.createAgentTerminalSession({
+      provider: "codex",
+      prompt: "Find a useful skill",
+      oneTimeSkill: {
+        name: "find-skills",
+        source: "vercel-labs/skills@find-skills",
+      },
+    });
+
+    expect(JSON.parse(fetch.mock.calls[0]?.[1]?.body as string)).toEqual({
+      agent: {
+        provider: "codex",
+        prompt: "Find a useful skill",
+        oneTimeSkill: {
+          name: "find-skills",
+          source: "vercel-labs/skills@find-skills",
+        },
+      },
     });
   });
 

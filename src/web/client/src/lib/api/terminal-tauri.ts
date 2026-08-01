@@ -10,7 +10,7 @@ import type { TerminalApi } from "./terminal-api.js";
 
 export const tauriTerminalApi: TerminalApi = {
   listTerminalSessions: () => tauri_listTerminalSessions(),
-  listAgentTranscripts: () => tauri_listAgentTranscripts(),
+  listAgentTranscripts: (scope) => tauri_listAgentTranscripts(scope),
   createTerminalSession: (opts) => tauri_createTerminalSession(opts),
   createAgentTerminalSession: (opts) => tauri_createTerminalSession({ agent: opts }),
   renameTerminalSession: (id, label) => tauri_renameTerminalSession(id, label),

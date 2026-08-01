@@ -2,9 +2,18 @@ import {
   createContext,
   useCallback,
   useContext,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import type { OneTimeSkillSelection } from "@/lib/api";
+import {
+  type AgentDockLayoutPatch,
+  type AgentDockLayoutPreferences,
+  loadAgentDockLayoutPreferences,
+  mergeAgentDockLayoutPreferences,
+  saveAgentDockLayoutPreferences,
+} from "../terminal/agent-dock-layout-preferences";
 import { useAgentTerminalTasks } from "../terminal/use-agent-terminal-tasks";
 
 /** The object an AI action was invoked from, shown as a chip in the dock. */
@@ -33,6 +42,8 @@ interface SendToAgentOptions {
 }
 
 type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
+  dockLayout: AgentDockLayoutPreferences;
+  updateDockLayout: (patch: AgentDockLayoutPatch) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
   draft: string;
@@ -43,6 +54,11 @@ type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
   /** The source object behind the current/last action, or null. */
   activeSource: AgentSource | null;
   clearSource: () => void;
+  /** Remote skill attached to the next successfully submitted agent prompt only. */
+  pendingOneTimeSkill: OneTimeSkillSelection | null;
+  selectOneTimeSkill: (skill: OneTimeSkillSelection) => void;
+  clearOneTimeSkill: () => void;
+  consumeOneTimeSkill: (skill: OneTimeSkillSelection) => void;
   /** Bumped whenever the input should re-focus (draft prefill, path insert). */
   focusNonce: number;
   /** The one entry point every feature uses to push an action into the dock. */
@@ -63,13 +79,44 @@ const AgentContext = createContext<AgentContextValue | null>(null);
  */
 export function AgentProvider({ children }: { children: ReactNode }) {
   const terminalTasks = useAgentTerminalTasks();
-  const [open, setOpen] = useState(false);
+  const [dockLayout, setDockLayout] = useState(
+    loadAgentDockLayoutPreferences,
+  );
+  const dockLayoutRef = useRef(dockLayout);
+  const updateDockLayout = useCallback((patch: AgentDockLayoutPatch) => {
+    const next = mergeAgentDockLayoutPreferences(dockLayoutRef.current, patch);
+    if (JSON.stringify(next) === JSON.stringify(dockLayoutRef.current)) return;
+    dockLayoutRef.current = next;
+    setDockLayout(next);
+    saveAgentDockLayoutPreferences(next);
+  }, []);
+  const open = dockLayout.open;
+  const setOpen = useCallback(
+    (next: boolean) => updateDockLayout({ open: next }),
+    [updateDockLayout],
+  );
   const [draft, setDraft] = useState("");
   const [activeSource, setActiveSource] = useState<AgentSource | null>(null);
+  const [pendingOneTimeSkill, setPendingOneTimeSkill] =
+    useState<OneTimeSkillSelection | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const clearSource = useCallback(() => setActiveSource(null), []);
+  const clearOneTimeSkill = useCallback(() => setPendingOneTimeSkill(null), []);
+  const selectOneTimeSkill = useCallback(
+    (skill: OneTimeSkillSelection) => {
+      setPendingOneTimeSkill(skill);
+      setOpen(true);
+      bumpFocus();
+    },
+    [bumpFocus],
+  );
+  const consumeOneTimeSkill = useCallback((skill: OneTimeSkillSelection) => {
+    setPendingOneTimeSkill((current) =>
+      current?.source === skill.source ? null : current,
+    );
+  }, []);
   const startOnboard = useCallback(() => {
     setOpen(true);
     setOnboarding(true);
@@ -119,6 +166,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   const value: AgentContextValue = {
     ...terminalTasks,
+    dockLayout,
+    updateDockLayout,
     open,
     setOpen,
     draft,
@@ -127,6 +176,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     insertPrompt,
     activeSource,
     clearSource,
+    pendingOneTimeSkill,
+    selectOneTimeSkill,
+    clearOneTimeSkill,
+    consumeOneTimeSkill,
     focusNonce,
     sendToAgent,
     onboarding,

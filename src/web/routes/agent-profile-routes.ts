@@ -27,7 +27,7 @@ const createBodySchema = z.object({
 });
 
 const patchBodySchema = profileSchema
-  .pick({ description: true, mcps: true, skills: true })
+  .pick({ description: true, mcps: true, skills: true, plugins: true })
   .partial();
 
 const snapshotBodySchema = z.object({
@@ -42,6 +42,7 @@ const applyBodySchema = z.object({
     .object({
       mcps: z.array(z.string()).optional(),
       skills: z.array(z.string()).optional(),
+      plugins: z.array(z.string()).optional(),
     })
     .optional(),
 });

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { mergeManagedPluginsIntoSkills, readManagedPlugins } from "./managed-plugins.js";
 import { readInstalledPlugins } from "./plugin-reader.js";
 import {
   filterPluginOwnedMcps,
@@ -100,20 +101,26 @@ function isClaudeRemoteEntry(entry: Record<string, unknown>): boolean {
 }
 
 async function readClaudeUserSkills(homeDir: string): Promise<AgentSkillEntry[]> {
-  const results: AgentSkillEntry[] = [];
+  const plugins: AgentSkillEntry[] = await readManagedPlugins({ agent: "claude", homeDir });
+  let localSkills: AgentSkillEntry[] = [];
 
   try {
     const pluginsPath = path.join(homeDir, ".claude", "plugins", "installed_plugins.json");
-    results.push(...(await readInstalledPlugins(pluginsPath)));
+    plugins.push(...(await readInstalledPlugins(pluginsPath)));
   } catch {
     // no plugins file
   }
 
   try {
-    results.push(...(await readSkillDirs(path.join(homeDir, ".claude", "skills"))));
+    localSkills = await readSkillDirs(path.join(homeDir, ".claude", "skills"));
   } catch {
     // no skills dir
   }
 
-  return results;
+  const uniquePlugins = new Map<string, AgentSkillEntry>();
+  for (const plugin of plugins) {
+    const identity = `${plugin.name}\0${plugin.source ?? ""}`;
+    if (!uniquePlugins.has(identity)) uniquePlugins.set(identity, plugin);
+  }
+  return mergeManagedPluginsIntoSkills(localSkills, Array.from(uniquePlugins.values()));
 }

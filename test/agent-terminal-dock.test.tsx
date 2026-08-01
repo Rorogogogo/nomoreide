@@ -7,12 +7,25 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const dock = vi.hoisted(() => ({
   activeSource: null as null | { type: string; label: string }, activeTaskId: null as string | null,
-  claimInitialInput: vi.fn(), clearSource: vi.fn(), closeTask: vi.fn(), configured: true,
+  claimInitialInput: vi.fn(), clearOneTimeSkill: vi.fn(), clearSource: vi.fn(), closeTask: vi.fn(), configured: true,
+  consumeOneTimeSkill: vi.fn(),
   createShellTask: vi.fn(), createTask: vi.fn(), creating: 0,
+  dockLayout: {
+    version: 1 as const,
+    open: false,
+    bottomHeight: null as number | null,
+    rightWidth: 480,
+    splitPercent: 50,
+    rightTaskIds: [] as string[],
+    activeLeftTaskId: null as string | null,
+    activeRightTaskId: null as string | null,
+    focusedPane: "left" as "left" | "right",
+  },
   draft: "", focusNonce: 0, insertPath: vi.fn(), onboarding: false, open: false,
   loadTranscripts: vi.fn(),
   provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
   pendingTaskIds: new Set<string>(),
+  pendingOneTimeSkill: null as null | { name: string; source: string },
   providers: [
     { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "", configured: true },
     { id: "codex", label: "Codex", commandName: "codex", installHint: "npm i codex", intro: "", configured: false },
@@ -20,14 +33,18 @@ const dock = vi.hoisted(() => ({
   // Selection lives in the provider, so the mock must actually hold it — the
   // dock reads it back to decide whether the compose tab is the current one.
   selectProvider: vi.fn(), setActiveTaskId: vi.fn((id: string | null) => { dock.activeTaskId = id; }),
+  selectOneTimeSkill: vi.fn(),
   setDraft: vi.fn(), setOnboarding: vi.fn(),
   renameTask: vi.fn(),
   resumeTask: vi.fn(),
   setOpen: vi.fn(), stopTask: vi.fn(), tasks: [] as Array<Record<string, unknown>>,
+  tasksHydrated: true,
+  tasksHydrationSettled: true,
   terminalError: null as string | null,
   transcripts: [] as Array<Record<string, unknown>>,
   transcriptsError: null as string | null,
   transcriptsLoading: false,
+  updateDockLayout: vi.fn(),
   updateTaskStatus: vi.fn(),
 }));
 const uiSettings = vi.hoisted(() => ({
@@ -35,15 +52,45 @@ const uiSettings = vi.hoisted(() => ({
   ui: { agentDockPlacement: "bottom" as "bottom" | "right" },
   updateUi: vi.fn(),
 }));
+const skillPromptApi = vi.hoisted(() => ({
+  load: vi.fn(),
+}));
+const terminalHandle = vi.hoisted(() => ({
+  focus: vi.fn(),
+  input: vi.fn(),
+  paste: vi.fn(() => true),
+  refit: vi.fn(),
+  restart: vi.fn(),
+  stop: vi.fn(),
+}));
 
 vi.mock("@/features/agent/chat/agent-context", () => ({ useAgentDock: () => dock }));
+vi.mock("@/lib/api", () => ({
+  getAgentEnvConfigs: vi.fn().mockResolvedValue([]),
+  getAgentInfo: vi.fn().mockResolvedValue(null),
+  getAgentUsage: vi.fn().mockResolvedValue({}),
+  getMcpAuthStatuses: vi.fn().mockResolvedValue([]),
+  loadOneTimeSkillPrompt: skillPromptApi.load,
+}));
 vi.mock("@/features/settings/settings-context", () => ({
   useOptionalSettings: () => uiSettings,
 }));
-vi.mock("@/features/terminal/terminal-viewport", () => ({
-  TerminalViewport: ({ sessionId, active, onStatusChange }: { sessionId: string; active: boolean; onStatusChange: (s: unknown) => void }) =>
-    <button data-active={String(active)} data-session={sessionId} onClick={() => onStatusChange({ state: "running", cwd: "/repo", detail: "claude" })}>viewport</button>,
-}));
+vi.mock("@/features/terminal/terminal-viewport", async () => {
+  const { forwardRef, useImperativeHandle } = await import("react");
+  return {
+    TerminalViewport: forwardRef(function MockTerminalViewport(
+      { sessionId, active, onStatusChange }: {
+        sessionId: string;
+        active: boolean;
+        onStatusChange: (s: unknown) => void;
+      },
+      ref,
+    ) {
+      useImperativeHandle(ref, () => terminalHandle);
+      return <button data-active={String(active)} data-session={sessionId} onClick={() => onStatusChange({ state: "running", cwd: "/repo", detail: "claude" })}>viewport</button>;
+    }),
+  };
+});
 vi.mock("@/features/agent/chat/file-picker", () => ({ FilePicker: () => null }));
 vi.mock("@/features/git/git-situation-banner", () => ({ GitSituationBanner: () => null }));
 
@@ -67,6 +114,29 @@ async function render(props: ComponentProps<typeof AgentTerminalDock> = {}) {
 /** Flush a provider-state change the way a real re-render would. */
 async function rerender(mounted: { root: ReturnType<typeof createRoot> }) {
   await act(async () => mounted.root.render(<AgentTerminalDock />));
+}
+
+async function unmountMounted(mounted: {
+  host: HTMLElement;
+  root: ReturnType<typeof createRoot>;
+}) {
+  await act(async () => mounted.root.unmount());
+  mountedRoots = mountedRoots.filter((root) => root !== mounted.root);
+  mounted.host.remove();
+}
+
+function domRect(left: number, top: number, width: number, height: number) {
+  return {
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    toJSON: () => ({}),
+    top,
+    width,
+    x: left,
+    y: top,
+  } as DOMRect;
 }
 
 async function dragTaskToSplit(host: HTMLElement, taskId: string) {
@@ -109,14 +179,32 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     })),
   });
-  Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, onboarding: false, open: false, pendingTaskIds: new Set(), tasks: [], terminalError: null });
+  Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, onboarding: false, open: false, pendingOneTimeSkill: null, pendingTaskIds: new Set(), tasks: [], terminalError: null });
+  dock.dockLayout = {
+    version: 1,
+    open: false,
+    bottomHeight: null,
+    rightWidth: 480,
+    splitPercent: 50,
+    rightTaskIds: [],
+    activeLeftTaskId: null,
+    activeRightTaskId: null,
+    focusedPane: "left",
+  };
+  dock.tasksHydrated = true;
+  dock.tasksHydrationSettled = true;
+  dock.updateDockLayout.mockImplementation((patch) => {
+    Object.assign(dock.dockLayout, patch);
+  });
   Object.assign(dock, { transcripts: [], transcriptsError: null, transcriptsLoading: false });
   dock.loadTranscripts.mockResolvedValue([]);
   dock.closeTask.mockResolvedValue(true);
+  skillPromptApi.load.mockResolvedValue("skill context\n");
 });
 afterEach(async () => {
   const roots = mountedRoots; mountedRoots = [];
   await act(async () => { for (const root of roots) root.unmount(); });
+  vi.restoreAllMocks();
   globalThis.IS_REACT_ACT_ENVIRONMENT = false;
 });
 
@@ -214,6 +302,107 @@ describe("AgentTerminalDock", () => {
     expect(dock.clearSource).toHaveBeenCalled();
   });
 
+  test("attaches and consumes a temporary skill only after successful submit", async () => {
+    const skill = {
+      name: "find-skills",
+      source: "vercel-labs/skills@find-skills",
+    };
+    Object.assign(dock, {
+      open: true,
+      draft: "Find a testing skill",
+      pendingOneTimeSkill: skill,
+    });
+    dock.createTask.mockResolvedValue({ id: "new" });
+    const { host } = await render();
+
+    expect(host.textContent).toContain("find-skills");
+    expect(host.textContent).toContain("Attached to this prompt only");
+    await act(async () =>
+      (host.querySelector('[aria-label="Run agent task"]') as HTMLButtonElement).click(),
+    );
+
+    expect(dock.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({ oneTimeSkill: skill, prompt: "Find a testing skill" }),
+    );
+    expect(dock.consumeOneTimeSkill).toHaveBeenCalledWith(skill);
+  });
+
+  test("retains a temporary skill and draft when fresh task creation fails", async () => {
+    const skill = { name: "review", source: "owner/repo@review" };
+    Object.assign(dock, {
+      open: true,
+      draft: "Review this",
+      pendingOneTimeSkill: skill,
+    });
+    dock.createTask.mockResolvedValue(undefined);
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Run agent task"]') as HTMLButtonElement).click(),
+    );
+
+    expect(dock.consumeOneTimeSkill).not.toHaveBeenCalled();
+    expect(dock.setDraft).not.toHaveBeenCalledWith("");
+    expect(dock.clearOneTimeSkill).not.toHaveBeenCalled();
+  });
+
+  test("pastes a one-time skill into the active agent prompt without submitting it", async () => {
+    const skill = { name: "review", source: "owner/repo@review" };
+    Object.assign(dock, {
+      activeTaskId: "active",
+      open: true,
+      pendingOneTimeSkill: skill,
+      tasks: [
+        {
+          id: "active",
+          kind: "agent",
+          label: "Active",
+          provider: "claude",
+          state: "running",
+        },
+      ],
+    });
+    const { host } = await render();
+    await act(async () => {});
+
+    expect(skillPromptApi.load).toHaveBeenCalledWith(skill);
+    expect(terminalHandle.paste).toHaveBeenCalledWith(
+      "skill context\n\nUser's request:\n",
+      "Skill: review ",
+    );
+    expect(terminalHandle.input).not.toHaveBeenCalled();
+    expect(dock.consumeOneTimeSkill).toHaveBeenCalledWith(skill);
+    expect(dock.createTask).not.toHaveBeenCalled();
+    expect(host.querySelector('[aria-label="Agent task prompt"]')).toBeNull();
+  });
+
+  test("retains a retryable active attachment when resolving a skill fails", async () => {
+    const skill = { name: "review", source: "owner/repo@review" };
+    Object.assign(dock, {
+      activeTaskId: "active",
+      open: true,
+      pendingOneTimeSkill: skill,
+      tasks: [
+        {
+          id: "active",
+          kind: "agent",
+          label: "Active",
+          provider: "codex",
+          state: "running",
+        },
+      ],
+    });
+    skillPromptApi.load.mockRejectedValue(new Error("Skill unavailable"));
+    const { host } = await render();
+    await act(async () => {});
+
+    expect(host.textContent).toContain("Skill unavailable");
+    expect(host.querySelector('[data-one-time-skill-status]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Retry adding skill"]')).not.toBeNull();
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+    expect(dock.consumeOneTimeSkill).not.toHaveBeenCalled();
+  });
+
   test("opens a selected provider directly from plus and still reveals staged drafts", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "One", state: "running" }] });
     const mounted = await render();
@@ -253,6 +442,17 @@ describe("AgentTerminalDock", () => {
     );
     expect(dock.loadTranscripts).toHaveBeenCalled();
     expect(document.body.textContent).toContain("Finish conversation management");
+    const conversations = document.body.querySelector(
+      '[role="dialog"][aria-label="Conversations"]',
+    ) as HTMLElement;
+    const heading = conversations.querySelector("h2") as HTMLElement;
+    const historyIcon = conversations.querySelector(
+      "header .lucide-history",
+    ) as SVGElement;
+    expect(heading.className).toContain("text-sm");
+    expect(heading.className).not.toContain("font-mono");
+    expect(heading.className).not.toContain("uppercase");
+    expect(historyIcon.parentElement?.tagName).toBe("HEADER");
 
     await act(async () =>
       (Array.from(document.body.querySelectorAll("button")).find((button) =>
@@ -263,7 +463,73 @@ describe("AgentTerminalDock", () => {
     expect(document.body.querySelector('[aria-label="Conversations"]')).toBeNull();
   });
 
-  test("searches a scrollable conversation history by title or provider", async () => {
+  test("opens conversations downward and aligns them with the trigger when they fit", async () => {
+    Object.assign(dock, { open: true });
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRect() {
+        if (this.getAttribute("role") === "dialog") {
+          return domRect(0, 0, 448, 200);
+        }
+        if (
+          this.tagName === "DIV" &&
+          this.firstElementChild?.getAttribute("aria-label") ===
+            "Open conversation history"
+        ) {
+          return domRect(700, 100, 28, 28);
+        }
+        return domRect(0, 0, 0, 0);
+      },
+    );
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
+    );
+    const conversations = document.body.querySelector(
+      '[role="dialog"][aria-label="Conversations"]',
+    ) as HTMLElement;
+
+    expect(conversations.style.top).toBe("132px");
+    expect(conversations.style.bottom).toBe("");
+    expect(conversations.style.right).toBe("472px");
+  });
+
+  test("flips conversations upward when the panel does not fit below", async () => {
+    Object.assign(dock, { open: true });
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRect() {
+        if (this.getAttribute("role") === "dialog") {
+          return domRect(0, 0, 448, 200);
+        }
+        if (
+          this.tagName === "DIV" &&
+          this.firstElementChild?.getAttribute("aria-label") ===
+            "Open conversation history"
+        ) {
+          return domRect(700, 650, 28, 28);
+        }
+        return domRect(0, 0, 0, 0);
+      },
+    );
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
+    );
+    const conversations = document.body.querySelector(
+      '[role="dialog"][aria-label="Conversations"]',
+    ) as HTMLElement;
+
+    expect(conversations.style.top).toBe("");
+    expect(conversations.style.bottom).toBe("154px");
+    expect(conversations.style.right).toBe("472px");
+  });
+
+  test("keeps Claude and Codex history separated while loading all projects", async () => {
     Object.assign(dock, {
       open: true,
       transcripts: [
@@ -292,17 +558,58 @@ describe("AgentTerminalDock", () => {
     );
     const scrollRegion = document.body.querySelector("[data-conversation-scroll]");
     expect(scrollRegion?.className).toContain("overflow-y-auto");
+    const claudeRow = Array.from(
+      document.body.querySelectorAll("[data-conversation-scroll] button"),
+    ).find((button) => button.textContent?.includes("Investigate flaky checkout"));
+    expect(claudeRow?.textContent).toContain("repo");
+    expect(document.body.textContent).not.toContain("Polish the dock history");
+    expect(dock.loadTranscripts).toHaveBeenLastCalledWith("all");
+    expect(document.body.textContent).toContain("Recent sessions across all projects");
+    expect(document.body.querySelector('[aria-label="Conversation project scope"]')).toBeNull();
+    const providerFilter = document.body.querySelector(
+      '[aria-label="Filter conversations by provider"]',
+    ) as HTMLElement;
+
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("Codex"),
+      ) as HTMLButtonElement).click(),
+    );
+    expect(document.body.textContent).toContain("Polish the dock history");
+    expect(document.body.textContent).not.toContain("Investigate flaky checkout");
+
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("Claude"),
+      ) as HTMLButtonElement).click(),
+    );
+    expect(document.body.textContent).toContain("Investigate flaky checkout");
+    expect(document.body.textContent).not.toContain("Polish the dock history");
+
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("All"),
+      ) as HTMLButtonElement).click(),
+    );
+    expect(document.body.textContent).toContain("Investigate flaky checkout");
+    expect(document.body.textContent).toContain("Polish the dock history");
+
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("Claude"),
+      ) as HTMLButtonElement).click(),
+    );
 
     const search = document.body.querySelector(
       '[aria-label="Search conversations"]',
     ) as HTMLInputElement;
     await act(async () => {
-      search.value = "codex";
+      search.value = "flaky";
       search.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    expect(document.body.textContent).toContain("Polish the dock history");
-    expect(document.body.textContent).not.toContain("Investigate flaky checkout");
+    expect(document.body.textContent).toContain("Investigate flaky checkout");
+    expect(document.body.textContent).not.toContain("Polish the dock history");
   });
 
   test("does not reopen a consumed staged draft when the task list changes", async () => {
@@ -450,9 +757,18 @@ describe("AgentTerminalDock", () => {
     expect(left.className).not.toContain("invisible");
     expect(right.className).not.toContain("invisible");
     expect(host.querySelector('[data-session="two"]')?.getAttribute("data-active")).toBe("true");
-    expect(host.querySelector("[data-agent-dock-toolbar] [role=tablist]")).toBeNull();
-    expect(host.querySelector('[data-agent-pane-tabs="left"]')?.textContent).toContain("First task");
-    expect(host.querySelector('[data-agent-pane-tabs="right"]')?.textContent).toContain("Second task");
+    expect(host.querySelectorAll("[data-agent-dock-toolbar] [role=tablist]")).toHaveLength(2);
+    expect(host.querySelector("[data-agent-split-container] [role=tablist]")).toBeNull();
+    const leftHeader = host.querySelector('[data-agent-pane-tabs="left"]') as HTMLElement;
+    const rightHeader = host.querySelector('[data-agent-pane-tabs="right"]') as HTMLElement;
+    expect(leftHeader.textContent).toContain("First task");
+    expect(rightHeader.textContent).toContain("Second task");
+    expect(leftHeader.style.right).toBe("50%");
+    expect(rightHeader.style.left).toBe("50%");
+    expect(leftHeader.className).not.toContain("overflow-hidden");
+    expect(rightHeader.className).not.toContain("overflow-hidden");
+    expect(host.querySelector('[data-agent-pane-tabs="left"] [aria-label="Claude Code capabilities"]')).not.toBeNull();
+    expect(host.querySelector('[data-agent-pane-tabs="right"] [aria-label="Codex capabilities"]')).not.toBeNull();
 
     act(() => (host.querySelector('[aria-label="Open task Second task"]') as HTMLButtonElement).click());
     await rerender(mounted);
@@ -651,6 +967,142 @@ describe("AgentTerminalDock", () => {
     expect((mounted.host.querySelector("#agent-panel-two") as HTMLElement).style.left).toBe("70%");
   });
 
+  test("restores resized and split layout after a remount", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", label: "First task", state: "running", provider: "claude" },
+      { id: "two", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const mounted = await render();
+    const panel = mounted.host.firstElementChild as HTMLElement;
+    const resizeGrip = mounted.host.querySelector(
+      "[data-agent-resize-grip]",
+    ) as HTMLElement;
+    await act(async () => {
+      resizeGrip.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }),
+      );
+      window.dispatchEvent(
+        new PointerEvent("pointermove", {
+          pointerId: 1,
+          clientY: window.innerHeight - 420,
+        }),
+      );
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+    });
+    expect(panel.style.height).toBe("420px");
+
+    await dragTaskToSplit(mounted.host, "two");
+    const container = mounted.host.querySelector(
+      "[data-agent-split-container]",
+    ) as HTMLElement;
+    vi.spyOn(container, "getBoundingClientRect").mockReturnValue(
+      domRect(0, 0, 1_000, 400),
+    );
+    const divider = mounted.host.querySelector(
+      '[aria-label="Resize split panes"]',
+    ) as HTMLElement;
+    await act(async () => {
+      divider.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          bubbles: true,
+          clientX: 500,
+          pointerId: 2,
+        }),
+      );
+      window.dispatchEvent(
+        new PointerEvent("pointermove", {
+          clientX: 700,
+          pointerId: 2,
+        }),
+      );
+      window.dispatchEvent(
+        new PointerEvent("pointerup", { clientX: 700, pointerId: 2 }),
+      );
+    });
+
+    await unmountMounted(mounted);
+    const restored = await render();
+    const restoredDivider = restored.host.querySelector(
+      '[aria-label="Resize split panes"]',
+    ) as HTMLElement;
+    expect((restored.host.firstElementChild as HTMLElement).style.height).toBe(
+      "420px",
+    );
+    expect(restoredDivider.getAttribute("aria-valuenow")).toBe("70");
+    expect(
+      restored.host.querySelector('[data-agent-pane-tabs="right"] #agent-tab-two'),
+    ).not.toBeNull();
+  });
+
+  test("keeps pane changes made while session hydration is pending", async () => {
+    Object.assign(dock, {
+      open: true,
+      activeTaskId: "one",
+      tasksHydrated: false,
+      tasksHydrationSettled: false,
+      tasks: [
+        { id: "one", label: "First task", state: "running", provider: "claude" },
+        { id: "two", label: "Second task", state: "running", provider: "codex" },
+      ],
+    });
+    const mounted = await render();
+    await dragTaskToSplit(mounted.host, "two");
+    expect(
+      mounted.host.querySelector('[data-agent-pane-tabs="right"] #agent-tab-two'),
+    ).not.toBeNull();
+
+    dock.tasksHydrated = true;
+    dock.tasksHydrationSettled = true;
+    await rerender(mounted);
+
+    expect(
+      mounted.host.querySelector('[data-agent-pane-tabs="right"] #agent-tab-two'),
+    ).not.toBeNull();
+    expect(dock.dockLayout.rightTaskIds).toEqual(["two"]);
+  });
+
+  test("persists live pane changes after session hydration fails", async () => {
+    Object.assign(dock, {
+      open: true,
+      activeTaskId: "one",
+      tasksHydrated: false,
+      tasksHydrationSettled: true,
+      tasks: [
+        { id: "one", label: "First task", state: "running", provider: "claude" },
+        { id: "two", label: "Second task", state: "running", provider: "codex" },
+      ],
+    });
+    dock.dockLayout.rightTaskIds = ["saved-session"];
+    const mounted = await render();
+    expect(dock.dockLayout.rightTaskIds).toEqual(["saved-session"]);
+
+    await dragTaskToSplit(mounted.host, "two");
+
+    expect(dock.dockLayout.rightTaskIds).toEqual(["two"]);
+  });
+
+  test("restores independent bottom and right dock dimensions", async () => {
+    Object.assign(dock, {
+      open: true,
+      dockLayout: {
+        ...dock.dockLayout,
+        bottomHeight: 410,
+        rightWidth: 620,
+      },
+    });
+    const bottom = await render();
+    expect((bottom.host.firstElementChild as HTMLElement).style.height).toBe(
+      "410px",
+    );
+    await unmountMounted(bottom);
+
+    uiSettings.ui.agentDockPlacement = "right";
+    const right = await render();
+    expect((right.host.firstElementChild as HTMLElement).style.width).toBe(
+      "620px",
+    );
+  });
+
   test("offers accessible task controls and maps viewport status", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
     const { host } = await render();
@@ -744,6 +1196,72 @@ describe("AgentTerminalDock", () => {
     ) as HTMLElement;
     expect(menu.style.top).not.toBe("");
     expect(menu.style.bottom).toBe("");
+  });
+
+  test("opens the new-session menu downward and aligns its right edge with the trigger", async () => {
+    Object.assign(dock, { open: true });
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRect() {
+        if (this.getAttribute("role") === "menu") {
+          return domRect(0, 0, 208, 120);
+        }
+        if (
+          this.tagName === "DIV" &&
+          this.firstElementChild?.getAttribute("aria-label") ===
+            "Choose a new session"
+        ) {
+          return domRect(932, 100, 28, 28);
+        }
+        return domRect(0, 0, 0, 0);
+      },
+    );
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
+    );
+    const menu = document.body.querySelector(
+      '[role="menu"][aria-label="Choose a new session"]',
+    ) as HTMLElement;
+
+    expect(menu.style.top).toBe("132px");
+    expect(menu.style.bottom).toBe("");
+    expect(menu.style.right).toBe("240px");
+  });
+
+  test("flips the new-session menu upward when it does not fit below the trigger", async () => {
+    Object.assign(dock, { open: true });
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRect() {
+        if (this.getAttribute("role") === "menu") {
+          return domRect(0, 0, 208, 120);
+        }
+        if (
+          this.tagName === "DIV" &&
+          this.firstElementChild?.getAttribute("aria-label") ===
+            "Choose a new session"
+        ) {
+          return domRect(932, 740, 28, 28);
+        }
+        return domRect(0, 0, 0, 0);
+      },
+    );
+    const { host } = await render();
+
+    await act(async () =>
+      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
+    );
+    const menu = document.body.querySelector(
+      '[role="menu"][aria-label="Choose a new session"]',
+    ) as HTMLElement;
+
+    expect(menu.style.top).toBe("");
+    expect(menu.style.bottom).toBe("64px");
+    expect(menu.style.right).toBe("240px");
   });
 
   test("uses a compact vertical rail when a right-side dock is collapsed", async () => {

@@ -9,6 +9,10 @@ import type {
   CreateAgentTerminalOptions,
   TerminalSessionInfo,
 } from "./terminal-api.js";
+import type {
+  OneTimeSkillSelection,
+  RemoteSkillResult,
+} from "./skills-api.js";
 
 // Lazy-loaded to avoid bundling tauri APIs in the web build.
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -763,6 +767,18 @@ export async function tauri_runInstallCommand(cwd: string, command: string) {
   await tauriInvoke("run_install_command", { cwd, command });
 }
 
+// ---- Remote skills ----
+
+export async function tauri_searchSkills(query: string) {
+  return tauriInvoke<RemoteSkillResult[]>("search_skills", { query });
+}
+
+export async function tauri_loadOneTimeSkillPrompt(
+  skill: OneTimeSkillSelection,
+) {
+  return tauriInvoke<string>("load_one_time_skill_prompt", { skill });
+}
+
 // ---- Terminal ----
 
 export async function tauri_listTerminalSessions() {
@@ -778,8 +794,8 @@ export async function tauri_listTerminalSessions() {
   }));
 }
 
-export async function tauri_listAgentTranscripts() {
-  return tauriInvoke<AgentTranscriptInfo[]>("list_agent_transcripts");
+export async function tauri_listAgentTranscripts(scope: "current" | "all" = "current") {
+  return tauriInvoke<AgentTranscriptInfo[]>("list_agent_transcripts", { scope });
 }
 
 export async function tauri_createTerminalSession(opts?: {
