@@ -31,6 +31,7 @@ export interface AgentEnvSkill {
   pluginCommands?: string[];
   installPath?: string;
   managed?: boolean;
+  digest?: string;
 }
 
 export interface AgentEnvConfig {
@@ -145,7 +146,21 @@ export interface AgentEnvProfileSummary {
   sourceAgent?: AgentEnvAgentName;
   mcpCount: number;
   skillCount: number;
+  pluginCount?: number;
   updatedAt: string;
+}
+
+export interface AgentEnvProfilePlugin {
+  name: string;
+  sourceAgent: AgentEnvAgentName;
+  source?: string;
+  version?: string;
+  managed?: boolean;
+  bundleKey: string;
+  pluginSkills?: string[];
+  pluginMcps?: string[];
+  pluginAgents?: string[];
+  pluginCommands?: string[];
 }
 
 export interface AgentEnvProfile {
@@ -154,11 +169,13 @@ export interface AgentEnvProfile {
   sourceAgent?: AgentEnvAgentName;
   mcps: Record<string, AgentEnvProfileMcp>;
   skills: Array<{ name: string }>;
+  plugins?: AgentEnvProfilePlugin[];
 }
 
 export interface AgentEnvProfileApplyItem {
-  category: "mcp" | "skill";
+  category: "mcp" | "skill" | "plugin";
   name: string;
+  id?: string;
   status: "add" | "identical" | "conflict";
   warnings: string[];
 }
@@ -175,6 +192,7 @@ export interface AgentEnvProfileApplyResult {
   agent: AgentEnvAgentName;
   mcpsApplied: string[];
   skillsApplied: string[];
+  pluginsApplied: string[];
   skipped: string[];
   backups: string[];
 }
@@ -183,6 +201,7 @@ export interface AgentEnvProfileImportResult {
   name: string;
   mcpCount: number;
   skillCount: number;
+  pluginCount: number;
   missingCredentials: Array<{ key: string; required: boolean; description?: string }>;
 }
 
@@ -231,7 +250,7 @@ export interface AgentEnvApi {
   getAgentEnvProfile(name: string): Promise<AgentEnvProfile>;
   updateAgentEnvProfile(
     name: string,
-    patch: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills">>,
+    patch: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills" | "plugins">>,
   ): Promise<AgentEnvProfile>;
   deleteAgentEnvProfile(name: string): Promise<void>;
   snapshotAgentEnvProfile(input: {
@@ -246,7 +265,7 @@ export interface AgentEnvApi {
   applyAgentEnvProfile(input: {
     name: string;
     agent: AgentEnvAgentName;
-    skip?: { mcps?: string[]; skills?: string[] };
+    skip?: { mcps?: string[]; skills?: string[]; plugins?: string[] };
   }): Promise<AgentEnvProfileApplyResult>;
   exportAgentEnvProfile(name: string): Promise<{ archivePath: string }>;
   importAgentEnvProfile(file: Blob, options?: { force?: boolean }): Promise<AgentEnvProfileImportResult>;

@@ -23,4 +23,28 @@ describe("website embedded app toast theme", () => {
     expect(css).toContain("--accent: 170 34% 45%");
     expect(css).toContain("--ds-background-100: hsla(0, 0%, 4%, 1)");
   });
+
+  test("keeps transparent dashboard borders transparent inside the mock", () => {
+    expect(css).toMatch(
+      /\.website-real-demo \.border-transparent\s*\{\s*border-color: transparent;/,
+    );
+  });
+
+  test("lets the workbench fill the demo frame without centered side gutters", () => {
+    expect(css).toMatch(
+      /\.website-real-demo \[data-workbench-shell\]\s*\{\s*max-width: none;/,
+    );
+  });
+
+  test("does not draw a second outline around scaled terminal viewports", () => {
+    expect(css).toContain('.website-real-demo [aria-label="terminal viewport"]');
+    expect(css).toContain(".website-real-demo .xterm-viewport");
+    expect(css).toMatch(/\.website-real-demo \.xterm-screen\s*\{[^}]*border: 0;/s);
+  });
+
+  test("uses a website-only Claude image instead of terminal block art", () => {
+    expect(css).toContain('[data-terminal-session="demo-claude-agent"]');
+    expect(css).toContain('background: url("./assets/claude-mark.svg")');
+    expect(css).toContain('[data-terminal-follow-up="true"]');
+  });
 });

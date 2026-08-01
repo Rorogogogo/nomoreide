@@ -123,8 +123,18 @@ describe("capabilityItemsFor", () => {
     );
     expect(items.plugins).toEqual([
       { name: "brainctl", detail: "user", insert: 'Use the "brainctl" plugin: ' },
-      { name: "brainctl:board", insert: "/brainctl:board ", sub: true },
-      { name: "brainctl:sync", insert: "/brainctl:sync ", sub: true },
+      {
+        name: "brainctl:board",
+        insert: "/brainctl:board ",
+        sub: true,
+        childKind: "skill",
+      },
+      {
+        name: "brainctl:sync",
+        insert: "/brainctl:sync ",
+        sub: true,
+        childKind: "command",
+      },
     ]);
   });
 

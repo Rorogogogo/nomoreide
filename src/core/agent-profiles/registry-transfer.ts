@@ -75,7 +75,12 @@ export async function publishProfileToRegistry(
         ...(profile.description ? { description: profile.description } : {}),
         mcps: Object.entries(profile.mcps).map(([name, entry]) => ({ name, kind: entry.kind })),
         skills: profile.skills.map((skill) => ({ name: skill.name })),
-        plugins: [],
+        plugins: profile.plugins.map((plugin) => ({
+          name: plugin.name,
+          sourceAgent: plugin.sourceAgent,
+          source: plugin.source,
+          version: plugin.version,
+        })),
       },
     });
 

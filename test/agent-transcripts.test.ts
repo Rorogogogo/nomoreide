@@ -83,6 +83,7 @@ describe("listAgentTranscripts", () => {
     await writeCodex(["2026", "07", "19"], "codex-other", OTHER, "also elsewhere");
 
     expect(await listAgentTranscripts({ repoPath: REPO, homeDir: home })).toEqual([]);
+    expect(await listAgentTranscripts({ homeDir: home })).toHaveLength(2);
   });
 
   test("skips injected context in favour of the first typed prompt", async () => {
@@ -171,6 +172,34 @@ describe("listAgentTranscripts", () => {
     );
 
     expect(await listAgentTranscripts({ repoPath: REPO, homeDir: home })).toHaveLength(35);
+  });
+
+  test("keeps a full recent window for each provider", async () => {
+    await Promise.all([
+      writeClaude(
+        "-Users-dev-work-Personal-Project-nomoreide",
+        "claude-one",
+        claudeSession("claude-one", REPO, "first Claude conversation"),
+      ),
+      writeClaude(
+        "-Users-dev-work-Personal-Project-nomoreide",
+        "claude-two",
+        claudeSession("claude-two", REPO, "second Claude conversation"),
+      ),
+      ...Array.from({ length: 101 }, (_, index) =>
+        writeCodex(
+          ["2026", "07", "20"],
+          `codex-${index}`,
+          REPO,
+          `Codex conversation ${index}`,
+        ),
+      ),
+    ]);
+
+    const rows = await listAgentTranscripts({ repoPath: REPO, homeDir: home });
+
+    expect(rows.filter((row) => row.provider === "claude")).toHaveLength(2);
+    expect(rows.filter((row) => row.provider === "codex")).toHaveLength(100);
   });
 
   test("returns nothing when neither CLI has been used", async () => {

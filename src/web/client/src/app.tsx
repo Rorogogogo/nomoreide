@@ -1,24 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
-  Activity,
-  Bot,
   BookOpen,
   ChevronRight,
-  Container,
-  Database,
-  GitBranch,
   Heart,
-  Inbox,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
-  Puzzle,
   RefreshCw,
-  Server,
   Settings,
-  SquareTerminal,
-  Workflow,
 } from "lucide-react";
 import {
   getDashboard,
@@ -53,7 +43,6 @@ import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
-import { GitHubLogo } from "@/features/github/github-logo";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
 import { scopeDashboard } from "@/features/services/project-scope";
 import { BranchControls } from "@/features/git/branch-controls";
@@ -71,20 +60,12 @@ import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { ActivityView } from "@/features/activity/activity-view";
+import {
+  APP_NAV_SECTIONS,
+  type AppPage,
+} from "@/components/app-navigation";
 
-type Page =
-  | "services"
-  | "activity"
-  | "docker"
-  | "git"
-  | "github"
-  | "workflows"
-  | "agent"
-  | "agent-env"
-  | "errors"
-  | "database"
-  | "terminal"
-  | "settings";
+type Page = AppPage;
 
 const PAGE_PATHS: Record<Page, string> = {
   services: "/",
@@ -128,44 +109,6 @@ export function pageFromPath(pathname: string): Page {
   }
   return "services";
 }
-
-// Sidebar grouping: Run (what's executing on this machine), Code (repo-scoped
-// work), Data, Agent. Keep the dock's FULLSCREEN_NAV in the same order.
-// Labels are TranslationKeys resolved with t() at render.
-const NAV_SECTIONS: Array<{
-  labelKey: TranslationKey;
-  items: Array<{ page: Page; labelKey: TranslationKey; icon: ReactNode }>;
-}> = [
-  {
-    labelKey: "nav.section.run",
-    items: [
-      { page: "services", labelKey: "nav.services", icon: <Server /> },
-      { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
-      { page: "docker", labelKey: "nav.docker", icon: <Container /> },
-      { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
-      { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },
-    ],
-  },
-  {
-    labelKey: "nav.section.code",
-    items: [
-      { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
-      { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
-      { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },
-    ],
-  },
-  {
-    labelKey: "nav.section.data",
-    items: [{ page: "database", labelKey: "nav.database", icon: <Database /> }],
-  },
-  {
-    labelKey: "nav.section.agent",
-    items: [
-      { page: "agent", labelKey: "nav.agentConsole", icon: <Bot /> },
-      { page: "agent-env", labelKey: "nav.agentEnv", icon: <Puzzle /> },
-    ],
-  },
-];
 
 export function sidebarShellClassName(docked = false) {
   return cn(
@@ -471,7 +414,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
         ? { paddingRight: agentDockInset.size }
         : { paddingBottom: agentDockInset.size }}
     >
-      <div className="mx-auto flex h-full max-w-[1500px]">
+      <div className="flex h-full w-full min-w-0" data-workbench-shell>
         <aside className={sidebarShellClassName(sidebarDocked)}>
           <div
             className={cn(
@@ -519,7 +462,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           {/* Project scope lives in the header breadcrumb, not here — one
               control for one piece of state. */}
           <nav className="mt-3 flex-1 content-start overflow-y-auto overflow-x-hidden">
-            {NAV_SECTIONS.map((section, index) => (
+            {APP_NAV_SECTIONS.map((section, index) => (
               <div
                 className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
                 key={section.labelKey}

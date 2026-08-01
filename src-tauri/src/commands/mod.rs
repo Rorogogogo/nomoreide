@@ -8,6 +8,7 @@ pub mod github;
 pub mod logs;
 pub mod onboard;
 pub mod services;
+pub mod skills;
 pub mod snapshots;
 pub mod system;
 pub mod terminal;

@@ -15,9 +15,11 @@ import { useAgentDock } from "../agent/chat/agent-context";
 import {
   createGitWorktree,
   getGitWorktrees,
+  gitBranches,
   pruneGitWorktrees,
   removeGitWorktree,
   selectGitWorktree,
+  type GitBranch as GitBranchInfo,
   type GitWorktree,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -29,7 +31,7 @@ export function WorktreesView({
   onRefresh?: () => void | Promise<void>;
 }) {
   const t = useT();
-  const { createTask } = useAgentDock();
+  const { createTask, setOpen: setAgentDockOpen } = useAgentDock();
   const { error: showError, success: showSuccess } = useToasts();
   const [worktrees, setWorktrees] = useState<GitWorktree[]>([]);
   const [activePath, setActivePath] = useState("");
@@ -39,6 +41,7 @@ export function WorktreesView({
   const [creating, setCreating] = useState(false);
   const [branch, setBranch] = useState("");
   const [baseRef, setBaseRef] = useState("HEAD");
+  const [baseBranches, setBaseBranches] = useState<GitBranchInfo[]>([]);
   const [createBranch, setCreateBranch] = useState(true);
   const [launchAgent, setLaunchAgent] = useState(true);
 
@@ -58,6 +61,21 @@ export function WorktreesView({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!creating || !createBranch) return;
+    let cancelled = false;
+    void gitBranches()
+      .then((branches) => {
+        if (!cancelled) setBaseBranches(branches);
+      })
+      .catch(() => {
+        // Branch suggestions are optional; custom Git refs remain available.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [createBranch, creating]);
 
   async function activate(worktree: GitWorktree) {
     if (worktree.path === activePath) return;
@@ -97,6 +115,7 @@ export function WorktreesView({
             branch: worktree.branch ?? "HEAD",
           }),
         });
+        setAgentDockOpen(true);
       }
     } catch (caught) {
       showError(errorMessage(caught));
@@ -174,13 +193,13 @@ export function WorktreesView({
 
       {creating ? (
         <form
-          className="grid shrink-0 gap-2 border-b border-border bg-muted/15 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto]"
+          className="grid shrink-0 items-start gap-2 border-b border-border bg-muted/15 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto]"
           onSubmit={(event) => {
             event.preventDefault();
             void create();
           }}
         >
-          <label className="grid gap-1 text-[10px] text-muted-foreground">
+          <label className="grid content-start gap-1 text-[10px] text-muted-foreground">
             {t("git.worktrees.branch")}
             <input
               className="h-8 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
@@ -189,16 +208,36 @@ export function WorktreesView({
               value={branch}
             />
           </label>
-          <label className="grid gap-1 text-[10px] text-muted-foreground">
+          <label className="grid content-start gap-1 text-[10px] text-muted-foreground">
             {t("git.worktrees.base")}
             <input
+              aria-describedby="worktree-start-from-hint"
               className="h-8 rounded-md border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
               disabled={!createBranch}
+              list="worktree-start-points"
               onChange={(event) => setBaseRef(event.target.value)}
+              placeholder={t("git.worktrees.basePlaceholder")}
               value={baseRef}
             />
+            <datalist id="worktree-start-points">
+              <option label={t("git.worktrees.refHead")} value="HEAD" />
+              {baseBranches.map((candidate) => (
+                <option
+                  key={`${candidate.remote ? "remote" : "local"}:${candidate.name}`}
+                  label={t(
+                    candidate.remote
+                      ? "git.worktrees.refRemote"
+                      : "git.worktrees.refLocal",
+                  )}
+                  value={candidate.name}
+                />
+              ))}
+            </datalist>
+            <span className="font-normal text-[9px]" id="worktree-start-from-hint">
+              {t("git.worktrees.baseHint")}
+            </span>
           </label>
-          <div className="flex items-end">
+          <div className="flex items-start sm:pt-[18px]">
             <Button
               className="h-8 w-full sm:w-auto"
               disabled={!branch.trim() || busy !== null}

@@ -45,6 +45,29 @@ export function parsePercent(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Parse the used side of Docker's "184MiB / 2GiB" memory value into MiB. */
+export function parseDockerMemoryUsageMb(value: string): number | null {
+  const used = value.split("/", 1)[0]?.trim() ?? "";
+  const matched = /^(\d+(?:\.\d+)?)\s*([kmgt]?i?b)$/i.exec(used);
+  if (!matched) return null;
+  const amount = Number.parseFloat(matched[1]);
+  if (!Number.isFinite(amount)) return null;
+  const unit = matched[2].toLowerCase();
+  const bytesPerUnit: Record<string, number> = {
+    b: 1,
+    kb: 1_000,
+    kib: 1024,
+    mb: 1_000_000,
+    mib: 1024 ** 2,
+    gb: 1_000_000_000,
+    gib: 1024 ** 3,
+    tb: 1_000_000_000_000,
+    tib: 1024 ** 4,
+  };
+  const bytes = amount * (bytesPerUnit[unit] ?? 0);
+  return bytes > 0 ? bytes / 1024 ** 2 : 0;
+}
+
 /**
  * `docker stats` keys rows by the short (12-char) ID while `docker ps` reports
  * the same short form — but callers may hold either, so match on prefix in

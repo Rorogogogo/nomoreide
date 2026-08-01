@@ -26,7 +26,7 @@ export function ProfileApplyDialog({
   const t = useT();
   const { preview, skipped } = pending;
   const applyCount = preview.items.filter(
-    (item) => !skipped.has(`${item.category}:${item.name}`),
+    (item) => !skipped.has(`${item.category}:${item.id ?? item.name}`),
   ).length;
 
   return (
@@ -43,7 +43,7 @@ export function ProfileApplyDialog({
           </p>
           <ul className="max-h-56 space-y-1 overflow-y-auto">
             {preview.items.map((item) => {
-              const key = `${item.category}:${item.name}`;
+              const key = `${item.category}:${item.id ?? item.name}`;
               return (
                 <li className="flex items-start gap-2" key={key}>
                   <input
@@ -57,7 +57,11 @@ export function ProfileApplyDialog({
                   <label className="min-w-0 flex-1 cursor-pointer" htmlFor={`apply-${key}`}>
                     <span className="flex items-center gap-1.5">
                       <span className="truncate text-xs text-foreground">
-                        {item.category === "mcp" ? t("agentEnv.itemMcp") : t("agentEnv.itemSkill")} {item.name}
+                        {item.category === "mcp"
+                          ? t("agentEnv.itemMcp")
+                          : item.category === "plugin"
+                            ? t("agentEnv.itemPlugin")
+                            : t("agentEnv.itemSkill")} {item.name}
                       </span>
                       <Badge
                         size="small"

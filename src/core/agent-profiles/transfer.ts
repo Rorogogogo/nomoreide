@@ -22,6 +22,7 @@ import {
   getProfile,
   pathExists,
   profileDir,
+  profilePluginsDir,
   profileSkillsDir,
   writeProfile,
   type ProfileStoreOptions,
@@ -33,6 +34,7 @@ import {
   type Profile,
   type ProfileManifest,
 } from "./types.js";
+import { pluginBundleDigest } from "./plugin-bundle.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -60,7 +62,7 @@ export async function exportProfile(
     );
 
     const manifest: ProfileManifest = {
-      schemaVersion: 1,
+      schemaVersion: profile.plugins.length > 0 ? 2 : 1,
       profileName: profile.name,
       createdBy: { tool: "nomoreide", version: await packageVersion() },
       ...(credentials.size > 0 ? { credentials: Array.from(credentials.values()) } : {}),
@@ -68,12 +70,12 @@ export async function exportProfile(
 
     await writeFile(
       path.join(stagingDir, "manifest.json"),
-      JSON.stringify(manifest, null, 2) + "\n",
+      `${JSON.stringify(manifest, null, 2)}\n`,
       "utf8",
     );
     await writeFile(
       path.join(stagingDir, "profile.json"),
-      JSON.stringify({ ...profile, mcps: redactedMcps }, null, 2) + "\n",
+      `${JSON.stringify({ ...profile, mcps: redactedMcps }, null, 2)}\n`,
       "utf8",
     );
 
@@ -90,6 +92,47 @@ export async function exportProfile(
         },
       });
     }
+    for (const plugin of profile.plugins) {
+      const sourceDir = path.join(profilePluginsDir(input.name, options), plugin.bundleKey);
+      if (!(await pathExists(sourceDir))) continue;
+      const target = path.join(stagingDir, "plugins", plugin.bundleKey);
+      await mkdir(path.dirname(target), { recursive: true });
+      await cp(sourceDir, target, {
+        recursive: true,
+        filter: (src) => {
+          const base = path.basename(src);
+          return base !== ".git" && base !== ".DS_Store";
+        },
+      });
+      await redactPluginMcpFile(target, credentials);
+    }
+    const exportedPlugins = await Promise.all(
+      profile.plugins.map(async (plugin) => ({
+        ...plugin,
+        digest: await pluginBundleDigest(path.join(stagingDir, "plugins", plugin.bundleKey)),
+      })),
+    );
+    await writeFile(
+      path.join(stagingDir, "profile.json"),
+      `${JSON.stringify(
+        { ...profile, mcps: redactedMcps, plugins: exportedPlugins },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(stagingDir, "manifest.json"),
+      `${JSON.stringify(
+        {
+          ...manifest,
+          ...(credentials.size > 0 ? { credentials: Array.from(credentials.values()) } : {}),
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
 
     const archivePath = input.outputPath ?? path.join(input.cwd, `${profile.name}.tar.gz`);
     await mkdir(path.dirname(archivePath), { recursive: true });
@@ -105,6 +148,7 @@ export interface ImportResult {
   name: string;
   mcpCount: number;
   skillCount: number;
+  pluginCount: number;
   /** Credential keys the caller still has to fill in (placeholders kept). */
   missingCredentials: CredentialSpec[];
 }
@@ -126,6 +170,7 @@ export async function importProfile(
   const extractDir = await mkdtemp(path.join(tmpdir(), "nomoreide-profile-import-"));
   try {
     try {
+      await validateArchiveMembers(input.archivePath);
       await execFileAsync("tar", ["-xzf", input.archivePath, "-C", extractDir]);
     } catch {
       throw new Error("Could not extract the archive — is it a .tar.gz profile export?");
@@ -163,8 +208,25 @@ export async function importProfile(
       }),
     );
 
-    await writeProfile(profile, options);
+    for (const skill of profile.skills) {
+      if (!(await pathExists(path.join(extractDir, "skills", path.basename(skill.name))))) {
+        throw new Error(`Archive is missing bundled skill "${skill.name}".`);
+      }
+    }
+    for (const plugin of profile.plugins) {
+      const sourceDir = path.join(extractDir, "plugins", plugin.bundleKey);
+      if (!(await pathExists(sourceDir))) {
+        throw new Error(`Archive is missing bundled plugin "${plugin.name}".`);
+      }
+      if (plugin.digest && (await pluginBundleDigest(sourceDir)) !== plugin.digest) {
+        throw new Error(`Bundled plugin "${plugin.name}" failed its integrity check.`);
+      }
+    }
 
+    if (input.force) {
+      await rm(profileSkillsDir(name, options), { recursive: true, force: true });
+      await rm(profilePluginsDir(name, options), { recursive: true, force: true });
+    }
     let skillCount = 0;
     for (const skill of profile.skills) {
       const sourceDir = path.join(extractDir, "skills", path.basename(skill.name));
@@ -175,6 +237,26 @@ export async function importProfile(
       await cp(sourceDir, target, { recursive: true });
       skillCount += 1;
     }
+    let pluginCount = 0;
+    for (const plugin of profile.plugins) {
+      const sourceDir = path.join(extractDir, "plugins", plugin.bundleKey);
+      if (!(await pathExists(sourceDir))) {
+        throw new Error(`Archive is missing bundled plugin "${plugin.name}".`);
+      }
+      const target = path.join(profilePluginsDir(name, options), plugin.bundleKey);
+      await mkdir(path.dirname(target), { recursive: true });
+      await rm(target, { recursive: true, force: true });
+      await cp(sourceDir, target, { recursive: true });
+      await resolvePluginMcpFile(target, {
+        credentials: input.credentials,
+        credentialSpecs: manifest.data.credentials,
+        environment: process.env,
+        missing,
+      });
+      plugin.digest = await pluginBundleDigest(target);
+      pluginCount += 1;
+    }
+    await writeProfile(profile, options);
 
     // Anything a spec listed but resolution didn't reach (or that remains as
     // a placeholder in the stored profile) counts as missing.
@@ -188,10 +270,135 @@ export async function importProfile(
       name,
       mcpCount: Object.keys(profile.mcps).length,
       skillCount,
+      pluginCount,
       missingCredentials: Array.from(missing.values()),
     };
   } finally {
     await rm(extractDir, { recursive: true, force: true });
+  }
+}
+
+async function redactPluginMcpFile(
+  pluginDir: string,
+  credentials: Map<string, CredentialSpec>,
+): Promise<void> {
+  const filePath = path.join(pluginDir, ".mcp.json");
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(await readFile(filePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const wrapped = isRecord(parsed.mcpServers);
+  const servers = (wrapped ? parsed.mcpServers : parsed) as Record<string, unknown>;
+  for (const [key, value] of Object.entries(servers)) {
+    if (!isRecord(value)) continue;
+    const mcp = pluginMcpFromJson(value);
+    if (!mcp) continue;
+    const result = redactMcpCredentials(mcp);
+    for (const spec of result.credentials) credentials.set(spec.key, spec);
+    servers[key] =
+      result.redacted.kind === "local"
+        ? { ...value, ...(result.redacted.env ? { env: result.redacted.env } : {}) }
+        : {
+            ...value,
+            ...(result.redacted.headers ? { headers: result.redacted.headers } : {}),
+            ...(result.redacted.env ? { env: result.redacted.env } : {}),
+          };
+  }
+  await writeFile(filePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+}
+
+async function resolvePluginMcpFile(
+  pluginDir: string,
+  options: {
+    credentials?: Record<string, string>;
+    credentialSpecs?: CredentialSpec[];
+    environment: NodeJS.ProcessEnv;
+    missing: Map<string, CredentialSpec>;
+  },
+): Promise<void> {
+  const filePath = path.join(pluginDir, ".mcp.json");
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(await readFile(filePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const wrapped = isRecord(parsed.mcpServers);
+  const servers = (wrapped ? parsed.mcpServers : parsed) as Record<string, unknown>;
+  for (const [key, value] of Object.entries(servers)) {
+    if (!isRecord(value)) continue;
+    const mcp = pluginMcpFromJson(value);
+    if (!mcp) continue;
+    const result = resolveMcpCredentials(mcp, options);
+    for (const spec of result.missing) options.missing.set(spec.key, spec);
+    servers[key] =
+      result.resolved.kind === "local"
+        ? { ...value, ...(result.resolved.env ? { env: result.resolved.env } : {}) }
+        : {
+            ...value,
+            ...(result.resolved.headers ? { headers: result.resolved.headers } : {}),
+            ...(result.resolved.env ? { env: result.resolved.env } : {}),
+          };
+  }
+  await writeFile(filePath, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+}
+
+function pluginMcpFromJson(value: Record<string, unknown>): Profile["mcps"][string] | null {
+  if (typeof value.command === "string") {
+    return {
+      kind: "local",
+      command: value.command,
+      ...(Array.isArray(value.args) ? { args: value.args.map(String) } : {}),
+      ...(isRecord(value.env) ? { env: stringMap(value.env) } : {}),
+    };
+  }
+  if (typeof value.url === "string") {
+    return {
+      kind: "remote",
+      transport: value.type === "sse" || value.transport === "sse" ? "sse" : "http",
+      url: value.url,
+      ...(isRecord(value.headers) ? { headers: stringMap(value.headers) } : {}),
+      ...(isRecord(value.env) ? { env: stringMap(value.env) } : {}),
+    };
+  }
+  return null;
+}
+
+function stringMap(value: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, String(entry)]));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function validateArchiveMembers(archivePath: string): Promise<void> {
+  const [{ stdout }, { stdout: verbose }] = await Promise.all([
+    execFileAsync("tar", ["-tzf", archivePath]),
+    execFileAsync("tar", ["-tvzf", archivePath]),
+  ]);
+  for (const line of verbose.split("\n").filter(Boolean)) {
+    if (line.startsWith("l") || line.startsWith("h")) {
+      throw new Error("Profile archive contains a link entry, which is not allowed.");
+    }
+  }
+  const members = stdout.split("\n").filter(Boolean);
+  if (members.length > 20_000) {
+    throw new Error("Profile archive contains too many files.");
+  }
+  for (const member of members) {
+    const normalized = member.replace(/^\.\/+/, "");
+    if (normalized.length === 0) continue;
+    const segments = normalized.split("/");
+    if (
+      path.isAbsolute(member) ||
+      segments.includes("..") ||
+      !["manifest.json", "profile.json", "skills", "plugins"].includes(segments[0])
+    ) {
+      throw new Error(`Profile archive contains an unsafe path: ${member}`);
+    }
   }
 }
 

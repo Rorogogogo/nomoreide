@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { buildInteractiveAgentInvocation } from "../../core/agent-terminal.js";
 import { listAgentTranscripts } from "../../core/agent-transcripts.js";
+import {
+  composeOneTimeSkillPrompt,
+  OneTimeSkillError,
+  resolveOneTimeSkill,
+} from "../../core/one-time-skills.js";
 import { resolveServiceTerminal } from "../../core/terminal-spawn.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { selectedGitCwd } from "../dashboard.js";
@@ -10,6 +15,10 @@ const agentSessionSchema = z.object({
   provider: z.enum(["codex", "claude"]),
   prompt: z.string().default(""),
   label: z.string().optional(),
+  oneTimeSkill: z.object({
+    name: z.string().trim().min(1).max(200),
+    source: z.string().trim().min(3).max(400),
+  }).strict().optional(),
   resumeId: z.string().regex(/^[0-9a-fA-F-]{8,64}$/).optional(),
 });
 const renameSessionSchema = z.object({
@@ -25,13 +34,15 @@ export const terminalRoutes: Route[] = [
   route(
     "GET",
     "/api/terminal/transcripts",
-    async ({ response, configStore, cwd }) => {
+    async ({ response, configStore, cwd, url }) => {
       const config = await configStore.load();
       const selected = config.gitRepositories.find(
         (repository) => repository.name === config.selectedGitRepository,
       ) ?? config.gitRepositories[0];
       const transcripts = await listAgentTranscripts({
-        repoPath: selected?.activeWorktreePath ?? selected?.path ?? cwd,
+        ...(url.searchParams.get("scope") === "all"
+          ? {}
+          : { repoPath: selected?.activeWorktreePath ?? selected?.path ?? cwd }),
       });
       sendJson(response, { ok: true, transcripts });
     },
@@ -62,7 +73,25 @@ export const terminalRoutes: Route[] = [
           return;
         }
 
-        const { provider, prompt, resumeId } = parsed.data;
+        const { provider, resumeId } = parsed.data;
+        if (resumeId && parsed.data.oneTimeSkill) {
+          sendJson(response, { ok: false, error: "A temporary skill cannot be attached to a resumed session." }, 400);
+          return;
+        }
+        let prompt = parsed.data.prompt;
+        if (parsed.data.oneTimeSkill) {
+          try {
+            const skillPrompt = await resolveOneTimeSkill(parsed.data.oneTimeSkill);
+            prompt = composeOneTimeSkillPrompt(skillPrompt, prompt);
+          } catch (error) {
+            const message =
+              error instanceof OneTimeSkillError
+                ? error.message
+                : "The temporary skill could not be loaded.";
+            sendJson(response, { ok: false, error: message }, 422);
+            return;
+          }
+        }
         const invocation = buildInteractiveAgentInvocation(provider, prompt, {
           resumeId,
         });

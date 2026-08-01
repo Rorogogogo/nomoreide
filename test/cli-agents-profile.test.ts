@@ -79,7 +79,9 @@ describe("nomoreide profile", () => {
     await seedClaudeConfig();
 
     expect(await runCli(["profile", "snapshot", "claude", "dev-kit"], cliOptions())).toBe(0);
-    expect(output.join("\n")).toContain('Snapshotted claude into "dev-kit" (1 MCPs, 1 skills)');
+    expect(output.join("\n")).toContain(
+      'Snapshotted claude into "dev-kit" (1 MCPs, 1 skills, 0 plugins)',
+    );
 
     output = [];
     expect(await runCli(["profile", "list"], cliOptions())).toBe(0);

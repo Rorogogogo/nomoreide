@@ -33,11 +33,13 @@ export {
 export {
   assertValidProfileName,
   copySkillBetweenProfiles,
+  copyPluginBetweenProfiles,
   createProfile,
   deleteProfile,
   getProfile,
   listProfiles,
   profileDir,
+  profilePluginsDir,
   profilesRoot,
   profileSkillsDir,
   snapshotProfileFromAgent,
@@ -83,11 +85,14 @@ export {
   PROFILE_NAME_PATTERN,
   profileManifestSchema,
   profileMcpSchema,
+  profilePluginSchema,
   profileSchema,
   slugifyProfileName,
   type CredentialSpec,
   type Profile,
   type ProfileManifest,
   type ProfileMcp,
+  type ProfilePlugin,
   type ProfileSummary,
 } from "./types.js";
+export { pluginIdentity } from "./plugin-bundle.js";

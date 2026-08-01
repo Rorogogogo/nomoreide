@@ -236,3 +236,56 @@ body {
 .website-real-demo .fixed {
   position: absolute;
 }
+
+/* The embedded canvas is already bounded by the demo frame. Let the workbench
+   fill it instead of centering its 1500px desktop cap and creating side gutters. */
+.website-real-demo [data-workbench-shell] {
+  max-width: none;
+}
+
+/* The shared dashboard button base relies on Tailwind's border-transparent
+   utility. Keep that utility explicit in the website bundle so the page-wide
+   border token fallback does not turn ghost controls into outlined cards. */
+.website-real-demo .border-transparent {
+  border-color: transparent;
+}
+
+/* Xterm is already bounded by the dock and split separators. Its internal
+   viewport edge becomes a visible hairline after the demo canvas is scaled. */
+.website-real-demo [aria-label="terminal viewport"],
+.website-real-demo .xterm,
+.website-real-demo .xterm-viewport,
+.website-real-demo .xterm-screen {
+  border: 0;
+  box-shadow: none;
+  outline: 0;
+}
+
+.website-real-demo .xterm .xterm-scrollable-element > .shadow {
+  display: none;
+}
+
+/* Xterm does not support ordinary inline images. Keep the real Claude mark in
+   the demo's header slot as a website-only overlay, then retire it before a
+   follow-up can scroll underneath it. */
+.website-real-demo
+  [data-terminal-session="demo-claude-agent"]:not(
+    [data-terminal-follow-up="true"]
+  ) {
+  position: relative;
+}
+
+.website-real-demo
+  [data-terminal-session="demo-claude-agent"]:not(
+    [data-terminal-follow-up="true"]
+  )::before {
+  position: absolute;
+  z-index: 2;
+  top: 5px;
+  left: 12px;
+  width: 42px;
+  height: 42px;
+  background: url("./assets/claude-mark.svg") center / contain no-repeat;
+  content: "";
+  pointer-events: none;
+}

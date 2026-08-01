@@ -42,6 +42,8 @@ export interface CapabilityItem {
   insert?: string;
   /** Indented child row (a plugin's bundled skills/commands). */
   sub?: boolean;
+  /** Identifies the kind of an otherwise ambiguous plugin child row. */
+  childKind?: "skill" | "command";
 }
 
 export interface CapabilityLists {
@@ -126,11 +128,20 @@ export function capabilityItemsFor(
         insert: `Use the "${skill.name}" plugin: `,
       });
       if (provider === "claude") {
-        for (const sub of [...(skill.pluginSkills ?? []), ...(skill.pluginCommands ?? [])]) {
+        for (const sub of skill.pluginSkills ?? []) {
           plugins.push({
             name: `${skill.name}:${sub}`,
             insert: `/${skill.name}:${sub} `,
             sub: true,
+            childKind: "skill",
+          });
+        }
+        for (const sub of skill.pluginCommands ?? []) {
+          plugins.push({
+            name: `${skill.name}:${sub}`,
+            insert: `/${skill.name}:${sub} `,
+            sub: true,
+            childKind: "command",
           });
         }
       }

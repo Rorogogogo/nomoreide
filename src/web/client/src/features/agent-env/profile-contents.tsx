@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Globe, Sparkles, TerminalSquare, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Boxes,
+  Globe,
+  Sparkles,
+  TerminalSquare,
+  X,
+} from "lucide-react";
 import {
   getAgentEnvProfile,
   updateAgentEnvProfile,
@@ -48,7 +56,7 @@ export function ProfileContents({
   }, [name]);
 
   const patch = async (
-    input: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills">>,
+    input: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills" | "plugins">>,
   ) => {
     setError(null);
     try {
@@ -85,6 +93,11 @@ export function ProfileContents({
   const removeSkill = (skillName: string) => {
     void patch({
       skills: profile.skills.filter((skill) => skill.name !== skillName),
+    });
+  };
+  const removePlugin = (bundleKey: string) => {
+    void patch({
+      plugins: (profile.plugins ?? []).filter((plugin) => plugin.bundleKey !== bundleKey),
     });
   };
 
@@ -130,6 +143,17 @@ export function ProfileContents({
         label={t("agentEnv.skills")}
         onRemove={removeSkill}
       />
+      <ItemSection
+        busy={busy}
+        items={(profile.plugins ?? []).map((plugin) => ({
+          key: plugin.bundleKey,
+          name: plugin.name,
+          detail: [plugin.sourceAgent, plugin.source, plugin.version].filter(Boolean).join(" · "),
+          icon: <Boxes />,
+        }))}
+        label={t("agentEnv.plugins")}
+        onRemove={removePlugin}
+      />
 
       {error ? <p className="text-[11px] text-destructive">{error}</p> : null}
     </div>
@@ -153,14 +177,30 @@ function ItemSection({
   onRemove: (key: string) => void;
 }) {
   const t = useT();
+  const [expanded, setExpanded] = useState(() => items.length <= 5);
   return (
     <section>
-      <h5 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
+      <h5>
+        <button
+          aria-expanded={expanded}
+          className="flex h-6 w-full items-center gap-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+          onClick={() => setExpanded((value) => !value)}
+          type="button"
+        >
+          {expanded ? (
+            <ChevronDown aria-hidden="true" className="size-3" />
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-3" />
+          )}
+          <span>{label}</span>
+          <span className="font-mono font-normal tabular-nums">
+            {items.length}
+          </span>
+        </button>
       </h5>
-      {items.length === 0 ? (
+      {expanded && items.length === 0 ? (
         <p className="text-[11px] text-muted-foreground">{t("agentEnv.none")}</p>
-      ) : (
+      ) : expanded ? (
         <ul className="divide-y divide-border/60 border-y border-border/60">
           {items.map((item) => (
             <li
@@ -193,7 +233,7 @@ function ItemSection({
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { translate } from "@/lib/i18n";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -38,6 +39,8 @@ export interface TerminalViewportHandle {
   refit(): void;
   /** Writes raw data to the PTY, as if typed into the terminal. */
   input(data: string): void;
+  /** Pastes text using xterm's bracketed-paste handling. */
+  paste(data: string, prefix?: string): boolean;
 }
 
 export interface TerminalViewportProps {
@@ -108,6 +111,78 @@ const INITIAL_STATUS: TerminalViewportStatus = {
   detail: translate("terminal.openingShell"),
 };
 const WEB_SOCKET_OPEN = 1;
+const OUTPUT_BATCH_DELAY_MS = 8;
+
+interface DisposableRenderer {
+  dispose(): void;
+}
+
+export function attachWebglRenderer(
+  terminal: Pick<Terminal, "loadAddon">,
+  runtime: object = globalThis,
+): DisposableRenderer | null {
+  if (!("WebGL2RenderingContext" in runtime)) return null;
+
+  const addon = new WebglAddon();
+  let disposed = false;
+  let contextLossSubscription: { dispose(): void } | undefined;
+  const renderer = {
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      contextLossSubscription?.dispose();
+      addon.dispose();
+    },
+  };
+
+  try {
+    terminal.loadAddon(addon);
+    contextLossSubscription = addon.onContextLoss(() => renderer.dispose());
+    return renderer;
+  } catch {
+    renderer.dispose();
+    return null;
+  }
+}
+
+export function createTerminalOutputBuffer(options: {
+  write: (data: string) => void;
+  schedule?: (callback: () => void) => () => void;
+}): { dispose(): void; flush(): void; push(data: string): void } {
+  let pending = "";
+  let cancelScheduledFlush: (() => void) | undefined;
+  let disposed = false;
+  const schedule =
+    options.schedule ??
+    ((callback: () => void) => {
+      const id = window.setTimeout(callback, OUTPUT_BATCH_DELAY_MS);
+      return () => window.clearTimeout(id);
+    });
+
+  const flush = () => {
+    cancelScheduledFlush = undefined;
+    if (disposed || !pending) return;
+    const data = pending;
+    pending = "";
+    options.write(data);
+  };
+
+  return {
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      cancelScheduledFlush?.();
+      cancelScheduledFlush = undefined;
+      pending = "";
+    },
+    flush,
+    push: (data) => {
+      if (disposed || !data) return;
+      pending += data;
+      if (!cancelScheduledFlush) cancelScheduledFlush = schedule(flush);
+    },
+  };
+}
 
 export function terminalTheme(theme: ResolvedTheme) {
   if (theme === "light") {
@@ -163,10 +238,12 @@ export function createTerminalViewportHandle(options: {
   refit: () => void;
   sendControl: (type: "restart" | "stop") => void;
   sendInput: (data: string) => void;
+  paste?: (data: string, prefix?: string) => boolean;
 }): TerminalViewportHandle {
   return {
     focus: options.focus,
     input: options.sendInput,
+    paste: options.paste ?? (() => false),
     refit: options.refit,
     restart: () => options.sendControl("restart"),
     stop: () => options.sendControl("stop"),
@@ -353,6 +430,7 @@ export const TerminalViewport = forwardRef<
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const webglRendererRef = useRef<DisposableRenderer | null>(null);
   const socketRef = useRef<TerminalSocketLike | null>(null);
   const statusCallbackRef = useRef(onStatusChange);
   const displaySettingsRef = useRef(displaySettings);
@@ -439,6 +517,13 @@ export const TerminalViewport = forwardRef<
         refit: sendResize,
         sendControl,
         sendInput,
+        paste: (data, prefix) => {
+          const terminal = terminalRef.current;
+          if (!terminal) return false;
+          if (prefix) sendInput(prefix);
+          terminal.paste(data);
+          return true;
+        },
       }),
     [sendControl, sendInput, sendResize],
   );
@@ -461,8 +546,18 @@ export const TerminalViewport = forwardRef<
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(container);
+    const outputBuffer = createTerminalOutputBuffer({
+      write: (data) => terminal.write(data),
+    });
+    const viewport = container.querySelector<HTMLElement>(".xterm-viewport");
+    if (viewport) {
+      viewport.style.backgroundColor = terminalTheme(resolvedTheme).background;
+    }
     terminalRef.current = terminal;
     fitRef.current = fit;
+    if (active) {
+      webglRendererRef.current = attachWebglRenderer(terminal);
+    }
     const selectionSubscription = terminal.onSelectionChange(() => {
       if (!displaySettingsRef.current.copyOnSelect) return;
       const selection = terminal.getSelection();
@@ -485,7 +580,7 @@ export const TerminalViewport = forwardRef<
         void tauri_writeTerminalInput(sessionId, data);
       });
       void tauri_onTerminalOutput(sessionId, (data) => {
-        terminal.write(data);
+        outputBuffer.push(data);
         if (initialInputTimer !== undefined) window.clearTimeout(initialInputTimer);
         initialInputTimer = window.setTimeout(() => {
           initialInputTimer = undefined;
@@ -540,7 +635,10 @@ export const TerminalViewport = forwardRef<
         reportStatus,
         sendResize,
         sessionId,
-        terminal,
+        terminal: {
+          onData: (callback) => terminal.onData(callback),
+          write: (data) => outputBuffer.push(data),
+        },
       });
       socketRef.current = transport.socket;
 
@@ -562,6 +660,9 @@ export const TerminalViewport = forwardRef<
       observer.disconnect();
       cleanupTransport();
       selectionSubscription.dispose();
+      outputBuffer.dispose();
+      webglRendererRef.current?.dispose();
+      webglRendererRef.current = null;
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;
@@ -569,8 +670,22 @@ export const TerminalViewport = forwardRef<
   }, [reportStatus, sessionId, sendResize, tauriMode]);
 
   useEffect(() => {
+    if (!active) {
+      webglRendererRef.current?.dispose();
+      webglRendererRef.current = null;
+      return;
+    }
+    if (webglRendererRef.current || !terminalRef.current) return;
+    webglRendererRef.current = attachWebglRenderer(terminalRef.current);
+  }, [active]);
+
+  useEffect(() => {
     const terminal = terminalRef.current;
-    if (terminal) terminal.options.theme = terminalTheme(resolvedTheme);
+    const theme = terminalTheme(resolvedTheme);
+    if (terminal) terminal.options.theme = theme;
+    const viewport =
+      containerRef.current?.querySelector<HTMLElement>(".xterm-viewport");
+    if (viewport) viewport.style.backgroundColor = theme.background;
   }, [resolvedTheme]);
 
   // A hidden xterm has zero dimensions. Refit after it is revealed, but only
@@ -593,6 +708,7 @@ export const TerminalViewport = forwardRef<
         "h-full min-h-0 overflow-hidden bg-[#fcfcfc] px-3 py-0.5 dark:bg-[#090909]",
         !active && "hidden",
       )}
+      data-terminal-session={sessionId}
     >
       {/* Padding stays outside xterm's mount so FitAddon does not provision an
           extra row and clip the final line. */}

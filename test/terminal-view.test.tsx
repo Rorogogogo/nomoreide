@@ -6,7 +6,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalPane } from "../src/web/client/src/features/terminal/terminal-pane";
 import {
+  attachWebglRenderer,
   connectWebTerminal,
+  createTerminalOutputBuffer,
   createTerminalViewportHandle,
   scheduleTerminalActivation,
   sendWebTerminalControl,
@@ -125,12 +127,47 @@ describe("TerminalPane", () => {
 });
 
 describe("TerminalViewport", () => {
+  test("falls back when WebGL2 is unavailable", () => {
+    const loadAddon = vi.fn();
+
+    expect(attachWebglRenderer({ loadAddon }, {})).toBeNull();
+    expect(loadAddon).not.toHaveBeenCalled();
+  });
+
+  test("batches adjacent output chunks and drops pending work on dispose", () => {
+    const write = vi.fn();
+    let scheduled: (() => void) | undefined;
+    const cancel = vi.fn();
+    const output = createTerminalOutputBuffer({
+      write,
+      schedule: (callback) => {
+        scheduled = callback;
+        return cancel;
+      },
+    });
+
+    output.push("first");
+    output.push(" second");
+    expect(write).not.toHaveBeenCalled();
+
+    scheduled?.();
+    expect(write).toHaveBeenCalledOnce();
+    expect(write).toHaveBeenCalledWith("first second");
+
+    output.push(" dropped");
+    output.dispose();
+    scheduled?.();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(write).toHaveBeenCalledOnce();
+  });
+
   test("renders only the raw terminal viewport", () => {
     const markup = renderToStaticMarkup(
       <TerminalViewport active sessionId="term_raw" />,
     );
 
     expect(markup).toContain("terminal viewport");
+    expect(markup).toContain('data-terminal-session="term_raw"');
     expect(markup).toContain("bg-[#fcfcfc]");
     expect(markup).toContain("dark:bg-[#090909]");
     expect(markup).not.toContain("Restart");
@@ -281,13 +318,21 @@ describe("TerminalViewport", () => {
       sendWebTerminalControl(socket, fit, type);
     const sendInput = (data: string) =>
       socket.send(JSON.stringify({ data, type: "input" }));
-    const handle = createTerminalViewportHandle({ focus, refit, sendControl, sendInput });
+    const paste = vi.fn(() => true);
+    const handle = createTerminalViewportHandle({
+      focus,
+      paste,
+      refit,
+      sendControl,
+      sendInput,
+    });
 
     handle.restart();
     handle.stop();
     handle.focus();
     handle.refit();
     handle.input("/verify ");
+    expect(handle.paste("skill context")).toBe(true);
 
     expect(socket.send).toHaveBeenNthCalledWith(
       1,
@@ -302,6 +347,7 @@ describe("TerminalViewport", () => {
       JSON.stringify({ data: "/verify ", type: "input" }),
     );
     expect(focus).toHaveBeenCalledOnce();
+    expect(paste).toHaveBeenCalledWith("skill context");
     expect(refit).toHaveBeenCalledOnce();
   });
 

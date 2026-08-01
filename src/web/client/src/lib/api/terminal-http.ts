@@ -2,6 +2,7 @@
 import { requestJson } from "./client.js";
 import type {
   AgentTranscriptInfo,
+  AgentTranscriptScope,
   TerminalApi,
   TerminalSessionInfo,
 } from "./terminal-api.js";
@@ -14,11 +15,15 @@ export const httpTerminalApi: TerminalApi = {
     return res.sessions;
   },
 
-  async listAgentTranscripts() {
+  async listAgentTranscripts(scope: AgentTranscriptScope = "current") {
     const res = await requestJson<{
       ok: true;
       transcripts: AgentTranscriptInfo[];
-    }>("/api/terminal/transcripts");
+    }>(
+      scope === "all"
+        ? "/api/terminal/transcripts?scope=all"
+        : "/api/terminal/transcripts",
+    );
     return res.transcripts;
   },
 

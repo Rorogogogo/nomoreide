@@ -164,9 +164,35 @@ async function removeManagedPlugin(options: RemovePluginOptions): Promise<WriteO
     if (filePath) await unlink(filePath).catch(() => {});
   }
 
-  const registryBackup = await removeManagedRegistryRecord(agent, plugin.name, options.homeDir);
-  if (registryBackup) backups.push(registryBackup);
+  await removeNoMoreIdeManagedBundle(agent, plugin.installPath, options.homeDir);
+  backups.push(
+    ...(await removeManagedRegistryRecords(
+      agent,
+      plugin.name,
+      plugin.source,
+      options.homeDir,
+    )),
+  );
   return { backups };
+}
+
+async function removeNoMoreIdeManagedBundle(
+  agent: AgentName,
+  installPath: string | undefined,
+  homeDirOverride?: string,
+): Promise<void> {
+  if (!installPath) return;
+  const home = homeDirOverride ?? homedir();
+  const root = path.resolve(
+    home,
+    ".config",
+    "nomoreide",
+    "managed-plugin-bundles",
+    agent,
+  );
+  const resolved = path.resolve(installPath);
+  if (!resolved.startsWith(`${root}${path.sep}`)) return;
+  await rm(resolved, { recursive: true, force: true });
 }
 
 function subagentFilePath(agent: AgentName, agentName: string, homeDir?: string): string | null {
@@ -177,27 +203,35 @@ function subagentFilePath(agent: AgentName, agentName: string, homeDir?: string)
   return null;
 }
 
-async function removeManagedRegistryRecord(
+async function removeManagedRegistryRecords(
   agent: AgentName,
   pluginName: string,
+  pluginSource: string | undefined,
   homeDirOverride?: string,
-): Promise<string | null> {
+): Promise<string[]> {
   const homeDir = homeDirOverride ?? homedir();
-  const registryPath = path.join(homeDir, ".brainctl", "managed-plugins.json");
-
-  let data: { version: 1; agents?: Partial<Record<AgentName, AgentSkillEntry[]>> };
-  try {
-    data = JSON.parse(await readFile(registryPath, "utf8"));
-  } catch {
-    return null;
+  const backups: string[] = [];
+  for (const registryPath of [
+    path.join(homeDir, ".config", "nomoreide", "managed-plugins.json"),
+    path.join(homeDir, ".brainctl", "managed-plugins.json"),
+  ]) {
+    let data: { version: 1; agents?: Partial<Record<AgentName, AgentSkillEntry[]>> };
+    try {
+      data = JSON.parse(await readFile(registryPath, "utf8"));
+    } catch {
+      continue;
+    }
+    const entries = data.agents?.[agent] ?? [];
+    const next = entries.filter(
+      (entry) =>
+        entry.name !== pluginName ||
+        (entry.source ?? "") !== (pluginSource ?? ""),
+    );
+    if (next.length === entries.length) continue;
+    const backup = await backupFile(registryPath);
+    if (backup) backups.push(backup);
+    data.agents = { ...data.agents, [agent]: next };
+    await atomicWrite(registryPath, `${JSON.stringify(data, null, 2)}\n`);
   }
-
-  const entries = data.agents?.[agent] ?? [];
-  const next = entries.filter((entry) => entry.name !== pluginName);
-  if (next.length === entries.length) return null;
-
-  const backup = await backupFile(registryPath);
-  data.agents = { ...data.agents, [agent]: next };
-  await atomicWrite(registryPath, JSON.stringify(data, null, 2) + "\n");
-  return backup;
+  return backups;
 }

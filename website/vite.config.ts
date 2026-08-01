@@ -19,6 +19,7 @@ const browserPackageAliases = [
   "@codemirror/state",
   "@lezer/highlight",
   "@xterm/addon-fit",
+  "@xterm/addon-webgl",
   "@xterm/xterm",
   "@radix-ui/react-context-menu",
   "@radix-ui/react-slot",

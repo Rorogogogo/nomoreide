@@ -33,6 +33,9 @@ describe("website Activity Monitor mock", () => {
             cpuPercent: expect.any(Number),
           },
         },
+        systemProcesses: expect.arrayContaining([
+          expect.objectContaining({ command: expect.stringContaining("Google Chrome") }),
+        ]),
       },
     });
     expect(body.metrics.host.samples.length).toBeGreaterThan(10);

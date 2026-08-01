@@ -22,7 +22,7 @@ const USAGE = [
   "  list                                  saved profiles",
   "  show <name>                           full profile JSON",
   "  snapshot <agent> <name> [--description <text>]",
-  "  apply <name> <agent> [--dry-run] [--skip-mcps a,b] [--skip-skills x,y]",
+  "  apply <name> <agent> [--dry-run] [--skip-mcps a,b] [--skip-skills x,y] [--skip-plugins p,q]",
   "  export <name> [--output <path>]      credential-redacted .tar.gz",
   "  import <archive> [--force] [--as <name>]",
   "  delete <name>",
@@ -51,10 +51,10 @@ export async function runProfileCli(
       stdout("No profiles yet. Create one with: nomoreide profile snapshot <agent> <name>");
       return 0;
     }
-    stdout("Name\tMCPs\tSkills\tUpdated\tDescription");
+    stdout("Name\tMCPs\tSkills\tPlugins\tUpdated\tDescription");
     for (const profile of profiles) {
       stdout(
-        `${profile.name}\t${profile.mcpCount}\t${profile.skillCount}\t${profile.updatedAt}\t${profile.description ?? ""}`,
+        `${profile.name}\t${profile.mcpCount}\t${profile.skillCount}\t${profile.pluginCount}\t${profile.updatedAt}\t${profile.description ?? ""}`,
       );
     }
     return 0;
@@ -76,7 +76,7 @@ export async function runProfileCli(
       cwd,
     });
     stdout(
-      `Snapshotted ${agent} into "${profile.name}" (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills)`,
+      `Snapshotted ${agent} into "${profile.name}" (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills, ${profile.plugins.length} plugins)`,
     );
     return 0;
   }
@@ -100,10 +100,14 @@ export async function runProfileCli(
       cwd,
       name,
       agent,
-      skip: { mcps: splitList(flags.skipMcps), skills: splitList(flags.skipSkills) },
+      skip: {
+        mcps: splitList(flags.skipMcps),
+        skills: splitList(flags.skipSkills),
+        plugins: splitList(flags.skipPlugins),
+      },
     });
     stdout(
-      `Applied "${result.profile}" to ${result.agent}: ${result.mcpsApplied.length} MCPs, ${result.skillsApplied.length} skills` +
+      `Applied "${result.profile}" to ${result.agent}: ${result.mcpsApplied.length} MCPs, ${result.skillsApplied.length} skills, ${result.pluginsApplied.length} plugins` +
         (result.skipped.length > 0 ? `, skipped ${result.skipped.join(", ")}` : ""),
     );
     for (const backup of result.backups) stdout(`Backup: ${backup}`);
@@ -123,7 +127,7 @@ export async function runProfileCli(
   if (subcommand === "import") {
     const archivePath = requirePositional(positional[0], "archive path");
     const result = await importProfile({ archivePath, force: has("--force"), as: flags.as });
-    stdout(`Imported "${result.name}" (${result.mcpCount} MCPs, ${result.skillCount} skills)`);
+    stdout(`Imported "${result.name}" (${result.mcpCount} MCPs, ${result.skillCount} skills, ${result.pluginCount} plugins)`);
     reportMissingCredentials(result.missingCredentials, stdout);
     return 0;
   }
@@ -172,7 +176,7 @@ export async function runProfileCli(
       token: (await resolveRegistryApiToken())?.token,
     });
     stdout(
-      `Installed "${result.name}" v${result.version} (${result.mcpCount} MCPs, ${result.skillCount} skills)`,
+      `Installed "${result.name}" v${result.version} (${result.mcpCount} MCPs, ${result.skillCount} skills, ${result.pluginCount} plugins)`,
     );
     reportMissingCredentials(result.missingCredentials, stdout);
     return 0;

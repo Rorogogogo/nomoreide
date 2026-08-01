@@ -110,6 +110,7 @@ async function unmount(root: Root, host: HTMLElement) {
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  window.localStorage.clear();
   api.getAgentChatStatus.mockResolvedValue({
     configured: true,
     approvals: false,
@@ -135,6 +136,45 @@ afterEach(() => {
 });
 
 describe("AgentProvider terminal tasks", () => {
+  test("restores the dock open state across provider remounts", async () => {
+    const first = await mountProvider();
+    expect(first.value.open).toBe(false);
+
+    act(() => first.value.setOpen(true));
+    expect(first.value.open).toBe(true);
+    await unmount(first.root, first.host);
+
+    const restored = await mountProvider();
+    expect(restored.value.open).toBe(true);
+    act(() => restored.value.setOpen(false));
+    expect(restored.value.open).toBe(false);
+    await unmount(restored.root, restored.host);
+  });
+
+  test("reports when terminal-session hydration has settled", async () => {
+    const listed = deferred<Array<ReturnType<typeof session>>>();
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    const mounted = await mountProvider();
+    expect(mounted.value.tasksHydrated).toBe(false);
+    expect(mounted.value.tasksHydrationSettled).toBe(false);
+
+    await act(async () => listed.resolve([session("attached")]));
+    expect(mounted.value.tasksHydrated).toBe(true);
+    expect(mounted.value.tasksHydrationSettled).toBe(true);
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("does not treat a failed session listing as authoritative hydration", async () => {
+    api.listTerminalSessions.mockRejectedValue(new Error("daemon unavailable"));
+    const mounted = await mountProvider();
+    await act(async () => {});
+
+    expect(mounted.value.tasksHydrated).toBe(false);
+    expect(mounted.value.tasksHydrationSettled).toBe(true);
+    expect(mounted.value.terminalError).toBe("daemon unavailable");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("starts rapid sends concurrently and keeps the newest foreground task active", async () => {
     const first = deferred<ReturnType<typeof session>>();
     const second = deferred<ReturnType<typeof session>>();
@@ -285,6 +325,49 @@ describe("AgentProvider terminal tasks", () => {
     expect(mounted.value.draft).toBe("editable prompt");
     expect(mounted.value.activeSource).toEqual({ type: "service", label: "api" });
     expect(api.createAgentTerminalSession).not.toHaveBeenCalled();
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("keeps a one-time skill in memory until the matching selection is consumed", async () => {
+    const mounted = await mountProvider();
+    const first = {
+      name: "find-skills",
+      source: "vercel-labs/skills@find-skills",
+    };
+    const replacement = {
+      name: "review",
+      source: "anthropics/skills@review",
+    };
+
+    act(() => mounted.value.selectOneTimeSkill(first));
+    expect(mounted.value.pendingOneTimeSkill).toEqual(first);
+    expect(mounted.value.open).toBe(true);
+    expect(mounted.value.activeTaskId).toBeNull();
+
+    act(() => {
+      mounted.value.selectOneTimeSkill(replacement);
+      mounted.value.consumeOneTimeSkill(first);
+    });
+    expect(mounted.value.pendingOneTimeSkill).toEqual(replacement);
+
+    act(() => mounted.value.consumeOneTimeSkill(replacement));
+    expect(mounted.value.pendingOneTimeSkill).toBeNull();
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("keeps the active agent session selected when attaching a one-time skill", async () => {
+    api.listTerminalSessions.mockResolvedValue([session("active")]);
+    const mounted = await mountProvider();
+
+    act(() =>
+      mounted.value.selectOneTimeSkill({
+        name: "review",
+        source: "owner/repo@review",
+      }),
+    );
+
+    expect(mounted.value.activeTaskId).toBe("active");
+    expect(mounted.value.pendingOneTimeSkill?.name).toBe("review");
     await unmount(mounted.root, mounted.host);
   });
 

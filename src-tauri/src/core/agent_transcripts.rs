@@ -125,7 +125,7 @@ fn read_claude(path: &Path, fallback_id: &str) -> Option<AgentTranscript> {
     })
 }
 
-fn read_codex(path: &Path, expected_cwd: &str) -> Option<AgentTranscript> {
+fn read_codex(path: &Path, expected_cwd: Option<&str>) -> Option<AgentTranscript> {
     let mut id = None;
     let mut cwd = None;
     let mut first_prompt = None;
@@ -148,7 +148,7 @@ fn read_codex(path: &Path, expected_cwd: &str) -> Option<AgentTranscript> {
                 .get("timestamp")
                 .and_then(Value::as_str)
                 .map(str::to_owned);
-            if cwd.as_deref() != Some(expected_cwd) {
+            if expected_cwd.is_some() && cwd.as_deref() != expected_cwd {
                 return None;
             }
         } else if first_prompt.is_none()
@@ -167,7 +167,7 @@ fn read_codex(path: &Path, expected_cwd: &str) -> Option<AgentTranscript> {
     Some(AgentTranscript {
         id: id?,
         provider: "codex".to_string(),
-        cwd: cwd.filter(|value| value == expected_cwd)?,
+        cwd: cwd.filter(|value| expected_cwd.is_none_or(|expected| value == expected))?,
         title: first_prompt?,
         started_at: started_at.unwrap_or_else(|| updated_at.clone()),
         updated_at,
@@ -220,15 +220,19 @@ fn codex_files(codex_home: &Path) -> Vec<PathBuf> {
 pub fn list_agent_transcripts(
     home: &Path,
     codex_home: &Path,
-    repo_path: &str,
-    limit: usize,
+    repo_path: Option<&str>,
+    limit_per_provider: usize,
 ) -> Vec<AgentTranscript> {
-    let mut transcripts = Vec::new();
+    let mut claude = Vec::new();
     let claude_root = home.join(".claude").join("projects");
-    let expected_key = path_key(repo_path);
+    let expected_key = repo_path.map(path_key);
     for directory in directory_names(&claude_root)
         .into_iter()
-        .filter(|name| path_key(name) == expected_key)
+        .filter(|name| {
+            expected_key
+                .as_ref()
+                .is_none_or(|expected| path_key(name) == *expected)
+        })
     {
         let path = claude_root.join(directory);
         for name in directory_names(&path)
@@ -238,19 +242,23 @@ pub fn list_agent_transcripts(
             if let Some(transcript) =
                 read_claude(&path.join(&name), name.trim_end_matches(".jsonl"))
             {
-                if transcript.cwd == repo_path {
-                    transcripts.push(transcript);
+                if repo_path.is_none_or(|expected| transcript.cwd == expected) {
+                    claude.push(transcript);
                 }
             }
         }
     }
-    transcripts.extend(
-        codex_files(codex_home)
-            .iter()
-            .filter_map(|path| read_codex(path, repo_path)),
-    );
+    let mut codex = codex_files(codex_home)
+        .iter()
+        .filter_map(|path| read_codex(path, repo_path))
+        .collect::<Vec<_>>();
+    claude.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
+    codex.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
+    claude.truncate(limit_per_provider);
+    codex.truncate(limit_per_provider);
+    let mut transcripts = claude;
+    transcripts.extend(codex);
     transcripts.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
-    transcripts.truncate(limit);
     transcripts
 }
 
@@ -292,7 +300,7 @@ mod tests {
         )
         .unwrap();
 
-        let transcripts = list_agent_transcripts(&home, &home.join(".codex"), repo, 30);
+        let transcripts = list_agent_transcripts(&home, &home.join(".codex"), Some(repo), 30);
 
         assert_eq!(transcripts.len(), 2);
         assert!(transcripts
@@ -301,6 +309,10 @@ mod tests {
         assert!(transcripts
             .iter()
             .any(|row| { row.provider == "codex" && row.title == "Finish conversation history" }));
+        assert_eq!(
+            list_agent_transcripts(&home, &home.join(".codex"), Some(repo), 1).len(),
+            2,
+        );
         fs::remove_dir_all(home).unwrap();
     }
 }

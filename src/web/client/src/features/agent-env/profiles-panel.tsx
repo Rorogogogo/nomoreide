@@ -195,6 +195,9 @@ export function ProfilesPanel({
                       <Badge size="small" variant="outline">
                         {t(profile.skillCount === 1 ? "agentEnv.skillCountOne" : "agentEnv.skillCountMany", { count: profile.skillCount })}
                       </Badge>
+                      <Badge size="small" variant="outline">
+                        {t((profile.pluginCount ?? 0) === 1 ? "agentEnv.pluginCountOne" : "agentEnv.pluginCountMany", { count: profile.pluginCount ?? 0 })}
+                      </Badge>
                       <ChevronRight
                         className={cn(
                           "size-3.5 shrink-0 text-muted-foreground transition-transform",

@@ -11,6 +11,7 @@ import {
   type AgentChatProviderInfo,
   type AgentChatProviderOption,
   type AgentTranscriptInfo,
+  type OneTimeSkillSelection,
   type TerminalSessionInfo,
 } from "@/lib/api";
 
@@ -32,6 +33,7 @@ export interface CreateAgentTerminalTaskOptions {
   /** Explicit provider for direct session creation; defaults to the saved one. */
   provider?: AgentProviderId;
   label?: string;
+  oneTimeSkill?: OneTimeSkillSelection;
   source?: AgentTerminalTaskSource;
   background?: boolean;
 }
@@ -69,6 +71,8 @@ function shellTaskLabel(command: string): string {
 export function useAgentTerminalTasks() {
   const [tasks, setTasksState] = useState<AgentTerminalTask[]>([]);
   const tasksRef = useRef<AgentTerminalTask[]>([]);
+  const [tasksHydrated, setTasksHydrated] = useState(false);
+  const [tasksHydrationSettled, setTasksHydrationSettled] = useState(false);
   const [activeTaskId, setActiveTaskIdState] = useState<string | null>(null);
   const activeTaskIdRef = useRef<string | null>(null);
   const [creating, setCreating] = useState(0);
@@ -165,9 +169,14 @@ export function useAgentTerminalTasks() {
         ];
         setTasks(sortTasks(merged));
         activateFirstAttached();
+        setTasksHydrated(true);
+        setTasksHydrationSettled(true);
       })
       .catch((error) => {
-        if (mountedRef.current) setTerminalError(errorMessage(error));
+        if (mountedRef.current) {
+          setTerminalError(errorMessage(error));
+          setTasksHydrationSettled(true);
+        }
       });
   }, [activateFirstAttached, setTasks, sortTasks]);
 
@@ -288,22 +297,27 @@ export function useAgentTerminalTasks() {
   );
 
   const createTask = useCallback(
-    ({ prompt, provider: requestedProvider, label, source, background }: CreateAgentTerminalTaskOptions) => {
+    ({ prompt, provider: requestedProvider, label, oneTimeSkill, source, background }: CreateAgentTerminalTaskOptions) => {
       const selectedProvider = requestedProvider ?? providerRef.current ?? "claude";
       return runCreate(
         () =>
-          createAgentTerminalSession({ provider: selectedProvider, prompt, label }),
+          createAgentTerminalSession({
+            provider: selectedProvider,
+            prompt,
+            label,
+            oneTimeSkill,
+          }),
         { background, label, source },
       );
     },
     [runCreate],
   );
 
-  const loadTranscripts = useCallback(async () => {
+  const loadTranscripts = useCallback(async (scope: "current" | "all" = "all") => {
     setTranscriptsLoading(true);
     setTranscriptsError(null);
     try {
-      const listed = await listAgentTranscripts();
+      const listed = await listAgentTranscripts(scope);
       if (mountedRef.current) setTranscripts(listed);
       return listed;
     } catch (error) {
@@ -487,6 +501,8 @@ export function useAgentTerminalTasks() {
 
   return {
     tasks,
+    tasksHydrated,
+    tasksHydrationSettled,
     activeTaskId,
     setActiveTaskId,
     creating,

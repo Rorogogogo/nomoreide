@@ -11,6 +11,7 @@ import {
   importProfile,
   listProfiles,
   previewProfileApply,
+  profilePluginsDir,
   profileSkillsDir,
   redactMcpCredentials,
   resolveMcpCredentials,
@@ -126,7 +127,7 @@ describe("agent-profiles store + transfer + apply", () => {
     await expect(getProfile("dev", opts())).rejects.toThrow("not found");
   });
 
-  it("snapshots an agent's live MCPs and user skills, excluding plugins", async () => {
+  it("snapshots an agent's live MCPs, user skills, and self-contained plugins", async () => {
     await writeFile(
       path.join(homeDir, ".claude.json"),
       JSON.stringify({
@@ -140,6 +141,27 @@ describe("agent-profiles store + transfer + apply", () => {
     const skillDir = path.join(homeDir, ".claude", "skills", "commit-push");
     await mkdir(skillDir, { recursive: true });
     await writeFile(path.join(skillDir, "SKILL.md"), "# commit-push\n", "utf8");
+    const pluginDir = path.join(
+      homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "official",
+      "review-tools",
+      "1.2.3",
+    );
+    await mkdir(path.join(pluginDir, "skills", "review"), { recursive: true });
+    await writeFile(path.join(pluginDir, "skills", "review", "SKILL.md"), "# review\n", "utf8");
+    await writeFile(
+      path.join(homeDir, ".claude", "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 2,
+        plugins: {
+          "review-tools@official": [{ installPath: pluginDir, version: "1.2.3" }],
+        },
+      }),
+      "utf8",
+    );
 
     const profile = await snapshotProfileFromAgent(
       { agent: "claude", name: "claude-backup", cwd },
@@ -153,9 +175,239 @@ describe("agent-profiles store + transfer + apply", () => {
     });
     expect(profile.mcps.docs).toMatchObject({ kind: "remote", transport: "http" });
     expect(profile.skills).toEqual([{ name: "commit-push" }]);
+    expect(profile.plugins).toHaveLength(1);
+    expect(profile.plugins[0]).toMatchObject({
+      name: "review-tools",
+      source: "official",
+      sourceAgent: "claude",
+      pluginSkills: ["review"],
+    });
+    await expect(
+      readFile(
+        path.join(
+          profilePluginsDir("claude-backup", opts()),
+          profile.plugins[0].bundleKey,
+          "skills",
+          "review",
+          "SKILL.md",
+        ),
+        "utf8",
+      ),
+    ).resolves.toContain("review");
     await expect(
       readFile(path.join(profileSkillsDir("claude-backup", opts()), "commit-push", "SKILL.md"), "utf8"),
     ).resolves.toContain("commit-push");
+  });
+
+  it("round-trips plugin bundles and restores native or managed targets on apply", async () => {
+    const pluginDir = path.join(
+      homeDir,
+      ".claude",
+      "plugins",
+      "cache",
+      "official",
+      "review-tools",
+      "1.2.3",
+    );
+    await mkdir(path.join(pluginDir, "skills", "review"), { recursive: true });
+    await mkdir(path.join(pluginDir, "commands"), { recursive: true });
+    await writeFile(path.join(pluginDir, "skills", "review", "SKILL.md"), "# review\n", "utf8");
+    await writeFile(path.join(pluginDir, "commands", "summarize.md"), "# summarize\n", "utf8");
+    await writeFile(
+      path.join(pluginDir, ".mcp.json"),
+      JSON.stringify({
+        review: {
+          command: "node",
+          args: ["server.js"],
+          env: { GITHUB_TOKEN: "plugin-secret-token" },
+        },
+        docs: {
+          type: "http",
+          url: "https://docs.example.com/mcp",
+          headers: { Authorization: "Bearer plugin-remote-secret" },
+        },
+      }),
+      "utf8",
+    );
+    await mkdir(path.join(homeDir, ".claude", "plugins"), { recursive: true });
+    await writeFile(
+      path.join(homeDir, ".claude", "plugins", "installed_plugins.json"),
+      JSON.stringify({
+        version: 2,
+        plugins: {
+          "review-tools@official": [{ installPath: pluginDir, version: "1.2.3" }],
+        },
+      }),
+      "utf8",
+    );
+    await snapshotProfileFromAgent(
+      { agent: "claude", name: "plugin-kit", cwd },
+      opts(),
+    );
+    const archivePath = path.join(cwd, "plugin-kit.tar.gz");
+    const exported = await exportProfile(
+      { name: "plugin-kit", outputPath: archivePath, cwd },
+      opts(),
+    );
+    expect(exported.credentials.map((entry) => entry.key)).toContain("github_token");
+    expect(exported.credentials.map((entry) => entry.key)).toContain("authorization");
+    const inspectDir = await mkdtemp(path.join(os.tmpdir(), "nomoreide-plugin-archive-"));
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    await promisify(execFile)("tar", ["-xzf", archivePath, "-C", inspectDir]);
+    const archivedPlugin = await readFile(
+      path.join(
+        inspectDir,
+        "plugins",
+        (await getProfile("plugin-kit", opts())).plugins[0].bundleKey,
+        ".mcp.json",
+      ),
+      "utf8",
+    );
+    expect(archivedPlugin).not.toContain("plugin-secret-token");
+    expect(archivedPlugin).not.toContain("plugin-remote-secret");
+    expect(archivedPlugin).toContain("${credentials.github_token}");
+    expect(archivedPlugin).toContain("${credentials.authorization}");
+
+    const importedHome = await mkdtemp(path.join(os.tmpdir(), "nomoreide-plugin-import-"));
+    const importedResult = await importProfile(
+      {
+        archivePath,
+        credentials: {
+          github_token: "restored-plugin-token",
+          authorization: "restored-remote-token",
+        },
+      },
+      { homeDir: importedHome },
+    );
+    expect(importedResult.pluginCount).toBe(1);
+    expect(
+      await getProfile("plugin-kit", { homeDir: importedHome }),
+    ).toMatchObject({ plugins: [{ name: "review-tools", sourceAgent: "claude" }] });
+
+    const native = await applyProfile({
+      cwd,
+      homeDir: importedHome,
+      name: "plugin-kit",
+      agent: "claude",
+    });
+    expect(native.pluginsApplied).toEqual(["review-tools"]);
+    const nativeRegistry = JSON.parse(
+      await readFile(
+        path.join(importedHome, ".claude", "plugins", "installed_plugins.json"),
+        "utf8",
+      ),
+    );
+    expect(nativeRegistry.plugins["review-tools@official"][0].installPath).toContain(
+      "/.claude/plugins/cache/official/review-tools/1.2.3",
+    );
+
+    const managedHome = await mkdtemp(path.join(os.tmpdir(), "nomoreide-plugin-managed-"));
+    await importProfile(
+      {
+        archivePath,
+        credentials: {
+          github_token: "managed-plugin-token",
+          authorization: "managed-remote-token",
+        },
+      },
+      { homeDir: managedHome },
+    );
+    const preview = await previewProfileApply({
+      cwd,
+      homeDir: managedHome,
+      name: "plugin-kit",
+      agent: "codex",
+    });
+    expect(preview.items.find((item) => item.category === "plugin")).toMatchObject({
+      name: "review-tools",
+      status: "add",
+    });
+    expect(
+      preview.items.find((item) => item.category === "plugin")?.warnings[0],
+    ).toContain("portable assets");
+
+    const managed = await applyProfile({
+      cwd,
+      homeDir: managedHome,
+      name: "plugin-kit",
+      agent: "codex",
+    });
+    expect(managed.pluginsApplied).toEqual(["review-tools"]);
+    await expect(
+      readFile(path.join(managedHome, ".agents", "skills", "review", "SKILL.md"), "utf8"),
+    ).resolves.toContain("review");
+    await expect(
+      readFile(path.join(managedHome, ".agents", "skills", "summarize", "SKILL.md"), "utf8"),
+    ).resolves.toContain("summarize");
+    const live = await readCodexConfig({ cwd, homeDir: managedHome });
+    expect(
+      live.skills.find((entry) => entry.kind === "plugin" && entry.name === "review-tools"),
+    ).toMatchObject({ managed: true, pluginMcps: ["review", "docs"] });
+    expect(
+      await readFile(path.join(managedHome, ".codex", "config.toml"), "utf8"),
+    ).toContain("[mcp_servers.review]");
+    expect(
+      await readFile(path.join(managedHome, ".codex", "config.toml"), "utf8"),
+    ).toContain('GITHUB_TOKEN = "managed-plugin-token"');
+    expect(
+      await readFile(path.join(managedHome, ".codex", "config.toml"), "utf8"),
+    ).toContain('url = "https://docs.example.com/mcp"');
+
+    await deleteProfile("plugin-kit", { homeDir: managedHome });
+    const resnapshot = await snapshotProfileFromAgent(
+      { agent: "codex", name: "plugin-kit-resnapshot", cwd },
+      { homeDir: managedHome },
+    );
+    expect(resnapshot.plugins).toMatchObject([
+      { name: "review-tools", managed: true, pluginMcps: ["review", "docs"] },
+    ]);
+  });
+
+  it("previews collisions from managed plugin skills, commands, and MCPs", async () => {
+    await mkdir(path.join(homeDir, ".agents", "skills", "review"), { recursive: true });
+    await writeFile(
+      path.join(homeDir, ".agents", "skills", "review", "SKILL.md"),
+      "# standalone review\n",
+      "utf8",
+    );
+    await mkdir(path.join(homeDir, ".codex"), { recursive: true });
+    await writeFile(
+      path.join(homeDir, ".codex", "config.toml"),
+      ['[mcp_servers.shared]', 'command = "existing"', ""].join("\n"),
+      "utf8",
+    );
+    await createProfile({ name: "collision-kit" }, opts());
+    const bundleKey = "collision-plugin";
+    const pluginDir = path.join(profilePluginsDir("collision-kit", opts()), bundleKey);
+    await mkdir(path.join(pluginDir, "skills", "review"), { recursive: true });
+    await writeFile(path.join(pluginDir, "skills", "review", "SKILL.md"), "# plugin\n", "utf8");
+    await updateProfile(
+      "collision-kit",
+      {
+        plugins: [{
+          name: "collision-plugin",
+          sourceAgent: "claude",
+          source: "official",
+          bundleKey,
+          pluginSkills: ["review"],
+          pluginCommands: ["review"],
+          pluginMcps: ["shared"],
+        }],
+      },
+      opts(),
+    );
+
+    const preview = await previewProfileApply({
+      cwd,
+      homeDir,
+      name: "collision-kit",
+      agent: "codex",
+    });
+    const plugin = preview.items.find((item) => item.category === "plugin");
+    expect(plugin?.status).toBe("conflict");
+    expect(plugin?.warnings.join("\n")).toContain('skill "review"');
+    expect(plugin?.warnings.join("\n")).toContain('MCP "shared"');
   });
 
   it("round-trips export → import with credentials redacted in the archive", async () => {

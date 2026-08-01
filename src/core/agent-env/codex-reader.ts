@@ -68,7 +68,7 @@ async function readCodexSkills(homeDir: string, cwd: string): Promise<AgentSkill
   ]);
   const projectSkills = await readProjectSkills(cwd, path.join(".agents", "skills"));
 
-  const allPlugins = dedupePluginsByName([...managedPlugins, ...nativePlugins]);
+  const allPlugins = dedupePluginsByIdentity([...managedPlugins, ...nativePlugins]);
   return [...mergeManagedPluginsIntoSkills(localSkills, allPlugins), ...projectSkills];
 }
 
@@ -88,10 +88,11 @@ function dedupeSkillsByName(skills: AgentSkillEntry[]): AgentSkillEntry[] {
   return Array.from(seen.values());
 }
 
-function dedupePluginsByName(plugins: AgentSkillEntry[]): AgentSkillEntry[] {
+function dedupePluginsByIdentity(plugins: AgentSkillEntry[]): AgentSkillEntry[] {
   const seen = new Map<string, AgentSkillEntry>();
   for (const plugin of plugins) {
-    if (!seen.has(plugin.name)) seen.set(plugin.name, plugin);
+    const identity = `${plugin.name}\0${plugin.source ?? ""}`;
+    if (!seen.has(identity)) seen.set(identity, plugin);
   }
   return Array.from(seen.values());
 }

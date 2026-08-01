@@ -71,6 +71,43 @@ describe("agent-env readers", () => {
     expect(result.skills).toEqual([]);
   });
 
+  it("reads NoMoreIDE-managed Claude plugins and hides their owned skills", async () => {
+    await mkdir(path.join(homeDir, ".claude", "skills", "helper"), { recursive: true });
+    await writeFile(
+      path.join(homeDir, ".claude", "skills", "helper", "SKILL.md"),
+      "# helper\n",
+      "utf8",
+    );
+    await mkdir(path.join(homeDir, ".config", "nomoreide"), { recursive: true });
+    await writeFile(
+      path.join(homeDir, ".config", "nomoreide", "managed-plugins.json"),
+      JSON.stringify({
+        version: 1,
+        agents: {
+          claude: [{
+            name: "portable-kit",
+            source: "market",
+            kind: "plugin",
+            scope: "user",
+            managed: true,
+            pluginSkills: ["helper"],
+          }],
+        },
+      }),
+      "utf8",
+    );
+
+    const result = await readClaudeConfig({ cwd, homeDir });
+    expect(result.skills).toEqual([
+      expect.objectContaining({
+        name: "portable-kit",
+        source: "market",
+        kind: "plugin",
+        managed: true,
+      }),
+    ]);
+  });
+
   it("reads local and remote Codex MCPs from config.toml", async () => {
     await mkdir(path.join(homeDir, ".codex"), { recursive: true });
     await writeFile(

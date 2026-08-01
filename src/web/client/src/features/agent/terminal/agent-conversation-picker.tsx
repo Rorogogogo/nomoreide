@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { History, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
-import type { AgentTranscriptInfo } from "@/lib/api";
+import type { AgentTranscriptInfo, AgentTranscriptScope } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
+
+type ProviderFilter = "all" | AgentTranscriptInfo["provider"];
 
 function transcriptTime(value: string): string {
   const date = new Date(value);
@@ -17,22 +26,31 @@ function transcriptTime(value: string): string {
   }).format(date);
 }
 
+function transcriptProject(cwd: string): string {
+  return cwd.replace(/[\\/]+$/, "").split(/[\\/]/).at(-1) || cwd;
+}
+
 export function AgentConversationPicker({
   error,
   loading,
   onLoad,
   onResume,
+  provider,
   transcripts,
 }: {
   error: string | null;
   loading: boolean;
-  onLoad: () => Promise<AgentTranscriptInfo[]>;
+  onLoad: (scope?: AgentTranscriptScope) => Promise<AgentTranscriptInfo[]>;
   onResume: (transcript: AgentTranscriptInfo) => Promise<unknown>;
+  provider?: AgentTranscriptInfo["provider"];
   transcripts: AgentTranscriptInfo[];
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [providerFilter, setProviderFilter] = useState<ProviderFilter>(
+    provider ?? "all",
+  );
   const [placement, setPlacement] = useState({
     above: false,
     maxHeight: 560,
@@ -45,18 +63,33 @@ export function AgentConversationPicker({
 
   const filteredTranscripts = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    if (!normalizedQuery) return transcripts;
     return transcripts.filter((transcript) => {
-      const provider = transcript.provider === "codex" ? "codex" : "claude code";
-      return `${transcript.title} ${provider}`
+      if (
+        providerFilter !== "all" &&
+        transcript.provider !== providerFilter
+      ) {
+        return false;
+      }
+      if (!normalizedQuery) return true;
+      const providerName = transcript.provider === "codex" ? "codex" : "claude code";
+      return `${transcript.title} ${providerName} ${transcriptProject(transcript.cwd)}`
         .toLocaleLowerCase()
         .includes(normalizedQuery);
     });
-  }, [query, transcripts]);
+  }, [providerFilter, query, transcripts]);
+  const providerCounts = useMemo(
+    () => ({
+      all: transcripts.length,
+      claude: transcripts.filter((transcript) => transcript.provider === "claude").length,
+      codex: transcripts.filter((transcript) => transcript.provider === "codex").length,
+    }),
+    [transcripts],
+  );
 
   const updatePlacement = useCallback(() => {
     const trigger = rootRef.current?.getBoundingClientRect();
     if (!trigger) return;
+    const popover = popoverRef.current?.getBoundingClientRect();
     const gap = 4;
     const viewportMargin = 8;
     const roomAbove = Math.max(0, trigger.top - gap - viewportMargin);
@@ -64,31 +97,47 @@ export function AgentConversationPicker({
       0,
       window.innerHeight - trigger.bottom - gap - viewportMargin,
     );
-    const above = roomAbove > roomBelow;
+    const above = Boolean(popover && popover.height > roomBelow);
+    const desiredRight = window.innerWidth - trigger.right;
+    const maximumRight = Math.max(
+      viewportMargin,
+      window.innerWidth - (popover?.width ?? 0) - viewportMargin,
+    );
     setPlacement({
       above,
       maxHeight: Math.min(560, above ? roomAbove : roomBelow),
       offset: above
         ? window.innerHeight - trigger.top + gap
         : trigger.bottom + gap,
-      right: Math.max(8, window.innerWidth - trigger.right),
+      right: Math.min(
+        Math.max(viewportMargin, desiredRight),
+        maximumRight,
+      ),
     });
   }, []);
 
   useEffect(() => {
     if (open) {
-      void onLoad();
+      setProviderFilter(provider ?? "all");
+      void onLoad("all");
       window.requestAnimationFrame(() => searchRef.current?.focus());
     } else {
       setQuery("");
     }
-  }, [open, onLoad]);
+  }, [open, onLoad, provider]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     updatePlacement();
     window.addEventListener("resize", updatePlacement);
-    return () => window.removeEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
   }, [open, updatePlacement]);
 
   useEffect(() => {
@@ -133,15 +182,16 @@ export function AgentConversationPicker({
               : { top: placement.offset }),
           }}
         >
-          <header className="flex h-11 shrink-0 items-center gap-3 border-b border-border bg-muted/35 px-3">
-            <div className="grid size-6 place-items-center rounded border border-border bg-background">
-              <History className="size-3 text-primary" />
-            </div>
+          <header className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border bg-muted/20 px-3">
+            <History
+              aria-hidden="true"
+              className="size-4 shrink-0 text-muted-foreground"
+            />
             <div className="min-w-0 flex-1">
-              <h2 className="font-mono text-xs font-semibold uppercase tracking-[0.12em]">
+              <h2 className="text-sm font-semibold tracking-tight">
                 {t("dock.conversations")}
               </h2>
-              <p className="truncate text-[10px] text-muted-foreground">
+              <p className="truncate text-[11px] leading-4 text-muted-foreground">
                 {t("dock.conversationsScope")}
               </p>
             </div>
@@ -149,7 +199,7 @@ export function AgentConversationPicker({
               aria-label={t("dock.refreshConversations")}
               className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-background hover:text-foreground disabled:opacity-50"
               disabled={loading}
-              onClick={() => void onLoad()}
+              onClick={() => void onLoad("all")}
               type="button"
             >
               <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
@@ -181,6 +231,29 @@ export function AgentConversationPicker({
                 </button>
               ) : null}
             </div>
+            <nav
+              aria-label={t("dock.conversationProviderFilter")}
+              className="mt-1.5 flex items-center gap-1"
+            >
+              {(["all", "claude", "codex"] as const).map((filter) => (
+                <button
+                  aria-pressed={providerFilter === filter}
+                  className={cn(
+                    "flex h-6 items-center gap-1 rounded-sm px-2 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground",
+                    providerFilter === filter &&
+                      "bg-foreground text-background hover:bg-foreground hover:text-background",
+                  )}
+                  key={filter}
+                  onClick={() => setProviderFilter(filter)}
+                  type="button"
+                >
+                  <span>{t(`dock.conversationProvider.${filter}`)}</span>
+                  <span className="font-mono tabular-nums opacity-70">
+                    {providerCounts[filter]}
+                  </span>
+                </button>
+              ))}
+            </nav>
           </div>
           <section
             aria-label={t("dock.conversationResults")}
@@ -237,6 +310,13 @@ export function AgentConversationPicker({
                           {transcript.provider === "codex" ? "Codex" : "Claude"}
                         </span>
                         <span aria-hidden>·</span>
+                        <span
+                          className="max-w-32 truncate text-foreground/70"
+                          title={transcript.cwd}
+                        >
+                          {transcriptProject(transcript.cwd)}
+                        </span>
+                        <span aria-hidden>·</span>
                         <time dateTime={transcript.updatedAt}>
                           {transcriptTime(transcript.updatedAt)}
                         </time>
@@ -267,7 +347,6 @@ export function AgentConversationPicker({
             open && "bg-muted text-foreground",
           )}
           onClick={() => {
-            if (!open) updatePlacement();
             setOpen((value) => !value);
           }}
           title={t("dock.conversations")}
