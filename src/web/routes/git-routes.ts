@@ -446,6 +446,12 @@ export const gitRoutes: Route[] = [
     sendJson(response, { ok: true });
   }),
 
+  route("GET", "/api/git/branches", async ({ response, configStore, cwd }) => {
+    const gitCwd = await selectedGitCwd(configStore, cwd);
+    const branches = await new GitManager(gitCwd).branches();
+    sendJson(response, { ok: true, branches });
+  }),
+
   route("POST", "/api/git/branches", async ({ request, response, configStore, cwd }) => {
     const form = await readForm(request);
     const gitCwd = await selectedGitCwd(configStore, cwd);
