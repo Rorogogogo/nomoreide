@@ -54,4 +54,25 @@ describe("service metrics", () => {
       expect.arrayContaining(["top: 4%;", "top: 96%;"]),
     );
   });
+
+  test("uses separators instead of individual metric cards", async () => {
+    await act(async () => {
+      root.render(<MetricsTab serviceName="frontend" />);
+    });
+
+    const content = container.querySelector('[data-slot="metrics-content"]');
+    expect(content?.className).toContain("-mx-3");
+    expect(content?.className).toContain("-mt-3");
+
+    const summary = content?.querySelector('[data-slot="metrics-summary"]');
+    expect(summary?.className).not.toContain("border-b");
+    expect(summary?.className).not.toContain("border-y");
+    expect(summary?.querySelector(".rounded-lg")).toBeNull();
+
+    const figures = [...(content?.querySelectorAll("figure") ?? [])];
+    expect(figures).toHaveLength(2);
+    expect(figures.every((figure) => figure.className.includes("border-t"))).toBe(true);
+    expect(figures.every((figure) => figure.className.includes("px-3"))).toBe(true);
+    expect(figures.every((figure) => figure.querySelector(".rounded-lg") === null)).toBe(true);
+  });
 });

@@ -9,7 +9,15 @@ import {
   Loader2,
   Server,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRegisterRefresh } from "@/components/refresh-registry";
@@ -24,8 +32,27 @@ import {
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import {
+  ActivitySortHeader,
+  type SortDirection,
+} from "./activity-sort-header";
+import {
+  metricPressure,
+  metricPressureBarClass,
+  metricPressureTextClass,
+} from "./metric-pressure";
+import {
+  EnergyImpactBadge,
+  estimateEnergyImpact,
+} from "./energy-impact";
 
-type SortKey = "cpu" | "memory" | "name";
+type SortKey = "cpu" | "energy" | "memory" | "name";
+
+const LazySystemProcessTable = lazy(() =>
+  import("./system-process-table").then((module) => ({
+    default: module.SystemProcessTable,
+  })),
+);
 
 const HISTORY_PLOT_TOP = 4;
 const HISTORY_PLOT_BOTTOM = 96;
@@ -40,9 +67,30 @@ export function ActivityView({
   scopeName?: string | null;
 }) {
   const t = useT();
-  const { metrics, loading, error, refresh } = useActivityMetrics();
+  const [processBoundary, setProcessBoundary] = useState<HTMLDivElement | null>(null);
+  const [loadProcesses, setLoadProcesses] = useState(false);
+  const { metrics, loading, error, refresh } = useActivityMetrics(loadProcesses);
   const [sort, setSort] = useState<SortKey>("cpu");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   useRegisterRefresh(refresh);
+
+  useEffect(() => {
+    if (!processBoundary || loadProcesses) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setLoadProcesses(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setLoadProcesses(true);
+        observer.disconnect();
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(processBoundary);
+    return () => observer.disconnect();
+  }, [loadProcesses, processBoundary]);
 
   const serviceNames = useMemo(
     () => new Set(data.config.services.map((service) => service.name)),
@@ -63,7 +111,7 @@ export function ActivityView({
         (summary, service) => ({
           cpu: summary.cpu + service.cpuPercent,
           memory: summary.memory + service.rssMb,
-          processes: summary.processes + service.processCount,
+          processes: summary.processes + (service.processCount ?? 0),
         }),
         { cpu: 0, memory: 0, processes: 0 },
       ),
@@ -142,9 +190,28 @@ export function ActivityView({
               onOpenService={onOpenService}
               runtime={data.runtime.services}
               sort={sort}
+              sortDirection={sortDirection}
               setSort={setSort}
+              setSortDirection={setSortDirection}
               totalMemoryBytes={current.memoryTotalBytes}
             />
+            <div ref={setProcessBoundary}>
+              {loadProcesses ? (
+                metrics.systemProcesses ? (
+                <Suspense fallback={<ActivitySectionLoading />}>
+                  <LazySystemProcessTable
+                    processes={metrics.systemProcesses}
+                    refresh={refresh}
+                    totalMemoryBytes={current.memoryTotalBytes}
+                  />
+                </Suspense>
+                ) : (
+                  <ActivitySectionLoading />
+                )
+              ) : (
+                <DeferredProcessSection />
+              )}
+            </div>
           </div>
         ) : (
           <Alert className="m-3" variant="muted">
@@ -156,7 +223,7 @@ export function ActivityView({
   );
 }
 
-function useActivityMetrics() {
+function useActivityMetrics(includeProcesses: boolean) {
   const [metrics, setMetrics] = useState<ActivityMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,7 +232,7 @@ function useActivityMetrics() {
   const refresh = useCallback(async () => {
     const currentRequest = ++requestId.current;
     try {
-      const next = await getActivityMetrics();
+      const next = await getActivityMetrics({ includeProcesses });
       if (currentRequest !== requestId.current) return;
       setMetrics(next);
       setError(null);
@@ -175,7 +242,7 @@ function useActivityMetrics() {
     } finally {
       if (currentRequest === requestId.current) setLoading(false);
     }
-  }, []);
+  }, [includeProcesses]);
 
   useEffect(() => {
     let active = true;
@@ -193,6 +260,34 @@ function useActivityMetrics() {
   }, [refresh]);
 
   return { metrics, loading, error, refresh };
+}
+
+function ActivitySectionLoading() {
+  const t = useT();
+  return (
+    <div
+      aria-live="polite"
+      className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground"
+    >
+      <Loader2
+        aria-hidden="true"
+        className="size-4 animate-spin motion-reduce:animate-none"
+      />
+      {t("activity.sectionLoading")}
+    </div>
+  );
+}
+
+function DeferredProcessSection() {
+  const t = useT();
+  return (
+    <div
+      className="border-y border-border/70 px-3 py-3 text-[11px] text-muted-foreground"
+      data-process-lazy-boundary
+    >
+      {t("activity.system.deferred")}
+    </div>
+  );
 }
 
 function SummaryStat({
@@ -600,7 +695,9 @@ function ServiceActivityTable({
   onOpenService,
   runtime,
   setSort,
+  setSortDirection,
   sort,
+  sortDirection,
   totalMemoryBytes,
 }: {
   definitions: ServiceDefinition[];
@@ -608,7 +705,9 @@ function ServiceActivityTable({
   onOpenService: (name: string) => void;
   runtime: Record<string, ServiceStatus>;
   setSort: (sort: SortKey) => void;
+  setSortDirection: (direction: SortDirection) => void;
   sort: SortKey;
+  sortDirection: SortDirection;
   totalMemoryBytes: number;
 }) {
   const t = useT();
@@ -621,14 +720,28 @@ function ServiceActivityTable({
           status: runtime[definition.name],
         }))
         .sort((a, b) => {
-          if (sort === "name") return a.definition.name.localeCompare(b.definition.name);
-          if (sort === "memory") {
-            return (b.metric?.rssMb ?? -1) - (a.metric?.rssMb ?? -1);
-          }
-          return (b.metric?.cpuPercent ?? -1) - (a.metric?.cpuPercent ?? -1);
+          const compared =
+            sort === "name"
+              ? a.definition.name.localeCompare(b.definition.name)
+              : sort === "energy"
+                ? serviceEnergyScore(a.metric, totalMemoryBytes) -
+                  serviceEnergyScore(b.metric, totalMemoryBytes)
+              : sort === "memory"
+                ? (a.metric?.rssMb ?? -1) - (b.metric?.rssMb ?? -1)
+                : (a.metric?.cpuPercent ?? -1) - (b.metric?.cpuPercent ?? -1);
+          return sortDirection === "asc" ? compared : -compared;
         }),
-    [definitions, metrics, runtime, sort],
+    [definitions, metrics, runtime, sort, sortDirection, totalMemoryBytes],
   );
+
+  const changeSort = (next: SortKey) => {
+    if (next === sort) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSort(next);
+    setSortDirection(next === "name" ? "asc" : "desc");
+  };
 
   return (
     <section aria-labelledby="activity-services-heading">
@@ -645,35 +758,54 @@ function ServiceActivityTable({
             {t("activity.managedOnly")}
           </p>
         </div>
-        <fieldset className="flex items-center gap-1">
-          <legend className="sr-only">{t("activity.sortBy")}</legend>
-          {(["cpu", "memory", "name"] as const).map((key) => (
-            <button
-              aria-pressed={sort === key}
-              className={cn(
-                "rounded px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                sort === key
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              key={key}
-              onClick={() => setSort(key)}
-              type="button"
-            >
-              {t(`activity.sort.${key}`)}
-            </button>
-          ))}
-        </fieldset>
       </div>
 
       <div className="overflow-x-auto border-y border-border/70">
-        <table className="w-full min-w-[720px] text-left text-xs">
+        <table className="w-full min-w-[820px] text-left text-xs">
           <thead className="border-b border-border/60 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
             <tr>
-              <th className="px-2 py-2 font-semibold">{t("activity.service")}</th>
+              <ActivitySortHeader
+                active={sort === "name"}
+                ariaLabel={t("activity.sortColumn", {
+                  column: t("activity.service"),
+                })}
+                direction={sortDirection}
+                onClick={() => changeSort("name")}
+              >
+                {t("activity.service")}
+              </ActivitySortHeader>
               <th className="px-2 py-2 font-semibold">{t("activity.state")}</th>
-              <th className="px-2 py-2 text-right font-semibold">CPU</th>
-              <th className="px-2 py-2 text-right font-semibold">{t("activity.memory")}</th>
+              <ActivitySortHeader
+                active={sort === "cpu"}
+                align="right"
+                ariaLabel={t("activity.sortColumn", { column: "CPU" })}
+                direction={sortDirection}
+                onClick={() => changeSort("cpu")}
+              >
+                CPU
+              </ActivitySortHeader>
+              <ActivitySortHeader
+                active={sort === "memory"}
+                align="right"
+                ariaLabel={t("activity.sortColumn", {
+                  column: t("activity.memory"),
+                })}
+                direction={sortDirection}
+                onClick={() => changeSort("memory")}
+              >
+                {t("activity.memory")}
+              </ActivitySortHeader>
+              <ActivitySortHeader
+                active={sort === "energy"}
+                align="right"
+                ariaLabel={t("activity.sortColumn", {
+                  column: t("activity.energy.title"),
+                })}
+                direction={sortDirection}
+                onClick={() => changeSort("energy")}
+              >
+                {t("activity.energy.title")}
+              </ActivitySortHeader>
               <th className="px-2 py-2 text-right font-semibold">{t("activity.processes")}</th>
               <th className="px-2 py-2 text-right font-semibold">{t("activity.uptimeLabel")}</th>
               <th className="w-10 px-2 py-2" />
@@ -682,8 +814,15 @@ function ServiceActivityTable({
           <tbody>
             {rows.map(({ definition, metric, status }) => {
               const local = (definition.kind ?? "local") === "local";
+              const docker = definition.kind === "docker-compose";
               const running = status?.state === "running";
-              const measurable = local && running && metric;
+              const measurable = (local || docker) && running && metric;
+              const memoryPressure = measurable
+                ? metric.memoryPercent ??
+                  (totalMemoryBytes > 0
+                    ? (metric.rssMb * 1024 * 1024 * 100) / totalMemoryBytes
+                    : null)
+                : null;
               return (
                 <tr
                   className="group border-b border-border/50 transition-colors hover:bg-muted/20 last:border-b-0"
@@ -698,7 +837,13 @@ function ServiceActivityTable({
                       {definition.name}
                     </button>
                     <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-                      {definition.kind ?? "local"}
+                      <Badge size="small" variant="outline">
+                        {definition.kind === "docker-compose"
+                          ? "DOCKER"
+                          : definition.kind === "ssh"
+                            ? `SSH · ${definition.host ?? "remote"}`
+                            : "LOCAL"}
+                      </Badge>
                       {definition.description ? ` · ${definition.description}` : ""}
                     </div>
                   </td>
@@ -708,25 +853,31 @@ function ServiceActivityTable({
                   <td className="px-2 py-2.5 text-right">
                     <MetricCell
                       percent={measurable ? metric.cpuPercent : null}
-                      tone="emerald"
-                      unavailable={!local}
+                      unavailable={!local && (!docker || !measurable)}
                       value={measurable ? `${metric.cpuPercent.toFixed(1)}%` : "—"}
                     />
                   </td>
                   <td className="px-2 py-2.5 text-right">
                     <MetricCell
                       percent={
-                        measurable && totalMemoryBytes > 0
-                          ? (metric.rssMb * 1024 * 1024 * 100) / totalMemoryBytes
-                          : null
+                        memoryPressure
                       }
-                      tone="sky"
-                      unavailable={!local}
+                      unavailable={!local && (!docker || !measurable)}
                       value={measurable ? formatMb(metric.rssMb) : "—"}
                     />
                   </td>
+                  <td className="px-2 py-2.5 text-right">
+                    {measurable ? (
+                      <EnergyImpactBadge
+                        cpuPercent={metric.cpuPercent}
+                        memoryPercent={memoryPressure}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-2 py-2.5 text-right font-mono tabular-nums">
-                    {measurable ? metric.processCount : "—"}
+                    {measurable ? metric.processCount ?? "—" : "—"}
                   </td>
                   <td className="px-2 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
                     {running && status.startedAt
@@ -753,14 +904,25 @@ function ServiceActivityTable({
   );
 }
 
+function serviceEnergyScore(
+  metric: ServiceActivityMetric | undefined,
+  totalMemoryBytes: number,
+): number {
+  if (!metric) return -1;
+  const memoryPercent =
+    metric.memoryPercent ??
+    (totalMemoryBytes > 0
+      ? (metric.rssMb * 1024 * 1024 * 100) / totalMemoryBytes
+      : null);
+  return estimateEnergyImpact(metric.cpuPercent, memoryPercent).score;
+}
+
 function MetricCell({
   percent,
-  tone,
   unavailable,
   value,
 }: {
   percent: number | null;
-  tone: "emerald" | "sky";
   unavailable: boolean;
   value: string;
 }) {
@@ -770,12 +932,20 @@ function MetricCell({
       className="ml-auto w-28"
       title={unavailable ? t("activity.externalUnavailable") : undefined}
     >
-      <span className="font-mono font-medium tabular-nums">{value}</span>
+      <span
+        className={cn(
+          "font-mono font-semibold tabular-nums",
+          metricPressureTextClass(percent),
+        )}
+        data-pressure={metricPressure(percent)}
+      >
+        {value}
+      </span>
       <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-muted">
         <span
           className={cn(
             "block h-full rounded-full transition-[width] duration-500",
-            tone === "emerald" ? "bg-emerald-500" : "bg-sky-500",
+            metricPressureBarClass(percent),
           )}
           style={{ width: `${Math.min(100, Math.max(0, percent ?? 0))}%` }}
         />

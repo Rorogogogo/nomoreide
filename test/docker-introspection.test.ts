@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { parseDockerJsonLines, readString } from "../src/core/docker.js";
-import { parseDockerStatsLines, parsePercent } from "../src/core/docker-stats.js";
+import {
+  parseDockerMemoryUsageMb,
+  parseDockerStatsLines,
+  parsePercent,
+} from "../src/core/docker-stats.js";
 import {
   parseDockerImageLines,
   parseDockerNetworkLines,
@@ -48,6 +52,12 @@ describe("parseDockerStatsLines", () => {
   test("parsePercent tolerates blanks and stray whitespace", () => {
     expect(parsePercent(" 12.5% ")).toBe(12.5);
     expect(parsePercent("")).toBeNull();
+  });
+
+  test("parses Docker memory usage into MiB", () => {
+    expect(parseDockerMemoryUsageMb("184MiB / 2GiB")).toBe(184);
+    expect(parseDockerMemoryUsageMb("1.5GiB / 4GiB")).toBe(1536);
+    expect(parseDockerMemoryUsageMb("--")).toBeNull();
   });
 });
 

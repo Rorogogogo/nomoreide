@@ -43,6 +43,8 @@ describe("metrics store activity snapshots", () => {
       manager,
       now: () => now++,
       processTreeReader: async () => tree,
+      systemProcessReader: async () => [],
+      dockerStatsReader: async () => [],
     });
 
     await store.sampleOnce();
@@ -62,6 +64,7 @@ describe("metrics store activity snapshots", () => {
           cpuPercent: 12.5,
           rssMb: 256,
           processCount: 3,
+          source: "local",
         },
       },
     });
@@ -88,6 +91,8 @@ describe("metrics store activity snapshots", () => {
         rssMb: 2,
         processes: [],
       }),
+      systemProcessReader: async () => [],
+      dockerStatsReader: async () => [],
     });
 
     await store.sampleOnce();
@@ -107,6 +112,54 @@ describe("metrics store activity snapshots", () => {
     expect(store.readActivity().services.web).toMatchObject({
       startedAt: "run-2",
       sampledAt: expect.any(Number),
+    });
+  });
+
+  test("samples managed Docker Compose services by container ID", async () => {
+    const manager = {
+      status: () => ({
+        services: {
+          database: {
+            name: "database",
+            state: "running",
+            kind: "docker-compose",
+            containerId: "abc123def456",
+            startedAt: "docker-run-1",
+          },
+        },
+      }),
+    } as unknown as ProcessManager;
+    const store = new MetricsStore({
+      hostCollector: { sample: async () => hostSample },
+      manager,
+      processTreeReader: async () => {
+        throw new Error("Docker services must not use the host process reader");
+      },
+      systemProcessReader: async () => [],
+      dockerStatsReader: async () => [
+        {
+          id: "abc123def456",
+          cpuPercent: 4.2,
+          memoryPercent: 12.5,
+          memoryUsage: "256MiB / 2GiB",
+          netIo: "1kB / 2kB",
+          blockIo: "0B / 0B",
+        },
+      ],
+      now: () => 200,
+    });
+
+    await store.sampleOnce();
+
+    expect(store.readActivity().services.database).toEqual({
+      service: "database",
+      startedAt: "docker-run-1",
+      sampledAt: 200,
+      cpuPercent: 4.2,
+      rssMb: 256,
+      processCount: undefined,
+      memoryPercent: 12.5,
+      source: "docker",
     });
   });
 });

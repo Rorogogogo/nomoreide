@@ -54,8 +54,11 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
   const windowMs = samples.length > 1 ? samples[samples.length - 1].t - samples[0].t : 0;
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="-mx-3 -mt-3" data-slot="metrics-content">
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4"
+        data-slot="metrics-summary"
+      >
         <StatCard
           accent="#22c55e"
           label="CPU"
@@ -67,6 +70,7 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
         />
         <StatCard
           accent="#3b82f6"
+          className="border-l border-border/70"
           label={t("services.metrics.memory")}
           value={formatMb(mem.last)}
           sub={t("services.metrics.peakAvg", {
@@ -76,6 +80,7 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
         />
         <StatCard
           accent="#a855f7"
+          className="border-t border-border/70 sm:border-l sm:border-t-0"
           label={t("services.metrics.uptime")}
           value={uptimeMs != null ? formatDuration(uptimeMs) : "—"}
           sub={
@@ -86,6 +91,7 @@ function MetricsContent({ series, now }: { series: MetricsSeries; now: number })
         />
         <StatCard
           accent="#f59e0b"
+          className="border-l border-t border-border/70 sm:border-t-0"
           label={t("services.metrics.samples")}
           value={String(samples.length)}
           sub={windowMs ? t("services.metrics.over", { dur: formatDuration(windowMs) }) : t("services.metrics.collecting")}
@@ -133,17 +139,19 @@ function summarize(samples: MetricSample[], pick: (s: MetricSample) => number): 
 
 function StatCard({
   accent,
+  className,
   label,
   value,
   sub,
 }: {
   accent: string;
+  className?: string;
   label: string;
   value: string;
   sub: string;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2">
+    <div className={`min-w-0 px-3 py-2.5 ${className ?? ""}`}>
       <div className="flex items-center gap-1.5">
         <span
           className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -212,7 +220,7 @@ function Chart({
   const xTickCount = 5;
 
   return (
-    <figure className="space-y-1">
+    <figure className="space-y-1 border-t border-border/70 px-3 pt-3">
       <figcaption className="flex items-baseline justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
@@ -223,7 +231,7 @@ function Chart({
           <span className="mx-1.5">·</span>{t("services.metrics.wAvg")} {summary.avg.toFixed(1)}{suffix}
         </span>
       </figcaption>
-      <div className="rounded-lg border border-border bg-card p-2">
+      <div className="py-2">
         <div className="flex">
           {/* Y-axis labels */}
           <div
@@ -288,7 +296,7 @@ function Chart({
             </svg>
             {/* Live "current value" dot — positioned in HTML so it stays round */}
             <span
-              className="pointer-events-none absolute z-10 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card"
+              className="pointer-events-none absolute z-10 block h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-background"
               style={{
                 left: `${(lastX / 1000) * 100}%`,
                 top: `${lastY / 10}%`,

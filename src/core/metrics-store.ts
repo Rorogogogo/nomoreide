@@ -1,5 +1,12 @@
 import type { ProcessManager } from "./process-manager.js";
 import {
+  findStatsFor,
+  indexStatsById,
+  listDockerStats,
+  parseDockerMemoryUsageMb,
+  type DockerContainerStats,
+} from "./docker-stats.js";
+import {
   HostMetricsCollector,
   type HostMetricSample,
 } from "./host-metrics.js";
@@ -7,6 +14,11 @@ import {
   readProcessTree,
   type ProcessTreeSummary,
 } from "./process-tree.js";
+import {
+  classifySystemProcesses,
+  readSystemProcesses,
+  type SystemProcess,
+} from "./system-processes.js";
 
 export interface MetricSample {
   t: number;
@@ -26,7 +38,11 @@ interface ServiceBuffer {
   samples: MetricSample[];
   latest?: {
     sampledAt: number;
-    tree: ProcessTreeSummary;
+    cpuPercent: number;
+    rssMb: number;
+    processCount?: number;
+    memoryPercent?: number;
+    source: "local" | "docker";
   };
 }
 
@@ -36,7 +52,9 @@ export interface ServiceActivityMetric {
   sampledAt: number;
   cpuPercent: number;
   rssMb: number;
-  processCount: number;
+  processCount?: number;
+  memoryPercent?: number;
+  source: "local" | "docker";
 }
 
 export interface ActivityMetrics {
@@ -46,6 +64,7 @@ export interface ActivityMetrics {
     samples: HostMetricSample[];
   };
   services: Record<string, ServiceActivityMetric>;
+  systemProcesses: SystemProcess[];
 }
 
 export interface MetricsStoreOptions {
@@ -57,6 +76,8 @@ export interface MetricsStoreOptions {
   cwd?: string;
   hostCollector?: Pick<HostMetricsCollector, "sample">;
   processTreeReader?: (rootPid: number) => Promise<ProcessTreeSummary>;
+  systemProcessReader?: () => Promise<SystemProcess[]>;
+  dockerStatsReader?: () => Promise<DockerContainerStats[]>;
   now?: () => number;
 }
 
@@ -71,9 +92,12 @@ export class MetricsStore {
   private readonly capacity: number;
   private readonly hostCollector: Pick<HostMetricsCollector, "sample">;
   private readonly processTreeReader: (rootPid: number) => Promise<ProcessTreeSummary>;
+  private readonly systemProcessReader: () => Promise<SystemProcess[]>;
+  private readonly dockerStatsReader: () => Promise<DockerContainerStats[]>;
   private readonly now: () => number;
   private readonly buffers = new Map<string, ServiceBuffer>();
   private readonly hostSamples: HostMetricSample[] = [];
+  private systemProcesses: SystemProcess[] = [];
   private timer?: NodeJS.Timeout;
   private sampling = false;
 
@@ -84,6 +108,8 @@ export class MetricsStore {
     this.hostCollector =
       options.hostCollector ?? new HostMetricsCollector(options.cwd ?? process.cwd());
     this.processTreeReader = options.processTreeReader ?? readProcessTree;
+    this.systemProcessReader = options.systemProcessReader ?? readSystemProcesses;
+    this.dockerStatsReader = options.dockerStatsReader ?? listDockerStats;
     this.now = options.now ?? Date.now;
   }
 
@@ -128,9 +154,11 @@ export class MetricsStore {
         service: name,
         startedAt: buffer.startedAt,
         sampledAt: buffer.latest.sampledAt,
-        cpuPercent: buffer.latest.tree.cpuPercent,
-        rssMb: buffer.latest.tree.rssMb,
-        processCount: buffer.latest.tree.processCount,
+        cpuPercent: buffer.latest.cpuPercent,
+        rssMb: buffer.latest.rssMb,
+        processCount: buffer.latest.processCount,
+        memoryPercent: buffer.latest.memoryPercent,
+        source: buffer.latest.source,
       };
     }
     return {
@@ -140,6 +168,12 @@ export class MetricsStore {
         samples: this.hostSamples.map(cloneHostSample),
       },
       services,
+      systemProcesses: classifySystemProcesses(
+        this.systemProcesses,
+        Object.values(statuses)
+          .filter((status) => status.state === "running" && status.pid)
+          .map((status) => ({ pid: status.pid as number, service: status.name })),
+      ),
     };
   }
 
@@ -150,9 +184,27 @@ export class MetricsStore {
       const { services } = this.manager.status();
       const now = this.now();
       const hostSample = this.hostCollector.sample(now).catch(() => undefined);
+      const systemProcesses = this.systemProcessReader().catch(() => undefined);
+      const dockerServices = Object.values(services).filter(
+        (status) =>
+          status.state === "running" &&
+          status.kind === "docker-compose" &&
+          status.containerId,
+      );
+      const dockerStats =
+        dockerServices.length > 0
+          ? this.dockerStatsReader().catch(() => undefined)
+          : Promise.resolve(undefined);
       await Promise.all(
         Object.values(services).map(async (status) => {
-          if (status.state !== "running" || !status.pid) return;
+          if (
+            status.state !== "running" ||
+            !status.pid ||
+            status.kind === "docker-compose" ||
+            status.kind === "ssh"
+          ) {
+            return;
+          }
           let buffer = this.buffers.get(status.name);
           // New run (or first sample) → reset the series so the chart starts at startedAt.
           if (!buffer || buffer.startedAt !== status.startedAt) {
@@ -162,7 +214,13 @@ export class MetricsStore {
           try {
             const tree = await this.processTreeReader(status.pid);
             buffer.samples.push({ t: now, cpu: tree.cpuPercent, rss: tree.rssMb });
-            buffer.latest = { sampledAt: now, tree };
+            buffer.latest = {
+              sampledAt: now,
+              cpuPercent: tree.cpuPercent,
+              rssMb: tree.rssMb,
+              processCount: tree.processCount,
+              source: "local",
+            };
             if (buffer.samples.length > this.capacity) {
               buffer.samples.splice(0, buffer.samples.length - this.capacity);
             }
@@ -171,6 +229,31 @@ export class MetricsStore {
           }
         }),
       );
+      const nextDockerStats = await dockerStats;
+      if (nextDockerStats) {
+        const statsById = indexStatsById(nextDockerStats);
+        for (const status of dockerServices) {
+          const stats = findStatsFor(statsById, status.containerId as string);
+          const rssMb = stats ? parseDockerMemoryUsageMb(stats.memoryUsage) : null;
+          if (!stats || stats.cpuPercent === null || rssMb === null) continue;
+          let buffer = this.buffers.get(status.name);
+          if (!buffer || buffer.startedAt !== status.startedAt) {
+            buffer = { startedAt: status.startedAt, samples: [] };
+            this.buffers.set(status.name, buffer);
+          }
+          buffer.samples.push({ t: now, cpu: stats.cpuPercent, rss: rssMb });
+          buffer.latest = {
+            sampledAt: now,
+            cpuPercent: stats.cpuPercent,
+            rssMb,
+            memoryPercent: stats.memoryPercent ?? undefined,
+            source: "docker",
+          };
+          if (buffer.samples.length > this.capacity) {
+            buffer.samples.splice(0, buffer.samples.length - this.capacity);
+          }
+        }
+      }
       const nextHostSample = await hostSample;
       if (nextHostSample) {
         this.hostSamples.push(nextHostSample);
@@ -178,6 +261,8 @@ export class MetricsStore {
           this.hostSamples.splice(0, this.hostSamples.length - this.capacity);
         }
       }
+      const nextSystemProcesses = await systemProcesses;
+      if (nextSystemProcesses) this.systemProcesses = nextSystemProcesses;
     } finally {
       this.sampling = false;
     }
