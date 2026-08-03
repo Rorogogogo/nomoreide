@@ -4,6 +4,13 @@
 
 <!-- A clear, concise description of the change and the motivation behind it. -->
 
+## Release note
+
+<!-- Goes verbatim into the GitHub Release if this PR ships a version, so write
+     it for someone installing the app, not for a reviewer: what they can now
+     do, not which files moved. Delete this section if the change is internal —
+     the release then falls back to the description above. -->
+
 ## Related issues
 
 <!-- e.g. "Closes #123". Leave blank if none. -->
