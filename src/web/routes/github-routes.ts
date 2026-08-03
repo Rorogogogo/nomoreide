@@ -1,6 +1,8 @@
 import { getSelectedGitRepository, selectedGitCwd } from "../dashboard.js";
 import { GitManager, type GitCompareSummary } from "../../core/git-manager.js";
 import { GitHubApiError, GitHubManager } from "../../core/github-manager.js";
+import { GitHubCliAuth } from "../../core/github-auth.js";
+import type { GitHubCredentialSelection } from "../../core/types.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 import { requireGitHubContext, optionalGitHubContext } from "./github-context.js";
@@ -28,6 +30,28 @@ interface PRTemplateCompare {
 
 function getClientId(): string | undefined {
   return process.env.NOMOREIDE_GITHUB_CLIENT_ID?.trim() || DEFAULT_GITHUB_CLIENT_ID;
+}
+
+/**
+ * Who a freshly stored token belongs to. Captured once at connect time so the
+ * status route can report the account (and its avatar) without spending an API
+ * call on every check. Best-effort: a failure here must not fail the login.
+ */
+async function fetchGitHubProfile(
+  token: string,
+): Promise<{ login: string; avatarUrl?: string } | undefined> {
+  try {
+    const viewer = await new GitHubManager(token, "", "").viewer();
+    if (!viewer.login) return undefined;
+    return { login: viewer.login, avatarUrl: viewer.avatar_url };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Public avatar for a login we know without having called the API. */
+function avatarForLogin(login: string): string {
+  return `https://github.com/${encodeURIComponent(login)}.png?size=64`;
 }
 
 async function buildPRTemplate(gitCwd: string, manager: GitHubManager) {
@@ -187,28 +211,101 @@ export const githubRoutes: Route[] = [
   route("GET", "/api/github/token", async ({ response, configStore }) => {
     const config = await configStore.load();
     const token = configStore.getGithubToken(config);
+    const selectedRepository = getSelectedGitRepository(config);
+    const cliAccounts = await new GitHubCliAuth().listAccounts();
+    const selected = selectedRepository?.githubCredential;
     const base = {
       ok: true,
-      configured: !!token,
+      configured: !!token || selected?.source === "gh",
+      storedConfigured: !!token,
       deviceFlowAvailable: !!getClientId(),
+      accounts: cliAccounts.accounts,
+      cliAvailable: cliAccounts.available,
+      cliError: cliAccounts.error,
+      selected,
+      repositoryName: selectedRepository?.name,
     };
 
-    if (!token) {
+    if (!selectedRepository && !token) {
       sendJson(response, { ...base, status: "not_configured" });
       return;
     }
 
+    // The account behind the connection, resolved without an API call whenever
+    // possible: a stored token remembers who it belongs to from connect time,
+    // and a `gh` credential already names its login (avatars are public).
+    let profile = configStore.getGithubProfile(config);
+    if (!profile && token) {
+      // Backfill for tokens stored before identity was captured, so existing
+      // installs pick up an avatar on their next status check instead of
+      // needing a reconnect.
+      profile = await fetchGitHubProfile(token);
+      if (profile) await configStore.setGithubProfile("github.com", profile);
+    }
+
     try {
-      const selectedRepository = getSelectedGitRepository(config);
       if (selectedRepository) {
         const context = await requireGitHubContext(configStore, selectedRepository.path);
-        const repository = await context.manager.repoInfo();
-        sendJson(response, { ...base, status: "connected", repository });
+        const login =
+          context.credential?.source === "gh" ? context.credential.login : profile?.login;
+        const user = login
+          ? {
+              login,
+              avatarUrl:
+                login === profile?.login && profile.avatarUrl
+                  ? profile.avatarUrl
+                  : avatarForLogin(login),
+            }
+          : undefined;
+        const repositorySlug = `${context.owner}/${context.repo}`;
+
+        let repository: Awaited<ReturnType<typeof context.manager.repoInfo>>;
+        try {
+          repository = await context.manager.repoInfo();
+        } catch (error) {
+          // A 404 here is the credential working perfectly and answering "no
+          // such repository for you" — the signed-in account simply can't see
+          // this one. Reporting that as a failed connection sent people off to
+          // reconnect an account that was never broken.
+          if (!(error instanceof GitHubApiError) || error.status !== 404) throw error;
+          sendJson(response, {
+            ...base,
+            configured: true,
+            status: "repo_access",
+            credential: context.credential,
+            repositorySlug,
+            user,
+            error: errorMessage(error),
+          });
+          return;
+        }
+
+        sendJson(response, {
+          ...base,
+          configured: true,
+          status: "connected",
+          credential: context.credential,
+          repository,
+          repositorySlug,
+          user,
+        });
         return;
       }
 
-      const user = await new GitHubManager(token, "", "").viewer();
-      sendJson(response, { ...base, status: "connected", user });
+      if (!token) throw new Error("No stored GitHub token configured.");
+      let account = profile;
+      if (!account) {
+        const viewer = await new GitHubManager(token, "", "").viewer();
+        account = { login: viewer.login, avatarUrl: viewer.avatar_url };
+      }
+      sendJson(response, {
+        ...base,
+        status: "connected",
+        user: {
+          login: account.login,
+          avatarUrl: account.avatarUrl ?? avatarForLogin(account.login),
+        },
+      });
     } catch (error) {
       const status =
         error instanceof GitHubApiError && (error.status === 401 || error.status === 403)
@@ -218,12 +315,57 @@ export const githubRoutes: Route[] = [
     }
   }),
 
+  route("GET", "/api/github/accounts", async ({ response }) => {
+    const result = await new GitHubCliAuth().listAccounts();
+    sendJson(response, { ok: true, ...result });
+  }),
+
+  route("PUT", "/api/github/account", async ({ request, response, configStore }) => {
+    try {
+      const body = await readJson(request);
+      const repository = typeof body.repository === "string" ? body.repository.trim() : "";
+      const candidate = body.credential;
+      if (!repository || !candidate || typeof candidate !== "object") {
+        throw new Error("repository and credential are required");
+      }
+      const value = candidate as Record<string, unknown>;
+      const host = typeof value.host === "string" ? value.host.trim() : "";
+      if (host && host !== "github.com") {
+        throw new Error("The selected repository uses github.com; choose a github.com account.");
+      }
+      let credential: GitHubCredentialSelection;
+      if (value.source === "gh") {
+        const login = typeof value.login === "string" ? value.login.trim() : "";
+        if (!host || !login) throw new Error("GitHub CLI host and login are required");
+        await new GitHubCliAuth().token(host, login);
+        credential = { source: "gh", host, login };
+      } else if (value.source === "stored") {
+        const config = await configStore.load();
+        if (!host || !configStore.getGithubToken(config, host)) {
+          throw new Error(`No stored GitHub token configured for ${host || "that host"}.`);
+        }
+        credential = { source: "stored", host };
+      } else {
+        throw new Error("Unsupported GitHub credential source");
+      }
+      await configStore.setGitHubCredential(repository, credential);
+      sendJson(response, { ok: true });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
   route("POST", "/api/github/token", async ({ request, response, configStore }) => {
     try {
       const form = await readForm(request);
       const host = form.get("host")?.trim() || "github.com";
       const token = requiredFormValue(form, "token");
-      await configStore.setGithubToken(host, token);
+      await configStore.setGithubToken(host, token, await fetchGitHubProfile(token));
+      const config = await configStore.load();
+      const selectedRepository = getSelectedGitRepository(config);
+      if (selectedRepository) {
+        await configStore.setGitHubCredential(selectedRepository.name, { source: "stored", host });
+      }
       sendJson(response, { ok: true });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);
@@ -315,7 +457,19 @@ export const githubRoutes: Route[] = [
         error_description?: string;
       };
       if (data.access_token) {
-        await configStore.setGithubToken("github.com", data.access_token);
+        await configStore.setGithubToken(
+          "github.com",
+          data.access_token,
+          await fetchGitHubProfile(data.access_token),
+        );
+        const config = await configStore.load();
+        const selectedRepository = getSelectedGitRepository(config);
+        if (selectedRepository) {
+          await configStore.setGitHubCredential(selectedRepository.name, {
+            source: "stored",
+            host: "github.com",
+          });
+        }
         sendJson(response, { ok: true, done: true });
         return;
       }

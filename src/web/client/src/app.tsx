@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import {
   BookOpen,
@@ -7,7 +7,6 @@ import {
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
-  RefreshCw,
   Settings,
 } from "lucide-react";
 import {
@@ -17,11 +16,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   headerActionClassName,
   headerActionIconClassName,
-  headerActionLabelClassName,
 } from "@/components/header-action";
+import { HeaderRefreshButton, type RefreshPhase } from "@/components/header-refresh-button";
 import { AgentView } from "@/features/agent/agent-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
@@ -43,7 +43,10 @@ import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
+import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
+import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
+import { BranchBreadcrumb } from "@/features/git/branch-breadcrumb";
 import { scopeDashboard } from "@/features/services/project-scope";
 import { BranchControls } from "@/features/git/branch-controls";
 import { useToasts } from "@/components/ui/toast";
@@ -263,14 +266,18 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [changesFocusNonce, setChangesFocusNonce] = useState(0);
   const [agentDockInset, setAgentDockInset] = useState<{
     placement: "bottom" | "right";
+    resizing: boolean;
     size: number;
-  }>({ placement: "bottom", size: 36 });
+  }>({ placement: "bottom", resizing: false, size: 36 });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Refresh-cycle status surfaced by the header button (see `runRefreshCycle`).
+  const [refreshPhase, setRefreshPhase] = useState<RefreshPhase>("idle");
+  const [refreshedAt, setRefreshedAt] = useState<number | null>(null);
+  const doneTimerRef = useRef<number | null>(null);
   const {
     error: showErrorToast,
     message: showMessageToast,
-    success: showSuccessToast,
   } = useToasts();
   const { ui, updateUi, selectProject } = useSettings();
   const sidebarDocked = ui.sidebarDocked;
@@ -283,19 +290,25 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     [updateUi],
   );
   const handleAgentDockInsetChange = useCallback(
-    (placement: "bottom" | "right", size: number) => {
+    (placement: "bottom" | "right", size: number, resizing: boolean) => {
       setAgentDockInset((current) =>
-        current.placement === placement && current.size === size
+        current.placement === placement &&
+        current.resizing === resizing &&
+        current.size === size
           ? current
-          : { placement, size },
+          : { placement, resizing, size },
       );
     },
     [],
   );
 
   const refreshRegistry = useRefreshRegistry();
+  // The registry object is a fresh literal each render; its callbacks are not.
+  // Depend on the callback so the refresh cycle (and the poll interval built on
+  // it) stays stable.
+  const runActiveRefresh = refreshRegistry.runActive;
 
-  const refresh = useCallback(async (options: { notify?: boolean; silent?: boolean } = {}) => {
+  const refresh = useCallback(async (options: { silent?: boolean } = {}) => {
     if (!options.silent) {
       setLoading(true);
     }
@@ -309,28 +322,98 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       } else {
         setData(nextData);
       }
-      if (options.notify) {
-        showSuccessToast(t("app.dashboardRefreshed"));
-      }
+      return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
       showErrorToast(message);
+      // Reported, not rethrown: every caller is a fire-and-forget `void
+      // refresh(...)`, so the outcome travels back as a value instead.
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [showErrorToast, showSuccessToast, startTransition, t]);
+  }, [showErrorToast, startTransition]);
 
-  // Header Refresh: reload the shared dashboard state *and* whatever the active
-  // page fetches on its own (GitHub, Database, commit graph), so it always
-  // refreshes what the user is looking at — not just the services/git overview.
+  // One refresh cycle = the shared dashboard payload *plus* whatever the active
+  // page fetches on its own (GitHub, Database, commit graph), so both the header
+  // button and the 5s poll refresh what the user is actually looking at.
+  //
+  // The button is also the cycle's status light, which is why the auto path runs
+  // through here too: the user gets one honest "when was this last current?"
+  // read instead of a spinner that only ever reacts to their own clicks.
+  const runRefreshCycle = useCallback(
+    async (options: { manual?: boolean } = {}) => {
+      const manual = options.manual === true;
+      if (doneTimerRef.current !== null) {
+        window.clearTimeout(doneTimerRef.current);
+        doneTimerRef.current = null;
+      }
+      // A click should spin immediately. The poll must not: at 5s intervals a
+      // spinner that fires on every tick strobes, so the auto path only shows
+      // one once the cycle is slow enough to be worth noticing.
+      let slowTimer: number | null = null;
+      if (manual) {
+        setRefreshPhase("busy");
+      } else {
+        slowTimer = window.setTimeout(() => setRefreshPhase("busy"), 600);
+      }
+      const [dashboardOk, pageOk] = await Promise.all([
+        refresh({ silent: !manual }),
+        runActiveRefresh().then(
+          () => true,
+          () => false,
+        ),
+      ]);
+      if (slowTimer !== null) window.clearTimeout(slowTimer);
+
+      if (!dashboardOk || !pageOk) {
+        // `refresh` already surfaced the message (error badge + toast); the icon
+        // staying red is what makes a daemon that stopped answering visible
+        // without having to catch the last toast.
+        setRefreshPhase("error");
+        return;
+      }
+
+      setRefreshedAt(Date.now());
+      if (manual) {
+        // The click's own confirmation — a toast for something the user just
+        // asked for and can see the result of is noise.
+        setRefreshPhase("done");
+        doneTimerRef.current = window.setTimeout(() => {
+          doneTimerRef.current = null;
+          setRefreshPhase("idle");
+        }, 1400);
+      } else {
+        setRefreshPhase("idle");
+      }
+    },
+    [refresh, runActiveRefresh],
+  );
+
   const refreshAll = useCallback(() => {
-    void refresh({ notify: true });
-    void refreshRegistry.runActive();
-  }, [refresh, refreshRegistry]);
+    void runRefreshCycle({ manual: true });
+  }, [runRefreshCycle]);
+
+  // Child `onRefresh` props are typed `() => Promise<void>`; `refresh` now
+  // reports success as a value, so hand them a void-returning view of it.
+  const refreshView = useCallback(async () => {
+    await refresh();
+  }, [refresh]);
+  const refreshSilently = useCallback(async () => {
+    await refresh({ silent: true });
+  }, [refresh]);
 
   useEffect(() => {
-    void refresh();
+    return () => {
+      if (doneTimerRef.current !== null) window.clearTimeout(doneTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    void refresh().then((ok) => {
+      if (ok) setRefreshedAt(Date.now());
+    });
   }, [refresh]);
 
   useEffect(() => {
@@ -341,8 +424,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
         // on-screen view current, not just the services/git overview. The agent
         // page deliberately registers no handler because its profile data owns
         // its own lifecycle; native terminal sessions remain attached separately.
-        void refresh({ silent: true });
-        void refreshRegistry.runActive();
+        void runRefreshCycle();
       }
     }
 
@@ -355,9 +437,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       window.removeEventListener("focus", refreshIfVisible);
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
-    // `runActive` is a stable callback; depending on the registry object (a
-    // fresh literal each render) would needlessly re-arm the interval.
-  }, [page, refresh, refreshRegistry.runActive]);
+    // `runRefreshCycle` closes over `runActive` (a stable callback) rather than
+    // the registry object (a fresh literal each render), so it stays stable and
+    // the interval is only re-armed when the page actually changes.
+  }, [page, runRefreshCycle]);
 
   useEffect(() => {
     if (!syncLocation) return;
@@ -393,6 +476,22 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const githubPageKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
   const settingsProjectPath = data?.git.selectedRepository?.path ?? null;
+  /**
+   * Git and GitHub read the daemon's selected repository, so they can't honour
+   * an all-projects scope — the crumb shows the repository they're really on.
+   */
+  const repoScopedPage = page === "git" || page === "github";
+  const effectiveProject = repoScopedPage
+    ? data?.git.selectedRepository ?? null
+    : activeProject;
+
+  // GitHub identity (repo + credential) is resolved per selected repository, so
+  // a project switch invalidates it wherever it is rendered — including the
+  // header indicator, which no longer mounts a private copy of the state.
+  useEffect(() => {
+    if (githubPageKey === "no-git-repository") return;
+    void refreshGitHubToken();
+  }, [githubPageKey]);
 
   return (
     <AgentProvider>
@@ -409,7 +508,11 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     <ScrollProgressBar key={page} type="bar" strokeSize={2} />
     <TauriTitleBar />
     <div
-      className="flex-1 overflow-hidden transition-[padding] duration-150"
+      className={cn(
+        "flex-1 overflow-hidden",
+        !agentDockInset.resizing &&
+          "transition-[padding] duration-150 motion-reduce:transition-none",
+      )}
       style={agentDockInset.placement === "right"
         ? { paddingRight: agentDockInset.size }
         : { paddingBottom: agentDockInset.size }}
@@ -508,18 +611,33 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               "border-x-0 border-t-0 border-b",
             )}
           >
-            {/* One line: project scope, then the page it scopes. The project
-                crumb is the picker itself, so scope is both shown and set in
-                the place it applies. */}
+            {/* One line: project scope, its branch when a single project is
+                selected, then the page they scope. Each crumb is also its own
+                picker, so the hierarchy stays visible while remaining useful. */}
             <div className="flex min-w-0 items-center gap-1">
               <PanelLeft className="mr-1 size-4 shrink-0 text-muted-foreground md:hidden" />
               {data ? (
                 <ProjectBreadcrumb
                   data={data}
-                  onRefresh={() => refresh({ silent: true })}
+                  onRefresh={refreshSilently}
                   onScopeChange={setScopeAll}
+                  requiresRepo={repoScopedPage}
                   scopeAll={scopeAll}
                 />
+              ) : null}
+              {data && effectiveProject ? (
+                <>
+                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+                  <BranchBreadcrumb
+                    ahead={data.git.status?.ahead ?? 0}
+                    behind={data.git.status?.behind ?? 0}
+                    branches={data.git.branches}
+                    currentBranch={data.git.status?.branch || undefined}
+                    disabled={!data.git.status}
+                    onRefresh={refreshSilently}
+                    upstream={data.git.status?.upstream}
+                  />
+                </>
               ) : null}
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
               <h1 className="truncate px-1 text-sm font-semibold tracking-tight">
@@ -528,37 +646,31 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             </div>
             <div className="flex items-center gap-2">
               {error ? <Badge variant="danger">{error}</Badge> : null}
+              <GitHubHeaderIndicator onOpenGitHub={() => setPage("github")} />
               <div
                 aria-label="Dashboard quick actions"
-                className="flex items-center gap-1 rounded-lg border border-border bg-background p-px"
+                className="flex items-center gap-1"
                 role="toolbar"
               >
-                <button
-                  aria-label={t("action.refresh")}
-                  className={headerActionClassName()}
+                <HeaderRefreshButton
                   onClick={refreshAll}
-                  title={t("action.refreshTitle")}
-                  type="button"
-                >
-                  <span className={headerActionIconClassName()}>
-                    <RefreshCw className={cn(loading && "animate-spin")} />
-                  </span>
-                  <span className={headerActionLabelClassName()}>{t("action.refresh")}</span>
-                </button>
+                  phase={loading && !data ? "busy" : refreshPhase}
+                  updatedAt={refreshedAt}
+                />
                 <ThemeToggle />
-                <a
-                  aria-label={t("action.docsTitle")}
-                  className={headerActionClassName()}
-                  href="https://www.nomoreide.com/docs"
-                  rel="noreferrer"
-                  target="_blank"
-                  title={t("action.docsTitle")}
-                >
-                  <span className={headerActionIconClassName()}>
-                    <BookOpen />
-                  </span>
-                  <span className={headerActionLabelClassName()}>{t("action.docs")}</span>
-                </a>
+                <Tooltip align="end" label={t("action.docs")}>
+                  <a
+                    aria-label={t("action.docsTitle")}
+                    className={headerActionClassName()}
+                    href="https://www.nomoreide.com/docs"
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <span className={headerActionIconClassName()}>
+                      <BookOpen />
+                    </span>
+                  </a>
+                </Tooltip>
               </div>
             </div>
           </header>
@@ -582,7 +694,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 }
                 setFocusService(name);
                 setPage("services");
-                void refresh({ silent: true });
+                void refreshSilently();
               }}
             />
           ) : null}
@@ -597,7 +709,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {scopedData && page === "services" ? (
               <ServicesView
                 data={scopedData}
-                onRefresh={refresh}
+                onRefresh={refreshView}
                 focusService={focusService}
                 onServiceFocused={() => setFocusService(null)}
                 scopeName={activeProject?.name ?? null}
@@ -664,7 +776,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           branches={data.git.branches}
           currentBranch={data.git.status?.branch || undefined}
           disabled={!data.git.status}
-          onRefresh={refresh}
+          onRefresh={refreshView}
           upstream={data.git.status?.upstream}
         />
       ) : null}
@@ -757,3 +869,4 @@ function NavButton({
     </Button>
   );
 }
+

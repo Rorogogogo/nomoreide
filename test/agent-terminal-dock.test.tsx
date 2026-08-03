@@ -1153,14 +1153,14 @@ describe("AgentTerminalDock", () => {
 
   test("clamps resize height to a usable band", () => {
     expect(clampAgentDockHeight(100, 900)).toBe(180);
-    expect(clampAgentDockHeight(1000, 900)).toBe(852);
+    expect(clampAgentDockHeight(1000, 900)).toBe(630);
     expect(clampAgentDockHeight(450, 900)).toBe(450);
     expect(clampAgentDockHeight(180, 100)).toBe(52);
   });
 
   test("clamps side dock width while preserving room for the workbench", () => {
     expect(clampAgentDockWidth(200, 1440)).toBe(340);
-    expect(clampAgentDockWidth(1400, 1440)).toBe(1120);
+    expect(clampAgentDockWidth(1400, 1440)).toBe(1008);
     expect(clampAgentDockWidth(520, 1440)).toBe(520);
     expect(clampAgentDockWidth(340, 500)).toBe(180);
   });
@@ -1176,7 +1176,7 @@ describe("AgentTerminalDock", () => {
     expect(panel.style.width).toBe("480px");
     expect(panel.querySelector('[data-agent-resize-grip]')?.className).toContain("cursor-ew-resize");
     expect(panel.querySelector('[data-agent-side-utilities]')).not.toBeNull();
-    expect(onInsetChange).toHaveBeenLastCalledWith("right", 480);
+    expect(onInsetChange).toHaveBeenLastCalledWith("right", 480, false);
   });
 
   test("opens the new-session menu downward from a right-side toolbar", async () => {
@@ -1277,11 +1277,12 @@ describe("AgentTerminalDock", () => {
   test("resizes a right-side dock by width", async () => {
     Object.assign(dock, { open: true });
     uiSettings.ui.agentDockPlacement = "right";
-    const { host } = await render();
+    const onInsetChange = vi.fn();
+    const { host } = await render({ onInsetChange });
     const panel = host.firstElementChild as HTMLElement;
     const grip = host.querySelector('[data-agent-resize-grip]') as HTMLElement;
 
-    act(() => {
+    await act(async () => {
       grip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 1 }));
       window.dispatchEvent(new PointerEvent("pointermove", {
         pointerId: 1,
@@ -1289,6 +1290,12 @@ describe("AgentTerminalDock", () => {
       }));
     });
     expect(panel.style.width).toBe("420px");
+    expect(onInsetChange).toHaveBeenLastCalledWith("right", 420, true);
+
+    await act(async () => {
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1 }));
+    });
+    expect(onInsetChange).toHaveBeenLastCalledWith("right", 420, false);
   });
 
   test("temporarily falls back to the bottom without replacing a saved side preference", async () => {
@@ -1306,7 +1313,7 @@ describe("AgentTerminalDock", () => {
     const rail = host.querySelector('[aria-label="Open agent terminal"]') as HTMLButtonElement;
 
     expect(rail.className).toContain("inset-x-0");
-    expect(onInsetChange).toHaveBeenLastCalledWith("bottom", 36);
+    expect(onInsetChange).toHaveBeenLastCalledWith("bottom", 36, false);
     expect(uiSettings.updateUi).not.toHaveBeenCalled();
   });
 

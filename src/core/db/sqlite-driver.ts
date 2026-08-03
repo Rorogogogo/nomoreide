@@ -1,7 +1,19 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { DatabaseEngine } from "../types.js";
 import {
-  assertSafeIdentifier,
+  capDefinition,
+  objectFromIdentity,
+  type DatabaseCapabilities,
+  type DatabaseConstraint,
+  type DatabaseIndex,
+  type DatabaseObject,
+  type DatabaseObjectDetails,
+  type DatabaseObjectKind,
+  type DatabaseSchema,
+  type DatabaseTrigger,
+} from "./catalog.js";
+import {
+  assertExpectedDeleteCount,
   clampLimit,
   clampOffset,
   columnsFromNames,
@@ -9,6 +21,7 @@ import {
   normalizeRow,
   prepareUserQuery,
   type ColumnInfo,
+  type DeleteRowsOptions,
   type DbDriver,
   type DbWriteDriver,
   type QueryResult,
@@ -22,6 +35,10 @@ interface PragmaColumn {
   type: string;
   notnull: number;
   pk: number;
+}
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
 }
 
 /**
@@ -73,13 +90,123 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
     return rows.map((row) => ({ name: row.name, qualifiedName: row.name }));
   }
 
+  capabilities(): DatabaseCapabilities {
+    return {
+      objectKinds: ["table", "view"],
+      tableDetails: ["columns", "indexes", "constraints", "triggers"],
+    };
+  }
+
+  async listSchemas(): Promise<DatabaseSchema[]> {
+    await this.testConnection();
+    return [{ name: "main" }];
+  }
+
+  async listObjects(
+    schema: string,
+    kinds?: DatabaseObjectKind[],
+  ): Promise<DatabaseObject[]> {
+    if (schema !== "main") return [];
+    const allowed = new Set(kinds ?? this.capabilities().objectKinds);
+    const db = await this.db();
+    const rows = db.prepare(
+      `SELECT name, type
+         FROM sqlite_master
+        WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
+        ORDER BY type, name`,
+    ).all() as Array<{ name: string; type: "table" | "view" }>;
+    return rows.flatMap((row) => {
+      const kind: DatabaseObjectKind = row.type;
+      return allowed.has(kind)
+        ? [objectFromIdentity({ schema: "main", name: row.name, kind })]
+        : [];
+    });
+  }
+
+  async describeObject(object: DatabaseObject): Promise<DatabaseObjectDetails> {
+    const live = await this.listObjects(object.schema, [object.kind]);
+    if (!live.some((candidate) => candidate.key === object.key)) {
+      throw new Error("Database object was not found in the live catalog.");
+    }
+    const db = await this.db();
+    const name = quoteIdentifier(object.name);
+    const columns = (
+      db.prepare(`PRAGMA table_info(${name})`).all() as unknown as PragmaColumn[]
+    ).map<ColumnInfo>((column) => ({
+      name: column.name,
+      dataType: column.type || "",
+      nullable: column.notnull === 0,
+      primaryKey: column.pk > 0,
+    }));
+    const indexes = (db.prepare(`PRAGMA index_list(${name})`).all() as Array<{
+      name: string;
+      unique: number;
+    }>).map<DatabaseIndex>((index) => {
+      const row = db.prepare(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
+      ).get(index.name) as { sql?: string | null } | undefined;
+      return {
+        name: index.name,
+        unique: index.unique === 1,
+        definition: capDefinition(row?.sql) ?? "",
+      };
+    });
+    const foreignKeys = db.prepare(`PRAGMA foreign_key_list(${name})`).all() as Array<{
+      id: number;
+      table: string;
+      from: string;
+      to: string;
+    }>;
+    const constraints: DatabaseConstraint[] = foreignKeys.map((foreignKey) => ({
+      name: `fk_${object.name}_${foreignKey.id}`,
+      type: "FOREIGN KEY",
+      definition: `FOREIGN KEY (${foreignKey.from}) REFERENCES ${foreignKey.table} (${foreignKey.to})`,
+    }));
+    if (columns.some((column) => column.primaryKey)) {
+      constraints.unshift({
+        name: `pk_${object.name}`,
+        type: "PRIMARY KEY",
+        definition: `PRIMARY KEY (${columns.filter((column) => column.primaryKey).map((column) => column.name).join(", ")})`,
+      });
+    }
+    const triggers = (db.prepare(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ? ORDER BY name",
+    ).all(object.name) as Array<{ name: string; sql: string | null }>).map<DatabaseTrigger>(
+      (trigger) => ({ name: trigger.name, definition: capDefinition(trigger.sql) ?? "" }),
+    );
+    const definitionRow = db.prepare(
+      "SELECT sql FROM sqlite_master WHERE name = ? AND type IN ('table', 'view')",
+    ).get(object.name) as { sql?: string | null } | undefined;
+    const rawDefinition = definitionRow?.sql ?? undefined;
+    const definition = capDefinition(rawDefinition);
+    const createScript = capDefinition(
+      [
+        rawDefinition,
+        ...indexes.map((index) => index.definition),
+        ...triggers.map((trigger) => trigger.definition),
+      ]
+        .filter((statement): statement is string => Boolean(statement))
+        .map(terminateStatement)
+        .join("\n\n"),
+    );
+    return {
+      object,
+      columns,
+      indexes,
+      constraints,
+      triggers,
+      definition,
+      createScript,
+    };
+  }
+
   async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
-    const name = assertSafeIdentifier(table.name);
+    const name = table.name;
     const max = clampLimit(limit);
     const skip = clampOffset(offset);
     const db = await this.db();
     const columns = (
-      db.prepare(`PRAGMA table_info("${name}")`).all() as unknown as PragmaColumn[]
+      db.prepare(`PRAGMA table_info(${quoteIdentifier(name)})`).all() as unknown as PragmaColumn[]
     ).map<ColumnInfo>((col) => ({
       name: col.name,
       dataType: col.type || "",
@@ -87,7 +214,7 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
       primaryKey: col.pk > 0,
     }));
     const rows = db
-      .prepare(`SELECT * FROM "${name}" LIMIT ? OFFSET ?`)
+      .prepare(`SELECT * FROM ${quoteIdentifier(name)} LIMIT ? OFFSET ?`)
       .all(max, skip) as Array<Record<string, unknown>>;
     return {
       columns,
@@ -155,6 +282,40 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
     }
   }
 
+  async deleteRows(options: DeleteRowsOptions): Promise<WriteResult> {
+    if (!this.writable) throw new Error("This connection is read-only.");
+    const table = options.table.schema
+      ? `${quoteIdentifier(options.table.schema)}.${quoteIdentifier(options.table.name)}`
+      : quoteIdentifier(options.table.name);
+    const predicate = options.tuples
+      .map(
+        () =>
+          `(${options.primaryKeys
+            .map((column) => `${quoteIdentifier(column)} = ?`)
+            .join(" AND ")})`,
+      )
+      .join(" OR ");
+    const values = options.tuples.flatMap((tuple) =>
+      options.primaryKeys.map((column) => {
+        const value = tuple[column];
+        return typeof value === "boolean" ? Number(value) : value;
+      }),
+    );
+
+    const db = await this.db();
+    db.exec("BEGIN");
+    try {
+      const info = db.prepare(`DELETE FROM ${table} WHERE ${predicate}`).run(...values);
+      const affectedRows = Number(info.changes);
+      assertExpectedDeleteCount(options, affectedRows);
+      db.exec(options.commit ? "COMMIT" : "ROLLBACK");
+      return { affectedRows, rows: [], columns: [], committed: options.commit };
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
   async close(): Promise<void> {
     if (this.dbPromise) {
       const db = await this.dbPromise;
@@ -162,4 +323,9 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
       this.dbPromise = null;
     }
   }
+}
+
+function terminateStatement(value: string): string {
+  const statement = value.trim();
+  return statement.endsWith(";") ? statement : `${statement};`;
 }

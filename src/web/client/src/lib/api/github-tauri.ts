@@ -8,6 +8,7 @@ import {
   tauri_getGithubTokenStatus,
   tauri_setGithubToken,
   tauri_removeGithubToken,
+  tauri_setGithubAccount,
   tauri_getGithubRepo,
   tauri_listPullRequests,
   tauri_listIssues,
@@ -38,6 +39,7 @@ import type {
   GitHubComment,
   GitHubDeviceFlowStart,
   GitHubIssue,
+  GitHubTokenInfo,
   GitHubPR,
   GitHubPRFile,
   GitHubPRReview,
@@ -60,12 +62,7 @@ function ciStateFromRuns(runs: GitHubCheckRun[]): CommitCIStatus["state"] {
 
 export const tauriGitHubApi: GitHubApi = {
   async getGitHubTokenInfo() {
-    const raw = (await tauri_getGithubTokenStatus()) as { configured: boolean; host?: string };
-    return {
-      configured: raw.configured,
-      deviceFlowAvailable: true,
-      status: raw.configured ? "connected" : "not_configured",
-    };
+    return tauri_getGithubTokenStatus() as Promise<GitHubTokenInfo>;
   },
 
   async startGitHubDeviceFlow() {
@@ -94,11 +91,15 @@ export const tauriGitHubApi: GitHubApi = {
     await tauri_removeGithubToken(host);
   },
 
+  async selectGitHubCredential(repository, credential) {
+    await tauri_setGithubAccount(repository, credential);
+  },
+
   async listGitHubBranches() {
-    const [owner, repo] = await tauri_getGithubRepo();
+    const [repository, owner, repo] = await tauri_getGithubRepo();
     const [branches, repoInfo] = await Promise.all([
-      tauri_listGithubBranches(owner, repo) as Promise<GitHubBranchInfo[]>,
-      tauri_getGithubRepoInfo(owner, repo) as Promise<{
+      tauri_listGithubBranches(repository, owner, repo) as Promise<GitHubBranchInfo[]>,
+      tauri_getGithubRepoInfo(repository, owner, repo) as Promise<{
         full_name?: string;
         html_url?: string;
         default_branch?: string;
@@ -117,29 +118,29 @@ export const tauriGitHubApi: GitHubApi = {
   },
 
   async listGitHubPRs(state = "open", page = 1) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const prs = await tauri_listPullRequests(owner, repo, state);
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const prs = await tauri_listPullRequests(repository, owner, repo, state);
     return (prs as GitHubPR[]).slice((page - 1) * 50, page * 50);
   },
 
   async getGitHubPR(number) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_getPullRequest(owner, repo, number) as Promise<GitHubPR>;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_getPullRequest(repository, owner, repo, number) as Promise<GitHubPR>;
   },
 
   async getGitHubPRDiff(number) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_getPrDiff(owner, repo, number);
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_getPrDiff(repository, owner, repo, number);
   },
 
   async getGitHubPRReviewCockpit(number) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const pr = (await tauri_getPullRequest(owner, repo, number)) as GitHubPR;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const pr = (await tauri_getPullRequest(repository, owner, repo, number)) as GitHubPR;
     const [files, reviews, comments, checkRuns] = await Promise.all([
-      tauri_listPrFiles(owner, repo, number) as Promise<GitHubPRFile[]>,
-      tauri_listPrReviews(owner, repo, number) as Promise<GitHubPRReview[]>,
-      tauri_listPrComments(owner, repo, number) as Promise<GitHubComment[]>,
-      tauri_listCommitCheckRuns(owner, repo, pr.head.sha) as Promise<{
+      tauri_listPrFiles(repository, owner, repo, number) as Promise<GitHubPRFile[]>,
+      tauri_listPrReviews(repository, owner, repo, number) as Promise<GitHubPRReview[]>,
+      tauri_listPrComments(repository, owner, repo, number) as Promise<GitHubComment[]>,
+      tauri_listCommitCheckRuns(repository, owner, repo, pr.head.sha) as Promise<{
         total_count?: number;
         check_runs?: GitHubCheckRun[];
       }>,
@@ -160,8 +161,8 @@ export const tauriGitHubApi: GitHubApi = {
   },
 
   async getGitHubPRTemplate() {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const repoInfo = (await tauri_getGithubRepoInfo(owner, repo)) as {
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const repoInfo = (await tauri_getGithubRepoInfo(repository, owner, repo)) as {
       full_name?: string;
       html_url?: string;
       default_branch?: string;
@@ -186,8 +187,9 @@ export const tauriGitHubApi: GitHubApi = {
   },
 
   async createGitHubPR(opts) {
-    const [owner, repo] = await tauri_getGithubRepo();
+    const [repository, owner, repo] = await tauri_getGithubRepo();
     return tauri_createPullRequest({
+      repository,
       owner,
       repo,
       title: opts.title,
@@ -199,39 +201,39 @@ export const tauriGitHubApi: GitHubApi = {
   },
 
   async mergeGitHubPR(number, opts = {}) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return (await tauri_mergePullRequest(owner, repo, number, opts)) as MergePRResult;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return (await tauri_mergePullRequest(repository, owner, repo, number, opts)) as MergePRResult;
   },
 
   async listGitHubIssues(state = "open", page = 1) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const issues = await tauri_listIssues(owner, repo, state);
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const issues = await tauri_listIssues(repository, owner, repo, state);
     return (issues as GitHubIssue[]).slice((page - 1) * 50, page * 50);
   },
 
   async getGitHubIssue(number) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_getGithubIssue(owner, repo, number) as Promise<GitHubIssue>;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_getGithubIssue(repository, owner, repo, number) as Promise<GitHubIssue>;
   },
 
   async listGitHubIssueComments(number) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_listIssueComments(owner, repo, number) as Promise<GitHubComment[]>;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_listIssueComments(repository, owner, repo, number) as Promise<GitHubComment[]>;
   },
 
   async addGitHubIssueComment(number, body) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_addIssueComment(owner, repo, number, body) as Promise<GitHubComment>;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_addIssueComment(repository, owner, repo, number, body) as Promise<GitHubComment>;
   },
 
   async createGitHubIssue(opts) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    return tauri_createGithubIssue(owner, repo, opts.title, opts.body) as Promise<GitHubIssue>;
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    return tauri_createGithubIssue(repository, owner, repo, opts.title, opts.body) as Promise<GitHubIssue>;
   },
 
   async getCommitCIStatus(sha) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const raw = (await tauri_listCommitCheckRuns(owner, repo, sha)) as {
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const raw = (await tauri_listCommitCheckRuns(repository, owner, repo, sha)) as {
       total_count?: number;
       check_runs?: GitHubCheckRun[];
     };
@@ -240,16 +242,16 @@ export const tauriGitHubApi: GitHubApi = {
   },
 
   async listGitHubWorkflowRuns(branch, page = 1) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const raw = (await tauri_listWorkflowRuns(owner, repo, branch, page)) as {
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const raw = (await tauri_listWorkflowRuns(repository, owner, repo, branch, page)) as {
       workflow_runs?: GitHubWorkflowRun[];
     };
     return raw.workflow_runs ?? [];
   },
 
   async listGitHubWorkflowRunJobs(runId) {
-    const [owner, repo] = await tauri_getGithubRepo();
-    const raw = (await tauri_listWorkflowRunJobs(owner, repo, runId)) as {
+    const [repository, owner, repo] = await tauri_getGithubRepo();
+    const raw = (await tauri_listWorkflowRunJobs(repository, owner, repo, runId)) as {
       jobs?: GitHubWorkflowJob[];
     };
     return raw.jobs ?? [];

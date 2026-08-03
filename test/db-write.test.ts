@@ -29,7 +29,16 @@ describe.skipIf(!sqliteAvailable)("DbWrite (SQLite)", () => {
     const seed = new DatabaseSync!(dbFile);
     seed.exec(
       `CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL);
-       INSERT INTO users (email) VALUES ('a@x.com'), ('b@x.com');`,
+       INSERT INTO users (email) VALUES ('a@x.com'), ('b@x.com');
+       CREATE TABLE memberships (
+         account_id INTEGER NOT NULL,
+         user_id INTEGER NOT NULL,
+         label TEXT NOT NULL,
+         PRIMARY KEY (account_id, user_id)
+       );
+       INSERT INTO memberships VALUES (1, 10, 'admin'), (1, 11, 'member');
+       CREATE TABLE audit_log (message TEXT NOT NULL);
+       INSERT INTO audit_log VALUES ('kept');`,
     );
     seed.close();
 
@@ -98,6 +107,96 @@ describe.skipIf(!sqliteAvailable)("DbWrite (SQLite)", () => {
     await expect(dbWrite.execute("app", "DELETE FROM users", true)).rejects.toThrow(
       /locked/i,
     );
+  });
+
+  test("previews exact primary-key row deletion and rolls it back", async () => {
+    await store.setDatabaseWriteAccess("app", true);
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    )!;
+    const outcome = await dbWrite.deleteRows(
+      "app",
+      users.key,
+      [{ id: 1 }],
+      false,
+    );
+    expect(outcome).toMatchObject({
+      affectedRows: 1,
+      committed: false,
+      primaryKeys: ["id"],
+    });
+    expect((await dbPeek.sampleObject("app", users.key, 100)).rowCount).toBe(2);
+  });
+
+  test("deletes composite primary-key tuples and binds values", async () => {
+    await store.setDatabaseWriteAccess("app", true);
+    const memberships = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "memberships",
+    )!;
+    const outcome = await dbWrite.deleteRows(
+      "app",
+      memberships.key,
+      [{ account_id: 1, user_id: 10 }],
+      true,
+      1,
+    );
+    expect(outcome).toMatchObject({ affectedRows: 1, committed: true });
+    const after = await dbPeek.sampleObject("app", memberships.key, 100);
+    expect(after.rows).toEqual([
+      expect.objectContaining({ account_id: 1, user_id: 11 }),
+    ]);
+  });
+
+  test("rolls back a commit when the affected count differs from preview", async () => {
+    await store.setDatabaseWriteAccess("app", true);
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    )!;
+    await expect(
+      dbWrite.deleteRows("app", users.key, [{ id: 999 }], true, 1),
+    ).rejects.toThrow(/rolled back/i);
+    expect((await dbPeek.sampleObject("app", users.key, 100)).rowCount).toBe(2);
+  });
+
+  test("requires a confirmed preview count before committing structured deletion", async () => {
+    await store.setDatabaseWriteAccess("app", true);
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    )!;
+    await expect(
+      dbWrite.deleteRows("app", users.key, [{ id: 1 }], true),
+    ).rejects.toThrow(/preview count/i);
+    expect((await dbPeek.sampleObject("app", users.key, 100)).rowCount).toBe(2);
+  });
+
+  test("rejects incomplete, duplicate, masked, and keyless deletion inputs", async () => {
+    await store.setDatabaseWriteAccess("app", true);
+    const objects = await dbPeek.listObjects("app", "main");
+    const memberships = objects.find((object) => object.name === "memberships")!;
+    const users = objects.find((object) => object.name === "users")!;
+    const auditLog = objects.find((object) => object.name === "audit_log")!;
+
+    await expect(
+      dbWrite.deleteRows("app", memberships.key, [{ account_id: 1 }], false),
+    ).rejects.toThrow(/exactly/i);
+    await expect(
+      dbWrite.deleteRows("app", users.key, [{ id: 1 }, { id: 1 }], false),
+    ).rejects.toThrow(/duplicate/i);
+    await expect(
+      dbWrite.deleteRows("app", users.key, [{ id: "••••" }], false),
+    ).rejects.toThrow(/masked/i);
+    await expect(
+      dbWrite.deleteRows("app", auditLog.key, [{ message: "kept" }], false),
+    ).rejects.toThrow(/no primary key/i);
+  });
+
+  test("keeps structured row deletion behind the write lock", async () => {
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    )!;
+    await expect(
+      dbWrite.deleteRows("app", users.key, [{ id: 1 }], false),
+    ).rejects.toThrow(/locked/i);
   });
 });
 

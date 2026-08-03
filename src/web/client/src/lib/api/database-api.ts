@@ -32,6 +32,40 @@ export interface TableRef {
   qualifiedName: string;
 }
 
+export type DatabaseObjectKind =
+  | "table"
+  | "view"
+  | "materializedView"
+  | "function"
+  | "procedure"
+  | "sequence";
+
+export interface DatabaseCapabilities {
+  objectKinds: DatabaseObjectKind[];
+  tableDetails: Array<"columns" | "indexes" | "constraints" | "triggers">;
+}
+
+export interface DatabaseSchema { name: string }
+
+export interface DatabaseObject {
+  key: string;
+  schema: string;
+  name: string;
+  kind: DatabaseObjectKind;
+  qualifiedName: string;
+  nativeId?: string;
+}
+
+export interface DatabaseObjectDetails {
+  object: DatabaseObject;
+  columns: ColumnInfo[];
+  indexes: Array<{ name: string; definition: string; unique: boolean }>;
+  constraints: Array<{ name: string; type: string; definition: string }>;
+  triggers: Array<{ name: string; definition: string }>;
+  definition?: string;
+  createScript?: string;
+}
+
 export interface ColumnInfo {
   name: string;
   dataType: string;
@@ -67,6 +101,15 @@ export interface WriteOutcome {
   committed?: boolean;
 }
 
+export type DatabaseRowKeyValue = string | number | boolean;
+
+export interface DeleteDatabaseRowsInput {
+  objectKey: string;
+  keys: Array<Record<string, DatabaseRowKeyValue>>;
+  mode: "preview" | "commit";
+  expectedAffectedRows?: number;
+}
+
 export interface DatabaseApi {
   listDatabases(): Promise<DatabaseConnection[]>;
   /** Not available in desktop mode — returns empty array. */
@@ -84,6 +127,16 @@ export interface DatabaseApi {
   }): Promise<{ ok: boolean; error?: string }>;
   deleteDatabase(name: string): Promise<void>;
   getDatabaseTables(name: string): Promise<TableRef[]>;
+  getDatabaseCapabilities(name: string): Promise<DatabaseCapabilities>;
+  getDatabaseSchemas(name: string): Promise<DatabaseSchema[]>;
+  getDatabaseObjects(name: string, schema: string): Promise<DatabaseObject[]>;
+  getDatabaseObjectDetails(name: string, key: string): Promise<DatabaseObjectDetails>;
+  getDatabaseObjectRows(
+    name: string,
+    key: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<RowSample & { object: DatabaseObject }>;
   runDatabaseQuery(name: string, sql: string, limit?: number): Promise<QueryResult>;
   /** Lock or unlock write access for a connection's SQL console. */
   setDatabaseWriteAccess(name: string, unlocked: boolean): Promise<void>;
@@ -92,6 +145,11 @@ export interface DatabaseApi {
     name: string,
     sql: string,
     mode: "preview" | "commit",
+  ): Promise<WriteOutcome>;
+  /** Delete table rows by server-validated primary keys through the guarded write path. */
+  deleteDatabaseRows(
+    name: string,
+    input: DeleteDatabaseRowsInput,
   ): Promise<WriteOutcome>;
   getDatabaseRows(
     name: string,

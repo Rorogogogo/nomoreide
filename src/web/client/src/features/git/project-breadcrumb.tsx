@@ -22,11 +22,19 @@ export function ProjectBreadcrumb({
   scopeAll,
   onScopeChange,
   onRefresh,
+  requiresRepo = false,
 }: {
   data: DashboardData;
   scopeAll: boolean;
   onScopeChange: (scopeAll: boolean) => void;
   onRefresh: () => Promise<void>;
+  /**
+   * The current page reads one repository and cannot honour an all-projects
+   * scope (Git and GitHub both resolve the daemon's *selected* repository).
+   * Rather than let the crumb claim "All projects" over a single-repo page, it
+   * names the repository actually on screen and says the scope is page-local.
+   */
+  requiresRepo?: boolean;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -37,15 +45,16 @@ export function ProjectBreadcrumb({
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
 
   const selectedRepository = data.git.selectedRepository;
-  const label = scopeAll
-    ? t("app.allProjects")
-    : selectedRepository?.name ?? t("app.pickProject");
-  // The branch is the useful second fact once a single project is in scope;
-  // with everything in scope it's the project count instead.
-  const hint = scopeAll
-    ? null
-    : (data.git.status?.branch ?? null);
-
+  /** All-projects is not a scope this page can render, so it isn't shown as one. */
+  const overridden = requiresRepo && scopeAll && Boolean(selectedRepository);
+  const label = overridden && selectedRepository
+    ? selectedRepository.name
+    : scopeAll
+      ? t("app.allProjects")
+      : selectedRepository?.name ?? t("app.pickProject");
+  const title = overridden
+    ? t("app.projectScopePageOnly", { label })
+    : t("app.projectScope", { label });
   function toggle() {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) setCoords({ top: rect.bottom + 4, left: rect.left });
@@ -101,18 +110,18 @@ export function ProjectBreadcrumb({
       <button
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={t("app.projectScope", { label })}
+        aria-label={title}
         className={cn(
           "flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-transparent px-1.5 text-left transition-colors hover:border-border hover:bg-muted",
           open && "border-border bg-muted",
         )}
         onClick={toggle}
         ref={triggerRef}
-        title={t("app.projectScope", { label })}
+        title={title}
         type="button"
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded border border-border bg-background text-[10px] font-semibold">
-          {scopeAll ? (
+          {scopeAll && !overridden ? (
             <Globe2 className="size-3 text-muted-foreground" />
           ) : selectedRepository ? (
             label.charAt(0).toUpperCase()
@@ -121,9 +130,12 @@ export function ProjectBreadcrumb({
           )}
         </span>
         <span className="truncate text-sm font-medium">{label}</span>
-        {hint ? (
-          <span className="hidden truncate font-mono text-[11px] text-muted-foreground sm:inline">
-            {hint}
+        {/* Says out loud why the header stopped agreeing with the scope you
+            picked — without it, the crumb silently changing on two of the pages
+            reads as a bug rather than as the page's constraint. */}
+        {overridden ? (
+          <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
+            {t("app.thisPageOnly")}
           </span>
         ) : null}
         <ChevronDown
@@ -149,7 +161,9 @@ export function ProjectBreadcrumb({
             >
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <MenuRow
-                  active={scopeAll}
+                  active={scopeAll && !overridden}
+                  disabled={requiresRepo}
+                  hint={requiresRepo ? t("app.oneProjectPage") : undefined}
                   icon={<Globe2 className="size-3.5 text-muted-foreground" />}
                   label={t("app.allProjects")}
                   onSelect={() => {
@@ -160,7 +174,9 @@ export function ProjectBreadcrumb({
                 />
                 {data.config.gitRepositories.map((repository) => (
                   <MenuRow
-                    active={!scopeAll && selectedRepository?.name === repository.name}
+                    active={
+                      (!scopeAll || overridden) && selectedRepository?.name === repository.name
+                    }
                     icon={
                       <span className="flex size-3.5 items-center justify-center text-[9px] font-semibold text-muted-foreground">
                         {repository.name.charAt(0).toUpperCase()}
@@ -202,27 +218,39 @@ export function ProjectBreadcrumb({
 
 function MenuRow({
   active,
+  disabled = false,
+  hint,
   icon,
   label,
   onSelect,
 }: {
   active: boolean;
+  disabled?: boolean;
+  /** Why the row can't be chosen — shown in place of the checkmark. */
+  hint?: string;
   icon: React.ReactNode;
   label: string;
   onSelect: () => void;
 }) {
   return (
     <button
+      aria-disabled={disabled || undefined}
       className={cn(
         "flex w-full shrink-0 items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted",
         active && "bg-muted/60",
+        disabled && "cursor-not-allowed opacity-50 hover:bg-transparent",
       )}
+      disabled={disabled}
       onClick={onSelect}
       role="menuitem"
+      title={hint}
       type="button"
     >
       <span className="shrink-0">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
+      {hint ? (
+        <span className="shrink-0 text-[9px] font-medium text-muted-foreground">{hint}</span>
+      ) : null}
       {active ? <Check className="size-3.5 shrink-0 text-muted-foreground" /> : null}
     </button>
   );

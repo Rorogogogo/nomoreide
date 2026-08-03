@@ -71,6 +71,11 @@ describe("NoMoreIDE MCP server", () => {
     expect(mcp.toolNames).toContain("nomoreide_service_context");
     expect(mcp.toolNames).toContain("nomoreide_open_ui");
     expect(mcp.toolNames).toContain("nomoreide_close_ui");
+    expect(mcp.toolNames).toContain("nomoreide_register_database");
+    expect(mcp.toolNames).toContain("nomoreide_check_database");
+    expect(mcp.toolNames).toContain("nomoreide_db_schemas");
+    expect(mcp.toolNames).toContain("nomoreide_db_objects");
+    expect(mcp.toolNames).toContain("nomoreide_db_object_details");
     expect(mcp.server).toBeDefined();
     expect(mcp.daemon).toBeDefined();
   });

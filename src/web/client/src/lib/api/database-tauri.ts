@@ -7,12 +7,28 @@ import {
   tauri_listDatabases,
   tauri_queryDatabase,
   tauri_executeDatabase,
+  tauri_deleteDatabaseRows,
+  tauri_databaseCapabilities,
+  tauri_getDatabaseObjectDetails,
+  tauri_listDatabaseObjects,
+  tauri_listDatabaseSchemas,
   tauri_listTables,
   tauri_registerDatabase,
   tauri_removeDatabase,
   tauri_setDatabaseWriteAccess,
+  tauri_sampleDatabaseObject,
+  tauri_testDatabaseConnection,
 } from "./tauri-bridge.js";
-import type { ColumnInfo, DatabaseApi, DatabaseConnection } from "./database-api.js";
+import type {
+  ColumnInfo,
+  DatabaseApi,
+  DatabaseCapabilities,
+  DatabaseConnection,
+  DatabaseObject,
+  DatabaseObjectDetails,
+  DatabaseSchema,
+  RowSample,
+} from "./database-api.js";
 
 interface RustQueryResult {
   columns: string[];
@@ -54,10 +70,9 @@ export const tauriDatabaseApi: DatabaseApi = {
     await tauri_registerDatabase(input);
   },
 
-  async testDatabase() {
-    // Attempt a simple connection; sqlx surfaces failures as a thrown error.
+  async testDatabase(input) {
     try {
-      await tauri_queryDatabase("__test__", "SELECT 1", 1);
+      await tauri_testDatabaseConnection(input.engine, input.url);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: String(e) };
@@ -73,10 +88,33 @@ export const tauriDatabaseApi: DatabaseApi = {
     return tables.map((t) => ({ name: t, qualifiedName: t }));
   },
 
+  async getDatabaseCapabilities(name) {
+    return (await tauri_databaseCapabilities(name)) as DatabaseCapabilities;
+  },
+
+  async getDatabaseSchemas(name) {
+    return (await tauri_listDatabaseSchemas(name)) as DatabaseSchema[];
+  },
+
+  async getDatabaseObjects(name, schema) {
+    return (await tauri_listDatabaseObjects(name, schema)) as DatabaseObject[];
+  },
+
+  async getDatabaseObjectDetails(name, key) {
+    return (await tauri_getDatabaseObjectDetails(name, key)) as DatabaseObjectDetails;
+  },
+
+  async getDatabaseObjectRows(name, key, limit = 100, offset = 0) {
+    return (await tauri_sampleDatabaseObject(name, key, limit, offset)) as RowSample & {
+      object: DatabaseObject;
+    };
+  },
+
   async runDatabaseQuery(name, sql, limit = 100) {
     const result = (await tauri_queryDatabase(name, sql, limit)) as RustQueryResult;
     const { columns, rows, rowCount } = mapRustResult(result);
-    return { engine: "sqlite", columns, rows, rowCount, truncated: false };
+    const engine = (await this.listDatabases()).find((database) => database.name === name)?.engine ?? "sqlite";
+    return { engine, columns, rows, rowCount, truncated: false };
   },
 
   async setDatabaseWriteAccess(name, unlocked) {
@@ -84,29 +122,20 @@ export const tauriDatabaseApi: DatabaseApi = {
   },
 
   async executeDatabaseWrite(name, sql, mode) {
-    if (mode === "preview") {
-      // Rust backend doesn't support transaction preview; report as unavailable.
-      return { engine: "sqlite", previewUnavailable: true };
-    }
-    const affected = await tauri_executeDatabase(name, sql);
-    return { engine: "sqlite", previewUnavailable: false, affectedRows: affected, committed: true };
+    return (await tauri_executeDatabase(name, sql, mode)) as import("./database-api.js").WriteOutcome;
+  },
+
+  async deleteDatabaseRows(name, input) {
+    return (await tauri_deleteDatabaseRows(name, input)) as import("./database-api.js").WriteOutcome;
   },
 
   async getDatabaseRows(name, table, limit = 100, offset = 0) {
-    const sql =
-      offset > 0
-        ? `SELECT * FROM ${table} LIMIT ${limit} OFFSET ${offset}`
-        : `SELECT * FROM ${table} LIMIT ${limit}`;
-    const result = (await tauri_queryDatabase(name, sql, limit)) as RustQueryResult;
-    const { columns, rows, rowCount } = mapRustResult(result);
-    return {
-      engine: "sqlite",
-      table: { name: table, qualifiedName: table },
-      columns,
-      rows,
-      rowCount,
-      limit,
-      offset,
-    };
+    const schemas = (await tauri_listDatabaseSchemas(name)) as DatabaseSchema[];
+    for (const schema of schemas) {
+      const objects = (await tauri_listDatabaseObjects(name, schema.name)) as DatabaseObject[];
+      const object = objects.find((candidate) => candidate.qualifiedName === table);
+      if (object) return (await tauri_sampleDatabaseObject(name, object.key, limit, offset)) as RowSample;
+    }
+    throw new Error(`Table "${table}" not found.`);
   },
 };

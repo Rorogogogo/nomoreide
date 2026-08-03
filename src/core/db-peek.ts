@@ -3,6 +3,15 @@ import type { ConfigStore } from "./config-store.js";
 import { readEnvFile, entriesFromLines } from "./env-file.js";
 import type { DatabaseConnection, DatabaseEngine } from "./types.js";
 import type { DbDriver, QueryResult, RowSample, TableRef } from "./db/driver.js";
+import {
+  resolveCatalogObject,
+  tableRefForObject,
+  type DatabaseCapabilities,
+  type DatabaseObject,
+  type DatabaseObjectDetails,
+  type DatabaseObjectKind,
+  type DatabaseSchema,
+} from "./db/catalog.js";
 import { MysqlDriver } from "./db/mysql-driver.js";
 import { PostgresDriver } from "./db/postgres-driver.js";
 import { SqliteDriver } from "./db/sqlite-driver.js";
@@ -62,6 +71,51 @@ export class DbPeek {
     return driver.listTables();
   }
 
+  async capabilities(name: string): Promise<DatabaseCapabilities> {
+    const driver = await this.driverFor(await this.resolve(name));
+    return driver.capabilities();
+  }
+
+  async listSchemas(name: string): Promise<DatabaseSchema[]> {
+    const driver = await this.driverFor(await this.resolve(name));
+    return driver.listSchemas();
+  }
+
+  async listObjects(
+    name: string,
+    schema: string,
+    kinds?: DatabaseObjectKind[],
+  ): Promise<DatabaseObject[]> {
+    const driver = await this.driverFor(await this.resolve(name));
+    return driver.listObjects(schema, kinds);
+  }
+
+  async objectDetails(name: string, key: string): Promise<DatabaseObjectDetails> {
+    const driver = await this.driverFor(await this.resolve(name));
+    const object = await this.resolveObject(driver, key);
+    return driver.describeObject(object);
+  }
+
+  async sampleObject(
+    name: string,
+    key: string,
+    limit: number,
+    offset = 0,
+  ): Promise<{ engine: DatabaseEngine; object: DatabaseObject; table: TableRef } & RowSample> {
+    const connection = await this.resolve(name);
+    const driver = await this.driverFor(connection);
+    const object = await this.resolveObject(driver, key);
+    const table = tableRefForObject(object);
+    const sample = await driver.sampleRows(table, limit, offset);
+    return {
+      engine: connection.engine,
+      object,
+      table,
+      ...sample,
+      rows: maskAutomaticPreviewRows(sample.rows),
+    };
+  }
+
   async sampleRows(
     name: string,
     qualifiedName: string,
@@ -95,6 +149,64 @@ export class DbPeek {
     } finally {
       await driver.close().catch(() => {});
     }
+  }
+
+  async register(input: {
+    name: string;
+    engine: DatabaseEngine;
+    url: string;
+    projectPath?: string;
+    replace?: boolean;
+    check?: boolean;
+  }): Promise<MaskedConnection> {
+    const name = input.name.trim();
+    if (!name) throw new Error("Database connection name is required.");
+    const config = await this.configStore.load();
+    const existing = config.databases.find((connection) => connection.name === name);
+    if (existing && !input.replace) {
+      throw new Error(`Database connection "${name}" already exists. Set replace=true to replace it.`);
+    }
+    if (input.check !== false) {
+      try {
+        await this.test(input.engine, input.url);
+      } catch (error) {
+        throw new Error(redactDatabaseError(input.engine, input.url, error));
+      }
+    }
+    await this.configStore.registerDatabase({
+      name,
+      engine: input.engine,
+      url: input.url,
+      projectPath: input.projectPath?.trim() || undefined,
+      // MCP registration can never carry write authorization to a new target.
+      writeUnlocked: false,
+    });
+    return {
+      name,
+      engine: input.engine,
+      url: maskConnectionUrl(input.engine, input.url),
+      writeUnlocked: false,
+      projectPath: input.projectPath?.trim() || undefined,
+    };
+  }
+
+  async check(name: string): Promise<{ ok: true; connection: MaskedConnection }> {
+    const connection = await this.resolve(name);
+    try {
+      await this.test(connection.engine, connection.url);
+    } catch (error) {
+      throw new Error(redactDatabaseError(connection.engine, connection.url, error));
+    }
+    return {
+      ok: true,
+      connection: {
+        name: connection.name,
+        engine: connection.engine,
+        url: maskConnectionUrl(connection.engine, connection.url),
+        writeUnlocked: connection.writeUnlocked ?? false,
+        projectPath: connection.projectPath,
+      },
+    };
   }
 
   /** Scan registered services' `.env` files for usable connection strings. */
@@ -164,6 +276,30 @@ export class DbPeek {
     }
     return table;
   }
+
+  private async resolveObject(driver: DbDriver, key: string): Promise<DatabaseObject> {
+    const schemas = await driver.listSchemas();
+    for (const schema of schemas) {
+      const objects = await driver.listObjects(schema.name);
+      const match = objects.find((object) => object.key === key);
+      if (match) return match;
+    }
+    return resolveCatalogObject([], key);
+  }
+}
+
+const SENSITIVE_PREVIEW_COLUMN =
+  /(^|_)(password|passwd|pwd|secret|token|api_?key|access_?key|private_?key|credential|authorization|cookie)(_|$)/i;
+
+function maskAutomaticPreviewRows(rows: RowSample["rows"]): RowSample["rows"] {
+  return rows.map((row) =>
+    Object.fromEntries(
+      Object.entries(row).map(([column, value]) => [
+        column,
+        SENSITIVE_PREVIEW_COLUMN.test(column) && value !== null ? "••••" : value,
+      ]),
+    ),
+  );
 }
 
 function createDriver(engine: DatabaseEngine, url: string): DbDriver {
@@ -227,4 +363,25 @@ export function maskConnectionUrl(engine: DatabaseEngine, url: string): string {
     if (url.length <= 8) return "****";
     return `${url.slice(0, 4)}****${url.slice(-4)}`;
   }
+}
+
+export function redactDatabaseError(
+  engine: DatabaseEngine,
+  url: string,
+  error: unknown,
+): string {
+  let message = error instanceof Error ? error.message : String(error);
+  const masked = maskConnectionUrl(engine, url);
+  message = message.replaceAll(url, masked);
+  if (engine !== "sqlite") {
+    try {
+      const parsed = new URL(url);
+      const password = decodeURIComponent(parsed.password);
+      if (password) message = message.replaceAll(password, "****");
+      if (parsed.password) message = message.replaceAll(parsed.password, "****");
+    } catch {
+      // The full unparseable value was already replaced above.
+    }
+  }
+  return message;
 }

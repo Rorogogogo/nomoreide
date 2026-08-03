@@ -24,6 +24,7 @@ describe("default theme", () => {
   test("boots the product's canonical appearance before React renders", () => {
     expect(productHtml).toContain('window.localStorage.getItem("nomoreide:ui-preferences")');
     expect(productHtml).toContain('window.localStorage.getItem("nomoreide-theme-choice")');
+    expect(productHtml).toContain("stored?.version === 1 || stored?.version === 2");
     expect(productHtml).toContain("prefers-color-scheme: dark");
     expect(productHtml).toContain("dataset.density");
     expect(productHtml).toContain("dataset.reducedMotion");

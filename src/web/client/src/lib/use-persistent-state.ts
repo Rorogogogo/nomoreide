@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Like `useState`, but the value is mirrored to `localStorage` under `key`, so
@@ -20,17 +20,13 @@ export function usePersistentState<T>(key: string, fallback: T) {
     }
   });
 
-  const set = useCallback(
-    (next: T) => {
-      setValue(next);
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch {
-        // Storage unavailable (private mode / quota) — keep in-memory state.
-      }
-    },
-    [storageKey],
-  );
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(value));
+    } catch {
+      // Storage unavailable (private mode / quota) — keep in-memory state.
+    }
+  }, [storageKey, value]);
 
-  return [value, set] as const;
+  return [value, setValue] as const;
 }

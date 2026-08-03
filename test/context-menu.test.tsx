@@ -94,6 +94,43 @@ describe("ContextMenu", () => {
 
     expect(event.defaultPrevented).toBe(true);
     const items = Array.from(document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    expect(items.map((item) => item.textContent)).toEqual(["Refresh⌘R"]);
+
+    await act(async () => items.at(-1)?.click());
+    expect(onRefresh).toHaveBeenCalledOnce();
+  });
+
+  test("shows clipboard actions only for an editable text target", async () => {
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(
+        <AiContextMenuProvider>
+          <AppContextMenu onRefresh={vi.fn()}>
+            <input data-testid="editor" defaultValue="draft text" />
+          </AppContextMenu>
+        </AiContextMenuProvider>,
+      );
+    });
+
+    const input = host.querySelector<HTMLInputElement>('[data-testid="editor"]');
+    input?.setSelectionRange(0, 5);
+    await act(async () => {
+      input?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          button: 2,
+          cancelable: true,
+          clientX: 40,
+          clientY: 60,
+        }),
+      );
+    });
+
+    const items = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    );
     expect(items.map((item) => item.textContent)).toEqual([
       "Cut⌘X",
       "Copy⌘C",
@@ -101,9 +138,6 @@ describe("ContextMenu", () => {
       "Select all⌘A",
       "Refresh⌘R",
     ]);
-
-    await act(async () => items.at(-1)?.click());
-    expect(onRefresh).toHaveBeenCalledOnce();
   });
 
   test("adds Send and Copy delivery under AI for the nearest registered target", async () => {
@@ -165,9 +199,7 @@ describe("ContextMenu", () => {
     const deliveryItems = Array.from(
       document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'),
     );
-    const copyItem = deliveryItems.find((item) =>
-      item.textContent?.includes("Copy “Explain row” prompt"),
-    );
+    const copyItem = deliveryItems.find((item) => item.textContent === "Copy prompt");
     expect(copyItem).toBeTruthy();
 
     await act(async () => copyItem?.click());

@@ -30,13 +30,13 @@ import {
 
 export type AgentDockPage = AppPage;
 
-export function clampAgentDockHeight(height: number, viewportHeight: number) { const maximum = Math.max(0, viewportHeight - 48); const minimum = Math.min(180, maximum); return Math.max(minimum, Math.min(maximum, height)); }
-export function clampAgentDockWidth(width: number, viewportWidth: number) { const maximum = Math.max(0, viewportWidth - 320); const minimum = Math.min(340, maximum); return Math.max(minimum, Math.min(maximum, width)); }
+export function clampAgentDockHeight(height: number, viewportHeight: number) { const maximum = Math.max(0, Math.min(viewportHeight - 48, Math.round(viewportHeight * 0.7))); const minimum = Math.min(180, maximum); return Math.max(minimum, Math.min(maximum, height)); }
+export function clampAgentDockWidth(width: number, viewportWidth: number) { const maximum = Math.max(0, Math.min(viewportWidth - 320, Math.round(viewportWidth * 0.7))); const minimum = Math.min(340, maximum); return Math.max(minimum, Math.min(maximum, width)); }
 function stateLabel(state: string) { return `${state.charAt(0).toUpperCase()}${state.slice(1)}`; }
 type DockPane = "left" | "right";
 type DockPlacement = "bottom" | "right";
 
-export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onInsetChange, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onInsetChange?: (placement: DockPlacement, size: number) => void; onNavigate?: (page: AgentDockPage) => void }) {
+export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onInsetChange, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onInsetChange?: (placement: DockPlacement, size: number, resizing: boolean) => void; onNavigate?: (page: AgentDockPage) => void }) {
   const t = useT();
   const settings = useOptionalSettings();
   const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, createShellTask, createTask, creating, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, providers, renameTask, resumeTask, selectOneTimeSkill, setActiveTaskId, setOpen, stopTask, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
@@ -142,8 +142,9 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     onInsetChange?.(
       placement,
       fullScreen ? 0 : placement === "right" ? (open ? effectiveWidth : 36) : 36,
+      resizing,
     );
-  }, [effectiveWidth, fullScreen, onInsetChange, open, placement]);
+  }, [effectiveWidth, fullScreen, onInsetChange, open, placement, resizing]);
   useEffect(() => {
     if (!fullScreen) return;
     const restore = (event: KeyboardEvent) => {

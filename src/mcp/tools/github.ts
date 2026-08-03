@@ -1,11 +1,11 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { GitManager } from "../../core/git-manager.js";
-import {
+import type {
   GitHubManager,
-  type GitHubPR,
-  type GitHubIssue,
+  GitHubPR,
+  GitHubIssue,
 } from "../../core/github-manager.js";
+import { requireGitHubContext, selectedGitHubCwd } from "../../core/github-context.js";
 import { stringify, type ToolContext } from "./context.js";
 
 export const GITHUB_TOOL_NAMES = [
@@ -33,27 +33,8 @@ async function buildManager(
   cwd?: string,
 ): Promise<{ manager: GitHubManager; owner: string; repo: string }> {
   const config = await ctx.configStore.load();
-  const token = ctx.configStore.getGithubToken(config);
-  if (!token) {
-    throw new Error("No GitHub token configured. Use nomoreide_github_set_token first.");
-  }
-
-  const gitCwd = cwd ?? process.cwd();
-  const remoteUrl = await new GitManager(gitCwd).remoteUrl("origin");
-  if (!remoteUrl) {
-    throw new Error("No git remote 'origin' found in the repository.");
-  }
-
-  const parsed = GitHubManager.parseRemoteUrl(remoteUrl);
-  if (!parsed) {
-    throw new Error(`Could not parse GitHub remote URL: ${remoteUrl}`);
-  }
-
-  return {
-    manager: new GitHubManager(token, parsed.owner, parsed.repo),
-    owner: parsed.owner,
-    repo: parsed.repo,
-  };
+  const gitCwd = cwd ?? selectedGitHubCwd(config, process.cwd());
+  return requireGitHubContext(ctx.configStore, gitCwd);
 }
 
 export function registerGithubTools(server: FastMCP, ctx: ToolContext): void {
@@ -68,6 +49,13 @@ export function registerGithubTools(server: FastMCP, ctx: ToolContext): void {
     }),
     execute: async ({ token, host }) => {
       await configStore.setGithubToken(host, token);
+      const config = await configStore.load();
+      if (config.selectedGitRepository) {
+        await configStore.setGitHubCredential(config.selectedGitRepository, {
+          source: "stored",
+          host,
+        });
+      }
       return `GitHub token stored for ${host}.`;
     },
   });

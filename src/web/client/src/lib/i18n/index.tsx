@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 import { getLanguage, useLanguage, type Language } from "@/lib/language";
 import { en, type TranslationKey } from "./en";
 import { zh } from "./zh";
@@ -36,6 +36,37 @@ export function useT(): Translate {
   const [language] = useLanguage();
   // Memoized per language so `t` is a valid useCallback/useEffect dependency.
   return useMemo(() => translateIn(language), [language]);
+}
+
+export type TranslateNodesParams = Record<string, ReactNode>;
+export type TranslateNodes = (key: TranslationKey, params?: TranslateNodesParams) => ReactNode;
+
+/**
+ * Same catalog, same `{name}` placeholders, but the values may be elements —
+ * so a sentence can emphasise the thing it is about ("Merge **feat/x** into
+ * **main**") without the translation being split into fragments that no
+ * translator can reorder. The whole sentence stays one catalog string.
+ */
+function interpolateNodes(template: string, params?: TranslateNodesParams): ReactNode {
+  if (!params) return template;
+  const parts = template.split(/(\{\w+\})/g);
+  return parts.map((part, index) => {
+    const name = /^\{(\w+)\}$/.exec(part)?.[1];
+    if (!name || !(name in params)) return part;
+    // Keyed because the surrounding literals share the array; index is stable
+    // here, the split is deterministic for a given template.
+    return <Fragment key={`${name}-${index}`}>{params[name]}</Fragment>;
+  });
+}
+
+function translateNodesIn(language: Language): TranslateNodes {
+  return (key, params) => interpolateNodes(CATALOGS[language][key] ?? en[key] ?? key, params);
+}
+
+/** `t()` for sentences that need markup around an interpolated value. */
+export function useTNodes(): TranslateNodes {
+  const [language] = useLanguage();
+  return useMemo(() => translateNodesIn(language), [language]);
 }
 
 /** Non-hook translator for code outside React (toast helpers, formatters). */

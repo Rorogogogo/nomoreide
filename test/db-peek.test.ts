@@ -8,6 +8,7 @@ import {
   engineFromUrl,
   maskConnectionUrl,
   mergeStoredPassword,
+  redactDatabaseError,
 } from "../src/core/db-peek.js";
 
 // node:sqlite is built-in only on Node >=22.5; skip the SQLite suite below that
@@ -35,7 +36,10 @@ describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
     seed.exec(
       `CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL, active INTEGER);
        INSERT INTO users (email, active) VALUES ('a@x.com', 1), ('b@x.com', 0);
-       CREATE TABLE orders (id INTEGER PRIMARY KEY, total REAL);`,
+       CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), total REAL);
+       CREATE INDEX orders_user_idx ON orders(user_id);
+       CREATE VIEW active_users AS SELECT * FROM users WHERE active = 1;
+       CREATE TRIGGER users_email_guard BEFORE UPDATE OF email ON users BEGIN SELECT 1; END;`,
     );
     seed.close();
 
@@ -58,7 +62,53 @@ describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
 
   test("lists tables in the database", async () => {
     const tables = await dbPeek.listTables("app");
-    expect(tables.map((t) => t.qualifiedName)).toEqual(["orders", "users"]);
+    expect(tables.map((t) => t.qualifiedName)).toEqual(["active_users", "orders", "users"]);
+  });
+
+  test("enumerates a lazy catalog and returns rich live object details", async () => {
+    expect(await dbPeek.listSchemas("app")).toEqual([{ name: "main" }]);
+    expect(await dbPeek.capabilities("app")).toMatchObject({
+      objectKinds: ["table", "view"],
+    });
+    const objects = await dbPeek.listObjects("app", "main");
+    const users = objects.find((object) => object.name === "users");
+    const activeUsers = objects.find((object) => object.name === "active_users");
+    expect(users).toMatchObject({ kind: "table", qualifiedName: "users" });
+    expect(activeUsers).toMatchObject({ kind: "view" });
+    expect(users?.key).not.toContain("users");
+
+    const details = await dbPeek.objectDetails("app", users?.key ?? "");
+    expect(details.columns.map((column) => column.name)).toEqual(["id", "email", "active"]);
+    expect(details.constraints).toContainEqual(expect.objectContaining({ type: "PRIMARY KEY" }));
+    expect(details.triggers).toContainEqual(expect.objectContaining({ name: "users_email_guard" }));
+    expect(details.definition).toContain("CREATE TABLE users");
+    expect(details.createScript).toContain("CREATE TABLE users");
+    expect(details.createScript).toContain("CREATE TRIGGER users_email_guard");
+  });
+
+  test("samples only opaque objects re-resolved from the live catalog", async () => {
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    );
+    const sample = await dbPeek.sampleObject("app", users?.key ?? "", 1);
+    expect(sample.object.name).toBe("users");
+    expect(sample.rowCount).toBe(1);
+    await expect(dbPeek.sampleObject("app", "dXNlcnM", 1)).rejects.toThrow(/live catalog/);
+  });
+
+  test("masks credential-like columns in automatic object previews", async () => {
+    const seed = new DatabaseSync!(dbFile);
+    seed.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
+    seed.exec("UPDATE users SET password_hash = 'not-for-the-browser'");
+    seed.close();
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    );
+
+    const sample = await dbPeek.sampleObject("app", users?.key ?? "", 1);
+
+    expect(sample.rows[0]?.password_hash).toBe("••••");
+    expect(sample.rows[0]?.email).toBe("a@x.com");
   });
 
   test("samples rows with column schema and primary keys", async () => {
@@ -176,5 +226,17 @@ describe("connection-string helpers", () => {
     expect(mergeStoredPassword("sqlite", "/new/app.db", "/old/app.db")).toBe(
       "/new/app.db",
     );
+  });
+
+  test("redactDatabaseError removes raw URLs and decoded credentials", () => {
+    const url = "postgres://user:p%40ss@host:5432/app";
+    const message = redactDatabaseError(
+      "postgres",
+      url,
+      new Error(`connect failed for ${url}: password p@ss rejected`),
+    );
+    expect(message).not.toContain(url);
+    expect(message).not.toContain("p@ss");
+    expect(message).toContain("****");
   });
 });

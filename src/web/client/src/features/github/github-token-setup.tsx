@@ -5,21 +5,32 @@ import {
   setGitHubToken,
   startGitHubDeviceFlow,
   type GitHubDeviceFlowStart,
+  type GitHubTokenInfo,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { useT } from "@/lib/i18n";
 import { openExternal } from "@/lib/tauri";
+import { GitHubAccountSelector } from "./github-account-selector";
 
 type SetupMode = "choose" | "device-pending" | "pat";
 
 export function GitHubTokenSetup({
   deviceFlowAvailable,
   initialMode,
+  info,
+  onCancel,
   onSaved,
 }: {
   deviceFlowAvailable: boolean;
   initialMode?: SetupMode;
+  info?: GitHubTokenInfo | null;
+  /**
+   * Way out for callers that open this over a working connection (the account
+   * menu's "add a token"). Without it, `Back` only walks between setup modes
+   * and there is no exit from a flow the user opened by choice.
+   */
+  onCancel?: () => void;
   onSaved: () => void;
 }) {
   const t = useT();
@@ -36,7 +47,9 @@ export function GitHubTokenSetup({
     return (
       <PATForm
         onSaved={onSaved}
-        onBack={deviceFlowAvailable ? () => setMode("choose") : undefined}
+        // Opened deliberately from a working connection, so Back leaves rather
+        // than dropping the user on a "Connect GitHub" screen they don't need.
+        onBack={onCancel ?? (deviceFlowAvailable ? () => setMode("choose") : undefined)}
       />
     );
   }
@@ -57,6 +70,14 @@ export function GitHubTokenSetup({
       </div>
 
       <div className="flex w-full max-w-xs flex-col gap-2">
+        {info ? <GitHubAccountSelector info={info} onChanged={onSaved} /> : null}
+        {info && info.accounts.length > 0 ? (
+          <div className="flex items-center gap-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            {t("github.accounts.orConnect")}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        ) : null}
         <Button className="w-full" onClick={() => setMode("device-pending")} type="button">
           <GitFork className="mr-2 size-4" />
           {t("github.setup.authorizeWith")}
@@ -68,6 +89,15 @@ export function GitHubTokenSetup({
         >
           {t("github.setup.usePat")}
         </button>
+        {onCancel ? (
+          <button
+            className="text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={onCancel}
+            type="button"
+          >
+            {t("common.cancel")}
+          </button>
+        ) : null}
       </div>
     </div>
   );

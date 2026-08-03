@@ -72,6 +72,84 @@ describe("GitActions.checkoutDefaultAndPull", () => {
   });
 });
 
+describe("GitActions branch integration", () => {
+  test("pulls the current branch with fast-forward-only semantics", async () => {
+    const actions = new GitActions(repoDir);
+    await actions.push();
+
+    const output = await actions.pull();
+
+    expect(output).toMatch(/Already up.to.date|up to date/i);
+  });
+
+  test("merges another branch into the current branch", async () => {
+    await execGit(["checkout", "-b", "feature/merge-me"]);
+    await writeFile(join(repoDir, "merged.txt"), "merged\n");
+    await execGit(["add", "merged.txt"]);
+    await execGit(["commit", "-m", "merge me"]);
+    await execGit(["checkout", "main"]);
+
+    await new GitActions(repoDir).merge("feature/merge-me");
+
+    expect((await execGitOutput(["log", "-1", "--format=%s"])).trim()).toBe("merge me");
+  });
+
+  test("rebases the current branch onto another branch", async () => {
+    await execGit(["checkout", "-b", "feature/base"]);
+    await writeFile(join(repoDir, "base.txt"), "base\n");
+    await execGit(["add", "base.txt"]);
+    await execGit(["commit", "-m", "base change"]);
+    const baseHead = (await execGitOutput(["rev-parse", "HEAD"])).trim();
+    await execGit(["checkout", "main"]);
+    await execGit(["checkout", "-b", "feature/topic"]);
+    await writeFile(join(repoDir, "topic.txt"), "topic\n");
+    await execGit(["add", "topic.txt"]);
+    await execGit(["commit", "-m", "topic change"]);
+
+    await new GitActions(repoDir).rebase("feature/base");
+
+    expect((await execGitOutput(["merge-base", "HEAD", "feature/base"])).trim()).toBe(baseHead);
+    expect((await new GitManager(repoDir).status()).branch).toBe("feature/topic");
+  });
+
+  test("rejects merge and rebase when local changes are present", async () => {
+    await execGit(["checkout", "-b", "feature/other"]);
+    await execGit(["checkout", "main"]);
+    await writeFile(join(repoDir, "dirty.txt"), "dirty\n");
+    const actions = new GitActions(repoDir);
+
+    await expect(actions.merge("feature/other")).rejects.toThrow(
+      "Commit or stash local changes before merge.",
+    );
+    await expect(actions.rebase("feature/other")).rejects.toThrow(
+      "Commit or stash local changes before rebase.",
+    );
+  });
+
+  test("aborts a conflicting rebase instead of leaving it in progress", async () => {
+    await execGit(["checkout", "-b", "feature/base"]);
+    await writeFile(join(repoDir, "README.md"), "base\n");
+    await execGit(["add", "README.md"]);
+    await execGit(["commit", "-m", "base README"]);
+    await execGit(["checkout", "main"]);
+    await execGit(["checkout", "-b", "feature/topic"]);
+    await writeFile(join(repoDir, "README.md"), "topic\n");
+    await execGit(["add", "README.md"]);
+    await execGit(["commit", "-m", "topic README"]);
+
+    await expect(new GitActions(repoDir).rebase("feature/base")).rejects.toThrow(
+      "Rebase failed and was aborted.",
+    );
+
+    expect((await new GitManager(repoDir).status()).branch).toBe("feature/topic");
+    expect((await execGitOutput(["status", "--porcelain"])).trim()).toBe("");
+  });
+});
+
 async function execGit(args: string[]): Promise<void> {
   await execFileAsync("git", args, { cwd: repoDir });
+}
+
+async function execGitOutput(args: string[]): Promise<string> {
+  return (await execFileAsync("git", args, { cwd: repoDir })).stdout;
 }

@@ -1,13 +1,13 @@
-mod core;
 mod commands;
+mod core;
 
 use std::path::PathBuf;
 use tauri::{Manager, RunEvent, State, WindowEvent};
 
+use commands::terminal::TerminalManager;
 use core::config::ConfigStore;
 use core::log_store::LogStore;
 use core::process_manager::ProcessManager;
-use commands::terminal::TerminalManager;
 
 // ---------------------------------------------------------------------------
 // Shared application state
@@ -97,7 +97,11 @@ pub fn run() {
             commands::git::git_commit,
             commands::git::git_push,
             commands::git::git_fetch,
+            commands::git::git_pull,
+            commands::git::git_merge,
+            commands::git::git_rebase,
             commands::git::git_create_branch,
+            commands::git::git_delete_branch,
             commands::git::git_switch_branch,
             commands::git::git_branches,
             commands::git::git_worktrees,
@@ -130,8 +134,17 @@ pub fn run() {
             commands::database::query_database,
             commands::database::execute_database,
             commands::database::list_tables,
+            commands::database::test_database_connection,
+            commands::database::database_capabilities,
+            commands::database::list_database_schemas,
+            commands::database::list_database_objects,
+            commands::database::get_database_object_details,
+            commands::database::sample_database_object,
+            commands::database::delete_database_rows,
             // github
             commands::github::get_github_token_status,
+            commands::github::list_github_accounts,
+            commands::github::set_github_account,
             commands::github::list_pull_requests,
             commands::github::get_pull_request,
             commands::github::create_pull_request,

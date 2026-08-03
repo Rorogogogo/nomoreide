@@ -9,6 +9,18 @@ const setupSource = readFileSync(
   "src/web/client/src/features/github/github-token-setup.tsx",
   "utf8",
 );
+const accountSelectorSource = readFileSync(
+  "src/web/client/src/features/github/github-account-selector.tsx",
+  "utf8",
+);
+const accountMenuSource = readFileSync(
+  "src/web/client/src/features/github/github-account-menu.tsx",
+  "utf8",
+);
+const accountMenuHookSource = readFileSync(
+  "src/web/client/src/features/github/hooks/use-github-account-menu.ts",
+  "utf8",
+);
 const actionsSource = readFileSync(
   "src/web/client/src/features/github/actions-view.tsx",
   "utf8",
@@ -34,6 +46,11 @@ const issueDetailSource = readFileSync(
 const catalog = readFileSync("src/web/client/src/lib/i18n/en.ts", "utf8");
 
 describe("GitHub connection recovery UI", () => {
+  test("announces account selection failures accessibly", () => {
+    expect(accountSelectorSource).toContain('role="alert"');
+    expect(accountSelectorSource).toContain('aria-live="assertive"');
+    expect(accountSelectorSource).toContain("aria-describedby");
+  });
   test("view renders refresh and reconnect recovery paths", () => {
     expect(viewSource).toContain("GitHubConnectionRecovery");
     expect(catalog).toContain("Reconnect GitHub");
@@ -43,16 +60,30 @@ describe("GitHub connection recovery UI", () => {
     expect(viewSource).toContain("connection_error");
   });
 
-  test("connected view exposes explicit logout", () => {
-    expect(viewSource).toContain("removeGitHubToken");
-    expect(viewSource).toContain("handleDisconnect");
-    expect(viewSource).toContain("Disconnect");
+  test("the account menu exposes an explicit logout for tokens we own", () => {
+    // Removing a stored token is the only sign-out NoMoreIDE can perform — a
+    // `gh` credential belongs to the CLI. It lives in the account menu (opened
+    // from the header) rather than the GitHub page, so it is reachable from
+    // anywhere instead of only after navigating to that one view.
+    expect(accountMenuHookSource).toContain("removeGitHubToken");
+    expect(accountMenuHookSource).toContain("async function disconnect");
+    expect(accountMenuSource).toContain("controller.disconnect()");
+    expect(catalog).toContain("Remove stored token");
+    // …and a `gh` account gets no sign-out row and no explainer for the one it
+    // lacks: adding an account, the thing sign-out was being used for, has its
+    // own section now.
+    expect(accountMenuSource).not.toContain("gh auth logout");
   });
 
   test("connection chrome avoids badge pills", () => {
     expect(viewSource).not.toContain('components/ui/badge');
     expect(viewSource).toContain("ConnectionState");
-    expect(viewSource).toContain("GitHubConnectionIdentity");
+  });
+
+  test("does not repeat the header's connection identity in the page toolbar", () => {
+    // The app header already shows a GitHub status dot + repo name; a second
+    // logo/dot/repo row directly under it was pure duplication.
+    expect(viewSource).not.toContain("GitHubConnectionIdentity");
   });
 
   test("GitHub content uses status text and label swatches instead of badge pills", () => {

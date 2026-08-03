@@ -1,4 +1,4 @@
-import { CheckCircle, Circle, ExternalLink, RefreshCw, X, XCircle } from "lucide-react";
+import { ExternalLink, RefreshCw, X } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useRegisterRefresh } from "@/components/refresh-registry";
@@ -8,6 +8,7 @@ import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildFixRunPrompt } from "../agent/prompts";
 import { useGitHubActions } from "./hooks/use-github-actions";
 import { LoadMoreButton } from "./load-more-button";
+import { CheckCircleFill, DotCircleFill, XCircleFill } from "./status-octicons";
 
 /** A finished run that didn't succeed — the rows that get an AI "fix" affordance. */
 function isFailedRun(run: GitHubWorkflowRun): boolean {
@@ -151,15 +152,15 @@ export function ActionsView({
 
 function RunStatusIcon({ run }: { run: GitHubWorkflowRun }) {
   if (run.status === "in_progress" || run.status === "queued") {
-    return <Circle className="size-4 shrink-0 animate-pulse text-amber-400" />;
+    return <DotCircleFill className="size-4 shrink-0 animate-pulse text-amber-400" />;
   }
   if (run.conclusion === "success") {
-    return <CheckCircle className="size-4 shrink-0 text-emerald-500" />;
+    return <CheckCircleFill className="size-4 shrink-0 text-emerald-500" />;
   }
   if (run.conclusion === "failure" || run.conclusion === "timed_out") {
-    return <XCircle className="size-4 shrink-0 text-red-500" />;
+    return <XCircleFill className="size-4 shrink-0 text-red-500" />;
   }
-  return <Circle className="size-4 shrink-0 text-zinc-400" />;
+  return <DotCircleFill className="size-4 shrink-0 text-zinc-400" />;
 }
 
 function RunConclusionStatus({ run }: { run: GitHubWorkflowRun }) {
@@ -290,15 +291,15 @@ function RunJobsDetail({
 
 function JobStatusIcon({ item }: { item: Pick<GitHubWorkflowJob | GitHubWorkflowJobStep, "status" | "conclusion"> }) {
   if (item.status === "in_progress" || item.status === "queued") {
-    return <Circle className="size-3.5 shrink-0 animate-pulse text-amber-400" />;
+    return <DotCircleFill className="size-3.5 shrink-0 animate-pulse text-amber-400" />;
   }
   if (item.conclusion === "success" || item.conclusion === "skipped") {
-    return <CheckCircle className="size-3.5 shrink-0 text-emerald-500" />;
+    return <CheckCircleFill className="size-3.5 shrink-0 text-emerald-500" />;
   }
   if (item.conclusion === "failure" || item.conclusion === "timed_out" || item.conclusion === "cancelled") {
-    return <XCircle className="size-3.5 shrink-0 text-red-500" />;
+    return <XCircleFill className="size-3.5 shrink-0 text-red-500" />;
   }
-  return <Circle className="size-3.5 shrink-0 text-zinc-400" />;
+  return <DotCircleFill className="size-3.5 shrink-0 text-zinc-400" />;
 }
 
 function durationLabel(startedAt: string | null, completedAt: string | null): string {

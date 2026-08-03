@@ -251,16 +251,18 @@ describe("global mutation feedback", () => {
       "utf8",
     );
     const github = readFileSync(
-      "src/web/client/src/features/github/github-view.tsx",
+      "src/web/client/src/features/github/hooks/use-github-account-menu.ts",
       "utf8",
     );
 
     expect(formHook).toContain('service-form:${initialService?.name ?? "new"}:save');
     expect(form).toContain("loading={saving}");
     expect(form).toContain('loadingLabel={t("common.saving")}');
+    // Disconnect lives in the account menu, so there is no button to hang a
+    // spinner on — the operation key is what routes its progress to the shared
+    // operation strip.
     expect(github).toContain('key: "github:disconnect"');
-    expect(github).toContain("loading={disconnecting}");
-    expect(github).toContain('loadingLabel={t("github.disconnecting")}');
+    expect(github).toContain('label: t("github.disconnecting")');
   });
 
   test("does not register query-only refresh or load-more work", () => {

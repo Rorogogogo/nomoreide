@@ -29,14 +29,12 @@ function TreeNode({
   label,
   value,
   depth,
-  defaultOpen,
 }: {
   label: string;
   value: Json;
   depth: number;
-  defaultOpen: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(true);
   const indent = { paddingLeft: `${depth * 1.1}rem` };
 
   if (!isContainer(value)) {
@@ -60,6 +58,7 @@ function TreeNode({
   return (
     <div>
       <button
+        aria-expanded={open}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center gap-1 py-[1px] text-left hover:bg-muted"
@@ -80,7 +79,6 @@ function TreeNode({
               label={key}
               value={child}
               depth={depth + 1}
-              defaultOpen={depth < 1}
             />
           ))
         : null}
@@ -126,7 +124,7 @@ export function YamlTree({ content }: { content: string }) {
   return (
     <div className="min-w-max px-4 py-3 font-mono text-[12px] leading-[1.6]">
       {root.map(([key, child]) => (
-        <TreeNode key={key} label={key} value={child} depth={0} defaultOpen />
+        <TreeNode key={key} label={key} value={child} depth={0} />
       ))}
     </div>
   );

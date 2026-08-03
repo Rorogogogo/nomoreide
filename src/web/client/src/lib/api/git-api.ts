@@ -140,10 +140,18 @@ export interface GitApi {
   gitCommit(message: string, repo?: string): Promise<string>;
   /** Push the current branch to its remote (sets upstream on first push). */
   gitPush(repo?: string): Promise<GitPushResult>;
+  /** Fast-forward the current branch from its configured upstream. */
+  gitPull(repo?: string): Promise<string>;
+  /** Merge a branch into the current branch, aborting automatically on conflicts. */
+  gitMerge(branch: string, repo?: string): Promise<string>;
+  /** Rebase the current branch onto a branch, aborting automatically on conflicts. */
+  gitRebase(branch: string, repo?: string): Promise<string>;
   /** Switch back to the default branch and pull latest with fast-forward only. */
   gitCheckoutDefaultAndPull(): Promise<GitCheckoutDefaultAndPullResult>;
   /** Create and switch to a new local branch. */
-  gitCreateBranch(name: string): Promise<string>;
+  gitCreateBranch(name: string, startPoint?: string, repo?: string): Promise<string>;
+  /** Delete a merged local branch. Current, unmerged, and remote branches are protected. */
+  gitDeleteBranch(name: string, repo?: string): Promise<string>;
   gitBranches(repo?: string): Promise<GitBranch[]>;
   gitFetch(repo?: string): Promise<string>;
   gitSwitchBranch(name: string, repo?: string): Promise<void>;

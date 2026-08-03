@@ -172,16 +172,39 @@ export type GitHubConnectionStatus =
   | "checking"
   | "not_configured"
   | "connected"
+  /** Credential works, but the signed-in account can't see this repository. */
+  | "repo_access"
   | "auth_error"
   | "connection_error";
 
+export interface GitHubCliAccount {
+  host: string;
+  login: string;
+  active: boolean;
+  state: string;
+}
+
+export type GitHubCredentialSelection =
+  | { source: "gh"; host: string; login: string }
+  | { source: "stored"; host: string };
+
 export interface GitHubTokenInfo {
   configured: boolean;
+  storedConfigured: boolean;
   deviceFlowAvailable: boolean;
   status: Exclude<GitHubConnectionStatus, "checking">;
   error?: string;
-  user?: { login: string };
+  /** Connected account; `avatarUrl` is cached at connect time. */
+  user?: { login: string; avatarUrl?: string };
   repository?: { full_name: string; html_url: string };
+  repositoryName?: string;
+  /** `owner/repo` from the git remote — known even when the API won't show it. */
+  repositorySlug?: string;
+  accounts: GitHubCliAccount[];
+  cliAvailable: boolean;
+  cliError?: string;
+  selected?: GitHubCredentialSelection;
+  credential?: GitHubCredentialSelection;
 }
 
 export interface GitHubDeviceFlowStart {
@@ -219,6 +242,10 @@ export interface GitHubApi {
   pollGitHubDeviceFlow(device_code: string): Promise<{ done: boolean; slowDown?: boolean }>;
   setGitHubToken(host: string, token: string): Promise<void>;
   removeGitHubToken(host: string): Promise<void>;
+  selectGitHubCredential(
+    repository: string,
+    credential: GitHubCredentialSelection,
+  ): Promise<void>;
   listGitHubBranches(): Promise<GitHubBranchesPayload>;
   listGitHubPRs(state?: string, page?: number): Promise<GitHubPR[]>;
   getGitHubPR(number: number): Promise<GitHubPR>;

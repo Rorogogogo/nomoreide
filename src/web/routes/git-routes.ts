@@ -306,6 +306,51 @@ export const gitRoutes: Route[] = [
     }
   }),
 
+  route("POST", "/api/git/pull", async ({ request, response, configStore, cwd }) => {
+    try {
+      const form = await readForm(request);
+      const resolved = await resolveRepoCwd(configStore, form.get("repo")?.trim(), cwd);
+      if ("error" in resolved) {
+        sendJson(response, { ok: false, error: resolved.error }, 404);
+        return;
+      }
+      const output = await new GitActions(resolved.cwd).pull();
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  route("POST", "/api/git/merge", async ({ request, response, configStore, cwd }) => {
+    try {
+      const form = await readForm(request);
+      const resolved = await resolveRepoCwd(configStore, form.get("repo")?.trim(), cwd);
+      if ("error" in resolved) {
+        sendJson(response, { ok: false, error: resolved.error }, 404);
+        return;
+      }
+      const output = await new GitActions(resolved.cwd).merge(requiredFormValue(form, "branch"));
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  route("POST", "/api/git/rebase", async ({ request, response, configStore, cwd }) => {
+    try {
+      const form = await readForm(request);
+      const resolved = await resolveRepoCwd(configStore, form.get("repo")?.trim(), cwd);
+      if ("error" in resolved) {
+        sendJson(response, { ok: false, error: resolved.error }, 404);
+        return;
+      }
+      const output = await new GitActions(resolved.cwd).rebase(requiredFormValue(form, "branch"));
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
   route("POST", "/api/git/default-branch/pull", async ({ response, configStore, cwd }) => {
     const gitCwd = await selectedGitCwd(configStore, cwd);
     try {
@@ -455,8 +500,28 @@ export const gitRoutes: Route[] = [
   route("POST", "/api/git/branches", async ({ request, response, configStore, cwd }) => {
     const form = await readForm(request);
     const gitCwd = await selectedGitCwd(configStore, cwd);
-    const output = await new GitManager(gitCwd).createBranch(requiredFormValue(form, "name"));
+    const output = await new GitManager(gitCwd).createBranch(
+      requiredFormValue(form, "name"),
+      form.get("startPoint")?.trim() || undefined,
+    );
     sendJson(response, { ok: true, output });
+  }),
+
+  route("POST", "/api/git/branches/delete", async ({ request, response, configStore, cwd }) => {
+    try {
+      const form = await readForm(request);
+      const resolved = await resolveRepoCwd(configStore, form.get("repo")?.trim(), cwd);
+      if ("error" in resolved) {
+        sendJson(response, { ok: false, error: resolved.error }, 404);
+        return;
+      }
+      const output = await new GitManager(resolved.cwd).deleteBranch(
+        requiredFormValue(form, "name"),
+      );
+      sendJson(response, { ok: true, output });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
   }),
 
   route("POST", "/api/git/branches/switch", async ({ request, response, configStore, cwd }) => {

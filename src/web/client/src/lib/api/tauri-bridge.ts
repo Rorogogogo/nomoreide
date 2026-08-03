@@ -434,17 +434,39 @@ export async function tauri_gitCommit(message: string, repo?: string) {
 }
 
 export async function tauri_gitPush(repo?: string) {
-  const output = await tauriInvoke<string>("git_push", { remote: null, repo: repo ?? null });
-  return { output, branch: "", setUpstream: false };
+  return tauriInvoke<{ output: string; branch: string; setUpstream: boolean }>("git_push", {
+    remote: null,
+    repo: repo ?? null,
+  });
 }
 
 export async function tauri_gitFetch(repo?: string) {
   return tauriInvoke<string>("git_fetch", { repo: repo ?? null });
 }
 
-export async function tauri_gitCreateBranch(name: string, repo?: string) {
-  await tauriInvoke("git_create_branch", { name, repo: repo ?? null });
+export async function tauri_gitPull(repo?: string) {
+  return tauriInvoke<string>("git_pull", { repo: repo ?? null });
+}
+
+export async function tauri_gitMerge(branch: string, repo?: string) {
+  return tauriInvoke<string>("git_merge", { branch, repo: repo ?? null });
+}
+
+export async function tauri_gitRebase(branch: string, repo?: string) {
+  return tauriInvoke<string>("git_rebase", { branch, repo: repo ?? null });
+}
+
+export async function tauri_gitCreateBranch(name: string, startPoint?: string, repo?: string) {
+  await tauriInvoke("git_create_branch", {
+    name,
+    startPoint: startPoint ?? null,
+    repo: repo ?? null,
+  });
   return "";
+}
+
+export async function tauri_gitDeleteBranch(name: string, repo?: string) {
+  return tauriInvoke<string>("git_delete_branch", { name, repo: repo ?? null });
 }
 
 export async function tauri_gitSwitchBranch(name: string, repo?: string) {
@@ -542,25 +564,32 @@ export async function tauri_removeGithubToken(host: string) {
   await tauriInvoke("remove_github_token", { host });
 }
 
-/** Returns [owner, repo] from the selected repository's origin remote. */
-export async function tauri_getGithubRepo(repo?: string): Promise<[string, string]> {
-  return tauriInvoke<[string, string]>("get_github_repo", { repo: repo ?? null });
+export async function tauri_setGithubAccount(
+  repository: string,
+  credential: { source: "gh"; host: string; login: string } | { source: "stored"; host: string },
+) {
+  await tauriInvoke("set_github_account", { repository, credential });
 }
 
-export async function tauri_listPullRequests(owner: string, repo: string, state?: string) {
-  return tauriInvoke<unknown>("list_pull_requests", { owner, repo, stateFilter: state ?? "open" });
+/** Returns [repository name, owner, repo] from the selected repository's origin remote. */
+export async function tauri_getGithubRepo(repo?: string): Promise<[string, string, string]> {
+  return tauriInvoke<[string, string, string]>("get_github_repo", { repo: repo ?? null });
 }
 
-export async function tauri_listIssues(owner: string, repo: string, state?: string) {
-  return tauriInvoke<unknown>("list_issues", { owner, repo, stateFilter: state ?? "open" });
+export async function tauri_listPullRequests(repository: string, owner: string, repo: string, state?: string) {
+  return tauriInvoke<unknown>("list_pull_requests", { repository, owner, repo, stateFilter: state ?? "open" });
 }
 
-export async function tauri_getPullRequest(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("get_pull_request", { owner, repo, number });
+export async function tauri_listIssues(repository: string, owner: string, repo: string, state?: string) {
+  return tauriInvoke<unknown>("list_issues", { repository, owner, repo, stateFilter: state ?? "open" });
+}
+
+export async function tauri_getPullRequest(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("get_pull_request", { repository, owner, repo, number });
 }
 
 export async function tauri_createPullRequest(opts: {
-  owner: string; repo: string; title: string; body: string;
+  repository: string; owner: string; repo: string; title: string; body: string;
   head: string; base: string; draft?: boolean;
 }) {
   return tauriInvoke<unknown>("create_pull_request", opts);
@@ -574,70 +603,70 @@ export async function tauri_githubOAuthPoll(clientId: string, deviceCode: string
   return tauriInvoke<unknown>("github_oauth_poll", { clientId, deviceCode });
 }
 
-export async function tauri_getPrDiff(owner: string, repo: string, number: number) {
-  return tauriInvoke<string>("get_pr_diff", { owner, repo, number });
+export async function tauri_getPrDiff(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<string>("get_pr_diff", { repository, owner, repo, number });
 }
 
-export async function tauri_listPrFiles(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("list_pr_files", { owner, repo, number });
+export async function tauri_listPrFiles(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_files", { repository, owner, repo, number });
 }
 
-export async function tauri_listPrReviews(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("list_pr_reviews", { owner, repo, number });
+export async function tauri_listPrReviews(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_reviews", { repository, owner, repo, number });
 }
 
-export async function tauri_listPrComments(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("list_pr_comments", { owner, repo, number });
+export async function tauri_listPrComments(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_pr_comments", { repository, owner, repo, number });
 }
 
 export async function tauri_mergePullRequest(
-  owner: string, repo: string, number: number,
+  repository: string, owner: string, repo: string, number: number,
   opts: { method?: string; commitTitle?: string; commitMessage?: string } = {},
 ) {
   return tauriInvoke<unknown>("merge_pull_request", {
-    owner, repo, number,
+    repository, owner, repo, number,
     method: opts.method ?? null,
     commitTitle: opts.commitTitle ?? null,
     commitMessage: opts.commitMessage ?? null,
   });
 }
 
-export async function tauri_getGithubIssue(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("get_github_issue", { owner, repo, number });
+export async function tauri_getGithubIssue(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("get_github_issue", { repository, owner, repo, number });
 }
 
-export async function tauri_listIssueComments(owner: string, repo: string, number: number) {
-  return tauriInvoke<unknown>("list_issue_comments", { owner, repo, number });
+export async function tauri_listIssueComments(repository: string, owner: string, repo: string, number: number) {
+  return tauriInvoke<unknown>("list_issue_comments", { repository, owner, repo, number });
 }
 
-export async function tauri_addIssueComment(owner: string, repo: string, number: number, body: string) {
-  return tauriInvoke<unknown>("add_issue_comment", { owner, repo, number, body });
+export async function tauri_addIssueComment(repository: string, owner: string, repo: string, number: number, body: string) {
+  return tauriInvoke<unknown>("add_issue_comment", { repository, owner, repo, number, body });
 }
 
-export async function tauri_createGithubIssue(owner: string, repo: string, title: string, body?: string) {
-  return tauriInvoke<unknown>("create_github_issue", { owner, repo, title, body: body ?? null });
+export async function tauri_createGithubIssue(repository: string, owner: string, repo: string, title: string, body?: string) {
+  return tauriInvoke<unknown>("create_github_issue", { repository, owner, repo, title, body: body ?? null });
 }
 
-export async function tauri_listGithubBranches(owner: string, repo: string) {
-  return tauriInvoke<unknown>("list_github_branches", { owner, repo });
+export async function tauri_listGithubBranches(repository: string, owner: string, repo: string) {
+  return tauriInvoke<unknown>("list_github_branches", { repository, owner, repo });
 }
 
-export async function tauri_getGithubRepoInfo(owner: string, repo: string) {
-  return tauriInvoke<unknown>("get_github_repo_info", { owner, repo });
+export async function tauri_getGithubRepoInfo(repository: string, owner: string, repo: string) {
+  return tauriInvoke<unknown>("get_github_repo_info", { repository, owner, repo });
 }
 
-export async function tauri_listCommitCheckRuns(owner: string, repo: string, sha: string) {
-  return tauriInvoke<unknown>("list_commit_check_runs", { owner, repo, sha });
+export async function tauri_listCommitCheckRuns(repository: string, owner: string, repo: string, sha: string) {
+  return tauriInvoke<unknown>("list_commit_check_runs", { repository, owner, repo, sha });
 }
 
-export async function tauri_listWorkflowRuns(owner: string, repo: string, branch?: string, page?: number) {
+export async function tauri_listWorkflowRuns(repository: string, owner: string, repo: string, branch?: string, page?: number) {
   return tauriInvoke<unknown>("list_workflow_runs", {
-    owner, repo, branch: branch ?? null, page: page ?? null,
+    repository, owner, repo, branch: branch ?? null, page: page ?? null,
   });
 }
 
-export async function tauri_listWorkflowRunJobs(owner: string, repo: string, runId: number) {
-  return tauriInvoke<unknown>("list_workflow_run_jobs", { owner, repo, runId });
+export async function tauri_listWorkflowRunJobs(repository: string, owner: string, repo: string, runId: number) {
+  return tauriInvoke<unknown>("list_workflow_run_jobs", { repository, owner, repo, runId });
 }
 
 // ---- Database ----
@@ -650,16 +679,61 @@ export async function tauri_queryDatabase(name: string, sql: string, limit?: num
   return tauriInvoke<unknown>("query_database", { name, sql, limit: limit ?? null });
 }
 
-export async function tauri_executeDatabase(name: string, sql: string) {
-  return tauriInvoke<number>("execute_database", { name, sql });
+export async function tauri_executeDatabase(name: string, sql: string, mode: "preview" | "commit") {
+  return tauriInvoke<unknown>("execute_database", { name, sql, mode });
+}
+
+export async function tauri_deleteDatabaseRows(
+  name: string,
+  input: {
+    objectKey: string;
+    keys: Array<Record<string, string | number | boolean>>;
+    mode: "preview" | "commit";
+    expectedAffectedRows?: number;
+  },
+) {
+  return tauriInvoke<unknown>("delete_database_rows", { name, input });
 }
 
 export async function tauri_listTables(name: string) {
   return tauriInvoke<string[]>("list_tables", { name });
 }
 
+export async function tauri_testDatabaseConnection(engine: string, url: string) {
+  await tauriInvoke("test_database_connection", { engine, url });
+}
+
+export async function tauri_databaseCapabilities(name: string) {
+  return tauriInvoke<unknown>("database_capabilities", { name });
+}
+
+export async function tauri_listDatabaseSchemas(name: string) {
+  return tauriInvoke<unknown[]>("list_database_schemas", { name });
+}
+
+export async function tauri_listDatabaseObjects(name: string, schema: string) {
+  return tauriInvoke<unknown[]>("list_database_objects", { name, schema });
+}
+
+export async function tauri_getDatabaseObjectDetails(name: string, key: string) {
+  return tauriInvoke<unknown>("get_database_object_details", { name, key });
+}
+
+export async function tauri_sampleDatabaseObject(
+  name: string,
+  key: string,
+  limit?: number,
+  offset?: number,
+) {
+  return tauriInvoke<unknown>("sample_database_object", {
+    name,
+    key,
+    limit: limit ?? null,
+    offset: offset ?? null,
+  });
+}
+
 export async function tauri_registerDatabase(db: {
-  // projectPath rides along for forward-compat; the Rust core ignores it today.
   name: string; engine: string; url: string; projectPath?: string;
 }) {
   await tauriInvoke("register_database", { db });

@@ -53,11 +53,24 @@ const ARG_PREVIEW_BYTES = 240;
 export function previewArgs(args: unknown): string | undefined {
   if (args === undefined || args === null) return undefined;
   try {
-    const json = typeof args === "string" ? args : JSON.stringify(args);
+    const json =
+      typeof args === "string"
+        ? redactSensitiveText(args)
+        : JSON.stringify(args, (key, value) =>
+            /(url|password|token|secret|credential)/i.test(key) && typeof value === "string"
+              ? "[redacted]"
+              : value,
+          );
     if (!json) return undefined;
     if (json.length <= ARG_PREVIEW_BYTES) return json;
     return `${json.slice(0, ARG_PREVIEW_BYTES)}…`;
   } catch {
     return undefined;
   }
+}
+
+export function redactSensitiveText(value: string): string {
+  return value
+    .replace(/\b(postgres(?:ql)?|mysql|mariadb):\/\/([^\s:@/]+):([^\s@/]+)@/gi, "$1://$2:****@")
+    .replace(/\b(password|token|secret)\s*[=:]\s*[^\s,;]+/gi, "$1=****");
 }

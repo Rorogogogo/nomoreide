@@ -13,13 +13,14 @@ import {
   type DebugSetupAgent,
 } from "../core/agent-profiles/index.js";
 import { runAgentsCli } from "./agents.js";
+import { runDatabaseCli } from "./database.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
 import { runGitCli } from "./git.js";
 import { runProfileCli } from "./profile.js";
 
 const USAGE =
-  "Usage: nomoreide [mcp|setup|tui|web|daemon|git|agents|profile|list|logs|start|stop|restart|add]";
+  "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]";
 
 const MCP_SETUP_LINES = [
   "NoMoreIDE MCP + automatic debugging setup",
@@ -96,6 +97,10 @@ export async function runCli(
 
     if (command === "git") {
       return await runGitCli(subcommand, rest, stdout, configStore);
+    }
+
+    if (command === "db") {
+      return await runDatabaseCli(subcommand, rest, stdout, configStore);
     }
 
     if (command === "agents") {

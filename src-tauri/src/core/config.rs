@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::fs;
 
 // ---------------------------------------------------------------------------
@@ -59,6 +59,15 @@ pub struct GitRepoDef {
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_worktree_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub github_credential: Option<GithubCredentialSelection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "source", rename_all = "lowercase")]
+pub enum GithubCredentialSelection {
+    Gh { host: String, login: String },
+    Stored { host: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -69,6 +78,8 @@ pub struct DatabaseDef {
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub write_unlocked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -97,6 +108,12 @@ pub struct LogSourceDef {
 pub struct GithubTokenDef {
     pub host: String,
     pub token: String,
+    /// Account the token belongs to, captured by the Node side at connect time.
+    /// Carried through here so a desktop-side config write does not drop it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub login: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -175,8 +192,8 @@ impl ConfigStore {
     pub async fn load(&self) -> Result<Config> {
         match fs::read_to_string(&self.path).await {
             Ok(raw) => {
-                let config: Config = serde_json::from_str(&raw)
-                    .context("Failed to parse config.json")?;
+                let config: Config =
+                    serde_json::from_str(&raw).context("Failed to parse config.json")?;
                 Ok(config)
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Config::default()),
@@ -186,10 +203,14 @@ impl ConfigStore {
 
     pub async fn save(&self, config: &Config) -> Result<()> {
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).await.context("Failed to create config dir")?;
+            fs::create_dir_all(parent)
+                .await
+                .context("Failed to create config dir")?;
         }
         let json = serde_json::to_string_pretty(config).context("Failed to serialize config")?;
-        fs::write(&self.path, format!("{json}\n")).await.context("Failed to write config.json")
+        fs::write(&self.path, format!("{json}\n"))
+            .await
+            .context("Failed to write config.json")
     }
 
     pub async fn register_service(&self, service: ServiceDef) -> Result<Config> {
@@ -203,7 +224,10 @@ impl ConfigStore {
     pub async fn remove_service(&self, name: &str) -> Result<Config> {
         let mut config = self.load().await?;
         config.services.retain(|s| s.name != name);
-        config.bundles.iter_mut().for_each(|b| b.services.retain(|s| s != name));
+        config
+            .bundles
+            .iter_mut()
+            .for_each(|b| b.services.retain(|s| s != name));
         self.save(&config).await?;
         Ok(config)
     }
@@ -216,10 +240,33 @@ impl ConfigStore {
         Ok(config)
     }
 
-    pub async fn register_git_repository(&self, repo: GitRepoDef) -> Result<Config> {
+    pub async fn register_git_repository(&self, mut repo: GitRepoDef) -> Result<Config> {
         let mut config = self.load().await?;
+        if repo.github_credential.is_none() {
+            repo.github_credential = config
+                .git_repositories
+                .iter()
+                .find(|r| r.name == repo.name)
+                .and_then(|r| r.github_credential.clone());
+        }
         config.git_repositories.retain(|r| r.name != repo.name);
         config.git_repositories.push(repo);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn set_github_credential(
+        &self,
+        repository: &str,
+        credential: GithubCredentialSelection,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        let repo = config
+            .git_repositories
+            .iter_mut()
+            .find(|r| r.name == repository)
+            .ok_or_else(|| anyhow::anyhow!("Git repository \"{repository}\" is not registered."))?;
+        repo.github_credential = Some(credential);
         self.save(&config).await?;
         Ok(config)
     }
@@ -243,7 +290,9 @@ impl ConfigStore {
 
     pub async fn select_git_worktree(&self, name: &str, path: String) -> Result<Config> {
         let mut config = self.load().await?;
-        let repo = config.git_repositories.iter_mut()
+        let repo = config
+            .git_repositories
+            .iter_mut()
             .find(|repo| repo.name == name)
             .context("Git repository is not registered")?;
         repo.active_worktree_path = Some(path);
@@ -293,8 +342,20 @@ impl ConfigStore {
 
     pub async fn set_github_token(&self, host: String, token: String) -> Result<Config> {
         let mut config = self.load().await?;
+        // Preserve any identity captured for this host; only the secret changes.
+        let previous = config
+            .github_tokens
+            .iter()
+            .find(|t| t.host == host)
+            .map(|t| (t.login.clone(), t.avatar_url.clone()));
         config.github_tokens.retain(|t| t.host != host);
-        config.github_tokens.push(GithubTokenDef { host, token });
+        let (login, avatar_url) = previous.unwrap_or((None, None));
+        config.github_tokens.push(GithubTokenDef {
+            host,
+            token,
+            login,
+            avatar_url,
+        });
         self.save(&config).await?;
         Ok(config)
     }
@@ -306,8 +367,39 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Cached account identity for a stored token, when one was captured.
+    pub fn get_github_profile(
+        &self,
+        config: &Config,
+        host: &str,
+    ) -> Option<(String, Option<String>)> {
+        config
+            .github_tokens
+            .iter()
+            .find(|t| t.host == host)
+            .and_then(|t| t.login.clone().map(|login| (login, t.avatar_url.clone())))
+    }
+
+    /// Attach identity to an already-stored token without touching the secret.
+    pub async fn set_github_profile(
+        &self,
+        host: &str,
+        login: String,
+        avatar_url: Option<String>,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        if let Some(entry) = config.github_tokens.iter_mut().find(|t| t.host == host) {
+            entry.login = Some(login);
+            entry.avatar_url = avatar_url;
+        }
+        self.save(&config).await?;
+        Ok(config)
+    }
+
     pub fn get_github_token<'a>(&self, config: &'a Config, host: &str) -> Option<&'a str> {
-        config.github_tokens.iter()
+        config
+            .github_tokens
+            .iter()
             .find(|t| t.host == host)
             .map(|t| t.token.as_str())
     }
@@ -329,8 +421,14 @@ impl ConfigStore {
 
     pub async fn save_workflow(&self, workflow: serde_json::Value) -> Result<Config> {
         let mut config = self.load().await?;
-        let id = workflow.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        config.workflows.retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
+        let id = workflow
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        config
+            .workflows
+            .retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
         config.workflows.push(workflow);
         self.save(&config).await?;
         Ok(config)
@@ -338,7 +436,9 @@ impl ConfigStore {
 
     pub async fn remove_workflow(&self, id: &str) -> Result<Config> {
         let mut config = self.load().await?;
-        config.workflows.retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
+        config
+            .workflows
+            .retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
         self.save(&config).await?;
         Ok(config)
     }

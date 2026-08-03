@@ -48,6 +48,14 @@ pub struct GitBranch {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GitPushResult {
+    pub output: String,
+    pub branch: String,
+    pub set_upstream: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileSizeRank {
     pub path: String,
     /// Line count; a lower bound (`truncated: true`) for files past the read cap.
@@ -86,9 +94,35 @@ async fn git(cwd: &str, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
+async fn git_checked(cwd: &str, args: &[&str]) -> Result<String> {
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .await
+        .context("git command failed")?;
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    if !out.status.success() {
+        anyhow::bail!(
+            "{}",
+            if stderr.trim().is_empty() {
+                stdout
+            } else {
+                stderr
+            }
+        );
+    }
+    Ok(if stdout.is_empty() { stderr } else { stdout })
+}
+
 async fn git_lines(cwd: &str, args: &[&str]) -> Result<Vec<String>> {
     let raw = git(cwd, args).await?;
-    Ok(raw.lines().map(str::to_string).filter(|l| !l.is_empty()).collect())
+    Ok(raw
+        .lines()
+        .map(str::to_string)
+        .filter(|l| !l.is_empty())
+        .collect())
 }
 
 // ---------------------------------------------------------------------------
@@ -101,23 +135,36 @@ impl GitManager {
     pub async fn worktrees(cwd: &str) -> Result<Vec<GitWorktree>> {
         let raw = git(cwd, &["worktree", "list", "--porcelain"]).await?;
         let mut worktrees = Vec::new();
-        for (index, record) in raw.split("\n\n").filter(|record| !record.trim().is_empty()).enumerate() {
+        for (index, record) in raw
+            .split("\n\n")
+            .filter(|record| !record.trim().is_empty())
+            .enumerate()
+        {
             let lines: Vec<&str> = record.lines().collect();
             let value = |key: &str| -> Option<String> {
-                lines.iter()
+                lines
+                    .iter()
                     .find_map(|line| line.strip_prefix(&format!("{key} ")))
                     .map(str::to_string)
             };
-            let Some(path) = value("worktree") else { continue };
-            let branch = value("branch")
-                .map(|name| name.strip_prefix("refs/heads/").unwrap_or(&name).to_string());
+            let Some(path) = value("worktree") else {
+                continue;
+            };
+            let branch = value("branch").map(|name| {
+                name.strip_prefix("refs/heads/")
+                    .unwrap_or(&name)
+                    .to_string()
+            });
             let dirty = if lines.contains(&"bare") {
                 false
             } else {
-                !git(&path, &["status", "--porcelain=v1", "--untracked-files=all"])
-                    .await
-                    .unwrap_or_default()
-                    .is_empty()
+                !git(
+                    &path,
+                    &["status", "--porcelain=v1", "--untracked-files=all"],
+                )
+                .await
+                .unwrap_or_default()
+                .is_empty()
             };
             worktrees.push(GitWorktree {
                 path,
@@ -125,9 +172,13 @@ impl GitManager {
                 branch,
                 bare: lines.contains(&"bare"),
                 detached: lines.contains(&"detached"),
-                locked: lines.iter().any(|line| *line == "locked" || line.starts_with("locked ")),
+                locked: lines
+                    .iter()
+                    .any(|line| *line == "locked" || line.starts_with("locked ")),
                 locked_reason: value("locked"),
-                prunable: lines.iter().any(|line| *line == "prunable" || line.starts_with("prunable ")),
+                prunable: lines
+                    .iter()
+                    .any(|line| *line == "prunable" || line.starts_with("prunable ")),
                 prunable_reason: value("prunable"),
                 primary: index == 0,
                 dirty,
@@ -147,9 +198,14 @@ impl GitManager {
         if branch.is_empty() || branch.starts_with('-') || branch.contains('\0') {
             anyhow::bail!("A valid branch name is required.");
         }
-        let managed_root = std::env::var("NOMOREIDE_WORKTREES_DIR").ok()
+        let managed_root = std::env::var("NOMOREIDE_WORKTREES_DIR")
+            .ok()
             .map(std::path::PathBuf::from)
-            .or_else(|| std::env::var("HOME").ok().map(|home| std::path::PathBuf::from(home).join(".nomoreide/worktrees")))
+            .or_else(|| {
+                std::env::var("HOME")
+                    .ok()
+                    .map(|home| std::path::PathBuf::from(home).join(".nomoreide/worktrees"))
+            })
             .context("Could not resolve the managed worktrees directory")?;
         let destination = managed_root
             .join(safe_segment(project_name)?)
@@ -161,8 +217,11 @@ impl GitManager {
         let mut command = Command::new("git");
         command.arg("worktree").arg("add");
         if create_branch {
-            command.arg("-b").arg(branch).arg(&destination_string)
-                .arg(base_ref.filter(|value| !value.trim().is_empty()).unwrap_or("HEAD"));
+            command.arg("-b").arg(branch).arg(&destination_string).arg(
+                base_ref
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or("HEAD"),
+            );
         } else {
             command.arg(&destination_string).arg(branch);
         }
@@ -170,14 +229,16 @@ impl GitManager {
         if !output.status.success() {
             anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
         }
-        Self::worktrees(cwd).await?
+        Self::worktrees(cwd)
+            .await?
             .into_iter()
             .find(|worktree| worktree.path == destination_string)
             .context("Git created the worktree but it could not be found")
     }
 
     pub async fn remove_worktree(cwd: &str, path: &str) -> Result<()> {
-        let worktree = Self::worktrees(cwd).await?
+        let worktree = Self::worktrees(cwd)
+            .await?
             .into_iter()
             .find(|worktree| worktree.path == path)
             .context("Unknown worktree")?;
@@ -215,12 +276,18 @@ impl GitManager {
 
     pub async fn status(cwd: &str) -> Result<GitStatus> {
         // Branch name
-        let branch = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"]).await?.trim().to_string();
+        let branch = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"])
+            .await?
+            .trim()
+            .to_string();
 
         // Upstream tracking
-        let upstream_raw = git(cwd, &[
-            "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}",
-        ]).await.unwrap_or_default();
+        let upstream_raw = git(
+            cwd,
+            &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        )
+        .await
+        .unwrap_or_default();
         let upstream = upstream_raw.trim().to_string();
         let upstream = if upstream.is_empty() || upstream.starts_with("fatal") {
             None
@@ -233,27 +300,43 @@ impl GitManager {
             let ab = git(cwd, &["rev-list", "--left-right", "--count", "HEAD...@{u}"])
                 .await
                 .unwrap_or_default();
-            let parts: Vec<i32> = ab.trim().split_whitespace()
+            let parts: Vec<i32> = ab
+                .trim()
+                .split_whitespace()
                 .filter_map(|s| s.parse().ok())
                 .collect();
-            (parts.first().copied().unwrap_or(0), parts.get(1).copied().unwrap_or(0))
+            (
+                parts.first().copied().unwrap_or(0),
+                parts.get(1).copied().unwrap_or(0),
+            )
         } else {
             (0, 0)
         };
 
         // File statuses (porcelain v1)
         let status_out = git(cwd, &["status", "--porcelain", "-u"]).await?;
-        let files = status_out.lines()
+        let files = status_out
+            .lines()
             .filter(|l| l.len() >= 3)
             .map(|l| {
                 let index = l.chars().next().map(|c| c.to_string()).unwrap_or_default();
                 let wt = l.chars().nth(1).map(|c| c.to_string()).unwrap_or_default();
                 let path = l[3..].trim().to_string();
-                GitFileStatus { path, index, working_tree: wt }
+                GitFileStatus {
+                    path,
+                    index,
+                    working_tree: wt,
+                }
             })
             .collect();
 
-        Ok(GitStatus { branch, upstream, ahead, behind, files })
+        Ok(GitStatus {
+            branch,
+            upstream,
+            ahead,
+            behind,
+            files,
+        })
     }
 
     pub async fn diff(cwd: &str, file: Option<&str>) -> Result<String> {
@@ -263,7 +346,11 @@ impl GitManager {
         }
         let staged = git(cwd, &["diff", "--cached", "--"]).await?;
         let unstaged = git(cwd, &args).await?;
-        if !staged.is_empty() { Ok(staged) } else { Ok(unstaged) }
+        if !staged.is_empty() {
+            Ok(staged)
+        } else {
+            Ok(unstaged)
+        }
     }
 
     pub async fn file_diff(cwd: &str, file: &str) -> Result<String> {
@@ -287,39 +374,59 @@ impl GitManager {
 
     pub async fn write_file(cwd: &str, path: &str, content: &str) -> Result<()> {
         let full = Path::new(cwd).join(path);
-        tokio::fs::write(full, content).await.context("Failed to write file")
+        tokio::fs::write(full, content)
+            .await
+            .context("Failed to write file")
     }
 
     pub async fn graph(cwd: &str, limit: usize) -> Result<Vec<GitCommit>> {
         let fmt = "%H\x1f%h\x1f%s\x1f%an\x1f%ae\x1f%aI\x1f%D\x1f%P";
         let limit_str = limit.to_string();
-        let raw = git(cwd, &["log", &format!("-{limit_str}"), &format!("--format={fmt}")]).await?;
+        let raw = git(
+            cwd,
+            &["log", &format!("-{limit_str}"), &format!("--format={fmt}")],
+        )
+        .await?;
 
-        let commits = raw.lines().filter(|l| !l.is_empty()).map(|line| {
-            let parts: Vec<&str> = line.split('\x1f').collect();
-            GitCommit {
-                hash: parts.first().copied().unwrap_or("").to_string(),
-                short_hash: parts.get(1).copied().unwrap_or("").to_string(),
-                subject: parts.get(2).copied().unwrap_or("").to_string(),
-                author: parts.get(3).copied().unwrap_or("").to_string(),
-                email: parts.get(4).copied().unwrap_or("").to_string(),
-                date: parts.get(5).copied().unwrap_or("").to_string(),
-                refs: parts.get(6).copied().unwrap_or("").split(", ")
-                    .filter(|s| !s.is_empty())
-                    .map(str::to_string)
-                    .collect(),
-                parents: parts.get(7).copied().unwrap_or("").split_whitespace()
-                    .map(str::to_string)
-                    .collect(),
-            }
-        }).collect();
+        let commits = raw
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|line| {
+                let parts: Vec<&str> = line.split('\x1f').collect();
+                GitCommit {
+                    hash: parts.first().copied().unwrap_or("").to_string(),
+                    short_hash: parts.get(1).copied().unwrap_or("").to_string(),
+                    subject: parts.get(2).copied().unwrap_or("").to_string(),
+                    author: parts.get(3).copied().unwrap_or("").to_string(),
+                    email: parts.get(4).copied().unwrap_or("").to_string(),
+                    date: parts.get(5).copied().unwrap_or("").to_string(),
+                    refs: parts
+                        .get(6)
+                        .copied()
+                        .unwrap_or("")
+                        .split(", ")
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_string)
+                        .collect(),
+                    parents: parts
+                        .get(7)
+                        .copied()
+                        .unwrap_or("")
+                        .split_whitespace()
+                        .map(str::to_string)
+                        .collect(),
+                }
+            })
+            .collect();
 
         Ok(commits)
     }
 
     pub async fn commit_diff(cwd: &str, hash: &str, file: Option<&str>) -> Result<String> {
         let mut args = vec!["show", hash, "--"];
-        if let Some(f) = file { args.push(f); }
+        if let Some(f) = file {
+            args.push(f);
+        }
         git(cwd, &args).await
     }
 
@@ -363,7 +470,11 @@ impl GitManager {
         let mut args = vec!["add", "--"];
         let path_refs: Vec<&str> = paths.iter().map(String::as_str).collect();
         args.extend(path_refs);
-        let out = Command::new("git").args(&args).current_dir(cwd).output().await?;
+        let out = Command::new("git")
+            .args(&args)
+            .current_dir(cwd)
+            .output()
+            .await?;
         if !out.status.success() {
             anyhow::bail!("{}", String::from_utf8_lossy(&out.stderr));
         }
@@ -374,7 +485,11 @@ impl GitManager {
         let mut args = vec!["restore", "--staged", "--"];
         let path_refs: Vec<&str> = paths.iter().map(String::as_str).collect();
         args.extend(path_refs);
-        Command::new("git").args(&args).current_dir(cwd).output().await?;
+        Command::new("git")
+            .args(&args)
+            .current_dir(cwd)
+            .output()
+            .await?;
         Ok(())
     }
 
@@ -390,56 +505,133 @@ impl GitManager {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
-    pub async fn push(cwd: &str, remote: Option<&str>) -> Result<String> {
+    pub async fn push(cwd: &str, remote: Option<&str>) -> Result<GitPushResult> {
         let remote = remote.unwrap_or("origin");
-        let out = Command::new("git")
-            .args(["push", remote])
-            .current_dir(cwd)
-            .output()
-            .await?;
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        let branch = git_checked(cwd, &["branch", "--show-current"])
+            .await?
+            .trim()
+            .to_string();
+        if branch.is_empty() {
+            anyhow::bail!("cannot push in a detached HEAD state");
+        }
+        let upstream = git_checked(
+            cwd,
+            &[
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ],
+        )
+        .await
+        .unwrap_or_default();
+        let set_upstream = upstream.trim().is_empty();
+        let output = if set_upstream {
+            git_checked(cwd, &["push", "--set-upstream", remote, &branch]).await?
+        } else {
+            git_checked(cwd, &["push"]).await?
+        };
+        Ok(GitPushResult {
+            output,
+            branch,
+            set_upstream,
+        })
     }
 
     pub async fn fetch(cwd: &str) -> Result<String> {
-        let out = Command::new("git").args(["fetch"]).current_dir(cwd).output().await?;
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        git_checked(cwd, &["fetch", "--prune"]).await
     }
 
-    pub async fn create_branch(cwd: &str, name: &str) -> Result<()> {
-        let out = Command::new("git")
-            .args(["checkout", "-b", name])
-            .current_dir(cwd)
-            .output()
-            .await?;
-        if !out.status.success() {
-            anyhow::bail!("{}", String::from_utf8_lossy(&out.stderr));
+    pub async fn pull(cwd: &str) -> Result<String> {
+        git_checked(cwd, &["pull", "--ff-only"]).await
+    }
+
+    pub async fn merge(cwd: &str, branch: &str) -> Result<String> {
+        Self::validate_branch_ref(cwd, branch).await?;
+        Self::ensure_clean(cwd, "merge").await?;
+        match git_checked(cwd, &["merge", "--no-edit", branch]).await {
+            Ok(output) => Ok(output),
+            Err(error) => {
+                let _ = git_checked(cwd, &["merge", "--abort"]).await;
+                anyhow::bail!("Merge failed and was aborted.\n{error}")
+            }
+        }
+    }
+
+    pub async fn rebase(cwd: &str, branch: &str) -> Result<String> {
+        Self::validate_branch_ref(cwd, branch).await?;
+        Self::ensure_clean(cwd, "rebase").await?;
+        match git_checked(cwd, &["rebase", branch]).await {
+            Ok(output) => Ok(output),
+            Err(error) => {
+                let _ = git_checked(cwd, &["rebase", "--abort"]).await;
+                anyhow::bail!("Rebase failed and was aborted.\n{error}")
+            }
+        }
+    }
+
+    async fn validate_branch_ref(cwd: &str, branch: &str) -> Result<()> {
+        if branch.trim().is_empty() || branch.starts_with('-') {
+            anyhow::bail!("branch is required");
+        }
+        git_checked(cwd, &["check-ref-format", "--branch", branch]).await?;
+        Ok(())
+    }
+
+    async fn ensure_clean(cwd: &str, operation: &str) -> Result<()> {
+        let status =
+            git_checked(cwd, &["status", "--porcelain=v1", "--untracked-files=all"]).await?;
+        if !status.trim().is_empty() {
+            anyhow::bail!("Commit or stash local changes before {operation}.");
         }
         Ok(())
     }
 
+    pub async fn create_branch(cwd: &str, name: &str, start_point: Option<&str>) -> Result<()> {
+        Self::validate_branch_ref(cwd, name).await?;
+        let mut args = vec!["switch", "-c", name];
+        if let Some(start) = start_point {
+            Self::validate_branch_ref(cwd, start).await?;
+            args.push(start);
+        }
+        git_checked(cwd, &args).await?;
+        Ok(())
+    }
+
+    pub async fn delete_branch(cwd: &str, name: &str) -> Result<String> {
+        Self::validate_branch_ref(cwd, name).await?;
+        git_checked(cwd, &["branch", "-d", name]).await
+    }
+
     pub async fn switch_branch(cwd: &str, name: &str) -> Result<()> {
-        let out = Command::new("git")
-            .args(["checkout", name])
-            .current_dir(cwd)
-            .output()
-            .await?;
-        if !out.status.success() {
-            anyhow::bail!("{}", String::from_utf8_lossy(&out.stderr));
+        let is_remote = Self::branches(cwd)
+            .await?
+            .iter()
+            .any(|branch| branch.is_remote && branch.name == name);
+        if is_remote {
+            git_checked(cwd, &["switch", "--track", name]).await?;
+        } else {
+            git_checked(cwd, &["switch", name]).await?;
         }
         Ok(())
     }
 
     pub async fn branches(cwd: &str) -> Result<Vec<GitBranch>> {
         let current = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"])
-            .await?.trim().to_string();
+            .await?
+            .trim()
+            .to_string();
         let locals = git_lines(cwd, &["branch", "--format=%(refname:short)"]).await?;
         let remotes = git_lines(cwd, &["branch", "-r", "--format=%(refname:short)"]).await?;
 
-        let mut branches: Vec<GitBranch> = locals.into_iter().map(|name| GitBranch {
-            is_current: name == current,
-            is_remote: false,
-            name,
-        }).collect();
+        let mut branches: Vec<GitBranch> = locals
+            .into_iter()
+            .map(|name| GitBranch {
+                is_current: name == current,
+                is_remote: false,
+                name,
+            })
+            .collect();
 
         branches.extend(remotes.into_iter().map(|name| GitBranch {
             is_current: false,
@@ -453,8 +645,16 @@ impl GitManager {
     pub async fn pull_default(cwd: &str) -> Result<String> {
         // Checkout default branch (main or master) and pull --ff-only
         let default = detect_default_branch(cwd).await;
-        Command::new("git").args(["checkout", &default]).current_dir(cwd).output().await?;
-        let out = Command::new("git").args(["pull", "--ff-only"]).current_dir(cwd).output().await?;
+        Command::new("git")
+            .args(["checkout", &default])
+            .current_dir(cwd)
+            .output()
+            .await?;
+        let out = Command::new("git")
+            .args(["pull", "--ff-only"])
+            .current_dir(cwd)
+            .output()
+            .await?;
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
@@ -468,21 +668,40 @@ impl GitManager {
 
         for path in files {
             let full = Path::new(cwd).join(&path);
-            let Ok(meta) = tokio::fs::metadata(&full).await else { continue };
-            if !meta.is_file() { continue; }
+            let Ok(meta) = tokio::fs::metadata(&full).await else {
+                continue;
+            };
+            if !meta.is_file() {
+                continue;
+            }
 
             let bytes = meta.len();
             let truncated = bytes > MAX_BYTES;
-            let read_len = if truncated { MAX_BYTES as usize } else { bytes as usize };
+            let read_len = if truncated {
+                MAX_BYTES as usize
+            } else {
+                bytes as usize
+            };
 
-            let Ok(buf) = read_capped(&full, read_len).await else { continue };
-            if buf.contains(&0) { continue; } // binary
+            let Ok(buf) = read_capped(&full, read_len).await else {
+                continue;
+            };
+            if buf.contains(&0) {
+                continue;
+            } // binary
 
             let mut lines = buf.iter().filter(|&&b| b == b'\n').count();
             // Count a final line that has no trailing newline.
-            if !buf.is_empty() && *buf.last().unwrap() != b'\n' { lines += 1; }
+            if !buf.is_empty() && *buf.last().unwrap() != b'\n' {
+                lines += 1;
+            }
 
-            ranks.push(FileSizeRank { path, lines, bytes, truncated });
+            ranks.push(FileSizeRank {
+                path,
+                lines,
+                bytes,
+                truncated,
+            });
         }
 
         ranks.sort_by(|a, b| b.lines.cmp(&a.lines).then(b.bytes.cmp(&a.bytes)));

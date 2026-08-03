@@ -204,6 +204,24 @@ describe("GitManager", () => {
     expect((await git.status()).branch).toBe("master");
   });
 
+  test("creates from a selected branch and only deletes merged local branches", async () => {
+    await git.createBranch("feature/source");
+    await writeFile(join(repoDir, "source.txt"), "source\n");
+    await execGit(["add", "source.txt"]);
+    await execGit(["commit", "-m", "source commit"]);
+    await git.switchBranch("master");
+
+    await git.createBranch("feature/derived", "feature/source");
+
+    expect(await readFile(join(repoDir, "source.txt"), "utf8")).toBe("source\n");
+    await git.switchBranch("master");
+    await expect(git.deleteBranch("feature/derived")).rejects.toThrow(/not fully merged/i);
+
+    await execGit(["merge", "--ff-only", "feature/source"]);
+    await git.deleteBranch("feature/derived");
+    expect((await git.branches()).map((branch) => branch.name)).not.toContain("feature/derived");
+  });
+
   test("commitFiles parses -z output for add/modify/delete and rename", async () => {
     // commit 1: add two files, modify README
     await writeFile(join(repoDir, "README.md"), "modified\n");

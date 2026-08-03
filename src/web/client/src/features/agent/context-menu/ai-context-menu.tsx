@@ -23,6 +23,13 @@ export interface AiContextIntent {
 export interface AiContextTargetDescriptor {
   label: string;
   intents: AiContextIntent[];
+  actions?: Array<{
+    id: string;
+    label: string;
+    icon?: ReactNode;
+    destructive?: boolean;
+    onSelect: () => void;
+  }>;
 }
 
 interface AiContextMenuRegistry {

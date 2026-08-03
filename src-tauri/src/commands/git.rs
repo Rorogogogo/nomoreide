@@ -1,15 +1,20 @@
+use crate::core::git_manager::{
+    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitPushResult, GitStatus,
+    GitWorktree,
+};
+use crate::core::process_manager::ServiceState;
+use crate::AppState;
+use std::path::Path;
 use tauri::State;
 use tokio::process::Command;
-use std::path::Path;
-use crate::AppState;
-use crate::core::git_manager::{GitManager, GitStatus, GitCommit, GitBranch, GitFileStatus, FileSizeRank, GitWorktree};
-use crate::core::process_manager::ServiceState;
 
 async fn resolve_cwd(state: &AppState, repo: Option<String>) -> Result<String, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
 
     if let Some(name) = repo {
-        return config.git_repositories.iter()
+        return config
+            .git_repositories
+            .iter()
             .find(|r| r.name == name)
             .map(repository_worktree_path)
             .ok_or_else(|| format!("Repository '{name}' not found"));
@@ -43,23 +48,33 @@ fn repository_worktree_path(repository: &crate::core::config::GitRepoDef) -> Str
 fn selected_repository<'a>(
     config: &'a crate::core::config::Config,
 ) -> Option<&'a crate::core::config::GitRepoDef> {
-    config.selected_git_repository.as_ref()
-        .and_then(|name| config.git_repositories.iter().find(|repo| &repo.name == name))
+    config
+        .selected_git_repository
+        .as_ref()
+        .and_then(|name| {
+            config
+                .git_repositories
+                .iter()
+                .find(|repo| &repo.name == name)
+        })
         .or_else(|| config.git_repositories.first())
 }
 
 #[tauri::command]
-pub async fn git_worktrees(
-    state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = selected_repository(&config)
-        .ok_or_else(|| "No Git project is selected.".to_string())?;
+pub async fn git_worktrees(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository =
+        selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
     let worktrees = GitManager::worktrees(&repository.path)
         .await
         .map_err(|error| error.to_string())?;
     let configured_active = repository_worktree_path(repository);
-    let active_path = worktrees.iter()
+    let active_path = worktrees
+        .iter()
         .find(|worktree| worktree.path == configured_active)
         .map(|worktree| worktree.path.clone())
         .unwrap_or_else(|| repository.path.clone());
@@ -76,9 +91,13 @@ pub async fn git_create_worktree(
     create_branch: bool,
     base_ref: Option<String>,
 ) -> Result<GitWorktree, String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = selected_repository(&config)
-        .ok_or_else(|| "No Git project is selected.".to_string())?;
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository =
+        selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
     let worktree = GitManager::create_worktree(
         &repository.path,
         &repository.name,
@@ -88,7 +107,8 @@ pub async fn git_create_worktree(
     )
     .await
     .map_err(|error| error.to_string())?;
-    state.config_store
+    state
+        .config_store
         .select_git_worktree(&repository.name, worktree.path.clone())
         .await
         .map_err(|error| error.to_string())?;
@@ -96,20 +116,22 @@ pub async fn git_create_worktree(
 }
 
 #[tauri::command]
-pub async fn git_select_worktree(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = selected_repository(&config)
-        .ok_or_else(|| "No Git project is selected.".to_string())?;
+pub async fn git_select_worktree(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository =
+        selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
     let worktrees = GitManager::worktrees(&repository.path)
         .await
         .map_err(|error| error.to_string())?;
     if !worktrees.iter().any(|worktree| worktree.path == path) {
         return Err("The selected folder is not a worktree of this project.".to_string());
     }
-    state.config_store
+    state
+        .config_store
         .select_git_worktree(&repository.name, path)
         .await
         .map_err(|error| error.to_string())?;
@@ -117,18 +139,23 @@ pub async fn git_select_worktree(
 }
 
 #[tauri::command]
-pub async fn git_remove_worktree(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = selected_repository(&config)
-        .ok_or_else(|| "No Git project is selected.".to_string())?;
-    let active = repository.active_worktree_path.as_ref().unwrap_or(&repository.path);
+pub async fn git_remove_worktree(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository =
+        selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
+    let active = repository
+        .active_worktree_path
+        .as_ref()
+        .unwrap_or(&repository.path);
     if active == &path {
         return Err("Switch to another worktree before removing this one.".to_string());
     }
-    if state.terminal_manager
+    if state
+        .terminal_manager
         .list_sessions()
         .iter()
         .any(|session| Path::new(&session.cwd).starts_with(Path::new(&path)))
@@ -137,10 +164,13 @@ pub async fn git_remove_worktree(
     }
     let running = state.process_manager.status();
     if let Some(service) = config.services.iter().find(|service| {
-        service.cwd.as_ref().is_some_and(|cwd| Path::new(cwd).starts_with(Path::new(&path)))
-            && running.iter().any(|status| {
-                status.name == service.name && status.state == ServiceState::Running
-            })
+        service
+            .cwd
+            .as_ref()
+            .is_some_and(|cwd| Path::new(cwd).starts_with(Path::new(&path)))
+            && running
+                .iter()
+                .any(|status| status.name == service.name && status.state == ServiceState::Running)
     }) {
         return Err(format!(
             "Stop service \"{}\" before removing this worktree.",
@@ -153,12 +183,14 @@ pub async fn git_remove_worktree(
 }
 
 #[tauri::command]
-pub async fn git_prune_worktrees(
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = selected_repository(&config)
-        .ok_or_else(|| "No Git project is selected.".to_string())?;
+pub async fn git_prune_worktrees(state: State<'_, AppState>) -> Result<(), String> {
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository =
+        selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
     GitManager::prune_worktrees(&repository.path)
         .await
         .map_err(|error| error.to_string())
@@ -181,8 +213,12 @@ pub async fn git_diff(
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     match file {
-        Some(f) => GitManager::file_diff(&cwd, &f).await.map_err(|e| e.to_string()),
-        None => GitManager::diff(&cwd, None).await.map_err(|e| e.to_string()),
+        Some(f) => GitManager::file_diff(&cwd, &f)
+            .await
+            .map_err(|e| e.to_string()),
+        None => GitManager::diff(&cwd, None)
+            .await
+            .map_err(|e| e.to_string()),
     }
 }
 
@@ -193,7 +229,9 @@ pub async fn git_graph(
     limit: Option<usize>,
 ) -> Result<Vec<GitCommit>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::graph(&cwd, limit.unwrap_or(200)).await.map_err(|e| e.to_string())
+    GitManager::graph(&cwd, limit.unwrap_or(200))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -204,7 +242,9 @@ pub async fn git_commit_diff(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::commit_diff(&cwd, &hash, file.as_deref()).await.map_err(|e| e.to_string())
+    GitManager::commit_diff(&cwd, &hash, file.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -214,7 +254,9 @@ pub async fn git_commit_files(
     repo: Option<String>,
 ) -> Result<Vec<GitFileStatus>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::commit_files(&cwd, &hash).await.map_err(|e| e.to_string())
+    GitManager::commit_files(&cwd, &hash)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -224,7 +266,9 @@ pub async fn git_stage(
     repo: Option<String>,
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::stage(&cwd, &paths).await.map_err(|e| e.to_string())
+    GitManager::stage(&cwd, &paths)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -234,7 +278,9 @@ pub async fn git_unstage(
     repo: Option<String>,
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::unstage(&cwd, &paths).await.map_err(|e| e.to_string())
+    GitManager::unstage(&cwd, &paths)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -244,7 +290,9 @@ pub async fn git_commit(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::commit(&cwd, &message).await.map_err(|e| e.to_string())
+    GitManager::commit(&cwd, &message)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -252,28 +300,72 @@ pub async fn git_push(
     state: State<'_, AppState>,
     remote: Option<String>,
     repo: Option<String>,
-) -> Result<String, String> {
+) -> Result<GitPushResult, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::push(&cwd, remote.as_deref()).await.map_err(|e| e.to_string())
+    GitManager::push(&cwd, remote.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn git_fetch(
+pub async fn git_fetch(state: State<'_, AppState>, repo: Option<String>) -> Result<String, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::fetch(&cwd).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_pull(state: State<'_, AppState>, repo: Option<String>) -> Result<String, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::pull(&cwd).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_merge(
     state: State<'_, AppState>,
+    branch: String,
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::fetch(&cwd).await.map_err(|e| e.to_string())
+    GitManager::merge(&cwd, &branch)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_rebase(
+    state: State<'_, AppState>,
+    branch: String,
+    repo: Option<String>,
+) -> Result<String, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::rebase(&cwd, &branch)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn git_create_branch(
     state: State<'_, AppState>,
     name: String,
+    start_point: Option<String>,
     repo: Option<String>,
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::create_branch(&cwd, &name).await.map_err(|e| e.to_string())
+    GitManager::create_branch(&cwd, &name, start_point.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn git_delete_branch(
+    state: State<'_, AppState>,
+    name: String,
+    repo: Option<String>,
+) -> Result<String, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::delete_branch(&cwd, &name)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -283,7 +375,9 @@ pub async fn git_switch_branch(
     repo: Option<String>,
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::switch_branch(&cwd, &name).await.map_err(|e| e.to_string())
+    GitManager::switch_branch(&cwd, &name)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -301,7 +395,9 @@ pub async fn git_pull_default(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::pull_default(&cwd).await.map_err(|e| e.to_string())
+    GitManager::pull_default(&cwd)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -310,7 +406,9 @@ pub async fn git_list_files(
     repo: Option<String>,
 ) -> Result<Vec<String>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::list_tracked_files(&cwd).await.map_err(|e| e.to_string())
+    GitManager::list_tracked_files(&cwd)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -319,7 +417,9 @@ pub async fn git_file_sizes(
     repo: Option<String>,
 ) -> Result<Vec<FileSizeRank>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::rank_files_by_size(&cwd).await.map_err(|e| e.to_string())
+    GitManager::rank_files_by_size(&cwd)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -329,7 +429,9 @@ pub async fn git_read_file(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::read_file(&cwd, &path).await.map_err(|e| e.to_string())
+    GitManager::read_file(&cwd, &path)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -340,7 +442,9 @@ pub async fn git_write_file(
     repo: Option<String>,
 ) -> Result<(), String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::write_file(&cwd, &path, &content).await.map_err(|e| e.to_string())
+    GitManager::write_file(&cwd, &path, &content)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Parse `owner` and `repo` from the git remote URL of the selected repository.
@@ -349,8 +453,15 @@ pub async fn git_write_file(
 pub async fn get_github_repo(
     state: State<'_, AppState>,
     repo: Option<String>,
-) -> Result<(String, String), String> {
-    let cwd = resolve_cwd(&state, repo).await?;
+) -> Result<(String, String, String), String> {
+    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
+    let repository = repo.as_ref()
+        .and_then(|name| config.git_repositories.iter().find(|entry| &entry.name == name))
+        .or_else(|| config.selected_git_repository.as_ref()
+            .and_then(|name| config.git_repositories.iter().find(|entry| &entry.name == name)))
+        .or_else(|| config.git_repositories.first())
+        .ok_or("No Git repository is selected")?;
+    let cwd = repository.active_worktree_path.as_ref().unwrap_or(&repository.path);
     let out = Command::new("git")
         .args(["remote", "get-url", "origin"])
         .current_dir(&cwd)
@@ -358,8 +469,9 @@ pub async fn get_github_repo(
         .await
         .map_err(|e| e.to_string())?;
     let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    parse_github_owner_repo(&raw)
-        .ok_or_else(|| format!("Cannot parse GitHub owner/repo from remote URL: {raw}"))
+    let (owner, repo) = parse_github_owner_repo(&raw)
+        .ok_or_else(|| format!("Cannot parse GitHub owner/repo from remote URL: {raw}"))?;
+    Ok((repository.name.clone(), owner, repo))
 }
 
 fn parse_github_owner_repo(url: &str) -> Option<(String, String)> {
@@ -378,7 +490,7 @@ fn parse_github_owner_repo(url: &str) -> Option<(String, String)> {
         let mut segments = after_host.splitn(3, '/');
         segments.next(); // host
         let owner = segments.next()?.to_string();
-        let repo  = segments.next()?.to_string();
+        let repo = segments.next()?.to_string();
         if !owner.is_empty() && !repo.is_empty() {
             return Some((owner, repo));
         }
