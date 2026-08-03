@@ -1,11 +1,16 @@
-name: Test, Version Bump & Publish to npm
+name: Release (Version Bump & Publish to npm)
 
+# Releasing is deliberate, not a side effect of merging. Merges accumulate on
+# main — tested by ci.yml on every push — and a release is cut by running this
+# workflow. Tagging v<version> here is what triggers desktop-release.yml.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "website/**"
-      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
   contents: write
@@ -14,7 +19,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
 
     steps:
       - uses: actions/checkout@v6
@@ -38,14 +42,15 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Bump patch version
+      - name: Bump version and tag
         env:
           REPO_PAT: ${{ secrets.REPO_PAT }}
+          BUMP: ${{ inputs.bump }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${REPO_PAT}@github.com/Rorogogogo/nomoreide.git"
-          npm version patch --no-git-tag-version
+          npm version "${BUMP:-patch}" --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
           node scripts/sync-version.mjs "$NEW_VERSION"
           echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
