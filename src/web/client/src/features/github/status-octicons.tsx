@@ -34,7 +34,56 @@ export function XCircleFill({ className }: { className?: string }) {
   );
 }
 
-/** Solid disc — queued/in-progress and the neutral conclusions. */
+/**
+ * In progress: a dot inside a ring whose bright arc rotates — GitHub's own
+ * running mark. A static dot (even pulsing) reads as a *state* the run is
+ * parked in; the rotation is what says work is happening right now, which is
+ * the one thing you want to know while watching a run.
+ */
+export function RunningRing({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("relative inline-flex size-4 items-center justify-center", className)}
+    >
+      <svg
+        className="absolute inset-0 size-full animate-spin motion-reduce:animate-none"
+        fill="none"
+        viewBox="0 0 16 16"
+      >
+        <circle cx="8" cy="8" r="7" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
+        <path
+          d="M8 1a7 7 0 0 1 7 7"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2"
+        />
+      </svg>
+      <span className="size-1.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
+/**
+ * Skipped or cancelled — a run that never reached a verdict. Distinct from
+ * both the green check and the red X: nothing passed, but nothing broke
+ * either, and conflating it with failure makes a clean build look red.
+ */
+export function SkipCircle({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={cn("size-4", className)}
+      fill="none"
+      viewBox="0 0 16 16"
+    >
+      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4.7 4.7 11.3 11.3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+/** Solid disc — the neutral conclusions and anything not yet started. */
 export function DotCircleFill({ className }: { className?: string }) {
   return (
     <svg

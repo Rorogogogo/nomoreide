@@ -60,6 +60,19 @@ describe("GitHub connection recovery UI", () => {
     expect(viewSource).toContain("connection_error");
   });
 
+  test("run status marks distinguish running, skipped and failed", () => {
+    // A run that is executing gets the rotating ring; queued keeps the static
+    // dot, because nothing is running yet and a spinner would say otherwise.
+    expect(actionsSource).toContain("RunningRing");
+    expect(actionsSource).toMatch(/status === "in_progress"[\s\S]{0,120}RunningRing/);
+    expect(actionsSource).toMatch(/status === "queued"[\s\S]{0,120}DotCircleFill/);
+    // Skipped used to render a green check and cancelled a red X: one claimed a
+    // step passed when it never ran, the other made an aborted run look broken.
+    expect(actionsSource).toMatch(/"skipped" \|\| \w+\.conclusion === "cancelled"[\s\S]{0,120}SkipCircle/);
+    expect(actionsSource).not.toMatch(/"success" \|\| \w+\.conclusion === "skipped"/);
+    expect(actionsSource).not.toMatch(/"cancelled"[\s\S]{0,80}XCircleFill/);
+  });
+
   test("the account menu exposes an explicit logout for tokens we own", () => {
     // Removing a stored token is the only sign-out NoMoreIDE can perform — a
     // `gh` credential belongs to the CLI. It lives in the account menu (opened

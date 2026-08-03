@@ -113,6 +113,38 @@ describe("ProcessManager", () => {
     expect(manager.status().services.worker.state).toBe("stopped");
   });
 
+  test("stopAll flushes pending timeline writes before resolving", async () => {
+    // Lifecycle events are appended from the child's exit handler and never
+    // awaited by the caller. Callers that tear down the log directory right
+    // after stopAll() (the daemon on shutdown, tests on cleanup) would race
+    // those writes and see them fail against a directory that no longer exists.
+    let inFlight = 0;
+    const realAppend = timeline.append.bind(timeline);
+    timeline.append = async (event) => {
+      inFlight += 1;
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        return await realAppend(event);
+      } finally {
+        inFlight -= 1;
+      }
+    };
+
+    await config.registerService({
+      name: "worker",
+      command: nodeCommand("setInterval(() => {}, 1000);"),
+      cwd: tempDir,
+    });
+
+    await manager.startService("worker");
+    await manager.stopAll();
+
+    expect(inFlight).toBe(0);
+    expect(timeline.read().some((event) => event.title === "worker stopped")).toBe(
+      true,
+    );
+  });
+
   test("includes process tree resources for running services", async () => {
     await config.registerService({
       name: "worker",

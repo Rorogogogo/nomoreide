@@ -30,6 +30,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
+          # The release note is read from the PR behind the tag's *parent*
+          # commit, so one step of history has to come along.
+          fetch-depth: 2
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -58,6 +61,78 @@ jobs:
           VERSION="${TAG#v}"
           node scripts/sync-version.mjs "$VERSION"
 
+      - name: Compose the release note from the merged PR
+        id: notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        # A release body of nothing but install instructions tells users what
+        # macOS will nag them about and nothing about what they are installing.
+        # The PR that produced the tag already says it, in prose, so take that
+        # rather than asking anyone to write the same thing twice.
+        run: |
+          set -uo pipefail
+
+          # The tag sits on the "chore: bump version" commit whose parent is the
+          # squash merge carrying the PR. Try the tag's own commit first so a
+          # hand-cut tag still works, then fall back to the parent.
+          body=""
+          for sha in "$(git rev-parse HEAD)" "$(git rev-parse HEAD^ 2>/dev/null)"; do
+            if [ -n "$sha" ]; then
+              body=$(gh api "repos/$REPO/commits/$sha/pulls" --jq '.[0].body // ""' 2>/dev/null)
+              if [ -n "$body" ]; then break; fi
+            fi
+          done
+
+          # The PR template's guidance lives in HTML comments that span several
+          # lines each, so they are stripped as blocks before anything else —
+          # matching per line would leak the middle of every one.
+          body=$(printf '%s\n' "$body" | awk '
+            {
+              line = $0; out = ""
+              while (1) {
+                if (in_comment) {
+                  p = index(line, "-->")
+                  if (p == 0) { line = ""; break }
+                  line = substr(line, p + 3); in_comment = 0
+                } else {
+                  p = index(line, "<!--")
+                  if (p == 0) { out = out line; break }
+                  out = out substr(line, 1, p - 1)
+                  line = substr(line, p + 4); in_comment = 1
+                }
+              }
+              print out
+            }
+          ')
+
+          # Everything under a heading, up to the next one.
+          section() {
+            printf '%s\n' "$body" | awk -v want="$1" '
+              /^## / { keep = (substr($0, 4) == want); next }
+              keep { print }
+            '
+          }
+          # "Release note" is the section the PR template asks for; the other two
+          # are what a PR opens with when nobody filled it in.
+          note=$(section "Release note")
+          if [ -z "${note//[[:space:]]/}" ]; then note=$(section "Summary"); fi
+          if [ -z "${note//[[:space:]]/}" ]; then note=$(section "What does this PR do?"); fi
+
+          {
+            echo "body<<NOTES_EOF"
+            if [ -n "${note//[[:space:]]/}" ]; then
+              printf '%s\n' "$note"
+            else
+              # No usable section: say so plainly rather than shipping a release
+              # that silently looks like it contains nothing.
+              echo "See the commit history for what changed in this release."
+              echo
+            fi
+            cat .github/desktop-install-note.md
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build & publish universal macOS app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -75,13 +150,6 @@ jobs:
           args: "--target universal-apple-darwin"
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "NoMoreIDE Desktop ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseBody: |
-            macOS desktop build — Tauri (Rust backend) + the NoMoreIDE React UI.
-
-            **This build is unsigned.** On first launch macOS will block it. To open:
-            1. Drag NoMoreIDE into Applications and double-click it.
-            2. Open System Settings → Privacy & Security.
-            3. Under Security, click "Open Anyway" next to the NoMoreIDE message.
-            4. Confirm with Touch ID / password.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false

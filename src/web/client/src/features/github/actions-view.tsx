@@ -8,7 +8,13 @@ import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildFixRunPrompt } from "../agent/prompts";
 import { useGitHubActions } from "./hooks/use-github-actions";
 import { LoadMoreButton } from "./load-more-button";
-import { CheckCircleFill, DotCircleFill, XCircleFill } from "./status-octicons";
+import {
+  CheckCircleFill,
+  DotCircleFill,
+  RunningRing,
+  SkipCircle,
+  XCircleFill,
+} from "./status-octicons";
 
 /** A finished run that didn't succeed — the rows that get an AI "fix" affordance. */
 function isFailedRun(run: GitHubWorkflowRun): boolean {
@@ -151,7 +157,12 @@ export function ActionsView({
 }
 
 function RunStatusIcon({ run }: { run: GitHubWorkflowRun }) {
-  if (run.status === "in_progress" || run.status === "queued") {
+  if (run.status === "in_progress") {
+    return <RunningRing className="size-4 shrink-0 text-amber-400" />;
+  }
+  // Queued is genuinely waiting, not working — a spinner there would claim
+  // progress that hasn't started.
+  if (run.status === "queued") {
     return <DotCircleFill className="size-4 shrink-0 animate-pulse text-amber-400" />;
   }
   if (run.conclusion === "success") {
@@ -159,6 +170,9 @@ function RunStatusIcon({ run }: { run: GitHubWorkflowRun }) {
   }
   if (run.conclusion === "failure" || run.conclusion === "timed_out") {
     return <XCircleFill className="size-4 shrink-0 text-red-500" />;
+  }
+  if (run.conclusion === "skipped" || run.conclusion === "cancelled") {
+    return <SkipCircle className="size-4 shrink-0 text-zinc-400" />;
   }
   return <DotCircleFill className="size-4 shrink-0 text-zinc-400" />;
 }
@@ -290,14 +304,22 @@ function RunJobsDetail({
 }
 
 function JobStatusIcon({ item }: { item: Pick<GitHubWorkflowJob | GitHubWorkflowJobStep, "status" | "conclusion"> }) {
-  if (item.status === "in_progress" || item.status === "queued") {
+  if (item.status === "in_progress") {
+    return <RunningRing className="size-3.5 shrink-0 text-amber-400" />;
+  }
+  if (item.status === "queued") {
     return <DotCircleFill className="size-3.5 shrink-0 animate-pulse text-amber-400" />;
   }
-  if (item.conclusion === "success" || item.conclusion === "skipped") {
+  if (item.conclusion === "success") {
     return <CheckCircleFill className="size-3.5 shrink-0 text-emerald-500" />;
   }
-  if (item.conclusion === "failure" || item.conclusion === "timed_out" || item.conclusion === "cancelled") {
+  if (item.conclusion === "failure" || item.conclusion === "timed_out") {
     return <XCircleFill className="size-3.5 shrink-0 text-red-500" />;
+  }
+  // Skipped was showing a green check and cancelled a red X — one overstated a
+  // step that never ran, the other made an aborted run look broken.
+  if (item.conclusion === "skipped" || item.conclusion === "cancelled") {
+    return <SkipCircle className="size-3.5 shrink-0 text-zinc-400" />;
   }
   return <DotCircleFill className="size-3.5 shrink-0 text-zinc-400" />;
 }
