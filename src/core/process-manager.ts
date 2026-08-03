@@ -83,6 +83,7 @@ export class ProcessManager {
   private readonly stopTimeoutMs: number;
   private readonly timelineStore?: TimelineStore;
   private readonly registry?: ServiceRegistry;
+  private readonly pendingWrites = new Set<Promise<void>>();
 
   constructor(options: ProcessManagerOptions) {
     this.configStore = options.configStore;
@@ -157,7 +158,7 @@ export class ProcessManager {
         ownerPid: process.pid,
       });
     }
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
       severity: "info",
@@ -181,7 +182,7 @@ export class ProcessManager {
       runtime.child = undefined;
       this.registry?.remove(name);
       void this.stopInspector(runtime);
-      void this.appendTimeline({
+      this.appendTimeline({
         kind: "service.lifecycle",
         service: name,
         severity: nextState === "exited" && exitCode ? "error" : "info",
@@ -202,8 +203,8 @@ export class ProcessManager {
         signal: null,
       };
       this.registry?.remove(name);
-      void this.logStore.append(name, "stderr", error.message);
-      void this.appendTimeline({
+      this.trackWrite(this.logStore.append(name, "stderr", error.message));
+      this.appendTimeline({
         kind: "service.lifecycle",
         service: name,
         severity: "error",
@@ -232,7 +233,7 @@ export class ProcessManager {
       }
       const stopped = { name, state: "stopped" as const };
       this.runtimes.set(name, { status: stopped, stopping: false });
-      void this.appendTimeline({
+      this.appendTimeline({
         kind: "service.lifecycle",
         service: name,
         severity: "info",
@@ -251,7 +252,7 @@ export class ProcessManager {
     };
     runtime.status = stopped;
     runtime.child = undefined;
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
       severity: "info",
@@ -301,7 +302,7 @@ export class ProcessManager {
       ...runtime.status,
       inspector: { enabled: true, port: handle.port, upstreamPort },
     };
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
       severity: "info",
@@ -329,7 +330,7 @@ export class ProcessManager {
   private recordInspectorEvent(name: string, event: HttpInspectorEvent): void {
     const severity: "info" | "warning" | "error" =
       event.status >= 500 ? "error" : event.status >= 400 ? "warning" : "info";
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.http",
       service: name,
       severity,
@@ -416,7 +417,7 @@ export class ProcessManager {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.health",
       service: name,
       severity: "warning",
@@ -434,6 +435,18 @@ export class ProcessManager {
     await Promise.all(
       [...this.runtimes.keys()].map((name) => this.stopService(name)),
     );
+    await this.flushWrites();
+  }
+
+  /**
+   * Resolves once every log/timeline write started so far has settled. Exit
+   * handlers append after the child is gone, so without this a caller that
+   * tears down the log directory right after `stopAll()` races those writes.
+   */
+  async flushWrites(): Promise<void> {
+    while (this.pendingWrites.size > 0) {
+      await Promise.all([...this.pendingWrites]);
+    }
   }
 
   killAllSync(signal: NodeJS.Signals = "SIGTERM"): void {
@@ -533,7 +546,7 @@ export class ProcessManager {
     };
 
     this.runtimes.set(name, { status, stopping: false });
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
       severity: "info",
@@ -559,7 +572,7 @@ export class ProcessManager {
     };
     runtime.status = stopped;
 
-    void this.appendTimeline({
+    this.appendTimeline({
       kind: "service.lifecycle",
       service: name,
       severity: "info",
@@ -632,7 +645,7 @@ export class ProcessManager {
               this.registry?.update(service, { url });
               void this.maybeStartInspector(service);
             }
-            void this.appendTimeline({
+            this.appendTimeline({
               kind: "service.port",
               service,
               severity: "info",
@@ -640,24 +653,37 @@ export class ProcessManager {
               detail: url,
             });
           }
-          void this.logStore.append(service, stream, line);
+          this.trackWrite(this.logStore.append(service, stream, line));
         }
       }
     });
 
     readable.on("end", () => {
       if (buffer.length > 0) {
-        void this.logStore.append(service, stream, buffer);
+        this.trackWrite(this.logStore.append(service, stream, buffer));
         buffer = "";
       }
     });
   }
 
-  private async appendTimeline(
-    event: Parameters<TimelineStore["append"]>[0],
-  ): Promise<void> {
+  private appendTimeline(event: Parameters<TimelineStore["append"]>[0]): void {
     if (!this.timelineStore) return;
-    await this.timelineStore.append(event);
+    this.trackWrite(this.timelineStore.append(event));
+  }
+
+  /**
+   * Register a fire-and-forget log/timeline write so `flushWrites()` can wait
+   * for it. These are telemetry about an operation, not the operation itself,
+   * so a failed write is dropped rather than escalated into an unhandled
+   * rejection that would take down the daemon (or fail an unrelated test).
+   */
+  private trackWrite(write: Promise<unknown>): void {
+    const pending = write.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.pendingWrites.add(pending);
+    void pending.then(() => this.pendingWrites.delete(pending));
   }
 }
 
