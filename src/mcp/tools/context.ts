@@ -6,7 +6,7 @@ import type { DbPeek } from "../../core/db-peek.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
 import { GitActions } from "../../core/git-actions.js";
 import { GitManager } from "../../core/git-manager.js";
-import { previewArgs, type ToolCallStore } from "../../core/tool-call-store.js";
+import { previewArgs, redactSensitiveText, type ToolCallStore } from "../../core/tool-call-store.js";
 
 /** Shared stateful services every tool group receives. */
 export interface ToolContext {
@@ -81,7 +81,7 @@ export function wrapServerForRecording(
             status: "error",
             sessionId,
             args: previewArgs(args),
-            error: error instanceof Error ? error.message : String(error),
+            error: redactSensitiveText(error instanceof Error ? error.message : String(error)),
           });
           throw error;
         }

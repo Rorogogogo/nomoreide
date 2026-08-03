@@ -30,3 +30,32 @@ export function subscribeToGitHubActions(
   window.addEventListener(ACTIONS_INTENT_EVENT, handle);
   return () => window.removeEventListener(ACTIONS_INTENT_EVENT, handle);
 }
+
+const TOKEN_SETUP_EVENT = "nomoreide:open-github-token-setup";
+
+/** Which way in: GitHub's browser authorization, or pasting a token. */
+export type GitHubSetupMode = "device-pending" | "pat";
+
+let tokenSetupPending: GitHubSetupMode | null = null;
+
+/**
+ * Ask the GitHub view to open a sign-in flow. Latched rather than
+ * fire-and-forget: the header's account menu raises this *while* it navigates
+ * to the page, so the view is usually still unmounted when it fires.
+ */
+export function requestGitHubTokenSetup(mode: GitHubSetupMode): void {
+  tokenSetupPending = mode;
+  window.dispatchEvent(new Event(TOKEN_SETUP_EVENT));
+}
+
+/** Reads and clears a pending request — call on mount and on the event. */
+export function consumeGitHubTokenSetupRequest(): GitHubSetupMode | null {
+  const pending = tokenSetupPending;
+  tokenSetupPending = null;
+  return pending;
+}
+
+export function subscribeToGitHubTokenSetup(listener: () => void): () => void {
+  window.addEventListener(TOKEN_SETUP_EVENT, listener);
+  return () => window.removeEventListener(TOKEN_SETUP_EVENT, listener);
+}

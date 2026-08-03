@@ -10,9 +10,11 @@ import { useT } from "@/lib/i18n";
 export function DbAddMenu({
   onAddManual,
   onAddWithAi,
+  compact = false,
 }: {
   onAddManual: () => void;
   onAddWithAi: () => void;
+  compact?: boolean;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -42,16 +44,19 @@ export function DbAddMenu({
     <div className="relative" ref={containerRef}>
       <Button
         aria-label={t("database.addMenuAria")}
+        className={compact ? "size-6" : undefined}
         onClick={() => setOpen((value) => !value)}
-        size="sm"
+        size={compact ? "icon" : "sm"}
+        title={compact ? t("database.addMenuAria") : undefined}
         type="button"
+        variant={compact ? "ghost" : "default"}
       >
         <Plus className="size-3.5" />
-        {t("common.add")}
+        {compact ? null : t("common.add")}
       </Button>
 
       {open ? (
-        <div className="absolute right-0 top-9 z-50 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+        <div className="absolute right-0 top-8 z-50 w-56 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
           <button
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
             onClick={() => choose(onAddManual)}

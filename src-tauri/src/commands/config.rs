@@ -106,7 +106,15 @@ pub async fn set_github_token(
     host: String,
     token: String,
 ) -> Result<Config, String> {
-    state.config_store.set_github_token(host, token).await.map_err(|e| e.to_string())
+    let config = state.config_store.set_github_token(host.clone(), token)
+        .await.map_err(|e| e.to_string())?;
+    if let Some(repository) = config.selected_git_repository.clone() {
+        return state.config_store.set_github_credential(
+            &repository,
+            crate::core::config::GithubCredentialSelection::Stored { host },
+        ).await.map_err(|e| e.to_string());
+    }
+    Ok(config)
 }
 
 #[tauri::command]

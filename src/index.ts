@@ -24,6 +24,7 @@ if (command === "mcp" || (command === "start" && process.argv.length <= 3)) {
   [
     "add",
     "agents",
+    "db",
     "git",
     "list",
     "logs",
@@ -37,7 +38,7 @@ if (command === "mcp" || (command === "start" && process.argv.length <= 3)) {
   process.exitCode = await runCli(process.argv.slice(2));
 } else {
   console.error(
-    "Usage: nomoreide [mcp|setup|tui|web|daemon|git|agents|profile|list|logs|start|stop|restart|add]",
+    "Usage: nomoreide [mcp|setup|tui|web|daemon|git|db|agents|profile|list|logs|start|stop|restart|add]",
   );
   process.exitCode = 1;
 }

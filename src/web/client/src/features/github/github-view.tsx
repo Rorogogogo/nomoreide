@@ -3,13 +3,11 @@ import { RefreshCw } from "lucide-react";
 import {
   createGitHubPR,
   getGitHubPRTemplate,
-  removeGitHubToken,
   type GitHubPR,
   type GitHubPRTemplate,
 } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { useOperations } from "@/components/operations/operation-context";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
@@ -17,9 +15,16 @@ import { useT } from "@/lib/i18n";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
-import { subscribeToGitHubActions } from "./github-navigation";
+import {
+  consumeGitHubTokenSetupRequest,
+  subscribeToGitHubActions,
+  subscribeToGitHubTokenSetup,
+  type GitHubSetupMode,
+} from "./github-navigation";
 import { GitHubLogo } from "./github-logo";
 import { GitHubTokenSetup } from "./github-token-setup";
+import { GitHubAccountSelector } from "./github-account-selector";
+import { GitHubRepoAccessNotice } from "./github-repo-access";
 import { PrList } from "./pr-list";
 import { PrDetail } from "./pr-detail";
 import { IssueList } from "./issue-list";
@@ -32,21 +37,55 @@ type GithubTab = "prs" | "issues" | "branches" | "actions";
 export function GitHubView() {
   const t = useT();
   const token = useGitHubToken();
+  /** A sign-in flow opened over a working connection: "Use a token with
+      access", or the header account menu's "Sign in with GitHub" / "Add a
+      personal access token", which navigate here and latch the request. */
+  const [forceSetup, setForceSetup] = useState<GitHubSetupMode | null>(null);
+
+  useEffect(() => {
+    const pending = consumeGitHubTokenSetupRequest();
+    if (pending) setForceSetup(pending);
+    return subscribeToGitHubTokenSetup(() => {
+      setForceSetup(consumeGitHubTokenSetupRequest() ?? "pat");
+    });
+  }, []);
 
   let content: React.ReactNode;
   if (token.loading || token.status === "checking") {
     content = <Loading fill label={t("common.loading")} />;
+  } else if (forceSetup) {
+    content = (
+      <GitHubTokenSetup
+        deviceFlowAvailable={token.deviceFlowAvailable}
+        info={token.info}
+        initialMode={forceSetup}
+        onCancel={() => setForceSetup(null)}
+        onSaved={() => {
+          setForceSetup(null);
+          token.refresh();
+        }}
+      />
+    );
   } else if (token.status === "not_configured") {
     content = (
       <GitHubTokenSetup
         deviceFlowAvailable={token.deviceFlowAvailable}
+        info={token.info}
         onSaved={token.refresh}
+      />
+    );
+  } else if (token.status === "repo_access" && token.info) {
+    content = (
+      <GitHubRepoAccessNotice
+        info={token.info}
+        onRefresh={token.refresh}
+        onUseToken={() => setForceSetup("pat")}
       />
     );
   } else if (token.status === "auth_error" || token.status === "connection_error") {
     content = <GitHubConnectionRecovery token={token} />;
   } else {
-    content = <GitHubContent token={token} />;
+    content = <GitHubContent />;
   }
 
   return (
@@ -68,6 +107,7 @@ function GitHubConnectionRecovery({
     return (
       <GitHubTokenSetup
         deviceFlowAvailable={token.deviceFlowAvailable}
+        info={token.info}
         initialMode={setupMode}
         onSaved={token.refresh}
       />
@@ -95,6 +135,7 @@ function GitHubConnectionRecovery({
         {token.error ? <Alert variant="destructive">{token.error}</Alert> : null}
 
         <div className="flex flex-wrap gap-2">
+          {token.info ? <GitHubAccountSelector info={token.info} onChanged={token.refresh} /> : null}
           <Button onClick={token.refresh} type="button" variant={authError ? "outline" : "default"}>
             <RefreshCw />
             {t("common.refresh")}
@@ -115,7 +156,8 @@ function GitHubConnectionRecovery({
   );
 }
 
-function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) {
+/** Tabs and data only — connection identity belongs to the header indicator. */
+function GitHubContent() {
   const t = useT();
   // Sticky so returning to GitHub lands on the tab you left, not back on PRs.
   const [tab, setTab] = usePersistentState<GithubTab>("github:tab", "prs");
@@ -132,10 +174,6 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
     "github:actions-branch",
     null,
   );
-  const [disconnectError, setDisconnectError] = useState<string | null>(null);
-  const { isPending, runOperation } = useOperations();
-  const disconnecting = isPending("github:disconnect");
-
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
 
@@ -170,26 +208,6 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
       active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
     }`;
 
-  async function handleDisconnect() {
-    setDisconnectError(null);
-    try {
-      await runOperation(
-        {
-          errorMessage: (error) =>
-            error instanceof Error ? error.message : String(error),
-          key: "github:disconnect",
-          label: t("github.disconnecting"),
-        },
-        async () => {
-          await removeGitHubToken("github.com");
-          token.refresh();
-        },
-      );
-    } catch (caught) {
-      setDisconnectError(caught instanceof Error ? caught.message : String(caught));
-    }
-  }
-
   return (
     <>
       <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/95 px-3 py-1">
@@ -206,23 +224,11 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
           {t("github.tab.actions")}
         </button>
 
-        <div className="ml-auto flex min-w-0 items-center gap-2">
-          <GitHubConnectionIdentity token={token} />
-          <Button onClick={token.refresh} size="sm" title={t("github.recheckTitle")} type="button" variant="outline">
-            <RefreshCw />
-            {t("github.reconnect")}
-          </Button>
-          <Button
-            loading={disconnecting}
-            loadingLabel={t("github.disconnecting")}
-            onClick={() => void handleDisconnect()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {t("github.disconnect")}
-          </Button>
-        </div>
+        {/* No connection/account identity here: the header's GitHub indicator
+            owns it, menu included. The credential is stored per repository, so
+            it belongs beside the project crumb — and switching accounts or
+            adding a token shouldn't require navigating to this page first. */}
+        <div className="ml-auto" />
 
         {tab === "prs" ? (
           <div className="flex items-center gap-2">
@@ -241,12 +247,6 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
           </div>
         ) : null}
       </div>
-
-      {disconnectError ? (
-        <Alert variant="destructive" className="m-3">
-          {disconnectError}
-        </Alert>
-      ) : null}
 
       {createPRHead !== null ? (
         <BranchToPRAssistant
@@ -327,21 +327,6 @@ function GitHubContent({ token }: { token: ReturnType<typeof useGitHubToken> }) 
         </div>
       )}
     </>
-  );
-}
-
-function GitHubConnectionIdentity({ token }: { token: ReturnType<typeof useGitHubToken> }) {
-  const t = useT();
-  const label = token.info?.repository?.full_name ?? (token.info?.user ? `@${token.info.user.login}` : "GitHub");
-
-  return (
-    <div className="flex min-w-0 items-center gap-1.5 border-r border-border pr-2">
-      <GitHubLogo className="size-4 shrink-0 text-foreground" />
-      <ConnectionState label={t("github.connected")} tone="success" />
-      <span className="max-w-48 truncate font-mono text-[10px] text-muted-foreground">
-        {label}
-      </span>
-    </div>
   );
 }
 

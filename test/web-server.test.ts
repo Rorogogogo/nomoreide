@@ -735,6 +735,38 @@ describe("web server", () => {
     });
   });
 
+  test("stores an explicit GitHub credential source for the selected repository", async () => {
+    const repo = join(tempDir, "credential-repo");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(repo);
+    await initGitRepo(repo);
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.registerGitRepository({ name: "credential-repo", path: repo });
+    await config.setGithubToken("github.com", "stored-token");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      port: 0,
+    }).start();
+
+    const response = await fetch(`${server.url}/api/github/account`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        repository: "credential-repo",
+        credential: { source: "stored", host: "github.com" },
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      (await config.load()).gitRepositories.find((entry) => entry.name === "credential-repo")
+        ?.githubCredential,
+    ).toEqual({ source: "stored", host: "github.com" });
+  });
+
   test("falls back to verification_uri when GitHub omits verification_uri_complete", async () => {
     const realFetch = globalThis.fetch;
     const fetchMock = vi.fn((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {

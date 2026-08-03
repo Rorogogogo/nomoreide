@@ -570,6 +570,47 @@ describe("ConfigStore", () => {
     expect(store.getGithubToken(config, "github.enterprise.com")).toBeUndefined();
   });
 
+  test("stores independent GitHub credential selections per repository", async () => {
+    const store = new ConfigStore(configPath);
+    const firstPath = await makeGitRepository("work");
+    const secondPath = await makeGitRepository("personal");
+    await store.registerGitRepository({ name: "work", path: firstPath });
+    await store.registerGitRepository({ name: "personal", path: secondPath });
+
+    await store.setGitHubCredential("work", {
+      source: "gh",
+      host: "github.com",
+      login: "work-user",
+    });
+    await store.setGitHubCredential("personal", {
+      source: "gh",
+      host: "github.com",
+      login: "personal-user",
+    });
+
+    const config = await store.load();
+    expect(config.gitRepositories.find((repo) => repo.name === "work")?.githubCredential)
+      .toEqual({ source: "gh", host: "github.com", login: "work-user" });
+    expect(config.gitRepositories.find((repo) => repo.name === "personal")?.githubCredential)
+      .toEqual({ source: "gh", host: "github.com", login: "personal-user" });
+  });
+
+  test("preserves a GitHub credential when re-registering a repository", async () => {
+    const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("preserved");
+    await store.registerGitRepository({ name: "app", path: repoPath });
+    await store.setGitHubCredential("app", {
+      source: "gh",
+      host: "github.com",
+      login: "work-user",
+    });
+
+    await store.registerGitRepository({ name: "app", path: repoPath });
+
+    expect((await store.load()).gitRepositories[0]?.githubCredential)
+      .toEqual({ source: "gh", host: "github.com", login: "work-user" });
+  });
+
   test("replaces an existing GitHub token for the same host", async () => {
     const store = new ConfigStore(configPath);
 
@@ -578,6 +619,36 @@ describe("ConfigStore", () => {
     const config = await store.load();
     expect(config.githubTokens).toHaveLength(1);
     expect(store.getGithubToken(config)).toBe("ghp_second");
+  });
+
+  test("remembers the account a GitHub token belongs to", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setGithubToken("github.com", "ghp_abc123", {
+      login: "octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+    });
+
+    const config = await store.load();
+    expect(store.getGithubProfile(config)).toEqual({
+      login: "octocat",
+      avatarUrl: "https://avatars.githubusercontent.com/u/583231?v=4",
+    });
+    // The secret is still the point of the entry.
+    expect(store.getGithubToken(config)).toBe("ghp_abc123");
+  });
+
+  test("backfills an account onto a token stored without one", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setGithubToken("github.com", "ghp_legacy");
+    expect(store.getGithubProfile(await store.load())).toBeUndefined();
+
+    await store.setGithubProfile("github.com", { login: "octocat" });
+
+    const config = await store.load();
+    expect(store.getGithubProfile(config)).toEqual({ login: "octocat", avatarUrl: undefined });
+    expect(store.getGithubToken(config)).toBe("ghp_legacy");
   });
 
   test("removes a GitHub token without affecting other hosts", async () => {

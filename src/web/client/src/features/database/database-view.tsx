@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Database, Loader2, Plus, Sparkles, Table2, Terminal } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToasts } from "@/components/ui/toast";
 import { useRegisterRefresh } from "@/components/refresh-registry";
@@ -14,20 +13,13 @@ import {
   type DatabaseConnection,
   type GitRepositoryDefinition,
 } from "@/lib/api";
-import { connectionInScope, pathInScope } from "../services/project-scope";
+import { connectionInScope } from "../services/project-scope";
 import { useAgentDock } from "../agent/chat/agent-context";
-import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
-import { DATABASE_SETUP_PROMPT, buildTablePrompt } from "../agent/prompts";
+import { DATABASE_SETUP_PROMPT } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
-import { ConnectionSelector } from "./connection-selector";
-import { DbAddMenu } from "./db-add-menu";
+import { DatabaseExplorer } from "./database-explorer";
 import { SqlConsole } from "./sql-console";
-import { TableGrid } from "./table-grid";
-import {
-  databaseLimitOptions,
-  useDatabases,
-  useTableBrowser,
-} from "./use-databases";
+import { useDatabases } from "./use-databases";
 
 type Dialog = { mode: "add" } | { mode: "edit"; target: EditTarget } | null;
 type ViewMode = "browse" | "query";
@@ -60,14 +52,6 @@ export function DatabaseView({
       ),
     [allConnections, scopePath],
   );
-  // "api-server" beats "/Users/x/repo/api-server" as a row tag.
-  const projectLabel = (connection: DatabaseConnection): string | null => {
-    if (!connection.projectPath) return null;
-    const repo = projects.find((project) =>
-      pathInScope(connection.projectPath, project.path),
-    );
-    return repo?.name ?? connection.projectPath.split("/").pop() ?? null;
-  };
   useRegisterRefresh(refresh);
   const { error: showError, success: showSuccess } = useToasts();
   const { sendToAgent } = useAgentDock();
@@ -129,27 +113,17 @@ export function DatabaseView({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-card/85">
+    <div className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <Database className="size-4 text-muted-foreground" />
+          <Database aria-hidden="true" className="size-4 text-muted-foreground" />
           <span className="text-sm font-semibold">{t("database.title")}</span>
           {loading && connections.length === 0 ? (
-            <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+            <Loader2 aria-hidden="true" className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none" />
           ) : null}
         </div>
         <div className="flex items-center gap-2">
           {selected ? <ViewModeToggle mode={mode} onChange={setMode} /> : null}
-          <ConnectionSelector
-            connections={connections}
-            projectLabel={projectLabel}
-            selected={selected}
-            onSelect={setSelected}
-            onAdd={() => setDialog({ mode: "add" })}
-            onEdit={startEdit}
-            onRemove={(name) => void remove(name)}
-          />
-          <DbAddMenu onAddManual={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
         </div>
       </header>
 
@@ -174,9 +148,16 @@ export function DatabaseView({
               preferences={databasePreferences}
             />
           ) : (
-            <ConnectionBrowser
-              connection={selected}
+            <DatabaseExplorer
+              connections={connections}
+              onAddConnection={() => setDialog({ mode: "add" })}
+              onAddWithAi={addWithAi}
+              onEditConnection={startEdit}
+              onRemoveConnection={(name) => void remove(name)}
+              onSelectConnection={setSelected}
+              onWriteAccessChange={refresh}
               resultLimit={databasePreferences.resultLimit}
+              selectedConnection={selected}
             />
           )
         ) : (
@@ -220,192 +201,15 @@ function ViewModeToggle({
             className={cn(
               "flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition-colors",
               mode === option.value
-                ? "bg-muted text-foreground"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="size-3.5" />
+            <Icon aria-hidden="true" className="size-3.5" />
             {option.label}
           </button>
         );
       })}
-    </div>
-  );
-}
-
-function ConnectionBrowser({ connection, resultLimit }: { connection: string; resultLimit: number }) {
-  const t = useT();
-  const {
-    tables,
-    selectedTable,
-    setSelectedTable,
-    sample,
-    tablesError,
-    rowsError,
-    loadingTables,
-    loadingRows,
-    limit,
-    offset,
-    canPrev,
-    canNext,
-    changePageSize,
-    nextPage,
-    prevPage,
-  } = useTableBrowser(connection, resultLimit);
-
-  return (
-    <div className="flex h-full min-h-0">
-      <div className="flex w-56 shrink-0 flex-col border-r border-border">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-          <Table2 className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">{t("database.tables")}</span>
-          <Badge variant="outline" size="small">
-            {tables.length}
-          </Badge>
-          {loadingTables ? <Loader2 className="size-3.5 animate-spin" /> : null}
-        </div>
-        {tablesError ? (
-          <div className="p-3">
-            <Alert variant="muted" className="border-destructive/40 text-destructive">
-              {tablesError}
-            </Alert>
-          </div>
-        ) : (
-          <ul className="min-h-0 flex-1 overflow-auto">
-            {tables.map((table) => (
-              <AiContextTarget
-                key={table.qualifiedName}
-                target={{
-                  label: table.qualifiedName,
-                  intents: [{
-                    id: "ask-table",
-                    label: t("database.askAiAbout", { name: table.qualifiedName }),
-                    resolvePrompt: () => buildTablePrompt(connection, table),
-                    source: { type: "database-table", label: `${table.name} table` },
-                  }],
-                }}
-              >
-              <li
-                className={cn(
-                  "group flex items-center gap-1 pr-1 transition-colors hover:bg-muted/50",
-                  table.qualifiedName === selectedTable && "bg-muted/70",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedTable(table.qualifiedName)}
-                  className={cn(
-                    "min-w-0 flex-1 truncate px-3 py-1.5 text-left font-mono text-[11px]",
-                    table.qualifiedName === selectedTable && "font-semibold",
-                  )}
-                >
-                  {table.qualifiedName}
-                </button>
-              </li>
-              </AiContextTarget>
-            ))}
-            {!loadingTables && tables.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-muted-foreground">{t("database.noTables")}</li>
-            ) : null}
-          </ul>
-        )}
-      </div>
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {sample ? (
-          <AiContextTarget
-            target={{
-              label: sample.table.qualifiedName,
-              intents: [{
-                id: "ask-table",
-                label: t("database.askAiAbout", { name: sample.table.qualifiedName }),
-                resolvePrompt: () =>
-                  buildTablePrompt(connection, sample.table, {
-                    engine: sample.engine,
-                    columns: sample.columns,
-                  }),
-                source: { type: "database-table", label: `${sample.table.name} table` },
-              }],
-            }}
-          >
-          <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <span className="flex min-w-0 items-center gap-1">
-            <span className="truncate font-mono text-xs font-semibold">
-              {selectedTable ?? t("database.selectTable")}
-            </span>
-          </span>
-          {sample ? (
-            <div className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
-              <span className="tabular-nums">
-                {sample.rowCount === 0
-                  ? t("database.noRows")
-                  : t("database.rowsRange", {
-                      from: offset + 1,
-                      to: offset + sample.rowCount,
-                    })}
-              </span>
-              <select
-                aria-label={t("database.rowsPerPage")}
-                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[11px]"
-                value={limit}
-                onChange={(event) => changePageSize(Number(event.target.value))}
-              >
-                {databaseLimitOptions(resultLimit).map((size) => (
-                  <option key={size} value={size}>
-                    {t("database.perPage", { size })}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2"
-                onClick={prevPage}
-                disabled={!canPrev}
-                type="button"
-              >
-                {t("database.prev")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2"
-                onClick={nextPage}
-                disabled={!canNext}
-                type="button"
-              >
-                {t("database.next")}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-          </AiContextTarget>
-        ) : (
-          <div className="group flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
-            <span className="truncate font-mono text-xs font-semibold">
-              {selectedTable ?? t("database.selectTable")}
-            </span>
-          </div>
-        )}
-        {rowsError ? (
-          <div className="p-4">
-            <Alert variant="muted" className="border-destructive/40 text-destructive">
-              {rowsError}
-            </Alert>
-          </div>
-        ) : loadingRows ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            <Loader2 className="mr-2 size-4 animate-spin" />
-            {t("database.loadingRows")}
-          </div>
-        ) : sample ? (
-          <TableGrid connection={connection} sample={sample} />
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            {t("database.pickTable")}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

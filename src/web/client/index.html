@@ -14,7 +14,7 @@
         try {
           const raw = window.localStorage.getItem("nomoreide:ui-preferences");
           const stored = raw ? JSON.parse(raw) : null;
-          if (stored?.version === 1) {
+          if (stored?.version === 1 || stored?.version === 2) {
             if (["light", "dark", "system"].includes(stored.theme)) theme = stored.theme;
             if (["comfortable", "compact"].includes(stored.density)) density = stored.density;
             if (Number.isInteger(stored.codeFontSize) && stored.codeFontSize >= 10 && stored.codeFontSize <= 18) codeFontSize = stored.codeFontSize;

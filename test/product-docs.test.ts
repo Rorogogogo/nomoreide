@@ -12,6 +12,10 @@ const themeToggleSource = readFileSync(
   resolve(root, "src/web/client/src/components/theme-toggle.tsx"),
   "utf8",
 );
+const refreshButtonSource = readFileSync(
+  resolve(root, "src/web/client/src/components/header-refresh-button.tsx"),
+  "utf8",
+);
 const aiContextSource = readFileSync(
   resolve(root, "src/web/client/src/features/agent/ai-context-action.tsx"),
   "utf8",
@@ -36,27 +40,40 @@ const catalog = readFileSync(
 );
 
 describe("product header action dock", () => {
-  test("groups refresh, theme, and docs as expandable icon-first controls", () => {
+  test("groups refresh, theme, and docs as fixed-width icon controls", () => {
     expect(appSource).toContain('aria-label="Dashboard quick actions"');
     expect(appSource).toContain("headerActionClassName");
-    expect(appSource).toContain("headerActionLabelClassName");
-    expect(appSource).toContain("Refresh");
-    expect(themeToggleSource).toContain("Theme");
+    expect(catalog).toContain("Refresh");
+    expect(themeToggleSource).toContain("action.theme");
     expect(catalog).toContain("Docs");
-    expect(headerActionSource).toContain("hover:w-24");
-    expect(headerActionSource).toContain("focus-visible:w-24");
   });
 
-  test("keeps header action labels expanded after mouse click focus", () => {
-    expect(headerActionSource).toContain("focus:w-24");
-    expect(headerActionSource).toContain("group-focus/header-action:max-w-20");
+  test("header actions name themselves with a tooltip, not an inline label", () => {
+    // The buttons used to widen on hover to reveal their label. That animated
+    // three controls on every pass of the pointer; a tooltip says the same
+    // thing without moving the header around.
+    expect(headerActionSource).not.toContain("hover:w-24");
+    expect(headerActionSource).not.toContain("headerActionLabelClassName");
+    expect(themeToggleSource).toContain("<Tooltip");
+    expect(refreshButtonSource).toContain("<Tooltip");
+    expect(appSource).toContain('<Tooltip align="end" label={t("action.docs")}>');
   });
 
   test("keeps the quick-action dock height aligned with small header buttons", () => {
-    expect(appSource).toContain("rounded-lg border border-border bg-background p-px");
-    expect(headerActionSource).toContain("inline-flex h-7 w-7");
-    expect(headerActionSource).toContain("text-xs");
+    expect(appSource).toContain('aria-label="Dashboard quick actions"');
+    expect(headerActionSource).toContain("inline-flex size-7");
     expect(headerActionSource).toContain("flex size-7");
+  });
+
+  test("the refresh button reports the shared refresh cycle", () => {
+    // The 5s poll runs through the same cycle as a click, so the icon is the
+    // one place that answers "is this view current?".
+    expect(appSource).toContain("runRefreshCycle");
+    expect(appSource).toContain("void runRefreshCycle()");
+    expect(refreshButtonSource).toContain("animate-spin");
+    expect(refreshButtonSource).toContain("<Check");
+    expect(catalog).toContain('"action.refreshing"');
+    expect(catalog).toContain('"action.refreshedJustNow"');
   });
 
   test("adds global AI context menus for services, databases, errors, and git", () => {
@@ -88,7 +105,6 @@ describe("product header action dock", () => {
   test("adds a simple docs button to the local dashboard header", () => {
     expect(appSource).toContain('href="https://www.nomoreide.com/docs"');
     expect(appSource).toContain('aria-label={t("action.docsTitle")}');
-    expect(appSource).toContain('title={t("action.docsTitle")}');
     expect(catalog).toContain("Open NoMoreIDE documentation");
     expect(appSource).toContain("<ThemeToggle />");
     expect(appSource).toContain("BookOpen");

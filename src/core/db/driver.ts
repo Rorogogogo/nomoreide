@@ -1,4 +1,11 @@
 import type { DatabaseEngine } from "../types.js";
+import type {
+  DatabaseCapabilities,
+  DatabaseObject,
+  DatabaseObjectDetails,
+  DatabaseObjectKind,
+  DatabaseSchema,
+} from "./catalog.js";
 
 /** A table the user can browse. `schema` is undefined for SQLite. */
 export interface TableRef {
@@ -45,6 +52,10 @@ export interface DbDriver {
   /** Throws if the connection cannot be established. */
   testConnection(): Promise<void>;
   listTables(): Promise<TableRef[]>;
+  capabilities(): DatabaseCapabilities;
+  listSchemas(): Promise<DatabaseSchema[]>;
+  listObjects(schema: string, kinds?: DatabaseObjectKind[]): Promise<DatabaseObject[]>;
+  describeObject(object: DatabaseObject): Promise<DatabaseObjectDetails>;
   sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample>;
   /** Run an arbitrary SELECT-style statement in a read-only context. */
   runQuery(sql: string, maxRows: number): Promise<QueryResult>;
@@ -67,15 +78,43 @@ export interface WriteResult {
  * read-only consumer can never reach a write. A writable connection is only
  * ever constructed by the `DbWrite` module, behind a per-connection unlock.
  */
-export interface DbWriteDriver {
-  readonly engine: DatabaseEngine;
+export type PrimaryKeyValue = string | number | boolean;
+export type PrimaryKeyTuple = Record<string, PrimaryKeyValue>;
+
+export interface DeleteRowsOptions {
+  table: TableRef;
+  primaryKeys: string[];
+  tuples: PrimaryKeyTuple[];
+  commit: boolean;
+  /** When supplied for a commit, a mismatch must roll the transaction back. */
+  expectedAffectedRows?: number;
+}
+
+export interface DbWriteDriver extends DbDriver {
   /**
    * Run a statement inside a read-write transaction. When `commit` is false the
    * transaction is rolled back, so the caller can preview affected rows without
    * persisting anything.
    */
   executeWrite(sql: string, commit: boolean): Promise<WriteResult>;
-  close(): Promise<void>;
+  /** Delete exact primary-key tuples using bound values in one transaction. */
+  deleteRows(options: DeleteRowsOptions): Promise<WriteResult>;
+}
+
+/** Throw inside the active transaction when a guarded commit changed unexpectedly. */
+export function assertExpectedDeleteCount(
+  options: DeleteRowsOptions,
+  affectedRows: number,
+): void {
+  if (
+    options.commit &&
+    options.expectedAffectedRows !== undefined &&
+    affectedRows !== options.expectedAffectedRows
+  ) {
+    throw new Error(
+      `Delete affected ${affectedRows} rows; expected ${options.expectedAffectedRows}. The transaction was rolled back.`,
+    );
+  }
 }
 
 /** Identifiers we accept after resolving against the live catalog. */

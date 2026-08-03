@@ -223,49 +223,62 @@ export function AppContextMenu({
     }
   }
 
+  const aiTarget = capabilities.aiTarget;
+  const hasClipboardActions = capabilities.canCopy || capabilities.canEdit;
+  const hasAiActions = Boolean(aiTarget?.intents.length);
+  const hasTargetActions = Boolean(aiTarget?.actions?.length);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild onContextMenu={rememberTarget}>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextMenuItem disabled={!capabilities.canCopy || !capabilities.canEdit} onSelect={cutSelection}>
-          <Scissors className="mr-2 size-4 text-muted-foreground" />
-          {t("common.cut")}
-          <ContextMenuShortcut>⌘X</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem disabled={!capabilities.canCopy} onSelect={copySelection}>
-          <Copy className="mr-2 size-4 text-muted-foreground" />
-          {t("common.copy")}
-          <ContextMenuShortcut>⌘C</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem disabled={!capabilities.canEdit} onSelect={pasteSelection}>
-          <ClipboardPaste className="mr-2 size-4 text-muted-foreground" />
-          {t("common.paste")}
-          <ContextMenuShortcut>⌘V</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem disabled={!capabilities.canEdit} onSelect={() => selectAll(targetRef.current)}>
-          <Clipboard className="mr-2 size-4 text-muted-foreground" />
-          {t("common.selectAll")}
-          <ContextMenuShortcut>⌘A</ContextMenuShortcut>
-        </ContextMenuItem>
-        {capabilities.aiTarget?.intents.length ? (
+        {capabilities.canCopy && capabilities.canEdit ? (
+          <ContextMenuItem onSelect={cutSelection}>
+            <Scissors className="mr-2 size-4 text-muted-foreground" />
+            {t("common.cut")}
+            <ContextMenuShortcut>⌘X</ContextMenuShortcut>
+          </ContextMenuItem>
+        ) : null}
+        {capabilities.canCopy ? (
+          <ContextMenuItem onSelect={copySelection}>
+            <Copy className="mr-2 size-4 text-muted-foreground" />
+            {t("common.copy")}
+            <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+          </ContextMenuItem>
+        ) : null}
+        {capabilities.canEdit ? (
           <>
-            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={pasteSelection}>
+              <ClipboardPaste className="mr-2 size-4 text-muted-foreground" />
+              {t("common.paste")}
+              <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => selectAll(targetRef.current)}>
+              <Clipboard className="mr-2 size-4 text-muted-foreground" />
+              {t("common.selectAll")}
+              <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+            </ContextMenuItem>
+          </>
+        ) : null}
+        {hasAiActions ? (
+          <>
+            {hasClipboardActions ? <ContextMenuSeparator /> : null}
             <ContextMenuSub>
               <ContextMenuSubTrigger>
                 <Bot className="mr-2 size-4 text-muted-foreground" />
                 {t("agent.contextMenu.ai")}
               </ContextMenuSubTrigger>
               <ContextMenuSubContent className="w-64">
-                {capabilities.aiTarget.intents.length === 1 ? (
+                {aiTarget?.intents.length === 1 ? (
                   <IntentDeliveryItems
-                    intent={capabilities.aiTarget.intents[0]}
+                    intent={aiTarget.intents[0]}
                     onDeliver={deliverAiIntent}
                     t={t}
                   />
                 ) : (
-                  capabilities.aiTarget.intents.map((intent) => (
+                  aiTarget?.intents.map((intent) => (
                     <ContextMenuSub key={intent.id}>
                       <ContextMenuSubTrigger>{intent.label}</ContextMenuSubTrigger>
                       <ContextMenuSubContent className="w-56">
@@ -282,7 +295,24 @@ export function AppContextMenu({
             </ContextMenuSub>
           </>
         ) : null}
-        <ContextMenuSeparator />
+        {hasTargetActions ? (
+          <>
+            {hasClipboardActions || hasAiActions ? <ContextMenuSeparator /> : null}
+            {aiTarget?.actions?.map((action) => (
+              <ContextMenuItem
+                className={action.destructive ? "text-destructive focus:text-destructive" : undefined}
+                key={action.id}
+                onSelect={action.onSelect}
+              >
+                {action.icon}
+                {action.label}
+              </ContextMenuItem>
+            ))}
+          </>
+        ) : null}
+        {hasClipboardActions || hasAiActions || hasTargetActions ? (
+          <ContextMenuSeparator />
+        ) : null}
         <ContextMenuItem onSelect={onRefresh}>
           <RefreshCw className="mr-2 size-4 text-muted-foreground" />
           {t("common.refresh")}
@@ -306,11 +336,11 @@ function IntentDeliveryItems({
     <>
       <ContextMenuItem onSelect={() => void onDeliver(intent, "send")}>
         <SendHorizontal className="mr-2 size-4 text-muted-foreground" />
-        {t("agent.contextMenu.send", { action: intent.label })}
+        {t("agent.contextMenu.send")}
       </ContextMenuItem>
       <ContextMenuItem onSelect={() => void onDeliver(intent, "copy")}>
         <Copy className="mr-2 size-4 text-muted-foreground" />
-        {t("agent.contextMenu.copy", { action: intent.label })}
+        {t("agent.contextMenu.copy")}
       </ContextMenuItem>
     </>
   );

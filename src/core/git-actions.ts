@@ -58,6 +58,39 @@ export class GitActions {
     return { output: await this.git(args), branch, setUpstream };
   }
 
+  /** Fast-forward the current branch from its configured upstream. */
+  async pull(): Promise<string> {
+    return this.git(["pull", "--ff-only"]);
+  }
+
+  /**
+   * Merge a branch into the current branch without opening an editor. The
+   * header command surface must not leave a repository half-merged, so a
+   * conflict is automatically aborted and returned as an error.
+   */
+  async merge(branch: string): Promise<string> {
+    const target = await this.validBranchRef(branch);
+    await this.assertCleanWorkingTree("merge");
+    try {
+      return await this.git(["merge", "--no-edit", target]);
+    } catch (error) {
+      await this.git(["merge", "--abort"]).catch(() => undefined);
+      throw new Error(`Merge failed and was aborted.\n${errorMessage(error)}`);
+    }
+  }
+
+  /** Rebase the current branch onto another branch, aborting on conflicts. */
+  async rebase(branch: string): Promise<string> {
+    const target = await this.validBranchRef(branch);
+    await this.assertCleanWorkingTree("rebase");
+    try {
+      return await this.git(["rebase", target]);
+    } catch (error) {
+      await this.git(["rebase", "--abort"]).catch(() => undefined);
+      throw new Error(`Rebase failed and was aborted.\n${errorMessage(error)}`);
+    }
+  }
+
   async checkoutDefaultAndPull(options: { remote?: string } = {}): Promise<CheckoutDefaultAndPullResult> {
     const remote = options.remote ?? "origin";
     const branch = await this.defaultBranch(remote);
@@ -81,6 +114,20 @@ export class GitActions {
     throw new Error(`Could not determine default branch for ${remote}.`);
   }
 
+  private async validBranchRef(branch: string): Promise<string> {
+    const target = branch.trim();
+    if (!target) throw new Error("branch is required");
+    await this.git(["check-ref-format", "--branch", target]);
+    return target;
+  }
+
+  private async assertCleanWorkingTree(operation: string): Promise<void> {
+    const status = await this.git(["status", "--porcelain=v1", "--untracked-files=all"]);
+    if (status.trim()) {
+      throw new Error(`Commit or stash local changes before ${operation}.`);
+    }
+  }
+
   private async git(args: string[]): Promise<string> {
     try {
       const { stdout, stderr } = await execFileAsync("git", args, {
@@ -98,4 +145,8 @@ export class GitActions {
       throw error;
     }
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

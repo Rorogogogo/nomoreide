@@ -45,7 +45,13 @@ export interface GitRepositoryDefinition {
   path: string;
   /** Worktree currently used by Git, agents, shells, and GitHub workflows. */
   activeWorktreePath?: string;
+  /** GitHub identity used for API operations in this logical repository. */
+  githubCredential?: GitHubCredentialSelection;
 }
+
+export type GitHubCredentialSelection =
+  | { source: "gh"; host: string; login: string }
+  | { source: "stored"; host: string };
 
 export type DatabaseEngine = "postgres" | "mysql" | "sqlite";
 
@@ -134,6 +140,9 @@ export interface LogQuery {
 export interface GitHubToken {
   host: string;
   token: string;
+  /** Account the token belongs to, captured at connect time (optional legacy). */
+  login?: string;
+  avatarUrl?: string;
 }
 
 export interface ProjectPreferences {

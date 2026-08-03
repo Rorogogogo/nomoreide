@@ -174,6 +174,30 @@ export const httpGitApi: GitApi = {
     return { output: res.output, branch: res.branch, setUpstream: res.setUpstream };
   },
 
+  async gitPull(repo) {
+    const res = await postFormForJson<{ ok: true; output: string }>(
+      "/api/git/pull",
+      repo ? { repo } : {},
+    );
+    return res.output;
+  },
+
+  async gitMerge(branch, repo) {
+    const res = await postFormForJson<{ ok: true; output: string }>("/api/git/merge", {
+      branch,
+      repo,
+    });
+    return res.output;
+  },
+
+  async gitRebase(branch, repo) {
+    const res = await postFormForJson<{ ok: true; output: string }>("/api/git/rebase", {
+      branch,
+      repo,
+    });
+    return res.output;
+  },
+
   async gitCheckoutDefaultAndPull() {
     const res = await postFormForJson<{ ok: true } & GitCheckoutDefaultAndPullResult>(
       "/api/git/default-branch/pull",
@@ -182,10 +206,20 @@ export const httpGitApi: GitApi = {
     return { output: res.output, branch: res.branch };
   },
 
-  async gitCreateBranch(name) {
+  async gitCreateBranch(name, startPoint, repo) {
     const res = await postFormForJson<{ ok: true; output: string }>("/api/git/branches", {
       name,
+      startPoint,
+      repo,
     });
+    return res.output;
+  },
+
+  async gitDeleteBranch(name, repo) {
+    const res = await postFormForJson<{ ok: true; output: string }>(
+      "/api/git/branches/delete",
+      { name, repo },
+    );
     return res.output;
   },
 
@@ -202,11 +236,7 @@ export const httpGitApi: GitApi = {
   },
 
   async gitSwitchBranch(name, repo) {
-    await requestJson<{ ok: true }>("/api/git/branches/switch", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(repo ? { name, repo } : { name }),
-    });
+    await postForm("/api/git/branches/switch", { name, repo });
   },
 
   async deleteGitRepository(name) {

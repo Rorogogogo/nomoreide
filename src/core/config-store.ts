@@ -21,6 +21,7 @@ import type {
   NoMoreIdeConfig,
   ProjectPreferences,
   GitRepositoryDefinition,
+  GitHubCredentialSelection,
   ServiceDefinition,
 } from "./types.js";
 import { workflowSchema, type Workflow } from "./workflows.js";
@@ -89,10 +90,23 @@ const bundleSchema = z.object({
   services: z.array(z.string().min(1)),
 });
 
+const githubCredentialSchema = z.discriminatedUnion("source", [
+  z.object({
+    source: z.literal("gh"),
+    host: z.string().min(1),
+    login: z.string().min(1),
+  }),
+  z.object({
+    source: z.literal("stored"),
+    host: z.string().min(1),
+  }),
+]);
+
 const gitRepositorySchema = z.object({
   name: z.string().min(1),
   path: z.string().min(1),
   activeWorktreePath: z.string().min(1).optional(),
+  githubCredential: githubCredentialSchema.optional(),
 });
 
 /** Upper bound on board-pinned repos, mirroring the web UI's 5-column cap. */
@@ -145,6 +159,13 @@ const logSourceSchema = z
 const githubTokenSchema = z.object({
   host: z.string().min(1),
   token: z.string().min(1),
+  /**
+   * Who the token belongs to, captured once at connect time. Optional because
+   * tokens stored before this existed stay valid — the GitHub status route
+   * backfills them on the next check.
+   */
+  login: z.string().min(1).optional(),
+  avatarUrl: z.string().url().optional(),
 });
 
 export const projectPreferencesSchema: z.ZodType<ProjectPreferences> = z
@@ -438,6 +459,12 @@ export class ConfigStore {
     requireAbsolutePath(parsedRepository.path);
     await requireGitWorktree(parsedRepository.path);
     return this.mutateConfig((config) => {
+      const existing = config.gitRepositories.find(
+        (item) => item.name === parsedRepository.name,
+      );
+      if (!parsedRepository.githubCredential && existing?.githubCredential) {
+        parsedRepository.githubCredential = existing.githubCredential;
+      }
       config.gitRepositories = [
         ...config.gitRepositories.filter(
           (item) => item.name !== parsedRepository.name,
@@ -445,6 +472,22 @@ export class ConfigStore {
         parsedRepository,
       ];
       config.selectedGitRepository = parsedRepository.name;
+    });
+  }
+
+  async setGitHubCredential(
+    repositoryName: string,
+    credential: GitHubCredentialSelection,
+  ): Promise<NoMoreIdeConfig> {
+    const parsed = githubCredentialSchema.parse(credential);
+    return this.mutateConfig((config) => {
+      const repository = config.gitRepositories.find(
+        (item) => item.name === repositoryName.trim(),
+      );
+      if (!repository) {
+        throw new Error(`Git repository "${repositoryName}" is not registered.`);
+      }
+      repository.githubCredential = parsed;
     });
   }
 
@@ -578,13 +621,46 @@ export class ConfigStore {
     });
   }
 
-  async setGithubToken(host: string, token: string): Promise<NoMoreIdeConfig> {
-    const parsed = githubTokenSchema.parse({ host: host.trim(), token: token.trim() });
+  async setGithubToken(
+    host: string,
+    token: string,
+    profile?: { login?: string; avatarUrl?: string },
+  ): Promise<NoMoreIdeConfig> {
+    const parsed = githubTokenSchema.parse({
+      host: host.trim(),
+      token: token.trim(),
+      login: profile?.login?.trim() || undefined,
+      avatarUrl: profile?.avatarUrl?.trim() || undefined,
+    });
     return this.mutateConfig((config) => {
       config.githubTokens = [
         ...config.githubTokens.filter((t) => t.host !== parsed.host),
         parsed,
       ];
+    });
+  }
+
+  /** Cached account identity for a stored token, when one was captured. */
+  getGithubProfile(
+    config: NoMoreIdeConfig,
+    host = "github.com",
+  ): { login: string; avatarUrl?: string } | undefined {
+    const entry = config.githubTokens.find((t) => t.host === host);
+    if (!entry?.login) return undefined;
+    return { login: entry.login, avatarUrl: entry.avatarUrl };
+  }
+
+  /** Attach identity to an already-stored token without touching the secret. */
+  async setGithubProfile(
+    host: string,
+    profile: { login: string; avatarUrl?: string },
+  ): Promise<NoMoreIdeConfig> {
+    return this.mutateConfig((config) => {
+      config.githubTokens = config.githubTokens.map((entry) =>
+        entry.host === host.trim()
+          ? { ...entry, login: profile.login, avatarUrl: profile.avatarUrl }
+          : entry,
+      );
     });
   }
 

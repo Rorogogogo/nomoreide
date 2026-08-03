@@ -227,6 +227,7 @@ pub async fn clone_git_repository(
             name: name.clone(),
             path: path.clone(),
             active_worktree_path: None,
+            github_credential: None,
         })
         .await
         .map_err(|e| e.to_string())?;

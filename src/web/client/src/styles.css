@@ -245,3 +245,9 @@ pre,
 ::view-transition-new(root) {
   z-index: 2;
 }
+
+html.theme-transition::view-transition-new(root) {
+  clip-path: circle(
+    0 at var(--theme-transition-x) var(--theme-transition-y)
+  );
+}

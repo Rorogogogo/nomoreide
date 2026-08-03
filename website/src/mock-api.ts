@@ -1284,7 +1284,15 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
 
   if (path === "/api/github/token") {
-    return json({ ok: true, configured: true, deviceFlowAvailable: true });
+    return json({
+      ok: true,
+      configured: true,
+      deviceFlowAvailable: true,
+      status: "connected",
+      storedConfigured: true,
+      repository: githubRepo,
+      user: { login: "octocat", avatarUrl: "https://github.com/octocat.png?size=64" },
+    });
   }
   if (path.startsWith("/api/github/oauth/")) {
     return json({ ok: true, done: path.endsWith("/poll") });

@@ -252,7 +252,7 @@ graph TD
 | Branch management | ✓ | | ✓ | ✓ |
 | GitHub PRs / issues / Actions | | | ✓ | ✓ |
 | Reusable git/GitHub workflows | | | ✓ | |
-| Database browse and SQL query | | | ✓ | ✓ |
+| Database browse and SQL query | ✓ | | ✓ | ✓ |
 | Human-approved SQL writes | | | ✓ | |
 | Agent tools, hooks, plugins, usage | | | ✓ | |
 | Agent environments (live MCPs & skills) | ✓ | | ✓ | ✓ |
@@ -276,6 +276,18 @@ npm run dev
 
 ```bash
 nomoreide tui
+```
+
+### Database CLI
+
+```bash
+nomoreide db list
+nomoreide db schemas app
+nomoreide db objects app --schema public
+nomoreide db describe app --key <opaque-key>
+nomoreide db script app --key <opaque-key>
+nomoreide db sample app public.users --limit 25
+nomoreide db query app --sql "SELECT * FROM users" --limit 25
 ```
 
 ### Web Dashboard
@@ -441,6 +453,9 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | Tool | Description |
 |---|---|
 | `nomoreide_list_databases` | List registered database connections with masked URLs |
+| `nomoreide_register_database` / `nomoreide_check_database` | Register or verify a connection without exposing credentials |
+| `nomoreide_db_schemas` / `nomoreide_db_objects` | Walk the live database catalog |
+| `nomoreide_db_object_details` | Read structure, definitions, and executable create scripts |
 | `nomoreide_db_tables` | List tables and views for a connection |
 | `nomoreide_db_sample` | Sample rows and schema metadata |
 | `nomoreide_db_query` | Run read-only SQL queries; writes are rejected and staged for the Web UI SQL console |

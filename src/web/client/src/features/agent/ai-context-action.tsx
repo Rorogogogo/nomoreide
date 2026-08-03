@@ -4,8 +4,8 @@ import { Database, GitBranch, Inbox, SendHorizontal, Server } from "lucide-react
 import {
   headerActionClassName,
   headerActionIconClassName,
-  headerActionLabelClassName,
 } from "@/components/header-action";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,18 +107,18 @@ export function AiContextAction({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <button
-        aria-label={t("agent.diagnose.open")}
-        className={headerActionClassName()}
-        onClick={() => setOpen(true)}
-        title={t("agent.diagnose.open")}
-        type="button"
-      >
-        <span className={headerActionIconClassName()}>
-          <AgentMark className="size-4" />
-        </span>
-        <span className={headerActionLabelClassName()}>{t("agent.diagnose.label")}</span>
-      </button>
+      <Tooltip label={t("agent.diagnose.label")}>
+        <button
+          aria-label={t("agent.diagnose.open")}
+          className={headerActionClassName()}
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <span className={headerActionIconClassName()}>
+            <AgentMark className="size-4" />
+          </span>
+        </button>
+      </Tooltip>
       {open ? (
         <ComposerDialog
           icon={<AgentMark />}

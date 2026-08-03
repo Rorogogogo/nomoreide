@@ -52,6 +52,14 @@ export const httpGitHubApi: GitHubApi = {
     await requestJson(`/api/github/token/${encodeURIComponent(host)}`, { method: "DELETE" });
   },
 
+  async selectGitHubCredential(repository, credential) {
+    await requestJson("/api/github/account", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ repository, credential }),
+    });
+  },
+
   async listGitHubBranches() {
     const res = await requestJson<{ ok: true } & GitHubBranchesPayload>("/api/github/branches");
     return {

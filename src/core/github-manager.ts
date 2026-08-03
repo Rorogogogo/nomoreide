@@ -115,6 +115,8 @@ export interface GitHubWorkflowJob {
 
 export interface GitHubViewer {
   login: string;
+  /** Public avatar URL; cached at connect time so status calls stay free. */
+  avatar_url?: string;
 }
 
 export interface GitHubRepoInfo {

@@ -1,4 +1,4 @@
-import { mergeStoredPassword } from "../../core/db-peek.js";
+import { mergeStoredPassword, redactDatabaseError } from "../../core/db-peek.js";
 import type { DatabaseEngine } from "../../core/types.js";
 import {
   optionalFormValue,
@@ -69,7 +69,7 @@ export const databaseRoutes: Route[] = [
     } catch (error) {
       sendJson(
         response,
-        { ok: false, error: error instanceof Error ? error.message : String(error) },
+        { ok: false, error: redactDatabaseError(engine, url, error) },
         200,
       );
     }
@@ -85,6 +85,133 @@ export const databaseRoutes: Route[] = [
       }
       await configStore.removeDatabase(decodeURIComponent(params.name));
       sendJson(response, { ok: true });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/capabilities$/,
+    ["name"],
+    async ({ request, response, params, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const capabilities = await dbPeek.capabilities(decodeURIComponent(params.name));
+      sendJson(response, { ok: true, capabilities });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/schemas$/,
+    ["name"],
+    async ({ request, response, params, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const schemas = await dbPeek.listSchemas(decodeURIComponent(params.name));
+      sendJson(response, { ok: true, schemas });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/objects$/,
+    ["name"],
+    async ({ request, response, params, url, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const schema = url.searchParams.get("schema");
+      if (!schema) {
+        sendJson(response, { ok: false, error: "schema query param is required" }, 400);
+        return;
+      }
+      const objects = await dbPeek.listObjects(decodeURIComponent(params.name), schema);
+      sendJson(response, { ok: true, objects });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/details$/,
+    ["name"],
+    async ({ request, response, params, url, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const key = url.searchParams.get("key");
+      if (!key) {
+        sendJson(response, { ok: false, error: "key query param is required" }, 400);
+        return;
+      }
+      const details = await dbPeek.objectDetails(decodeURIComponent(params.name), key);
+      sendJson(response, { ok: true, details });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/rows$/,
+    ["name"],
+    async ({ request, response, params, url, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const key = url.searchParams.get("key");
+      if (!key) {
+        sendJson(response, { ok: false, error: "key query param is required" }, 400);
+        return;
+      }
+      const limit = Number(url.searchParams.get("limit")) || 100;
+      const offset = Number(url.searchParams.get("offset")) || 0;
+      const sample = await dbPeek.sampleObject(
+        decodeURIComponent(params.name),
+        key,
+        limit,
+        offset,
+      );
+      sendJson(response, { ok: true, ...sample });
+    },
+  ),
+
+  // Delete rows by exact live-catalog primary-key tuples. This remains a
+  // human-only write route and is gated by DbWrite's existing unlock flag.
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/rows\/delete$/,
+    ["name"],
+    async ({ request, response, params, dbWrite }) => {
+      if (request.method !== "POST") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const form = await readForm(request);
+        const key = requiredFormValue(form, "key");
+        const mode = requiredFormValue(form, "mode");
+        if (mode !== "preview" && mode !== "commit") {
+          throw new Error('mode must be either "preview" or "commit"');
+        }
+        const tuples = parseDeleteTuples(requiredFormValue(form, "tuples"));
+        const expectedRaw = optionalFormValue(form, "expectedAffectedRows");
+        const expectedAffectedRows = expectedRaw === undefined
+          ? undefined
+          : Number(expectedRaw);
+        const outcome = await dbWrite.deleteRows(
+          decodeURIComponent(params.name),
+          key,
+          tuples,
+          mode === "commit",
+          expectedAffectedRows,
+        );
+        sendJson(response, { ok: true, ...outcome });
+      } catch (error) {
+        sendJson(
+          response,
+          { ok: false, error: error instanceof Error ? error.message : String(error) },
+          400,
+        );
+      }
     },
   ),
 
@@ -209,3 +336,11 @@ export const databaseRoutes: Route[] = [
     },
   ),
 ];
+
+function parseDeleteTuples(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    throw new Error("tuples must be a valid JSON array");
+  }
+}

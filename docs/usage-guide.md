@@ -217,8 +217,10 @@ Database:
 
 - Register Postgres, MySQL, or SQLite connections.
 - List tables and views.
+- Browse schemas, routines, sequences, and object structure.
+- Inspect and copy executable create scripts.
 - Sample rows and schema metadata for inspection.
-- Run read-only SQL queries through MCP and the Web UI.
+- Run read-only SQL queries through the CLI, MCP, and the Web UI.
 - Generate SQL with the agent terminal dock.
 - Keep writes locked by default; unlock a connection, preview affected rows, then commit from the human-only SQL console.
 - When an agent proposes a write, it should name the connection and provide one scoped statement in a standard `sql` fence instead of executing it through MCP:
@@ -296,6 +298,11 @@ Database tools:
 
 ```text
 nomoreide_list_databases
+nomoreide_register_database
+nomoreide_check_database
+nomoreide_db_schemas
+nomoreide_db_objects
+nomoreide_db_object_details
 nomoreide_db_tables
 nomoreide_db_sample
 nomoreide_db_query

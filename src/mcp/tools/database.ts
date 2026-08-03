@@ -28,10 +28,26 @@ function writeStagingGuidance(connection: string): string {
 
 export const DATABASE_TOOL_NAMES = [
   "nomoreide_list_databases",
+  "nomoreide_register_database",
+  "nomoreide_check_database",
+  "nomoreide_db_schemas",
+  "nomoreide_db_objects",
+  "nomoreide_db_object_details",
   "nomoreide_db_tables",
   "nomoreide_db_sample",
   "nomoreide_db_query",
 ] as const;
+
+const engineSchema = z.enum(["postgres", "mysql", "sqlite"]);
+
+const registerSchema = z.object({
+  name: z.string().min(1).describe("Globally unique connection name."),
+  engine: engineSchema,
+  url: z.string().min(1).describe("Connection URL, or an absolute SQLite file path."),
+  projectPath: z.string().optional().describe("Optional project directory used for UI scoping."),
+  check: z.boolean().optional().describe("Check connectivity before saving (default true)."),
+  replace: z.boolean().optional().describe("Required to replace an existing connection with the same name."),
+});
 
 const connectionSchema = z.object({
   connection: z
@@ -68,6 +84,14 @@ const querySchema = connectionSchema.extend({
     .describe("Max rows to return (default 100)."),
 });
 
+const schemaSchema = connectionSchema.extend({
+  schema: z.string().min(1).describe("Schema name returned by nomoreide_db_schemas."),
+});
+
+const objectSchema = connectionSchema.extend({
+  key: z.string().min(1).describe("Opaque object key returned by nomoreide_db_objects."),
+});
+
 /**
  * DB Peek tools: read-only access to the user's registered database
  * connections. Scoped to connections in ConfigStore; `nomoreide_db_query` runs
@@ -82,6 +106,50 @@ export function registerDatabaseTools(server: FastMCP, ctx: ToolContext): void {
       "List registered read-only database connections (Postgres / MySQL / SQLite). Passwords are masked.",
     parameters: z.object({}),
     execute: async () => stringify(await dbPeek.listConnections()),
+  });
+
+  server.addTool({
+    name: "nomoreide_register_database",
+    description:
+      "Register a read-only database connection. Connectivity is checked by default; raw credentials are never returned or recorded.",
+    parameters: registerSchema,
+    execute: async ({ name, engine, url, projectPath, check, replace }) =>
+      stringify(await dbPeek.register({ name, engine, url, projectPath, check, replace })),
+  });
+
+  server.addTool({
+    name: "nomoreide_check_database",
+    description: "Check a registered connection without revealing its credentials.",
+    parameters: connectionSchema,
+    execute: async ({ connection }) => stringify(await dbPeek.check(connection)),
+  });
+
+  server.addTool({
+    name: "nomoreide_db_schemas",
+    description: "List schemas and supported catalog capabilities for a registered connection.",
+    parameters: connectionSchema,
+    execute: async ({ connection }) =>
+      stringify({
+        schemas: await dbPeek.listSchemas(connection),
+        capabilities: await dbPeek.capabilities(connection),
+      }),
+  });
+
+  server.addTool({
+    name: "nomoreide_db_objects",
+    description: "List tables, views, routines, and sequences in one live database schema.",
+    parameters: schemaSchema,
+    execute: async ({ connection, schema }) =>
+      stringify(await dbPeek.listObjects(connection, schema)),
+  });
+
+  server.addTool({
+    name: "nomoreide_db_object_details",
+    description:
+      "Read columns, indexes, constraints, triggers, a capped definition, and an executable create script for an opaque live catalog object.",
+    parameters: objectSchema,
+    execute: async ({ connection, key }) =>
+      stringify(await dbPeek.objectDetails(connection, key)),
   });
 
   server.addTool({

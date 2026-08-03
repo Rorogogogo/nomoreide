@@ -85,6 +85,10 @@ export interface FileSizeRank {
 export class GitManager {
   constructor(private readonly cwd = process.cwd()) {}
 
+  async root(): Promise<string> {
+    return (await this.git(["rev-parse", "--show-toplevel"])).trim();
+  }
+
   async status(): Promise<GitStatus> {
     const [branch, porcelain, tracking] = await Promise.all([
       this.git(["branch", "--show-current"]),
@@ -493,8 +497,14 @@ export class GitManager {
     return this.git(isRemoteBranch ? ["switch", "--track", name] : ["switch", name]);
   }
 
-  async createBranch(branch: string): Promise<string> {
-    return this.git(["switch", "-c", requireName(branch, "branch")]);
+  async createBranch(branch: string, startPoint?: string): Promise<string> {
+    const args = ["switch", "-c", await this.validBranchRef(branch, "branch")];
+    if (startPoint) args.push(await this.validBranchRef(startPoint, "start point"));
+    return this.git(args);
+  }
+
+  async deleteBranch(branch: string): Promise<string> {
+    return this.git(["branch", "-d", await this.validBranchRef(branch, "branch")]);
   }
 
   async fetch(): Promise<string> {
@@ -544,6 +554,13 @@ export class GitManager {
       }
       throw error;
     }
+  }
+
+  private async validBranchRef(value: string, label: string): Promise<string> {
+    const name = requireName(value, label);
+    if (name.startsWith("-")) throw new Error(`${label} is invalid`);
+    await this.git(["check-ref-format", "--branch", name]);
+    return name;
   }
 
   private async untrackedDiff(path: string): Promise<string> {

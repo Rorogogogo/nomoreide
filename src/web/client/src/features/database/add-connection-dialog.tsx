@@ -213,13 +213,14 @@ export function AddConnectionDialog({
     <ComposerDialog
       icon={<Database />}
       onClose={onClose}
+      size="xl"
       title={isEditing ? t("database.dialog.editTitle") : t("database.dialog.addTitle")}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {detected.length > 0 ? (
-          <section>
+          <section className="border-b border-border pb-3">
             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Wand2 className="size-3.5" />
+              <Wand2 aria-hidden="true" className="size-3.5" />
               {t("database.dialog.foundInServices")}
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -242,154 +243,176 @@ export function AddConnectionDialog({
           </section>
         ) : null}
 
-        <section>
-          <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("database.dialog.engine")}</p>
-          <div className="flex gap-1.5">
-            {ENGINES.map((option) => (
-              <Button
-                key={option.value}
-                size="sm"
-                variant={engine === option.value ? "default" : "outline"}
-                onClick={() => changeEngine(option.value)}
-                disabled={isEditing}
-                type="button"
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        </section>
+        <div className="grid min-h-0 gap-4 md:grid-cols-2 md:gap-0">
+          <section className="space-y-4 md:pr-5">
+            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {t("database.dialog.connectionGroup")}
+            </h3>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.name")}</span>
-          <Input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t("database.dialog.namePlaceholder")}
-            disabled={isEditing}
-          />
-          {isEditing ? (
-            <span className="text-[11px] text-muted-foreground">
-              {t("database.dialog.nameLocked")}
-            </span>
-          ) : null}
-        </label>
-
-        {projects.length > 0 ? (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Project</span>
-            <select
-              className="h-9 rounded-md border border-border bg-background px-2 text-sm"
-              onChange={(event) => setProjectPath(event.target.value)}
-              value={projectPath}
-            >
-              <option value="">No project (shared)</option>
-              {projectPath && !projects.some((project) => project.path === projectPath) ? (
-                // Assignment to a repo that's no longer registered — keep it
-                // visible so an unrelated edit doesn't silently clear it.
-                <option value={projectPath}>{projectPath}</option>
-              ) : null}
-              {projects.map((project) => (
-                <option key={project.path} value={project.path}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-            <span className="text-[11px] text-muted-foreground">
-              Classifies the connection under a project; shared connections show
-              in every project scope.
-            </span>
-          </label>
-        ) : null}
-
-        {!isSqlite ? (
-          <section className="flex flex-col gap-3">
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.host")}</span>
-                <Input
-                  value={fields.host}
-                  onChange={(event) => changeField({ host: event.target.value })}
-                  placeholder="localhost"
-                  className="font-mono text-xs"
-                />
-              </label>
-              <label className="flex w-24 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.port")}</span>
-                <Input
-                  value={fields.port}
-                  onChange={(event) => changeField({ port: event.target.value })}
-                  placeholder={engine === "mysql" ? "3306" : "5432"}
-                  className="font-mono text-xs"
-                />
-              </label>
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("database.dialog.engine")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ENGINES.map((option) => (
+                  <Button
+                    disabled={isEditing}
+                    key={option.value}
+                    onClick={() => changeEngine(option.value)}
+                    size="sm"
+                    type="button"
+                    variant={engine === option.value ? "default" : "outline"}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.user")}</span>
-                <Input
-                  value={fields.user}
-                  onChange={(event) => changeField({ user: event.target.value })}
-                  placeholder="postgres"
-                  className="font-mono text-xs"
-                />
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.password")}</span>
-                <Input
-                  type="password"
-                  value={fields.password}
-                  onChange={(event) => changeField({ password: event.target.value })}
-                  placeholder={isEditing ? t("database.dialog.passwordKeep") : "••••••••"}
-                  className="font-mono text-xs"
-                />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.database")}</span>
+
+            <label className="flex flex-col gap-1.5" htmlFor="database-connection-name">
+              <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.name")}</span>
               <Input
-                value={fields.database}
-                onChange={(event) => changeField({ database: event.target.value })}
-                placeholder="app"
-                className="font-mono text-xs"
+                disabled={isEditing}
+                id="database-connection-name"
+                onChange={(event) => setName(event.target.value)}
+                placeholder={t("database.dialog.namePlaceholder")}
+                value={name}
               />
+              {isEditing ? (
+                <span className="text-[11px] text-muted-foreground">
+                  {t("database.dialog.nameLocked")}
+                </span>
+              ) : null}
             </label>
-            {engine === "postgres" ? (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={fields.ssl}
-                  onChange={(event) => changeField({ ssl: event.target.checked })}
-                  className="size-3.5 accent-primary"
-                />
-                {t("database.dialog.requireSslPre")}{" "}
-                <span className="font-mono">?sslmode=require</span>
-                {t("database.dialog.requireSslPost")}
+
+            {projects.length > 0 ? (
+              <label className="flex flex-col gap-1.5" htmlFor="database-connection-project">
+                <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.project")}</span>
+                <select
+                  className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                  id="database-connection-project"
+                  onChange={(event) => setProjectPath(event.target.value)}
+                  value={projectPath}
+                >
+                  <option value="">{t("database.dialog.noProject")}</option>
+                  {projectPath && !projects.some((project) => project.path === projectPath) ? (
+                    // Assignment to a repo that's no longer registered — keep it
+                    // visible so an unrelated edit doesn't silently clear it.
+                    <option value={projectPath}>{projectPath}</option>
+                  ) : null}
+                  {projects.map((project) => (
+                    <option key={project.path} value={project.path}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[11px] leading-relaxed text-muted-foreground">
+                  {t("database.dialog.projectHint")}
+                </span>
               </label>
             ) : null}
           </section>
-        ) : null}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
-            {isSqlite ? t("database.dialog.filePath") : t("database.dialog.connectionUrl")}
-          </span>
-          <Input
-            value={url}
-            onChange={(event) => changeUrl(event.target.value)}
-            placeholder={
-              isSqlite
-                ? "/abs/path/to/app.db"
-                : engine === "mysql"
-                  ? "mysql://user:pass@host:3306/db"
-                  : "postgres://user:pass@host:5432/db"
-            }
-            className="font-mono text-xs"
-          />
-          <span className="text-[11px] text-muted-foreground">
-            {isSqlite ? t("database.dialog.sqliteHint") : t("database.dialog.urlHint")}
-          </span>
-        </label>
+          <section className="space-y-4 border-t border-border pt-4 md:border-l md:border-t-0 md:pl-5 md:pt-0">
+            <h3 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {t("database.dialog.serverGroup")}
+            </h3>
+
+            {!isSqlite ? (
+              <>
+                <div className="flex gap-3">
+                  <label className="flex flex-1 flex-col gap-1.5" htmlFor="database-connection-host">
+                    <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.host")}</span>
+                    <Input
+                      className="font-mono text-xs"
+                      id="database-connection-host"
+                      onChange={(event) => changeField({ host: event.target.value })}
+                      placeholder="localhost"
+                      value={fields.host}
+                    />
+                  </label>
+                  <label className="flex w-28 flex-col gap-1.5" htmlFor="database-connection-port">
+                    <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.port")}</span>
+                    <Input
+                      className="font-mono text-xs"
+                      id="database-connection-port"
+                      onChange={(event) => changeField({ port: event.target.value })}
+                      placeholder={engine === "mysql" ? "3306" : "5432"}
+                      value={fields.port}
+                    />
+                  </label>
+                </div>
+                <div className="flex gap-3">
+                  <label className="flex flex-1 flex-col gap-1.5" htmlFor="database-connection-user">
+                    <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.user")}</span>
+                    <Input
+                      className="font-mono text-xs"
+                      id="database-connection-user"
+                      onChange={(event) => changeField({ user: event.target.value })}
+                      placeholder="postgres"
+                      value={fields.user}
+                    />
+                  </label>
+                  <label className="flex flex-1 flex-col gap-1.5" htmlFor="database-connection-password">
+                    <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.password")}</span>
+                    <Input
+                      className="font-mono text-xs"
+                      id="database-connection-password"
+                      onChange={(event) => changeField({ password: event.target.value })}
+                      placeholder={isEditing ? t("database.dialog.passwordKeep") : "••••••••"}
+                      type="password"
+                      value={fields.password}
+                    />
+                  </label>
+                </div>
+                <label className="flex flex-col gap-1.5" htmlFor="database-connection-database">
+                  <span className="text-xs font-medium text-muted-foreground">{t("database.dialog.database")}</span>
+                  <Input
+                    className="font-mono text-xs"
+                    id="database-connection-database"
+                    onChange={(event) => changeField({ database: event.target.value })}
+                    placeholder="app"
+                    value={fields.database}
+                  />
+                </label>
+                {engine === "postgres" ? (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground" htmlFor="database-connection-ssl">
+                    <input
+                      checked={fields.ssl}
+                      className="size-3.5 accent-primary"
+                      id="database-connection-ssl"
+                      onChange={(event) => changeField({ ssl: event.target.checked })}
+                      type="checkbox"
+                    />
+                    {t("database.dialog.requireSslPre")}{" "}
+                    <span className="font-mono">?sslmode=require</span>
+                    {t("database.dialog.requireSslPost")}
+                  </label>
+                ) : null}
+              </>
+            ) : null}
+
+            <label className="flex flex-col gap-1.5" htmlFor="database-connection-url">
+              <span className="text-xs font-medium text-muted-foreground">
+                {isSqlite ? t("database.dialog.filePath") : t("database.dialog.connectionUrl")}
+              </span>
+              <Input
+                className="font-mono text-xs"
+                id="database-connection-url"
+                onChange={(event) => changeUrl(event.target.value)}
+                placeholder={
+                  isSqlite
+                    ? "/abs/path/to/app.db"
+                    : engine === "mysql"
+                      ? "mysql://user:pass@host:3306/db"
+                      : "postgres://user:pass@host:5432/db"
+                }
+                value={url}
+              />
+              <span className="text-[11px] leading-relaxed text-muted-foreground">
+                {isSqlite ? t("database.dialog.sqliteHint") : t("database.dialog.urlHint")}
+              </span>
+            </label>
+          </section>
+        </div>
 
         {testState.status !== "idle" ? (
           <div
@@ -408,7 +431,7 @@ export function AddConnectionDialog({
           </div>
         ) : null}
 
-        <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border pt-3">
           <Button
             variant="outline"
             size="sm"
