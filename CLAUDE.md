@@ -24,7 +24,7 @@ npx tsc -p src/web/client/tsconfig.json --noEmit   # client types (server types 
 
 `src/web/client/src/lib/api/tauri-bridge.ts` and `snapshots-tauri.ts` have known pre-existing errors there; ignore those two, not yours.
 
-A push to `main` that touches anything outside `website/**` and `**/*.md` triggers `deploy.yml`: patch version bump, tag, npm publish. Docs-only merges cut no release.
+**Merging does not release.** `deploy.yml` is `workflow_dispatch`-only — merges accumulate on `main` (tested there by `ci.yml`) until someone cuts a release with `gh workflow run deploy.yml -f bump=patch`. That job bumps the version, tags `v<version>`, and publishes to npm; the tag push is in turn what triggers `desktop-release.yml` to build the dmg and create the GitHub Release, whose notes come from the body of the PR behind the tag's parent commit (`## Release note` preferred — see `.github/pull_request_template.md`).
 
 ## Architecture
 
