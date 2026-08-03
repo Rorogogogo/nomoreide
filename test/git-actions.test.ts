@@ -27,8 +27,13 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await rm(repoDir, { recursive: true, force: true });
-  await rm(remoteDir, { recursive: true, force: true });
+  // maxRetries makes fs.rm retry ENOTEMPTY/EBUSY rather than throwing the
+  // first time a stray git process touches the tree mid-delete. test/setup.ts
+  // disables git's background maintenance, which is the cause; this is the
+  // backstop for anything else that outlives a command.
+  const options = { recursive: true, force: true, maxRetries: 5, retryDelay: 50 };
+  await rm(repoDir, options);
+  await rm(remoteDir, options);
 });
 
 describe("GitActions.push", () => {

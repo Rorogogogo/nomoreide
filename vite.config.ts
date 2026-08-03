@@ -33,6 +33,7 @@ export default defineConfig({
   },
   test: {
     root: __dirname,
+    setupFiles: ["./test/setup.ts"],
     // Local git worktrees are full checkouts; scanning them runs stale copies
     // of the suite against a second React instance.
     exclude: [...configDefaults.exclude, "**/.worktrees/**"],
