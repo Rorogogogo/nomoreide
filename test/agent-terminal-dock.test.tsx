@@ -612,6 +612,64 @@ describe("AgentTerminalDock", () => {
     expect(document.body.textContent).not.toContain("Polish the dock history");
   });
 
+  test("filters cleanly even when a provider repeats a session id", async () => {
+    // Codex reuses one session id across the rollout files it writes for a
+    // conversation's subagents. The listing collapses those, but a repeated id
+    // must not survive as a duplicate row key either — that left the previous
+    // filter's rows rendered under the newly selected provider.
+    const codexRow = (suffix: string) => ({
+      id: "shared-codex-id",
+      provider: "codex",
+      cwd: "/repo",
+      title: `Codex thread ${suffix}`,
+      startedAt: "2026-07-24T01:00:00.000Z",
+      updatedAt: `2026-07-25T0${suffix}:00:00.000Z`,
+    });
+    Object.assign(dock, {
+      open: true,
+      transcripts: [
+        codexRow("1"),
+        codexRow("2"),
+        codexRow("3"),
+        {
+          id: "claude-session",
+          provider: "claude",
+          cwd: "/repo",
+          title: "Investigate flaky checkout",
+          startedAt: "2026-07-23T01:00:00.000Z",
+          updatedAt: "2026-07-24T01:00:00.000Z",
+        },
+      ],
+    });
+    const { host } = await render();
+    const openHistory = () =>
+      act(async () =>
+        (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
+      );
+
+    await openHistory();
+    const providerFilter = document.body.querySelector(
+      '[aria-label="Filter conversations by provider"]',
+    ) as HTMLElement;
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("Codex"),
+      ) as HTMLButtonElement).click(),
+    );
+    expect(document.body.textContent).toContain("Codex thread 1");
+
+    await act(async () =>
+      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
+        button.textContent?.startsWith("Claude"),
+      ) as HTMLButtonElement).click(),
+    );
+    const rows = Array.from(
+      document.body.querySelectorAll("[data-conversation-scroll] > button"),
+    ).map((row) => row.textContent ?? "");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain("Investigate flaky checkout");
+  });
+
   test("does not reopen a consumed staged draft when the task list changes", async () => {
     Object.assign(dock, {
       open: true,

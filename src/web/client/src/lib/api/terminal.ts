@@ -46,6 +46,7 @@ export function closeTerminalSession(id: string) {
 
 export type {
   AgentTranscriptInfo,
+  AgentTranscriptScope,
   CreateAgentTerminalOptions,
   TerminalApi,
   TerminalState,
