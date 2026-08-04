@@ -35,12 +35,13 @@ async function writeCodex(
   cwd: string,
   prompt: string,
   beforePrompt: string[] = [],
+  meta: Record<string, unknown> = {},
 ) {
   const [year, month, day] = date;
   const target = join(home, ".codex", "sessions", year, month, day);
   await mkdir(target, { recursive: true });
   const lines = [
-    { timestamp: "2026-07-19T03:00:00.000Z", type: "session_meta", payload: { session_id: id, cwd, timestamp: "2026-07-19T03:00:00.000Z" } },
+    { timestamp: "2026-07-19T03:00:00.000Z", type: "session_meta", payload: { session_id: id, cwd, timestamp: "2026-07-19T03:00:00.000Z", ...meta } },
     { type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: "<environment_context>\n  <cwd>/x</cwd>\n</environment_context>" }] } },
     ...beforePrompt.map((text) => ({
       type: "response_item",
@@ -48,7 +49,10 @@ async function writeCodex(
     })),
     { type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: prompt }] } },
   ];
-  await writeFile(join(target, `rollout-${year}-${month}-${day}T09-00-00-${id}.jsonl`), `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
+  // Codex names each rollout after the thread's own id, which for a subagent
+  // differs from the session id its body repeats.
+  const fileId = typeof meta.id === "string" ? meta.id : id;
+  await writeFile(join(target, `rollout-${year}-${month}-${day}T09-00-00-${fileId}.jsonl`), `${lines.map((line) => JSON.stringify(line)).join("\n")}\n`);
 }
 
 describe("listAgentTranscripts", () => {
@@ -133,6 +137,37 @@ describe("listAgentTranscripts", () => {
     const [row] = await listAgentTranscripts({ repoPath: REPO, homeDir: home });
 
     expect(row.title).toBe("the actual task");
+  });
+
+  test("drops Codex subagent threads that carry their parent's session id", async () => {
+    // Every subagent Codex spawns gets its own rollout file whose session_meta
+    // repeats the parent's session_id — listing them showed the same
+    // conversation once per subagent, all under one id.
+    await writeCodex(["2026", "07", "21"], "codex-parent", REPO, "the real task");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await writeCodex(["2026", "07", "21"], "codex-parent", REPO, "subagent instruction", [], {
+      id: "codex-child",
+      forked_from_id: "codex-parent",
+      parent_thread_id: "codex-parent",
+      thread_source: "subagent",
+    });
+
+    const rows = await listAgentTranscripts({ repoPath: REPO, homeDir: home });
+
+    expect(rows.map((row) => [row.id, row.title])).toEqual([["codex-parent", "the real task"]]);
+  });
+
+  test("keeps one row per session id, the most recently written", async () => {
+    // Older CLI releases reused an id across files; whichever file was written
+    // last is the live state of that conversation.
+    await writeCodex(["2026", "07", "21"], "shared", REPO, "first write");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await writeCodex(["2026", "07", "22"], "shared", REPO, "second write");
+
+    const rows = await listAgentTranscripts({ repoPath: REPO, homeDir: home });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toBe("second write");
   });
 
   test("survives a truncated tail line", async () => {

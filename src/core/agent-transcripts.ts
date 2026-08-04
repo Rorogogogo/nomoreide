@@ -96,6 +96,19 @@ function claudeText(content: unknown): string {
     .join("");
 }
 
+/**
+ * Codex writes each subagent thread to its own rollout file whose
+ * `session_meta` repeats the *parent's* `session_id`. Listing those would show
+ * one conversation once per subagent it spawned, all sharing a single id — and
+ * resuming any of them just reopens the parent. Claude's reader skips its
+ * sidechain turns for the same reason.
+ */
+function isCodexSubagentThread(meta: Record<string, unknown>): boolean {
+  return meta.thread_source === "subagent"
+    || typeof meta.forked_from_id === "string"
+    || typeof meta.parent_thread_id === "string";
+}
+
 function codexText(content: unknown): string {
   if (!Array.isArray(content)) return "";
   return content
@@ -143,12 +156,17 @@ async function readCodexTranscript(filePath: string, expectedCwd?: string): Prom
   let cwd: string | undefined;
   let title: string | undefined;
   let startedAt: string | undefined;
+  let subagent = false;
 
   await readHead(filePath, (entry) => {
     const payload = entry.payload;
     if (!payload || typeof payload !== "object") return false;
     const body = payload as Record<string, unknown>;
     if (entry.type === "session_meta") {
+      if (isCodexSubagentThread(body)) {
+        subagent = true;
+        return true;
+      }
       if (typeof body.session_id === "string") id = body.session_id;
       else if (typeof body.id === "string") id = body.id;
       if (typeof body.cwd === "string") cwd = body.cwd;
@@ -162,7 +180,7 @@ async function readCodexTranscript(filePath: string, expectedCwd?: string): Prom
     return Boolean(title);
   });
 
-  if (!id || !cwd || (expectedCwd && cwd !== expectedCwd)) return null;
+  if (subagent || !id || !cwd || (expectedCwd && cwd !== expectedCwd)) return null;
   const { mtime } = await stat(filePath);
   return {
     id,
@@ -172,6 +190,24 @@ async function readCodexTranscript(filePath: string, expectedCwd?: string): Prom
     startedAt: startedAt ?? mtime.toISOString(),
     updatedAt: mtime.toISOString(),
   };
+}
+
+/**
+ * The session id is what `--resume` takes, so two rows carrying the same one
+ * are the same conversation however many files it was written to. Only the most
+ * recently written copy is kept — a duplicate id is not just a repeated row,
+ * it collides in any list keyed by it.
+ */
+function byNewestSession(transcripts: AgentTranscript[]): AgentTranscript[] {
+  const newestById = new Map<string, AgentTranscript>();
+  for (const transcript of transcripts) {
+    const key = `${transcript.provider}:${transcript.id}`;
+    const existing = newestById.get(key);
+    if (!existing || existing.updatedAt < transcript.updatedAt) {
+      newestById.set(key, transcript);
+    }
+  }
+  return [...newestById.values()];
 }
 
 async function listDir(path: string): Promise<string[]> {
@@ -258,8 +294,7 @@ export async function listAgentTranscripts(
     codexTranscripts(codexHome, repoPath),
   ]);
   const newest = (transcripts: AgentTranscript[]) =>
-    transcripts
-      .filter((transcript) => transcript.title)
+    byNewestSession(transcripts.filter((transcript) => transcript.title))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   if (options.limit !== undefined) {
     return newest([...claude, ...codex]).slice(0, limit);

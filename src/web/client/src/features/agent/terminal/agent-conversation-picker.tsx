@@ -288,13 +288,16 @@ export function AgentConversationPicker({
                 </p>
               </div>
             ) : (
-              filteredTranscripts.map((transcript) => {
+              filteredTranscripts.map((transcript, index) => {
                 const ProviderLogo =
                   transcript.provider === "codex" ? CodexLogo : ClaudeLogo;
                 return (
                   <button
                     className="group flex w-full items-start gap-3 rounded px-2.5 py-2.5 text-left hover:bg-muted/70 focus-visible:bg-muted focus-visible:outline-none"
-                    key={`${transcript.provider}:${transcript.id}`}
+                    // Rows hold no state of their own, so the position is part
+                    // of the key: a session id repeated by the CLI must not
+                    // collide and leave the previous filter's rows on screen.
+                    key={`${transcript.provider}:${transcript.id}:${index}`}
                     onClick={() => void resume(transcript)}
                     type="button"
                   >
