@@ -1,6 +1,6 @@
 import type { VercelDeployment } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { DeploymentStateIcon } from "./deployment-state-badge";
 
 export function DeploymentList({
@@ -63,17 +63,18 @@ export function DeploymentList({
               </span>
             </span>
             {deployment.target === "production" ? (
-              <span
-                className={`shrink-0 rounded border px-1.5 py-px text-[10px] ${
-                  deployment.isCurrentProduction
-                    ? "border-emerald-500/40 text-emerald-500"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+                <span
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    deployment.isCurrentProduction ? "bg-emerald-500" : "bg-muted-foreground/50",
+                  )}
+                />
                 {t("vercel.target.production")}
               </span>
             ) : (
-              <span className="shrink-0 rounded border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+                <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
                 {t("vercel.target.preview")}
               </span>
             )}

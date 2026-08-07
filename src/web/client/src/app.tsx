@@ -46,7 +46,7 @@ import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { VercelView } from "@/features/vercel/vercel-view";
-import { ProjectOverviewGrid } from "@/features/overview/project-overview-grid";
+import { ProjectOverviewTable } from "@/features/overview/project-overview-table";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
 import { BranchBreadcrumb } from "@/features/git/branch-breadcrumb";
@@ -73,7 +73,8 @@ import {
 
 type Page = AppPage;
 
-const PAGE_PATHS: Record<Page, string> = {
+/** Client-side route per page. The server mirrors these in `shell-routes.ts`. */
+export const PAGE_PATHS: Record<Page, string> = {
   services: "/",
   activity: "/activity",
   docker: "/docker",
@@ -735,7 +736,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             ) : null}
             {page === "docker" ? <DockerView /> : null}
             {overviewDomain ? (
-              <ProjectOverviewGrid
+              <ProjectOverviewTable
                 domain={overviewDomain}
                 onEnterProject={() => {
                   setScopeAll(false);
