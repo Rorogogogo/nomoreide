@@ -410,6 +410,7 @@ describe("web server", () => {
         logSources: [],
         githubTokens: [],
         workflows: [],
+        githubIdentities: [],
         workflowTriggers: [],
         preferences: {
           logs: { showTimestamps: true, wrapLines: true },
@@ -2150,6 +2151,7 @@ async function registerSettingsProjects(
     logSources: [],
     githubTokens: [],
     workflows: [],
+    githubIdentities: [],
     workflowTriggers: [],
   });
 }

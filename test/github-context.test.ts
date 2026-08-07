@@ -33,6 +33,7 @@ describe("GitHub repository credential context", () => {
       logSources: [],
       githubTokens: [],
       workflows: [],
+      githubIdentities: [],
       workflowTriggers: [],
     }, "/fallback")).toBe("/worktrees/second");
   });

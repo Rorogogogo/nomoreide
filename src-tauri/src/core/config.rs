@@ -61,6 +61,9 @@ pub struct GitRepoDef {
     pub active_worktree_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub github_credential: Option<GithubCredentialSelection>,
+    /// Vercel project this repository deploys, when the user pinned one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vercel_project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -116,6 +119,47 @@ pub struct GithubTokenDef {
     pub avatar_url: Option<String>,
 }
 
+/// Commit author/committer for a GitHub account, resolved once and cached so
+/// committing does not spend an API call per commit. Shares the
+/// `githubIdentities` key with the Node side.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubIdentityDef {
+    pub host: String,
+    pub login: String,
+    pub name: String,
+    pub email: String,
+}
+
+/// How the Vercel integration authenticates. Mirrors the TypeScript
+/// `VercelConnection`: `cli` holds no secret (the token is re-read from the
+/// Vercel CLI's own auth file), `stored` carries a pasted token, and `oauth` is
+/// the browser sign-in whose access token expires hourly and is renewed from
+/// `refresh_token`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VercelConnectionDef {
+    /// "cli" | "stored" | "oauth"
+    pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+    /// `oauth` only: renews `token`, and is itself rotated on every use.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    /// `oauth` only: epoch ms at which `token` expires.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<i64>,
+    /// `oauth` only: the registered client the tokens belong to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_slug: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -138,7 +182,19 @@ pub struct Config {
     #[serde(default)]
     pub github_tokens: Vec<GithubTokenDef>,
     #[serde(default)]
+    pub github_identities: Vec<GithubIdentityDef>,
+    /// How the Vercel integration authenticates; absent = not connected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vercel: Option<VercelConnectionDef>,
+    #[serde(default)]
     pub workflows: Vec<serde_json::Value>,
+    /// Node-owned keys the desktop never reads but must not destroy. `save()`
+    /// serializes this whole struct, so a field missing here is a field deleted
+    /// from the shared config the next time the desktop writes it.
+    #[serde(default)]
+    pub workflow_triggers: Vec<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preferences: Option<serde_json::Value>,
     /// Which CLI the in-dock agent chat drives ("claude" | "codex"). None = never
     /// chosen → fall back to detection. Shares the `chatProvider` key with Node.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,7 +213,11 @@ impl Default for Config {
             databases: vec![],
             log_sources: vec![],
             github_tokens: vec![],
+            github_identities: vec![],
+            vercel: None,
             workflows: vec![],
+            workflow_triggers: vec![],
+            preferences: None,
             chat_provider: None,
         }
     }
@@ -167,6 +227,9 @@ impl Default for Config {
 // ConfigStore
 // ---------------------------------------------------------------------------
 
+/// Clone is cheap and meaningful: the store is a path plus the file behind it,
+/// so a clone is the same store, not a second copy of the config.
+#[derive(Clone)]
 pub struct ConfigStore {
     path: PathBuf,
 }
@@ -242,12 +305,12 @@ impl ConfigStore {
 
     pub async fn register_git_repository(&self, mut repo: GitRepoDef) -> Result<Config> {
         let mut config = self.load().await?;
+        let existing = config.git_repositories.iter().find(|r| r.name == repo.name);
         if repo.github_credential.is_none() {
-            repo.github_credential = config
-                .git_repositories
-                .iter()
-                .find(|r| r.name == repo.name)
-                .and_then(|r| r.github_credential.clone());
+            repo.github_credential = existing.and_then(|r| r.github_credential.clone());
+        }
+        if repo.vercel_project_id.is_none() {
+            repo.vercel_project_id = existing.and_then(|r| r.vercel_project_id.clone());
         }
         config.git_repositories.retain(|r| r.name != repo.name);
         config.git_repositories.push(repo);
@@ -396,12 +459,118 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Cached commit identity for a GitHub account, when one has been resolved.
+    pub fn get_github_identity<'a>(
+        &self,
+        config: &'a Config,
+        host: &str,
+        login: &str,
+    ) -> Option<&'a GithubIdentityDef> {
+        config
+            .github_identities
+            .iter()
+            .find(|entry| entry.host == host && entry.login.eq_ignore_ascii_case(login))
+    }
+
+    pub async fn set_github_identity(&self, identity: GithubIdentityDef) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.github_identities.retain(|entry| {
+            entry.host != identity.host || !entry.login.eq_ignore_ascii_case(&identity.login)
+        });
+        config.github_identities.push(identity);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
     pub fn get_github_token<'a>(&self, config: &'a Config, host: &str) -> Option<&'a str> {
         config
             .github_tokens
             .iter()
             .find(|t| t.host == host)
             .map(|t| t.token.as_str())
+    }
+
+    /// Save how Vercel is connected. A `cli` connection deliberately drops any
+    /// token, so `vercel logout` revokes us too instead of leaving a stale copy.
+    pub async fn set_vercel_connection(
+        &self,
+        mut connection: VercelConnectionDef,
+    ) -> Result<Config> {
+        if connection.source == "cli" {
+            connection.token = None;
+            connection.refresh_token = None;
+            connection.expires_at = None;
+            connection.client_id = None;
+        }
+        let mut config = self.load().await?;
+        config.vercel = Some(connection);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    /// Replace the tokens of an existing `oauth` connection after a refresh.
+    /// Separate from `set_vercel_connection` because it runs mid-request on an
+    /// already-connected config and must not disturb the chosen scope.
+    pub async fn update_vercel_tokens(
+        &self,
+        token: String,
+        refresh_token: Option<String>,
+        expires_at: i64,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        if let Some(vercel) = config.vercel.as_mut() {
+            if vercel.source == "oauth" {
+                vercel.token = Some(token);
+                // Vercel rotates refresh tokens; keep the previous one only if
+                // this response did not carry a replacement.
+                if refresh_token.is_some() {
+                    vercel.refresh_token = refresh_token;
+                }
+                vercel.expires_at = Some(expires_at);
+            }
+        }
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn set_vercel_scope(
+        &self,
+        team_id: Option<String>,
+        team_slug: Option<String>,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        let vercel = config
+            .vercel
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("Vercel is not connected."))?;
+        vercel.team_id = team_id;
+        vercel.team_slug = team_slug;
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    pub async fn remove_vercel_connection(&self) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.vercel = None;
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    /// Pin which Vercel project a registered repository deploys.
+    pub async fn set_vercel_project(
+        &self,
+        repository: &str,
+        project_id: Option<String>,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        let repo = config
+            .git_repositories
+            .iter_mut()
+            .find(|repo| repo.name == repository)
+            .ok_or_else(|| anyhow::anyhow!("Git repository \"{repository}\" is not registered."))?;
+        repo.vercel_project_id = project_id.filter(|id| !id.trim().is_empty());
+        self.save(&config).await?;
+        Ok(config)
     }
 
     pub async fn register_log_source(&self, source: LogSourceDef) -> Result<Config> {
@@ -441,5 +610,100 @@ impl ConfigStore {
             .retain(|w| w.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
         self.save(&config).await?;
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `save()` serializes the whole struct, so any Node-owned key missing from
+    /// `Config` is a key the desktop silently deletes from the shared config.
+    #[test]
+    fn round_trip_preserves_node_owned_keys() {
+        let raw = r#"{
+            "version": 1,
+            "services": [],
+            "bundles": [],
+            "gitRepositories": [],
+            "databases": [],
+            "logSources": [],
+            "githubTokens": [],
+            "githubIdentities": [
+                { "host": "github.com", "login": "work", "name": "Work", "email": "work@example.test" }
+            ],
+            "workflows": [],
+            "workflowTriggers": [{ "id": "t1", "event": "service.crashed" }],
+            "preferences": { "logs": { "showTimestamps": true, "wrapLines": false } },
+            "vercel": { "source": "oauth", "token": "at", "refreshToken": "rt", "clientId": "cl_1", "teamId": "team_1" }
+        }"#;
+
+        let config: Config = serde_json::from_str(raw).expect("config should parse");
+        assert_eq!(config.github_identities.len(), 1);
+        assert_eq!(config.github_identities[0].email, "work@example.test");
+
+        let written: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        assert_eq!(written["workflowTriggers"][0]["id"], "t1");
+        assert_eq!(written["preferences"]["logs"]["showTimestamps"], true);
+        assert_eq!(written["githubIdentities"][0]["login"], "work");
+        // A dropped Vercel connection would silently sign the user out of the
+        // web app the next time the desktop wrote the shared config.
+        assert_eq!(written["vercel"]["refreshToken"], "rt");
+        assert_eq!(written["vercel"]["teamId"], "team_1");
+    }
+
+    /// The repo-level Vercel pin lives on `GitRepoDef`, which is rewritten
+    /// wholesale on re-register — the pin has to survive that.
+    #[tokio::test]
+    async fn re_registering_a_repository_keeps_its_vercel_pin() {
+        let dir = std::env::temp_dir().join(format!("nomoreide-vercel-cfg-{}", std::process::id()));
+        let store = ConfigStore::new(dir.join("config.json"));
+        store
+            .register_git_repository(GitRepoDef {
+                name: "app".into(),
+                path: "/tmp/app".into(),
+                active_worktree_path: None,
+                github_credential: None,
+                vercel_project_id: Some("prj_1".into()),
+            })
+            .await
+            .unwrap();
+
+        let config = store
+            .register_git_repository(GitRepoDef {
+                name: "app".into(),
+                path: "/tmp/app".into(),
+                active_worktree_path: None,
+                github_credential: None,
+                vercel_project_id: None,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            config.git_repositories[0].vercel_project_id.as_deref(),
+            Some("prj_1")
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn identity_lookup_ignores_login_case() {
+        let store = ConfigStore::new(std::path::PathBuf::from("/tmp/unused-config.json"));
+        let mut config = Config::default();
+        config.github_identities.push(GithubIdentityDef {
+            host: "github.com".into(),
+            login: "Work".into(),
+            name: "Work".into(),
+            email: "work@example.test".into(),
+        });
+
+        assert!(store
+            .get_github_identity(&config, "github.com", "work")
+            .is_some());
+        assert!(store
+            .get_github_identity(&config, "github.com", "other")
+            .is_none());
     }
 }

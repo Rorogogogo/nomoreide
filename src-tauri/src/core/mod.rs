@@ -1,5 +1,6 @@
 pub mod config;
 pub mod agent_transcripts;
+pub mod git_identity;
 pub mod git_manager;
 pub mod github_auth;
 pub mod log_store;
@@ -8,3 +9,8 @@ pub mod port_utils;
 pub mod process_manager;
 pub mod service_graph;
 pub mod service_health;
+pub mod vercel_actions;
+pub mod vercel_auth;
+pub mod vercel_context;
+pub mod vercel_manager;
+pub mod vercel_oauth;

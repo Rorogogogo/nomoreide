@@ -1,5 +1,10 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
+import {
+  repositoryForCwd,
+  resolveGitIdentityForCwd,
+  resolvePushCredential,
+} from "../../core/git-identity.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
 import { GitWorktreeManager } from "../../core/git-worktrees.js";
 import { git, gitActions, stringify, type ToolContext } from "./context.js";
@@ -123,7 +128,13 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
     parameters: gitCwdSchema.extend({
       message: z.string().min(1),
     }),
-    execute: async ({ cwd, message }) => await git(cwd).commit(message),
+    execute: async ({ cwd, message }) => {
+      // Same rule as the dashboard: commit as the GitHub account selected for
+      // this repository, so an agent's commits and a human's carry one author.
+      const dir = cwd ?? process.cwd();
+      const identity = await resolveGitIdentityForCwd(configStore, dir);
+      return await git(dir).commit(message, { identity: identity.selected ?? undefined });
+    },
   });
 
   server.addTool({
@@ -133,7 +144,20 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
     parameters: gitCwdSchema.extend({
       remote: z.string().min(1).optional().describe("Remote name (default origin)."),
     }),
-    execute: async ({ cwd, remote }) => stringify(await gitActions(cwd).push({ remote })),
+    execute: async ({ cwd, remote }) => {
+      const dir = cwd ?? process.cwd();
+      const repository = await repositoryForCwd(configStore, dir);
+      const remoteUrl = await git(dir).remoteUrl(remote ?? "origin");
+      const credential = await resolvePushCredential(configStore, repository, remoteUrl);
+      return stringify(
+        await gitActions(dir).push({
+          remote,
+          credential: credential
+            ? { token: credential.token, username: credential.login }
+            : undefined,
+        }),
+      );
+    },
   });
 
   server.addTool({

@@ -14,6 +14,7 @@ import { GITHUB_TOOL_NAMES, registerGithubTools } from "./github.js";
 import { ONBOARD_TOOL_NAMES, registerOnboardTools } from "./onboard.js";
 import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 import { registerSnapshotTools, SNAPSHOT_TOOL_NAMES } from "./snapshots.js";
+import { registerVercelTools, VERCEL_TOOL_NAMES } from "./vercel.js";
 
 /**
  * Every tool name NoMoreIDE exposes, in registration order. Each domain owns
@@ -29,6 +30,7 @@ export const NOMOREIDE_TOOL_NAMES = [
   ...GIT_TOOL_NAMES,
   ...SNAPSHOT_TOOL_NAMES,
   ...GITHUB_TOOL_NAMES,
+  ...VERCEL_TOOL_NAMES,
   ...ERROR_TOOL_NAMES,
   ...DATABASE_TOOL_NAMES,
   ...DOC_TOOL_NAMES,
@@ -57,6 +59,7 @@ export function registerNoMoreIdeTools(
   registerGitTools(server, ctx);
   registerSnapshotTools(server, ctx);
   registerGithubTools(server, ctx);
+  registerVercelTools(server, ctx);
   registerErrorTools(server, ctx);
   registerDatabaseTools(server, ctx);
   registerDocTools(server, ctx);

@@ -83,7 +83,7 @@ const topicEntries: DocsTopicEntry[] = [
     id: "safety",
     title: "Safety model",
     body:
-      "NoMoreIDE avoids broad filesystem scans, does not kill external processes it did not start, reports port conflicts instead of terminating processes, omits destructive Git operations like hard reset, clean, force push, and branch deletion, and keeps database MCP tools read-only.",
+      "NoMoreIDE avoids broad filesystem scans, does not kill external processes it did not start, reports port conflicts instead of terminating processes, omits destructive Git operations like hard reset, clean, force push, and branch deletion, and keeps database MCP tools read-only. Vercel MCP tools are read-only too: agents can inspect deployments and build logs, but redeploy, cancel, promote, and rollback are reachable only from the dashboard.",
   },
   {
     id: "troubleshooting",

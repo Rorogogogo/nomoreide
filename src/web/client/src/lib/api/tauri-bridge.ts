@@ -2,8 +2,10 @@
  * Tauri IPC bridge — maps Rust command responses to the shapes the React
  * components already expect. Loaded lazily so the web version pays no cost.
  */
+import { beginApiRequest } from "@/lib/api-activity";
 
 import { isTauri } from "@/lib/tauri";
+import type { GitIdentityState } from "./git-api.js";
 import type {
   AgentTranscriptInfo,
   CreateAgentTerminalOptions,
@@ -39,8 +41,15 @@ async function getListen() {
 }
 
 export async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  const invoke = await getInvoke();
-  return invoke(command, args) as Promise<T>;
+  // The desktop app's counterpart to `requestJson` — same reason, same funnel:
+  // the header Refresh icon spins while any command is in flight.
+  const settled = beginApiRequest();
+  try {
+    const invoke = await getInvoke();
+    return (await invoke(command, args)) as T;
+  } finally {
+    settled();
+  }
 }
 
 export async function tauriListen(
@@ -431,6 +440,10 @@ export async function tauri_gitUnstage(paths: string[], repo?: string) {
 
 export async function tauri_gitCommit(message: string, repo?: string) {
   return tauriInvoke<string>("git_commit", { message, repo: repo ?? null });
+}
+
+export async function tauri_gitIdentity(repo?: string) {
+  return tauriInvoke<GitIdentityState>("git_identity_state", { repo: repo ?? null });
 }
 
 export async function tauri_gitPush(repo?: string) {
@@ -926,6 +939,88 @@ export async function tauri_onTerminalOutput(
   handler: (data: string) => void,
 ): Promise<() => void> {
   return tauriListen(`terminal-output-${id}`, (payload) => handler(payload as string));
+}
+
+// ---------------------------------------------------------------------------
+// Vercel
+// ---------------------------------------------------------------------------
+
+export async function tauri_vercelStatus() {
+  return tauriInvoke<unknown>("vercel_status");
+}
+
+export async function tauri_vercelConnect(source: "cli" | "stored", token?: string) {
+  await tauriInvoke("vercel_connect", { source, token });
+}
+
+export async function tauri_vercelDisconnect() {
+  await tauriInvoke("vercel_disconnect");
+}
+
+export async function tauri_vercelSetScope(teamId?: string, teamSlug?: string) {
+  await tauriInvoke("vercel_set_scope", { teamId, teamSlug });
+}
+
+export async function tauri_vercelOAuthStart() {
+  return tauriInvoke<{ ok: boolean; url: string }>("vercel_oauth_start");
+}
+
+export async function tauri_vercelOAuthPhase() {
+  return tauriInvoke<unknown>("vercel_oauth_phase");
+}
+
+export async function tauri_vercelListProjects(search?: string) {
+  return tauriInvoke<unknown>("vercel_list_projects", { search });
+}
+
+export async function tauri_vercelSetProject(projectId?: string) {
+  await tauriInvoke("vercel_set_project", { projectId });
+}
+
+export async function tauri_projectOverview(domain: string) {
+  return tauriInvoke<unknown>("project_overview", { domain });
+}
+
+export async function tauri_vercelGetProject() {
+  return tauriInvoke<unknown>("vercel_get_project");
+}
+
+export async function tauri_vercelListEnv() {
+  return tauriInvoke<unknown>("vercel_list_env");
+}
+
+export async function tauri_vercelEnvValue(id: string) {
+  return tauriInvoke<{ value: string }>("vercel_env_value", { id });
+}
+
+export async function tauri_vercelListDomains() {
+  return tauriInvoke<unknown>("vercel_list_domains");
+}
+
+export async function tauri_vercelListDeployments(
+  target?: "production" | "preview",
+  limit?: number,
+) {
+  return tauriInvoke<unknown>("vercel_list_deployments", { target, limit });
+}
+
+export async function tauri_vercelGetDeployment(id: string) {
+  return tauriInvoke<unknown>("vercel_get_deployment", { id });
+}
+
+export async function tauri_vercelDeploymentLogs(id: string, limit?: number) {
+  return tauriInvoke<unknown>("vercel_deployment_logs", { id, limit });
+}
+
+export async function tauri_vercelRuntimeLogs(id: string, limit?: number) {
+  return tauriInvoke<unknown>("vercel_runtime_logs", { id, limit });
+}
+
+export async function tauri_vercelDeploymentAction(id: string, action: string) {
+  return tauriInvoke<{ deployment?: { uid: string; url: string | null } }>(
+    "vercel_deployment_action",
+    { id, action },
+  );
 }
 
 export { isTauri };

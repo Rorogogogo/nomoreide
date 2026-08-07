@@ -1,6 +1,6 @@
-import { ExternalLink, RefreshCw, X } from "lucide-react";
+import { useEffect } from "react";
+import { ExternalLink } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
-import { Button } from "@/components/ui/button";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
@@ -27,10 +27,12 @@ function isFailedRun(run: GitHubWorkflowRun): boolean {
 
 export function ActionsView({
   branch,
-  onClearBranch,
+  onCountChange,
 }: {
   branch?: string;
-  onClearBranch?: () => void;
+  /** Reports the row count so the page's tab row can show it — this view has
+      no header bar of its own, and the app header already owns Refresh. */
+  onCountChange?: (count: number | null) => void;
 }) {
   const {
     runs,
@@ -43,44 +45,21 @@ export function ActionsView({
     error,
     jobsError,
     loadMore,
-    refresh,
     syncLatest,
     setSelectedRunId,
   } = useGitHubActions(branch);
   const t = useT();
-  // Header/poll refresh syncs in place (no pagination reset); the in-panel
-  // button below still does an explicit full reload.
+  // The header Refresh (and the poll) merge a fresh page-1 fetch in place, so
+  // paged-in history survives a refresh. That is the only reload path now: the
+  // panel's own button did a full reset nobody was asking for.
   useRegisterRefresh(syncLatest);
+
+  useEffect(() => {
+    onCountChange?.(loading && runs.length === 0 ? null : runs.length);
+  }, [loading, onCountChange, runs.length]);
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold">{t("github.actions.title")}</h2>
-          {branch ? (
-            <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="shrink-0">{t("github.actions.filteredTo")}</span>
-              <span className="min-w-0 truncate font-mono">{branch}</span>
-              {onClearBranch ? (
-                <button
-                  aria-label={t("github.actions.clearFilter")}
-                  className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={onClearBranch}
-                  title={t("github.actions.clearFilter")}
-                  type="button"
-                >
-                  <X className="size-3" />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <Button disabled={loading} onClick={() => void refresh()} size="sm" type="button" variant="outline">
-          <RefreshCw className={`mr-1 size-3.5 ${loading ? "animate-spin" : ""}`} />
-          {t("common.refresh")}
-        </Button>
-      </div>
-
       <div className="min-h-0 flex-1 overflow-auto">
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
@@ -114,12 +93,13 @@ export function ActionsView({
                 >
                 <li className="group flex flex-col">
                   <div
-                    className={`flex items-center transition-colors hover:bg-muted/60 ${
-                      run.id === selectedRunId ? "bg-muted/70" : ""
+                    className={`flex items-center transition-colors hover:bg-muted/20 ${
+                      run.id === selectedRunId ? "bg-muted/45" : ""
                     }`}
                   >
                     <button
-                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
+                      aria-current={run.id === selectedRunId || undefined}
+                      className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                       onClick={() => setSelectedRunId(run.id)}
                       type="button"
                     >

@@ -210,6 +210,7 @@ describe("ConfigStore", () => {
       logSources: [],
       githubTokens: [],
       workflows: [],
+      githubIdentities: [],
       workflowTriggers: [],
     });
   });

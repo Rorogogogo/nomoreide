@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { GitBranch, GitPullRequest, PlayCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { GitBranch, GitPullRequest, PlayCircle, ShieldCheck } from "lucide-react";
 import { listGitHubBranches, type GitHubBranchInfo, type GitHubBranchesPayload } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 
 export function BranchesView({
+  onCountChange,
   onCreatePR,
   onViewRuns,
 }: {
+  /** Reports the row count so the page's tab row can show it — this view has
+      no header bar of its own, and the app header already owns Refresh. */
+  onCountChange?: (count: number | null) => void;
   onCreatePR: (head: string) => void;
   onViewRuns: (head: string) => void;
 }) {
@@ -48,27 +52,12 @@ export function BranchesView({
     });
   }, [payload]);
 
+  useEffect(() => {
+    onCountChange?.(payload ? branches.length : null);
+  }, [branches.length, onCountChange, payload]);
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold">{t("github.tab.branches")}</h2>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {payload?.repository.full_name ?? t("github.selectedRepo")}
-          </p>
-        </div>
-        <Button
-          disabled={loading}
-          onClick={() => void refresh()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <RefreshCw className={`mr-1 size-3.5 ${loading ? "animate-spin" : ""}`} />
-          {t("common.refresh")}
-        </Button>
-      </div>
-
       <div className="min-h-0 flex-1 overflow-auto">
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
@@ -115,7 +104,7 @@ function BranchRow({
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-      <GitBranch className="size-4 shrink-0 text-muted-foreground" />
+      <GitBranch aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
       <div className="min-w-48 flex-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate font-mono text-[13px] font-medium">{branch.name}</span>
@@ -123,7 +112,7 @@ function BranchRow({
           {isCurrent ? <StatusText label={t("github.branches.current")} tone="warning" /> : null}
           {branch.protected ? (
             <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
-              <ShieldCheck className="size-3" />
+              <ShieldCheck aria-hidden="true" className="size-3" />
               {t("github.branches.protected")}
             </span>
           ) : null}

@@ -25,4 +25,6 @@ export * from "./settings.js";
 export * from "./skills.js";
 export * from "./snapshots.js";
 export * from "./terminal.js";
+export * from "./overview.js";
+export * from "./vercel.js";
 export * from "./workflows.js";

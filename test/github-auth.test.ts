@@ -64,6 +64,7 @@ function makeConfig(): NoMoreIdeConfig {
     logSources: [],
     githubTokens: [],
     workflows: [],
+    githubIdentities: [],
     workflowTriggers: [],
   };
 }

@@ -117,6 +117,12 @@ export interface GitHubViewer {
   login: string;
   /** Public avatar URL; cached at connect time so status calls stay free. */
   avatar_url?: string;
+  /** Numeric account id — the stable half of GitHub's `noreply` commit address. */
+  id?: number;
+  /** Display name; null when the account has not set one. */
+  name?: string | null;
+  /** Public commit address; null when the account keeps its email private. */
+  email?: string | null;
 }
 
 export interface GitHubRepoInfo {

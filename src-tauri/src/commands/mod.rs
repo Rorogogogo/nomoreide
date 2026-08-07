@@ -12,4 +12,6 @@ pub mod skills;
 pub mod snapshots;
 pub mod system;
 pub mod terminal;
+pub mod overview;
+pub mod vercel;
 pub mod workflows;

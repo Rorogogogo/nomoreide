@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import {
   createGitHubPR,
   getGitHubPRTemplate,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { useT } from "@/lib/i18n";
+import { useT, type TranslationKey } from "@/lib/i18n";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
@@ -25,6 +25,7 @@ import { GitHubLogo } from "./github-logo";
 import { GitHubTokenSetup } from "./github-token-setup";
 import { GitHubAccountSelector } from "./github-account-selector";
 import { GitHubRepoAccessNotice } from "./github-repo-access";
+import { StateFilter, TabStrip } from "@/components/ui/tab-strip";
 import { PrList } from "./pr-list";
 import { PrDetail } from "./pr-detail";
 import { IssueList } from "./issue-list";
@@ -32,7 +33,14 @@ import { IssueDetail } from "./issue-detail";
 import { ActionsView } from "./actions-view";
 import { BranchesView } from "./branches-view";
 
-type GithubTab = "prs" | "issues" | "branches" | "actions";
+const TABS = [
+  { id: "prs", labelKey: "github.tab.prs" },
+  { id: "issues", labelKey: "github.tab.issues" },
+  { id: "branches", labelKey: "github.tab.branches" },
+  { id: "actions", labelKey: "github.tab.actions" },
+] as const satisfies readonly { id: string; labelKey: TranslationKey }[];
+
+type GithubTab = (typeof TABS)[number]["id"];
 
 export function GitHubView() {
   const t = useT();
@@ -89,7 +97,7 @@ export function GitHubView() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card/85">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       {content}
     </div>
   );
@@ -176,6 +184,12 @@ function GitHubContent() {
   );
   const prHook = useGitHubPRs(prState);
   const issueHook = useGitHubIssues(issueState);
+  // Branches/Actions own their data, but their row count belongs on the tab
+  // row rather than in a second header bar under it. Only one of them is
+  // mounted at a time, so a single slot is enough — cleared on tab change so a
+  // stale count never sits over a view that hasn't loaded yet.
+  const [tabCount, setTabCount] = useState<number | null>(null);
+  useEffect(() => setTabCount(null), [tab]);
 
   useEffect(
     () =>
@@ -196,33 +210,21 @@ function GitHubContent() {
     else if (tab === "issues") issueHook.refresh();
   });
 
-  const tabButtonClass = (active: boolean) =>
-    `rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-      active
-        ? "bg-foreground text-background"
-        : "text-muted-foreground hover:text-foreground"
-    }`;
-
-  const stateButtonClass = (active: boolean) =>
-    `rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-      active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-    }`;
+  const stateOptions = [
+    { id: "open", label: t("github.open") },
+    { id: "closed", label: t("github.closed") },
+  ] as const;
 
   return (
     <>
-      <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/95 px-3 py-1">
-        <button className={tabButtonClass(tab === "prs")} onClick={() => setTab("prs")} type="button">
-          {t("github.tab.prs")}
-        </button>
-        <button className={tabButtonClass(tab === "issues")} onClick={() => setTab("issues")} type="button">
-          {t("github.tab.issues")}
-        </button>
-        <button className={tabButtonClass(tab === "branches")} onClick={() => setTab("branches")} type="button">
-          {t("github.tab.branches")}
-        </button>
-        <button className={tabButtonClass(tab === "actions")} onClick={() => setTab("actions")} type="button">
-          {t("github.tab.actions")}
-        </button>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/75 px-3 py-1">
+        <TabStrip
+          ariaLabel={t("github.tabs.label")}
+          idPrefix="github"
+          onSelect={setTab}
+          tabs={TABS.map((entry) => ({ id: entry.id, label: t(entry.labelKey) }))}
+          value={tab}
+        />
 
         {/* No connection/account identity here: the header's GitHub indicator
             owns it, menu included. The credential is stored per repository, so
@@ -231,21 +233,57 @@ function GitHubContent() {
         <div className="ml-auto" />
 
         {tab === "prs" ? (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
-              <button className={stateButtonClass(prState === "open")} onClick={() => setPrState("open")} type="button">{t("github.open")}</button>
-              <button className={stateButtonClass(prState === "closed")} onClick={() => setPrState("closed")} type="button">{t("github.closed")}</button>
-            </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <StateFilter
+              ariaLabel={t("github.filter.prState")}
+              onChange={setPrState}
+              options={stateOptions}
+              value={prState}
+            />
             <Button onClick={() => setCreatePRHead("")} size="sm" type="button" variant="outline">
               {t("github.newPr")}
             </Button>
           </div>
         ) : tab === "issues" ? (
-          <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
-            <button className={stateButtonClass(issueState === "open")} onClick={() => setIssueState("open")} type="button">{t("github.open")}</button>
-            <button className={stateButtonClass(issueState === "closed")} onClick={() => setIssueState("closed")} type="button">{t("github.closed")}</button>
+          <StateFilter
+            ariaLabel={t("github.filter.issueState")}
+            onChange={setIssueState}
+            options={stateOptions}
+            value={issueState}
+          />
+        ) : (
+          <div className="flex min-w-0 shrink items-center gap-2">
+            {tab === "actions" && actionsBranch ? (
+              <span className="flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="shrink-0">{t("github.actions.filteredTo")}</span>
+                <span className="min-w-0 truncate font-mono">{actionsBranch}</span>
+                <button
+                  aria-label={t("github.actions.clearFilter")}
+                  className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setActionsBranch(null)}
+                  title={t("github.actions.clearFilter")}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="size-3" />
+                </button>
+              </span>
+            ) : null}
+            {tabCount === null ? null : (
+              <span
+                aria-live="polite"
+                className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground"
+              >
+                {tab === "branches"
+                  ? t(tabCount === 1 ? "github.branches.countOne" : "github.branches.count", {
+                      count: String(tabCount),
+                    })
+                  : t(tabCount === 1 ? "github.actions.runCountOne" : "github.actions.runCount", {
+                      count: String(tabCount),
+                    })}
+              </span>
+            )}
           </div>
-        ) : null}
+        )}
       </div>
 
       {createPRHead !== null ? (
@@ -260,7 +298,12 @@ function GitHubContent() {
           onCancel={() => setCreatePRHead(null)}
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div
+          aria-labelledby={`github-tab-${tab}`}
+          className="min-h-0 flex-1 overflow-hidden"
+          id={`github-panel-${tab}`}
+          role="tabpanel"
+        >
           {tab === "prs" ? (
             <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,2fr)] divide-x divide-border">
               <div className="min-h-0 overflow-auto">
@@ -312,6 +355,7 @@ function GitHubContent() {
             </div>
           ) : tab === "branches" ? (
             <BranchesView
+              onCountChange={setTabCount}
               onCreatePR={(head) => setCreatePRHead(head)}
               onViewRuns={(head) => {
                 setActionsBranch(head);
@@ -319,10 +363,7 @@ function GitHubContent() {
               }}
             />
           ) : (
-            <ActionsView
-              branch={actionsBranch ?? undefined}
-              onClearBranch={() => setActionsBranch(null)}
-            />
+            <ActionsView branch={actionsBranch ?? undefined} onCountChange={setTabCount} />
           )}
         </div>
       )}

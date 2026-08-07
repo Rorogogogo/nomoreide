@@ -12,6 +12,7 @@ import {
 import {
   getDashboard,
   type DashboardData,
+  type OverviewDomain,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,8 @@ import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
+import { VercelView } from "@/features/vercel/vercel-view";
+import { ProjectOverviewGrid } from "@/features/overview/project-overview-grid";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
 import { BranchBreadcrumb } from "@/features/git/branch-breadcrumb";
@@ -76,6 +79,7 @@ const PAGE_PATHS: Record<Page, string> = {
   docker: "/docker",
   git: "/git",
   github: "/github",
+  vercel: "/vercel",
   workflows: "/workflows",
   errors: "/errors",
   database: "/database",
@@ -92,6 +96,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
+  vercel: "nav.vercel",
   workflows: "nav.workflows",
   errors: "nav.errors",
   database: "nav.database",
@@ -473,25 +478,29 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
         : 0,
     [scopedData],
   );
-  const githubPageKey =
+  const repoScopeKey =
     data?.git.selectedRepository?.name ?? data?.git.cwd ?? "no-git-repository";
   const settingsProjectPath = data?.git.selectedRepository?.path ?? null;
   /**
-   * Git and GitHub read the daemon's selected repository, so they can't honour
-   * an all-projects scope — the crumb shows the repository they're really on.
+   * Git, GitHub, and Vercel read the daemon's selected repository, so a single
+   * one of their views can only ever be about one project. Under an
+   * all-projects scope they therefore render the overview grid instead —
+   * clicking a card selects that project and drops the scope, which lands the
+   * user back on the same page, now pointed at what they picked.
    */
-  const repoScopedPage = page === "git" || page === "github";
-  const effectiveProject = repoScopedPage
-    ? data?.git.selectedRepository ?? null
-    : activeProject;
+  const repoScopedPage = page === "git" || page === "github" || page === "vercel";
+  const overviewDomain: OverviewDomain | null =
+    repoScopedPage && scopeAll ? (page as OverviewDomain) : null;
+  const effectiveProject =
+    repoScopedPage && !scopeAll ? data?.git.selectedRepository ?? null : activeProject;
 
   // GitHub identity (repo + credential) is resolved per selected repository, so
   // a project switch invalidates it wherever it is rendered — including the
   // header indicator, which no longer mounts a private copy of the state.
   useEffect(() => {
-    if (githubPageKey === "no-git-repository") return;
+    if (repoScopeKey === "no-git-repository") return;
     void refreshGitHubToken();
-  }, [githubPageKey]);
+  }, [repoScopeKey]);
 
   return (
     <AgentProvider>
@@ -621,7 +630,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                   data={data}
                   onRefresh={refreshSilently}
                   onScopeChange={setScopeAll}
-                  requiresRepo={repoScopedPage}
                   scopeAll={scopeAll}
                 />
               ) : null}
@@ -726,10 +734,20 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               />
             ) : null}
             {page === "docker" ? <DockerView /> : null}
-            {data && page === "git" ? (
+            {overviewDomain ? (
+              <ProjectOverviewGrid
+                domain={overviewDomain}
+                onEnterProject={() => {
+                  setScopeAll(false);
+                  void refresh({ silent: true });
+                }}
+              />
+            ) : null}
+            {!overviewDomain && data && page === "git" ? (
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
-            {page === "github" ? <GitHubView key={githubPageKey} /> : null}
+            {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
+            {!overviewDomain && page === "vercel" ? <VercelView key={repoScopeKey} /> : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView
@@ -769,7 +787,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           </div>
         </main>
       </div>
-      {data && page === "git" ? (
+      {/* Acts on the selected repository, which is not what the overview grid
+          is about — it would silently target whichever project happens to be
+          selected behind the grid. */}
+      {data && page === "git" && !overviewDomain ? (
         <BranchControls
           ahead={data.git.status?.ahead ?? 0}
           behind={data.git.status?.behind ?? 0}

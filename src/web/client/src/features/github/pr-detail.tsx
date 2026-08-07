@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { DiffViewer, splitDiffByFile, type FileDiff } from "../git/diff-viewer";
 import { MarkdownBody } from "./markdown-body";
+import { TabStrip } from "@/components/ui/tab-strip";
 import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import { buildPrAskPrompt, buildPrFileAskPrompt } from "../agent/prompts";
 import { Button } from "@/components/ui/button";
@@ -111,11 +112,6 @@ export function PrDetail({
     }
   }
 
-  const tabClass = (active: boolean) =>
-    `rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-      active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
-    }`;
-
   return (
     <AiContextTarget
       target={{
@@ -136,10 +132,16 @@ export function PrDetail({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="group flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{pr.title}</span>
-        <div className="flex shrink-0 items-center gap-1">
-          <button className={tabClass(tab === "cockpit")} onClick={() => setTab("cockpit")} type="button">{t("github.pr.tabReview")}</button>
-          <button className={tabClass(tab === "diff")} onClick={() => setTab("diff")} type="button">{t("github.pr.tabDiff")}</button>
-        </div>
+        <TabStrip
+          ariaLabel={t("github.pr.tabsLabel")}
+          idPrefix="github-pr"
+          onSelect={setTab}
+          tabs={[
+            { id: "cockpit", label: t("github.pr.tabReview") },
+            { id: "diff", label: t("github.pr.tabDiff") },
+          ]}
+          value={tab}
+        />
         {canMerge ? (
           <Button
             className="shrink-0"
@@ -172,35 +174,42 @@ export function PrDetail({
         </div>
       ) : null}
 
-      {tab === "cockpit" ? (
-        <div className="min-h-0 flex-1 overflow-auto">
-          <PRReviewCockpit
-            cockpit={cockpit}
-            error={cockpitError}
-            loading={cockpitLoading}
-            onOpenFile={openFileDiff}
-            pr={pr}
-          />
-        </div>
-      ) : diffLoading ? (
-        <Loading className="flex-1" label={t("git.diff.loading")} />
-      ) : diffError ? (
-        <div className="p-4 text-[12px] text-red-500">{diffError}</div>
-      ) : fileDiffs.length ? (
-        <div className="flex min-h-0 min-w-0 flex-1">
-          <FileDiffList
-            files={fileDiffs}
-            pr={pr}
-            onSelect={setSelectedFile}
-            selected={activeFileDiff?.path ?? null}
-          />
-          <div className="relative min-h-0 min-w-0 flex-1">
-            {activeFileDiff ? <DiffViewer diff={activeFileDiff.diff} /> : null}
+      <div
+        aria-labelledby={`github-pr-tab-${tab}`}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        id={`github-pr-panel-${tab}`}
+        role="tabpanel"
+      >
+        {tab === "cockpit" ? (
+          <div className="min-h-0 flex-1 overflow-auto">
+            <PRReviewCockpit
+              cockpit={cockpit}
+              error={cockpitError}
+              loading={cockpitLoading}
+              onOpenFile={openFileDiff}
+              pr={pr}
+            />
           </div>
-        </div>
-      ) : (
-        <div className="p-4 text-[12px] text-muted-foreground">{t("github.pr.noDiff")}</div>
-      )}
+        ) : diffLoading ? (
+          <Loading className="flex-1" label={t("git.diff.loading")} />
+        ) : diffError ? (
+          <div className="p-4 text-[12px] text-red-500">{diffError}</div>
+        ) : fileDiffs.length ? (
+          <div className="flex min-h-0 min-w-0 flex-1">
+            <FileDiffList
+              files={fileDiffs}
+              pr={pr}
+              onSelect={setSelectedFile}
+              selected={activeFileDiff?.path ?? null}
+            />
+            <div className="relative min-h-0 min-w-0 flex-1">
+              {activeFileDiff ? <DiffViewer diff={activeFileDiff.diff} /> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 text-[12px] text-muted-foreground">{t("github.pr.noDiff")}</div>
+        )}
+      </div>
 
       {confirmingMerge ? (
         <ConfirmDialog
@@ -256,33 +265,38 @@ function PRReviewCockpit({
   const failingChecks = checks?.runs.filter((run) => run.conclusion === "failure" || run.conclusion === "timed_out" || run.conclusion === "cancelled") ?? [];
 
   return (
-    <div className="space-y-3 p-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px]">
+    // Sections are separated by a single hairline rather than each being boxed
+    // in its own card. Nothing here is a bounded object — it is one continuous
+    // read down the PR — so spacing and rules carry the hierarchy.
+    <div className="divide-y divide-border/70">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2.5 text-[12px]">
         <StateText pr={activePR} />
-        <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-[11px]">
-          <GitBranch className="size-3 shrink-0 text-muted-foreground" />
+        <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+          <GitBranch aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
           {activePR.base.ref}
-          <ArrowLeft className="size-3 shrink-0 text-muted-foreground" />
+          <ArrowLeft aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
           {activePR.head.ref}
         </span>
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <User className="size-3 shrink-0" />
+          <User aria-hidden="true" className="size-3 shrink-0" />
           {activePR.user.login}
         </span>
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <Calendar className="size-3 shrink-0" />
+          <Calendar aria-hidden="true" className="size-3 shrink-0" />
           {new Date(activePR.created_at).toLocaleDateString()}
         </span>
       </div>
 
       {error ? (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-500">
+        <div className="px-3 py-2 text-[12px] text-red-500" role="alert">
           {error}
         </div>
       ) : null}
-      {loading ? <Loading className="justify-start" label={t("github.pr.loadingCockpit")} /> : null}
+      {loading ? (
+        <Loading className="justify-start px-3 py-2" label={t("github.pr.loadingCockpit")} />
+      ) : null}
 
-      <div className="grid gap-2 md:grid-cols-4">
+      <div className="grid gap-x-4 gap-y-2 px-3 py-2.5 sm:grid-cols-2 md:grid-cols-4">
         <CockpitMetric title={t("github.pr.mergeReadiness")} value={t(mergeReadinessKey(activePR, checks))} tone={mergeTone(activePR, checks)} />
         <CockpitMetric title={t("github.pr.reviewStateTitle")} value={t(reviewStateKey(reviews))} tone={reviewTone(reviews)} />
         <CockpitMetric title={t("github.pr.checks")} value={checks ? t("github.pr.checksValue", { state: checks.state, count: checks.totalCount }) : t("github.pr.unknown")} tone={checks?.state === "success" ? "success" : checks?.state === "failure" || checks?.state === "error" ? "danger" : "muted"} />
@@ -290,18 +304,18 @@ function PRReviewCockpit({
       </div>
 
       {failingChecks.length > 0 ? (
-        <section className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2">
-          <div className="mb-1 text-[11px] font-medium text-red-500">{t("github.pr.failingChecks")}</div>
-          <div className="flex flex-wrap gap-2">
+        <section className="px-3 py-2.5">
+          <div className="mb-1 text-[10px] uppercase text-red-500">{t("github.pr.failingChecks")}</div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
             {failingChecks.slice(0, 4).map((check) => (
               <a
-                className="inline-flex items-center gap-1 text-[11px] text-red-500 underline-offset-2 hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] text-red-500 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 href={check.html_url}
                 key={check.id}
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                <XCircle className="size-3" />
+                <XCircle aria-hidden="true" className="size-3" />
                 {t("github.pr.openFailingCheck", { name: check.name })}
               </a>
             ))}
@@ -309,29 +323,30 @@ function PRReviewCockpit({
         </section>
       ) : null}
 
-      <section className="rounded-md border border-border bg-muted/25 p-3">
+      <section>
         <button
-          className="flex w-full items-center gap-2 text-[12px] font-medium"
+          aria-expanded={filesOpen}
+          className="flex w-full items-center gap-2 px-3 py-2 text-[12px] font-medium transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           onClick={() => setFilesOpen((open) => !open)}
           type="button"
         >
           {filesOpen ? (
-            <ChevronDown className="size-3.5 text-muted-foreground" />
+            <ChevronDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
           ) : (
-            <ChevronRight className="size-3.5 text-muted-foreground" />
+            <ChevronRight aria-hidden="true" className="size-3.5 text-muted-foreground" />
           )}
-          <FileText className="size-3.5 text-muted-foreground" />
+          <FileText aria-hidden="true" className="size-3.5 text-muted-foreground" />
           {t("github.pr.changedFiles")}
           {files.length ? (
             <span className="font-mono text-[11px] text-muted-foreground">({files.length})</span>
           ) : null}
         </button>
         {!filesOpen ? null : files.length ? (
-          <ul className="mt-2 divide-y divide-border">
+          <ul className="border-t border-border/60">
             {files.slice(0, 12).map((file) => (
               <li key={file.path}>
                 <button
-                  className="flex w-full items-center gap-2 py-1.5 text-left text-[12px] transition-colors hover:text-foreground"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 pl-8 text-left text-[12px] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   onClick={() => onOpenFile(file.path)}
                   title={t("github.pr.viewDiffTitle", { path: file.path })}
                   type="button"
@@ -345,17 +360,17 @@ function PRReviewCockpit({
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-[12px] text-muted-foreground">{t("github.pr.noFileMeta")}</p>
+          <p className="px-3 pb-2 pl-8 text-[12px] text-muted-foreground">{t("github.pr.noFileMeta")}</p>
         )}
       </section>
 
-      <section className="rounded-md border border-border bg-muted/25 p-3">
-        <div className="mb-2 flex items-center gap-2 text-[12px] font-medium">
-          <MessageSquare className="size-3.5 text-muted-foreground" />
+      <section>
+        <div className="flex items-center gap-2 px-3 py-2 text-[12px] font-medium">
+          <MessageSquare aria-hidden="true" className="size-3.5 text-muted-foreground" />
           {t("github.pr.reviewStateTitle")}
         </div>
         {reviews.length || comments.length ? (
-          <div className="space-y-2">
+          <div className="border-t border-border/60">
             {reviews.slice(-4).map((review) => (
               <ReviewLine
                 href={review.html_url}
@@ -374,14 +389,16 @@ function PRReviewCockpit({
             ))}
           </div>
         ) : (
-          <p className="text-[12px] text-muted-foreground">{t("github.pr.noReviews")}</p>
+          <p className="px-3 pb-2 text-[12px] text-muted-foreground">{t("github.pr.noReviews")}</p>
         )}
       </section>
 
       {activePR.body ? (
         <MarkdownBody body={activePR.body} />
       ) : (
-        <p className="text-[12px] italic text-muted-foreground">{t("github.noDescription")}</p>
+        <p className="px-3 py-2.5 text-[12px] italic text-muted-foreground">
+          {t("github.noDescription")}
+        </p>
       )}
     </div>
   );
@@ -476,12 +493,13 @@ function CockpitMetric({
         : tone === "danger"
           ? "bg-red-500"
           : "bg-muted-foreground";
+  // No card: the dot plus the label/value pair already reads as one metric.
   return (
-    <div className="rounded-md border border-border bg-card px-3 py-2">
-      <div className="text-[10px] uppercase text-muted-foreground">{title}</div>
-      <div className="mt-1 flex items-center gap-1.5 text-[12px] font-medium">
-        <span className={`size-1.5 rounded-full ${dot}`} />
-        {value}
+    <div className="min-w-0">
+      <div className="truncate text-[10px] uppercase text-muted-foreground">{title}</div>
+      <div className="mt-0.5 flex items-center gap-1.5 text-[12px] font-medium">
+        <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+        <span className="min-w-0 truncate">{value}</span>
       </div>
     </div>
   );
@@ -498,13 +516,13 @@ function ReviewLine({
 }) {
   return (
     <a
-      className="block rounded border border-border bg-card px-2.5 py-2 text-[12px] transition-colors hover:bg-muted/60"
+      className="block px-3 py-2 text-[12px] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       href={href}
       rel="noopener noreferrer"
       target="_blank"
     >
-      <span className="mb-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <ExternalLink className="size-3" />
+      <span className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <ExternalLink aria-hidden="true" className="size-3" />
         {meta}
       </span>
       <span className="line-clamp-2 whitespace-pre-wrap">{text}</span>

@@ -33,6 +33,16 @@ const prDetailSource = readFileSync(
   "src/web/client/src/features/github/pr-detail.tsx",
   "utf8",
 );
+const tabsSource = readFileSync(
+  // Shared with the Vercel view, so it lives in components/ui rather than
+  // inside the GitHub feature.
+  "src/web/client/src/components/ui/tab-strip.tsx",
+  "utf8",
+);
+const prListSource = readFileSync(
+  "src/web/client/src/features/github/pr-list.tsx",
+  "utf8",
+);
 const issueListSource = readFileSync(
   "src/web/client/src/features/github/issue-list.tsx",
   "utf8",
@@ -118,20 +128,43 @@ describe("GitHub connection recovery UI", () => {
     expect(catalog).toContain("Open failing check");
   });
 
-  test("connected view uses the same shell and tab rail structure as Git Review", () => {
-    expect(viewSource).toContain("bg-card/85");
-    expect(viewSource).toContain("bg-card/95");
-    expect(viewSource).toContain("tabButtonClass");
+  test("connected view uses the workbench page shell, not a tinted card layer", () => {
+    // The page canvas is `bg-background` like Docker and Activity; the tinted
+    // `bg-card/85` shell it used to carry was a decorative layer over the same
+    // content. Only the toolbar keeps a card tint, to separate it from the list.
+    expect(viewSource).toContain("overflow-hidden bg-background");
+    expect(viewSource).not.toContain("bg-card/85");
+    expect(viewSource).toContain("bg-card/75");
     expect(viewSource).toContain("border-b border-border");
     expect(viewSource).toContain('tab === "prs"');
     expect(viewSource).toContain('tab === "issues"');
-    expect(viewSource).toContain('tab === "actions"');
+    // Actions is the fall-through branch of the panel switch, so assert the
+    // tab itself rather than a comparison the source never had to write.
+    expect(viewSource).toContain('id: "actions"');
+    expect(viewSource).toContain("<ActionsView");
+  });
+
+  test("page tabs carry real tab semantics instead of bare buttons", () => {
+    // The four tabs were hand-written <button>s with no tablist, no
+    // aria-selected, and no focus ring — keyboard and screen-reader users got
+    // an unlabelled row of buttons. TabStrip owns those semantics for every
+    // GitHub tab strip, including PR detail's Review/Diff pair.
+    expect(tabsSource).toContain('role="tablist"');
+    expect(tabsSource).toContain('role="tab"');
+    expect(tabsSource).toContain("aria-selected");
+    expect(tabsSource).toContain("aria-controls");
+    expect(tabsSource).toContain("focus-visible:ring-ring");
+    expect(viewSource).toContain("<TabStrip");
+    expect(viewSource).toContain('role="tabpanel"');
+    expect(prDetailSource).toContain("<TabStrip");
+    expect(prDetailSource).toContain('role="tabpanel"');
+    expect(viewSource).not.toContain("tabButtonClass");
+    expect(prDetailSource).not.toContain("const tabClass");
   });
 
   test("GitHub page exposes a compact Branches tab with quick PR creation", () => {
-    expect(viewSource).toContain('| "branches"');
+    expect(viewSource).toContain('id: "branches"');
     expect(viewSource).toContain("BranchesView");
-    expect(viewSource).toContain('setTab("branches")');
     expect(viewSource).toContain("initialHead");
     expect(branchesSource).toContain("listGitHubBranches");
     expect(catalog).toContain("Open PR");
@@ -149,7 +182,10 @@ describe("GitHub connection recovery UI", () => {
     expect(actionsSource).toContain("branch?: string");
     expect(actionsSource).toContain("useGitHubActions(branch)");
     expect(catalog).toContain("Filtered to");
-    expect(actionsSource).toContain("onClearBranch");
+    // Clearing the filter lives on the tab row now, next to the chip naming
+    // the branch — the page already owns `actionsBranch`, so ActionsView never
+    // needed a callback to hand it back.
+    expect(viewSource).toContain("setActionsBranch(null)");
     expect(catalog).toContain("View runs");
   });
 
@@ -166,6 +202,46 @@ describe("GitHub connection recovery UI", () => {
   test("issue state toggle does not introduce a second right-alignment spacer", () => {
     expect(viewSource).toContain('tab === "issues"');
     expect(viewSource).not.toContain('className="ml-auto flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5"');
+  });
+
+  test("list rows use the quiet hover/selected weights shared with Docker", () => {
+    // Rows were hovering at bg-muted/60 and selecting at full bg-muted, which
+    // read as a highlight block rather than a selection. /20 and /45 are the
+    // house weights, and every row now shows a keyboard focus ring.
+    for (const source of [prListSource, issueListSource, actionsSource]) {
+      expect(source).toContain("hover:bg-muted/20");
+      expect(source).toContain("bg-muted/45");
+      expect(source).toContain("focus-visible:ring-ring");
+      expect(source).not.toContain("hover:bg-muted/60");
+    }
+  });
+
+  test("Branches and Actions carry no header bar of their own", () => {
+    // Both had a second bar under the tab strip holding a heading that repeated
+    // the tab label, the repo name the header crumb already owns, and a Refresh
+    // duplicating the app header's. The whole bar is gone: the count and the
+    // branch filter moved up onto the tab row, and Refresh is the header's.
+    for (const source of [branchesSource, actionsSource]) {
+      expect(source).not.toContain("<h2");
+      expect(source).not.toContain("common.refresh");
+      expect(source).not.toContain("RefreshCw");
+      // …but each still answers the header Refresh, or the button that
+      // replaced them would be refreshing nothing.
+      expect(source).toContain("useRegisterRefresh");
+      expect(source).toContain("onCountChange");
+    }
+    expect(viewSource).toContain("github.branches.count");
+    expect(viewSource).toContain("github.actions.runCount");
+    expect(viewSource).toContain("github.actions.filteredTo");
+    expect(viewSource).toContain("github.actions.clearFilter");
+  });
+
+  test("Actions keeps the in-place sync as its only reload path", () => {
+    // The panel button did a full reload that reset pagination; the header
+    // Refresh merges a fresh page-1 fetch instead, so paged-in history
+    // survives. Dropping the button must not swap that back to a hard reset.
+    expect(actionsSource).toContain("useRegisterRefresh(syncLatest)");
+    expect(actionsSource).not.toContain("void refresh()");
   });
 
   test("setup supports explicit PAT and device-flow starts", () => {

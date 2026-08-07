@@ -8,6 +8,7 @@ import type {
   GitFileContent,
   GitFileStatus,
   GitGraphCommit,
+  GitIdentityState,
   GitOverview,
   GitPushResult,
   GitWorktree,
@@ -171,7 +172,24 @@ export const httpGitApi: GitApi = {
       "/api/git/push",
       repo ? { repo } : {},
     );
-    return { output: res.output, branch: res.branch, setUpstream: res.setUpstream };
+    return {
+      output: res.output,
+      branch: res.branch,
+      setUpstream: res.setUpstream,
+      pushedAs: res.pushedAs,
+    };
+  },
+
+  async getGitIdentity(repo) {
+    const res = await requestJson<{ ok: true } & Partial<GitIdentityState>>(
+      `/api/git/identity${repo ? `?repo=${encodeURIComponent(repo)}` : ""}`,
+    );
+    return {
+      selected: res.selected ?? null,
+      machine: res.machine ?? {},
+      diverged: res.diverged ?? false,
+      reason: res.reason,
+    };
   },
 
   async gitPull(repo) {

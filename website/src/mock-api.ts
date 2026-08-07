@@ -13,10 +13,18 @@ import type {
   GitHubWorkflowJob,
   GitHubWorkflowRun,
   LogEntry,
+  ProjectOverviewEntry,
   ProjectPreferences,
   RowSample,
   ServiceStatus,
   TableRef,
+  VercelBuildLogLine,
+  VercelDeployment,
+  VercelDeploymentDetail,
+  VercelDomain,
+  VercelEnvVar,
+  VercelProject,
+  VercelRuntimeLogLine,
   Workflow,
 } from "@/lib/api";
 
@@ -537,6 +545,256 @@ const usageHistory = (() => {
     },
   };
 })();
+
+/**
+ * The all-projects grid, per domain. One project deliberately fails its GitHub
+ * row — a project with no remote is the common real case, and the demo should
+ * show that it degrades to a message on that card rather than breaking the
+ * grid.
+ */
+function overviewProjects(domain: string): ProjectOverviewEntry[] {
+  const projects = [
+    { name: "acme-web", path: "/Users/demo/code/acme-web" },
+    { name: "acme-api", path: "/Users/demo/code/acme-api" },
+    { name: "design-system", path: "/Users/demo/code/design-system" },
+  ];
+
+  return projects.map((project, index) => {
+    const base = { ...project, cwd: project.path };
+    if (domain === "git") {
+      return {
+        ...base,
+        git: {
+          branch: ["feat/website-real-ui-demo", "main", "main"][index] as string,
+          dirty: [7, 0, 0][index] as number,
+          ahead: [2, 0, 0][index] as number,
+          behind: [0, 0, 3][index] as number,
+          upstream: "origin/main",
+        },
+      };
+    }
+    if (domain === "github") {
+      if (index === 2) return { ...base, error: "No GitHub repository resolves for this project." };
+      return {
+        ...base,
+        github: {
+          owner: "acme",
+          repo: project.name,
+          openPullRequests: [4, 1][index] as number,
+          checks: (["failure", "success"] as const)[index],
+        },
+      };
+    }
+    if (index === 1) return { ...base, error: "No Vercel project is linked to this project." };
+    return {
+      ...base,
+      vercel: {
+        projectId: `prj_${project.name}`,
+        projectName: project.name,
+        state: (["READY", "READY", "ERROR"] as const)[index],
+        url: `${project.name}.vercel.app`,
+        createdAt: Date.now() - 1000 * 60 * (index === 0 ? 47 : 610),
+      },
+    };
+  });
+}
+
+const vercelProject: VercelProject = {
+  id: "prj_acme_web",
+  name: "acme-web",
+  framework: "nextjs",
+  updatedAt: Date.now() - 1000 * 60 * 32,
+  link: { type: "github", org: "acme", repo: "web", productionBranch: "main" },
+  // Null is the honest demo value for most of these: Vercel uses the
+  // framework's own default unless the project overrides it.
+  buildCommand: null,
+  devCommand: null,
+  installCommand: "npm ci",
+  outputDirectory: null,
+  rootDirectory: null,
+  nodeVersion: "22.x",
+  serverlessFunctionRegion: "iad1",
+};
+
+const vercelEnv: VercelEnvVar[] = [
+  {
+    id: "env_database_url",
+    key: "DATABASE_URL",
+    target: ["production", "preview"],
+    type: "encrypted",
+    updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 9,
+  },
+  {
+    id: "env_stripe",
+    key: "STRIPE_SECRET_KEY",
+    target: ["production"],
+    type: "encrypted",
+    updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 31,
+  },
+  {
+    id: "env_flag",
+    key: "NEXT_PUBLIC_FEATURE_CHECKOUT",
+    target: ["production", "preview", "development"],
+    type: "plain",
+    updatedAt: Date.now() - 1000 * 60 * 60 * 6,
+  },
+  {
+    id: "env_preview_api",
+    key: "API_BASE_URL",
+    target: ["preview"],
+    type: "encrypted",
+    gitBranch: "feat/website-real-ui-demo",
+    updatedAt: Date.now() - 1000 * 60 * 90,
+  },
+  {
+    id: "env_vercel_url",
+    key: "VERCEL_URL",
+    target: ["production", "preview", "development"],
+    type: "system",
+  },
+];
+
+const vercelDomains: VercelDomain[] = [
+  {
+    name: "acme-web.vercel.app",
+    apexName: "vercel.app",
+    verified: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 120,
+    verification: [],
+  },
+  {
+    name: "acme.com",
+    apexName: "acme.com",
+    verified: true,
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 88,
+    verification: [],
+  },
+  {
+    name: "www.acme.com",
+    apexName: "acme.com",
+    verified: true,
+    redirect: "acme.com",
+    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 88,
+    verification: [],
+  },
+  // One unverified domain, so the demo shows the state that actually asks
+  // something of the user.
+  {
+    name: "shop.acme.com",
+    apexName: "acme.com",
+    verified: false,
+    createdAt: Date.now() - 1000 * 60 * 40,
+    verification: [
+      {
+        type: "TXT",
+        domain: "_vercel.shop.acme.com",
+        value: "vc-domain-verify=shop.acme.com,8f2c1a7b4e9d",
+        reason: "pending_domain_verification",
+      },
+    ],
+  },
+];
+
+const vercelRuntimeLogs: VercelRuntimeLogLine[] = [
+  {
+    id: "rt_1",
+    createdAt: Date.now() - 1000 * 60 * 12,
+    level: "info",
+    message: "Checkout session created",
+    source: "lambda",
+    statusCode: 200,
+    requestMethod: "POST",
+    requestPath: "/api/checkout",
+  },
+  {
+    id: "rt_2",
+    createdAt: Date.now() - 1000 * 60 * 8,
+    level: "warning",
+    message: "Upstream inventory lookup took 2841ms",
+    source: "lambda",
+    statusCode: 200,
+    requestMethod: "GET",
+    requestPath: "/api/products",
+  },
+  {
+    id: "rt_3",
+    createdAt: Date.now() - 1000 * 60 * 3,
+    level: "error",
+    message: "TypeError: Cannot read properties of undefined (reading 'total')",
+    source: "lambda",
+    statusCode: 500,
+    requestMethod: "GET",
+    requestPath: "/api/cart",
+  },
+];
+
+const vercelDeployments: VercelDeployment[] = [
+  {
+    uid: "dpl_9f3ka2",
+    name: "acme-web",
+    url: "acme-web-9f3ka2.vercel.app",
+    state: "BUILDING",
+    target: null,
+    createdAt: Date.now() - 1000 * 60 * 2,
+    creator: { username: "octocat" },
+    meta: {
+      branch: "feat/website-real-ui-demo",
+      sha: "4d19c07a1b2e3f4a5b6c7d8e9f0a1b2c3d4e5f60",
+      commitMessage: "feat(site): embed the live workbench",
+      commitAuthor: "octocat",
+    },
+  },
+  {
+    uid: "dpl_7b1mz8",
+    name: "acme-web",
+    url: "acme-web.vercel.app",
+    state: "READY",
+    target: "production",
+    createdAt: Date.now() - 1000 * 60 * 47,
+    readyAt: Date.now() - 1000 * 60 * 44,
+    isCurrentProduction: true,
+    creator: { username: "octocat" },
+    meta: {
+      branch: "main",
+      sha: "9a72f5c3e1d0b4a6978c5e2f1a0b3c4d5e6f7081",
+      commitMessage: "fix(api): retry idempotent writes once",
+      commitAuthor: "octocat",
+    },
+  },
+  {
+    uid: "dpl_5x0qw4",
+    name: "acme-web",
+    url: "acme-web-5x0qw4.vercel.app",
+    state: "ERROR",
+    target: null,
+    createdAt: Date.now() - 1000 * 60 * 96,
+    creator: { username: "hubot" },
+    meta: {
+      branch: "chore/bump-deps",
+      sha: "1c4e8a09b7d6f5e4c3b2a1908f7e6d5c4b3a2910",
+      commitMessage: "chore: bump dependencies",
+      commitAuthor: "hubot",
+    },
+  },
+];
+
+const vercelBuildLogs: VercelBuildLogLine[] = [
+  "Running build in Washington, D.C., USA (East) – iad1",
+  "Cloning github.com/acme/web (Branch: main, Commit: 9a72f5c)",
+  "Restored build cache from previous deployment",
+  "Running \"npm run build\"",
+  "  ▲ Next.js 15.0.3",
+  "  Creating an optimized production build ...",
+  "  ✓ Compiled successfully",
+  "Build Completed in /vercel/output [42s]",
+  "Deploying outputs...",
+  "Deployment completed",
+].map((textLine, index) => ({
+  id: `evt_${index}`,
+  createdAt: Date.now() - 1000 * (60 * 47 - index * 4),
+  type: "stdout",
+  text: textLine,
+}));
 
 const githubRepo = {
   full_name: "acme/web",
@@ -1181,6 +1439,19 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, board: names });
   }
   if (path === "/api/git/status") return json({ ok: true, status: gitStatus });
+  if (path === "/api/git/identity") {
+    return json({
+      ok: true,
+      selected: {
+        host: "github.com",
+        login: "nomoreide",
+        name: "NoMoreIDE Demo",
+        email: "demo@nomoreide.dev",
+      },
+      machine: { name: "NoMoreIDE Demo", email: "demo@nomoreide.dev" },
+      diverged: false,
+    });
+  }
   if (path === "/api/git/commit/files") return json({ ok: true, files: gitFiles });
   if (path === "/api/git/commit") return text(Object.values(diffs).join("\n\n"));
   if (path === "/api/git/push") {
@@ -1407,6 +1678,80 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   if (path === "/api/github/runs") return json({ ok: true, runs: githubRuns });
   if (path.match(/^\/api\/github\/runs\/\d+\/jobs$/)) {
     return json({ ok: true, jobs: githubJobs });
+  }
+
+  // The all-projects lens. Read on mount whenever the scope is "all", so the
+  // demo needs a body here or the grid renders `undefined.map`.
+  const projectOverview = path.match(/^\/api\/overview\/(git|github|vercel)$/);
+  if (projectOverview) {
+    return json({ ok: true, projects: overviewProjects(projectOverview[1]) });
+  }
+
+  if (path === "/api/vercel/status") {
+    return json({
+      ok: true,
+      status: "connected",
+      connection: { source: "cli", username: "octocat" },
+      cliAvailable: true,
+      user: { username: "octocat" },
+      teams: [{ id: "team_acme", slug: "acme", name: "Acme" }],
+      project: vercelProject,
+      repositoryName: "acme-web",
+    });
+  }
+  if (path === "/api/vercel/projects") {
+    return json({ ok: true, projects: [vercelProject], linkedProjectId: vercelProject.id });
+  }
+  if (path === "/api/vercel/project") {
+    return json({ ok: true, project: vercelProject });
+  }
+  if (path === "/api/vercel/env") {
+    return json({ ok: true, env: vercelEnv });
+  }
+  // Reveal is a POST, so it never fires on mount — but leaving it to the
+  // fallback would hand the demo `undefined` the moment anyone clicks the eye.
+  const vercelEnvReveal = path.match(/^\/api\/vercel\/env\/([^/]+)\/reveal$/);
+  if (vercelEnvReveal) {
+    return json({ ok: true, value: `demo-value-for-${vercelEnvReveal[1]}` });
+  }
+  if (path === "/api/vercel/domains") {
+    return json({ ok: true, domains: vercelDomains });
+  }
+  // The demo is always signed in, so a sign-in never starts here — but the
+  // setup screen polls this the moment anyone clicks the button.
+  if (path === "/api/vercel/oauth/status") {
+    return json({ ok: true, phase: "idle" });
+  }
+  if (path === "/api/vercel/deployments") {
+    const target = url.searchParams.get("target");
+    const deployments =
+      target === "production"
+        ? vercelDeployments.filter((deployment) => deployment.target === "production")
+        : target === "preview"
+          ? vercelDeployments.filter((deployment) => deployment.target !== "production")
+          : vercelDeployments;
+    return json({ ok: true, project: vercelProject, deployments });
+  }
+  const vercelDeploymentLogs = path.match(/^\/api\/vercel\/deployments\/([^/]+)\/logs$/);
+  if (vercelDeploymentLogs) {
+    return json({ ok: true, logs: vercelBuildLogs });
+  }
+  if (path.match(/^\/api\/vercel\/deployments\/([^/]+)\/runtime-logs$/)) {
+    return json({ ok: true, logs: vercelRuntimeLogs });
+  }
+  const vercelDeployment = path.match(/^\/api\/vercel\/deployments\/([^/]+)$/);
+  if (vercelDeployment) {
+    const found =
+      vercelDeployments.find((deployment) => deployment.uid === vercelDeployment[1]) ??
+      vercelDeployments[0];
+    const detail: VercelDeploymentDetail = {
+      ...found,
+      aliases: found.target === "production" ? ["acme-web.vercel.app"] : [],
+      buildingAt: found.createdAt + 1000,
+      errorMessage:
+        found.state === "ERROR" ? "Build failed: `npm run build` exited with 1" : undefined,
+    };
+    return json({ ok: true, deployment: detail });
   }
 
   if (path === "/api/agent") return json({ ok: true, agent: agentInfo() });

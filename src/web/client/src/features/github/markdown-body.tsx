@@ -20,15 +20,17 @@ export function MarkdownBody({
   const [view, setView] = useState<"rendered" | "raw">("rendered");
   const toggleClass = (active: boolean) =>
     cn(
-      "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
-      active ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+      "rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      active ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground",
     );
 
+  // Not a card: the body is the tail of a continuous read down the PR/issue,
+  // so a title row over a hairline separates it without boxing it in.
   return (
-    <section className="overflow-hidden rounded-md border border-border bg-muted/25">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+    <section>
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5">
         <span className="text-[11px] font-medium text-muted-foreground">{resolvedTitle}</span>
-        <div className="flex items-center gap-0.5 rounded-md bg-background/60 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
           <button className={toggleClass(view === "rendered")} onClick={() => setView("rendered")} type="button">
             {t("github.md.rendered")}
           </button>

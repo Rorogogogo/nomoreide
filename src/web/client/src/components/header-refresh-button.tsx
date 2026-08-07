@@ -1,6 +1,7 @@
 import { Check, RefreshCw } from "lucide-react";
 import { headerActionClassName, headerActionIconClassName } from "@/components/header-action";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useApiBusy } from "@/lib/api-activity";
 import { useT, type Translate } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -36,11 +37,17 @@ export function HeaderRefreshButton({
   updatedAt: number | null;
 }) {
   const t = useT();
+  // Any API work counts, not just a refresh cycle: opening a PR diff or a
+  // workflow's jobs is loading too, and the icon is where the app says so.
+  // Only `idle` gives way — a failed cycle must keep showing red, and a manual
+  // refresh's confirmation tick must not be cut short by a background fetch.
+  const apiBusy = useApiBusy();
+  const shown: RefreshPhase = phase === "idle" && apiBusy ? "busy" : phase;
 
   const label =
-    phase === "busy"
+    shown === "busy"
       ? t("action.refreshing")
-      : phase === "error"
+      : shown === "error"
         ? t("action.refreshFailed")
         : updatedAt
           ? agoLabel(t, updatedAt, Date.now())
@@ -52,16 +59,16 @@ export function HeaderRefreshButton({
         aria-label={t("action.refresh")}
         aria-live="polite"
         className={headerActionClassName(
-          phase === "error" ? "text-destructive hover:text-destructive" : undefined,
+          shown === "error" ? "text-destructive hover:text-destructive" : undefined,
         )}
         onClick={onClick}
         type="button"
       >
         <span className={headerActionIconClassName()}>
-          {phase === "done" ? (
+          {shown === "done" ? (
             <Check className="text-emerald-500" />
           ) : (
-            <RefreshCw className={cn(phase === "busy" && "animate-spin")} />
+            <RefreshCw className={cn(shown === "busy" && "animate-spin")} />
           )}
         </span>
       </button>
