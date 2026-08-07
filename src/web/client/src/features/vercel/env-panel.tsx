@@ -7,7 +7,8 @@ import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useVercelEnv } from "./hooks/use-vercel-resource";
-import { CopyIcon, HideIcon, RevealIcon } from "./vercel-icons";
+import { CopyIcon, EnvIcon, HideIcon, RevealIcon } from "./vercel-icons";
+import { PanelEmpty } from "./panel-empty";
 
 /** The order Vercel itself lists environments in, rather than alphabetical. */
 const TARGET_ORDER = ["production", "preview", "development"];
@@ -44,7 +45,7 @@ export function EnvPanel() {
     );
   }
   if (env.length === 0) {
-    return <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.env.empty")}</p>;
+    return <PanelEmpty icon={<EnvIcon />}>{t("vercel.env.empty")}</PanelEmpty>;
   }
 
   return (
@@ -101,17 +102,18 @@ function EnvRow({ variable }: { variable: VercelEnvVar }) {
         {variable.key}
       </code>
 
-      <span className="flex shrink-0 flex-wrap items-center gap-1">
+      <span className="flex shrink-0 flex-wrap items-center gap-2">
         {targets.map((target) => (
           <span
-            className={cn(
-              "rounded border px-1.5 py-px text-[10px] capitalize",
-              target === "production"
-                ? "border-emerald-500/40 text-emerald-500"
-                : "border-border text-muted-foreground",
-            )}
+            className="inline-flex items-center gap-1 text-[10px] capitalize text-muted-foreground"
             key={target}
           >
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                target === "production" ? "bg-emerald-500" : "bg-muted-foreground/50",
+              )}
+            />
             {target in TARGET_LABEL
               ? t(TARGET_LABEL[target as keyof typeof TARGET_LABEL])
               : target}

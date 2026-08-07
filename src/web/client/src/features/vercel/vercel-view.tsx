@@ -15,6 +15,7 @@ import { ProjectPicker } from "./project-picker";
 import { SettingsPanel } from "./settings-panel";
 import { StateFilter, TabStrip } from "@/components/ui/tab-strip";
 import { TeamSwitcher } from "./team-switcher";
+import { VercelAccountMenu } from "./account-menu";
 import { useVercelDeployments, type DeploymentFilter } from "./hooks/use-vercel-deployments";
 import { useVercelStatus } from "./hooks/use-vercel-status";
 import { ExternalIcon, RefreshIcon, UnlinkIcon } from "./vercel-icons";
@@ -56,7 +57,10 @@ export function VercelView() {
       <ProjectPicker onLinked={status.refresh} repositoryName={status.info?.repositoryName} />
     );
   } else {
-    content = <VercelProjectTabs />;
+    // Reuses the setup screen for "sign in as somebody else": connecting is
+    // the same flow whether or not a connection already exists, and `onCancel`
+    // is what makes it escapable when one does.
+    content = <VercelProjectTabs onSwitchAccount={() => setForceSetup(true)} />;
   }
 
   return (
@@ -131,7 +135,7 @@ function VercelConnectionRecovery({
  * behind the other tabs rather than being torn down and re-fetched on every
  * tab switch.
  */
-function VercelProjectTabs() {
+function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
   const [tab, setTab] = usePersistentState<VercelTab>("vercel:tab", "deployments");
   const [filter, setFilter] = usePersistentState<DeploymentFilter>("vercel:filter", "all");
@@ -177,6 +181,7 @@ function VercelProjectTabs() {
         </span>
 
         <span className="ml-auto flex items-center gap-2">
+          <VercelAccountMenu onSwitchAccount={onSwitchAccount} />
           <TeamSwitcher />
           {/* Scopes the deployment list only, so it goes away with that tab. */}
           {tab === "deployments" ? (
@@ -229,20 +234,37 @@ function VercelProjectTabs() {
       </div>
 
       {tab === "env" ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <TabPanel>
           <EnvPanel />
-        </div>
+        </TabPanel>
       ) : null}
       {tab === "domains" ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <TabPanel>
           <DomainsPanel />
-        </div>
+        </TabPanel>
       ) : null}
       {tab === "settings" ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <TabPanel>
           <SettingsPanel />
-        </div>
+        </TabPanel>
       ) : null}
     </>
+  );
+}
+
+/**
+ * A tab's content area.
+ *
+ * These panels are lists of short rows — a domain and its target, a setting and
+ * its value. Left to fill the window they strand that content against the far
+ * edges with a thousand empty pixels in between, which reads as a page that
+ * failed to load rather than a short list. Capping the column keeps the pairs
+ * near each other, and matches the all-projects table.
+ */
+function TabPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      <div className="w-full max-w-3xl px-3 py-3">{children}</div>
+    </div>
   );
 }

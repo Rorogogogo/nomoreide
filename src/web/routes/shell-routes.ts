@@ -2,13 +2,20 @@ import { sendHead, sendHtml } from "../http-utils.js";
 import { readWebAppShell, sendStaticAsset } from "../static-assets.js";
 import { prefixRoute, type Route } from "./context.js";
 
-/** Paths that serve the SPA shell (client-side routing handles the rest). */
-const shellPaths = new Set([
+/**
+ * Paths that serve the SPA shell (client-side routing handles the rest).
+ *
+ * Must stay in sync with `PAGE_PATHS` in the client's `app.tsx` — a page the
+ * client routes to but this set omits works when navigated to in-app and 404s
+ * on direct load or refresh. `test/shell-paths.test.ts` asserts the parity.
+ */
+export const shellPaths = new Set([
   "/",
   "/activity",
   "/docker",
   "/git",
   "/github",
+  "/vercel",
   "/workflows",
   "/agent",
   "/agent-env",

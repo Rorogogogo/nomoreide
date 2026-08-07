@@ -8,10 +8,12 @@ import { openExternal } from "@/lib/tauri";
 import { useVercelDomains } from "./hooks/use-vercel-resource";
 import {
   CopyIcon,
+  DomainsIcon,
   ExternalIcon,
   UnverifiedIcon,
   VerifiedIcon,
 } from "./vercel-icons";
+import { PanelEmpty } from "./panel-empty";
 
 /**
  * The project's domains: which ones serve it, which redirect, and which are
@@ -35,7 +37,7 @@ export function DomainsPanel() {
     );
   }
   if (domains.length === 0) {
-    return <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.domains.empty")}</p>;
+    return <PanelEmpty icon={<DomainsIcon />}>{t("vercel.domains.empty")}</PanelEmpty>;
   }
 
   // Unverified first: they are the ones with an outstanding action.

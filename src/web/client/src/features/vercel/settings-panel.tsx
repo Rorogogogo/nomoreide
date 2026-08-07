@@ -2,6 +2,8 @@ import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT } from "@/lib/i18n";
 import { useVercelProjectSettings } from "./hooks/use-vercel-resource";
+import { SettingsIcon } from "./vercel-icons";
+import { PanelEmpty } from "./panel-empty";
 
 /**
  * How Vercel builds this project.
@@ -26,7 +28,7 @@ export function SettingsPanel() {
     );
   }
   if (!project) {
-    return <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.settings.empty")}</p>;
+    return <PanelEmpty icon={<SettingsIcon />}>{t("vercel.settings.empty")}</PanelEmpty>;
   }
 
   const rows: { label: string; value: string | null | undefined; mono?: boolean }[] = [
