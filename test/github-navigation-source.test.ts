@@ -22,8 +22,8 @@ describe("GitHub top-level navigation", () => {
   test("github page exposes repository switching and remounts per selected repo", () => {
     // Project scope moved from the sidebar block to the header breadcrumb.
     expect(appSource).toContain("<ProjectBreadcrumb");
-    expect(appSource).toContain("githubPageKey");
-    expect(appSource).toContain("<GitHubView key={githubPageKey}");
+    expect(appSource).toContain("repoScopeKey");
+    expect(appSource).toContain("<GitHubView key={repoScopeKey}");
   });
 
   test("git review no longer embeds GitHub as a tab", () => {

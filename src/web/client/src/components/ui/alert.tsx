@@ -10,7 +10,12 @@ const alertVariants = cva(
     variant: {
       default: "border-border bg-card text-card-foreground",
       muted: "border-border bg-muted text-muted-foreground",
-      destructive: "border-destructive/40 bg-destructive/10 text-destructive dark:text-red-300",
+      // Failures read as quiet inline notes, not red slabs: a neutral surface
+      // with a single destructive hairline down the edge. The surrounding view
+      // already says what failed, so the alert only has to carry the detail —
+      // and that detail is usually a raw API string, hence the mono type.
+      destructive:
+        "break-words rounded-md border-border/60 border-l-2 border-l-destructive/50 bg-muted/40 px-2.5 py-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground",
     },
   },
   defaultVariants: {

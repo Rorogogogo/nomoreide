@@ -1,8 +1,10 @@
 import { resolve, sep } from "node:path";
 import { gitToplevel, type ConfigStore } from "../../core/config-store.js";
 import { GitActions } from "../../core/git-actions.js";
+import { resolveGitIdentityState, resolvePushCredential } from "../../core/git-identity.js";
 import { GitManager } from "../../core/git-manager.js";
 import { GitWorktreeManager } from "../../core/git-worktrees.js";
+import type { GitRepositoryDefinition } from "../../core/types.js";
 import { createRepository } from "../../core/repo-create.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
@@ -25,14 +27,17 @@ async function resolveRepoCwd(
   configStore: ConfigStore,
   repoName: string | undefined,
   fallbackCwd: string,
-): Promise<{ cwd: string } | { error: string }> {
-  if (!repoName) {
-    return { cwd: await selectedGitCwd(configStore, fallbackCwd) };
-  }
+): Promise<{ cwd: string; repository?: GitRepositoryDefinition } | { error: string }> {
   const config = await configStore.load();
+  if (!repoName) {
+    return {
+      cwd: await selectedGitCwd(configStore, fallbackCwd),
+      repository: getSelectedGitRepository(config),
+    };
+  }
   const target = config.gitRepositories.find((repository) => repository.name === repoName);
   if (!target) return { error: `Unknown repository: ${repoName}` };
-  return { cwd: target.activeWorktreePath ?? target.path };
+  return { cwd: target.activeWorktreePath ?? target.path, repository: target };
 }
 
 /** Read-safe Git operations plus repository registration/selection. */
@@ -239,6 +244,21 @@ export const gitRoutes: Route[] = [
     sendJson(response, { ok: true, output });
   }),
 
+  /**
+   * Who a commit made here would be authored by, and whether that differs from
+   * the machine's configured git identity. The account switcher governs the
+   * GitHub API surface too, so a mismatch here is what the UI warns about.
+   */
+  route("GET", "/api/git/identity", async ({ response, url, configStore, cwd }) => {
+    const resolved = await resolveRepoCwd(configStore, url.searchParams.get("repo")?.trim(), cwd);
+    if ("error" in resolved) {
+      sendJson(response, { ok: false, error: resolved.error }, 404);
+      return;
+    }
+    const identity = await resolveGitIdentityState(configStore, resolved.repository, resolved.cwd);
+    sendJson(response, { ok: true, ...identity });
+  }),
+
   route("POST", "/api/git/commit", async ({ request, response, configStore, cwd }) => {
     try {
       const form = await readForm(request);
@@ -247,8 +267,15 @@ export const gitRoutes: Route[] = [
         sendJson(response, { ok: false, error: resolved.error }, 404);
         return;
       }
-      const output = await new GitManager(resolved.cwd).commit(requiredFormValue(form, "message"));
-      sendJson(response, { ok: true, output });
+      // Honour the GitHub account selected for this repository, so the commit's
+      // author matches the account that will open the pull request. Falls back
+      // to the machine's git identity when no account is selected.
+      const identity = await resolveGitIdentityState(configStore, resolved.repository, resolved.cwd);
+      const output = await new GitManager(resolved.cwd).commit(
+        requiredFormValue(form, "message"),
+        { identity: identity.selected ?? undefined },
+      );
+      sendJson(response, { ok: true, output, author: identity.selected });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);
     }
@@ -299,8 +326,16 @@ export const gitRoutes: Route[] = [
         return;
       }
       const remote = form.get("remote")?.trim() || undefined;
-      const result = await new GitActions(resolved.cwd).push({ remote });
-      sendJson(response, { ok: true, ...result });
+      // Push as the account selected for this repository rather than whichever
+      // one the machine's credential helper happens to answer with. Null for
+      // SSH remotes and unselected repos — those keep the existing behaviour.
+      const remoteUrl = await new GitManager(resolved.cwd).remoteUrl(remote ?? "origin");
+      const credential = await resolvePushCredential(configStore, resolved.repository, remoteUrl);
+      const result = await new GitActions(resolved.cwd).push({
+        remote,
+        credential: credential ? { token: credential.token, username: credential.login } : undefined,
+      });
+      sendJson(response, { ok: true, ...result, pushedAs: credential?.login });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);
     }

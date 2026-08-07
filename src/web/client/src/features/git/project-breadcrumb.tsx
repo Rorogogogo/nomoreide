@@ -22,19 +22,11 @@ export function ProjectBreadcrumb({
   scopeAll,
   onScopeChange,
   onRefresh,
-  requiresRepo = false,
 }: {
   data: DashboardData;
   scopeAll: boolean;
   onScopeChange: (scopeAll: boolean) => void;
   onRefresh: () => Promise<void>;
-  /**
-   * The current page reads one repository and cannot honour an all-projects
-   * scope (Git and GitHub both resolve the daemon's *selected* repository).
-   * Rather than let the crumb claim "All projects" over a single-repo page, it
-   * names the repository actually on screen and says the scope is page-local.
-   */
-  requiresRepo?: boolean;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -45,16 +37,10 @@ export function ProjectBreadcrumb({
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
 
   const selectedRepository = data.git.selectedRepository;
-  /** All-projects is not a scope this page can render, so it isn't shown as one. */
-  const overridden = requiresRepo && scopeAll && Boolean(selectedRepository);
-  const label = overridden && selectedRepository
-    ? selectedRepository.name
-    : scopeAll
-      ? t("app.allProjects")
-      : selectedRepository?.name ?? t("app.pickProject");
-  const title = overridden
-    ? t("app.projectScopePageOnly", { label })
-    : t("app.projectScope", { label });
+  const label = scopeAll
+    ? t("app.allProjects")
+    : selectedRepository?.name ?? t("app.pickProject");
+  const title = t("app.projectScope", { label });
   function toggle() {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (rect) setCoords({ top: rect.bottom + 4, left: rect.left });
@@ -121,7 +107,7 @@ export function ProjectBreadcrumb({
         type="button"
       >
         <span className="flex size-5 shrink-0 items-center justify-center rounded border border-border bg-background text-[10px] font-semibold">
-          {scopeAll && !overridden ? (
+          {scopeAll ? (
             <Globe2 className="size-3 text-muted-foreground" />
           ) : selectedRepository ? (
             label.charAt(0).toUpperCase()
@@ -130,14 +116,6 @@ export function ProjectBreadcrumb({
           )}
         </span>
         <span className="truncate text-sm font-medium">{label}</span>
-        {/* Says out loud why the header stopped agreeing with the scope you
-            picked — without it, the crumb silently changing on two of the pages
-            reads as a bug rather than as the page's constraint. */}
-        {overridden ? (
-          <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">
-            {t("app.thisPageOnly")}
-          </span>
-        ) : null}
         <ChevronDown
           className={cn(
             "size-3.5 shrink-0 text-muted-foreground transition-transform",
@@ -161,9 +139,7 @@ export function ProjectBreadcrumb({
             >
               <div className="min-h-0 flex-1 overflow-y-auto">
                 <MenuRow
-                  active={scopeAll && !overridden}
-                  disabled={requiresRepo}
-                  hint={requiresRepo ? t("app.oneProjectPage") : undefined}
+                  active={scopeAll}
                   icon={<Globe2 className="size-3.5 text-muted-foreground" />}
                   label={t("app.allProjects")}
                   onSelect={() => {
@@ -174,9 +150,7 @@ export function ProjectBreadcrumb({
                 />
                 {data.config.gitRepositories.map((repository) => (
                   <MenuRow
-                    active={
-                      (!scopeAll || overridden) && selectedRepository?.name === repository.name
-                    }
+                    active={!scopeAll && selectedRepository?.name === repository.name}
                     icon={
                       <span className="flex size-3.5 items-center justify-center text-[9px] font-semibold text-muted-foreground">
                         {repository.name.charAt(0).toUpperCase()}

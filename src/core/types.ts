@@ -47,6 +47,11 @@ export interface GitRepositoryDefinition {
   activeWorktreePath?: string;
   /** GitHub identity used for API operations in this logical repository. */
   githubCredential?: GitHubCredentialSelection;
+  /**
+   * Vercel project this repository deploys, when the user pinned one. Absent
+   * means "infer it" — from `.vercel/project.json`, else the git remote.
+   */
+  vercelProjectId?: string;
 }
 
 export type GitHubCredentialSelection =
@@ -145,6 +150,41 @@ export interface GitHubToken {
   avatarUrl?: string;
 }
 
+/**
+ * Commit author/committer for a GitHub account. Cached so the commit path can
+ * stamp an identity without an API round trip per commit.
+ */
+export interface GitHubIdentity {
+  host: string;
+  login: string;
+  name: string;
+  email: string;
+}
+
+/**
+ * How the Vercel integration authenticates. `cli` holds no secret — the token
+ * is re-read from the Vercel CLI's own auth file each time, so `vercel logout`
+ * revokes NoMoreIDE's access too. `stored` carries a pasted token. `oauth` is
+ * the browser sign-in, whose access token expires hourly and is renewed from
+ * `refreshToken` (see `vercel-oauth.ts`).
+ */
+export interface VercelConnection {
+  source: "cli" | "stored" | "oauth";
+  /** The pasted token (`stored`) or the current access token (`oauth`). Masked out of every API response. */
+  token?: string;
+  /** `oauth` only: renews `token`, and is itself rotated on every use. Masked like `token`. */
+  refreshToken?: string;
+  /** `oauth` only: epoch ms at which `token` expires. */
+  expiresAt?: number;
+  /** `oauth` only: the registered client the tokens belong to, needed to refresh them. */
+  clientId?: string;
+  /** Team scope. Absent means the personal account. */
+  teamId?: string;
+  teamSlug?: string;
+  /** Cached account identity, captured at connect time. */
+  username?: string;
+}
+
 export interface ProjectPreferences {
   logs: {
     showTimestamps: boolean;
@@ -170,6 +210,10 @@ export interface NoMoreIdeConfig {
   databases: DatabaseConnection[];
   logSources: LogSourceDefinition[];
   githubTokens: GitHubToken[];
+  /** Resolved commit identities, keyed by host + login. */
+  githubIdentities: GitHubIdentity[];
+  /** How the Vercel integration authenticates; absent = not connected. */
+  vercel?: VercelConnection;
   /** User-saved git/GitHub workflows (forks/edits of the built-in templates). */
   workflows: Workflow[];
   /** Event→workflow bindings that auto-fire workflows (IDEAS #16). */

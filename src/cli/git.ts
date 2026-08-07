@@ -1,4 +1,5 @@
 import type { ConfigStore } from "../core/config-store.js";
+import { resolveGitIdentityForCwd } from "../core/git-identity.js";
 import { GitManager } from "../core/git-manager.js";
 import { UsageError } from "./errors.js";
 import { parseFlags } from "./flags.js";
@@ -124,7 +125,9 @@ export async function runGitCli(
     if (!message) {
       throw new UsageError("--message is required");
     }
-    stdout(await git.commit(message));
+    const identity = await resolveGitIdentityForCwd(configStore, cwd);
+    stdout(await git.commit(message, { identity: identity.selected ?? undefined }));
+    if (identity.selected) stdout(`Authored as ${identity.selected.name} <${identity.selected.email}>`);
     return 0;
   }
 

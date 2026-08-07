@@ -2,11 +2,48 @@ use crate::core::git_manager::{
     FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitPushResult, GitStatus,
     GitWorktree,
 };
+use crate::core::config::{Config, GitRepoDef};
+use crate::core::git_identity;
 use crate::core::process_manager::ServiceState;
 use crate::AppState;
 use std::path::Path;
 use tauri::State;
 use tokio::process::Command;
+
+/// Same resolution as {@link resolve_cwd}, but also returns the repository the
+/// directory belongs to and the config it came from. Commit and push need those
+/// to attribute the operation to the repository's selected GitHub account.
+async fn resolve_repo_target(
+    state: &AppState,
+    repo: Option<String>,
+) -> Result<(String, Option<GitRepoDef>, Config), String> {
+    let config = state.config_store.load().await.map_err(|e| e.to_string())?;
+
+    let selected = match &repo {
+        Some(name) => Some(
+            config
+                .git_repositories
+                .iter()
+                .find(|r| &r.name == name)
+                .ok_or_else(|| format!("Repository '{name}' not found"))?
+                .clone(),
+        ),
+        None => config
+            .selected_git_repository
+            .as_ref()
+            .and_then(|sel| config.git_repositories.iter().find(|r| &r.name == sel))
+            .or_else(|| config.git_repositories.first())
+            .cloned(),
+    };
+
+    let cwd = match &selected {
+        Some(repository) => repository_worktree_path(repository),
+        None => std::env::current_dir()
+            .map(|p| p.to_string_lossy().into_owned())
+            .map_err(|e| e.to_string())?,
+    };
+    Ok((cwd, selected, config))
+}
 
 async fn resolve_cwd(state: &AppState, repo: Option<String>) -> Result<String, String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
@@ -289,10 +326,37 @@ pub async fn git_commit(
     message: String,
     repo: Option<String>,
 ) -> Result<String, String> {
-    let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::commit(&cwd, &message)
+    // Honour the GitHub account selected for this repository, so the commit's
+    // author matches the account that will open the pull request. Falls back to
+    // the machine's git identity when no account is selected.
+    let (cwd, repository, config) = resolve_repo_target(&state, repo).await?;
+    let identity = git_identity::resolve_identity_state(
+        &state.config_store,
+        &config,
+        repository.as_ref(),
+        &cwd,
+    )
+    .await;
+    GitManager::commit(&cwd, &message, identity.selected.as_ref())
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Who a commit made here would be authored by, and whether that differs from
+/// the machine's configured git identity.
+#[tauri::command]
+pub async fn git_identity_state(
+    state: State<'_, AppState>,
+    repo: Option<String>,
+) -> Result<git_identity::GitIdentityState, String> {
+    let (cwd, repository, config) = resolve_repo_target(&state, repo).await?;
+    Ok(git_identity::resolve_identity_state(
+        &state.config_store,
+        &config,
+        repository.as_ref(),
+        &cwd,
+    )
+    .await)
 }
 
 #[tauri::command]
@@ -301,10 +365,26 @@ pub async fn git_push(
     remote: Option<String>,
     repo: Option<String>,
 ) -> Result<GitPushResult, String> {
-    let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::push(&cwd, remote.as_deref())
+    // Push as the account selected for this repository rather than whichever one
+    // the machine's credential helper answers with. None for SSH remotes and
+    // unselected repos — those keep the existing behaviour.
+    let (cwd, repository, config) = resolve_repo_target(&state, repo).await?;
+    let remote_url = GitManager::remote_url(&cwd, remote.as_deref().unwrap_or("origin"))
         .await
-        .map_err(|e| e.to_string())
+        .ok()
+        .flatten();
+    let credential =
+        git_identity::resolve_push_credential(&config, repository.as_ref(), remote_url.as_deref())
+            .await;
+    GitManager::push_with_credential(
+        &cwd,
+        remote.as_deref(),
+        credential
+            .as_ref()
+            .map(|(token, login)| (token.as_str(), login.as_deref())),
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

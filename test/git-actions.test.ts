@@ -1,10 +1,10 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { GitActions } from "../src/core/git-actions.js";
+import { credentialConfigArgs, GitActions, redact } from "../src/core/git-actions.js";
 import { GitManager } from "../src/core/git-manager.js";
 
 const execFileAsync = promisify(execFile);
@@ -60,6 +60,40 @@ describe("GitActions.push", () => {
     const result = await actions.push();
     expect(result.setUpstream).toBe(false);
     expect((await new GitManager(repoDir).status()).ahead).toBe(0);
+  });
+});
+
+describe("push credentials", () => {
+  test("the helper supplies the passed token and overrides inherited helpers", async () => {
+    // A machine-level helper that would otherwise answer first — the reset in
+    // credentialConfigArgs() must stop it winning and pushing as the wrong account.
+    await execGit([
+      "config",
+      "credential.helper",
+      '!f() { echo "username=machine-account"; echo "password=machine-token"; }; f',
+    ]);
+
+    const { stdout } = spawnSync("git", [...credentialConfigArgs(), "credential", "fill"], {
+      cwd: repoDir,
+      encoding: "utf8",
+      input: "protocol=https\nhost=github.com\n\n",
+      env: {
+        ...process.env,
+        NOMOREIDE_GIT_USERNAME: "x-access-token",
+        NOMOREIDE_GIT_PASSWORD: "selected-account-token",
+      },
+    });
+
+    expect(stdout).toContain("username=x-access-token");
+    expect(stdout).toContain("password=selected-account-token");
+    expect(stdout).not.toContain("machine-token");
+  });
+
+  test("redacts the token from anything surfaced to the UI", () => {
+    expect(redact("remote: rejected using tok-123 twice: tok-123", "tok-123")).toBe(
+      "remote: rejected using *** twice: ***",
+    );
+    expect(redact("no secret here", undefined)).toBe("no secret here");
   });
 });
 

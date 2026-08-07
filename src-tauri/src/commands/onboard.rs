@@ -228,6 +228,7 @@ pub async fn clone_git_repository(
             path: path.clone(),
             active_worktree_path: None,
             github_credential: None,
+            vercel_project_id: None,
         })
         .await
         .map_err(|e| e.to_string())?;

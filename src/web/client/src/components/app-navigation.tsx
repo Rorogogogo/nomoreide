@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { GitHubLogo } from "@/features/github/github-logo";
+import { VercelLogo } from "@/features/vercel/vercel-logo";
 
 export type AppPage =
   | "services"
@@ -20,6 +21,7 @@ export type AppPage =
   | "docker"
   | "git"
   | "github"
+  | "vercel"
   | "workflows"
   | "agent"
   | "agent-env"
@@ -53,6 +55,9 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
       { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
+      // Repo-scoped like Git/GitHub — it follows the selected project, so it
+      // belongs beside them rather than under Run with the local services.
+      { page: "vercel", labelKey: "nav.vercel", icon: <VercelLogo /> },
       { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },
     ],
   },

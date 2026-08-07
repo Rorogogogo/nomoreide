@@ -46,6 +46,7 @@ Around that backbone sit ~45 more feature modules (workflows, error inbox, snaps
 | --- | --- |
 | `git-manager.ts` | `git-actions.ts` — push/commit/squash-merge |
 | `db-peek.ts` | `db-write.ts` — human-only, per-connection unlock, affected-rows preview |
+| `vercel-manager.ts` | `vercel-actions.ts` — redeploy/cancel/promote/rollback, dashboard-only (no MCP tools) |
 
 ### Shared Daemon (`src/core/daemon-lifecycle.ts`, `src/core/daemon-client.ts`, `src/cli/daemon.ts`)
 

@@ -40,8 +40,9 @@ export function IssueList({
       {issues.map((issue) => (
         <li key={issue.number}>
           <button
-            className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 ${
-              selectedNumber === issue.number ? "bg-muted" : ""
+            aria-current={selectedNumber === issue.number || undefined}
+            className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+              selectedNumber === issue.number ? "bg-muted/45" : ""
             }`}
             onClick={() => onSelect(issue.number)}
             type="button"

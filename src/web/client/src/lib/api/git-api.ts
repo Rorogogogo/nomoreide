@@ -104,6 +104,25 @@ export interface GitPushResult {
   output: string;
   branch: string;
   setUpstream: boolean;
+  /** GitHub account the push was authenticated as, when one was selected. */
+  pushedAs?: string;
+}
+
+export interface GitIdentity {
+  host: string;
+  login: string;
+  name: string;
+  email: string;
+}
+
+export interface GitIdentityState {
+  /** Identity commits will carry, or null when the machine's git config governs. */
+  selected: GitIdentity | null;
+  machine: { name?: string; email?: string };
+  /** True when commits here would not match the machine's configured author. */
+  diverged: boolean;
+  /** Why `selected` is null, so the UI can explain the fallback. */
+  reason?: string;
 }
 
 export interface GitCheckoutDefaultAndPullResult {
@@ -138,6 +157,12 @@ export interface GitApi {
   gitUnstage(paths: string[], repo?: string): Promise<void>;
   /** Commit currently staged changes. Pass `repo` to scope to a named board repository. */
   gitCommit(message: string, repo?: string): Promise<string>;
+  /**
+   * Who a commit here would be authored by, and whether that differs from the
+   * machine's `git config user.*`. Drives the mismatch warning above the
+   * composer.
+   */
+  getGitIdentity(repo?: string): Promise<GitIdentityState>;
   /** Push the current branch to its remote (sets upstream on first push). */
   gitPush(repo?: string): Promise<GitPushResult>;
   /** Fast-forward the current branch from its configured upstream. */

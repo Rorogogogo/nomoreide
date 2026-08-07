@@ -22,7 +22,9 @@ import type {
   ProjectPreferences,
   GitRepositoryDefinition,
   GitHubCredentialSelection,
+  GitHubIdentity,
   ServiceDefinition,
+  VercelConnection,
 } from "./types.js";
 import { workflowSchema, type Workflow } from "./workflows.js";
 import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers.js";
@@ -107,6 +109,7 @@ const gitRepositorySchema = z.object({
   path: z.string().min(1),
   activeWorktreePath: z.string().min(1).optional(),
   githubCredential: githubCredentialSchema.optional(),
+  vercelProjectId: z.string().min(1).optional(),
 });
 
 /** Upper bound on board-pinned repos, mirroring the web UI's 5-column cap. */
@@ -166,6 +169,34 @@ const githubTokenSchema = z.object({
    */
   login: z.string().min(1).optional(),
   avatarUrl: z.string().url().optional(),
+});
+
+/**
+ * Commit identity for a GitHub account, cached so committing does not spend an
+ * API call resolving a name and address that effectively never change.
+ */
+const githubIdentitySchema = z.object({
+  host: z.string().min(1),
+  login: z.string().min(1),
+  name: z.string().min(1),
+  email: z.string().min(1),
+});
+
+/**
+ * The Vercel connection. A `cli` connection stores no token — it is re-read
+ * from the Vercel CLI's auth file per request — so `token` is set only for
+ * `stored` (the pasted token) and `oauth` (the current access token, alongside
+ * the refresh token that renews it).
+ */
+const vercelConnectionSchema = z.object({
+  source: z.enum(["cli", "stored", "oauth"]),
+  token: z.string().min(1).optional(),
+  refreshToken: z.string().min(1).optional(),
+  expiresAt: z.number().int().positive().optional(),
+  clientId: z.string().min(1).optional(),
+  teamId: z.string().min(1).optional(),
+  teamSlug: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
 });
 
 export const projectPreferencesSchema: z.ZodType<ProjectPreferences> = z
@@ -228,6 +259,9 @@ const configSchema = z.object({
   databases: z.array(databaseSchema).default([]),
   logSources: z.array(logSourceSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
+  githubIdentities: z.array(githubIdentitySchema).default([]),
+  /** How the Vercel integration authenticates; absent = not connected. */
+  vercel: vercelConnectionSchema.optional(),
   workflows: z.array(workflowSchema).default([]),
   /** Event→workflow bindings that auto-fire workflows (IDEAS #16). */
   workflowTriggers: z.array(workflowTriggerSchema).default([]),
@@ -248,6 +282,7 @@ const defaultConfig: NoMoreIdeConfig = {
   databases: [],
   logSources: [],
   githubTokens: [],
+  githubIdentities: [],
   workflows: [],
   workflowTriggers: [],
 };
@@ -465,6 +500,9 @@ export class ConfigStore {
       if (!parsedRepository.githubCredential && existing?.githubCredential) {
         parsedRepository.githubCredential = existing.githubCredential;
       }
+      if (!parsedRepository.vercelProjectId && existing?.vercelProjectId) {
+        parsedRepository.vercelProjectId = existing.vercelProjectId;
+      }
       config.gitRepositories = [
         ...config.gitRepositories.filter(
           (item) => item.name !== parsedRepository.name,
@@ -664,6 +702,31 @@ export class ConfigStore {
     });
   }
 
+  /** Cached commit identity for a GitHub account, when one has been resolved. */
+  getGithubIdentity(
+    config: NoMoreIdeConfig,
+    host: string,
+    login: string,
+  ): GitHubIdentity | undefined {
+    return config.githubIdentities.find(
+      (entry) => entry.host === host && entry.login.toLowerCase() === login.toLowerCase(),
+    );
+  }
+
+  async setGithubIdentity(identity: GitHubIdentity): Promise<NoMoreIdeConfig> {
+    const parsed = githubIdentitySchema.parse(identity);
+    return this.mutateConfig((config) => {
+      config.githubIdentities = [
+        ...config.githubIdentities.filter(
+          (entry) =>
+            entry.host !== parsed.host ||
+            entry.login.toLowerCase() !== parsed.login.toLowerCase(),
+        ),
+        parsed,
+      ];
+    });
+  }
+
   async removeGithubToken(host: string): Promise<NoMoreIdeConfig> {
     return this.mutateConfig((config) => {
       config.githubTokens = config.githubTokens.filter(
@@ -674,6 +737,89 @@ export class ConfigStore {
 
   getGithubToken(config: NoMoreIdeConfig, host = "github.com"): string | undefined {
     return config.githubTokens.find((t) => t.host === host)?.token;
+  }
+
+  /**
+   * Save how Vercel is connected. A `cli` connection deliberately drops any
+   * token it was handed: the CLI's auth file stays the single source, so
+   * `vercel logout` also revokes us instead of leaving a stale copy behind.
+   */
+  async setVercelConnection(
+    connection: VercelConnection,
+  ): Promise<NoMoreIdeConfig> {
+    const parsed = vercelConnectionSchema.parse(connection);
+    if (parsed.source === "cli") {
+      delete parsed.token;
+    } else if (!parsed.token) {
+      throw new ConfigValidationError("a Vercel token is required");
+    }
+    if (parsed.source === "oauth" && !parsed.clientId) {
+      throw new ConfigValidationError("a Vercel OAuth connection needs its client id");
+    }
+    return this.mutateConfig((config) => {
+      config.vercel = parsed;
+    });
+  }
+
+  /**
+   * Persist the tokens a refresh returned. Separate from
+   * {@link setVercelConnection} because it runs mid-request on an already
+   * connected account, and must not disturb the team scope or cached username.
+   */
+  async updateVercelTokens(tokens: {
+    token: string;
+    refreshToken?: string;
+    expiresAt: number;
+  }): Promise<NoMoreIdeConfig> {
+    return this.mutateConfig((config) => {
+      if (config.vercel?.source !== "oauth") return;
+      config.vercel = {
+        ...config.vercel,
+        token: tokens.token,
+        // Vercel rotates refresh tokens; keep the previous one only if this
+        // response omitted a replacement, or the connection becomes unrenewable.
+        refreshToken: tokens.refreshToken ?? config.vercel.refreshToken,
+        expiresAt: tokens.expiresAt,
+      };
+    });
+  }
+
+  /** Re-scope an existing connection to a team without re-entering the token. */
+  async setVercelScope(
+    scope: { teamId?: string; teamSlug?: string },
+  ): Promise<NoMoreIdeConfig> {
+    return this.mutateConfig((config) => {
+      if (!config.vercel) throw new Error("Vercel is not connected.");
+      config.vercel = {
+        ...config.vercel,
+        teamId: scope.teamId?.trim() || undefined,
+        teamSlug: scope.teamSlug?.trim() || undefined,
+      };
+    });
+  }
+
+  async removeVercelConnection(): Promise<NoMoreIdeConfig> {
+    return this.mutateConfig((config) => {
+      delete config.vercel;
+    });
+  }
+
+  /** Pin which Vercel project a registered repository deploys. */
+  async setVercelProject(
+    repositoryName: string,
+    projectId: string | undefined,
+  ): Promise<NoMoreIdeConfig> {
+    return this.mutateConfig((config) => {
+      const repository = config.gitRepositories.find(
+        (item) => item.name === repositoryName.trim(),
+      );
+      if (!repository) {
+        throw new Error(`Git repository "${repositoryName}" is not registered.`);
+      }
+      const id = projectId?.trim();
+      if (id) repository.vercelProjectId = id;
+      else delete repository.vercelProjectId;
+    });
   }
 
   /** Persist a user-saved/forked workflow (replaces one with the same id). */

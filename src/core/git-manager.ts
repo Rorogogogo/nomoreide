@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { assignLanes, type GitGraphLayoutRow } from "./git-graph-layout.js";
+import { identityEnv, type GitIdentity } from "./git-identity.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -530,18 +531,27 @@ export class GitManager {
     return this.git(["restore", "--staged", "--", ...paths]);
   }
 
-  async commit(message: string): Promise<string> {
+  /**
+   * Commit staged changes. Pass `identity` to stamp a specific author and
+   * committer — callers use this to honour the GitHub account selected for the
+   * repository instead of silently falling back to the machine's `user.email`.
+   */
+  async commit(message: string, options: { identity?: GitIdentity } = {}): Promise<string> {
     if (!message.trim()) {
       throw new Error("commit message is required");
     }
 
-    return this.git(["commit", "-m", message]);
+    return this.git(
+      ["commit", "-m", message],
+      options.identity ? identityEnv(options.identity) : undefined,
+    );
   }
 
-  private async git(args: string[]): Promise<string> {
+  private async git(args: string[], env?: Record<string, string>): Promise<string> {
     try {
       const { stdout, stderr } = await execFileAsync("git", args, {
         cwd: this.cwd,
+        env: env ? { ...process.env, ...env } : undefined,
         // Data-file diffs/logs (CSV, logs) can exceed Node's 1 MB stdout
         // default, which otherwise aborts with a maxBuffer error whose partial
         // stdout gets surfaced to the UI as a raw, unrendered diff.

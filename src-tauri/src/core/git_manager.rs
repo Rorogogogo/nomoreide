@@ -1,5 +1,8 @@
+use crate::core::config::GithubIdentityDef;
+use crate::core::git_identity::identity_env;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 use tokio::process::Command;
 
@@ -92,6 +95,56 @@ async fn git(cwd: &str, args: &[&str]) -> Result<String> {
         .await
         .context("git command failed")?;
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// A credential helper that echoes the two values git asks for and nothing else.
+/// The empty `credential.helper=` that precedes it resets the inherited helper
+/// chain, so the machine's keychain cannot answer first and quietly push as the
+/// account the user did not select. The `$NAME` reads are expanded by the
+/// helper's own shell — interpolating them here would put the token in `argv`.
+const CREDENTIAL_HELPER_CONFIG: &str = concat!(
+    "credential.helper=",
+    r#"!f() { echo "username=$NOMOREIDE_GIT_USERNAME"; echo "password=$NOMOREIDE_GIT_PASSWORD"; }; f"#
+);
+
+fn credential_config_args() -> Vec<&'static str> {
+    vec!["-c", "credential.helper=", "-c", CREDENTIAL_HELPER_CONFIG]
+}
+
+/// Push output and git's error text are surfaced in the UI, so scrub the token
+/// on the way out even though the helper keeps it off the command line.
+fn redact(text: &str, secret: Option<&str>) -> String {
+    match secret {
+        Some(secret) if !secret.is_empty() => text.replace(secret, "***"),
+        _ => text.to_string(),
+    }
+}
+
+async fn git_checked_env(
+    cwd: &str,
+    args: &[&str],
+    env: &HashMap<String, String>,
+) -> Result<String> {
+    let out = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .envs(env)
+        .output()
+        .await
+        .context("git command failed")?;
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
+    if !out.status.success() {
+        anyhow::bail!(
+            "{}",
+            if stderr.trim().is_empty() {
+                stdout
+            } else {
+                stderr
+            }
+        );
+    }
+    Ok(if stdout.is_empty() { stderr } else { stdout })
 }
 
 async fn git_checked(cwd: &str, args: &[&str]) -> Result<String> {
@@ -493,19 +546,46 @@ impl GitManager {
         Ok(())
     }
 
-    pub async fn commit(cwd: &str, message: &str) -> Result<String> {
-        let out = Command::new("git")
-            .args(["commit", "-m", message])
-            .current_dir(cwd)
-            .output()
-            .await?;
+    /// Commit staged changes. Pass `identity` to stamp a specific author and
+    /// committer — callers use this to honour the GitHub account selected for
+    /// the repository instead of falling back to the machine's `user.email`.
+    pub async fn commit(
+        cwd: &str,
+        message: &str,
+        identity: Option<&GithubIdentityDef>,
+    ) -> Result<String> {
+        let mut command = Command::new("git");
+        command.args(["commit", "-m", message]).current_dir(cwd);
+        if let Some(identity) = identity {
+            command.envs(identity_env(identity));
+        }
+        let out = command.output().await?;
         if !out.status.success() {
             anyhow::bail!("{}", String::from_utf8_lossy(&out.stderr));
         }
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     }
 
-    pub async fn push(cwd: &str, remote: Option<&str>) -> Result<GitPushResult> {
+    pub async fn remote_url(cwd: &str, remote: &str) -> Result<Option<String>> {
+        let url = git_checked(cwd, &["remote", "get-url", remote])
+            .await
+            .unwrap_or_default();
+        let trimmed = url.trim();
+        Ok(if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        })
+    }
+
+    /// Push, optionally authenticating as a specific account. The token travels
+    /// through the environment into a throwaway credential helper, so it never
+    /// appears in `argv` and is never written to the repository's config.
+    pub async fn push_with_credential(
+        cwd: &str,
+        remote: Option<&str>,
+        credential: Option<(&str, Option<&str>)>,
+    ) -> Result<GitPushResult> {
         let remote = remote.unwrap_or("origin");
         let branch = git_checked(cwd, &["branch", "--show-current"])
             .await?
@@ -526,11 +606,31 @@ impl GitManager {
         .await
         .unwrap_or_default();
         let set_upstream = upstream.trim().is_empty();
-        let output = if set_upstream {
-            git_checked(cwd, &["push", "--set-upstream", remote, &branch]).await?
+        let push_args: Vec<&str> = if set_upstream {
+            vec!["push", "--set-upstream", remote, &branch]
         } else {
-            git_checked(cwd, &["push"]).await?
+            vec!["push"]
         };
+
+        let output = match credential {
+            Some((token, username)) => {
+                let mut args = credential_config_args();
+                args.extend(push_args);
+                let env = HashMap::from([
+                    (
+                        "NOMOREIDE_GIT_USERNAME".to_string(),
+                        username.unwrap_or("x-access-token").to_string(),
+                    ),
+                    ("NOMOREIDE_GIT_PASSWORD".to_string(), token.to_string()),
+                ]);
+                match git_checked_env(cwd, &args, &env).await {
+                    Ok(out) => redact(&out, Some(token)),
+                    Err(error) => anyhow::bail!("{}", redact(&error.to_string(), Some(token))),
+                }
+            }
+            None => git_checked(cwd, &push_args).await?,
+        };
+
         Ok(GitPushResult {
             output,
             branch,
