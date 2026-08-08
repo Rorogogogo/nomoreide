@@ -65,6 +65,7 @@ export interface TerminalDisplaySettings {
   cursorStyle: "block" | "underline" | "bar";
   scrollback: number;
   copyOnSelect: boolean;
+  smoothScroll: boolean;
 }
 
 export const DEFAULT_TERMINAL_DISPLAY_SETTINGS: TerminalDisplaySettings = {
@@ -72,7 +73,17 @@ export const DEFAULT_TERMINAL_DISPLAY_SETTINGS: TerminalDisplaySettings = {
   cursorStyle: "block",
   scrollback: 5_000,
   copyOnSelect: false,
+  smoothScroll: true,
 };
+
+/**
+ * How long xterm animates a wheel scroll. Its default of 0 teleports the
+ * viewport a whole line per notch, which reads as dropped frames on a trackpad
+ * that emits many small deltas. Only affects buffers with scrollback — a
+ * full-screen TUI (Claude Code runs in the alternate screen; Codex does not,
+ * see `--no-alt-screen`) handles its own scrolling and is unaffected.
+ */
+const SMOOTH_SCROLL_DURATION_MS = 120;
 
 type StatusUpdate =
   | TerminalViewportStatus
@@ -477,12 +488,16 @@ export const TerminalViewport = forwardRef<
     terminal.options.fontSize = displaySettings.fontSize;
     terminal.options.cursorStyle = displaySettings.cursorStyle;
     terminal.options.scrollback = displaySettings.scrollback;
+    terminal.options.smoothScrollDuration = displaySettings.smoothScroll
+      ? SMOOTH_SCROLL_DURATION_MS
+      : 0;
     sendResize();
   }, [
     displaySettings.copyOnSelect,
     displaySettings.cursorStyle,
     displaySettings.fontSize,
     displaySettings.scrollback,
+    displaySettings.smoothScroll,
     sendResize,
   ]);
 
@@ -541,6 +556,9 @@ export const TerminalViewport = forwardRef<
       fontSize: displaySettingsRef.current.fontSize,
       lineHeight: 1.25,
       scrollback: displaySettingsRef.current.scrollback,
+      smoothScrollDuration: displaySettingsRef.current.smoothScroll
+        ? SMOOTH_SCROLL_DURATION_MS
+        : 0,
       theme: terminalTheme(resolvedTheme),
     });
     const fit = new FitAddon();

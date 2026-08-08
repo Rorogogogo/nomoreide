@@ -31,7 +31,7 @@ export function ToolsTab({
             onClick={onOpenAgentEnv}
             type="button"
           >
-            Manage across agents in Environments
+            Manage across agents in Agents
             <ArrowRight className="size-3" />
           </button>
         </div>

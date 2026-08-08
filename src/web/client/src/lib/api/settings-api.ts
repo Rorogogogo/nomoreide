@@ -6,6 +6,7 @@ export interface AppSettings {
     scrollback: number;
     copyOnSelect: boolean;
     confirmTerminate: boolean;
+    smoothScroll: boolean;
   };
 }
 

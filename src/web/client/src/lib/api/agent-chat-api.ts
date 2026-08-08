@@ -27,6 +27,11 @@ export interface AgentChatProviderOption extends AgentChatProviderInfo {
   configured: boolean;
 }
 
+/** Saved model pin per provider; a missing key means "let the CLI decide". */
+export type AgentChatModels = Partial<
+  Record<AgentChatProviderInfo["id"], string>
+>;
+
 export interface AgentChatStatus {
   configured: boolean;
   approvals: boolean;
@@ -34,6 +39,8 @@ export interface AgentChatStatus {
   provider: AgentChatProviderInfo;
   /** Every provider the user can switch between, with install state. */
   providers: AgentChatProviderOption[];
+  /** Model each provider is pinned to, if any. */
+  models: AgentChatModels;
 }
 
 export interface AgentChatApi {
@@ -41,6 +48,11 @@ export interface AgentChatApi {
   getAgentChatStatus(): Promise<AgentChatStatus>;
   /** Persist which provider the dock chat drives; returns the now-selected one. */
   setChatProvider(provider: AgentChatProviderInfo["id"]): Promise<AgentChatProviderInfo>;
+  /** Pin the model new sessions use for a provider; null clears the pin. */
+  setChatModel(
+    provider: AgentChatProviderInfo["id"],
+    model: string | null,
+  ): Promise<AgentChatModels>;
   /** Answer a pending tool-approval prompt for the given session. */
   approveAgentTool(
     sessionId: string,

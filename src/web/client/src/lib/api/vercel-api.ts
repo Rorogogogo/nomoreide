@@ -175,6 +175,15 @@ export interface VercelApi {
   listVercelEnv(): Promise<VercelEnvVar[]>;
   /** Reveals one variable's value — an explicit, human-driven read. */
   getVercelEnvValue(id: string): Promise<string>;
+  createVercelEnv(input: {
+    key: string;
+    value: string;
+    target: string[];
+    type?: "encrypted" | "plain";
+  }): Promise<VercelEnvVar>;
+  /** The key is not editable — see `VercelActions.updateEnv`. */
+  updateVercelEnv(id: string, input: { value?: string; target?: string[] }): Promise<VercelEnvVar>;
+  deleteVercelEnv(id: string): Promise<void>;
   listVercelDomains(): Promise<VercelDomain[]>;
   listVercelDeployments(opts?: {
     target?: "production" | "preview";

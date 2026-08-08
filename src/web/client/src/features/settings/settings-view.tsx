@@ -231,6 +231,7 @@ function CategoryContent({
           {visible("cursor") ? <SettingSelect {...copy("cursor")} id="setting-cursor" onChange={(value) => void settings.updateGlobal({ terminal: { cursorStyle: value as "block" | "underline" | "bar" } })} options={[{ value: "block", label: t("settingsHub.opt.block") }, { value: "underline", label: t("settingsHub.opt.underline") }, { value: "bar", label: t("settingsHub.opt.bar") }]} value={settings.global.terminal.cursorStyle} /> : null}
           {visible("scrollback") ? <SettingNumberInput {...copy("scrollback")} id="setting-scrollback" max={100000} min={500} onSave={(value) => settings.updateGlobal({ terminal: { scrollback: value } })} value={settings.global.terminal.scrollback} /> : null}
           {visible("copy-on-select") ? <SettingToggle {...copy("copy-on-select")} checked={settings.global.terminal.copyOnSelect} id="setting-copy-on-select" onChange={(value) => void settings.updateGlobal({ terminal: { copyOnSelect: value } })} /> : null}
+          {visible("smooth-scroll") ? <SettingToggle {...copy("smooth-scroll")} checked={settings.global.terminal.smoothScroll} id="setting-smooth-scroll" onChange={(value) => void settings.updateGlobal({ terminal: { smoothScroll: value } })} /> : null}
           {visible("confirm-terminate") ? <SettingToggle {...copy("confirm-terminate")} checked={settings.global.terminal.confirmTerminate} id="setting-confirm-terminate" onChange={(value) => void settings.updateGlobal({ terminal: { confirmTerminate: value } })} /> : null}
         </ScopeSection>
       );

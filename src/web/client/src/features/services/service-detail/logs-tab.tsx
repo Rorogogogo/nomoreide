@@ -47,7 +47,7 @@ export function LogsTab({ serviceName }: { serviceName: string }) {
   }
   // Give the inline console a real height to fill so the log list doesn't leave
   // dead space below it; `fill` then stretches the viewer to this box.
-  return <div className="h-[60vh] min-h-[24rem]">{console}</div>;
+  return <div className="h-full min-h-0">{console}</div>;
 }
 
 /** Near-fullscreen portal used by both the single-service and multi-log views. */

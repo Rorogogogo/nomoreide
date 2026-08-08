@@ -17,17 +17,13 @@ import { UsageHistoryTab } from "./usage-history-tab";
 
 type AgentTab = "overview" | "memory" | "tools" | "activity" | "changes" | "usage";
 
-type ChatProviderId = "claude" | "codex";
-
-const AGENTS: Array<{
-  id: AgentId;
-  /** The chat-provider id this profile maps to (the dock spawns this CLI). */
-  chatId: ChatProviderId;
+const AGENT_SWITCH: Array<{
+  chatId: "claude" | "codex";
   label: string;
   icon: React.ReactNode;
 }> = [
-  { id: "claude-code", chatId: "claude", label: "Claude Code", icon: <ClaudeLogo className="size-4" /> },
-  { id: "codex", chatId: "codex", label: "Codex", icon: <CodexLogo className="size-4" /> },
+  { chatId: "claude", label: "Claude Code", icon: <ClaudeLogo className="size-3.5" /> },
+  { chatId: "codex", label: "Codex", icon: <CodexLogo className="size-3.5" /> },
 ];
 
 const TABS: Array<{ id: AgentTab; labelKey: TranslationKey; icon: React.ReactNode }> = [
@@ -45,29 +41,16 @@ export function AgentView({
 }: { focusChanges?: number; onOpenAgentEnv?: () => void } = {}) {
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [agentId, setAgentId] = useState<AgentId>("claude-code");
   const [tab, setTab] = useState<AgentTab>("overview");
   const t = useT();
   const { provider: chatProvider, providers, selectProvider } = useAgentDock();
+  const agentId: AgentId = chatProvider?.id === "codex" ? "codex" : "claude-code";
 
   // A bump on `focusChanges` (e.g. "Review changes" from an Error Inbox fix)
   // jumps straight to the Changes tab, which auto-selects the newest session.
   useEffect(() => {
     if (focusChanges) setTab("changes");
   }, [focusChanges]);
-
-  // Selecting an agent here views its profile *and* makes it the dock's chat
-  // provider — this toggle is the app-wide "which agent am I using" control.
-  function chooseAgent(id: AgentId, chatId: ChatProviderId) {
-    setAgentId(id);
-    if (chatProvider?.id !== chatId) void selectProvider(chatId);
-  }
-
-  // Reflect the active chat provider once it loads (falls back to detection).
-  useEffect(() => {
-    if (!chatProvider) return;
-    setAgentId(chatProvider.id === "codex" ? "codex" : "claude-code");
-  }, [chatProvider]);
 
   useEffect(() => {
     let active = true;
@@ -110,53 +93,6 @@ export function AgentView({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-card/85">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/90 px-3 py-2">
-        {AGENTS.map((entry) => {
-          const selected = agentId === entry.id;
-          const detected = agent.detected.name === entry.id;
-          const activeForChat = chatProvider?.id === entry.chatId;
-          // Unknown (older backend that doesn't report `providers`) → assume
-          // available so the control still works.
-          const option = providers.find((candidate) => candidate.id === entry.chatId);
-          const installed = option?.configured ?? true;
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => chooseAgent(entry.id, entry.chatId)}
-              title={
-                installed
-                  ? t("agent.useForChat", { label: entry.label })
-                  : t("agent.cliNotInstalled", { label: entry.label })
-              }
-              className={cn(
-                "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                selected
-                  ? "border-border bg-background text-foreground shadow-sm"
-                  : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                !installed && "opacity-60",
-              )}
-            >
-              {entry.icon}
-              {entry.label}
-              {activeForChat ? (
-                <span className="rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-medium text-primary">
-                  {t("agent.inUse")}
-                </span>
-              ) : detected ? (
-                <span
-                  className="size-1.5 rounded-full bg-emerald-500"
-                  title={t("agent.detectedAgent")}
-                  aria-hidden
-                />
-              ) : !installed ? (
-                <span className="text-[10px] font-normal text-muted-foreground">{t("agent.notInstalled")}</span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
       <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card/90 px-3">
         {TABS.map((entry) => (
           <button
@@ -177,6 +113,31 @@ export function AgentView({
             ) : null}
           </button>
         ))}
+        <fieldset aria-label={t("dock.providerAria")} className="ml-auto flex shrink-0 items-center gap-0.5 border-0 p-0">
+          {AGENT_SWITCH.map((entry) => {
+            const option = providers.find((candidate) => candidate.id === entry.chatId);
+            const configured = option?.configured ?? true;
+            const selected = chatProvider?.id === entry.chatId;
+            return (
+              <button
+                aria-pressed={selected}
+                className={cn(
+                  "flex items-center gap-1 rounded-sm px-2 py-1 text-[11px] font-medium transition-colors",
+                  selected ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  !configured && "opacity-50",
+                )}
+                disabled={!configured}
+                key={entry.chatId}
+                onClick={() => void selectProvider(entry.chatId)}
+                title={configured ? t("agent.useForChat", { label: entry.label }) : t("agent.cliNotInstalled", { label: entry.label })}
+                type="button"
+              >
+                {entry.icon}
+                <span className="hidden sm:inline">{entry.label}</span>
+              </button>
+            );
+          })}
+        </fieldset>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -184,7 +145,6 @@ export function AgentView({
           <OverviewTab
             agent={activeAgent}
             agentId={agentId}
-            isDetected={agent.detected.name === agentId}
           />
         ) : null}
         {tab === "memory" ? <MemoryTab agent={activeAgent} agentId={agentId} /> : null}

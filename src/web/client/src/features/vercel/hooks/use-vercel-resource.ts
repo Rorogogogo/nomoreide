@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getVercelProject,
+  listVercelDeployments,
   listVercelDomains,
   listVercelEnv,
+  type VercelDeployment,
   type VercelDomain,
   type VercelEnvVar,
   type VercelProject,
@@ -59,4 +61,19 @@ export function useVercelDomains() {
 
 export function useVercelProjectSettings() {
   return useVercelResource<VercelProject | null>(getVercelProject, null);
+}
+
+/**
+ * The deployment currently serving production traffic, independent of
+ * whatever filter the deployment list is showing — the production hero needs
+ * this even while the list is scoped to "preview" and wouldn't otherwise
+ * include it.
+ */
+async function fetchProductionDeployment() {
+  const { deployments } = await listVercelDeployments({ target: "production", limit: 1 });
+  return deployments[0] ?? null;
+}
+
+export function useVercelProductionDeployment() {
+  return useVercelResource<VercelDeployment | null>(fetchProductionDeployment, null);
 }

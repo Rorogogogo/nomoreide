@@ -205,7 +205,7 @@ export function ServiceRow({
         "group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 transition-colors focus-within:bg-muted/30",
         dragging && "opacity-50",
         selected
-          ? "bg-muted/45"
+          ? "border-l-2 border-primary bg-muted/45 pl-2.5"
           : "hover:bg-muted/20",
       )}
     >
@@ -248,7 +248,7 @@ export const SERVICE_DRAG_TYPE = "application/x-nomoreide-service";
 const SERVICE_KIND_META: Record<ServiceKind, { label: string; className: string }> = {
   local: {
     label: "local",
-    className: "border-border bg-muted text-muted-foreground",
+    className: "border-border/70 bg-background text-muted-foreground",
   },
   "docker-compose": {
     label: "docker",
@@ -263,14 +263,17 @@ const SERVICE_KIND_META: Record<ServiceKind, { label: string; className: string 
 export function ServiceKindBadge({ kind }: { kind?: ServiceKind }) {
   const meta = SERVICE_KIND_META[kind ?? "local"] ?? SERVICE_KIND_META.local;
   return (
-    <span
+    <Badge
+      appearance="outline"
       className={cn(
-        "rounded border px-1 py-px text-[9px] font-semibold uppercase leading-none tracking-wide",
+        "text-[9px] font-semibold uppercase tracking-wide",
         meta.className,
       )}
+      size="small"
+      variant="secondary"
     >
       {meta.label}
-    </span>
+    </Badge>
   );
 }
 
@@ -378,9 +381,12 @@ export function StateBadge({ state }: { state: ServiceStatus["state"] }) {
             ? "danger"
             : state === "starting"
               ? "warning"
-              : "outline"
+            : "outline"
       }
-      className={cn(state === "running" && "font-mono")}
+      className={cn(
+        "rounded-lg border-border/70 px-2 text-[11px] font-medium shadow-none",
+        state === "running" && "font-mono",
+      )}
     >
       {state}
     </Badge>

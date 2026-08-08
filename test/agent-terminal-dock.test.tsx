@@ -20,9 +20,12 @@ const dock = vi.hoisted(() => ({
     activeLeftTaskId: null as string | null,
     activeRightTaskId: null as string | null,
     focusedPane: "left" as "left" | "right",
+    historyRailOpen: false,
   },
   draft: "", focusNonce: 0, insertPath: vi.fn(), onboarding: false, open: false,
   loadTranscripts: vi.fn(),
+  models: {} as Partial<Record<"claude" | "codex", string>>,
+  selectModel: vi.fn(),
   provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
   pendingTaskIds: new Set<string>(),
   pendingOneTimeSkill: null as null | { name: string; source: string },
@@ -139,6 +142,24 @@ function domRect(left: number, top: number, width: number, height: number) {
   } as DOMRect;
 }
 
+/**
+ * Reveal the conversation rail. The toggle writes through `updateDockLayout`,
+ * which the mock applies to a plain object React cannot observe — so the
+ * re-render that a real provider would trigger is done by hand.
+ */
+async function openHistoryRail(mounted: {
+  host: HTMLElement;
+  root: ReturnType<typeof createRoot>;
+}) {
+  await act(async () =>
+    (mounted.host.querySelector(
+      '[aria-label="Open conversation history"]',
+    ) as HTMLButtonElement).click(),
+  );
+  await rerender(mounted);
+  return mounted.host.querySelector("[data-agent-history-rail]") as HTMLElement;
+}
+
 async function dragTaskToSplit(host: HTMLElement, taskId: string) {
   const tab = host.querySelector(`#agent-tab-${taskId}`) as HTMLButtonElement;
   await act(async () =>
@@ -190,6 +211,7 @@ beforeEach(() => {
     activeLeftTaskId: null,
     activeRightTaskId: null,
     focusedPane: "left",
+    historyRailOpen: false,
   };
   dock.tasksHydrated = true;
   dock.tasksHydrationSettled = true;
@@ -403,28 +425,7 @@ describe("AgentTerminalDock", () => {
     expect(dock.consumeOneTimeSkill).not.toHaveBeenCalled();
   });
 
-  test("opens a selected provider directly from plus and still reveals staged drafts", async () => {
-    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "One", state: "running" }] });
-    const mounted = await render();
-    expect(mounted.host.querySelector('[aria-label="Agent task prompt"]')).toBeNull();
-    await act(async () => (mounted.host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click());
-    const menu = document.body.querySelector('[role="menu"][aria-label="Choose a new session"]');
-    expect(menu).not.toBeNull();
-    await act(async () => (menu?.querySelector('[role="menuitem"][aria-label="Claude Code"]') as HTMLButtonElement).click());
-    expect(dock.createTask).toHaveBeenCalledWith({
-      prompt: "",
-      provider: "claude",
-      label: "Claude Code task",
-    });
-    expect(dock.setActiveTaskId).not.toHaveBeenCalledWith("new");
-    expect(document.body.querySelector('[role="menu"][aria-label="Choose a new session"]')).toBeNull();
-    await act(async () => mounted.root.unmount());
-    Object.assign(dock, { draft: "staged", focusNonce: 2 });
-    const staged = await render();
-    expect((staged.host.querySelector('[aria-label="Agent task prompt"]') as HTMLTextAreaElement).value).toBe("staged");
-  });
-
-  test("opens repository conversation history and resumes a selected session", async () => {
+  test("reveals the conversation rail and resumes a selected session", async () => {
     const transcript = {
       id: "dce2b69c-0fb4-4bd3-b456-b2bef4230c81",
       provider: "claude",
@@ -435,112 +436,116 @@ describe("AgentTerminalDock", () => {
     };
     Object.assign(dock, { open: true, transcripts: [transcript] });
     dock.resumeTask.mockResolvedValue({ id: "resumed" });
-    const { host } = await render();
+    const mounted = await render();
+
+    const rail = await openHistoryRail(mounted);
+    expect(rail).not.toBeNull();
+    expect(dock.updateDockLayout).toHaveBeenCalledWith({ historyRailOpen: true });
+    expect(dock.loadTranscripts).toHaveBeenCalledWith("all");
+    expect(rail.textContent).toContain("Finish conversation management");
 
     await act(async () =>
-      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
-    );
-    expect(dock.loadTranscripts).toHaveBeenCalled();
-    expect(document.body.textContent).toContain("Finish conversation management");
-    const conversations = document.body.querySelector(
-      '[role="dialog"][aria-label="Conversations"]',
-    ) as HTMLElement;
-    const heading = conversations.querySelector("h2") as HTMLElement;
-    const historyIcon = conversations.querySelector(
-      "header .lucide-history",
-    ) as SVGElement;
-    expect(heading.className).toContain("text-sm");
-    expect(heading.className).not.toContain("font-mono");
-    expect(heading.className).not.toContain("uppercase");
-    expect(historyIcon.parentElement?.tagName).toBe("HEADER");
-
-    await act(async () =>
-      (Array.from(document.body.querySelectorAll("button")).find((button) =>
+      (Array.from(rail.querySelectorAll("button")).find((button) =>
         button.textContent?.includes("Finish conversation management"),
       ) as HTMLButtonElement).click(),
     );
     expect(dock.resumeTask).toHaveBeenCalledWith(transcript);
-    expect(document.body.querySelector('[aria-label="Conversations"]')).toBeNull();
+    // A column rail is part of the layout, so resuming leaves it in place —
+    // unlike the overlay below, which is covering the session it hands back to.
+    expect(mounted.host.querySelector("[data-agent-history-rail]")).not.toBeNull();
   });
 
-  test("opens conversations downward and aligns them with the trigger when they fit", async () => {
+  test("floats the rail over the session when the dock is too narrow to seat it", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(560);
     Object.assign(dock, { open: true });
-    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
-    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRect() {
-        if (this.getAttribute("role") === "dialog") {
-          return domRect(0, 0, 448, 200);
-        }
-        if (
-          this.tagName === "DIV" &&
-          this.firstElementChild?.getAttribute("aria-label") ===
-            "Open conversation history"
-        ) {
-          return domRect(700, 100, 28, 28);
-        }
-        return domRect(0, 0, 0, 0);
-      },
-    );
-    const { host } = await render();
+    const mounted = await render();
 
+    const rail = await openHistoryRail(mounted);
+    expect(rail.className).toContain("absolute");
+
+    // The rail carries no close button, so an overlay sitting over a session is
+    // dismissed with Escape — or by the toolbar toggle that opened it.
     await act(async () =>
-      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
     );
-    const conversations = document.body.querySelector(
-      '[role="dialog"][aria-label="Conversations"]',
-    ) as HTMLElement;
-
-    expect(conversations.style.top).toBe("132px");
-    expect(conversations.style.bottom).toBe("");
-    expect(conversations.style.right).toBe("472px");
+    expect(dock.updateDockLayout).toHaveBeenLastCalledWith({
+      historyRailOpen: false,
+    });
   });
 
-  test("flips conversations upward when the panel does not fit below", async () => {
+  test("seats the rail as a column when the dock is wide enough", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
     Object.assign(dock, { open: true });
-    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
-    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRect() {
-        if (this.getAttribute("role") === "dialog") {
-          return domRect(0, 0, 448, 200);
-        }
-        if (
-          this.tagName === "DIV" &&
-          this.firstElementChild?.getAttribute("aria-label") ===
-            "Open conversation history"
-        ) {
-          return domRect(700, 650, 28, 28);
-        }
-        return domRect(0, 0, 0, 0);
-      },
-    );
-    const { host } = await render();
+    const mounted = await render();
 
-    await act(async () =>
-      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
-    );
-    const conversations = document.body.querySelector(
-      '[role="dialog"][aria-label="Conversations"]',
-    ) as HTMLElement;
-
-    expect(conversations.style.top).toBe("");
-    expect(conversations.style.bottom).toBe("154px");
-    expect(conversations.style.right).toBe("472px");
+    const rail = await openHistoryRail(mounted);
+    expect(rail.className).not.toContain("absolute");
+    expect(rail.className).toContain("border-r");
   });
 
-  test("keeps Claude and Codex history separated while loading all projects", async () => {
+  // The rail is only ever shown beside the composer, so a "new session" row
+  // would duplicate the surface it sits next to, and a close button would
+  // duplicate the toolbar toggle that reveals it.
+  test("gives the rail no new-session row and no close button", async () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+    Object.assign(dock, { open: true });
+    const mounted = await render();
+
+    const rail = await openHistoryRail(mounted);
+    const labels = Array.from(rail.querySelectorAll("button")).map(
+      (button) => `${button.textContent ?? ""} ${button.getAttribute("aria-label") ?? ""}`,
+    );
+    expect(labels.some((label) => /new session/i.test(label))).toBe(false);
+    expect(labels.some((label) => /hide conversation history/i.test(label))).toBe(false);
+  });
+
+  test("groups conversation rows under recency headings, newest bucket first", async () => {
+    // Calendar days, not elapsed hours: a session from earlier today and one
+    // from late yesterday can be hours apart yet must land in different groups.
+    const now = new Date("2026-07-25T09:00:00.000Z");
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const dayBefore = (days: number) =>
+      new Date(now.getTime() - days * 86_400_000).toISOString();
     Object.assign(dock, {
       open: true,
       transcripts: [
-        {
-          id: "claude-session",
-          provider: "claude",
-          cwd: "/repo",
-          title: "Investigate flaky checkout",
-          startedAt: "2026-07-23T01:00:00.000Z",
-          updatedAt: "2026-07-24T01:00:00.000Z",
-        },
+        { id: "a", provider: "claude", cwd: "/repo", title: "Ship the rail", startedAt: dayBefore(0), updatedAt: dayBefore(0) },
+        { id: "b", provider: "claude", cwd: "/repo", title: "Chase a flake", startedAt: dayBefore(1), updatedAt: dayBefore(1) },
+        { id: "c", provider: "claude", cwd: "/repo", title: "Read the logs", startedAt: dayBefore(5), updatedAt: dayBefore(5) },
+        { id: "d", provider: "claude", cwd: "/repo", title: "Ancient thread", startedAt: dayBefore(90), updatedAt: dayBefore(90) },
+      ],
+    });
+    try {
+      const mounted = await render();
+      const rail = await openHistoryRail(mounted);
+      const headings = Array.from(
+        rail.querySelectorAll("[data-conversation-scroll] h3"),
+      ).map((heading) => heading.textContent);
+      expect(headings).toEqual(["Today", "Yesterday", "Previous 7 days", "Older"]);
+      // Each row belongs to the heading above it, so the row order has to
+      // follow the bucket order rather than the raw transcript order.
+      const rows = Array.from(
+        rail.querySelectorAll("[data-conversation-scroll] button"),
+      ).map((row) => row.textContent ?? "");
+      expect(rows).toEqual([
+        "Ship the rail",
+        "Chase a flake",
+        "Read the logs",
+        "Ancient thread",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("lists both providers together, newest first, and searches across them", async () => {
+    // One list, both agents: recency is what makes a thread findable, so a
+    // Codex session more recent than a Claude one sorts above it rather than
+    // living behind a provider tab.
+    Object.assign(dock, {
+      open: true,
+      transcripts: [
         {
           id: "codex-session",
           provider: "codex",
@@ -549,74 +554,55 @@ describe("AgentTerminalDock", () => {
           startedAt: "2026-07-24T01:00:00.000Z",
           updatedAt: "2026-07-25T01:00:00.000Z",
         },
+        {
+          id: "claude-session",
+          provider: "claude",
+          cwd: "/repo",
+          title: "Investigate flaky checkout",
+          startedAt: "2026-07-23T01:00:00.000Z",
+          updatedAt: "2026-07-24T01:00:00.000Z",
+        },
       ],
     });
-    const { host } = await render();
+    const mounted = await render();
 
-    await act(async () =>
-      (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
-    );
-    const scrollRegion = document.body.querySelector("[data-conversation-scroll]");
+    const rail = await openHistoryRail(mounted);
+    const scrollRegion = rail.querySelector("[data-conversation-scroll]");
     expect(scrollRegion?.className).toContain("overflow-y-auto");
-    const claudeRow = Array.from(
-      document.body.querySelectorAll("[data-conversation-scroll] button"),
-    ).find((button) => button.textContent?.includes("Investigate flaky checkout"));
-    expect(claudeRow?.textContent).toContain("repo");
-    expect(document.body.textContent).not.toContain("Polish the dock history");
+    expect(rail.textContent).toContain("Investigate flaky checkout");
+    expect(rail.textContent).toContain("Polish the dock history");
     expect(dock.loadTranscripts).toHaveBeenLastCalledWith("all");
-    expect(document.body.textContent).toContain("Recent sessions across all projects");
+    // Neither filter survives — the rail shows the latest sessions, full stop.
     expect(document.body.querySelector('[aria-label="Conversation project scope"]')).toBeNull();
-    const providerFilter = document.body.querySelector(
-      '[aria-label="Filter conversations by provider"]',
-    ) as HTMLElement;
+    expect(
+      document.body.querySelector('[aria-label="Filter conversations by provider"]'),
+    ).toBeNull();
 
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("Codex"),
-      ) as HTMLButtonElement).click(),
-    );
-    expect(document.body.textContent).toContain("Polish the dock history");
-    expect(document.body.textContent).not.toContain("Investigate flaky checkout");
-
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("Claude"),
-      ) as HTMLButtonElement).click(),
-    );
-    expect(document.body.textContent).toContain("Investigate flaky checkout");
-    expect(document.body.textContent).not.toContain("Polish the dock history");
-
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("All"),
-      ) as HTMLButtonElement).click(),
-    );
-    expect(document.body.textContent).toContain("Investigate flaky checkout");
-    expect(document.body.textContent).toContain("Polish the dock history");
-
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("Claude"),
-      ) as HTMLButtonElement).click(),
-    );
-
+    // Search still reaches the provider name, which is how you narrow to one
+    // agent now that the tabs are gone.
     const search = document.body.querySelector(
       '[aria-label="Search conversations"]',
     ) as HTMLInputElement;
     await act(async () => {
+      search.value = "codex";
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(document.body.textContent).toContain("Polish the dock history");
+    expect(document.body.textContent).not.toContain("Investigate flaky checkout");
+
+    await act(async () => {
       search.value = "flaky";
       search.dispatchEvent(new Event("input", { bubbles: true }));
     });
-
     expect(document.body.textContent).toContain("Investigate flaky checkout");
     expect(document.body.textContent).not.toContain("Polish the dock history");
   });
 
-  test("filters cleanly even when a provider repeats a session id", async () => {
+  test("renders every row when a provider repeats a session id", async () => {
     // Codex reuses one session id across the rollout files it writes for a
     // conversation's subagents. The listing collapses those, but a repeated id
-    // must not survive as a duplicate row key either — that left the previous
-    // filter's rows rendered under the newly selected provider.
+    // must not collapse React rows either — a bare id as the key silently drops
+    // all but one of them.
     const codexRow = (suffix: string) => ({
       id: "shared-codex-id",
       provider: "codex",
@@ -627,47 +613,21 @@ describe("AgentTerminalDock", () => {
     });
     Object.assign(dock, {
       open: true,
-      transcripts: [
-        codexRow("1"),
-        codexRow("2"),
-        codexRow("3"),
-        {
-          id: "claude-session",
-          provider: "claude",
-          cwd: "/repo",
-          title: "Investigate flaky checkout",
-          startedAt: "2026-07-23T01:00:00.000Z",
-          updatedAt: "2026-07-24T01:00:00.000Z",
-        },
-      ],
+      transcripts: [codexRow("1"), codexRow("2"), codexRow("3")],
     });
-    const { host } = await render();
-    const openHistory = () =>
-      act(async () =>
-        (host.querySelector('[aria-label="Open conversation history"]') as HTMLButtonElement).click(),
-      );
+    const mounted = await render();
 
-    await openHistory();
-    const providerFilter = document.body.querySelector(
-      '[aria-label="Filter conversations by provider"]',
-    ) as HTMLElement;
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("Codex"),
-      ) as HTMLButtonElement).click(),
-    );
-    expect(document.body.textContent).toContain("Codex thread 1");
-
-    await act(async () =>
-      (Array.from(providerFilter.querySelectorAll("button")).find((button) =>
-        button.textContent?.startsWith("Claude"),
-      ) as HTMLButtonElement).click(),
-    );
+    const rail = await openHistoryRail(mounted);
     const rows = Array.from(
-      document.body.querySelectorAll("[data-conversation-scroll] > button"),
+      // Rows sit under their recency heading, so this reaches past the group
+      // wrappers rather than assuming they are direct children.
+      rail.querySelectorAll("[data-conversation-scroll] button"),
     ).map((row) => row.textContent ?? "");
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toContain("Investigate flaky checkout");
+    expect(rows).toEqual([
+      "Codex thread 1",
+      "Codex thread 2",
+      "Codex thread 3",
+    ]);
   });
 
   test("does not reopen a consumed staged draft when the task list changes", async () => {
@@ -898,7 +858,6 @@ describe("AgentTerminalDock", () => {
     // No agent capability chips against a plain shell.
     expect(host.querySelector('[aria-label="Agent provider"]')).toBeNull();
     expect(host.querySelector('[aria-label="Open task Shell"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="Stop task Shell"]')).not.toBeNull();
   });
 
   test("renames a tab inline from double-click or F2", async () => {
@@ -937,27 +896,6 @@ describe("AgentTerminalDock", () => {
     );
     expect(dock.renameTask).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(host.querySelector("#agent-tab-one"));
-  });
-
-  test("creates new sessions in the focused right tab group", async () => {
-    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
-      { id: "one", label: "First task", state: "running", provider: "claude" },
-      { id: "two", label: "Second task", state: "running", provider: "codex" },
-    ] });
-    dock.createShellTask.mockResolvedValue({ id: "three" });
-    const mounted = await render();
-    await dragTaskToSplit(mounted.host, "two");
-
-    await act(async () =>
-      (mounted.host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
-    );
-    await act(async () =>
-      (document.body.querySelector('[role="menuitem"][aria-label="Shell"]') as HTMLButtonElement).click(),
-    );
-
-    expect(dock.createShellTask).toHaveBeenCalledWith(undefined, {
-      background: true,
-    });
   });
 
   test("composing keeps the split pane alive and takes the left half itself", async () => {
@@ -1164,14 +1102,13 @@ describe("AgentTerminalDock", () => {
   test("offers accessible task controls and maps viewport status", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [{ id: "one", label: "Run tests", state: "running", provider: "claude" }] });
     const { host } = await render();
-    expect(host.querySelector('[aria-label="Choose a new session"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="Stop task Run tests"]')).not.toBeNull();
+    // Closing the tab is the only way to end a session — the toolbar carries no
+    // separate stop control.
+    expect(host.querySelector('[aria-label="Stop task Run tests"]')).toBeNull();
     expect(host.querySelector('[aria-label="Close task Run tests"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="Collapse agent terminal"]')).not.toBeNull();
     act(() => (host.querySelector("[data-session]") as HTMLButtonElement).click());
     expect(dock.updateTaskStatus).toHaveBeenCalledWith("one", { state: "running", cwd: "/repo", error: undefined });
-    act(() => (host.querySelector('[aria-label="Stop task Run tests"]') as HTMLButtonElement).click());
-    expect(dock.stopTask).toHaveBeenCalledWith("one");
   });
 
   test("expands to a full-screen terminal with horizontal navigation", async () => {
@@ -1235,91 +1172,6 @@ describe("AgentTerminalDock", () => {
     expect(panel.querySelector('[data-agent-resize-grip]')?.className).toContain("cursor-ew-resize");
     expect(panel.querySelector('[data-agent-side-utilities]')).not.toBeNull();
     expect(onInsetChange).toHaveBeenLastCalledWith("right", 480, false);
-  });
-
-  test("opens the new-session menu downward from a right-side toolbar", async () => {
-    Object.assign(dock, {
-      open: true,
-      activeTaskId: "one",
-      tasks: [{ id: "one", label: "One", state: "running", provider: "claude" }],
-    });
-    uiSettings.ui.agentDockPlacement = "right";
-    const { host } = await render();
-
-    await act(async () =>
-      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
-    );
-    const menu = document.body.querySelector(
-      '[role="menu"][aria-label="Choose a new session"]',
-    ) as HTMLElement;
-    expect(menu.style.top).not.toBe("");
-    expect(menu.style.bottom).toBe("");
-  });
-
-  test("opens the new-session menu downward and aligns its right edge with the trigger", async () => {
-    Object.assign(dock, { open: true });
-    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
-    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRect() {
-        if (this.getAttribute("role") === "menu") {
-          return domRect(0, 0, 208, 120);
-        }
-        if (
-          this.tagName === "DIV" &&
-          this.firstElementChild?.getAttribute("aria-label") ===
-            "Choose a new session"
-        ) {
-          return domRect(932, 100, 28, 28);
-        }
-        return domRect(0, 0, 0, 0);
-      },
-    );
-    const { host } = await render();
-
-    await act(async () =>
-      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
-    );
-    const menu = document.body.querySelector(
-      '[role="menu"][aria-label="Choose a new session"]',
-    ) as HTMLElement;
-
-    expect(menu.style.top).toBe("132px");
-    expect(menu.style.bottom).toBe("");
-    expect(menu.style.right).toBe("240px");
-  });
-
-  test("flips the new-session menu upward when it does not fit below the trigger", async () => {
-    Object.assign(dock, { open: true });
-    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
-    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function getBoundingClientRect() {
-        if (this.getAttribute("role") === "menu") {
-          return domRect(0, 0, 208, 120);
-        }
-        if (
-          this.tagName === "DIV" &&
-          this.firstElementChild?.getAttribute("aria-label") ===
-            "Choose a new session"
-        ) {
-          return domRect(932, 740, 28, 28);
-        }
-        return domRect(0, 0, 0, 0);
-      },
-    );
-    const { host } = await render();
-
-    await act(async () =>
-      (host.querySelector('[aria-label="Choose a new session"]') as HTMLButtonElement).click(),
-    );
-    const menu = document.body.querySelector(
-      '[role="menu"][aria-label="Choose a new session"]',
-    ) as HTMLElement;
-
-    expect(menu.style.top).toBe("");
-    expect(menu.style.bottom).toBe("64px");
-    expect(menu.style.right).toBe("240px");
   });
 
   test("uses a compact vertical rail when a right-side dock is collapsed", async () => {

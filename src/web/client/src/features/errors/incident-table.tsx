@@ -249,7 +249,7 @@ export function IncidentTable({
                     </tr>
                     {expanded ? (
                       <tr>
-                        <td className="px-2 pb-3 md:px-3" colSpan={7}>
+                        <td className="p-0" colSpan={7}>
                           <motion.div
                             animate={{ opacity: 1, y: 0 }}
                             initial={{ opacity: 0, y: reduceMotion ? 0 : -4 }}

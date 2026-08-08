@@ -223,6 +223,12 @@ export interface NoMoreIdeConfig {
    * back to startup-agent detection.
    */
   chatProvider?: "claude" | "codex";
+  /**
+   * Model each agent CLI is pinned to. A missing entry means "let the CLI
+   * pick" — there is no model name that safely stands in for a provider's own
+   * default, so the absence is the signal.
+   */
+  chatModels?: Partial<Record<"claude" | "codex", string>>;
   preferences?: ProjectPreferences;
 }
 

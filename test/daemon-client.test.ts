@@ -38,6 +38,9 @@ async function startServer(
     configPath,
     logDir: join(tempDir, "logs"),
     cwd: tempDir,
+    // Without this the server merges in the machine-global runtime registry,
+    // so any service the developer has running shows up in these assertions.
+    registryPath: join(tempDir, "runtime.json"),
     port: 0,
     onDaemonShutdown: options.onDaemonShutdown,
   }).start();

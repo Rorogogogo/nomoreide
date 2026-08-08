@@ -27,6 +27,7 @@ describe.skipIf(!DatabaseSync)("database catalog HTTP routes", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
   });

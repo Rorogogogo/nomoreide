@@ -59,9 +59,69 @@ describe("dock remote skill search", () => {
     const capabilities = host.querySelector(
       '[aria-label="Claude Code capabilities"]',
     ) as HTMLElement;
-    expect(capabilities.textContent).toBe("Skills11MCP6Plugins8Hooks19");
+    // One trigger carrying the total, not four counters competing with the tab
+    // names — but still spelled out in words rather than an ambiguous icon.
+    expect(capabilities.textContent).toBe("Tools44");
     expect(capabilities.querySelector("svg")).toBeNull();
-    expect(capabilities.className).toContain("overflow-x-auto");
+    expect(capabilities.querySelectorAll("button")).toHaveLength(1);
+
+    await act(async () => root.unmount());
+  });
+
+  test("opens the categories first, then drills into one for its items", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <AgentCapabilityBadges
+          capabilities={{
+            counts: { skills: 1, mcps: 1, plugins: 0, hooks: 0 },
+            items: {
+              skills: [{ name: "commit-push" }],
+              mcps: [{ name: "linear-server" }],
+              plugins: [],
+              hooks: [],
+            },
+            auth: { checked: 1, needsAuth: 0, failed: 0 },
+            mcpAuth: {},
+          }}
+          providerLabel="Claude Code"
+        />,
+      );
+    });
+
+    await act(async () => {
+      (host.querySelector("[data-capability-trigger]") as HTMLButtonElement).click();
+    });
+
+    // Portalled to <body>, so query the document rather than the host.
+    const menu = document.querySelector("[data-capability-menu]") as HTMLElement;
+    expect(menu).not.toBeNull();
+    // Layer 1 is the four categories and their counts — no items yet.
+    for (const heading of ["Skills", "MCP Servers", "Plugins", "Hooks"]) {
+      expect(menu.textContent).toContain(heading);
+    }
+    expect(menu.textContent).not.toContain("commit-push");
+    expect(menu.textContent).not.toContain("linear-server");
+
+    // Layer 2: drilling into one category shows only that category's items.
+    const skillsRow = [...menu.querySelectorAll("button")].find((button) =>
+      button.textContent?.startsWith("Skills"),
+    ) as HTMLButtonElement;
+    await act(async () => skillsRow.click());
+
+    const drilled = document.querySelector("[data-capability-menu]") as HTMLElement;
+    expect(drilled.textContent).toContain("commit-push");
+    expect(drilled.textContent).not.toContain("linear-server");
+
+    // ...and a back control returns to the category list.
+    const back = drilled.querySelector('[aria-label="Back to all tools"]') as HTMLButtonElement;
+    expect(back).not.toBeNull();
+    await act(async () => back.click());
+    const returned = document.querySelector("[data-capability-menu]") as HTMLElement;
+    expect(returned.textContent).toContain("MCP Servers");
+    expect(returned.textContent).not.toContain("commit-push");
 
     await act(async () => root.unmount());
   });

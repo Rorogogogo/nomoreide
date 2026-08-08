@@ -170,8 +170,8 @@ export function LogConsole({
         : t("services.log.noEntries");
 
   return (
-    <div className={fill ? "flex h-full min-h-0 flex-col gap-2" : "flex flex-col gap-2"}>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={fill ? "flex h-full min-h-0 flex-col" : "flex flex-col gap-2"}>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5">
         {leading}
         <LogSearchInput onChange={setQuery} value={query} />
         {canQuery ? (
@@ -202,7 +202,7 @@ export function LogConsole({
         ) : (
           <ToggleButton
             active={hideStdout}
-            activeClassName="border-amber-600 bg-amber-50 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300"
+            activeClassName="border border-amber-600 bg-amber-500/10 text-amber-700 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300"
             onClick={() => setHideStdout(!hideStdout)}
           >
             <Filter />
@@ -211,7 +211,7 @@ export function LogConsole({
         )}
         <ToggleButton
           active={streaming}
-          activeClassName="border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
+          activeClassName="border border-emerald-600 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/15 dark:text-emerald-300"
           onClick={() => setStreaming(!streaming)}
         >
           <Radio />
@@ -231,13 +231,28 @@ export function LogConsole({
         ) : null}
         {trailing ? <div className="ml-auto flex items-center gap-2">{trailing}</div> : null}
       </div>
-      {error ? <div className="text-red-600">{error}</div> : null}
+      {error ? <div className="px-3 pb-2 text-red-600">{error}</div> : null}
       <LogViewer
-        className={cn("rounded border border-border/60", fill ? "min-h-0 flex-1" : "max-h-80")}
+        className={cn(fill ? "min-h-0 flex-1" : "max-h-80")}
         containerRef={paneRef}
         emptyText={emptyText}
         logs={visibleLogs}
         query={query}
+        getAiTarget={(entries) => ({
+          label: t("services.log.selectedSource", { name: target.name }),
+          intents: [
+            {
+              id: "ask-selected-logs",
+              label: t("services.log.askAi"),
+              resolvePrompt: () =>
+                `Investigate these logs from ${target.name}. Explain the likely cause and recommend concrete next steps.\n\n${entries
+                  .map((entry) => `[${entry.timestamp}] ${entry.stream}: ${entry.text}`)
+                  .join("\n")}`,
+              source: { type: "service-logs", label: target.name },
+              agentLabel: t("services.log.askAi"),
+            },
+          ],
+        })}
         showTimestamps={logPreferences.showTimestamps}
         wrapLines={logPreferences.wrapLines}
       />
@@ -263,7 +278,7 @@ export function ToggleButton({
       onClick={onClick}
       size="sm"
       type="button"
-      variant="outline"
+      variant="ghost"
     >
       {children}
     </Button>

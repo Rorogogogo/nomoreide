@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import net from "node:net";
@@ -47,6 +47,29 @@ describe("ProcessManager", () => {
     expect(status.pid).toEqual(expect.any(Number));
     await waitFor(() =>
       logs.read("backend").some((entry) => entry.text.includes("backend-ready")),
+    );
+  });
+
+  test("loads .env from the service working directory", async () => {
+    await writeFile(
+      join(tempDir, ".env"),
+      "NOMOREIDE_PROCESS_TEST_FILE=file-value\nNOMOREIDE_PROCESS_TEST_OVERRIDE=file-value\n",
+    );
+    await config.registerService({
+      name: "env-service",
+      command: nodeCommand(
+        "console.log(process.env.NOMOREIDE_PROCESS_TEST_FILE + ':' + process.env.NOMOREIDE_PROCESS_TEST_OVERRIDE); setInterval(() => {}, 1000);",
+      ),
+      cwd: tempDir,
+      env: { NOMOREIDE_PROCESS_TEST_OVERRIDE: "explicit-value" },
+    });
+
+    await manager.startService("env-service");
+
+    await waitFor(() =>
+      logs
+        .read("env-service")
+        .some((entry) => entry.text.includes("file-value:explicit-value")),
     );
   });
 

@@ -1,7 +1,7 @@
 import type { VercelDeployment } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { DeploymentStateIcon } from "./deployment-state-badge";
+import { DeploymentStateDot } from "./deployment-state-badge";
 
 export function DeploymentList({
   deployments,
@@ -44,12 +44,12 @@ export function DeploymentList({
             onClick={() => onSelect(deployment.uid)}
             type="button"
           >
-            <span className="mt-0.5">
-              <DeploymentStateIcon state={deployment.state} />
-            </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-medium">
-                {deployment.meta.commitMessage || deployment.url || deployment.uid}
+              <span className="flex items-center gap-1.5">
+                <DeploymentStateDot state={deployment.state} />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                  {deployment.meta.commitMessage || deployment.url || deployment.uid}
+                </span>
               </span>
               <span className="block truncate text-[11px] text-muted-foreground">
                 {[

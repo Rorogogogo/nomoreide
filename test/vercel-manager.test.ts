@@ -336,4 +336,64 @@ describe("VercelActions", () => {
     ]);
     expect(calls[2]?.url.searchParams.get("description")).toBe("bad deploy");
   });
+
+  test("createEnv defaults to encrypted and normalizes a bulk-shaped response", async () => {
+    const { calls } = stubFetch(() => ({
+      created: [{ id: "e1", key: "API_KEY", target: ["production"], type: "encrypted" }],
+    }));
+
+    const env = await new VercelActions({ token: "t" }).createEnv("prj_1", {
+      key: "API_KEY",
+      value: "s3cret",
+      target: ["production"],
+    });
+
+    expect(env).toMatchObject({ id: "e1", key: "API_KEY", target: ["production"] });
+    const [call] = calls;
+    expect(call?.init?.method).toBe("POST");
+    expect(call?.url.pathname).toBe("/v10/projects/prj_1/env");
+    expect(JSON.parse(String(call?.init?.body))).toEqual({
+      key: "API_KEY",
+      value: "s3cret",
+      target: ["production"],
+      type: "encrypted",
+    });
+  });
+
+  test("createEnv also accepts a single-object response, not just the bulk shape", async () => {
+    const { calls } = stubFetch(() => ({ id: "e2", key: "PLAIN", target: ["preview"], type: "plain" }));
+
+    const env = await new VercelActions({ token: "t" }).createEnv("prj_1", {
+      key: "PLAIN",
+      value: "visible",
+      target: ["preview"],
+      type: "plain",
+    });
+
+    expect(env).toMatchObject({ id: "e2", key: "PLAIN" });
+    expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({ type: "plain" });
+  });
+
+  test("updateEnv only sends the fields given, and never the key", async () => {
+    const { calls } = stubFetch(() => ({ id: "e1", key: "API_KEY", target: ["preview"] }));
+
+    await new VercelActions({ token: "t" }).updateEnv("prj_1", "e1", {
+      target: ["preview"],
+    });
+
+    expect(calls[0]?.url.pathname).toBe("/v9/projects/prj_1/env/e1");
+    expect(calls[0]?.init?.method).toBe("PATCH");
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ target: ["preview"] });
+  });
+
+  test("deleteEnv reaches the single-variable endpoint over DELETE", async () => {
+    const { calls } = stubFetch(() => ({}));
+
+    await new VercelActions({ token: "t" }).deleteEnv("prj_1", "e1");
+
+    expect(calls[0]).toMatchObject({
+      init: { method: "DELETE" },
+      url: expect.objectContaining({ pathname: "/v9/projects/prj_1/env/e1" }),
+    });
+  });
 });

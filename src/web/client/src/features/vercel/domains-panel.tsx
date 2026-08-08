@@ -1,11 +1,9 @@
 import type { VercelDomain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
-import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { openExternal } from "@/lib/tauri";
-import { useVercelDomains } from "./hooks/use-vercel-resource";
 import {
   CopyIcon,
   DomainsIcon,
@@ -22,11 +20,20 @@ import { PanelEmpty } from "./panel-empty";
  * An unverified domain is the only state here that needs the user to *do*
  * something, so it is the only one that expands — the DNS records Vercel wants
  * are shown inline and are copyable, which is the whole task.
+ *
+ * Data is owned by the parent tab view, not fetched here — the header's
+ * domain count needs the same list this panel renders.
  */
-export function DomainsPanel() {
+export function DomainsPanel({
+  domains,
+  loading,
+  error,
+}: {
+  domains: VercelDomain[];
+  loading: boolean;
+  error: string | null;
+}) {
   const t = useT();
-  const { data: domains, loading, error, refresh } = useVercelDomains();
-  useRegisterRefresh(refresh);
 
   if (loading && domains.length === 0) return <Loading fill label={t("common.loading")} />;
   if (error) {

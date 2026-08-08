@@ -56,6 +56,8 @@ export function GitReviewView({
   const [locallyModifiedPaths, setLocallyModifiedPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  /** Identifies the working tree in view — changes on project *and* worktree switch. */
+  const repoPath = data.git.cwd;
   const statusFiles = data.git.status?.files ?? [];
   const files = useMemo(() => {
     const seen = new Set(statusFiles.map((file) => file.path));
@@ -96,6 +98,21 @@ export function GitReviewView({
       current && files.some((file) => file.path === current) ? current : firstFile,
     );
   }, [files]);
+
+  /**
+   * Everything cached below is scoped to one working tree, but the endpoints
+   * that fill it take no repository argument — they answer for whichever
+   * repository the daemon currently has selected. Switching project therefore
+   * has to invalidate that cache here: the file-list effect only fetches while
+   * the list is empty, so without this the tree kept serving the previous
+   * project's files (and a selection pointing into it) until a manual reload.
+   */
+  useEffect(() => {
+    setAllFiles([]);
+    setAllFilesError(null);
+    setSelectedTreeFile("");
+    setLocallyModifiedPaths(new Set());
+  }, [repoPath]);
 
   useEffect(() => {
     if (tab !== "all" || allFiles.length > 0) return;

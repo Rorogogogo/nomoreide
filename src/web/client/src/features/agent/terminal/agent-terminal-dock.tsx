@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Grip, LoaderCircle, Maximize2, Minimize2, PanelBottom, PanelRight, RotateCcw, Sparkles, Square, SquareTerminal, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Grip, LoaderCircle, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelRight, Plus, RotateCcw, Sparkles, SquareTerminal, X } from "lucide-react";
 // SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import {
   loadOneTimeSkillPrompt,
@@ -14,8 +14,7 @@ import { TerminalViewport, type TerminalViewportHandle, type TerminalViewportSta
 import { AgentCapabilityBadges } from "./agent-capability-strip";
 import { useAgentCapabilities } from "./agent-capability-data";
 import { AgentTerminalComposer } from "./agent-terminal-composer";
-import { AgentConversationPicker } from "./agent-conversation-picker";
-import { AgentNewSessionMenu } from "./agent-new-session-menu";
+import { AgentHistoryRail, HISTORY_RAIL_WIDTH } from "./agent-history-rail";
 import { AgentTerminalTabs } from "./agent-terminal-tabs";
 import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
@@ -39,11 +38,12 @@ type DockPlacement = "bottom" | "right";
 export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onInsetChange, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onInsetChange?: (placement: DockPlacement, size: number, resizing: boolean) => void; onNavigate?: (page: AgentDockPage) => void }) {
   const t = useT();
   const settings = useOptionalSettings();
-  const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, createShellTask, createTask, creating, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, providers, renameTask, resumeTask, selectOneTimeSkill, setActiveTaskId, setOpen, stopTask, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
+  const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, renameTask, resumeTask, selectOneTimeSkill, setActiveTaskId, setOpen, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
   const [height, setHeight] = useState<number | null>(dockLayout.bottomHeight);
   const [width, setWidth] = useState(dockLayout.rightWidth);
   const [resizing, setResizing] = useState(false);
   const [wideEnoughForSide, setWideEnoughForSide] = useState(() => typeof window.matchMedia !== "function" || window.matchMedia("(min-width: 700px)").matches);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
   const [positionDragging, setPositionDragging] = useState(false);
   const [snapCandidate, setSnapCandidate] = useState<DockPlacement | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
@@ -131,6 +131,11 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     splitResizeCleanupRef.current?.();
   }, []);
   useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(min-width: 700px)");
     const update = () => setWideEnoughForSide(query.matches);
@@ -167,6 +172,13 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       return next;
     });
   }, [tasks, tasksHydrated]);
+  const historyRailOpen = dockLayout.historyRailOpen;
+  // Side-docked the dock owns its own width; otherwise it spans the viewport.
+  // Below this the rail would leave too little room for the terminal, so it
+  // floats over the session instead of displacing it.
+  const dockContentWidth =
+    sideDocked && !fullScreen ? effectiveWidth : viewportWidth;
+  const historyRailOverlay = dockContentWidth < HISTORY_RAIL_WIDTH + 400;
   const collapse = () => { setFullScreen(false); setOpen(false); };
   const navigate = (page: AgentDockPage) => { onNavigate?.(page); collapse(); };
   const openGitHubActions = (branch: string) => {
@@ -410,8 +422,11 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
 
   const railProviderId = focusedTask?.provider ?? provider?.id;
   const activeShell = focusedTask?.kind === "shell";
+  // History is a property of the new-session surface, so the rail follows the
+  // composer rather than the dock: with a session in front of the user there is
+  // no sidebar at all, only the toolbar "+" that starts a new one.
+  const railVisible = open && composing && historyRailOpen;
   const railProviderLabel = activeShell ? t("dock.shell") : focusedTask ? (focusedTask.provider === "codex" ? "Codex" : "Claude Code") : (provider?.label ?? "Agent");
-  const activeTaskLabel = focusedTask?.label || (activeShell ? t("dock.shellFallback") : t("dock.newTask"));
   const collapsedTask = currentRailTask ?? latestRailTask;
   const collapsedShell = collapsedTask?.kind === "shell";
   const collapsedProviderId = collapsedTask?.provider ?? provider?.id;
@@ -614,44 +629,6 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       setFocusedPane((current) => current === "right" ? "left" : current);
     }
   };
-  const createAgentInFocusedPane = async (selectedProvider: typeof providers[number]) => {
-    markLayoutMutation();
-    const targetPane = focusedPane;
-    const sequence = ++paneIntentSequenceRef.current;
-    const task = await createTask({
-      prompt: "",
-      provider: selectedProvider.id,
-      label: t("dock.taskFallback", { provider: selectedProvider.label }),
-      ...(targetPane === "right" ? { background: true } : {}),
-    });
-    if (!task || targetPane !== "right") {
-      if (task) setFocusedPane("left");
-      return;
-    }
-    setRightTaskIds((current) => new Set(current).add(task.id));
-    if (paneIntentSequenceRef.current === sequence) {
-      setActiveRightTaskId(task.id);
-      setFocusedPane("right");
-    }
-  };
-  const createShellInFocusedPane = async () => {
-    markLayoutMutation();
-    const targetPane = focusedPane;
-    const sequence = ++paneIntentSequenceRef.current;
-    const task = await createShellTask(
-      undefined,
-      targetPane === "right" ? { background: true } : undefined,
-    );
-    if (!task || targetPane !== "right") {
-      if (task) setFocusedPane("left");
-      return;
-    }
-    setRightTaskIds((current) => new Set(current).add(task.id));
-    if (paneIntentSequenceRef.current === sequence) {
-      setActiveRightTaskId(task.id);
-      setFocusedPane("right");
-    }
-  };
   const resumeInFocusedPane = async (transcript: Parameters<typeof resumeTask>[0]) => {
     markLayoutMutation();
     const targetPane = focusedPane;
@@ -735,11 +712,19 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
           onClick={() => setOpen(true)}
           type="button"
         >
-          <span className="sr-only">{collapsedProviderLabel}</span>
+          <span className="sr-only">{t("dock.openAria")} {collapsedProviderLabel}</span>
         </button>
         <div className="pointer-events-none relative flex h-full items-center gap-2 px-3">
-          <CollapsedLogo className="size-3.5 text-primary" />
-          <span className="text-xs font-medium">{collapsedProviderLabel}</span>
+          <button
+            aria-label={t("dock.openAgentProfile", { name: collapsedProviderLabel })}
+            className="pointer-events-auto flex shrink-0 items-center gap-2 rounded-sm text-left text-xs font-medium hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            onClick={() => navigate("agent")}
+            title={t("dock.openAgentProfile", { name: collapsedProviderLabel })}
+            type="button"
+          >
+            <CollapsedLogo className="size-3.5 text-primary" />
+            <span>{collapsedProviderLabel}</span>
+          </button>
           <span className="h-3 w-px bg-border" />
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{collapsedTaskLabel}</span>
           <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={collapsedProviderId} variant="strip" />
@@ -793,6 +778,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       onPointerDown={resizeStart}
       title={sideDocked ? t("dock.resizeWidthAria") : undefined}
     />
+    <div className="relative flex min-h-0 flex-1 flex-col">
     <div className="relative flex h-9 shrink-0 items-stretch border-b border-border bg-muted/25" data-agent-dock-toolbar>
       {!fullScreen ? <button
         aria-label={t("dock.positionGrip")}
@@ -826,10 +812,11 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={leftProviderId} variant="dock" />
           </div>
           <div
-            className={cn(
-              "absolute inset-y-0 right-0 flex min-w-0 items-stretch",
-              focusedTask?.state === "running" ? "pr-[9.25rem]" : "pr-[7.5rem]",
-            )}
+            // Reserve exactly the floating button cluster's width (3 × size-7
+            // + px-1 + the border = 93px) so the status strip ends flush against
+            // it. This used to widen while running to clear a stop button; that
+            // button is gone, so the width is now constant.
+            className="absolute inset-y-0 right-0 flex min-w-0 items-stretch pr-24"
             data-agent-pane-tabs="right"
             style={{ left: `${splitPercent}%` }}
           >
@@ -849,14 +836,43 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         "flex shrink-0 items-center border-l border-border bg-muted/25 px-1",
         layoutSplit && "absolute inset-y-0 right-0 z-20",
       )}>
-        <AgentConversationPicker error={transcriptsError} loading={transcriptsLoading} onLoad={loadTranscripts} onResume={resumeInFocusedPane} provider={activeShell ? undefined : railProviderId === "codex" ? "codex" : "claude"} transcripts={transcripts} />
-        <AgentNewSessionMenu
-          creating={Boolean(creating)}
-          onCreateAgent={(selectedProvider) => void createAgentInFocusedPane(selectedProvider)}
-          onCreateShell={() => void createShellInFocusedPane()}
-          providers={providers}
-        />
-        {focusedTask?.state === "running" ? <button aria-label={t("dock.stopTaskAria", { label: activeTaskLabel })} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35" disabled={pendingTaskIds.has(focusedTask.id)} onClick={() => void stopTask(focusedTask.id)} type="button"><Square className="size-3" /></button> : null}
+        {/* History belongs to the new-session surface, so this slot follows it:
+            while composing it toggles the rail beside the composer, and once a
+            session is open it becomes "+", which starts a new one rather than
+            sliding a sidebar over a running terminal. */}
+        {composing ? (
+          <button
+            aria-expanded={historyRailOpen}
+            aria-label={t("dock.conversationsAria")}
+            className={cn(
+              "grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground",
+              historyRailOpen && "bg-muted text-foreground",
+            )}
+            onClick={() => updateDockLayout({ historyRailOpen: !historyRailOpen })}
+            title={t("dock.conversations")}
+            type="button"
+          >
+            <PanelLeft className="size-3.5" />
+          </button>
+        ) : (
+          <button
+            aria-label={t("dock.newTask")}
+            className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={() => {
+              markLayoutMutation();
+              setShellMode(false);
+              paneIntentSequenceRef.current += 1;
+              setFocusedPane("left");
+              setActiveTaskId(COMPOSE_TAB_ID);
+            }}
+            title={t("dock.newTaskTab")}
+            type="button"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        )}
+        {/* No stop button: closing the tab already ends the session, and a
+            second way to halt it only adds a control to reason about. */}
         <button aria-label={fullScreen ? t("dock.restoreDock") : t("dock.enterFullScreen")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setFullScreen((value) => !value)} type="button">{fullScreen ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}</button>
         <button aria-label={t("dock.collapseAria")} className="grid size-7 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground" onClick={collapse} type="button">{sideDocked ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}</button>
       </div>
@@ -867,6 +883,22 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="side" />
     </div> : null}
     {terminalError ? <div role="alert" className="border-b border-destructive/30 bg-destructive/5 px-3 py-1 font-mono text-[11px] text-destructive">{terminalError}</div> : null}
+    {/* Everything under the toolbar is the rail's row. The rail runs the full
+        height of the surface it belongs to without riding up over the tab
+        strip, and the git banner and terminal share the column beside it —
+        that column carries the background so the banner reads as part of the
+        content rather than a lighter strip pasted over it. */}
+    <div className="relative flex min-h-0 flex-1">
+    {railVisible ? <AgentHistoryRail
+      error={transcriptsError}
+      loading={transcriptsLoading}
+      onClose={() => updateDockLayout({ historyRailOpen: false })}
+      onLoad={loadTranscripts}
+      onResume={(transcript) => { void resumeInFocusedPane(transcript); if (historyRailOverlay) updateDockLayout({ historyRailOpen: false }); }}
+      overlay={historyRailOverlay}
+      transcripts={transcripts}
+    /> : null}
+    <div className="flex min-w-0 flex-1 flex-col bg-background">
     {git && composing ? <div className="shrink-0 px-3 pt-2"><GitSituationBanner git={git} onRefresh={onGitRefresh} /></div> : null}
     <div className="relative min-h-0 flex-1 bg-background" data-agent-split-container ref={splitContainerRef}>
       {tasks.map((task) => {
@@ -886,6 +918,9 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       {layoutSplit ? <hr aria-label={t("dock.splitResizeAria")} aria-orientation="vertical" aria-valuemax={75} aria-valuemin={25} aria-valuenow={Math.round(splitPercent)} className="absolute inset-y-0 z-20 h-auto w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary focus-visible:after:bg-primary" onDoubleClick={() => { splitPercentRef.current = 50; setSplitPercent(50); updateDockLayout({ splitPercent: 50 }); }} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); const next = Math.max(25, Math.min(75, splitPercentRef.current + (event.key === "ArrowLeft" ? -5 : 5))); splitPercentRef.current = next; setSplitPercent(next); updateDockLayout({ splitPercent: next }); } }} onPointerDown={splitResizeStart} style={{ left: `${splitPercent}%` }} tabIndex={0} /> : null}
       {!sideDocked && canDropRight ? <section aria-label={t("dock.splitDropTarget")} className="absolute bottom-2 right-2 top-2 z-30 grid place-items-center rounded-md border border-dashed border-primary/60 bg-primary/10 text-xs font-medium text-primary backdrop-blur-sm" onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; }} onDrop={(event) => { event.preventDefault(); dropDraggedRight(); }} style={{ width: split ? `calc(${100 - splitPercent}% - 0.75rem)` : "calc(50% - 0.75rem)" }}>{t("dock.splitDropTarget")}</section> : null}
       {!sideDocked && draggedFromRight ? <section aria-label={t("dock.leftDropTarget")} className="absolute bottom-2 left-2 top-2 z-30 grid place-items-center rounded-md border border-dashed border-primary/60 bg-primary/10 text-xs font-medium text-primary backdrop-blur-sm" onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; }} onDrop={(event) => { event.preventDefault(); dropDraggedLeft(); }} style={{ width: `calc(${splitPercent}% - 0.75rem)` }}>{t("dock.leftDropTarget")}</section> : null}
+    </div>
+    </div>
+    </div>
     </div>
   </div>
     {positionDragging ? <>

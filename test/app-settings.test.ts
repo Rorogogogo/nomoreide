@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -28,6 +28,31 @@ describe("AppSettingsStore", () => {
 
     expect(await store.load()).toEqual(DEFAULT_APP_SETTINGS);
     expect(DEFAULT_APP_SETTINGS.terminal.fontSize).toBe(13);
+  });
+
+  test("loads a settings file written before smoothScroll existed", async () => {
+    // `load()` only forgives ENOENT, so a newly-added required field would make
+    // every pre-existing settings.json throw instead of picking up the default.
+    await mkdir(join(tempDir, "nested"), { recursive: true });
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        version: 1,
+        terminal: {
+          fontSize: 15,
+          cursorStyle: "bar",
+          scrollback: 2_000,
+          copyOnSelect: true,
+          confirmTerminate: false,
+        },
+      }),
+    );
+
+    const settings = await new AppSettingsStore(settingsPath).load();
+
+    expect(settings.terminal.smoothScroll).toBe(true);
+    expect(settings.terminal.fontSize).toBe(15);
+    expect(settings.terminal.confirmTerminate).toBe(false);
   });
 
   test("deep-merges a validated patch and persists version 1", async () => {

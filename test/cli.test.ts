@@ -139,6 +139,7 @@ describe("CLI commands", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
     const daemon: DaemonConnection = {

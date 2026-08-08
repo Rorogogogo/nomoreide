@@ -41,6 +41,7 @@ const FALLBACK_GLOBAL: AppSettings = {
     scrollback: 5_000,
     copyOnSelect: false,
     confirmTerminate: true,
+    smoothScroll: true,
   },
 };
 

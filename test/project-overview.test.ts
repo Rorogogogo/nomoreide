@@ -111,6 +111,7 @@ describe("GET /api/overview/:domain", () => {
       settingsPath: join(tempDir, "settings.json"),
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 

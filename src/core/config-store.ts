@@ -271,6 +271,18 @@ const configSchema = z.object({
    * providers, so the choice sticks across CLI/web/desktop.
    */
   chatProvider: z.enum(["claude", "codex"]).optional(),
+  /**
+   * Model each agent CLI is pinned to, keyed by provider. A missing entry means
+   * "let the CLI pick", which is why this is a partial map rather than a pair of
+   * defaulted fields — there is no model name that safely stands in for "the
+   * provider's own default".
+   */
+  chatModels: z
+    .object({
+      claude: z.string().trim().min(1).max(64).optional(),
+      codex: z.string().trim().min(1).max(64).optional(),
+    })
+    .optional(),
   preferences: projectPreferencesSchema.optional(),
 });
 
@@ -608,6 +620,23 @@ export class ConfigStore {
   async setChatProvider(provider: "claude" | "codex"): Promise<NoMoreIdeConfig> {
     return this.mutateConfig((config) => {
       config.chatProvider = provider;
+    });
+  }
+
+  /**
+   * Persist the model new sessions for `provider` spawn with. A null/empty
+   * model clears the pin so the CLI falls back to its own default.
+   */
+  async setChatModel(
+    provider: "claude" | "codex",
+    model: string | null,
+  ): Promise<NoMoreIdeConfig> {
+    const trimmed = model?.trim();
+    return this.mutateConfig((config) => {
+      const models = { ...config.chatModels };
+      if (trimmed) models[provider] = trimmed;
+      else delete models[provider];
+      config.chatModels = models;
     });
   }
 

@@ -15,21 +15,73 @@ import {
  */
 const STATES: Record<
   VercelDeploymentState,
-  { labelKey: TranslationKey; className: string; spin?: boolean }
+  { labelKey: TranslationKey; className: string; dotClassName: string; spin?: boolean }
 > = {
-  READY: { labelKey: "vercel.state.ready", className: "text-emerald-500" },
-  BUILDING: { labelKey: "vercel.state.building", className: "text-amber-500", spin: true },
+  READY: {
+    labelKey: "vercel.state.ready",
+    className: "text-emerald-500",
+    dotClassName: "bg-emerald-500",
+  },
+  BUILDING: {
+    labelKey: "vercel.state.building",
+    className: "text-amber-500",
+    dotClassName: "bg-amber-500",
+    spin: true,
+  },
   INITIALIZING: {
     labelKey: "vercel.state.initializing",
     className: "text-amber-500",
+    dotClassName: "bg-amber-500",
     spin: true,
   },
-  QUEUED: { labelKey: "vercel.state.queued", className: "text-muted-foreground" },
-  ERROR: { labelKey: "vercel.state.error", className: "text-red-500" },
-  CANCELED: { labelKey: "vercel.state.canceled", className: "text-muted-foreground" },
-  BLOCKED: { labelKey: "vercel.state.blocked", className: "text-muted-foreground" },
-  DELETED: { labelKey: "vercel.state.deleted", className: "text-muted-foreground" },
+  QUEUED: {
+    labelKey: "vercel.state.queued",
+    className: "text-muted-foreground",
+    dotClassName: "bg-muted-foreground/50",
+  },
+  ERROR: { labelKey: "vercel.state.error", className: "text-red-500", dotClassName: "bg-red-500" },
+  CANCELED: {
+    labelKey: "vercel.state.canceled",
+    className: "text-muted-foreground",
+    dotClassName: "bg-muted-foreground/50",
+  },
+  BLOCKED: {
+    labelKey: "vercel.state.blocked",
+    className: "text-muted-foreground",
+    dotClassName: "bg-muted-foreground/50",
+  },
+  DELETED: {
+    labelKey: "vercel.state.deleted",
+    className: "text-muted-foreground",
+    dotClassName: "bg-muted-foreground/50",
+  },
 };
+
+/**
+ * A quieter stand-in for {@link DeploymentStateIcon} in dense lists — a row of
+ * distinct colored icon shapes reads as noisy next to the hero and detail
+ * pane, which already show the full icon+label for whichever deployment
+ * matters most. Color alone still separates ready/building/error at a glance.
+ */
+export function DeploymentStateDot({
+  state,
+  className,
+}: {
+  state: VercelDeploymentState;
+  className?: string;
+}) {
+  const spec = STATES[state] ?? STATES.QUEUED;
+  return (
+    <span
+      className={cn(
+        "inline-block size-1.5 shrink-0 rounded-full",
+        spec.dotClassName,
+        spec.spin && "animate-pulse",
+        className,
+      )}
+    />
+  );
+}
 
 export function DeploymentStateIcon({
   state,

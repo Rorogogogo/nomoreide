@@ -23,6 +23,7 @@ import {
 } from "./service-registry.js";
 import { createSshCommand } from "./ssh-service-runner.js";
 import type { TimelineStore } from "./timeline-store.js";
+import { entriesFromLines, envFilePath, readEnvFile } from "./env-file.js";
 import type {
   BundleDefinition,
   ServiceDefinition,
@@ -130,7 +131,7 @@ export class ProcessManager {
       }
     }
 
-    const child = spawnService(name, service, kind);
+    const child = await spawnService(name, service, kind);
 
     const runtime: RuntimeService = {
       child,
@@ -757,11 +758,11 @@ function toDockerTarget(
   };
 }
 
-function spawnService(
+async function spawnService(
   name: string,
   service: ServiceDefinition,
   kind: ServiceKind,
-): ChildProcess {
+): Promise<ChildProcess> {
   if (kind === "ssh") {
     if (!service.host || !service.cwd || !service.command) {
       throw new Error(
@@ -783,9 +784,16 @@ function spawnService(
   if (!service.command || !service.cwd) {
     throw new Error(`Service "${name}" is missing command or cwd.`);
   }
+  const envFile = await readEnvFile(envFilePath(service.cwd));
+  const fileEnv = envFile.exists
+    ? Object.fromEntries(entriesFromLines(envFile.lines).map((entry) => [entry.key, entry.value]))
+    : {};
+
   return spawn(service.command, {
     cwd: service.cwd,
-    env: { ...process.env, ...service.env },
+    // Load the conventional .env next to the service, while allowing values
+    // configured explicitly in NoMoreIDE to override it.
+    env: { ...process.env, ...fileEnv, ...service.env },
     shell: true,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,

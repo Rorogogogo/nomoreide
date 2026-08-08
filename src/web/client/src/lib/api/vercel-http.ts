@@ -88,6 +88,31 @@ export const httpVercelApi: VercelApi = {
     return res.value;
   },
 
+  async createVercelEnv(input) {
+    const res = await requestJson<{ ok: true; env: VercelEnvVar }>("/api/vercel/env", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return res.env;
+  },
+
+  async updateVercelEnv(id, input) {
+    const res = await requestJson<{ ok: true; env: VercelEnvVar }>(
+      `/api/vercel/env/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input),
+      },
+    );
+    return res.env;
+  },
+
+  async deleteVercelEnv(id) {
+    await requestJson(`/api/vercel/env/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
+
   async listVercelDomains() {
     const res = await requestJson<{ ok: true; domains: VercelDomain[] }>("/api/vercel/domains");
     return res.domains;

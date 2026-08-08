@@ -7,6 +7,7 @@ import {
 } from "./tauri-bridge.js";
 import type {
   AgentChatApi,
+  AgentChatModels,
   AgentChatProviderInfo,
   AgentChatProviderOption,
   AgentStreamEvent,
@@ -14,6 +15,13 @@ import type {
 
 // The saved/default provider, used when a turn doesn't override it explicitly.
 let _tauriProvider = "claude";
+/**
+ * The Rust core has no model-pin command yet, so the desktop app keeps the
+ * choice in memory for this window only. It still reaches the spawned CLI —
+ * `createAgentTerminalSession` forwards `model` per session — but it does not
+ * survive a restart the way the Node backend's config does.
+ */
+let _tauriModels: AgentChatModels = {};
 
 export const tauriAgentChatApi: AgentChatApi = {
   async getAgentChatStatus() {
@@ -25,7 +33,11 @@ export const tauriAgentChatApi: AgentChatApi = {
       providers: AgentChatProviderOption[];
     };
     _tauriProvider = status.provider?.id ?? "claude";
-    return { ...status, providers: status.providers ?? [] };
+    return {
+      ...status,
+      providers: status.providers ?? [],
+      models: { ..._tauriModels },
+    };
   },
 
   async setChatProvider(provider) {
@@ -33,6 +45,14 @@ export const tauriAgentChatApi: AgentChatApi = {
     const selected = (raw as AgentChatProviderInfo) ?? null;
     _tauriProvider = selected?.id ?? provider;
     return selected ?? ({ id: provider } as AgentChatProviderInfo);
+  },
+
+  async setChatModel(provider, model) {
+    const next = { ..._tauriModels };
+    if (model?.trim()) next[provider] = model.trim();
+    else delete next[provider];
+    _tauriModels = next;
+    return { ...next };
   },
 
   // Desktop runs the agent unattended; tool approval is a no-op.

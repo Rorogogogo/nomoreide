@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   BookOpen,
   ChevronRight,
-  Heart,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -66,6 +65,7 @@ import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { ActivityView } from "@/features/activity/activity-view";
+import { GistPopover } from "@/components/gist-popover";
 import {
   APP_NAV_SECTIONS,
   type AppPage,
@@ -121,14 +121,16 @@ export function pageFromPath(pathname: string): Page {
 
 export function sidebarShellClassName(docked = false) {
   return cn(
-    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-4 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
+    "group/sidebar hidden h-full shrink-0 overflow-x-hidden overflow-y-auto border-r border-border bg-card/85 py-2 backdrop-blur transition-[width,padding] duration-200 md:flex md:flex-col",
     docked ? "w-64 px-4" : "w-16 px-2 hover:w-64 hover:px-4",
   );
 }
 
 export function navButtonClassName(active: boolean, docked = false) {
   return cn(
-    "relative grid h-10 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-sm font-medium transition-[background-color,color,width] duration-150",
+    // h-9 rather than h-10: thirteen destinations plus their group labels have
+    // to clear a laptop viewport without the rail turning into a scroller.
+    "relative grid h-9 grid-cols-[48px_minmax(0,1fr)] items-center justify-start gap-0 overflow-hidden rounded-md px-0 text-sm font-medium transition-[background-color,color,width] duration-150",
     docked ? "w-full" : "w-12 group-hover/sidebar:w-full",
     active
       ? "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -148,12 +150,17 @@ export function navButtonLabelClassName(docked = false, hasBadge = false) {
 
 export function navButtonIconClassName(docked = false) {
   return cn(
-    "flex h-10 w-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-5",
+    "flex h-9 w-12 items-center justify-center text-current transition-transform duration-150 [&_svg]:size-[18px]",
     docked ? "translate-x-0" : "-translate-x-px group-hover/sidebar:translate-x-0",
   );
 }
 
-export function SidebarCredit({
+/**
+ * Dock toggle. It rides in the sidebar's identity row instead of a footer of
+ * its own — the rail only expands on hover anyway, which is exactly when the
+ * toggle is reachable, and the reclaimed row goes to navigation.
+ */
+export function SidebarDockToggle({
   docked,
   onToggleDock,
 }: {
@@ -161,56 +168,21 @@ export function SidebarCredit({
   onToggleDock?: () => void;
 }) {
   return (
-    <div
+    <button
+      aria-label={docked ? "Undock sidebar" : "Dock sidebar"}
+      aria-pressed={docked}
       className={cn(
-        "mt-auto flex h-10 min-w-0 items-center overflow-hidden border-t border-border/60 text-[11px] text-muted-foreground transition-[height,opacity,width] duration-150",
+        "flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,opacity] duration-150 hover:bg-muted hover:text-foreground [&_svg]:size-4",
         docked
-          ? "w-full justify-start opacity-100"
-          : "w-12 justify-center group-hover/sidebar:w-full group-hover/sidebar:justify-start group-hover/sidebar:opacity-100",
+          ? "bg-muted text-foreground opacity-100"
+          : "opacity-0 group-hover/sidebar:opacity-100",
       )}
+      onClick={onToggleDock}
+      title={docked ? "Undock sidebar" : "Dock sidebar"}
+      type="button"
     >
-      <span
-        className={cn(
-          "flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-pre transition-[opacity,width] duration-150",
-          docked
-            ? "flex-1 opacity-100"
-            : "w-0 flex-none opacity-0 group-hover/sidebar:w-auto group-hover/sidebar:flex-1 group-hover/sidebar:opacity-100",
-        )}
-      >
-        <span>Made with</span>
-        <Heart
-          aria-label="love"
-          className="size-3 shrink-0 fill-red-500 text-red-500"
-        />
-        <span>by Robert Wang</span>
-        <a
-          aria-label="Robert Wang on LinkedIn"
-          className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[#0A66C2]"
-          href="https://www.linkedin.com/in/robert-wang-cs/"
-          rel="noopener noreferrer"
-          target="_blank"
-          title="LinkedIn"
-        >
-          <svg className="size-3 fill-current" role="img" viewBox="0 0 24 24">
-            <title>LinkedIn</title>
-            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.063 2.063 0 1 1 0-4.126 2.063 2.063 0 0 1 0 4.126zM7.119 20.452H3.554V9h3.565v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
-          </svg>
-        </a>
-      </span>
-      <button
-        aria-label={docked ? "Undock sidebar" : "Dock sidebar"}
-        aria-pressed={docked}
-        className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-4",
-          docked ? "ml-auto bg-muted text-foreground" : "group-hover/sidebar:ml-auto",
-        )}
-        onClick={onToggleDock}
-        title={docked ? "Undock sidebar" : "Dock sidebar"}
-        type="button"
-      >
-        {docked ? <PanelLeftClose /> : <PanelLeftOpen />}
-      </button>
-    </div>
+      {docked ? <PanelLeftClose /> : <PanelLeftOpen />}
+    </button>
   );
 }
 
@@ -565,19 +537,25 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 </svg>
               </div>
             </div>
-            <AppIdentity
-              className={cn(
-                "min-w-0 translate-x-1 overflow-hidden transition-opacity duration-200",
-                sidebarDocked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
-              )}
-            />
+            <div className="flex min-w-0 items-center gap-1 pr-1">
+              <AppIdentity
+                className={cn(
+                  "min-w-0 flex-1 translate-x-1 overflow-hidden transition-opacity duration-200",
+                  sidebarDocked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+                )}
+              />
+              <SidebarDockToggle
+                docked={sidebarDocked}
+                onToggleDock={() => updateUi({ sidebarDocked: !sidebarDocked })}
+              />
+            </div>
           </div>
           {/* Project scope lives in the header breadcrumb, not here — one
               control for one piece of state. */}
-          <nav className="mt-3 flex-1 content-start overflow-y-auto overflow-x-hidden">
+          <nav className="mt-2 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {APP_NAV_SECTIONS.map((section, index) => (
               <div
-                className={cn(index > 0 && "mt-2 border-t border-border/60 pt-2")}
+                className={cn(index > 0 && "mt-1.5 border-t border-border/60 pt-1")}
                 key={section.labelKey}
               >
                 <NavSectionLabel docked={sidebarDocked} label={t(section.labelKey)} />
@@ -597,7 +575,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               </div>
             ))}
           </nav>
-          <div className="mb-1 border-t border-border/60 pt-1">
+          <div className="mt-1 border-t border-border/60 pt-1">
             <NavButton
               active={page === "settings"}
               docked={sidebarDocked}
@@ -606,10 +584,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               onClick={() => setPage("settings")}
             />
           </div>
-          <SidebarCredit
-            docked={sidebarDocked}
-            onToggleDock={() => updateUi({ sidebarDocked: !sidebarDocked })}
-          />
         </aside>
 
         <main
@@ -680,6 +654,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                     </span>
                   </a>
                 </Tooltip>
+                <GistPopover
+                  key={data?.git.selectedRepository?.path ?? "all"}
+                  scopeKey={data?.git.selectedRepository?.path ?? "all"}
+                />
               </div>
             </div>
           </header>
@@ -823,7 +801,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
 function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) {
   // Fixed height so the collapsed rail doesn't shift when labels fade in.
   return (
-    <div className="flex h-5 items-center overflow-hidden px-3">
+    <div className="flex h-4 items-center overflow-hidden px-3">
       <span
         className={cn(
           "whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-opacity duration-150",
@@ -868,22 +846,17 @@ function NavButton({
       <span className={navButtonLabelClassName(docked, showBadge)}>{label}</span>
       {badge !== undefined && badge > 0 ? (
         <Badge
-          appearance={badge > 0 ? "solid" : "outline"}
+          appearance="solid"
           className={cn(
-            "min-w-6 justify-center px-1.5 font-mono shadow-none",
+            "min-w-4 justify-center rounded-full border-transparent px-1 font-mono text-[10px] leading-none shadow-none",
             active
-              ? // Match the active pill (bg-primary/text-primary-foreground), not
-                // the success-green variant. The dark: copies are what actually
-                // override the success variant's own dark: classes in dark mode.
-                "border-primary-foreground/40 bg-primary-foreground/15 text-primary-foreground dark:border-primary-foreground/40 dark:bg-primary-foreground/15 dark:text-primary-foreground"
-              : badge > 0
-                ? ""
-                : "border-border bg-background text-muted-foreground",
-            "absolute right-1.5 top-1.5 h-4 min-w-4 rounded-full px-1 text-[10px] leading-none shadow-none group-hover/sidebar:right-2 group-hover/sidebar:top-1/2 group-hover/sidebar:-translate-y-1/2 group-hover/sidebar:text-xs",
+              ? "bg-primary-foreground text-primary"
+              : "bg-foreground text-background",
+            "absolute right-1.5 top-1.5 h-4 group-hover/sidebar:right-2 group-hover/sidebar:top-1/2 group-hover/sidebar:-translate-y-1/2 group-hover/sidebar:text-xs",
             docked && "right-2 top-1/2 -translate-y-1/2 text-xs",
           )}
           size="small"
-          variant={badge > 0 ? "success" : "outline"}
+          variant="secondary"
         >
           {badge}
         </Badge>
@@ -891,4 +864,3 @@ function NavButton({
     </Button>
   );
 }
-

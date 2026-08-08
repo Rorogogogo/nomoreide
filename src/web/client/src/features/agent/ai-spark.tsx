@@ -4,14 +4,14 @@ import { ClaudeLogo, CodexLogo, GeminiLogo } from "./agent-logos";
 import { useAgentDock } from "./chat/agent-context";
 
 /**
- * The active agent's official mark in its brand color, defaulting to Claude.
- * OpenAI's mark stays monochrome (`text-foreground`) so it adapts to the theme,
- * the way OpenAI intends it to be used.
+ * The active agent's official mark, defaulting to Claude. Each logo carries its
+ * own brand colour, so this only picks which mark to draw — agents read as
+ * themselves everywhere rather than as whichever tint a surface happened to set.
  */
 function ProviderMark({ id, className }: { id?: string; className?: string }) {
-  if (id === "codex") return <CodexLogo className={cn("text-foreground", className)} />;
-  if (id === "gemini") return <GeminiLogo className={cn("text-[#1A73E8]", className)} />;
-  return <ClaudeLogo className={cn("text-[#D97757]", className)} />;
+  if (id === "codex") return <CodexLogo className={className} />;
+  if (id === "gemini") return <GeminiLogo className={className} />;
+  return <ClaudeLogo className={className} />;
 }
 
 /** The active agent's official mark, resolved from context — for AI affordances. */

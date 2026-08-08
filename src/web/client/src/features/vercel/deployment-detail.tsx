@@ -137,7 +137,8 @@ export function DeploymentDetail({
             {formatRelativeTime(new Date(current.createdAt).toISOString())}
           </span>
           {isProduction ? (
-            <span className="rounded border border-emerald-500/40 px-1.5 py-px text-[10px] text-emerald-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
               {t("vercel.target.production")}
             </span>
           ) : null}

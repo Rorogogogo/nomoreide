@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { buildInteractiveAgentInvocation } from "../../core/agent-terminal.js";
+import {
+  buildInteractiveAgentInvocation,
+  type InteractiveAgentInvocation,
+} from "../../core/agent-terminal.js";
 import { listAgentTranscripts } from "../../core/agent-transcripts.js";
 import {
   composeOneTimeSkillPrompt,
@@ -20,6 +23,8 @@ const agentSessionSchema = z.object({
     source: z.string().trim().min(3).max(400),
   }).strict().optional(),
   resumeId: z.string().regex(/^[0-9a-fA-F-]{8,64}$/).optional(),
+  // Shape only; `buildInteractiveAgentInvocation` owns the argv-safety check.
+  model: z.string().trim().min(1).max(64).optional(),
 });
 const renameSessionSchema = z.object({
   label: z.string().trim().min(1).max(60),
@@ -92,9 +97,25 @@ export const terminalRoutes: Route[] = [
             return;
           }
         }
-        const invocation = buildInteractiveAgentInvocation(provider, prompt, {
-          resumeId,
-        });
+        // An explicit per-session model wins; otherwise the provider's saved
+        // pin applies, and with neither the CLI picks for itself.
+        const model =
+          parsed.data.model ??
+          (await configStore.load()).chatModels?.[provider];
+        let invocation: InteractiveAgentInvocation;
+        try {
+          invocation = buildInteractiveAgentInvocation(provider, prompt, {
+            resumeId,
+            model,
+          });
+        } catch (error) {
+          sendJson(
+            response,
+            { ok: false, error: error instanceof Error ? error.message : "Invalid agent invocation." },
+            400,
+          );
+          return;
+        }
         const trimmedLabel = parsed.data.label?.trim();
         const label = (trimmedLabel || `${provider === "codex" ? "Codex" : "Claude"} task`)
           .slice(0, 60);

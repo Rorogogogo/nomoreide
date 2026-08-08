@@ -310,6 +310,70 @@ export const vercelRoutes: Route[] = [
     },
   ),
 
+  /** Add a variable. Guarded like the deployment actions below: dashboard-only, no MCP tool. */
+  route("POST", "/api/vercel/env", async ({ request, response, configStore, cwd }) => {
+    try {
+      const body = await readJson(request);
+      const context = await vercelContextFor(configStore, cwd);
+      const actions = await requireVercelActions(configStore);
+      const key = typeof body.key === "string" ? body.key.trim() : "";
+      const target = Array.isArray(body.target)
+        ? body.target.filter((entry): entry is string => typeof entry === "string")
+        : [];
+      if (!key) throw new Error("A key is required.");
+      if (target.length === 0) throw new Error("Choose at least one environment.");
+      sendJson(response, {
+        ok: true,
+        env: await actions.createEnv(requireProjectId(context.project?.id), {
+          key,
+          value: typeof body.value === "string" ? body.value : "",
+          target,
+          type: body.type === "plain" ? "plain" : "encrypted",
+        }),
+      });
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+    }
+  }),
+
+  /** Update or delete one variable. Same write boundary as `createEnv` above. */
+  patternRoute(
+    /^\/api\/vercel\/env\/([^/]+)$/,
+    ["id"],
+    async ({ request, response, configStore, cwd, params }) => {
+      if (request.method !== "PATCH" && request.method !== "DELETE") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const context = await vercelContextFor(configStore, cwd);
+        const actions = await requireVercelActions(configStore);
+        const projectId = requireProjectId(context.project?.id);
+        const envId = decodeURIComponent(params.id);
+
+        if (request.method === "DELETE") {
+          await actions.deleteEnv(projectId, envId);
+          sendJson(response, { ok: true });
+          return;
+        }
+
+        const body = await readJson(request);
+        const target = Array.isArray(body.target)
+          ? body.target.filter((entry): entry is string => typeof entry === "string")
+          : undefined;
+        sendJson(response, {
+          ok: true,
+          env: await actions.updateEnv(projectId, envId, {
+            value: typeof body.value === "string" && body.value !== "" ? body.value : undefined,
+            target,
+          }),
+        });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
+
   // --- Domains ---
 
   route("GET", "/api/vercel/domains", async ({ response, configStore, cwd }) => {

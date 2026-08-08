@@ -13,6 +13,8 @@ export interface AgentDockLayoutPreferences {
   activeLeftTaskId: string | null;
   activeRightTaskId: string | null;
   focusedPane: "left" | "right";
+  /** Whether the conversation-history sidebar is showing. */
+  historyRailOpen: boolean;
 }
 
 export type AgentDockLayoutPatch = Partial<
@@ -30,6 +32,7 @@ export function defaultAgentDockLayoutPreferences(): AgentDockLayoutPreferences 
     activeLeftTaskId: null,
     activeRightTaskId: null,
     focusedPane: "left",
+    historyRailOpen: false,
   };
 }
 
@@ -79,6 +82,10 @@ export function parseAgentDockLayoutPreferences(
     activeLeftTaskId: taskId(input.activeLeftTaskId),
     activeRightTaskId: taskId(input.activeRightTaskId),
     focusedPane: input.focusedPane === "right" ? "right" : "left",
+    historyRailOpen:
+      typeof input.historyRailOpen === "boolean"
+        ? input.historyRailOpen
+        : fallback.historyRailOpen,
   };
 }
 

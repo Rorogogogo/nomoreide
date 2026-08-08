@@ -31,7 +31,36 @@ export const agentChatRoutes: Route[] = [
       approvals: approvalsEnabled(provider),
       provider: publicProviderInfo(provider),
       providers,
+      models: config.chatModels ?? {},
     });
+  }),
+
+  // Persist the model new sessions spawn with, per provider. A null/absent
+  // model clears the pin rather than storing an empty string.
+  route("POST", "/api/agent/chat/model", async ({ request, response, configStore }) => {
+    let body: { provider?: unknown; model?: unknown };
+    try {
+      body = (await readJsonBody(request)) as typeof body;
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      return;
+    }
+    const provider = providerById(typeof body.provider === "string" ? body.provider : undefined);
+    if (!provider) {
+      sendJson(response, { ok: false, error: "Unknown chat provider." }, 400);
+      return;
+    }
+    if (body.model !== undefined && body.model !== null && typeof body.model !== "string") {
+      sendJson(response, { ok: false, error: "Model must be a string." }, 400);
+      return;
+    }
+    const requested = typeof body.model === "string" ? body.model.trim() : "";
+    if (requested.length > 64) {
+      sendJson(response, { ok: false, error: "Model name is too long." }, 400);
+      return;
+    }
+    const config = await configStore.setChatModel(provider.id, requested || null);
+    sendJson(response, { ok: true, models: config.chatModels ?? {} });
   }),
 
   // Persist the user's provider choice so it sticks across CLI/web/desktop.

@@ -223,6 +223,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -252,6 +253,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -273,6 +275,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -296,6 +299,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -319,6 +323,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -341,6 +346,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -388,6 +394,7 @@ describe("web terminal socket", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -439,6 +446,7 @@ describe("service-scoped terminal sessions", () => {
       configPath,
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -474,6 +482,7 @@ describe("service-scoped terminal sessions", () => {
       configPath,
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -499,6 +508,7 @@ describe("service-scoped terminal sessions", () => {
       configPath: join(tempDir, "config.json"),
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -526,6 +536,7 @@ describe("service-scoped terminal sessions", () => {
       configPath,
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -555,6 +566,7 @@ describe("agent terminal sessions", () => {
       configPath: join(tempDir, "config.json"),
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -588,6 +600,7 @@ describe("agent terminal sessions", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -609,6 +622,7 @@ describe("agent terminal sessions", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -631,11 +645,88 @@ describe("agent terminal sessions", () => {
     });
   });
 
+  test("spawns with the model the request names", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        agent: { provider: "claude", prompt: "Fix it", model: "opus" },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions?.args).toEqual(["--model", "opus", "Fix it"]);
+  });
+
+  test("falls back to the provider's saved model pin", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    const configPath = join(tempDir, "config.json");
+    await new ConfigStore(configPath).setChatModel("codex", "gpt-5-codex");
+    server = await createWebServer({
+      configPath,
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agent: { provider: "codex", prompt: "" } }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(manager.lastCreateOptions?.args).toEqual([
+      "--no-alt-screen",
+      "-m",
+      "gpt-5-codex",
+    ]);
+  });
+
+  test("rejects a model name that could be read as a flag", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const res = await fetch(`${server.url}/api/terminal/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        agent: {
+          provider: "claude",
+          prompt: "",
+          model: "--dangerously-skip-permissions",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("Invalid model name");
+    expect(manager.lastCreateOptions).toBeUndefined();
+  });
+
   test("opens an interactive provider session without an initial prompt", async () => {
     const manager = new FakeTerminalManager(tempDir);
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -664,6 +755,7 @@ describe("agent terminal sessions", () => {
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();
@@ -685,6 +777,7 @@ describe("agent terminal sessions", () => {
       configPath: join(tempDir, "config.json"),
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
       terminalManager: manager,
     }).start();

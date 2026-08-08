@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
   GitBranch,
   Pencil,
+  Play,
   Plus,
+  RotateCcw,
   ScrollText,
+  Square,
   Trash2,
   Workflow,
 } from "lucide-react";
@@ -16,15 +18,16 @@ import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import {
-  addServiceToBundle,
   deleteService,
-  removeServiceFromBundle,
+  getServiceGraph,
+  startService,
+  stopService,
   type DashboardData,
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { openExternal } from "@/lib/tauri";
-import { useT, type Translate } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 import { DebugTimeline } from "./debug-timeline";
 import { DependencyGraph } from "./dependency-graph";
 import { EmptyState } from "./empty-state";
@@ -34,21 +37,18 @@ import { PortsOverview } from "./ports-overview";
 import { LifecycleActions } from "./service-actions";
 import { MultiLogView } from "./multi-log-view";
 import { ServiceDetailPanel } from "./service-detail-panel";
-import { ComposerDialog, GroupForm, ServiceForm } from "./service-forms";
+import { ComposerDialog, ServiceForm } from "./service-forms";
 import { unassignedServices } from "./project-scope";
 import { OnboardDialog } from "../onboard/onboard-dialog";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
 import {
-  buildGroupServicesPrompt,
   buildServiceDebugPrompt,
   SETUP_SERVICE_PROMPT,
 } from "../agent/prompts";
 import {
   isServiceOn,
-  SERVICE_DRAG_TYPE,
-  ServiceGroupSection,
   ServiceRow,
   serviceUrl,
   StateBadge,
@@ -72,39 +72,20 @@ export function ServicesView({
   const t = useT();
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
-  const [serviceComposer, setServiceComposer] = useState<"group" | "service" | null>(null);
+  const [serviceComposer, setServiceComposer] = useState<boolean | "service" | null>(false);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [graphOpen, setGraphOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<"start" | "stop" | "restart" | null>(null);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [ungroupedDragOver, setUngroupedDragOver] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
   const {
     error: showErrorToast,
     message: showMessageToast,
     success: showSuccessToast,
   } = useToasts();
-  const groupedServiceNames = useMemo(
-    () => new Set(data.config.bundles.flatMap((group) => group.services)),
-    [data.config.bundles],
-  );
-  const serviceGroupNameByService = useMemo(() => {
-    const groupNames = new Map<string, string>();
-    for (const group of data.config.bundles) {
-      for (const serviceName of group.services) {
-        if (!groupNames.has(serviceName)) {
-          groupNames.set(serviceName, group.name);
-        }
-      }
-    }
-    return groupNames;
-  }, [data.config.bundles]);
-  const ungroupedServices = useMemo(
-    () => data.config.services.filter((service) => !groupedServiceNames.has(service.name)),
-    [data.config.services, groupedServiceNames],
-  );
   const serviceNames = useMemo(
     () => data.config.services.map((service) => service.name),
     [data.config.services],
@@ -118,7 +99,7 @@ export function ServicesView({
     [data.config.services],
   );
   const healthByService = data.health ?? {};
-  const hasVisibleServices = data.config.bundles.length > 0 || ungroupedServices.length > 0;
+  const hasVisibleServices = data.config.services.length > 0;
 
   useEffect(() => {
     const stillExists = data.config.services.some((service) => service.name === selectedService);
@@ -145,20 +126,6 @@ export function ServicesView({
   const selectedStatus = selectedService ? data.runtime.services[selectedService] : undefined;
   const selectedHealth = selectedService ? healthByService[selectedService] : undefined;
 
-  async function addToGroup(
-    group: DashboardData["config"]["bundles"][number],
-    serviceName: string,
-  ) {
-    if (group.services.includes(serviceName)) return;
-    try {
-      await addServiceToBundle(group.name, group.services, serviceName);
-      showSuccessToast(t("services.toast.addedToGroup", { service: serviceName, group: group.name }));
-      await onRefresh();
-    } catch (caught) {
-      showErrorToast(caught instanceof Error ? caught.message : String(caught));
-    }
-  }
-
   async function deleteSelected() {
     if (!selectedServiceDef) return;
     if (isServiceOn(selectedStatus?.state)) {
@@ -177,24 +144,42 @@ export function ServicesView({
     }
   }
 
-  async function removeFromGroups(serviceName: string) {
-    const owningGroups = data.config.bundles.filter((bundle) =>
-      bundle.services.includes(serviceName),
-    );
-    if (owningGroups.length === 0) return;
+  async function runBulkAction(action: "start" | "stop" | "restart") {
+    if (bulkAction) return;
+    if (
+      (action === "stop" || action === "restart") &&
+      !window.confirm(
+        t(action === "stop" ? "services.confirmStopAll" : "services.confirmRestartAll"),
+      )
+    ) {
+      return;
+    }
+
+    setBulkAction(action);
     try {
-      for (const group of owningGroups) {
-        await removeServiceFromBundle(group.name, group.services, serviceName);
+      const graph = await getServiceGraph();
+      const knownNames = new Set(serviceNames);
+      const graphOrder = graph.order.filter((name) => knownNames.has(name));
+      const startOrder = graphOrder.length === serviceNames.length ? graphOrder : serviceNames;
+      const stopOrder = [...startOrder].reverse();
+
+      if (action === "stop" || action === "restart") {
+        for (const name of stopOrder) {
+          await stopService(name);
+          await onRefresh();
+        }
       }
-      showMessageToast({
-        text: t("services.toast.removedFromGroups", {
-          service: serviceName,
-          groups: owningGroups.map((group) => group.name).join(", "),
-        }),
-      });
-      await onRefresh();
+      if (action === "start" || action === "restart") {
+        for (const name of startOrder) {
+          await startService(name);
+          await onRefresh();
+        }
+      }
+      showSuccessToast(t("services.toast.bulkRequested", { action: t(`common.${action}`) }));
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBulkAction(null);
     }
   }
 
@@ -208,30 +193,12 @@ export function ServicesView({
     const previousStates = previousStatesRef.current;
 
     if (Object.keys(previousStates).length) {
-      const groupTransitions = new Map<string, Map<ServiceStatus["state"], number>>();
-      const groupExitCodes = new Map<string, Array<number | null | undefined>>();
-
       for (const service of data.config.services) {
         const nextState = nextStates[service.name];
         const previousState = previousStates[service.name];
         if (!previousState || previousState === nextState) continue;
 
         const status = data.runtime.services[service.name];
-        const groupName = serviceGroupNameByService.get(service.name);
-        if (groupName) {
-          const transitions =
-            groupTransitions.get(groupName) ?? new Map<ServiceStatus["state"], number>();
-          transitions.set(nextState, (transitions.get(nextState) ?? 0) + 1);
-          groupTransitions.set(groupName, transitions);
-
-          if (nextState === "exited") {
-            const exitCodes = groupExitCodes.get(groupName) ?? [];
-            exitCodes.push(status?.exitCode);
-            groupExitCodes.set(groupName, exitCodes);
-          }
-          continue;
-        }
-
         if (nextState === "running") {
           showSuccessToast(t("services.toast.running", { name: service.name }));
         } else if (nextState === "stopped") {
@@ -247,24 +214,12 @@ export function ServicesView({
         }
       }
 
-      for (const [groupName, transitions] of groupTransitions) {
-        showGroupTransitionToast({
-          exitCodes: groupExitCodes.get(groupName) ?? [],
-          groupName,
-          showErrorToast,
-          showMessageToast,
-          showSuccessToast,
-          transitions,
-          t,
-        });
-      }
     }
 
     previousStatesRef.current = nextStates;
   }, [
     data.config.services,
     data.runtime.services,
-    serviceGroupNameByService,
     showErrorToast,
     showMessageToast,
     showSuccessToast,
@@ -323,44 +278,60 @@ export function ServicesView({
                 <div className="flex items-center gap-1">
                   <Button
                     aria-haspopup="dialog"
-                    className="h-7 gap-1.5 px-2 text-[11px]"
+                    aria-label={t("services.graph")}
+                    className="size-7"
                     onClick={() => setGraphOpen(true)}
                     size="sm"
                     type="button"
                     variant="ghost"
                   >
-                    <Workflow aria-hidden="true" className="size-3.5" />
-                    {t("services.graph")}
+                    <Tooltip label={t("services.graph")} side="bottom">
+                      <Workflow aria-hidden="true" className="size-3.5" />
+                    </Tooltip>
                   </Button>
                   <Button
                     aria-haspopup="dialog"
-                    className="h-7 gap-1.5 px-2 text-[11px]"
+                    aria-label={t("services.logs")}
+                    className="size-7"
                     onClick={() => setMultiLogOpen(true)}
                     size="sm"
                     type="button"
                     variant="ghost"
                   >
-                    <ScrollText aria-hidden="true" className="size-3.5" />
-                    {t("services.logs")}
+                    <Tooltip label={t("services.logs")} side="bottom">
+                      <ScrollText aria-hidden="true" className="size-3.5" />
+                    </Tooltip>
                   </Button>
+                  <OverflowMenu
+                    className="size-7 opacity-100"
+                    items={[
+                      {
+                        icon: <Play className="size-3.5 text-emerald-600" />,
+                        label: t("services.startAll"),
+                        onSelect: () => void runBulkAction("start"),
+                      },
+                      {
+                        icon: <RotateCcw className="size-3.5 text-amber-600" />,
+                        label: t("services.restartAll"),
+                        onSelect: () => void runBulkAction("restart"),
+                      },
+                      {
+                        icon: <Square className="size-3.5 text-destructive" />,
+                        label: t("services.stopAll"),
+                        onSelect: () => void runBulkAction("stop"),
+                      },
+                    ]}
+                    label={t("services.bulkActions")}
+                  />
                   <AddMenu
-                    onCreateGroup={() => setServiceComposer("group")}
-                    onCreateService={() => setServiceComposer("service")}
+                    onCreateService={() => setServiceComposer(true)}
                     onOnboardRepo={() => setOnboardOpen(true)}
                     onOnboardWithAi={startOnboard}
-                    canGroupWithAi={ungroupedServices.length > 1}
                     onCreateWithAi={() =>
                       sendToAgent({
                         prompt: SETUP_SERVICE_PROMPT,
                         source: { type: "service-setup", label: "Add a service" },
                         label: "Help me add a new service, one step at a time.",
-                      })
-                    }
-                    onGroupWithAi={() =>
-                      sendToAgent({
-                        prompt: buildGroupServicesPrompt(ungroupedServices),
-                        source: { type: "group-services", label: "Group services" },
-                        label: "Propose how to group my ungrouped services.",
                       })
                     }
                   />
@@ -394,69 +365,21 @@ export function ServicesView({
               ) : null}
               {hasVisibleServices ? (
                 <div className="divide-y divide-border">
-                  {data.config.bundles.map((group) => (
-                    <ServiceGroupSection
-                      group={group}
-                      key={group.name}
-                      onRefresh={onRefresh}
-                      ports={data.ports}
-                      allServices={data.config.services}
-                      health={healthByService}
-                      services={data.config.services.filter((service) =>
-                        group.services.includes(service.name),
-                      )}
-                      statuses={data.runtime.services}
-                      timeline={data.timeline}
-                      selectedService={selectedService}
-                      onSelectService={setSelectedService}
-                      onDropService={(serviceName) => void addToGroup(group, serviceName)}
-                    />
-                  ))}
-                  {ungroupedServices.length ? (
-                    // biome-ignore lint/a11y/noStaticElementInteractions: Native drag-and-drop target; service controls remain keyboard accessible.
-                    <div
-                      className={cn(
-                        "transition-colors",
-                        ungroupedDragOver &&
-                          "bg-primary/5 outline-dashed outline-2 -outline-offset-2 outline-primary/60",
-                      )}
-                      onDragOver={(event) => {
-                        if (!event.dataTransfer.types.includes(SERVICE_DRAG_TYPE)) return;
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                        setUngroupedDragOver(true);
-                      }}
-                      onDragLeave={() => setUngroupedDragOver(false)}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        setUngroupedDragOver(false);
-                        const serviceName = event.dataTransfer.getData(SERVICE_DRAG_TYPE);
-                        if (serviceName) void removeFromGroups(serviceName);
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <span>{t("services.ungrouped")}</span>
-                        <span className="text-muted-foreground/80">
-                          {ungroupedServices.length}
-                        </span>
-                      </div>
-                      <div className="divide-y divide-border">
-                        {ungroupedServices.map((service) => (
-                          <ServiceRow
-                            key={service.name}
-                            service={service}
-                            status={data.runtime.services[service.name]}
-                            health={healthByService[service.name]}
-                            ports={data.ports}
-                            onRefresh={onRefresh}
-                            timeline={data.timeline}
-                            selected={selectedService === service.name}
-                            onSelect={() => setSelectedService(service.name)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                  <div className="divide-y divide-border">
+                    {data.config.services.map((service) => (
+                      <ServiceRow
+                        key={service.name}
+                        service={service}
+                        status={data.runtime.services[service.name]}
+                        health={healthByService[service.name]}
+                        ports={data.ports}
+                        onRefresh={onRefresh}
+                        timeline={data.timeline}
+                        selected={selectedService === service.name}
+                        onSelect={() => setSelectedService(service.name)}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <EmptyState label={t("services.empty")} />
@@ -466,7 +389,7 @@ export function ServicesView({
 
         </div>
 
-        <div className="min-h-0 min-w-0 overflow-auto">
+        <div className="min-h-0 min-w-0 overflow-hidden">
           {selectedServiceDef ? (
             <div className="flex h-full min-h-0 flex-col">
               <AiContextTarget
@@ -491,7 +414,7 @@ export function ServicesView({
                     {selectedServiceDef.name}
                   </h2>
                   <StateBadge state={selectedStatus?.state ?? "stopped"} />
-                  <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <div className="ml-auto flex shrink-0 items-center gap-0.5">
                     {(() => {
                       const openUrl =
                         selectedStatus?.url ??
@@ -504,7 +427,7 @@ export function ServicesView({
                             onClick={() => void openExternal(openUrl)}
                             size="icon"
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                           >
                             <ExternalLink />
                           </Button>
@@ -521,7 +444,7 @@ export function ServicesView({
                       onRefresh={onRefresh}
                     />
                     <OverflowMenu
-                      className="size-7 border border-border bg-background opacity-100 hover:border-foreground/30"
+                      className="size-7 opacity-100 hover:bg-muted"
                       items={[
                         {
                           icon: <Pencil className="size-3.5" />,
@@ -570,7 +493,7 @@ export function ServicesView({
                 <HealthSummary health={selectedHealth} />
               </div>
               </AiContextTarget>
-              <div className="min-h-0 flex-1 overflow-auto">
+              <div className="min-h-0 flex-1 overflow-hidden">
                 <ServiceDetailPanel
                   // Key by service so switching tears down the panel and
                   // reopens it on the default (Processes) tab — otherwise the
@@ -616,26 +539,18 @@ export function ServicesView({
       ) : null}
       {serviceComposer ? (
         <ComposerDialog
-          icon={serviceComposer === "service" ? <Plus /> : <Box />}
+          icon={<Plus />}
           onClose={() => setServiceComposer(null)}
-          size={serviceComposer === "service" ? "lg" : "md"}
-          title={serviceComposer === "service" ? t("services.addService") : t("services.createGroup")}
+          size="lg"
+          title={t("services.addService")}
         >
-          {serviceComposer === "service" ? (
-            <ServiceForm
-              cwd={data.cwd}
-              availableServices={serviceNames}
-              onRefresh={onRefresh}
-              onSaved={() => setServiceComposer(null)}
-              repositories={data.config.gitRepositories}
-            />
-          ) : (
-            <GroupForm
-              services={ungroupedServices}
-              onRefresh={onRefresh}
-              onSaved={() => setServiceComposer(null)}
-            />
-          )}
+          <ServiceForm
+            cwd={data.cwd}
+            availableServices={serviceNames}
+            onRefresh={onRefresh}
+            onSaved={() => setServiceComposer(false)}
+            repositories={data.config.gitRepositories}
+          />
         </ComposerDialog>
       ) : null}
       {onboardOpen ? (
@@ -670,22 +585,15 @@ export function ServicesView({
   );
 }
 
-/** "+" button that opens a small menu to create a service or a group. */
+/** "+" button for service creation and repository onboarding. */
 function AddMenu({
   onCreateService,
-  onCreateGroup,
   onCreateWithAi,
-  onGroupWithAi,
-  canGroupWithAi,
   onOnboardRepo,
   onOnboardWithAi,
 }: {
   onCreateService: () => void;
-  onCreateGroup: () => void;
   onCreateWithAi: () => void;
-  onGroupWithAi: () => void;
-  /** Only worth offering the AI grouping cut when 2+ services are ungrouped. */
-  canGroupWithAi: boolean;
   onOnboardRepo: () => void;
   onOnboardWithAi: () => void;
 }) {
@@ -703,7 +611,7 @@ function AddMenu({
         <Button
           aria-expanded={open}
           aria-haspopup="menu"
-          aria-label={t("services.addServiceOrGroup")}
+          aria-label={t("services.addService")}
           className="size-7"
           onClick={() => setOpen((current) => !current)}
           size="icon"
@@ -749,32 +657,6 @@ function AddMenu({
                 AI
               </button>
             </div>
-            {/* Create Group: the plain form, plus an AI cut that asks the agent
-                to propose groupings for the ungrouped services and group them
-                on confirmation. The cut only appears when there's enough to group. */}
-            <div className="group flex items-stretch">
-              <button
-                className="flex flex-1 items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
-                onClick={() => choose(onCreateGroup)}
-                role="menuitem"
-                type="button"
-              >
-                <Box />
-                {t("services.createGroup")}
-              </button>
-              {canGroupWithAi ? (
-                <button
-                  className="flex max-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap border-l border-transparent px-0 text-[11px] font-medium text-muted-foreground opacity-0 transition-all duration-200 ease-out hover:bg-muted/60 hover:text-foreground group-hover:max-w-24 group-hover:border-border group-hover:px-3 group-hover:opacity-100"
-                  onClick={() => choose(onGroupWithAi)}
-                  role="menuitem"
-                  title={t("services.groupWithAiHint")}
-                  type="button"
-                >
-                  <AgentMark className="size-3.5 shrink-0" />
-                  AI
-                </button>
-              ) : null}
-            </div>
             {/* Add from GitHub: the structured wizard, plus an AI cut that hands
                 the repo straight to the agent dock (the AI-native path). */}
             <div className="group flex items-stretch">
@@ -803,54 +685,4 @@ function AddMenu({
       ) : null}
     </div>
   );
-}
-
-function showGroupTransitionToast({
-  exitCodes,
-  groupName,
-  showErrorToast,
-  showMessageToast,
-  showSuccessToast,
-  transitions,
-  t,
-}: {
-  exitCodes: Array<number | null | undefined>;
-  groupName: string;
-  showErrorToast: (text: string) => void;
-  showMessageToast: (message: { text: string }) => void;
-  showSuccessToast: (text: string) => void;
-  transitions: Map<ServiceStatus["state"], number>;
-  t: Translate;
-}) {
-  if (transitions.size === 1) {
-    const [state] = transitions.keys();
-    if (state === "running") {
-      showSuccessToast(t("services.toast.groupRunning", { name: groupName }));
-    } else if (state === "stopped") {
-      showMessageToast({ text: t("services.toast.groupStopped", { name: groupName }) });
-    } else if (state === "starting") {
-      showMessageToast({ text: t("services.toast.groupStarting", { name: groupName }) });
-    } else if (state === "exited") {
-      const knownCodes = exitCodes.filter((code) => code !== undefined && code !== null);
-      showErrorToast(
-        knownCodes.length
-          ? t("services.toast.groupExitedWithCode", {
-              name: groupName,
-              code: knownCodes.join(", "),
-            })
-          : t("services.toast.groupExited", { name: groupName }),
-      );
-    }
-    return;
-  }
-
-  const summary = [...transitions.entries()]
-    .map(([state, count]) => `${count} ${state}`)
-    .join(", ");
-  const text = t("services.toast.groupUpdated", { name: groupName, summary });
-  if (transitions.has("exited")) {
-    showErrorToast(text);
-  } else {
-    showMessageToast({ text });
-  }
 }

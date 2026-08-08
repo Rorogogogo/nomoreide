@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { FileDiff, FileWarning } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { FileDiff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOperations } from "@/components/operations/operation-context";
 import { useT } from "@/lib/i18n";
@@ -67,43 +65,20 @@ export function IncidentDetail({
         }],
       }}
     >
+    {/* Lines, not boxes: this is a region of the table, not a floating card,
+        and the row above already carries level / service / count / file — so
+        the detail adds only what the row had to truncate or omit. */}
     <div
-      className="min-w-0 rounded-lg border border-border bg-background"
+      className="min-w-0 border-t border-border bg-muted/10"
       data-incident-detail="true"
       id={detailId}
     >
-      <div className="px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <Badge
-              variant={incident.level === "error" ? "danger" : "secondary"}
-              appearance="subtle"
-              size="small"
-            >
-              {t(
-                incident.level === "error"
-                  ? "errors.level.error"
-                  : "errors.level.warning",
-              )}
-            </Badge>
-            <span className="truncate font-mono text-xs font-semibold">{incident.service}</span>
-            {incident.count > 1 ? (
-              <Badge variant="outline" size="small">
-                ×{incident.count}
-              </Badge>
-            ) : null}
-          </div>
-          {fixing ? <span className="text-xs text-muted-foreground">{t("errors.incident.starting")}</span> : null}
-        </div>
-        <p className="mt-1.5 break-words font-mono text-xs text-foreground">{incident.title}</p>
-        {incident.file ? (
-          <p className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-            <FileWarning className="size-3.5" />
-            {incident.file}
-            {incident.line ? `:${incident.line}` : ""}
-          </p>
-        ) : null}
-        <p className="mt-1 font-mono text-[10px] text-muted-foreground/80">
+      <div className="px-3 py-2">
+        <p className="break-words font-mono text-[12px] text-foreground">{incident.title}</p>
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+          {incident.file
+            ? `${incident.file}${incident.line ? `:${incident.line}` : ""} · `
+            : ""}
           {t("errors.incident.firstLast", {
             first: new Date(incident.firstSeen).toLocaleString(),
             last: new Date(incident.lastSeen).toLocaleTimeString(),
@@ -111,30 +86,36 @@ export function IncidentDetail({
         </p>
       </div>
 
-      <div className="border-t border-border p-4">
-        {fixedSessionId ? (
-          <Alert variant="muted" className="mb-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs">{t("errors.incident.working")}</span>
-              {onReviewChanges ? (
-                <Button
-                  onClick={() => onReviewChanges(fixedSessionId)}
-                  size="sm"
-                  variant="outline"
-                >
-                  <FileDiff className="size-3.5" />
-                  {t("errors.incident.reviewChanges")}
-                </Button>
-              ) : null}
-            </div>
-          </Alert>
+      {fixedSessionId ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2">
+          <span className="text-[11px] text-muted-foreground">{t("errors.incident.working")}</span>
+          {onReviewChanges ? (
+            <Button
+              onClick={() => onReviewChanges(fixedSessionId)}
+              size="sm"
+              variant="outline"
+            >
+              <FileDiff className="size-3.5" />
+              {t("errors.incident.reviewChanges")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2 border-y border-border bg-muted/20 px-3 py-1">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {t("errors.incident.logExcerpt")}
+        </span>
+        {fixing ? (
+          <span className="text-[10px] text-muted-foreground">{t("errors.incident.starting")}</span>
         ) : null}
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">{t("errors.incident.logExcerpt")}</p>
-        <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed">
-          {incident.logExcerpt.join("\n")}
-        </pre>
-        <p className="mt-3 text-[11px] text-muted-foreground">{t("errors.incident.explain")}</p>
       </div>
+      <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed">
+        {incident.logExcerpt.join("\n")}
+      </pre>
+      <p className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+        {t("errors.incident.explain")}
+      </p>
     </div>
     </AiContextTarget>
   );

@@ -11,6 +11,8 @@ export interface InteractiveAgentInvocation {
 export interface InteractiveAgentOptions {
   /** Prior session to reopen, from `listAgentTranscripts`. */
   resumeId?: string;
+  /** Model to pin this session to. Omitted = whatever the CLI defaults to. */
+  model?: string;
 }
 
 /**
@@ -19,6 +21,15 @@ export interface InteractiveAgentOptions {
  * a flag by the CLI. Both providers issue UUIDs, so anything else is refused.
  */
 const SESSION_ID = /^[0-9a-fA-F-]{8,64}$/;
+
+/**
+ * Same argv-not-shell reasoning as {@link SESSION_ID}: a model name is passed
+ * as its own argv entry, so the hazard is one that starts with `-` and is read
+ * as a flag. Aliases (`opus`), dated ids (`claude-haiku-4-5-20251001`) and
+ * namespaced ids (`openai/gpt-5`) all have to pass, so the leading character is
+ * constrained rather than the whole shape.
+ */
+const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,63}$/;
 
 /**
  * Both CLIs accept a positional initial prompt and queue it themselves until
@@ -33,10 +44,13 @@ const SESSION_ID = /^[0-9a-fA-F-]{8,64}$/;
 export function buildInteractiveAgentInvocation(
   provider: string,
   prompt: string,
-  { resumeId }: InteractiveAgentOptions = {},
+  { resumeId, model }: InteractiveAgentOptions = {},
 ): InteractiveAgentInvocation {
   if (resumeId !== undefined && !SESSION_ID.test(resumeId)) {
     throw new Error(`Invalid session id: ${String(resumeId)}`);
+  }
+  if (model !== undefined && !MODEL_NAME.test(model)) {
+    throw new Error(`Invalid model name: ${String(model)}`);
   }
   // A resumed session carries its own history; an empty prompt must not be
   // forwarded as an empty positional argument.
@@ -46,14 +60,22 @@ export function buildInteractiveAgentInvocation(
     case "claude":
       return {
         shell: CLAUDE_BIN,
-        args: resumeId ? ["--resume", resumeId, ...trailing] : trailing,
+        args: [
+          ...(model ? ["--model", model] : []),
+          ...(resumeId ? ["--resume", resumeId] : []),
+          ...trailing,
+        ],
       };
     case "codex":
+      // `-m` is a global option, so it has to precede the `resume` subcommand.
       return {
         shell: CODEX_BIN,
-        args: resumeId
-          ? ["--no-alt-screen", "resume", resumeId, ...trailing]
-          : ["--no-alt-screen", ...trailing],
+        args: [
+          "--no-alt-screen",
+          ...(model ? ["-m", model] : []),
+          ...(resumeId ? ["resume", resumeId] : []),
+          ...trailing,
+        ],
       };
     default:
       throw new Error(`Unsupported agent provider: ${String(provider)}`);

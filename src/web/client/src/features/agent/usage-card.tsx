@@ -15,7 +15,7 @@ export function ClaudeUsageBlock({ usage }: { usage: NonNullable<UsageInfo["clau
     <div className="rounded-md border border-border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <ClaudeLogo className="size-3.5 text-amber-700" />
+          <ClaudeLogo className="size-3.5" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t("agent.usage.claudeLastSession")}
           </span>
@@ -93,7 +93,7 @@ export function CodexUsageBlock({ usage }: { usage: NonNullable<UsageInfo["codex
     <div className="rounded-md border border-border">
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <CodexLogo className="size-3.5 text-foreground" />
+          <CodexLogo className="size-3.5" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t("agent.usage.codexLastSession")}
           </span>

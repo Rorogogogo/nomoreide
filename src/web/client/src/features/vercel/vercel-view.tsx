@@ -6,30 +6,34 @@ import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { openExternal } from "@/lib/tauri";
-import { cn } from "@/lib/utils";
 import { DeploymentDetail } from "./deployment-detail";
 import { DeploymentList } from "./deployment-list";
 import { DomainsPanel } from "./domains-panel";
-import { EnvPanel } from "./env-panel";
+import { EnvPanel, type EnvDialogState } from "./env-panel";
+import { ProductionHero, type VercelHeroSection } from "./production-hero";
 import { ProjectPicker } from "./project-picker";
 import { SettingsPanel } from "./settings-panel";
-import { StateFilter, TabStrip } from "@/components/ui/tab-strip";
+import { StateFilter } from "@/components/ui/tab-strip";
 import { TeamSwitcher } from "./team-switcher";
 import { VercelAccountMenu } from "./account-menu";
 import { useVercelDeployments, type DeploymentFilter } from "./hooks/use-vercel-deployments";
+import {
+  useVercelDomains,
+  useVercelEnv,
+  useVercelProductionDeployment,
+  useVercelProjectSettings,
+} from "./hooks/use-vercel-resource";
 import { useVercelStatus } from "./hooks/use-vercel-status";
-import { ExternalIcon, RefreshIcon, UnlinkIcon } from "./vercel-icons";
+import { CloseIcon, ExternalIcon, PlusIcon, RefreshIcon, UnlinkIcon } from "./vercel-icons";
 import { VercelLogo } from "./vercel-logo";
 import { VercelSetup } from "./vercel-setup";
 
-type VercelTab = "deployments" | "env" | "domains" | "settings";
-
-const VERCEL_TABS: readonly { id: VercelTab; label: TranslationKey }[] = [
-  { id: "deployments", label: "vercel.tabs.deployments" },
-  { id: "env", label: "vercel.tabs.env" },
-  { id: "domains", label: "vercel.tabs.domains" },
-  { id: "settings", label: "vercel.tabs.settings" },
-];
+/** Heading shown above a hero section once its chip expands it. */
+const HERO_SECTION_LABELS: Record<VercelHeroSection, TranslationKey> = {
+  env: "vercel.tabs.env",
+  domains: "vercel.tabs.domains",
+  settings: "vercel.tabs.settings",
+};
 
 export function VercelView() {
   const t = useT();
@@ -60,7 +64,7 @@ export function VercelView() {
     // Reuses the setup screen for "sign in as somebody else": connecting is
     // the same flow whether or not a connection already exists, and `onCancel`
     // is what makes it escapable when one does.
-    content = <VercelProjectTabs onSwitchAccount={() => setForceSetup(true)} />;
+    content = <VercelProject onSwitchAccount={() => setForceSetup(true)} />;
   }
 
   return (
@@ -131,19 +135,58 @@ function VercelConnectionRecovery({
  * so this is only ever about the project itself — its deployments, what it is
  * configured with, and what it is reachable at.
  *
- * The deployment list keeps polling while a build runs, so it stays mounted
- * behind the other tabs rather than being torn down and re-fetched on every
- * tab switch.
+ * There is deliberately only one view: the production hero over the deployment
+ * history, with env / domains / build expanding inline from the hero's chips.
+ * These used to also be reachable as their own top-level tabs, which meant two
+ * entry points rendering the identical panel — the redundancy cost a tab strip
+ * and a mode to keep track of without buying anything the chips don't.
  */
-function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void }) {
+function VercelProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
-  const [tab, setTab] = usePersistentState<VercelTab>("vercel:tab", "deployments");
   const [filter, setFilter] = usePersistentState<DeploymentFilter>("vercel:filter", "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { deployments, project, loading, error, hasInFlight, refresh, refreshQuietly } =
     useVercelDeployments(filter);
 
+  // Fetched here rather than inside each panel: the hero's chips summarise this
+  // data (counts, domain names, build command) before any section is expanded,
+  // and lifting it once avoids fetching it twice.
+  const {
+    data: env,
+    loading: envLoading,
+    error: envError,
+    refresh: refreshEnv,
+  } = useVercelEnv();
+  const {
+    data: domains,
+    loading: domainsLoading,
+    error: domainsError,
+    refresh: refreshDomains,
+  } = useVercelDomains();
+  const {
+    data: settings,
+    loading: settingsLoading,
+    error: settingsError,
+    refresh: refreshSettings,
+  } = useVercelProjectSettings();
+  const {
+    data: productionDeployment,
+    loading: productionLoading,
+    refresh: refreshProduction,
+  } = useVercelProductionDeployment();
+  const [envDialog, setEnvDialog] = useState<EnvDialogState>(null);
+  // A hero chip expands its section right below itself, keeping the hero and
+  // the deployment history in view. Clicking the same chip again collapses it,
+  // and only one section is open at a time.
+  const [heroSection, setHeroSection] = useState<VercelHeroSection | null>(null);
+  const toggleHeroSection = (section: VercelHeroSection) =>
+    setHeroSection((current) => (current === section ? null : section));
+
   useRegisterRefresh(refresh);
+  useRegisterRefresh(refreshEnv);
+  useRegisterRefresh(refreshDomains);
+  useRegisterRefresh(refreshSettings);
+  useRegisterRefresh(refreshProduction);
 
   // Keep a selection pinned to something that still exists: the filter change
   // or a redeploy can drop the row that was open.
@@ -170,32 +213,19 @@ function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void })
           <span className="text-[11px] text-amber-500">{t("vercel.buildingNow")}</span>
         ) : null}
 
-        <span className="ml-3">
-          <TabStrip<VercelTab>
-            ariaLabel={t("vercel.tabs.label")}
-            idPrefix="vercel"
-            onSelect={setTab}
-            tabs={VERCEL_TABS.map((entry) => ({ id: entry.id, label: t(entry.label) }))}
-            value={tab}
-          />
-        </span>
-
         <span className="ml-auto flex items-center gap-2">
           <VercelAccountMenu onSwitchAccount={onSwitchAccount} />
           <TeamSwitcher />
-          {/* Scopes the deployment list only, so it goes away with that tab. */}
-          {tab === "deployments" ? (
-            <StateFilter<DeploymentFilter>
-              ariaLabel={t("vercel.filter.label")}
-              onChange={setFilter}
-              options={[
-                { id: "all", label: t("vercel.filter.all") },
-                { id: "production", label: t("vercel.target.production") },
-                { id: "preview", label: t("vercel.target.preview") },
-              ]}
-              value={filter}
-            />
-          ) : null}
+          <StateFilter<DeploymentFilter>
+            ariaLabel={t("vercel.filter.label")}
+            onChange={setFilter}
+            options={[
+              { id: "all", label: t("vercel.filter.all") },
+              { id: "production", label: t("vercel.target.production") },
+              { id: "preview", label: t("vercel.target.preview") },
+            ]}
+            value={filter}
+          />
           {project ? (
             <Button
               onClick={() => openExternal(`https://vercel.com/dashboard`)}
@@ -210,9 +240,72 @@ function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void })
         </span>
       </header>
 
-      {/* Hidden rather than unmounted: tearing the list down would stop the
-          in-flight build poll every time the user looked at another tab. */}
-      <div className={cn("flex min-h-0 flex-1 overflow-hidden", tab !== "deployments" && "hidden")}>
+      <ProductionHero
+        activeSection={heroSection}
+        buildLabel={settings?.buildCommand?.trim() || settings?.framework || null}
+        deployment={productionDeployment}
+        domains={domains}
+        envCount={env.length}
+        loading={productionLoading}
+        onToggleSection={toggleHeroSection}
+      />
+
+      {/* Capped rather than free-growing so the deployment history underneath
+          never gets pushed off screen by a long variable list. */}
+      {heroSection ? (
+        <div className="flex max-h-[40vh] shrink-0 flex-col overflow-hidden border-b border-border">
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {t(HERO_SECTION_LABELS[heroSection])}
+            </span>
+            <span className="flex items-center gap-1">
+              {/* Sits with the section it acts on rather than in the page
+                  header, and as an icon rather than a full "Add variable"
+                  button so it costs no extra row. */}
+              {heroSection === "env" ? (
+                <Button
+                  onClick={() => setEnvDialog("add")}
+                  size="icon-sm"
+                  title={t("vercel.env.add")}
+                  type="button"
+                  variant="ghost"
+                >
+                  <PlusIcon />
+                </Button>
+              ) : null}
+              <Button
+                onClick={() => setHeroSection(null)}
+                size="icon-sm"
+                title={t("common.close")}
+                type="button"
+                variant="ghost"
+              >
+                <CloseIcon />
+              </Button>
+            </span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            {heroSection === "env" ? (
+              <EnvPanel
+                dialog={envDialog}
+                env={env}
+                error={envError}
+                loading={envLoading}
+                onDialogChange={setEnvDialog}
+                refresh={refreshEnv}
+              />
+            ) : null}
+            {heroSection === "domains" ? (
+              <DomainsPanel domains={domains} error={domainsError} loading={domainsLoading} />
+            ) : null}
+            {heroSection === "settings" ? (
+              <SettingsPanel error={settingsError} loading={settingsLoading} project={settings} />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="w-[min(360px,42%)] shrink-0 overflow-auto border-r border-border">
           <DeploymentList
             deployments={deployments}
@@ -224,7 +317,13 @@ function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void })
         </div>
         <div className="min-w-0 flex-1 overflow-hidden">
           {selected ? (
-            <DeploymentDetail deployment={selected} onChanged={refreshQuietly} />
+            <DeploymentDetail
+              deployment={selected}
+              onChanged={() => {
+                refreshQuietly();
+                refreshProduction();
+              }}
+            />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-[12px] text-muted-foreground">
               {t("vercel.deployments.selectHint")}
@@ -232,39 +331,6 @@ function VercelProjectTabs({ onSwitchAccount }: { onSwitchAccount: () => void })
           )}
         </div>
       </div>
-
-      {tab === "env" ? (
-        <TabPanel>
-          <EnvPanel />
-        </TabPanel>
-      ) : null}
-      {tab === "domains" ? (
-        <TabPanel>
-          <DomainsPanel />
-        </TabPanel>
-      ) : null}
-      {tab === "settings" ? (
-        <TabPanel>
-          <SettingsPanel />
-        </TabPanel>
-      ) : null}
     </>
-  );
-}
-
-/**
- * A tab's content area.
- *
- * These panels are lists of short rows — a domain and its target, a setting and
- * its value. Left to fill the window they strand that content against the far
- * edges with a thousand empty pixels in between, which reads as a page that
- * failed to load rather than a short list. Capping the column keeps the pairs
- * near each other, and matches the all-projects table.
- */
-function TabPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <div className="w-full max-w-3xl px-3 py-3">{children}</div>
-    </div>
   );
 }

@@ -1,6 +1,9 @@
 import {
+  normalizeEnvVar,
   vercelRequest,
+  type RawEnvVar,
   type VercelDeployment,
+  type VercelEnvVar,
   type VercelRequestAuth,
 } from "./vercel-manager.js";
 
@@ -12,10 +15,11 @@ import {
  * Everything here changes what the internet is serving, so none of it is
  * exposed as an MCP tool: these are reached only from the dashboard's own
  * routes, where a human clicked the button. Callers are expected to confirm
- * production-affecting actions (`promote`, `rollback`) before invoking them.
+ * production-affecting actions (`promote`, `rollback`, `deleteEnv`) before
+ * invoking them.
  *
  * Still intentionally excludes the irreversible ones — deleting deployments or
- * projects, and rotating env values — which would need their own guarded surface.
+ * projects — which would need their own guarded surface.
  */
 export class VercelActions {
   constructor(private readonly auth: VercelRequestAuth) {}
@@ -78,6 +82,59 @@ export class VercelActions {
     const path = `/v1/projects/${encodeURIComponent(projectId)}/rollback/${encodeURIComponent(deploymentId)}`;
     const params = description ? `?description=${encodeURIComponent(description)}` : "";
     await this.request(`${path}${params}`, { method: "POST" });
+  }
+
+  /**
+   * Add a new variable. `type` defaults to `encrypted` (Vercel's "Sensitive"),
+   * which never reads back over the API — `plain` is for values a build script
+   * needs to see, not secrets.
+   */
+  async createEnv(
+    projectId: string,
+    input: { key: string; value: string; target: string[]; type?: "encrypted" | "plain" },
+  ): Promise<VercelEnvVar> {
+    const created = await this.request<RawEnvVar | { created?: RawEnvVar[] }>(
+      `/v10/projects/${encodeURIComponent(projectId)}/env`,
+      {
+        method: "POST",
+        body: {
+          key: input.key,
+          value: input.value,
+          target: input.target,
+          type: input.type ?? "encrypted",
+        },
+      },
+    );
+    const raw =
+      "created" in created && created.created?.[0] ? created.created[0] : (created as RawEnvVar);
+    return normalizeEnvVar(raw);
+  }
+
+  /**
+   * Change a variable's value and/or the environments it applies to. The key
+   * itself is not editable here — Vercel does not support renaming in place,
+   * so a rename is a delete-and-recreate the UI does not offer as one step.
+   */
+  async updateEnv(
+    projectId: string,
+    envId: string,
+    input: { value?: string; target?: string[] },
+  ): Promise<VercelEnvVar> {
+    const body: Record<string, unknown> = {};
+    if (input.value !== undefined) body.value = input.value;
+    if (input.target !== undefined) body.target = input.target;
+    const raw = await this.request<RawEnvVar>(
+      `/v9/projects/${encodeURIComponent(projectId)}/env/${encodeURIComponent(envId)}`,
+      { method: "PATCH", body },
+    );
+    return normalizeEnvVar(raw);
+  }
+
+  async deleteEnv(projectId: string, envId: string): Promise<void> {
+    await this.request(
+      `/v9/projects/${encodeURIComponent(projectId)}/env/${encodeURIComponent(envId)}`,
+      { method: "DELETE" },
+    );
   }
 
   private request<T>(path: string, opts: { method: string; body?: unknown }): Promise<T> {
