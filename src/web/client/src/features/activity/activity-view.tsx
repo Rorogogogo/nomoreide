@@ -619,8 +619,11 @@ function HostHistoryChart({ samples }: { samples: HostMetricSample[] }) {
           </span>
         </span>
       </figcaption>
+      {/* A baseline, not a frame: the gridlines and axis labels already give
+          the plot its structure, and a full border would run parallel to
+          whichever series sits near the top of the range. */}
       <div
-        className="relative h-40 touch-none overflow-hidden rounded-lg border border-border/70 bg-background/65"
+        className="relative h-40 touch-none overflow-hidden border-b border-border/70"
         onPointerLeave={() => setHoveredIndex(null)}
         onPointerMove={inspectPointer}
       >

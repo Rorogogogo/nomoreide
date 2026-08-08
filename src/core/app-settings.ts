@@ -12,6 +12,7 @@ export interface AppSettings {
     scrollback: number;
     copyOnSelect: boolean;
     confirmTerminate: boolean;
+    smoothScroll: boolean;
   };
 }
 
@@ -23,6 +24,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = Object.freeze({
     scrollback: 5_000,
     copyOnSelect: false,
     confirmTerminate: true,
+    smoothScroll: true,
   }),
 });
 
@@ -32,9 +34,14 @@ const terminalSettingsShape = {
   scrollback: z.number().int().min(500).max(100_000),
   copyOnSelect: z.boolean(),
   confirmTerminate: z.boolean(),
+  // Defaulted rather than required: settings.json files written before this
+  // setting existed still have to load, and `load()` only forgives ENOENT.
+  smoothScroll: z.boolean().default(true),
 };
 
-const appSettingsSchema: z.ZodType<AppSettings> = z.object({
+// Input is `unknown` because this parses JSON off disk, where the defaulted
+// field above makes the accepted shape wider than `AppSettings`.
+const appSettingsSchema: z.ZodType<AppSettings, z.ZodTypeDef, unknown> = z.object({
   version: z.literal(1),
   terminal: z.object(terminalSettingsShape),
 });

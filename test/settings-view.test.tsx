@@ -309,7 +309,9 @@ describe("SettingsView", () => {
     await renderView();
     const select = host.querySelector<HTMLSelectElement>('#settings-category-select');
     expect(select).not.toBeNull();
-    expect(host.querySelector(`label[for="${select?.id}"]`)?.textContent).toContain("Category");
+    // Named by aria-label rather than a visible <label>: the narrow layout
+    // stacks select + search, and a heading over each one is noise.
+    expect(select?.getAttribute("aria-label")).toContain("Category");
     expect(select?.options).toHaveLength(10);
   });
 

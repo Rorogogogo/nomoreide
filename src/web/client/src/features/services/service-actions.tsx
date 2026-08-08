@@ -205,7 +205,7 @@ function ActionButton({
       loadingLabel={t("services.actions.pending", { label, target: targetLabel })}
       onClick={() => void run()}
       size={compact ? "icon" : "sm"}
-      variant="outline"
+      variant="ghost"
     >
       {icon}
       {compact ? null : label}

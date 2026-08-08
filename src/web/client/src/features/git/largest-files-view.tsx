@@ -90,9 +90,12 @@ export function LargestFilesView({
       .finally(() => setLoading(false));
   }
 
+  // Keyed on `root`, not just mount: the ranking endpoint answers for whichever
+  // repository the daemon has selected, so switching project while this tab is
+  // open would otherwise keep the previous project's ranking on screen.
   useEffect(() => {
     load();
-  }, []);
+  }, [root]);
 
   const visible = useMemo(
     () => (codeOnly ? files.filter((file) => isSourceFile(file.path)) : files),

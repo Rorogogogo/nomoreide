@@ -168,7 +168,11 @@ function GitHubConnectionRecovery({
 function GitHubContent() {
   const t = useT();
   // Sticky so returning to GitHub lands on the tab you left, not back on PRs.
-  const [tab, setTab] = usePersistentState<GithubTab>("github:tab", "prs");
+  const [storedTab, setTab] = usePersistentState<GithubTab>("github:tab", "prs");
+  // A tab id that no longer exists can still be sitting in localStorage from an
+  // earlier build; without this it matches no branch below and the page falls
+  // through to the last one with nothing selected in the strip.
+  const tab = TABS.some((entry) => entry.id === storedTab) ? storedTab : "prs";
   const [prState, setPrState] = usePersistentState<"open" | "closed">(
     "github:pr-state",
     "open",

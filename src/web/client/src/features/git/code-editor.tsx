@@ -6,7 +6,24 @@ import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import { yaml } from "@codemirror/lang-yaml";
 import type { Extension } from "@codemirror/state";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  HighlightStyle,
+  StreamLanguage,
+  type StreamParser,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import { c, cpp, csharp, java, kotlin, objectiveC, scala } from "@codemirror/legacy-modes/mode/clike";
+import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
+import { go } from "@codemirror/legacy-modes/mode/go";
+import { properties } from "@codemirror/legacy-modes/mode/properties";
+import { python } from "@codemirror/legacy-modes/mode/python";
+import { ruby } from "@codemirror/legacy-modes/mode/ruby";
+import { rust } from "@codemirror/legacy-modes/mode/rust";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { standardSQL } from "@codemirror/legacy-modes/mode/sql";
+import { swift } from "@codemirror/legacy-modes/mode/swift";
+import { toml } from "@codemirror/legacy-modes/mode/toml";
+import { highlightActiveLine, highlightActiveLineGutter, lineNumbers } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import { EditorView, minimalSetup } from "codemirror";
 
@@ -55,31 +72,103 @@ export function CodeEditor({
   return <div className="nomoreide-code-editor" ref={hostRef} />;
 }
 
-export function editorLanguageNameForPath(path: string): string {
+/** A CodeMirror 5 grammar, adapted to run as a CodeMirror 6 language. */
+const stream = (parser: StreamParser<unknown>) => () => StreamLanguage.define(parser);
+
+/**
+ * Extension → grammar, keyed the same way the read view's `languageFor` is.
+ *
+ * The read view highlights with highlight.js, which knows far more languages
+ * than CodeMirror ships native grammars for. With only the six `@codemirror/
+ * lang-*` packages, anything else — C#, Python, Go, Rust, Java, shell — fell
+ * through to no parser at all, so opening a `.cs` file for editing dropped
+ * every colour and looked like a different file. `@codemirror/legacy-modes`
+ * covers the remainder, so the two views agree on what they can highlight.
+ */
+const GRAMMARS: Record<string, [name: string, load: () => Extension]> = {
+  ts: ["typescript", () => javascript({ typescript: true })],
+  tsx: ["typescriptreact", () => javascript({ typescript: true, jsx: true })],
+  jsx: ["javascriptreact", () => javascript({ jsx: true })],
+  js: ["javascript", () => javascript()],
+  mjs: ["javascript", () => javascript()],
+  cjs: ["javascript", () => javascript()],
+  json: ["json", () => json()],
+  css: ["css", () => css()],
+  scss: ["css", () => css()],
+  less: ["css", () => css()],
+  html: ["html", () => html()],
+  xml: ["html", () => html()],
+  md: ["markdown", () => markdown()],
+  mdx: ["markdown", () => markdown()],
+  markdown: ["markdown", () => markdown()],
+  yaml: ["yaml", () => yaml()],
+  yml: ["yaml", () => yaml()],
+  cs: ["csharp", stream(csharp)],
+  java: ["java", stream(java)],
+  kt: ["kotlin", stream(kotlin)],
+  kts: ["kotlin", stream(kotlin)],
+  scala: ["scala", stream(scala)],
+  c: ["c", stream(c)],
+  h: ["c", stream(c)],
+  cpp: ["cpp", stream(cpp)],
+  cc: ["cpp", stream(cpp)],
+  hpp: ["cpp", stream(cpp)],
+  m: ["objectivec", stream(objectiveC)],
+  py: ["python", stream(python)],
+  go: ["go", stream(go)],
+  rs: ["rust", stream(rust)],
+  rb: ["ruby", stream(ruby)],
+  swift: ["swift", stream(swift)],
+  sh: ["bash", stream(shell)],
+  bash: ["bash", stream(shell)],
+  zsh: ["bash", stream(shell)],
+  sql: ["sql", stream(standardSQL)],
+  toml: ["toml", stream(toml)],
+  ini: ["ini", stream(properties)],
+  cfg: ["ini", stream(properties)],
+  conf: ["ini", stream(properties)],
+  env: ["ini", stream(properties)],
+};
+
+const DOCKERFILE: [string, () => Extension] = [
+  "dockerfile",
+  () => StreamLanguage.define(dockerFile),
+];
+
+function grammarForPath(path: string): [string, () => Extension] | undefined {
   const filename = path.split("/").pop()?.toLowerCase() ?? "";
+  if (filename === "dockerfile" || filename.startsWith("dockerfile.")) return DOCKERFILE;
   const ext = filename.includes(".") ? filename.split(".").pop() ?? "" : "";
-  if (ext === "tsx") return "typescriptreact";
-  if (ext === "ts") return "typescript";
-  if (ext === "jsx") return "javascriptreact";
-  if (ext === "js" || ext === "mjs" || ext === "cjs") return "javascript";
-  if (ext === "json") return "json";
-  if (ext === "css" || ext === "scss" || ext === "less") return "css";
-  if (ext === "html" || ext === "xml") return "html";
-  if (ext === "md" || ext === "mdx" || ext === "markdown") return "markdown";
-  if (ext === "yaml" || ext === "yml") return "yaml";
-  return "text";
+  return GRAMMARS[ext];
+}
+
+export function editorLanguageNameForPath(path: string): string {
+  return grammarForPath(path)?.[0] ?? "text";
+}
+
+function languageExtensionForPath(path: string): Extension {
+  return grammarForPath(path)?.[1]() ?? [];
 }
 
 function editorExtensionsForPath(
   path: string,
   onChangeRef: MutableRefObject<(value: string) => void>,
 ): Extension[] {
-  const languageName = editorLanguageNameForPath(path);
   return [
     minimalSetup,
+    /*
+     * `minimalSetup` ships none of these. Without them, switching from the
+     * read view to edit dropped the line-number gutter the reader had, which
+     * read as the whole file changing rather than as the same file becoming
+     * editable. The active-line highlight doubles as a second cue for where
+     * the caret is.
+     */
+    lineNumbers(),
+    highlightActiveLine(),
+    highlightActiveLineGutter(),
     editorTheme,
     syntaxTheme,
-    languageExtension(languageName),
+    languageExtensionForPath(path),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         onChangeRef.current(update.state.doc.toString());
@@ -88,31 +177,17 @@ function editorExtensionsForPath(
   ];
 }
 
-function languageExtension(languageName: string): Extension {
-  switch (languageName) {
-    case "typescriptreact":
-      return javascript({ typescript: true, jsx: true });
-    case "typescript":
-      return javascript({ typescript: true });
-    case "javascriptreact":
-      return javascript({ jsx: true });
-    case "javascript":
-      return javascript();
-    case "json":
-      return json();
-    case "css":
-      return css();
-    case "html":
-      return html();
-    case "markdown":
-      return markdown();
-    case "yaml":
-      return yaml();
-    default:
-      return [];
-  }
-}
-
+/**
+ * Editor chrome comes from the app's own tokens, only the syntax palette is
+ * the editor's own.
+ *
+ * The surface used to be hardcoded VSCode greys (`#1e1e1e` / `#fafafa`), which
+ * are not this app's background — entering edit mode visibly swapped the panel
+ * to a different, cooler dark. Driving background, gutters, selection and rules
+ * off `hsl(var(--…))` keeps the editor on the same surface as everything around
+ * it, and follows the theme toggle for free, so only the token values below
+ * need a light/dark split.
+ */
 const editorTheme = EditorView.theme({
   "&": {
     "--cm-keyword": "#0000ff",
@@ -125,11 +200,11 @@ const editorTheme = EditorView.theme({
     "--cm-variable": "#001080",
     "--cm-tag": "#800000",
     "--cm-attribute": "#ff0000",
-    "--cm-operator": "#000000",
+    "--cm-operator": "hsl(var(--foreground))",
     "--cm-meta": "#af00db",
     minHeight: "100%",
-    backgroundColor: "#fafafa",
-    color: "#000000",
+    backgroundColor: "hsl(var(--background))",
+    color: "hsl(var(--foreground))",
     fontSize: "12px",
   },
   ".cm-scroller": {
@@ -140,24 +215,38 @@ const editorTheme = EditorView.theme({
   ".cm-content": {
     minHeight: "100%",
     padding: "0.75rem 0",
+    caretColor: "hsl(var(--accent))",
   },
   ".cm-line": {
     padding: "0 0.75rem",
   },
+  /*
+   * `drawSelection` (via minimalSetup) swaps the native caret for an element it
+   * paints itself, and `EditorView.theme` registers as a light theme unless
+   * told otherwise — so CodeMirror's base styles drew a black caret, invisible
+   * against a dark background. Both the block caret and the drop cursor are set
+   * explicitly here, and to the accent so it reads at a glance.
+   */
+  ".cm-cursor, .cm-dropCursor": {
+    borderLeft: "2px solid hsl(var(--accent))",
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeft: "2px solid hsl(var(--accent))",
+  },
   ".cm-gutters": {
-    backgroundColor: "#f4f4f5",
-    borderRight: "1px solid #e4e4e7",
-    color: "#a1a1aa",
+    backgroundColor: "hsl(var(--background))",
+    borderRight: "1px solid hsl(var(--border))",
+    color: "hsl(var(--muted-foreground))",
   },
   ".cm-activeLine": {
-    backgroundColor: "#eef2ff",
+    backgroundColor: "hsl(var(--muted) / 0.45)",
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "#e5e7eb",
-    color: "#71717a",
+    backgroundColor: "hsl(var(--muted))",
+    color: "hsl(var(--foreground))",
   },
   ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-    backgroundColor: "#add6ff",
+    backgroundColor: "hsl(var(--accent) / 0.3)",
   },
   "&.cm-focused": {
     outline: "none",
@@ -173,25 +262,8 @@ const editorTheme = EditorView.theme({
     "--cm-variable": "#9cdcfe",
     "--cm-tag": "#569cd6",
     "--cm-attribute": "#9cdcfe",
-    "--cm-operator": "#d4d4d4",
+    "--cm-operator": "hsl(var(--foreground))",
     "--cm-meta": "#c586c0",
-    backgroundColor: "#1e1e1e",
-    color: "#d4d4d4",
-  },
-  ".dark & .cm-gutters": {
-    backgroundColor: "#252526",
-    borderRight: "1px solid #3f3f46",
-    color: "#858585",
-  },
-  ".dark & .cm-activeLine": {
-    backgroundColor: "#2a2d2e",
-  },
-  ".dark & .cm-activeLineGutter": {
-    backgroundColor: "#2d2d30",
-    color: "#c6c6c6",
-  },
-  ".dark & .cm-selectionBackground, .dark &.cm-focused .cm-selectionBackground": {
-    backgroundColor: "#264f78",
   },
 });
 

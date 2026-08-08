@@ -3,12 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   AppIdentity,
-  SidebarCredit,
+  SidebarDockToggle,
   sidebarShellClassName,
   navButtonClassName,
   navButtonIconClassName,
   navButtonLabelClassName,
 } from "../src/web/client/src/app";
+import { AppCredit } from "../src/web/client/src/components/app-credit";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -46,34 +47,52 @@ describe("AppIdentity", () => {
   });
 });
 
-describe("SidebarCredit", () => {
+describe("AppCredit", () => {
   test("shows the maker credit and LinkedIn link", () => {
-    const markup = renderToStaticMarkup(<SidebarCredit docked />);
+    const markup = renderToStaticMarkup(<AppCredit />);
 
     expect(markup).toContain("Made with");
     expect(markup).toContain("love");
     expect(markup).toContain("by Robert Wang");
     expect(markup).toContain("https://www.linkedin.com/in/robert-wang-cs/");
     expect(markup).toContain("LinkedIn");
-    expect(markup).toContain("h-10");
     expect(markup).toContain("text-[11px]");
-    expect(markup).toContain("shrink-0");
     expect(markup).toContain("text-red-500");
     expect(markup).toContain("viewBox=\"0 0 24 24\"");
-    expect(markup).toContain("Undock sidebar");
-    expect(markup).not.toContain("Docked");
-    expect(markup).not.toContain(">Dock<");
-    expect(markup).not.toContain("grid-cols-[48px_minmax(0,1fr)]");
   });
 
-  test("centers the dock icon in collapsed mode", () => {
-    const markup = renderToStaticMarkup(<SidebarCredit docked={false} />);
+  test("lives at the bottom of the settings pane, not the sidebar", () => {
+    const appSource = readFileSync(
+      new URL("../src/web/client/src/app.tsx", import.meta.url),
+      "utf8",
+    );
+    const settingsSource = readFileSync(
+      new URL(
+        "../src/web/client/src/features/settings/settings-layout.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
 
-    expect(markup).toContain("w-12");
-    expect(markup).toContain("justify-center");
-    expect(markup).toContain("w-0");
-    expect(markup).toContain("Dock sidebar");
-    expect(markup).not.toContain("flex-1 opacity-0");
+    expect(appSource).not.toContain("linkedin.com");
+    expect(settingsSource).toContain("<AppCredit />");
+    expect(settingsSource.indexOf("<AppCredit />")).toBeGreaterThan(
+      settingsSource.indexOf("{children}"),
+    );
+  });
+});
+
+describe("SidebarDockToggle", () => {
+  test("labels the docked and undocked states without adding a footer row", () => {
+    const docked = renderToStaticMarkup(<SidebarDockToggle docked />);
+    const collapsed = renderToStaticMarkup(<SidebarDockToggle docked={false} />);
+
+    expect(docked).toContain("Undock sidebar");
+    expect(docked).toContain("aria-pressed=\"true\"");
+    expect(collapsed).toContain("Dock sidebar");
+    // Hidden until the rail expands — the only moment it can be clicked.
+    expect(collapsed).toContain("opacity-0");
+    expect(collapsed).toContain("group-hover/sidebar:opacity-100");
   });
 });
 
@@ -94,7 +113,7 @@ describe("sidebar styling", () => {
     const inactive = navButtonClassName(false);
 
     expect(active).toContain("w-12");
-    expect(active).toContain("h-10");
+    expect(active).toContain("h-9");
     expect(active).toContain("grid");
     expect(active).toContain("grid-cols-[48px_minmax(0,1fr)]");
     expect(active).toContain("gap-0");

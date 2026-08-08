@@ -56,6 +56,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -70,6 +71,7 @@ describe("web server", () => {
           scrollback: 5_000,
           copyOnSelect: false,
           confirmTerminate: true,
+          smoothScroll: true,
         },
       },
       project: {
@@ -92,6 +94,7 @@ describe("web server", () => {
       scrollback: 5_000,
       copyOnSelect: false,
       confirmTerminate: true,
+      smoothScroll: true,
     });
 
     response = await fetch(
@@ -134,6 +137,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -222,6 +226,7 @@ describe("web server", () => {
       settingsPath: join(tempDir, "settings.json"),
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -273,6 +278,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -330,6 +336,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
     await fetch(`${server.url}/api/settings/global`, {
@@ -385,6 +392,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -423,6 +431,7 @@ describe("web server", () => {
       settingsPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -445,6 +454,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -464,6 +474,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -483,6 +494,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -503,6 +515,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -545,6 +558,7 @@ describe("web server", () => {
         configPath,
         logDir: join(tempDir, "logs"),
         cwd: tempDir,
+        registryPath: join(tempDir, "runtime.json"),
         port: 0,
       }).start();
 
@@ -594,6 +608,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -637,6 +652,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -675,6 +691,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -721,6 +738,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -749,6 +767,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -790,6 +809,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -869,6 +889,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -976,6 +997,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1044,6 +1066,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1080,6 +1103,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1126,6 +1150,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1164,6 +1189,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1187,6 +1213,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1207,6 +1234,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1241,6 +1269,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1275,6 +1304,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1306,6 +1336,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1338,6 +1369,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1366,6 +1398,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1391,6 +1424,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1424,6 +1458,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1465,6 +1500,7 @@ describe("web server", () => {
     server = await createWebServer({
       configPath,
       logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1498,6 +1534,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1516,6 +1553,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1537,6 +1575,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1563,6 +1602,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1605,6 +1645,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1628,6 +1669,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1655,6 +1697,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1695,6 +1738,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1738,6 +1782,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1757,6 +1802,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1776,6 +1822,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1801,6 +1848,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1822,6 +1870,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1854,6 +1903,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
     await fetch(`${server.url}/api/dashboard`);
@@ -1922,6 +1972,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -1957,6 +2008,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -2002,6 +2054,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -2057,6 +2110,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 
@@ -2099,6 +2153,7 @@ describe("web server", () => {
       configPath,
       logDir: join(tempDir, "logs"),
       cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
       port: 0,
     }).start();
 

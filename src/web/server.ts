@@ -50,6 +50,12 @@ export interface WebServerOptions {
   settingsPath?: string;
   cwd?: string;
   logDir?: string;
+  /**
+   * Cross-session runtime registry. Defaults to the machine-global file, which
+   * is what the daemon wants; tests point it at a fixture so a service running
+   * on the developer's machine doesn't leak into an isolated server's status.
+   */
+  registryPath?: string;
   port?: number;
   terminalManager?: TerminalSessionManagerLike;
   toolCallStore?: ToolCallStore;
@@ -82,7 +88,9 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     baseDir: logDir,
     timelineStore,
   });
-  const registry = new ServiceRegistry(defaultRuntimeRegistryPath());
+  const registry = new ServiceRegistry(
+    options.registryPath ?? defaultRuntimeRegistryPath(),
+  );
   const manager = new ProcessManager({
     configStore,
     logStore,

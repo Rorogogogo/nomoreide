@@ -18,6 +18,8 @@ export interface CreateAgentTerminalOptions {
   oneTimeSkill?: OneTimeSkillSelection;
   /** Provider session id to reopen instead of starting a fresh conversation. */
   resumeId?: string;
+  /** Model for this session. Omitted = the provider's saved pin, else CLI default. */
+  model?: string;
 }
 
 export interface AgentTranscriptInfo {

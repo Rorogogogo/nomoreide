@@ -29,6 +29,8 @@ export type BadgeProps = {
   appearance?: BadgeAppearance;
   onRemove?: () => void;
   isLoading?: boolean;
+  /** Native hover hint — used where the badge abbreviates a computed value. */
+  title?: string;
 };
 
 const VARIANT_STYLES: Record<
@@ -72,7 +74,7 @@ const VARIANT_STYLES: Record<
 };
 
 const SIZE_STYLES = {
-  small: "h-5 px-1.5 py-0 text-[10px]",
+  small: "h-4 px-1 py-0 text-[9px]",
   medium: "h-5 px-1.5 py-0 text-[10px]",
   large: "px-2.5 py-1 text-sm",
 };
@@ -90,6 +92,7 @@ export function Badge({
   appearance,
   onRemove,
   isLoading = false,
+  title,
 }: BadgeProps) {
   const normalized = normalizeVariant(variant);
   const resolvedAppearance = appearance ?? (variant === "outline" ? "outline" : "solid");
@@ -117,6 +120,7 @@ export function Badge({
       )}
       onClick={onClick ? handleClick : undefined}
       style={{ maxWidth }}
+      title={title}
       type={onClick ? "button" : undefined}
     >
       {isLoading ? (

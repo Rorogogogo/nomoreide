@@ -32,7 +32,7 @@ export function ServiceDetailPanel({
   const processes = health?.processTree?.processes ?? [];
 
   return (
-    <div className="min-h-full bg-background text-xs">
+    <div className="flex h-full min-h-0 flex-col bg-background text-xs">
       <div
         aria-label={t("services.title")}
         className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm"
@@ -63,7 +63,12 @@ export function ServiceDetailPanel({
           {t("nav.terminal")}
         </TabButton>
       </div>
-      <div className="p-3">
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          tab === "logs" ? "overflow-hidden p-0" : "overflow-auto p-3",
+        )}
+      >
         {tab === "processes" ? (
           <ProcessesTab rows={processes} running={status?.state === "running"} />
         ) : null}

@@ -16,7 +16,6 @@ import {
   CodexLogo,
 } from "@/features/agent/agent-logos";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { AgentSettingsDialog } from "./agent-settings-dialog";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/overflow-menu";
 import { useT, type Translate } from "@/lib/i18n";
@@ -45,7 +44,7 @@ export function AgentLogo({
   agent: AgentEnvAgentName;
   className?: string;
 }) {
-  if (agent === "claude") return <ClaudeLogo className={cn("text-[#D97757]", className)} />;
+  if (agent === "claude") return <ClaudeLogo className={className} />;
   if (agent === "codex") return <CodexLogo className={className} />;
   return <AntigravityLogo className={className} />;
 }
