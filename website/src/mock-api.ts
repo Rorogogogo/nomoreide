@@ -44,6 +44,7 @@ const createMockGlobalSettings = (): AppSettings => ({
     scrollback: 5_000,
     copyOnSelect: false,
     confirmTerminate: true,
+    smoothScroll: true,
   },
 });
 
@@ -391,6 +392,8 @@ const mockAgentProviders = [
 ];
 
 let mockAgentProviderId: "claude" | "codex" = "claude";
+/** Model pin per provider, mirroring the daemon's `chatModels` config. */
+const mockAgentModels: Partial<Record<"claude" | "codex", string>> = {};
 
 let databaseWriteUnlocked = false;
 
@@ -1765,7 +1768,18 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       approvals: false,
       provider,
       providers: mockAgentProviders,
+      models: mockAgentModels,
     });
+  }
+  if (path === "/api/agent/chat/model" && method === "POST") {
+    const body = parseJsonBody(init);
+    if (body.provider !== "claude" && body.provider !== "codex") {
+      return json({ ok: false, error: "Unknown mocked agent provider." }, 400);
+    }
+    const model = typeof body.model === "string" ? body.model.trim() : "";
+    if (model) mockAgentModels[body.provider] = model;
+    else delete mockAgentModels[body.provider];
+    return json({ ok: true, models: mockAgentModels });
   }
   if (path === "/api/agent/chat/provider" && method === "POST") {
     const requested = parseJsonBody(init).provider;
@@ -2055,6 +2069,39 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path === "/api/databases/test") return json({ ok: true });
 
+  // The dock's history rail loads this the moment it is revealed, so an
+  // unhandled path would hand the list `undefined` and white-screen the demo.
+  if (path === "/api/terminal/transcripts") {
+    return json({
+      ok: true,
+      transcripts: [
+        {
+          id: "b1f0c3d2-9a4e-4c17-8f52-2d6e5a7c1b39",
+          provider: "claude",
+          cwd: "/Users/demo/acme-web",
+          title: "Trace the checkout 500s to the payments client",
+          startedAt: "2026-08-06T09:12:00.000Z",
+          updatedAt: "2026-08-06T10:41:00.000Z",
+        },
+        {
+          id: "7c2a51e8-3b6d-4f90-a1c4-8e0b9d5f2a71",
+          provider: "codex",
+          cwd: "/Users/demo/acme-web",
+          title: "Split the settings view into tabs",
+          startedAt: "2026-08-05T14:02:00.000Z",
+          updatedAt: "2026-08-05T15:20:00.000Z",
+        },
+        {
+          id: "e4d8b207-6f31-4a5c-9b8e-0c7a2f1d3e64",
+          provider: "claude",
+          cwd: "/Users/demo/acme-api",
+          title: "Add rate limiting to the public API",
+          startedAt: "2026-08-04T08:30:00.000Z",
+          updatedAt: "2026-08-04T11:05:00.000Z",
+        },
+      ],
+    });
+  }
   if (path === "/api/terminal/sessions") {
     if (method === "POST") {
       let agent: { provider?: "claude" | "codex"; prompt?: string; label?: string } | undefined;

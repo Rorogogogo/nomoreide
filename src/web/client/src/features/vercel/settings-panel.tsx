@@ -1,7 +1,6 @@
+import type { VercelProject } from "@/lib/api";
 import { Loading } from "@/components/ui/loading";
-import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT } from "@/lib/i18n";
-import { useVercelProjectSettings } from "./hooks/use-vercel-resource";
 import { SettingsIcon } from "./vercel-icons";
 import { PanelEmpty } from "./panel-empty";
 
@@ -13,11 +12,20 @@ import { PanelEmpty } from "./panel-empty";
  * command" is almost always visible in this list. Nothing here is editable:
  * changing build settings belongs on vercel.com, and this integration's write
  * boundary stops at deployments.
+ *
+ * Data is owned by the parent tab view, not fetched here — the header's build
+ * summary needs the same project record this panel renders.
  */
-export function SettingsPanel() {
+export function SettingsPanel({
+  project,
+  loading,
+  error,
+}: {
+  project: VercelProject | null;
+  loading: boolean;
+  error: string | null;
+}) {
   const t = useT();
-  const { data: project, loading, error, refresh } = useVercelProjectSettings();
-  useRegisterRefresh(refresh);
 
   if (loading && !project) return <Loading fill label={t("common.loading")} />;
   if (error) {

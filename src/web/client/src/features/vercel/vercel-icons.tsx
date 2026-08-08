@@ -287,3 +287,41 @@ export function UnlinkIcon({ className }: { className?: string }) {
     </Icon>
   );
 }
+
+/** Plus — adding a new environment variable. */
+export function PlusIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M8 2.5v11M2.5 8h11" />
+    </Icon>
+  );
+}
+
+/** Pencil — editing an existing variable's value or scope. */
+export function EditIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M10.5 2.5 13.5 5.5 5 14H2v-3z" />
+      <path d="m9 4 3 3" />
+    </Icon>
+  );
+}
+
+/** X — closing an inline panel. */
+export function CloseIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="m4 4 8 8M12 4l-8 8" />
+    </Icon>
+  );
+}
+
+/** Trash — deleting a variable. */
+export function TrashIcon({ className }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <path d="M2.5 4.5h11M6 4.5v-1a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1" />
+      <path d="M4 4.5 4.6 13a1 1 0 0 0 1 .95h4.8a1 1 0 0 0 1-.95l.6-8.5" />
+    </Icon>
+  );
+}

@@ -519,7 +519,7 @@ interface RawTeam {
   name?: string | null;
 }
 
-interface RawEnvVar {
+export interface RawEnvVar {
   id?: string;
   key: string;
   value?: string;
@@ -624,7 +624,7 @@ function normalizeProject(project: RawProject): VercelProject {
   };
 }
 
-function normalizeEnvVar(env: RawEnvVar): VercelEnvVar {
+export function normalizeEnvVar(env: RawEnvVar): VercelEnvVar {
   return {
     id: env.id ?? env.key,
     key: env.key,

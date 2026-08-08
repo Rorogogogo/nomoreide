@@ -78,6 +78,7 @@ async function startServer(): Promise<void> {
     settingsPath: join(tempDir, "settings.json"),
     logDir: join(tempDir, "logs"),
     cwd: repoPath,
+    registryPath: join(tempDir, "runtime.json"),
     port: 0,
   }).start();
 }
@@ -476,6 +477,83 @@ describe("Vercel project-scoped reads", () => {
 
     const response = await fetch(`${server.url}/api/vercel/env/e1/reveal`, { method: "POST" });
     expect(await response.json()).toEqual({ ok: true, value: "s3cret" });
+  });
+
+  test("creates a variable, defaulting its type to encrypted", async () => {
+    stubResolvedProject((url, method) => {
+      if (url.pathname === "/v10/projects/prj_web/env" && method === "POST") {
+        return { id: "e1", key: "API_KEY", target: ["production"], type: "encrypted" };
+      }
+      return {};
+    });
+    await startServer();
+
+    const response = await fetch(`${server.url}/api/vercel/env`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key: "API_KEY", value: "s3cret", target: ["production"] }),
+    });
+
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      env: { id: "e1", key: "API_KEY", target: ["production"] },
+    });
+    const created = apiCalls.find(
+      (call) => call.url.pathname === "/v10/projects/prj_web/env" && call.method === "POST",
+    );
+    expect(JSON.parse(String(created?.body))).toMatchObject({ key: "API_KEY", type: "encrypted" });
+  });
+
+  test("refuses to create a variable with no key or no target", async () => {
+    stubResolvedProject(() => ({}));
+    await startServer();
+
+    const noKey = await fetch(`${server.url}/api/vercel/env`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ value: "x", target: ["production"] }),
+    });
+    expect(noKey.status).toBe(400);
+
+    const noTarget = await fetch(`${server.url}/api/vercel/env`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key: "A", value: "x", target: [] }),
+    });
+    expect(noTarget.status).toBe(400);
+  });
+
+  test("updates a variable's target over PATCH and deletes it over DELETE", async () => {
+    stubResolvedProject((url, method) => {
+      if (url.pathname === "/v9/projects/prj_web/env/e1" && method === "PATCH") {
+        return { id: "e1", key: "API_KEY", target: ["preview"] };
+      }
+      return {};
+    });
+    await startServer();
+
+    const patched = await fetch(`${server.url}/api/vercel/env/e1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ target: ["preview"] }),
+    });
+    expect(await patched.json()).toMatchObject({ ok: true, env: { target: ["preview"] } });
+
+    const deleted = await fetch(`${server.url}/api/vercel/env/e1`, { method: "DELETE" });
+    expect(await deleted.json()).toEqual({ ok: true });
+    expect(
+      apiCalls.some(
+        (call) => call.url.pathname === "/v9/projects/prj_web/env/e1" && call.method === "DELETE",
+      ),
+    ).toBe(true);
+  });
+
+  test("rejects a GET on the update/delete route instead of acting on it", async () => {
+    stubResolvedProject(() => ({}));
+    await startServer();
+
+    const response = await fetch(`${server.url}/api/vercel/env/e1`);
+    expect(response.status).toBe(405);
   });
 
   test("lists domains with their outstanding verification records", async () => {

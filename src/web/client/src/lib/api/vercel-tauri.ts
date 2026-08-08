@@ -95,6 +95,18 @@ export const tauriVercelApi: VercelApi = {
     return (await tauri_vercelEnvValue(id)).value;
   },
 
+  async createVercelEnv() {
+    throw new Error("Adding an environment variable is not supported in desktop mode");
+  },
+
+  async updateVercelEnv() {
+    throw new Error("Editing an environment variable is not supported in desktop mode");
+  },
+
+  async deleteVercelEnv() {
+    throw new Error("Deleting an environment variable is not supported in desktop mode");
+  },
+
   async listVercelDomains() {
     return ((await tauri_vercelListDomains()) ?? []) as VercelDomain[];
   },
