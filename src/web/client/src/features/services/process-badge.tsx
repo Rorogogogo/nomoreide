@@ -33,7 +33,7 @@ export function ProcessBadge({
     <span
       aria-label={t("services.processBadgeAria", { label: process.label })}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center bg-transparent",
+        "inline-flex shrink-0 items-center justify-center bg-transparent dark:bg-zinc-100 dark:text-zinc-700",
         compact ? "size-6" : "size-7",
         !icon && "text-muted-foreground",
       )}
