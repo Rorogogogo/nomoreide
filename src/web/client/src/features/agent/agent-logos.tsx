@@ -5,11 +5,19 @@ interface LogoProps {
   className?: string;
 }
 
+// Each mark carries its own brand colour so every surface renders the agent the
+// same way instead of re-picking a tint per call site. `className` still wins —
+// pass a `text-*` class where a surface needs to override it.
+const CLAUDE_BRAND = "text-[#D97757]";
+// OpenAI's mark has no brand colour; it is monochrome and flips with the theme.
+const CODEX_BRAND = "text-foreground";
+const GEMINI_BRAND = "text-[#1A73E8]";
+
 // Anthropic Claude product mark. Source: simpleicons.org/icons/claude.svg
 export function ClaudeLogo({ className }: LogoProps) {
   return (
     <svg
-      className={cn("size-3.5", className)}
+      className={cn("size-3.5", CLAUDE_BRAND, className)}
       viewBox="0 0 24 24"
       fill="currentColor"
       aria-hidden
@@ -23,7 +31,7 @@ export function ClaudeLogo({ className }: LogoProps) {
 export function CodexLogo({ className }: LogoProps) {
   return (
     <svg
-      className={cn("size-3.5", className)}
+      className={cn("size-3.5", CODEX_BRAND, className)}
       viewBox="0 0 20 20"
       fill="currentColor"
       aria-hidden
@@ -37,7 +45,7 @@ export function CodexLogo({ className }: LogoProps) {
 export function GeminiLogo({ className }: LogoProps) {
   return (
     <svg
-      className={cn("size-3.5", className)}
+      className={cn("size-3.5", GEMINI_BRAND, className)}
       viewBox="0 0 24 24"
       fill="currentColor"
       aria-hidden

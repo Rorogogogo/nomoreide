@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
-  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ExternalLink,
   Plug,
   Puzzle,
   Search,
+  Settings2,
   Sparkles,
   Webhook,
 } from "lucide-react";
 import {
   searchSkills,
-  type McpAuthState,
   type OneTimeSkillSelection,
   type RemoteSkillResult,
 } from "@/lib/api";
@@ -20,13 +20,8 @@ import { cn } from "@/lib/utils";
 import { useT, type Translate } from "@/lib/i18n";
 import { useAgentDock } from "../chat/agent-context";
 import type { AgentDockPage } from "./agent-terminal-dock";
-import type {
-  AgentCapabilities,
-  CapabilityItem,
-  McpAuthSummary,
-} from "./agent-capability-data";
-
-type CapabilityKey = "skills" | "mcps" | "plugins" | "hooks";
+import { CapabilityItemList, type CapabilityKey } from "./agent-capability-items";
+import type { AgentCapabilities, McpAuthSummary } from "./agent-capability-data";
 
 const MANAGE_PAGE: Record<CapabilityKey, AgentDockPage> = {
   skills: "agent-env",
@@ -57,56 +52,11 @@ function McpAuthDot({ auth, mcps }: { auth: McpAuthSummary | null; mcps: number 
   return null;
 }
 
-function itemStateDot(t: Translate, state: McpAuthState | undefined): ReactNode {
-  if (!state) return null;
-  const color =
-    state === "failed"
-      ? "bg-red-500"
-      : state === "needs-auth"
-        ? "bg-amber-500"
-        : state === "unknown"
-          ? "bg-muted-foreground/50"
-          : "bg-emerald-500";
-  const title =
-    state === "failed"
-      ? t("agent.mcp.failed")
-      : state === "needs-auth"
-        ? t("agent.mcp.needsAuth")
-        : state === "unknown"
-          ? t("dock.mcpUnknown")
-          : state === "no-auth"
-            ? t("dock.mcpNoAuth")
-            : t("agent.mcp.connected");
-  return (
-    <span
-      aria-label={title}
-      className={cn("size-1.5 shrink-0 rounded-full", color)}
-      role="img"
-      title={title}
-    />
-  );
-}
-
 interface DropdownAnchor {
   left: number;
   top: number;
   bottom: number;
   up: boolean;
-}
-
-function groupPluginItems(items: CapabilityItem[]) {
-  const groups: Array<{
-    children: CapabilityItem[];
-    parent: CapabilityItem;
-  }> = [];
-  for (const item of items) {
-    if (!item.sub || groups.length === 0) {
-      groups.push({ children: [], parent: item });
-    } else {
-      groups.at(-1)?.children.push(item);
-    }
-  }
-  return groups;
 }
 
 function anchorFor(target: HTMLElement): DropdownAnchor {
@@ -241,45 +191,8 @@ function SkillSearch({
   );
 }
 
-/**
- * The dropdown a chip/badge opens: every item of that capability, portalled to
- * <body> so the dock's overflow never clips it. Insertable rows push their
- * invocation text into the composer; the footer keeps the old jump to the
- * page where the capability is managed.
- */
-function CapabilityDropdown({
-  anchor,
-  capability,
-  count,
-  items,
-  mcpAuth,
-  onClose,
-  onInsert,
-  onManage,
-  onSelectOneTimeSkill,
-}: {
-  anchor: DropdownAnchor;
-  capability: CapabilityKey;
-  count: number;
-  items: CapabilityItem[];
-  mcpAuth?: Record<string, McpAuthState>;
-  onClose: () => void;
-  onInsert?: (text: string) => void;
-  onManage?: () => void;
-  onSelectOneTimeSkill?: (skill: OneTimeSkillSelection) => void;
-}) {
-  const t = useT();
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const heading = {
-    skills: { icon: <Sparkles />, label: t("agentEnv.skills") },
-    mcps: { icon: <Plug />, label: t("agentEnv.mcpServers") },
-    plugins: { icon: <Puzzle />, label: t("agentEnv.plugins") },
-    hooks: { icon: <Webhook />, label: t("dock.hooks") },
-  }[capability];
-
+/** Close on outside click, Escape, or an ancestor scrolling out from under. */
+function useDismiss(menuRef: { current: HTMLDivElement | null }, onClose: () => void) {
   useEffect(() => {
     function onPointerDown(event: globalThis.MouseEvent) {
       const target = event.target as Element;
@@ -302,137 +215,34 @@ function CapabilityDropdown({
       document.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, [onClose]);
+  }, [menuRef, onClose]);
+}
 
-  const renderItem = (item: CapabilityItem, keySuffix: number | string) => {
-    const insert = item.insert;
-    const row =
-      capability === "hooks" ? (
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-mono text-xs">{item.name}</span>
-          {item.detail ? (
-            <span
-              className="mt-0.5 block truncate font-mono text-[10px] leading-4 text-muted-foreground"
-              title={item.detail}
-            >
-              {item.detail}
-            </span>
-          ) : null}
-        </span>
-      ) : (
-        <>
-          {mcpAuth ? itemStateDot(t, mcpAuth[item.name]) : null}
-          <span className={cn("truncate font-mono text-xs", item.sub && "pl-2")}>
-            {item.name}
-          </span>
-          {item.childKind ? (
-            <span className="ml-auto shrink-0 rounded-sm border border-border px-1 py-0.5 text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground">
-              {t(
-                item.childKind === "skill"
-                  ? "dock.capabilitySkill"
-                  : "dock.capabilityCommand",
-              )}
-            </span>
-          ) : null}
-          {item.detail ? (
-            <span className="ml-auto max-w-[45%] shrink-0 truncate rounded-sm border border-border px-1 py-0.5 text-[10px] uppercase leading-none tracking-wide text-muted-foreground">
-              {item.detail}
-            </span>
-          ) : null}
-        </>
-      );
-    const key = `${item.name}-${keySuffix}`;
-    const className = cn(
-      "flex w-full gap-2 rounded-sm px-2 py-1.5 text-left transition-colors",
-      capability === "hooks" ? "items-start" : "items-center",
-      insert && onInsert && "hover:bg-muted",
-    );
-    return insert && onInsert ? (
-      <button
-        className={className}
-        data-capability-hook-row={capability === "hooks" ? "" : undefined}
-        key={key}
-        onClick={() => {
-          onInsert(insert);
-          onClose();
-        }}
-        type="button"
-      >
-        {row}
-      </button>
-    ) : (
-      <div
-        className={className}
-        data-capability-hook-row={capability === "hooks" ? "" : undefined}
-        key={key}
-      >
-        {row}
-      </div>
-    );
-  };
+const HEADINGS: Record<CapabilityKey, { icon: ReactNode; labelKey: Parameters<Translate>[0] }> = {
+  skills: { icon: <Sparkles />, labelKey: "agentEnv.skills" },
+  mcps: { icon: <Plug />, labelKey: "agentEnv.mcpServers" },
+  plugins: { icon: <Puzzle />, labelKey: "agentEnv.plugins" },
+  hooks: { icon: <Webhook />, labelKey: "dock.hooks" },
+};
 
-  const itemList =
-    items.length === 0 ? (
-      <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
-        {t("dock.capabilityEmpty")}
-      </div>
-    ) : capability === "plugins" ? (
-      groupPluginItems(items).map((group) => {
-        const expanded = expandedPlugins.has(group.parent.name);
-        return (
-          <div key={group.parent.name}>
-            <div className="flex items-center">
-              {group.children.length > 0 ? (
-                <button
-                  aria-expanded={expanded}
-                  aria-label={t(
-                    expanded
-                      ? "dock.pluginChildrenCollapse"
-                      : "dock.pluginChildrenExpand",
-                    { name: group.parent.name },
-                  )}
-                  className="grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onClick={() =>
-                    setExpandedPlugins((current) => {
-                      const next = new Set(current);
-                      if (expanded) next.delete(group.parent.name);
-                      else next.add(group.parent.name);
-                      return next;
-                    })
-                  }
-                  type="button"
-                >
-                  {expanded ? (
-                    <ChevronDown aria-hidden="true" className="size-3" />
-                  ) : (
-                    <ChevronRight aria-hidden="true" className="size-3" />
-                  )}
-                </button>
-              ) : (
-                <span className="size-6 shrink-0" />
-              )}
-              <div className="min-w-0 flex-1">
-                {renderItem(group.parent, group.parent.name)}
-              </div>
-            </div>
-            {expanded && group.children.length > 0 ? (
-              <div className="ml-3 border-l border-border/60 pl-1">
-                {group.children.map((item) =>
-                  renderItem(item, item.name),
-                )}
-              </div>
-            ) : null}
-          </div>
-        );
-      })
-    ) : (
-      items.map((item, index) => renderItem(item, index))
-    );
+/** The portalled card both panels live in, positioned against its trigger. */
+function PanelShell({
+  anchor,
+  children,
+  footer,
+  heading,
+  menuRef,
+}: {
+  anchor: DropdownAnchor;
+  children: ReactNode;
+  footer?: ReactNode;
+  heading: ReactNode;
+  menuRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const availableHeight = Math.max(
     160,
     anchor.up ? anchor.top - 8 : window.innerHeight - anchor.bottom - 8,
   );
-
   return createPortal(
     <div
       className="fixed z-50 flex w-72 flex-col overflow-hidden rounded-md border border-border bg-card shadow-md"
@@ -453,10 +263,84 @@ function CapabilityDropdown({
       }
     >
       <div className="flex h-8 items-center gap-1.5 border-b border-border px-2.5 text-[11px] font-medium text-foreground [&_svg]:size-3.5">
-        {heading.icon}
-        <span>{heading.label}</span>
-        <span className="font-mono text-[10px] font-normal text-muted-foreground">{count}</span>
+        {heading}
       </div>
+      {children}
+      {footer}
+    </div>,
+    document.body,
+  );
+}
+
+/** "Manage in <page>" footer row, shared by both panels. */
+function ManageFooter({ onClose, onManage }: { onClose: () => void; onManage?: () => void }) {
+  const t = useT();
+  if (!onManage) return null;
+  return (
+    <button
+      className="flex w-full items-center border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      onClick={() => {
+        onManage();
+        onClose();
+      }}
+      type="button"
+    >
+      {t("dock.capabilityManage")}
+    </button>
+  );
+}
+
+/**
+ * The dropdown a composer chip opens: every item of that one capability,
+ * portalled to <body> so the dock's overflow never clips it.
+ */
+function CapabilityDropdown({
+  anchor,
+  capability,
+  count,
+  capabilities,
+  onClose,
+  onInsert,
+  onManage,
+  onSelectOneTimeSkill,
+}: {
+  anchor: DropdownAnchor;
+  capability: CapabilityKey;
+  count: number;
+  capabilities: AgentCapabilities;
+  onClose: () => void;
+  onInsert?: (text: string) => void;
+  onManage?: () => void;
+  onSelectOneTimeSkill?: (skill: OneTimeSkillSelection) => void;
+}) {
+  const t = useT();
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDismiss(menuRef, onClose);
+  const heading = HEADINGS[capability];
+
+  const itemList = (
+    <CapabilityItemList
+      capability={capability}
+      items={capabilities.items?.[capability] ?? []}
+      mcpAuth={capability === "mcps" ? capabilities.mcpAuth : undefined}
+      onClose={onClose}
+      onInsert={onInsert}
+    />
+  );
+
+  return (
+    <PanelShell
+      anchor={anchor}
+      footer={<ManageFooter onClose={onClose} onManage={onManage} />}
+      heading={
+        <>
+          {heading.icon}
+          <span>{t(heading.labelKey)}</span>
+          <span className="font-mono text-[10px] font-normal text-muted-foreground">{count}</span>
+        </>
+      }
+      menuRef={menuRef}
+    >
       {capability === "skills" && onSelectOneTimeSkill ? (
         <SkillSearch onClose={onClose} onSelect={onSelectOneTimeSkill}>
           {itemList}
@@ -464,21 +348,142 @@ function CapabilityDropdown({
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-1">{itemList}</div>
       )}
-      {onManage ? (
-        <button
-          className="flex w-full items-center border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={() => {
-            onManage();
-            onClose();
-          }}
-          type="button"
-        >
-          {t("dock.capabilityManage")}
-        </button>
-      ) : null}
-    </div>,
-    document.body,
+    </PanelShell>
   );
+}
+
+const ALL_CAPABILITIES: CapabilityKey[] = ["skills", "mcps", "plugins", "hooks"];
+
+/**
+ * Everything the agent can reach, behind the bar's single trigger, as two
+ * layers: pick a category, then pick an item. Four categories' worth of items
+ * stacked flat made a long scroll where the counts — the thing you actually
+ * glance at — were pushed apart by the lists between them.
+ */
+function CapabilityAllPanel({
+  anchor,
+  capabilities,
+  onClose,
+  onInsert,
+  onNavigate,
+  onSelectOneTimeSkill,
+}: {
+  anchor: DropdownAnchor;
+  capabilities: AgentCapabilities;
+  onClose: () => void;
+  onInsert?: (text: string) => void;
+  onNavigate?: (page: AgentDockPage) => void;
+  onSelectOneTimeSkill?: (skill: OneTimeSkillSelection) => void;
+}) {
+  const t = useT();
+  const menuRef = useRef<HTMLDivElement>(null);
+  useDismiss(menuRef, onClose);
+  const [section, setSection] = useState<CapabilityKey | null>(null);
+  const { auth, counts } = capabilities;
+
+  // Layer 2: one category's items, with a way back to the category list.
+  if (section) {
+    const heading = HEADINGS[section];
+    const itemList = (
+      <CapabilityItemList
+        capability={section}
+        items={capabilities.items?.[section] ?? []}
+        mcpAuth={section === "mcps" ? capabilities.mcpAuth : undefined}
+        onClose={onClose}
+        onInsert={onInsert}
+      />
+    );
+    return (
+      <PanelShell
+        anchor={anchor}
+        footer={
+          <ManageFooter
+            onClose={onClose}
+            onManage={onNavigate ? () => onNavigate(MANAGE_PAGE[section]) : undefined}
+          />
+        }
+        heading={
+          <>
+            <button
+              aria-label={t("dock.capabilityBack")}
+              className="-ml-1 grid size-5 shrink-0 place-items-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setSection(null)}
+              type="button"
+            >
+              <ChevronLeft />
+            </button>
+            {heading.icon}
+            <span>{t(heading.labelKey)}</span>
+            <span className="font-mono text-[10px] font-normal text-muted-foreground">
+              {counts?.[section] ?? 0}
+            </span>
+          </>
+        }
+        menuRef={menuRef}
+      >
+        {section === "skills" && onSelectOneTimeSkill ? (
+          <SkillSearch onClose={onClose} onSelect={onSelectOneTimeSkill}>
+            {itemList}
+          </SkillSearch>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto p-1">{itemList}</div>
+        )}
+      </PanelShell>
+    );
+  }
+
+  // Layer 1: the four categories and their counts.
+  return (
+    <PanelShell
+      anchor={anchor}
+      footer={
+        <ManageFooter
+          onClose={onClose}
+          onManage={onNavigate ? () => onNavigate("agent-env") : undefined}
+        />
+      }
+      heading={
+        <>
+          <Settings2 />
+          <span>{t("dock.capabilitiesTitle")}</span>
+          <span className="font-mono text-[10px] font-normal text-muted-foreground">
+            {totalCapabilities(capabilities)}
+          </span>
+        </>
+      }
+      menuRef={menuRef}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto p-1">
+        {ALL_CAPABILITIES.map((capability) => {
+          const heading = HEADINGS[capability];
+          const count = counts?.[capability] ?? 0;
+          return (
+            <button
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[11px] text-foreground transition-colors hover:bg-muted [&_svg]:size-3.5 [&_svg]:shrink-0"
+              disabled={count === 0}
+              key={capability}
+              onClick={() => setSection(capability)}
+              type="button"
+            >
+              <span className="text-muted-foreground">{heading.icon}</span>
+              <span className="min-w-0 flex-1 truncate">{t(heading.labelKey)}</span>
+              {capability === "mcps" ? <McpAuthDot auth={auth} mcps={count} /> : null}
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {count}
+              </span>
+              <ChevronRight className="text-muted-foreground" />
+            </button>
+          );
+        })}
+      </div>
+    </PanelShell>
+  );
+}
+
+/** Every capability the agent can reach, as one number for the bar's trigger. */
+function totalCapabilities({ counts }: AgentCapabilities): number {
+  if (!counts) return 0;
+  return counts.skills + counts.mcps + counts.plugins + counts.hooks;
 }
 
 /** Shared open/toggle state + dropdown element for the strip and the badges. */
@@ -498,10 +503,9 @@ function useCapabilityDropdown(
     open && capabilities.items ? (
       <CapabilityDropdown
         anchor={open.anchor}
+        capabilities={capabilities}
         capability={open.key}
         count={capabilities.counts?.[open.key] ?? 0}
-        items={capabilities.items[open.key]}
-        mcpAuth={open.key === "mcps" ? capabilities.mcpAuth : undefined}
         onClose={() => setOpen(null)}
         onInsert={onInsert}
         onManage={onNavigate ? () => onNavigate(MANAGE_PAGE[open.key]) : undefined}
@@ -509,6 +513,33 @@ function useCapabilityDropdown(
       />
     ) : null;
   return { openKey: open?.key ?? null, toggle, dropdown };
+}
+
+/** Open/anchor state for the bar's single trigger and its combined panel. */
+function useCapabilityPanel(
+  capabilities: AgentCapabilities,
+  onInsert?: (text: string) => void,
+  onNavigate?: (page: AgentDockPage) => void,
+  onSelectOneTimeSkill?: (skill: OneTimeSkillSelection) => void,
+) {
+  const { selectOneTimeSkill } = useAgentDock();
+  const [anchor, setAnchor] = useState<DropdownAnchor | null>(null);
+  const toggle = (event: MouseEvent<HTMLButtonElement>) => {
+    const next = anchorFor(event.currentTarget);
+    setAnchor((current) => (current ? null : next));
+  };
+  const panel =
+    anchor && capabilities.items ? (
+      <CapabilityAllPanel
+        anchor={anchor}
+        capabilities={capabilities}
+        onClose={() => setAnchor(null)}
+        onInsert={onInsert}
+        onNavigate={onNavigate}
+        onSelectOneTimeSkill={onSelectOneTimeSkill ?? selectOneTimeSkill}
+      />
+    ) : null;
+  return { open: !!anchor, toggle, panel };
 }
 
 /**
@@ -580,8 +611,11 @@ export function AgentCapabilityStrip({
 }
 
 /**
- * Icon-only variant for the dock's header bar: logo + number, full label in
- * the hover tooltip, same dropdowns as the composer chips.
+ * The dock bar's capability affordance: one trigger with the total count, not
+ * four counters. The tab row is narrow — and rendered twice in a split — so
+ * four permanent chips there squeezed the tab names down to an ellipsis. The
+ * MCP auth dot rides on this trigger so a server that needs a login is still
+ * visible without opening anything.
  */
 export function AgentCapabilityBadges({
   capabilities,
@@ -598,7 +632,7 @@ export function AgentCapabilityBadges({
 }) {
   const t = useT();
   const { counts, auth } = capabilities;
-  const { openKey, toggle, dropdown } = useCapabilityDropdown(
+  const { open, toggle, panel } = useCapabilityPanel(
     capabilities,
     onInsert,
     onNavigate,
@@ -606,62 +640,39 @@ export function AgentCapabilityBadges({
   );
   if (!counts) return null;
 
-  const badge = (
-    key: CapabilityKey,
-    label: string,
-    count: number,
-    title: string,
-    trailing?: ReactNode,
-  ) => (
-    <button
-      aria-expanded={openKey === key}
-      className="flex h-7 shrink-0 items-center gap-1 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      data-capability-trigger
-      onClick={toggle(key)}
-      title={title}
-      type="button"
-    >
-      <span>{label}</span>
-      <span className="font-mono tabular-nums">{count}</span>
-      {trailing}
-    </button>
-  );
-
-  const mcpTitle = [`${t("agentEnv.mcpServers")}: ${counts.mcps}`, mcpAuthTitle(t, auth)]
+  const title = [
+    `${t("agentEnv.skills")}: ${counts.skills}`,
+    `${t("agentEnv.mcpServers")}: ${counts.mcps}`,
+    `${t("agentEnv.plugins")}: ${counts.plugins}`,
+    `${t("dock.hooks")}: ${counts.hooks}`,
+    mcpAuthTitle(t, auth),
+  ]
     .filter(Boolean)
     .join(" · ");
 
   return (
     <nav
       aria-label={t("dock.capabilitiesAria", { name: providerLabel ?? "Agent" })}
-      className="hidden min-w-0 items-center gap-0.5 overflow-x-auto border-l border-border px-1 [scrollbar-width:none] sm:flex [&::-webkit-scrollbar]:hidden"
+      className="hidden min-w-0 items-center border-l border-border px-1 sm:flex"
     >
-      {badge(
-        "skills",
-        t("dock.capabilitySkillsShort"),
-        counts.skills,
-        `${t("agentEnv.skills")}: ${counts.skills}`,
-      )}
-      {badge(
-        "mcps",
-        t("dock.capabilityMcpShort"),
-        counts.mcps,
-        mcpTitle,
-        <McpAuthDot auth={auth} mcps={counts.mcps} />,
-      )}
-      {badge(
-        "plugins",
-        t("dock.capabilityPluginsShort"),
-        counts.plugins,
-        `${t("agentEnv.plugins")}: ${counts.plugins}`,
-      )}
-      {badge(
-        "hooks",
-        t("dock.capabilityHooksShort"),
-        counts.hooks,
-        `${t("dock.hooks")}: ${counts.hooks}`,
-      )}
-      {dropdown}
+      <button
+        aria-expanded={open}
+        className={cn(
+          "flex h-7 shrink-0 items-center gap-1 rounded-sm px-1.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+          open && "bg-muted text-foreground",
+        )}
+        data-capability-trigger
+        onClick={toggle}
+        title={title}
+        type="button"
+      >
+        {/* Text, not an icon: the bar deliberately spells its affordances out,
+            and the per-capability counts live in the panel's section headings. */}
+        <span>{t("dock.capabilitiesTitle")}</span>
+        <span className="font-mono tabular-nums">{totalCapabilities(capabilities)}</span>
+        <McpAuthDot auth={auth} mcps={counts.mcps} />
+      </button>
+      {panel}
     </nav>
   );
 }

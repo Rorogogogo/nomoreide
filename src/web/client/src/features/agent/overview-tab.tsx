@@ -30,11 +30,9 @@ const AGENT_META: Record<AgentId, { label: string; icon: React.ReactNode }> = {
 export function OverviewTab({
   agent,
   agentId,
-  isDetected,
 }: {
   agent: AgentProfile;
   agentId: AgentId;
-  isDetected: boolean;
 }) {
   const { usage, error } = useUsage();
   const t = useT();
@@ -50,15 +48,6 @@ export function OverviewTab({
           <Badge variant="outline" size="small" icon={meta.icon}>
             {meta.label}
           </Badge>
-          {isDetected ? (
-            <Badge variant="outline" size="small">
-              {t("agent.overview.activeSession")}
-            </Badge>
-          ) : (
-            <span className="text-[11px] text-muted-foreground">
-              {t("agent.overview.notActive")}
-            </span>
-          )}
           {!isCodex ? <CoAuthorButton className="ml-auto" /> : null}
         </div>
         <CardDescription className="truncate text-xs">

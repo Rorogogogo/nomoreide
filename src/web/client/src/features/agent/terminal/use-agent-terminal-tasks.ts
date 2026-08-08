@@ -7,7 +7,9 @@ import {
   listAgentTranscripts,
   listTerminalSessions,
   renameTerminalSession,
+  setChatModel as setChatModelApi,
   setChatProvider as setChatProviderApi,
+  type AgentChatModels,
   type AgentChatProviderInfo,
   type AgentChatProviderOption,
   type AgentTranscriptInfo,
@@ -32,6 +34,8 @@ export interface CreateAgentTerminalTaskOptions {
   prompt: string;
   /** Explicit provider for direct session creation; defaults to the saved one. */
   provider?: AgentProviderId;
+  /** Explicit model for this session; defaults to the provider's saved pin. */
+  model?: string;
   label?: string;
   oneTimeSkill?: OneTimeSkillSelection;
   source?: AgentTerminalTaskSource;
@@ -85,7 +89,10 @@ export function useAgentTerminalTasks() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [provider, setProvider] = useState<AgentChatProviderInfo | null>(null);
   const [providers, setProviders] = useState<AgentChatProviderOption[]>([]);
+  const [models, setModels] = useState<AgentChatModels>({});
   const providerRef = useRef<AgentProviderId | undefined>(undefined);
+  const modelsRef = useRef<AgentChatModels>({});
+  const modelSelectionSequenceRef = useRef(0);
   const mountedRef = useRef(true);
   const createSequenceRef = useRef(0);
   const latestForegroundSequenceRef = useRef(0);
@@ -182,10 +189,16 @@ export function useAgentTerminalTasks() {
 
   useEffect(() => {
     const selectionAtRequest = providerSelectionSequenceRef.current;
+    const modelSelectionAtRequest = modelSelectionSequenceRef.current;
     void getAgentChatStatus()
       .then((status) => {
         if (!mountedRef.current) return;
         setProviders(status.providers);
+        // A pin the user changed while this was in flight must survive it.
+        if (modelSelectionSequenceRef.current === modelSelectionAtRequest) {
+          modelsRef.current = status.models ?? {};
+          setModels(modelsRef.current);
+        }
         if (providerSelectionSequenceRef.current === selectionAtRequest) {
           setConfigured(status.configured);
           setProvider(status.provider);
@@ -231,6 +244,37 @@ export function useAgentTerminalTasks() {
       }
     },
     [providers],
+  );
+
+  /**
+   * Pin (or, with null, unpin) the model new sessions of `id` spawn with.
+   * Applied optimistically so the picker closes on the current choice, then
+   * reconciled with what the backend actually stored.
+   */
+  const selectModel = useCallback(
+    async (id: AgentProviderId, model: string | null) => {
+      const selection = ++modelSelectionSequenceRef.current;
+      const trimmed = model?.trim();
+      const optimistic = { ...modelsRef.current };
+      if (trimmed) optimistic[id] = trimmed;
+      else delete optimistic[id];
+      modelsRef.current = optimistic;
+      setModels(optimistic);
+      setTerminalError(null);
+      try {
+        const saved = await setChatModelApi(id, trimmed || null);
+        if (!mountedRef.current || modelSelectionSequenceRef.current !== selection) return;
+        modelsRef.current = saved;
+        setModels(saved);
+      } catch (error) {
+        // Keep the optimistic choice — it still applies to this session, the
+        // same way an unsaved provider switch does.
+        if (mountedRef.current && modelSelectionSequenceRef.current === selection) {
+          setTerminalError(errorMessage(error));
+        }
+      }
+    },
+    [],
   );
 
   /**
@@ -297,7 +341,7 @@ export function useAgentTerminalTasks() {
   );
 
   const createTask = useCallback(
-    ({ prompt, provider: requestedProvider, label, oneTimeSkill, source, background }: CreateAgentTerminalTaskOptions) => {
+    ({ prompt, provider: requestedProvider, model, label, oneTimeSkill, source, background }: CreateAgentTerminalTaskOptions) => {
       const selectedProvider = requestedProvider ?? providerRef.current ?? "claude";
       return runCreate(
         () =>
@@ -306,6 +350,7 @@ export function useAgentTerminalTasks() {
             prompt,
             label,
             oneTimeSkill,
+            model: model ?? modelsRef.current[selectedProvider],
           }),
         { background, label, source },
       );
@@ -328,6 +373,12 @@ export function useAgentTerminalTasks() {
     }
   }, []);
 
+  /**
+   * Resuming deliberately ignores the provider's model pin: the pin says what
+   * *new* sessions should use, and silently moving an existing conversation to
+   * a different model mid-thread is worse than leaving it where it was. The CLI
+   * falls back to the model the session was recorded with.
+   */
   const resumeTask = useCallback(
     (transcript: AgentTranscriptInfo, options?: { background?: boolean }) =>
       runCreate(
@@ -513,6 +564,8 @@ export function useAgentTerminalTasks() {
     configured,
     providers,
     selectProvider,
+    models,
+    selectModel,
     transcripts,
     transcriptsLoading,
     transcriptsError,

@@ -97,4 +97,66 @@ describe("interactive agent terminal invocation", () => {
       buildInteractiveAgentInvocation("claude", "", { resumeId: "--dangerously-skip-permissions" }),
     ).toThrow("Invalid session id");
   });
+
+  test("pins the session to a model, ahead of the positional prompt", async () => {
+    const buildInvocation = await loadInvocationBuilder();
+
+    expect(buildInvocation("claude", "Fix it", { model: "opus" }).args).toEqual([
+      "--model",
+      "opus",
+      "Fix it",
+    ]);
+    expect(buildInvocation("codex", "Fix it", { model: "gpt-5-codex" }).args).toEqual([
+      "--no-alt-screen",
+      "-m",
+      "gpt-5-codex",
+      "Fix it",
+    ]);
+  });
+
+  test("puts Codex's model flag before the resume subcommand", async () => {
+    // `-m` is a global option: after `resume` it is parsed as the subcommand's,
+    // which Codex rejects.
+    const buildInvocation = await loadInvocationBuilder();
+    const id = "019f7c82-cb32-73d3-9ffd-7425ddb8dbb4";
+
+    expect(buildInvocation("codex", "", { model: "gpt-5", resumeId: id }).args).toEqual([
+      "--no-alt-screen",
+      "-m",
+      "gpt-5",
+      "resume",
+      id,
+    ]);
+    expect(buildInvocation("claude", "", { model: "sonnet", resumeId: id }).args).toEqual([
+      "--model",
+      "sonnet",
+      "--resume",
+      id,
+    ]);
+  });
+
+  test("accepts dated and namespaced model ids", async () => {
+    const buildInvocation = await loadInvocationBuilder();
+
+    expect(buildInvocation("claude", "", { model: "claude-haiku-4-5-20251001" }).args).toEqual([
+      "--model",
+      "claude-haiku-4-5-20251001",
+    ]);
+    expect(buildInvocation("codex", "", { model: "openai/gpt-5" }).args).toEqual([
+      "--no-alt-screen",
+      "-m",
+      "openai/gpt-5",
+    ]);
+  });
+
+  test("refuses a model name that could be read as a flag", async () => {
+    const buildInvocation = await loadInvocationBuilder();
+
+    expect(() =>
+      buildInvocation("claude", "", { model: "--dangerously-skip-permissions" }),
+    ).toThrow("Invalid model name");
+    expect(() => buildInvocation("codex", "", { model: "-m" })).toThrow(
+      "Invalid model name",
+    );
+  });
 });

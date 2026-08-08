@@ -16,7 +16,6 @@ interface RateWindow {
 /** The provider-agnostic slice of usage the strip actually renders. */
 interface PickedUsage {
   fiveHour?: RateWindow;
-  weekly?: RateWindow;
   /** Share of the context window consumed last turn (Codex only), 0–100. */
   contextPercent: number | null;
   /** Last-session spend in USD (Claude only). */
@@ -32,7 +31,6 @@ function pickUsage(usage: UsageInfo | null, provider?: string): PickedUsage | nu
   const codexView = codex
     ? {
         fiveHour: codex.primary,
-        weekly: codex.secondary,
         contextPercent:
           codex.contextWindow && codex.contextWindow > 0
             ? Math.min(100, (codex.lastTotalTokens / codex.contextWindow) * 100)
@@ -43,7 +41,6 @@ function pickUsage(usage: UsageInfo | null, provider?: string): PickedUsage | nu
   const claudeView = claude
     ? {
         fiveHour: claude.fiveHour,
-        weekly: claude.weekly,
         contextPercent: null,
         costUSD: claude.costUSD,
       }
@@ -236,8 +233,8 @@ function LatestActionItem({
 
 /**
  * Glanceable status cluster for the agent dock: current branch + ahead/behind,
- * latest GitHub Actions status, the 5-hour and weekly rate-limit meters, and
- * the active session's context/cost.
+ * latest GitHub Actions status, the 5-hour rate-limit meter, and the active
+ * session's context/cost.
  *
  * `variant` tunes density: "strip" (the collapsed bar) shows everything as room
  * allows; "dock" (the open terminal's tab row) keeps only the compact limits +
@@ -293,18 +290,10 @@ export function DockStatusStrip({
     );
   }
 
+  // Only the 5-hour window. The weekly one moves too slowly to be worth a
+  // permanent slot in the bar — the usage card still breaks both down.
   if (picked?.fiveHour) {
     items.push(<LimitMeter key="5h" label={t("dock.status.fiveHour")} window={picked.fiveHour} />);
-  }
-  if (picked?.weekly) {
-    items.push(
-      <LimitMeter
-        className="hidden sm:flex"
-        key="wk"
-        label={t("dock.status.weekly")}
-        window={picked.weekly}
-      />,
-    );
   }
 
   if (showContext && picked) {

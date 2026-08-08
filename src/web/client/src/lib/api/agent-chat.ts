@@ -11,11 +11,18 @@ import { tauriAgentChatApi } from "./agent-chat-tauri.js";
 
 const api: AgentChatApi = isTauri() ? tauriAgentChatApi : httpAgentChatApi;
 
-export const { getAgentChatStatus, setChatProvider, approveAgentTool, streamAgentChat } = api;
+export const {
+  getAgentChatStatus,
+  setChatProvider,
+  setChatModel,
+  approveAgentTool,
+  streamAgentChat,
+} = api;
 
 export type {
   AgentChatApi,
   AgentStreamEvent,
+  AgentChatModels,
   AgentChatProviderInfo,
   AgentChatProviderOption,
   AgentChatStatus,

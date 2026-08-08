@@ -2,6 +2,7 @@
 import { requestJson } from "./client.js";
 import type {
   AgentChatApi,
+  AgentChatModels,
   AgentChatProviderInfo,
   AgentChatProviderOption,
   AgentStreamEvent,
@@ -15,12 +16,14 @@ export const httpAgentChatApi: AgentChatApi = {
       approvals: boolean;
       provider: AgentChatProviderInfo;
       providers: AgentChatProviderOption[];
+      models?: AgentChatModels;
     }>("/api/agent/chat/status");
     return {
       configured: res.configured,
       approvals: res.approvals,
       provider: res.provider,
       providers: res.providers ?? [],
+      models: res.models ?? {},
     };
   },
 
@@ -34,6 +37,18 @@ export const httpAgentChatApi: AgentChatApi = {
       },
     );
     return res.provider;
+  },
+
+  async setChatModel(provider, model) {
+    const res = await requestJson<{ ok: true; models: AgentChatModels }>(
+      "/api/agent/chat/model",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider, model }),
+      },
+    );
+    return res.models ?? {};
   },
 
   async approveAgentTool(sessionId, requestId, decision) {
