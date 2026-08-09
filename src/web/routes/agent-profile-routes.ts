@@ -13,6 +13,7 @@ import {
   listProfiles,
   previewProfileApply,
   profileSchema,
+  refreshProfileFromAgent,
   snapshotProfileFromAgent,
   updateProfile,
 } from "../../core/agent-profiles/index.js";
@@ -127,7 +128,7 @@ export const agentProfileRoutes: Route[] = [
   }),
 
   patternRoute(
-    /^\/api\/agent-env\/profiles\/([^/]+)\/(apply-preview|apply|export)$/,
+    /^\/api\/agent-env\/profiles\/([^/]+)\/(apply-preview|apply|export|refresh)$/,
     ["name", "action"],
     async ({ request, response, params, cwd }) => {
       if (request.method !== "POST") {
@@ -143,6 +144,19 @@ export const agentProfileRoutes: Route[] = [
               ? body.outputPath
               : undefined;
           sendJson(response, { ok: true, ...(await exportProfile({ name, outputPath, cwd })) });
+          return;
+        }
+
+        if (params.action === "refresh") {
+          const body = applyBodySchema.pick({ agent: true }).safeParse(await readJson(request));
+          if (!body.success) {
+            sendJson(response, { ok: false, error: "agent is required." }, 400);
+            return;
+          }
+          sendJson(response, {
+            ok: true,
+            profile: await refreshProfileFromAgent({ cwd, name, agent: body.data.agent }),
+          });
           return;
         }
 

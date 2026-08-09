@@ -1,4 +1,5 @@
 import { Loader2 } from "lucide-react";
+import { AgentWaveLoader } from "@/features/agent/agent-wave-loader";
 import { cn } from "@/lib/utils";
 
 const SPINNER_SIZE = {
@@ -26,32 +27,28 @@ export function Spinner({
 }
 
 /**
- * Centered spinner with an optional label for panel/section loading states.
+ * Centered AI wave with an optional label for panel/section loading states.
  * `fill` makes it take the full height of its container (the common
  * "loading this view" case); otherwise it sits inline.
  */
 export function Loading({
   label,
-  size = "md",
   fill = false,
   className,
 }: {
   label?: string;
-  size?: SpinnerSize;
   fill?: boolean;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center gap-2 text-[12px] text-muted-foreground",
+        "flex items-center justify-center text-muted-foreground",
         fill && "h-full",
         className,
       )}
-      role="status"
     >
-      <Spinner size={size} />
-      {label ? <span>{label}</span> : null}
+      <AgentWaveLoader label={label ?? "Loading…"} />
     </div>
   );
 }

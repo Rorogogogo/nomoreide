@@ -26,7 +26,7 @@ export interface AgentSource {
 
 export type SendMode = "send" | "draft";
 
-interface SendToAgentOptions {
+export interface SendToAgentOptions {
   prompt: string;
   source?: AgentSource;
   /** "send" launches a terminal task; "draft" prefills and waits. */
@@ -40,6 +40,15 @@ interface SendToAgentOptions {
    */
   background?: boolean;
 }
+
+export type ForegroundAgentDelivery = Pick<
+  SendToAgentOptions,
+  "label" | "prompt" | "source"
+>;
+
+export type ForegroundAgentDeliveryHandler = (
+  delivery: ForegroundAgentDelivery,
+) => "draft" | "handled";
 
 type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
   dockLayout: AgentDockLayoutPreferences;
@@ -63,6 +72,10 @@ type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
   focusNonce: number;
   /** The one entry point every feature uses to push an action into the dock. */
   sendToAgent: (options: SendToAgentOptions) => { queued: boolean };
+  /** Lets the mounted dock route foreground sends into a visible agent pane. */
+  registerForegroundAgentDeliveryHandler: (
+    handler: ForegroundAgentDeliveryHandler,
+  ) => () => void;
   /** True while the dock is showing its "paste a repo URL" onboard field. */
   onboarding: boolean;
   setOnboarding: (value: boolean) => void;
@@ -101,6 +114,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     useState<OneTimeSkillSelection | null>(null);
   const [focusNonce, setFocusNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
+  const foregroundDeliveryHandlerRef =
+    useRef<ForegroundAgentDeliveryHandler | null>(null);
   const bumpFocus = useCallback(() => setFocusNonce((nonce) => nonce + 1), []);
   const clearSource = useCallback(() => setActiveSource(null), []);
   const clearOneTimeSkill = useCallback(() => setPendingOneTimeSkill(null), []);
@@ -145,6 +160,18 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [bumpFocus],
   );
 
+  const registerForegroundAgentDeliveryHandler = useCallback(
+    (handler: ForegroundAgentDeliveryHandler) => {
+      foregroundDeliveryHandlerRef.current = handler;
+      return () => {
+        if (foregroundDeliveryHandlerRef.current === handler) {
+          foregroundDeliveryHandlerRef.current = null;
+        }
+      };
+    },
+    [],
+  );
+
   const sendToAgent = useCallback(
     ({ prompt, source, mode = "send", label, background }: SendToAgentOptions) => {
       if (mode === "draft") {
@@ -153,6 +180,21 @@ export function AgentProvider({ children }: { children: ReactNode }) {
         setDraft(prompt);
         bumpFocus();
         return { queued: false };
+      }
+      if (!background) {
+        const deliveryResult = foregroundDeliveryHandlerRef.current?.({
+          label,
+          prompt,
+          source,
+        });
+        if (deliveryResult === "handled") return { queued: false };
+        if (deliveryResult === "draft") {
+          setOpen(true);
+          setActiveSource(source ?? null);
+          setDraft(prompt);
+          bumpFocus();
+          return { queued: false };
+        }
       }
       if (!background) {
         setOpen(true);
@@ -182,6 +224,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     consumeOneTimeSkill,
     focusNonce,
     sendToAgent,
+    registerForegroundAgentDeliveryHandler,
     onboarding,
     setOnboarding,
     startOnboard,

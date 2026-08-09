@@ -23,6 +23,7 @@ const dock = vi.hoisted(() => ({
     historyRailOpen: false,
   },
   draft: "", focusNonce: 0, insertPath: vi.fn(), onboarding: false, open: false,
+  foregroundAgentDeliveryHandler: null as null | ((delivery: { label?: string; prompt: string; source?: { type: string; label: string } }) => "draft" | "handled"),
   loadTranscripts: vi.fn(),
   models: {} as Partial<Record<"claude" | "codex", string>>,
   selectModel: vi.fn(),
@@ -39,7 +40,16 @@ const dock = vi.hoisted(() => ({
   selectOneTimeSkill: vi.fn(),
   setDraft: vi.fn(), setOnboarding: vi.fn(),
   renameTask: vi.fn(),
+  registerForegroundAgentDeliveryHandler: vi.fn((handler: (delivery: { label?: string; prompt: string; source?: { type: string; label: string } }) => "draft" | "handled") => {
+    dock.foregroundAgentDeliveryHandler = handler;
+    return () => {
+      if (dock.foregroundAgentDeliveryHandler === handler) {
+        dock.foregroundAgentDeliveryHandler = null;
+      }
+    };
+  }),
   resumeTask: vi.fn(),
+  sendToAgent: vi.fn(),
   setOpen: vi.fn(), stopTask: vi.fn(), tasks: [] as Array<Record<string, unknown>>,
   tasksHydrated: true,
   tasksHydrationSettled: true,
@@ -58,6 +68,10 @@ const uiSettings = vi.hoisted(() => ({
 const skillPromptApi = vi.hoisted(() => ({
   load: vi.fn(),
 }));
+const toast = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}));
 const terminalHandle = vi.hoisted(() => ({
   focus: vi.fn(),
   input: vi.fn(),
@@ -68,6 +82,7 @@ const terminalHandle = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/agent/chat/agent-context", () => ({ useAgentDock: () => dock }));
+vi.mock("@/components/ui/toast", () => ({ useToasts: () => toast }));
 vi.mock("@/lib/api", () => ({
   getAgentEnvConfigs: vi.fn().mockResolvedValue([]),
   getAgentInfo: vi.fn().mockResolvedValue(null),
@@ -200,7 +215,7 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     })),
   });
-  Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, onboarding: false, open: false, pendingOneTimeSkill: null, pendingTaskIds: new Set(), tasks: [], terminalError: null });
+  Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, foregroundAgentDeliveryHandler: null, onboarding: false, open: false, pendingOneTimeSkill: null, pendingTaskIds: new Set(), tasks: [], terminalError: null });
   dock.dockLayout = {
     version: 1,
     open: false,
@@ -311,6 +326,21 @@ describe("AgentTerminalDock", () => {
     expect(dock.createTask).toHaveBeenCalledWith(expect.objectContaining({
       prompt: "  Fix the checkout race and add regression coverage\nDo not skip tests",
       label: "Fix the checkout race and add regression coverage",
+    }));
+  });
+
+  test("opens a new agent task with an empty prompt", async () => {
+    Object.assign(dock, { open: true, draft: "" });
+    dock.createTask.mockResolvedValue({ id: "new" });
+    const { host } = await render();
+
+    const run = host.querySelector('[aria-label="Run agent task"]') as HTMLButtonElement;
+    expect(run.disabled).toBe(false);
+    await act(async () => run.click());
+
+    expect(dock.createTask).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: "",
+      label: "Agent task",
     }));
   });
 
@@ -693,6 +723,15 @@ describe("AgentTerminalDock", () => {
     expect(dock.createTask).not.toHaveBeenCalled();
   });
 
+  test("shows the agent logo wave while a session is starting", async () => {
+    Object.assign(dock, { open: true, configured: true, creating: 1 });
+    const { host } = await render();
+    const status = host.querySelector('[role="status"]');
+
+    expect(status?.getAttribute("aria-label")).toBe("Starting Claude Code…");
+    expect(status?.querySelectorAll(".agent-wave-mark")).toHaveLength(5);
+  });
+
   test("opens repo onboarding over an existing active terminal when onboarding starts", async () => {
     Object.assign(dock, {
       open: true,
@@ -755,6 +794,107 @@ describe("AgentTerminalDock", () => {
     );
 
     expect(dock.setActiveTaskId).toHaveBeenCalledWith("two");
+  });
+
+  test("inserts a foreground send into the only visible running agent", async () => {
+    Object.assign(dock, {
+      open: true,
+      activeTaskId: "one",
+      tasks: [
+        { id: "one", kind: "agent", label: "First task", state: "running", provider: "claude" },
+        { id: "two", kind: "agent", label: "Hidden task", state: "running", provider: "codex" },
+      ],
+    });
+    await render();
+
+    let result: "draft" | "handled" = "draft";
+    await act(async () => {
+      result = dock.foregroundAgentDeliveryHandler?.({ prompt: "Review this change" }) ?? "draft";
+    });
+
+    expect(result).toBe("handled");
+    expect(terminalHandle.paste).toHaveBeenCalledWith("Review this change");
+    expect(terminalHandle.focus).toHaveBeenCalled();
+    expect(dock.createTask).not.toHaveBeenCalled();
+  });
+
+  test("reopens a collapsed running agent and inserts the foreground send", async () => {
+    Object.assign(dock, {
+      open: false,
+      activeTaskId: "one",
+      tasks: [{ id: "one", kind: "agent", label: "Hidden task", state: "running", provider: "claude" }],
+    });
+    await render();
+
+    expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Continue here" })).toBe("handled");
+    expect(dock.setOpen).toHaveBeenCalledWith(true);
+    expect(terminalHandle.paste).toHaveBeenCalledWith("Continue here");
+    expect(dock.createTask).not.toHaveBeenCalled();
+  });
+
+  test("routes a foreground send to the composer when there are no running agents", async () => {
+    Object.assign(dock, { open: false, activeTaskId: null, tasks: [] });
+    await render();
+
+    expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Start fresh" })).toBe("draft");
+    expect(dock.setOpen).not.toHaveBeenCalled();
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+  });
+
+  test("asks which visible split agent should receive a foreground send", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", kind: "agent", label: "First task", state: "running", provider: "claude" },
+      { id: "two", kind: "agent", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const mounted = await render();
+    await dragTaskToSplit(mounted.host, "two");
+
+    await act(async () => {
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Review this split" })).toBe("handled");
+    });
+
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+    expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(2);
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Insert into Claude Code");
+    await act(async () =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })),
+    );
+    expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(0);
+
+    await act(async () => {
+      dock.foregroundAgentDeliveryHandler?.({ prompt: "Review this split" });
+    });
+    const codexTarget = mounted.host.querySelector(
+      '[aria-label="Insert into Codex"]',
+    ) as HTMLButtonElement;
+
+    await act(async () => codexTarget.click());
+
+    expect(terminalHandle.paste).toHaveBeenCalledWith("Review this split");
+    expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(0);
+  });
+
+  test("reopens a collapsed split and asks which agent should receive the send", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", kind: "agent", label: "First task", state: "running", provider: "claude" },
+      { id: "two", kind: "agent", label: "Second task", state: "running", provider: "codex" },
+    ] });
+    const mounted = await render();
+    await dragTaskToSplit(mounted.host, "two");
+    dock.open = false;
+    await rerender(mounted);
+
+    await act(async () => {
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Choose after opening" })).toBe("handled");
+    });
+
+    expect(dock.setOpen).toHaveBeenCalledWith(true);
+    expect(dock.createTask).not.toHaveBeenCalled();
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+
+    dock.open = true;
+    await rerender(mounted);
+    expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(2);
   });
 
   test("splits a dragged task and keeps it in the right group when activated", async () => {
@@ -898,7 +1038,7 @@ describe("AgentTerminalDock", () => {
     expect(document.activeElement).toBe(host.querySelector("#agent-tab-one"));
   });
 
-  test("composing keeps the split pane alive and takes the left half itself", async () => {
+  test("composing takes the whole dock and restores the saved split afterward", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
       { id: "one", label: "First task", state: "running", provider: "claude" },
       { id: "two", label: "Second task", state: "running", provider: "codex" },
@@ -911,13 +1051,25 @@ describe("AgentTerminalDock", () => {
     await rerender(mounted);
 
     const composer = mounted.host.querySelector("#agent-panel-new") as HTMLElement;
-    expect(composer.style.right).toBe("50%");
-    // The whole point: the task you split out stays readable while you type.
+    expect(composer.className).toContain("inset-x-0");
+    expect(composer.style.right).toBe("");
     const right = mounted.host.querySelector("#agent-panel-two") as HTMLElement;
-    expect(right.style.left).toBe("50%");
-    expect(right.className).not.toContain("invisible");
-    expect(mounted.host.querySelector('[data-session="two"]')?.getAttribute("data-active")).toBe("true");
+    expect(right.className).toContain("invisible");
+    expect(mounted.host.querySelector('[data-session="two"]')?.getAttribute("data-active")).toBe("false");
     expect((mounted.host.querySelector("#agent-panel-one") as HTMLElement).className).toContain("invisible");
+    expect(mounted.host.querySelector('[aria-label="Resize split panes"]')).toBeNull();
+    expect(mounted.host.querySelector('[data-agent-pane-tabs="left"]')).not.toBeNull();
+    expect(mounted.host.querySelector('[data-agent-pane-tabs="right"]')).not.toBeNull();
+    expect(mounted.host.querySelector("#agent-tab-new")).toBeNull();
+
+    await act(async () =>
+      (mounted.host.querySelector('[aria-label="Open task Second task"]') as HTMLButtonElement).click(),
+    );
+    await rerender(mounted);
+
+    expect((mounted.host.querySelector("#agent-panel-one") as HTMLElement).className).not.toContain("invisible");
+    expect((mounted.host.querySelector("#agent-panel-two") as HTMLElement).className).not.toContain("invisible");
+    expect((mounted.host.querySelector("#agent-panel-two") as HTMLElement).style.left).toBe("50%");
   });
 
   test("switches the selected right tab without changing the left selection", async () => {

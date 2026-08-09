@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Eye, EyeOff, Settings2 } from "lucide-react";
+import { Check, Eye, EyeOff, Settings2, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOperations } from "@/components/operations/operation-context";
 import {
@@ -13,6 +13,17 @@ import {
 import { AGENT_LABELS } from "./agent-column";
 import { useT } from "@/lib/i18n";
 import { maskSecrets } from "./mask-secrets";
+import {
+  formatAgentSettingsContent,
+  validateAgentSettingsContent,
+} from "./agent-settings-format";
+import "@/features/git/file-viewer-theme.css";
+
+const CodeEditor = lazy(() =>
+  import("@/features/git/code-editor").then((module) => ({
+    default: module.CodeEditor,
+  })),
+);
 
 /** Datalist hints only — free text is always allowed so the list can't go stale. */
 const MODEL_SUGGESTIONS: Record<AgentEnvAgentName, string[]> = {
@@ -76,6 +87,9 @@ export function AgentSettingsDialog({
   // read-only so the mask can never be saved back into the file.
   const masked = maskSecrets(content);
   const showMasked = !revealed && masked !== content;
+  const validation = settings
+    ? validateAgentSettingsContent(content, settings.format)
+    : { valid: false, error: null };
   const modelDirty = settings !== null && model.trim() !== (settings.model ?? "");
   const applyModel = async () => {
     setError(null);
@@ -96,6 +110,7 @@ export function AgentSettingsDialog({
   };
 
   const saveFile = async () => {
+    if (!validation.valid) return;
     setError(null);
     try {
       await runOperation(
@@ -109,6 +124,11 @@ export function AgentSettingsDialog({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  };
+
+  const formatFile = () => {
+    if (!settings || showMasked || !validation.valid) return;
+    setContent(formatAgentSettingsContent(content, settings.format));
   };
 
   return createPortal(
@@ -169,34 +189,78 @@ export function AgentSettingsDialog({
             </div>
           ) : null}
 
-          <div className="relative">
-            <textarea
-              aria-label={t("agentEnv.settings.contentAria")}
-              className="h-72 w-full resize-y rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed focus:outline-none"
-              disabled={busy || !settings}
-              onChange={(event) => !showMasked && setContent(event.target.value)}
-              placeholder={
-                settings && !settings.exists
-                  ? t("agentEnv.settings.missingFile")
-                  : undefined
-              }
-              readOnly={showMasked}
-              spellCheck={false}
-              value={showMasked ? masked : content}
-            />
-            {masked !== content || revealed ? (
+          <div className="overflow-hidden rounded-md border border-border bg-background">
+            <div className="flex min-h-8 items-center gap-2 border-b border-border/70 px-2">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                {settings?.format ?? ""}
+              </span>
+              <span
+                aria-live="polite"
+                className={validation.valid ? "flex items-center gap-1 text-[10px] text-emerald-600" : "flex min-w-0 items-center gap-1 text-[10px] text-destructive"}
+                title={validation.error ?? undefined}
+              >
+                {validation.valid ? <Check aria-hidden="true" className="size-3" /> : null}
+                <span className="truncate">
+                  {validation.valid
+                    ? t("agentEnv.settings.valid")
+                    : settings
+                      ? t("agentEnv.settings.invalid", { error: validation.error ?? "" })
+                      : t("agentEnv.settings.loading")}
+                </span>
+              </span>
               <Button
-                className="absolute right-2 top-2 h-7 gap-1.5 px-2 text-[11px] text-muted-foreground"
-                onClick={() => setRevealed((current) => !current)}
+                className="ml-auto h-6 gap-1 px-1.5 text-[10px]"
+                disabled={busy || !settings || showMasked || !validation.valid}
+                onClick={formatFile}
                 size="sm"
-                title={showMasked ? t("agentEnv.settings.revealTitle") : t("agentEnv.settings.hideTitle")}
+                title={showMasked ? t("agentEnv.settings.revealTitle") : undefined}
                 type="button"
                 variant="ghost"
               >
-                {showMasked ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                {showMasked ? t("agentEnv.settings.reveal") : t("agentEnv.settings.hide")}
+                <WandSparkles aria-hidden="true" className="size-3" />
+                {t("agentEnv.settings.format")}
               </Button>
-            ) : null}
+            </div>
+            <div className="relative h-72 overflow-auto">
+              {showMasked ? (
+                <textarea
+                  aria-label={t("agentEnv.settings.contentAria")}
+                  className="min-h-full w-full resize-none border-0 bg-transparent p-3 font-mono text-xs leading-relaxed text-muted-foreground outline-none"
+                  readOnly
+                  value={masked}
+                />
+              ) : settings ? (
+                <Suspense fallback={<p className="p-3 text-xs text-muted-foreground">{t("agentEnv.settings.loading")}</p>}>
+                  <CodeEditor
+                    ariaLabel={t("agentEnv.settings.contentAria")}
+                    onChange={setContent}
+                    path={settings.path}
+                    readOnly={busy}
+                    value={content}
+                  />
+                </Suspense>
+              ) : (
+                <p className="p-3 text-xs text-muted-foreground">{t("agentEnv.settings.loading")}</p>
+              )}
+              {settings && !settings.exists && !content ? (
+                <p className="pointer-events-none absolute left-12 top-3 text-xs text-muted-foreground">
+                  {t("agentEnv.settings.missingFile")}
+                </p>
+              ) : null}
+              {masked !== content || revealed ? (
+                <Button
+                  className="absolute right-2 top-2 h-7 gap-1.5 px-2 text-[11px] text-muted-foreground"
+                  onClick={() => setRevealed((current) => !current)}
+                  size="sm"
+                  title={showMasked ? t("agentEnv.settings.revealTitle") : t("agentEnv.settings.hideTitle")}
+                  type="button"
+                  variant="ghost"
+                >
+                  {showMasked ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                  {showMasked ? t("agentEnv.settings.reveal") : t("agentEnv.settings.hide")}
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
@@ -210,7 +274,7 @@ export function AgentSettingsDialog({
             {t("agentEnv.settings.close")}
           </Button>
           <Button
-            disabled={busy || !dirty}
+            disabled={busy || !dirty || !validation.valid || showMasked}
             loading={savingFile}
             loadingLabel={t("agentEnv.settings.savingFile")}
             onClick={() => void saveFile()}

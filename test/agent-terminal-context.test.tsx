@@ -212,6 +212,51 @@ describe("AgentProvider terminal tasks", () => {
     await unmount(mounted.root, mounted.host);
   });
 
+  test("lets the dock consume a foreground send without creating a session", async () => {
+    const mounted = await mountProvider();
+    const handler = vi.fn(() => "handled" as const);
+    let unregister = () => {};
+    act(() => {
+      unregister = mounted.value.registerForegroundAgentDeliveryHandler(handler);
+      mounted.value.sendToAgent({
+        prompt: "insert into the visible agent",
+        label: "Visible agent task",
+        source: { type: "service", label: "api" },
+      });
+    });
+
+    expect(handler).toHaveBeenCalledWith({
+      prompt: "insert into the visible agent",
+      label: "Visible agent task",
+      source: { type: "service", label: "api" },
+    });
+    expect(api.createAgentTerminalSession).not.toHaveBeenCalled();
+    expect(mounted.value.open).toBe(false);
+
+    act(() => unregister());
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("prefills the new-task composer when the dock has no running agent", async () => {
+    const mounted = await mountProvider();
+    act(() => {
+      mounted.value.registerForegroundAgentDeliveryHandler(() => "draft");
+      mounted.value.sendToAgent({
+        prompt: "review before starting",
+        source: { type: "gist", label: "Gist note" },
+      });
+    });
+
+    expect(mounted.value.open).toBe(true);
+    expect(mounted.value.draft).toBe("review before starting");
+    expect(mounted.value.activeSource).toEqual({
+      type: "gist",
+      label: "Gist note",
+    });
+    expect(api.createAgentTerminalSession).not.toHaveBeenCalled();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("creates a background task without opening the dock or stealing the active task", async () => {
     api.listTerminalSessions.mockResolvedValue([session("existing")]);
     api.createAgentTerminalSession.mockResolvedValue(session("background"));

@@ -141,7 +141,7 @@ export async function installProfileFromRegistry(
     throw new Error(`Registry profile "${slug}" has no downloadable package.`);
   }
 
-  const response = await fetchImpl(descriptor.download_url);
+  const response = await fetchImpl(resolveDownloadUrl(descriptor.download_url, input.apiBaseUrl));
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`Download failed: HTTP ${response.status}${text ? ` — ${text}` : ""}`);
@@ -165,4 +165,18 @@ export async function installProfileFromRegistry(
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+/**
+ * Hosted profiles come back with a path relative to the API root
+ * (`/profiles/<slug>/download`) — correct REST, and what lets one API serve
+ * both api.brainctl.net and api.nomoreide.com. Node's fetch rejects a relative
+ * URL outright ("Failed to parse URL"), so join it onto the base we called.
+ *
+ * GitHub-sourced profiles return an absolute archive URL on another host
+ * entirely, which must pass through untouched.
+ */
+function resolveDownloadUrl(downloadUrl: string, apiBaseUrl: string): string {
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(downloadUrl)) return downloadUrl;
+  return `${apiBaseUrl.replace(/\/$/, "")}/${downloadUrl.replace(/^\//, "")}`;
 }

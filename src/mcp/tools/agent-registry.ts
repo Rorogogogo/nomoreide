@@ -18,8 +18,8 @@ export const AGENT_REGISTRY_TOOL_NAMES = [
 
 /**
  * Hosted profile registry (ROR-63; the brainctl platform, kept as-is).
- * Auth comes from the stored registry sign-in (`~/.brainctl/config.json`) or
- * `BRAINCTL_API_TOKEN` — sign-in itself is a browser flow in the web UI.
+ * Auth comes from the stored registry sign-in (`~/.nomoreide/config.json`) or
+ * `NOMOREIDE_API_TOKEN` — sign-in itself is a browser flow in the web UI.
  */
 export function registerAgentRegistryTools(server: FastMCP, _ctx: ToolContext): void {
   const tokenManager = createRegistryTokenManager();
@@ -29,7 +29,7 @@ export function registerAgentRegistryTools(server: FastMCP, _ctx: ToolContext): 
   async function requireToken(): Promise<void> {
     if ((await tokenManager.getAccessToken()) === null) {
       throw new Error(
-        "Not signed in to the profile registry. Sign in from the web UI (Agent Environments → Registry) or set BRAINCTL_API_TOKEN.",
+        "Not signed in to the profile registry. Sign in from the web UI (Agent Environments → Registry) or set NOMOREIDE_API_TOKEN.",
       );
     }
   }

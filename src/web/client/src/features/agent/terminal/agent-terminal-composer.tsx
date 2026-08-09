@@ -11,6 +11,7 @@ import { AgentModelChip } from "./agent-model-chip";
 import type { AgentCapabilities } from "./agent-capability-data";
 import type { AgentDockPage } from "./agent-terminal-dock";
 import { useT } from "@/lib/i18n";
+import { AgentWaveLoader } from "../agent-wave-loader";
 
 const CHIP = "flex h-7 items-center gap-1.5 rounded-sm px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
@@ -30,7 +31,9 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
 
   // A shell needs no prompt and no installed agent — Enter on an empty draft
   // just opens one, and anything typed runs as its first command.
-  const blocked = Boolean(creating) || (shellMode ? false : !draft.trim() || configured !== true);
+  // An empty agent draft is valid: opening the provider without an initial
+  // prompt lets the user start directly in Claude Code or Codex's TUI.
+  const blocked = Boolean(creating) || (!shellMode && configured !== true);
   async function submit(prompt = draft, label?: string) {
     if (creating) return;
     if (shellMode) {
@@ -39,7 +42,7 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
       setDraft(""); clearSource(); setUrl("");
       return;
     }
-    if (!prompt.trim() || configured !== true) return;
+    if (configured !== true) return;
     const oneTimeSkill = pendingOneTimeSkill ?? undefined;
     // Creating a foreground task selects its tab, which is what leaves compose.
     const result = await createTask({ prompt, label: taskLabel(prompt, label ?? activeSource?.label), oneTimeSkill, source: activeSource ?? undefined });
@@ -58,7 +61,8 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
           than an idle form. It sits above every status banner so the question
           is the first thing read, not the last. */}
       <h2 className="mb-3 text-center text-lg font-medium tracking-tight text-foreground">{shellMode ? t("dock.composerGreetingShell") : t("dock.composerGreeting")}</h2>
-      {!shellMode && configured === null ? <div className="mb-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">{t("dock.checkingAvailability", { name: provider?.label ?? "agent" })}</div> : null}
+      {!shellMode && creating ? <div className="mb-3 flex justify-center"><AgentWaveLoader label={t("dock.startingAgent", { name: provider?.label ?? "agent" })} /></div> : null}
+      {!shellMode && !creating && configured === null ? <div className="mb-3 border-l-2 border-border pl-3 text-xs text-muted-foreground">{t("dock.checkingAvailability", { name: provider?.label ?? "agent" })}</div> : null}
       {!shellMode && configured === false ? <div className="mb-3 border-l-2 border-amber-500/70 pl-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">{t("dock.notInstalled", { name: provider?.label ?? "Agent" })}</span> {provider?.installHint}</div> : null}
       {activeSource ? <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="font-mono uppercase tracking-wide">{t("dock.sourceLabel")}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{activeSource.label}</span><button aria-label={t("dock.clearSourceAria")} onClick={clearSource} type="button"><X className="size-3" /></button></div> : null}
       {!shellMode && pendingOneTimeSkill ? <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Sparkles className="size-3" /><span className="font-mono uppercase tracking-wide">{t("dock.skillTemp")}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{pendingOneTimeSkill.name}</span><button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} onClick={clearOneTimeSkill} type="button"><X className="size-3" /></button><span>{t("dock.skillTempHint")}</span></div> : null}

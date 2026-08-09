@@ -72,9 +72,9 @@ describe("registry config", () => {
       await resolveRegistryFrontendUrl({
         configPath,
         env: {},
-        apiBaseUrl: "https://api.brainctl.net",
+        apiBaseUrl: "https://api.nomoreide.com",
       }),
-    ).toBe("https://www.brainctl.net");
+    ).toBe("https://registry.nomoreide.com");
     expect(
       await resolveRegistryFrontendUrl({
         configPath,
@@ -82,6 +82,98 @@ describe("registry config", () => {
         apiBaseUrl: "http://127.0.0.1:8080",
       }),
     ).toBe("http://127.0.0.1:5173");
+  });
+
+  // The pre-rename host is a known production target, not a custom one: it must
+  // not fall through to the `api.` → `app.` guess, which would resolve to
+  // `app.brainctl.net` — a host that has never existed.
+  it("still maps the legacy brainctl API host to its own frontend", async () => {
+    expect(
+      await resolveRegistryFrontendUrl({
+        configPath,
+        env: {},
+        apiBaseUrl: "https://api.brainctl.net",
+      }),
+    ).toBe("https://www.brainctl.net");
+  });
+});
+
+describe("registry config brainctl back-compat", () => {
+  let home: string;
+
+  beforeEach(async () => {
+    home = await mkdtemp(path.join(os.tmpdir(), "nomoreide-registry-home-"));
+  });
+
+  it("reads an existing brainctl sign-in when no nomoreide config exists", async () => {
+    await mkdir(path.join(home, ".brainctl"), { recursive: true });
+    await writeFile(
+      path.join(home, ".brainctl", "config.json"),
+      JSON.stringify({ apiToken: "legacy-token" }),
+      "utf8",
+    );
+
+    expect(
+      await resolveRegistryApiToken({ env: { NOMOREIDE_HOME: home } }),
+    ).toEqual({ token: "legacy-token", source: "config" });
+  });
+
+  it("migrates the config to ~/.nomoreide on first write", async () => {
+    await mkdir(path.join(home, ".brainctl"), { recursive: true });
+    await writeFile(
+      path.join(home, ".brainctl", "config.json"),
+      JSON.stringify({ apiToken: "legacy-token" }),
+      "utf8",
+    );
+
+    const service = createRegistryConfigService({ env: { NOMOREIDE_HOME: home } });
+    await service.set("apiBaseUrl", "https://api.nomoreide.com");
+
+    const migrated = JSON.parse(
+      await readFile(path.join(home, ".nomoreide", "config.json"), "utf8"),
+    );
+    // The pre-existing token has to survive, or the write silently signs the user out.
+    expect(migrated).toEqual({
+      apiToken: "legacy-token",
+      apiBaseUrl: "https://api.nomoreide.com",
+    });
+  });
+
+  it("prefers the nomoreide config over a stale brainctl one", async () => {
+    await mkdir(path.join(home, ".brainctl"), { recursive: true });
+    await writeFile(
+      path.join(home, ".brainctl", "config.json"),
+      JSON.stringify({ apiToken: "stale" }),
+      "utf8",
+    );
+    await mkdir(path.join(home, ".nomoreide"), { recursive: true });
+    await writeFile(
+      path.join(home, ".nomoreide", "config.json"),
+      JSON.stringify({ apiToken: "current" }),
+      "utf8",
+    );
+
+    expect(
+      await resolveRegistryApiToken({ env: { NOMOREIDE_HOME: home } }),
+    ).toEqual({ token: "current", source: "config" });
+  });
+
+  it("lets NOMOREIDE_* env win over the legacy BRAINCTL_* name", async () => {
+    expect(
+      await resolveRegistryApiToken({
+        env: {
+          NOMOREIDE_HOME: home,
+          NOMOREIDE_API_TOKEN: "new",
+          BRAINCTL_API_TOKEN: "old",
+        },
+      }),
+    ).toEqual({ token: "new", source: "env" });
+
+    expect(
+      await resolveRegistryApiToken({
+        env: { NOMOREIDE_HOME: home, BRAINCTL_API_TOKEN: "old" },
+      }),
+    ).toEqual({ token: "old", source: "env" });
   });
 });
 
@@ -293,5 +385,73 @@ describe("registry publish + install", () => {
         opts(),
       ),
     ).rejects.toThrow("already exists");
+  });
+
+  it("resolves the relative download_url hosted profiles actually return", async () => {
+    // The registry serves `/profiles/<slug>/download` — a path, not a URL, so
+    // that one API can answer on both api.brainctl.net and api.nomoreide.com.
+    // Passing it straight to fetch throws "Failed to parse URL".
+    await makeLocalProfile("origin");
+    const archivePath = path.join(cwd, "origin.tar.gz");
+    await exportProfile({ name: "origin", outputPath: archivePath, cwd }, opts());
+    const archiveBytes = await readFile(archivePath);
+
+    const requested: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      requested.push(url);
+      if (url.endsWith("/profiles/dev-kit/install")) {
+        return Response.json({
+          slug: "dev-kit",
+          version: "1.2.3",
+          source_kind: "hosted",
+          download_url: "/profiles/dev-kit/download",
+        });
+      }
+      if (url === "https://api.example.com/profiles/dev-kit/download") {
+        return new Response(new Uint8Array(archiveBytes));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    };
+
+    const result = await installProfileFromRegistry(
+      { slug: "dev-kit", as: "installed", apiBaseUrl: "https://api.example.com", fetch: fetchImpl },
+      opts(),
+    );
+
+    expect(result).toMatchObject({ name: "installed", version: "1.2.3", sourceKind: "hosted" });
+    expect(requested).toContain("https://api.example.com/profiles/dev-kit/download");
+  });
+
+  it("leaves an absolute download_url on another host untouched", async () => {
+    // GitHub-sourced profiles point at a codeload archive, not at our API.
+    await makeLocalProfile("origin");
+    const archivePath = path.join(cwd, "origin.tar.gz");
+    await exportProfile({ name: "origin", outputPath: archivePath, cwd }, opts());
+    const archiveBytes = await readFile(archivePath);
+
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.endsWith("/profiles/dev-kit/install")) {
+        return Response.json({
+          slug: "dev-kit",
+          version: "1.2.3",
+          source_kind: "github",
+          download_url: "https://codeload.github.com/o/r/tar.gz/main",
+        });
+      }
+      if (url === "https://codeload.github.com/o/r/tar.gz/main") {
+        return new Response(new Uint8Array(archiveBytes));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    };
+
+    const result = await installProfileFromRegistry(
+      // A trailing slash on the base must not produce a doubled slash.
+      { slug: "dev-kit", as: "installed", apiBaseUrl: "https://api.example.com/", fetch: fetchImpl },
+      opts(),
+    );
+
+    expect(result).toMatchObject({ name: "installed", sourceKind: "github" });
   });
 });

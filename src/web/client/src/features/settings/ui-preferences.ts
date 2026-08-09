@@ -18,6 +18,8 @@ export interface UiPreferences {
   sidebarDocked: boolean;
   agentDockPlacement: "bottom" | "right";
   projectScope: "all" | "project";
+  /** Play a short local chime when an agent task exits. */
+  agentCompletionSound: boolean;
   /** Global accent choice (preset id or `custom:<hue>`). */
   accent: AccentChoice;
   /** Per-project accent overrides, keyed by repository path. */
@@ -41,6 +43,7 @@ export function defaultUiPreferences(): UiPreferences {
     sidebarDocked: false,
     agentDockPlacement: "bottom",
     projectScope: "all",
+    agentCompletionSound: false,
     accent: DEFAULT_ACCENT,
     projectAccents: {},
   };
@@ -105,6 +108,7 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
     version: 2,
     agentDockPlacement:
       input.agentDockPlacement === "right" ? "right" : "bottom",
+    agentCompletionSound: input.agentCompletionSound === true,
     accent: isValidAccent(input.accent) ? input.accent : DEFAULT_ACCENT,
     projectAccents: sanitizeProjectAccents(input.projectAccents),
   };

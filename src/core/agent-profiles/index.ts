@@ -42,6 +42,7 @@ export {
   profilePluginsDir,
   profilesRoot,
   profileSkillsDir,
+  refreshProfileFromAgent,
   snapshotProfileFromAgent,
   updateProfile,
   writeProfile,

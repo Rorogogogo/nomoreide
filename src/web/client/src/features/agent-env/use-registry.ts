@@ -9,6 +9,7 @@ import {
   type AgentEnvRegistryStatus,
 } from "@/lib/api";
 import { useToasts } from "@/components/ui/toast";
+import { isProfileCollision, profileNameFromCollision } from "./profile-collision";
 
 const AUTH_POLL_INTERVAL_MS = 1500;
 const AUTH_POLL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -21,6 +22,21 @@ export interface PublishFormInput {
   version?: string;
 }
 
+/** A registry install that stopped because a local profile owns the name. */
+export interface PendingRegistryOverwrite {
+  slug: string;
+  name: string;
+}
+
+/**
+ * What to do when the installed profile's name is already taken locally.
+ * `force` overwrites, which is what the slug box in RegistryPanel does — the
+ * user typed that slug locally moments ago. `confirm` parks the install behind
+ * a prompt, for the `?install=` deep link, where the slug comes from a web page
+ * and overwriting silently would destroy local work the user never offered up.
+ */
+export type InstallCollisionPolicy = "force" | "confirm";
+
 /**
  * Hosted profile registry (ROR-63): sign-in status, the browser sign-in
  * round-trip (open platform tab → poll outcome), install-by-slug, publish.
@@ -29,6 +45,7 @@ export function useRegistry(onProfilesChanged: () => void) {
   const [status, setStatus] = useState<AgentEnvRegistryStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
+  const [pendingOverwrite, setPendingOverwrite] = useState<PendingRegistryOverwrite | null>(null);
   const pollStop = useRef(false);
   const toasts = useToasts();
 
@@ -102,14 +119,19 @@ export function useRegistry(onProfilesChanged: () => void) {
   );
 
   const install = useCallback(
-    (slug: string) =>
+    (slug: string, onCollision: InstallCollisionPolicy = "force") =>
       run(async () => {
         try {
           const result = await installAgentEnvProfileFromRegistry({ slug });
           toasts.success(installSummary(result.name, result.missingCredentials.length));
         } catch (caught) {
           const message = caught instanceof Error ? caught.message : String(caught);
-          if (!message.includes("already exists")) throw caught;
+          if (!isProfileCollision(message)) throw caught;
+          if (onCollision === "confirm") {
+            // Returning here skips onProfilesChanged() — nothing was written yet.
+            setPendingOverwrite({ slug, name: profileNameFromCollision(message) });
+            return;
+          }
           const result = await installAgentEnvProfileFromRegistry({ slug, force: true });
           toasts.success(
             `${installSummary(result.name, result.missingCredentials.length)} (overwrote existing)`,
@@ -118,6 +140,23 @@ export function useRegistry(onProfilesChanged: () => void) {
         onProfilesChanged();
       }),
     [onProfilesChanged, run, toasts],
+  );
+
+  const confirmOverwrite = useCallback(
+    () =>
+      run(async () => {
+        if (!pendingOverwrite) return;
+        const result = await installAgentEnvProfileFromRegistry({
+          slug: pendingOverwrite.slug,
+          force: true,
+        });
+        setPendingOverwrite(null);
+        toasts.success(
+          `${installSummary(result.name, result.missingCredentials.length)} (replaced existing)`,
+        );
+        onProfilesChanged();
+      }),
+    [onProfilesChanged, pendingOverwrite, run, toasts],
   );
 
   const publish = useCallback(
@@ -132,7 +171,19 @@ export function useRegistry(onProfilesChanged: () => void) {
     [run, toasts],
   );
 
-  return { status, busy, signingIn, refreshStatus, signIn, signOut, install, publish };
+  return {
+    status,
+    busy,
+    signingIn,
+    pendingOverwrite,
+    refreshStatus,
+    signIn,
+    signOut,
+    install,
+    confirmOverwrite,
+    cancelOverwrite: () => setPendingOverwrite(null),
+    publish,
+  };
 }
 
 function installSummary(name: string, missingCount: number): string {

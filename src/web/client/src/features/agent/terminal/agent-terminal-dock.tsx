@@ -8,7 +8,8 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
-import { useAgentDock } from "../chat/agent-context";
+import { type ForegroundAgentDelivery, useAgentDock } from "../chat/agent-context";
+import { useToasts } from "@/components/ui/toast";
 import { GitSituationBanner } from "../../git/git-situation-banner";
 import { TerminalViewport, type TerminalViewportHandle, type TerminalViewportStatus } from "../../terminal/terminal-viewport";
 import { AgentCapabilityBadges } from "./agent-capability-strip";
@@ -16,6 +17,7 @@ import { useAgentCapabilities } from "./agent-capability-data";
 import { AgentTerminalComposer } from "./agent-terminal-composer";
 import { AgentHistoryRail, HISTORY_RAIL_WIDTH } from "./agent-history-rail";
 import { AgentTerminalTabs } from "./agent-terminal-tabs";
+import { playAgentCompletionChime } from "./agent-completion-sound";
 import { DockStatusStrip } from "./dock-status-strip";
 import { COMPOSE_TAB_ID } from "./compose-tab";
 import { requestGitHubActions } from "../../github/github-navigation";
@@ -37,8 +39,9 @@ type DockPlacement = "bottom" | "right";
 
 export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh, onInsetChange, onNavigate }: { currentPage?: AgentDockPage; git?: DashboardData["git"]; onGitRefresh?: () => void; onInsetChange?: (placement: DockPlacement, size: number, resizing: boolean) => void; onNavigate?: (page: AgentDockPage) => void }) {
   const t = useT();
+  const { error: showError, success: showSuccess } = useToasts();
   const settings = useOptionalSettings();
-  const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, renameTask, resumeTask, selectOneTimeSkill, setActiveTaskId, setOpen, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
+  const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, registerForegroundAgentDeliveryHandler, renameTask, resumeTask, selectOneTimeSkill, sendToAgent, setActiveTaskId, setOpen, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
   const [height, setHeight] = useState<number | null>(dockLayout.bottomHeight);
   const [width, setWidth] = useState(dockLayout.rightWidth);
   const [resizing, setResizing] = useState(false);
@@ -64,11 +67,17 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const [skillPromptError, setSkillPromptError] = useState<string | null>(null);
   const [skillInjectionRetry, setSkillInjectionRetry] = useState(0);
   const [latestRailTask, setLatestRailTask] = useState<(typeof tasks)[number] | null>(null);
+  const [pendingDelivery, setPendingDelivery] =
+    useState<ForegroundAgentDelivery | null>(null);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const positionCleanupRef = useRef<(() => void) | null>(null);
   const suppressPositionClickRef = useRef(false);
   const splitResizeCleanupRef = useRef<(() => void) | null>(null);
   const splitContainerRef = useRef<HTMLDivElement>(null);
+  const deliveryTargetButtonRef = useRef<HTMLButtonElement>(null);
+  const foregroundDeliveryHandlerRef = useRef<
+    (delivery: ForegroundAgentDelivery) => "draft" | "handled"
+  >(() => "draft");
   const viewportHandlesRef = useRef(new Map<string, TerminalViewportHandle>());
   const previousFocusNonceRef = useRef(focusNonce);
   const previousOnboardingRef = useRef(onboarding);
@@ -79,6 +88,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const heightRef = useRef(height);
   const widthRef = useRef(width);
   const splitPercentRef = useRef(splitPercent);
+  const taskStateRef = useRef(new Map<string, string>());
   const preferredPlacement = settings?.ui.agentDockPlacement ?? "bottom";
   const placement: DockPlacement =
     preferredPlacement === "right" && wideEnoughForSide ? "right" : "bottom";
@@ -130,6 +140,22 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     positionCleanupRef.current?.();
     splitResizeCleanupRef.current?.();
   }, []);
+  useEffect(
+    () =>
+      registerForegroundAgentDeliveryHandler((delivery) =>
+        foregroundDeliveryHandlerRef.current(delivery),
+      ),
+    [registerForegroundAgentDeliveryHandler],
+  );
+  useEffect(() => {
+    if (!pendingDelivery) return;
+    deliveryTargetButtonRef.current?.focus();
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPendingDelivery(null);
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [pendingDelivery]);
   useEffect(() => {
     const update = () => setViewportWidth(window.innerWidth);
     window.addEventListener("resize", update);
@@ -164,6 +190,12 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   useEffect(() => {
     if (!tasksHydrated) return;
     const liveIds = new Set(tasks.map((task) => task.id));
+    for (const task of tasks) {
+      if (!taskStateRef.current.has(task.id)) taskStateRef.current.set(task.id, task.state);
+    }
+    for (const id of taskStateRef.current.keys()) {
+      if (!liveIds.has(id)) taskStateRef.current.delete(id);
+    }
     setRightTaskIds((current) => {
       const next = new Set([...current].filter((id) => liveIds.has(id)));
       if (next.size === current.size && [...next].every((id) => current.has(id))) {
@@ -172,6 +204,28 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       return next;
     });
   }, [tasks, tasksHydrated]);
+  const handleTaskStatus = (
+    task: (typeof tasks)[number],
+    status: TerminalViewportStatus,
+  ) => {
+    const nextState = status.state === "connecting" ? "idle" : status.state;
+    const previousState = taskStateRef.current.get(task.id) ?? task.state;
+    taskStateRef.current.set(task.id, nextState);
+    if (
+      settings?.ui.agentCompletionSound &&
+      task.kind !== "shell" &&
+      previousState === "running" &&
+      nextState === "exited" &&
+      !pendingTaskIds.has(task.id)
+    ) {
+      playAgentCompletionChime();
+    }
+    updateTaskStatus(task.id, {
+      state: nextState,
+      cwd: status.cwd,
+      error: status.state === "error" ? status.detail : undefined,
+    });
+  };
   const historyRailOpen = dockLayout.historyRailOpen;
   // Side-docked the dock owns its own width; otherwise it spans the viewport.
   // Below this the rail would leave too little room for the terminal, so it
@@ -376,10 +430,34 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     tasks.at(-1) ??
     null;
   const layoutSplit = split && !sideDocked;
+  // Composing is dock-wide content, but the split header stays stable so the
+  // user's session layout does not visually jump. The content divider and
+  // terminals return unchanged when a session is selected or created.
+  const contentSplit = layoutSplit && !composing;
   const sideActiveTaskId = composing ? COMPOSE_TAB_ID : focusedTask?.id ?? activeTaskId;
+  const collapsedFocusedTask =
+    focusedPane === "right" && rightActive
+      ? rightActive
+      : leftActive ?? leftTasks[0] ?? rightActive;
+  const deliveryTargets = (
+    sideDocked
+      ? [focusedTask ?? (!open ? collapsedFocusedTask : null)]
+      : [
+          open && composing ? null : leftActive ?? (!open ? leftTasks[0] : null),
+          layoutSplit && (!open || !composing) ? rightActive : null,
+        ]
+  ).filter(
+    (task): task is NonNullable<typeof focusedTask> =>
+      Boolean(task && task.kind !== "shell" && task.state === "running"),
+  );
   useEffect(() => {
     if (currentRailTask) setLatestRailTask(currentRailTask);
   }, [currentRailTask]);
+  useEffect(() => {
+    if (pendingDelivery && deliveryTargets.length < 2) {
+      setPendingDelivery(null);
+    }
+  }, [pendingDelivery, deliveryTargets.length]);
   useEffect(() => {
     if (rightActive?.id !== activeRightTaskId) {
       setActiveRightTaskId(rightActive?.id ?? null);
@@ -556,6 +634,45 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       setActiveTaskId(leftActive.id);
     }
   };
+  const insertDeliveryIntoTask = (
+    task: NonNullable<typeof focusedTask>,
+    delivery: ForegroundAgentDelivery,
+  ) => {
+    const handle = viewportHandlesRef.current.get(task.id);
+    if (!handle?.paste(delivery.prompt)) return false;
+    focusPaneTask(rightTaskIds.has(task.id) ? "right" : "left");
+    handle.focus();
+    const providerLabel = task.provider === "codex" ? "Codex" : "Claude Code";
+    showSuccess(t("dock.insertedInto", { name: providerLabel }));
+    return true;
+  };
+  foregroundDeliveryHandlerRef.current = (delivery) => {
+    if (deliveryTargets.length === 0) return "draft";
+    if (!open) {
+      setOpen(true);
+      if (composing) {
+        const leftTarget = deliveryTargets.find(
+          (task) => !rightTaskIds.has(task.id),
+        );
+        if (leftTarget) setActiveTaskId(leftTarget.id);
+      }
+    }
+    if (deliveryTargets.length > 1) {
+      setPendingDelivery(delivery);
+      return "handled";
+    }
+    return insertDeliveryIntoTask(deliveryTargets[0], delivery)
+      ? "handled"
+      : "draft";
+  };
+  const chooseDeliveryTarget = (task: NonNullable<typeof focusedTask>) => {
+    const delivery = pendingDelivery;
+    if (!delivery) return;
+    setPendingDelivery(null);
+    if (insertDeliveryIntoTask(task, delivery)) return;
+    showError(t("dock.insertUnavailable"));
+    sendToAgent({ ...delivery, mode: "draft" });
+  };
   const insertPaneCapability = (
     pane: DockPane,
     task: typeof focusedTask,
@@ -596,6 +713,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     paneIntentSequenceRef.current += 1;
     setFocusedPane("right");
     setActiveRightTaskId(id);
+    if (composing) setActiveTaskId(leftTasks[0]?.id ?? null);
   };
   const closeLeft = async (id: string) => {
     markLayoutMutation();
@@ -743,8 +861,8 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
           : sideDocked
             ? "bottom-0 right-0 border-l border-border shadow-[-12px_0_30px_-20px_rgba(0,0,0,.5)]"
             : "inset-x-0 bottom-0 border-t border-border shadow-[0_-12px_30px_-20px_rgba(0,0,0,.5)]",
-        !fullScreen && !resizing && (sideDocked ? "transition-[width] duration-150" : "transition-[height] duration-150"),
-        !open && "invisible pointer-events-none border-transparent shadow-none",
+        !fullScreen && !resizing && (sideDocked ? "transition-[width] duration-200 ease-out" : "transition-[height] duration-200 ease-out"),
+        !open && "pointer-events-none border-transparent shadow-none",
       )}
       inert={!open || undefined}
       style={
@@ -807,7 +925,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             data-agent-pane-tabs="left"
             style={{ right: `${100 - splitPercent}%` }}
           >
-            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={composing} onActivate={activateLeft} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
+            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={false} onActivate={activateLeft} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
             {leftAgentContext ? <AgentCapabilityBadges capabilities={capabilitiesFor(leftProviderId)} onInsert={(text) => insertPaneCapability("left", leftActive, text)} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={(skill) => stagePaneOneTimeSkill("left", leftActive, skill)} providerLabel={leftProviderLabel} /> : null}
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={leftProviderId} variant="dock" />
           </div>
@@ -903,19 +1021,24 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     <div className="relative min-h-0 flex-1 bg-background" data-agent-split-container ref={splitContainerRef}>
       {tasks.map((task) => {
         const inRightPane = rightTaskIds.has(task.id);
-        const shown = open && (sideDocked ? task.id === sideActiveTaskId : inRightPane ? task.id === rightActive?.id : task.id === activeTaskId);
+        const shown = open && !composing && (sideDocked ? task.id === sideActiveTaskId : inRightPane ? task.id === rightActive?.id : task.id === activeTaskId);
         const focused = shown && focusedPane === (inRightPane ? "right" : "left");
-        const paneStyle = layoutSplit ? (inRightPane ? { left: `${splitPercent}%`, right: 0 } : { left: 0, right: `${100 - splitPercent}%` }) : undefined;
+        const paneStyle = contentSplit ? (inRightPane ? { left: `${splitPercent}%`, right: 0 } : { left: 0, right: `${100 - splitPercent}%` }) : undefined;
         const showSkillStatus =
           shown &&
           focused &&
           task.kind !== "shell" &&
           task.state === "running" &&
           pendingOneTimeSkill;
-        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute bottom-0 top-0", !layoutSplit && "inset-x-0", !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane(inRightPane ? "right" : "left"); }} role="tabpanel" style={paneStyle}><TerminalViewport active={shown} claimInitialInput={() => claimInitialInput(task.id)} displaySettings={settings?.confirmedGlobal.terminal} focused={focused} onStatusChange={(status: TerminalViewportStatus) => updateTaskStatus(task.id, { state: status.state === "connecting" ? "idle" : status.state, cwd: status.cwd, error: status.state === "error" ? status.detail : undefined })} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} />{showSkillStatus ? <div className="absolute bottom-2 left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1.5 border border-border bg-card px-2 py-1 text-[10px] shadow-sm" data-one-time-skill-status><Sparkles aria-hidden="true" className="size-3 text-muted-foreground" /><span className="truncate font-medium text-foreground">{pendingOneTimeSkill.name}</span>{skillPromptBusy ? <><LoaderCircle aria-hidden="true" className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="text-muted-foreground">{t("dock.skillLoading")}</span></> : null}{skillPromptError ? <><span className="max-w-48 truncate text-destructive" role="alert" title={skillPromptError}>{skillPromptError}</span><button aria-label={t("dock.skillRetry")} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => setSkillInjectionRetry((value) => value + 1)} type="button"><RotateCcw aria-hidden="true" className="size-3" /></button></> : null}<button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => { clearOneTimeSkill(); setSkillPromptError(null); }} type="button"><X aria-hidden="true" className="size-3" /></button></div> : null}</div>;
+        const deliveryTarget = Boolean(
+          pendingDelivery &&
+            deliveryTargets.some((candidate) => candidate.id === task.id),
+        );
+        const deliveryProviderLabel = task.provider === "codex" ? "Codex" : "Claude Code";
+        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute bottom-0 top-0", !contentSplit && "inset-x-0", !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane(inRightPane ? "right" : "left"); }} role="tabpanel" style={paneStyle}><TerminalViewport active={shown} claimInitialInput={() => claimInitialInput(task.id)} displaySettings={settings?.confirmedGlobal.terminal} focused={focused} onStatusChange={(status: TerminalViewportStatus) => handleTaskStatus(task, status)} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} />{deliveryTarget ? <section aria-label={t("dock.chooseAgentTarget")} className="absolute inset-0 z-30 grid place-items-center bg-background/65 backdrop-blur-[1px]" data-agent-delivery-target><button aria-label={t("dock.insertInto", { name: deliveryProviderLabel })} className="flex max-w-[calc(100%-2rem)] flex-col items-center border border-border bg-background px-3 py-2 text-foreground shadow-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => chooseDeliveryTarget(task)} ref={task.id === deliveryTargets[0]?.id ? deliveryTargetButtonRef : undefined} type="button"><span className="text-[11px] font-medium">{t("dock.insertHere")}</span><span className="max-w-full truncate font-mono text-[9px] text-muted-foreground">{deliveryProviderLabel} · {task.label || t("dock.taskFallback", { provider: deliveryProviderLabel })}</span></button></section> : null}{showSkillStatus ? <div className="absolute bottom-2 left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1.5 border border-border bg-card px-2 py-1 text-[10px] shadow-sm" data-one-time-skill-status><Sparkles aria-hidden="true" className="size-3 text-muted-foreground" /><span className="truncate font-medium text-foreground">{pendingOneTimeSkill.name}</span>{skillPromptBusy ? <><LoaderCircle aria-hidden="true" className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="text-muted-foreground">{t("dock.skillLoading")}</span></> : null}{skillPromptError ? <><span className="max-w-48 truncate text-destructive" role="alert" title={skillPromptError}>{skillPromptError}</span><button aria-label={t("dock.skillRetry")} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => setSkillInjectionRetry((value) => value + 1)} type="button"><RotateCcw aria-hidden="true" className="size-3" /></button></> : null}<button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => { clearOneTimeSkill(); setSkillPromptError(null); }} type="button"><X aria-hidden="true" className="size-3" /></button></div> : null}</div>;
       })}
-      {open && composing ? <div aria-labelledby={`agent-tab-${COMPOSE_TAB_ID}`} className={cn("absolute bottom-0 top-0 bg-background", !layoutSplit && "inset-x-0")} id={`agent-panel-${COMPOSE_TAB_ID}`} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane("left"); }} role="tabpanel" style={layoutSplit ? { left: 0, right: `${100 - splitPercent}%` } : undefined}><AgentTerminalComposer capabilities={shellMode ? undefined : capabilities} onNavigate={onNavigate ? navigate : undefined} onShellMode={setShellMode} shellMode={shellMode} /></div> : null}
-      {layoutSplit ? <hr aria-label={t("dock.splitResizeAria")} aria-orientation="vertical" aria-valuemax={75} aria-valuemin={25} aria-valuenow={Math.round(splitPercent)} className="absolute inset-y-0 z-20 h-auto w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary focus-visible:after:bg-primary" onDoubleClick={() => { splitPercentRef.current = 50; setSplitPercent(50); updateDockLayout({ splitPercent: 50 }); }} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); const next = Math.max(25, Math.min(75, splitPercentRef.current + (event.key === "ArrowLeft" ? -5 : 5))); splitPercentRef.current = next; setSplitPercent(next); updateDockLayout({ splitPercent: next }); } }} onPointerDown={splitResizeStart} style={{ left: `${splitPercent}%` }} tabIndex={0} /> : null}
+      {open && composing ? <div aria-label={layoutSplit ? t("dock.newTask") : undefined} aria-labelledby={layoutSplit ? undefined : `agent-tab-${COMPOSE_TAB_ID}`} className="absolute inset-x-0 bottom-0 top-0 bg-background" id={`agent-panel-${COMPOSE_TAB_ID}`} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane("left"); }} role="tabpanel"><AgentTerminalComposer capabilities={shellMode ? undefined : capabilities} onNavigate={onNavigate ? navigate : undefined} onShellMode={setShellMode} shellMode={shellMode} /></div> : null}
+      {contentSplit ? <hr aria-label={t("dock.splitResizeAria")} aria-orientation="vertical" aria-valuemax={75} aria-valuemin={25} aria-valuenow={Math.round(splitPercent)} className="absolute inset-y-0 z-20 h-auto w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary focus-visible:after:bg-primary" onDoubleClick={() => { splitPercentRef.current = 50; setSplitPercent(50); updateDockLayout({ splitPercent: 50 }); }} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); const next = Math.max(25, Math.min(75, splitPercentRef.current + (event.key === "ArrowLeft" ? -5 : 5))); splitPercentRef.current = next; setSplitPercent(next); updateDockLayout({ splitPercent: next }); } }} onPointerDown={splitResizeStart} style={{ left: `${splitPercent}%` }} tabIndex={0} /> : null}
       {!sideDocked && canDropRight ? <section aria-label={t("dock.splitDropTarget")} className="absolute bottom-2 right-2 top-2 z-30 grid place-items-center rounded-md border border-dashed border-primary/60 bg-primary/10 text-xs font-medium text-primary backdrop-blur-sm" onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; }} onDrop={(event) => { event.preventDefault(); dropDraggedRight(); }} style={{ width: split ? `calc(${100 - splitPercent}% - 0.75rem)` : "calc(50% - 0.75rem)" }}>{t("dock.splitDropTarget")}</section> : null}
       {!sideDocked && draggedFromRight ? <section aria-label={t("dock.leftDropTarget")} className="absolute bottom-2 left-2 top-2 z-30 grid place-items-center rounded-md border border-dashed border-primary/60 bg-primary/10 text-xs font-medium text-primary backdrop-blur-sm" onDragOver={(event) => { event.preventDefault(); if (event.dataTransfer) event.dataTransfer.dropEffect = "move"; }} onDrop={(event) => { event.preventDefault(); dropDraggedLeft(); }} style={{ width: `calc(${splitPercent}% - 0.75rem)` }}>{t("dock.leftDropTarget")}</section> : null}
     </div>

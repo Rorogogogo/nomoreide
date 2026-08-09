@@ -3,7 +3,11 @@ import type {
   AppSettings,
   ColumnInfo,
   DashboardData,
+  DatabaseCapabilities,
   DatabaseConnection,
+  DatabaseObject,
+  DatabaseObjectDetails,
+  DatabaseSchema,
   ErrorIncident,
   GitGraphCommit,
   GitHubCheckRun,
@@ -2027,6 +2031,47 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
       tables: getWebsiteMockDatabaseTables(),
     });
   }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/capabilities$/)) {
+    return json({ ok: true, capabilities: getWebsiteMockDatabaseCapabilities() });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/schemas$/)) {
+    return json({ ok: true, schemas: getWebsiteMockDatabaseSchemas() });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/objects$/)) {
+    return json({
+      ok: true,
+      objects: getWebsiteMockDatabaseObjects(url.searchParams.get("schema") ?? "public"),
+    });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/details$/)) {
+    return json({
+      ok: true,
+      details: getWebsiteMockDatabaseObjectDetails(url.searchParams.get("key") ?? ""),
+    });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/rows\/delete$/)) {
+    const committed = init?.body instanceof URLSearchParams
+      ? init.body.get("mode") === "commit"
+      : false;
+    return json({
+      ok: true,
+      engine: "postgres",
+      previewUnavailable: false,
+      affectedRows: 1,
+      committed,
+    });
+  }
+  if (path.match(/^\/api\/databases\/[^/]+\/catalog\/rows$/)) {
+    const object = getWebsiteMockDatabaseObject(url.searchParams.get("key") ?? "");
+    return json({
+      ...getWebsiteMockDatabaseRows(
+        object.qualifiedName,
+        Number(url.searchParams.get("limit") ?? 100),
+        Number(url.searchParams.get("offset") ?? 0),
+      ),
+      object,
+    });
+  }
   if (path.match(/^\/api\/databases\/[^/]+\/rows$/)) {
     return json(
       getWebsiteMockDatabaseRows(
@@ -2750,6 +2795,62 @@ const mockDatabaseTables: MockTable[] = [
 
 export function getWebsiteMockDatabaseTables(): TableRef[] {
   return mockDatabaseTables.map(({ table }) => table);
+}
+
+export function getWebsiteMockDatabaseCapabilities(): DatabaseCapabilities {
+  return {
+    objectKinds: ["table", "view", "materializedView", "function", "procedure", "sequence"],
+    tableDetails: ["columns", "indexes", "constraints", "triggers"],
+  };
+}
+
+export function getWebsiteMockDatabaseSchemas(): DatabaseSchema[] {
+  return [...new Set(mockDatabaseTables.map(({ table }) => table.schema ?? "public"))]
+    .map((name) => ({ name }));
+}
+
+export function getWebsiteMockDatabaseObjects(schema: string): DatabaseObject[] {
+  return mockDatabaseTables
+    .filter(({ table }) => (table.schema ?? "public") === schema)
+    .map(({ table }) => ({
+      key: table.qualifiedName,
+      schema: table.schema ?? "public",
+      name: table.name,
+      kind: "table",
+      qualifiedName: table.qualifiedName,
+    }));
+}
+
+function getWebsiteMockDatabaseObject(key: string): DatabaseObject {
+  const match = mockDatabaseTables.find(({ table }) => table.qualifiedName === key)
+    ?? mockDatabaseTables[0];
+  return {
+    key: match.table.qualifiedName,
+    schema: match.table.schema ?? "public",
+    name: match.table.name,
+    kind: "table",
+    qualifiedName: match.table.qualifiedName,
+  };
+}
+
+export function getWebsiteMockDatabaseObjectDetails(key: string): DatabaseObjectDetails {
+  const object = getWebsiteMockDatabaseObject(key);
+  const match = mockDatabaseTables.find(
+    ({ table }) => table.qualifiedName === object.qualifiedName,
+  ) ?? mockDatabaseTables[0];
+  const columnSql = match.columns
+    .map((column) => `  ${column.name} ${column.dataType}${column.nullable ? "" : " NOT NULL"}`)
+    .join(",\n");
+  const createScript = `CREATE TABLE ${object.qualifiedName} (\n${columnSql}\n);`;
+  return {
+    object,
+    columns: match.columns,
+    indexes: [],
+    constraints: [],
+    triggers: [],
+    definition: createScript,
+    createScript,
+  };
 }
 
 export function getWebsiteMockDatabaseRows(

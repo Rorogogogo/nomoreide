@@ -1,6 +1,7 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BookOpen, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { LANGUAGE_OPTIONS, type Language } from "@/lib/language";
 import {
   SETTINGS_CATEGORIES,
@@ -23,6 +24,11 @@ import { useSettings } from "./settings-context";
 import { SettingsLayout } from "./settings-layout";
 import { AccentSettings } from "./accent-settings";
 import { useT } from "@/lib/i18n";
+import {
+  consumeGlobalSearchFocus,
+  subscribeToGlobalSearchFocus,
+  type GlobalSearchFocusIntent,
+} from "@/features/global-search/global-search-navigation";
 
 export interface SettingsViewProps {
   activeProject?: { name: string; path?: string } | null;
@@ -95,6 +101,39 @@ export function SettingsView({ activeProject = null, onNavigate }: SettingsViewP
   );
   const [selected, setSelected] = useState<SettingsCategoryId>("general");
   const [search, setSearch] = useState("");
+  const [settingToFocus, setSettingToFocus] = useState<SettingId | null>(null);
+  const focusSetting = useCallback((intent: Extract<GlobalSearchFocusIntent, { type: "setting" }>) => {
+    setSelected(intent.category);
+    setSearch(t(settingLabelKey(intent.setting)));
+    setSettingToFocus(intent.setting);
+  }, [t]);
+
+  useEffect(() => {
+    const pending = consumeGlobalSearchFocus("setting");
+    if (pending) focusSetting(pending);
+    return subscribeToGlobalSearchFocus("setting", (intent) => {
+      if (intent.type === "setting") focusSetting(intent);
+    });
+  }, [focusSetting]);
+
+  useEffect(() => {
+    if (!settingToFocus) return;
+    const frame = window.requestAnimationFrame(() => {
+      const control = document.getElementById(`setting-${settingToFocus}`);
+      const row = document.querySelector<HTMLElement>(
+        `[data-setting-anchor="setting-${settingToFocus}"]`,
+      );
+      const target = control && !(control instanceof HTMLInputElement && control.disabled) &&
+        !(control instanceof HTMLSelectElement && control.disabled)
+        ? control
+        : row;
+      if (!target) return;
+      target.scrollIntoView({ block: "center" });
+      target.focus();
+      if (document.activeElement === target) setSettingToFocus(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [settingToFocus, settings.activeProjectPath, settings.loading, settings.projectLoading]);
   const query = search.trim().toLowerCase();
   const searchMatches = useMemo(() => {
     if (!query) return [];
@@ -106,13 +145,7 @@ export function SettingsView({ activeProject = null, onNavigate }: SettingsViewP
 
   let content: ReactNode;
   if (settings.loading) {
-    content = (
-      <div aria-label={t("settingsHub.loadingAria")} className="space-y-3" role="status">
-        {[0, 1, 2].map((item) => (
-          <div className="h-20 animate-pulse rounded-lg border border-border bg-muted/40" key={item} />
-        ))}
-      </div>
-    );
+    content = <Loading className="min-h-60" label={t("settingsHub.loadingAria")} />;
   } else if (settings.loadError) {
     content = (
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4" role="alert">
@@ -251,6 +284,7 @@ function CategoryContent({
               <ManagementRow
                 action={<Button onClick={() => onNavigate?.("github")} size="sm" type="button" variant="outline">{t("settingsHub.manageGitHub")}</Button>}
                 description={copy("github-connection").description}
+                id="setting-github-connection"
                 title={copy("github-connection").label}
               />
             </ScopeSection>
@@ -260,6 +294,7 @@ function CategoryContent({
               <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("repository-defaults").description}
+                id="setting-repository-defaults"
                 title={copy("repository-defaults").label}
               />
             </ScopeSection>
@@ -269,13 +304,24 @@ function CategoryContent({
     case "agents-mcp":
       return (
         <>
-          {anyVisible(["agent-environments"]) ? (
+          {anyVisible(["agent-environments", "agent-completion-sound"]) ? (
             <ScopeSection scope="global">
-              <ManagementRow
-                action={<Button onClick={() => onNavigate?.("agent-env")} size="sm" type="button" variant="outline">{t("settingsHub.openAgentEnv")}</Button>}
-                description={copy("agent-environments").description}
-                title={copy("agent-environments").label}
-              />
+              {visible("agent-environments") ? (
+                <ManagementRow
+                  action={<Button onClick={() => onNavigate?.("agent-env")} size="sm" type="button" variant="outline">{t("settingsHub.openAgentEnv")}</Button>}
+                  description={copy("agent-environments").description}
+                  id="setting-agent-environments"
+                  title={copy("agent-environments").label}
+                />
+              ) : null}
+              {visible("agent-completion-sound") ? (
+                <SettingToggle
+                  {...copy("agent-completion-sound")}
+                  checked={settings.ui.agentCompletionSound}
+                  id="setting-agent-completion-sound"
+                  onChange={(value) => settings.updateUi({ agentCompletionSound: value })}
+                />
+              ) : null}
             </ScopeSection>
           ) : null}
           {anyVisible(["project-agent-context"]) ? (
@@ -283,6 +329,7 @@ function CategoryContent({
               <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("project-agent-context").description}
+                id="setting-project-agent-context"
                 title={copy("project-agent-context").label}
               />
             </ScopeSection>
@@ -299,6 +346,7 @@ function CategoryContent({
             <ManagementRow
               action={<Button disabled={projectDisabled} onClick={() => onNavigate?.("database")} size="sm" type="button" variant="outline">{t("settingsHub.openDatabase")}</Button>}
               description={copy("connections").description}
+              id="setting-connections"
               title={copy("connections").label}
             />
           ) : null}
@@ -314,6 +362,7 @@ function CategoryContent({
             <ManagementRow
               action={<span className="font-mono text-xs text-muted-foreground">{permission}</span>}
               description={copy("desktop-notifications").description}
+              id="setting-desktop-notifications"
               title={copy("desktop-notifications").label}
             />
           ) : null}
@@ -327,6 +376,7 @@ function CategoryContent({
             <ScopeSection scope="global">
               <ManagementRow
                 description={copy("local-storage").description}
+                id="setting-local-storage"
                 title={copy("local-storage").label}
               />
             </ScopeSection>
@@ -336,6 +386,7 @@ function CategoryContent({
               <ProjectNotice loadError={settings.projectLoadError} onRetry={() => void settings.retryProject()} project={activeProject} ready={projectReady} />
               <ManagementRow
                 description={copy("export-reset").description}
+                id="setting-export-reset"
                 title={copy("export-reset").label}
               />
             </ScopeSection>
@@ -346,9 +397,9 @@ function CategoryContent({
       return (
         <ScopeSection scope="global">
           <div className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 px-4 py-4 text-xs">
-            {visible("version") ? <><span className="text-muted-foreground">{copy("version").label}</span><code>v{__APP_VERSION__}</code></> : null}
-            {visible("console") ? <><span className="text-muted-foreground">{copy("console").label}</span><code>127.0.0.1:4317</code></> : null}
-            {visible("documentation") ? <><span className="text-muted-foreground">{copy("documentation").label}</span><a className="inline-flex items-center gap-1 text-primary hover:underline" href="https://www.nomoreide.com/docs" rel="noreferrer" target="_blank"><BookOpen className="size-3" />nomoreide.com/docs<ExternalLink className="size-3" /></a></> : null}
+            {visible("version") ? <><span className="text-muted-foreground" id="setting-version" tabIndex={-1}>{copy("version").label}</span><code>v{__APP_VERSION__}</code></> : null}
+            {visible("console") ? <><span className="text-muted-foreground" id="setting-console" tabIndex={-1}>{copy("console").label}</span><code>127.0.0.1:4317</code></> : null}
+            {visible("documentation") ? <><span className="text-muted-foreground" id="setting-documentation" tabIndex={-1}>{copy("documentation").label}</span><a className="inline-flex items-center gap-1 text-primary hover:underline" href="https://www.nomoreide.com/docs" rel="noreferrer" target="_blank"><BookOpen className="size-3" />nomoreide.com/docs<ExternalLink className="size-3" /></a></> : null}
           </div>
         </ScopeSection>
       );

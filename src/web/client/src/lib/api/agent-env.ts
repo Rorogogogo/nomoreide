@@ -25,6 +25,7 @@ export const {
   updateAgentEnvProfile,
   deleteAgentEnvProfile,
   snapshotAgentEnvProfile,
+  refreshAgentEnvProfile,
   previewAgentEnvProfileApply,
   applyAgentEnvProfile,
   exportAgentEnvProfile,

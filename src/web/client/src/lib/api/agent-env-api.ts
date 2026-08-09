@@ -258,6 +258,7 @@ export interface AgentEnvApi {
     name: string;
     description?: string;
   }): Promise<AgentEnvProfile>;
+  refreshAgentEnvProfile(name: string, agent: AgentEnvAgentName): Promise<AgentEnvProfile>;
   previewAgentEnvProfileApply(
     name: string,
     agent: AgentEnvAgentName,

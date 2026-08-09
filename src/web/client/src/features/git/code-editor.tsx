@@ -5,7 +5,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import { yaml } from "@codemirror/lang-yaml";
-import type { Extension } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import {
   HighlightStyle,
   StreamLanguage,
@@ -28,11 +28,15 @@ import { tags as t } from "@lezer/highlight";
 import { EditorView, minimalSetup } from "codemirror";
 
 export function CodeEditor({
+  ariaLabel,
   path,
+  readOnly = false,
   value,
   onChange,
 }: {
+  ariaLabel?: string;
   path: string;
+  readOnly?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -41,7 +45,10 @@ export function CodeEditor({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  const extensions = useMemo(() => editorExtensionsForPath(path, onChangeRef), [path]);
+  const extensions = useMemo(
+    () => editorExtensionsForPath(path, onChangeRef, readOnly, ariaLabel),
+    [ariaLabel, path, readOnly],
+  );
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -153,6 +160,8 @@ function languageExtensionForPath(path: string): Extension {
 function editorExtensionsForPath(
   path: string,
   onChangeRef: MutableRefObject<(value: string) => void>,
+  readOnly: boolean,
+  ariaLabel?: string,
 ): Extension[] {
   return [
     minimalSetup,
@@ -169,6 +178,9 @@ function editorExtensionsForPath(
     editorTheme,
     syntaxTheme,
     languageExtensionForPath(path),
+    EditorState.readOnly.of(readOnly),
+    EditorView.editable.of(!readOnly),
+    ...(ariaLabel ? [EditorView.contentAttributes.of({ "aria-label": ariaLabel })] : []),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         onChangeRef.current(update.state.doc.toString());

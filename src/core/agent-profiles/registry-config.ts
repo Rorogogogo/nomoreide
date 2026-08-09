@@ -1,16 +1,48 @@
 /**
- * Profile registry configuration (ROR-63). The hosted registry is the
- * brainctl platform (kept as-is per the ROR-63 decision), so credentials and
- * target URLs live in brainctl's config file at `~/.brainctl/config.json` and
- * honor the `BRAINCTL_*` environment variables — existing brainctl sign-ins
- * keep working unchanged.
+ * Profile registry configuration. Credentials and target URLs live in
+ * `~/.nomoreide/config.json` and honor the `NOMOREIDE_*` environment variables.
+ *
+ * The registry began life as the brainctl platform, so every lookup falls back
+ * to the old `~/.brainctl/config.json` and `BRAINCTL_*` names: an existing
+ * brainctl sign-in keeps working, and the first write migrates it to the new
+ * path. The old names are the fallback, never the override — otherwise a stale
+ * `BRAINCTL_API_BASE_URL` left in a shell profile would silently win.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-export const DEFAULT_REGISTRY_API_BASE_URL = "https://api.brainctl.net";
-export const DEFAULT_REGISTRY_FRONTEND_URL = "https://www.brainctl.net";
+export const DEFAULT_REGISTRY_API_BASE_URL = "https://api.nomoreide.com";
+export const DEFAULT_REGISTRY_FRONTEND_URL = "https://registry.nomoreide.com";
+
+/**
+ * The pre-rename default. Still serving the same API — every CLI published
+ * before the rename has it compiled in — so it is a real production target, not
+ * a custom one.
+ */
+export const LEGACY_REGISTRY_API_BASE_URL = "https://api.brainctl.net";
+export const LEGACY_REGISTRY_FRONTEND_URL = "https://www.brainctl.net";
+
+/**
+ * API base → registry web UI, for the hosts we actually run. Without the legacy
+ * entry an `api.brainctl.net` left in a config would fall through to the
+ * `api.` → `app.` guess below and resolve to `app.brainctl.net`, which does not
+ * exist.
+ */
+const KNOWN_REGISTRY_FRONTENDS: ReadonlyMap<string, string> = new Map([
+  [DEFAULT_REGISTRY_API_BASE_URL, DEFAULT_REGISTRY_FRONTEND_URL],
+  [LEGACY_REGISTRY_API_BASE_URL, LEGACY_REGISTRY_FRONTEND_URL],
+]);
+
+/**
+ * Reads `NOMOREIDE_<suffix>`, falling back to the pre-rename `BRAINCTL_<suffix>`.
+ */
+function readBrandedEnv(
+  env: NodeJS.ProcessEnv,
+  suffix: string,
+): string | undefined {
+  return env[`NOMOREIDE_${suffix}`] ?? env[`BRAINCTL_${suffix}`];
+}
 
 export type RegistryConfigKey =
   | "apiBaseUrl"
@@ -47,34 +79,61 @@ export interface RegistryConfigService {
   unset(key: RegistryConfigKey): Promise<void>;
 }
 
+/** Where config is written, and read from first. */
 export function registryConfigPath(options: RegistryConfigOptions = {}): string {
   const env = options.env ?? process.env;
   return (
     options.configPath ??
-    env.BRAINCTL_CONFIG_PATH ??
-    path.join(env.BRAINCTL_HOME ?? homedir(), ".brainctl", "config.json")
+    readBrandedEnv(env, "CONFIG_PATH") ??
+    path.join(readBrandedEnv(env, "HOME") ?? homedir(), ".nomoreide", "config.json")
   );
+}
+
+/**
+ * Pre-rename location, read only when {@link registryConfigPath} has no file
+ * yet. Returns null when the caller pinned an explicit path or the resolved
+ * path is already the legacy one — there is nothing to fall back to.
+ */
+export function legacyRegistryConfigPath(
+  options: RegistryConfigOptions = {},
+): string | null {
+  const env = options.env ?? process.env;
+  if (options.configPath ?? readBrandedEnv(env, "CONFIG_PATH")) return null;
+  return path.join(readBrandedEnv(env, "HOME") ?? homedir(), ".brainctl", "config.json");
 }
 
 export function createRegistryConfigService(
   options: RegistryConfigOptions = {},
 ): RegistryConfigService {
   const filePath = registryConfigPath(options);
+  const legacyPath = legacyRegistryConfigPath(options);
 
-  async function read(): Promise<RegistryConfig> {
+  async function readFrom(candidate: string): Promise<RegistryConfig | null> {
     let source: string;
     try {
-      source = await readFile(filePath, "utf8");
+      source = await readFile(candidate, "utf8");
     } catch {
-      return {};
+      return null;
     }
     try {
       return normalizeConfig(JSON.parse(source) as Partial<RegistryConfig> | null);
     } catch (error) {
       throw new Error(
-        `Invalid registry config at ${filePath}: ${(error as Error).message}`,
+        `Invalid registry config at ${candidate}: ${(error as Error).message}`,
       );
     }
+  }
+
+  /**
+   * Falls back to the pre-rename file so an existing brainctl sign-in still
+   * resolves. Writes always land on {@link filePath}, so the next `set` migrates
+   * the config across without the user re-authenticating.
+   */
+  async function read(): Promise<RegistryConfig> {
+    const current = await readFrom(filePath);
+    if (current) return current;
+    if (legacyPath) return (await readFrom(legacyPath)) ?? {};
+    return {};
   }
 
   async function write(config: RegistryConfig): Promise<void> {
@@ -103,7 +162,8 @@ export async function resolveRegistryApiTarget(
   options: RegistryConfigOptions & { configService?: RegistryConfigService } = {},
 ): Promise<RegistryApiTarget> {
   const env = options.env ?? process.env;
-  const envValue = env.BRAINCTL_API_BASE_URL ?? env.BRAINCTL_API_URL;
+  const envValue =
+    readBrandedEnv(env, "API_BASE_URL") ?? readBrandedEnv(env, "API_URL");
   if (envValue) return toApiTarget(normalizeBaseUrl(envValue), "env");
 
   const configService = options.configService ?? createRegistryConfigService(options);
@@ -129,8 +189,9 @@ export async function resolveRegistryApiToken(
   options: RegistryConfigOptions & { configService?: RegistryConfigService } = {},
 ): Promise<{ token: string; source: RegistryTokenSource } | null> {
   const env = options.env ?? process.env;
-  if (env.BRAINCTL_API_TOKEN?.trim()) {
-    return { token: env.BRAINCTL_API_TOKEN.trim(), source: "env" };
+  const envToken = readBrandedEnv(env, "API_TOKEN");
+  if (envToken?.trim()) {
+    return { token: envToken.trim(), source: "env" };
   }
   const configService = options.configService ?? createRegistryConfigService(options);
   const stored = await configService.get("apiToken");
@@ -146,17 +207,17 @@ export async function resolveRegistryFrontendUrl(
   } = {},
 ): Promise<string> {
   const env = options.env ?? process.env;
-  if (env.BRAINCTL_FRONTEND_URL?.trim()) {
-    return normalizeBaseUrl(env.BRAINCTL_FRONTEND_URL);
+  const envFrontendUrl = readBrandedEnv(env, "FRONTEND_URL");
+  if (envFrontendUrl?.trim()) {
+    return normalizeBaseUrl(envFrontendUrl);
   }
   const configService = options.configService ?? createRegistryConfigService(options);
   const stored = await configService.get("apiFrontendUrl");
   if (stored) return normalizeBaseUrl(stored);
   if (options.apiBaseUrl) {
     try {
-      if (normalizeBaseUrl(options.apiBaseUrl) === DEFAULT_REGISTRY_API_BASE_URL) {
-        return DEFAULT_REGISTRY_FRONTEND_URL;
-      }
+      const known = KNOWN_REGISTRY_FRONTENDS.get(normalizeBaseUrl(options.apiBaseUrl));
+      if (known) return known;
       const url = new URL(options.apiBaseUrl);
       if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
         return `${url.protocol}//${url.hostname}:5173`;
@@ -213,7 +274,7 @@ function normalizeBaseUrl(value: string): string {
 
 function toApiTarget(apiBaseUrl: string, source: RegistryApiTargetSource): RegistryApiTarget {
   let mode: RegistryApiTargetMode = "custom";
-  if (apiBaseUrl === DEFAULT_REGISTRY_API_BASE_URL) {
+  if (KNOWN_REGISTRY_FRONTENDS.has(apiBaseUrl)) {
     mode = "prod";
   } else {
     const { hostname } = new URL(apiBaseUrl);

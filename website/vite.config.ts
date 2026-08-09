@@ -26,6 +26,7 @@ const browserPackageAliases = [
   "@radix-ui/react-context-menu",
   "@radix-ui/react-slot",
   "@tauri-apps/api",
+  "@tauri-apps/plugin-dialog",
   "class-variance-authority",
   "clsx",
   "codemirror",
@@ -35,6 +36,7 @@ const browserPackageAliases = [
   "lucide-react",
   "marked",
   "simple-icons",
+  "smol-toml",
   "tailwind-merge",
 ];
 
