@@ -1,7 +1,37 @@
+import { chmodSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import type { InteractiveAgentProvider } from "./agent-terminal.js";
 
 const require = createRequire(import.meta.url);
+
+export const NODE_PTY_SPAWN_FAILURE = "posix_spawnp failed";
+
+export function isNodePtySpawnHelperFailure(error: unknown): boolean {
+  return (
+    typeof error === "string" && error.includes(NODE_PTY_SPAWN_FAILURE)
+  );
+}
+
+/**
+ * Restore the executable bit on node-pty's fixed, platform-specific helper.
+ * The path is resolved from NoMoreIDE's own dependency; callers cannot choose
+ * a filesystem target through the terminal transport.
+ */
+export function repairNodePtySpawnHelper(): string {
+  if (process.platform !== "darwin") {
+    throw new Error("Automatic terminal repair is only available on macOS.");
+  }
+  const packagePath = require.resolve("node-pty/package.json");
+  const helperPath = join(
+    dirname(packagePath),
+    "prebuilds",
+    `${process.platform}-${process.arch}`,
+    "spawn-helper",
+  );
+  chmodSync(helperPath, 0o755);
+  return helperPath;
+}
 
 export type TerminalState = "idle" | "running" | "exited" | "error";
 

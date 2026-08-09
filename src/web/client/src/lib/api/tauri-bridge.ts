@@ -737,13 +737,29 @@ export async function tauri_sampleDatabaseObject(
   key: string,
   limit?: number,
   offset?: number,
+  query?: import("./database-api.js").RowBrowseQuery,
 ) {
   return tauriInvoke<unknown>("sample_database_object", {
     name,
     key,
     limit: limit ?? null,
     offset: offset ?? null,
+    query: query ?? null,
   });
+}
+
+export async function tauri_exportDatabaseObject(input: {
+  requestId: string;
+  name: string;
+  key: string;
+  format: "csv" | "json";
+  path: string;
+}) {
+  return tauriInvoke<unknown>("export_database_object", input);
+}
+
+export async function tauri_cancelDatabaseExport(requestId: string) {
+  return tauriInvoke<void>("cancel_database_export", { requestId });
 }
 
 export async function tauri_registerDatabase(db: {

@@ -6,6 +6,7 @@ import {
   Database,
   GitBranch,
   Inbox,
+  Network,
   Puzzle,
   Server,
   SquareTerminal,
@@ -18,6 +19,7 @@ import { VercelLogo } from "@/features/vercel/vercel-logo";
 export type AppPage =
   | "services"
   | "activity"
+  | "servers"
   | "docker"
   | "git"
   | "github"
@@ -45,6 +47,7 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "services", labelKey: "nav.services", icon: <Server /> },
       { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
+      { page: "servers", labelKey: "nav.servers", icon: <Network /> },
       { page: "docker", labelKey: "nav.docker", icon: <Container /> },
       { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
       { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },

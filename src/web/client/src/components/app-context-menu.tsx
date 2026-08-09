@@ -7,7 +7,8 @@ import {
   Scissors,
   SendHorizontal,
 } from "lucide-react";
-import { type ReactElement, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactElement, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -163,11 +164,25 @@ export function AppContextMenu({
   const agentDock = useOptionalAgentDock();
   const { error: showError, success: showSuccess } = useToasts();
   const targetRef = useRef<ContextTarget>({ kind: "page", selectedText: "", editable: false });
+  const cursorBadgeRef = useRef<HTMLDivElement>(null);
   const [capabilities, setCapabilities] = useState<{
     canCopy: boolean;
     canEdit: boolean;
     aiTarget: AiContextTargetDescriptor | null;
   }>({ canCopy: false, canEdit: false, aiTarget: null });
+
+  function trackAiTarget(event: ReactPointerEvent) {
+    const badge = cursorBadgeRef.current;
+    if (!badge) return;
+    const aiTarget = registry?.resolve(event.target instanceof Element ? event.target : null);
+    const visible = Boolean(aiTarget?.intents.length);
+    badge.style.opacity = visible ? "1" : "0";
+    badge.style.transform = `translate3d(${event.clientX + 10}px, ${event.clientY + 12}px, 0) scale(${visible ? 1 : 0.7})`;
+  }
+
+  function hideCursorBadge() {
+    if (cursorBadgeRef.current) cursorBadgeRef.current.style.opacity = "0";
+  }
 
   function rememberTarget(event: React.MouseEvent) {
     const target = resolveContextTarget(event.target);
@@ -177,6 +192,7 @@ export function AppContextMenu({
       canEdit: target.editable,
       aiTarget: registry?.resolve(event.target instanceof Element ? event.target : null) ?? null,
     });
+    hideCursorBadge();
   }
 
   function copySelection() {
@@ -228,12 +244,12 @@ export function AppContextMenu({
   const hasAiActions = Boolean(aiTarget?.intents.length);
   const hasTargetActions = Boolean(aiTarget?.actions?.length);
 
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild onContextMenu={rememberTarget}>
+  return <>
+    <ContextMenu modal={false}>
+      <ContextMenuTrigger asChild onContextMenu={rememberTarget} onPointerLeave={hideCursorBadge} onPointerMove={trackAiTarget}>
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-52">
+      <ContextMenuContent className="z-[1100] w-52" data-app-context-menu>
         {capabilities.canCopy && capabilities.canEdit ? (
           <ContextMenuItem onSelect={cutSelection}>
             <Scissors className="mr-2 size-4 text-muted-foreground" />
@@ -320,7 +336,18 @@ export function AppContextMenu({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
-  );
+    {createPortal(
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-0 top-0 z-[100] grid size-4 place-items-center rounded-full bg-black font-sans text-[8px] font-black leading-none tracking-[-0.04em] text-white opacity-0 shadow-sm transition-[opacity,transform] duration-100 ease-out will-change-transform motion-reduce:transition-none dark:bg-white dark:text-black"
+        data-ai-cursor-badge
+        ref={cursorBadgeRef}
+      >
+        AI
+      </div>,
+      document.body,
+    )}
+  </>;
 }
 
 function IntentDeliveryItems({

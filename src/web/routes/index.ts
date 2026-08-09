@@ -17,6 +17,7 @@ import { onboardRoutes } from "./onboard-routes.js";
 import { overviewRoutes } from "./overview-routes.js";
 import { serviceRoutes } from "./service-routes.js";
 import { settingsRoutes } from "./settings-routes.js";
+import { sshServerRoutes } from "./ssh-server-routes.js";
 import { shellRoutes } from "./shell-routes.js";
 import { snapshotRoutes } from "./snapshot-routes.js";
 import { skillsRoutes } from "./skills-routes.js";
@@ -55,6 +56,7 @@ export const routes: Route[] = [
   ...overviewRoutes,
   ...serviceRoutes,
   ...settingsRoutes,
+  ...sshServerRoutes,
   ...skillsRoutes,
   ...snapshotRoutes,
   ...terminalRoutes,

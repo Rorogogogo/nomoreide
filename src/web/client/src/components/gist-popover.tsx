@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FileImage, FileText, ImagePlus, Send, Trash2, X } from "lucide-react";
 import { useAgentDock } from "@/features/agent/chat/agent-context";
+import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useT } from "@/lib/i18n";
 import { isTauri } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { headerActionClassName, headerActionIconClassName } from "./header-action";
+import { Badge } from "./ui/badge";
 import { Tooltip } from "./ui/tooltip";
 
 interface GistPiece {
@@ -18,6 +20,22 @@ interface GistPiece {
 
 interface GistDraft {
   pieces: GistPiece[];
+}
+
+interface GistProject {
+  name: string;
+  path: string;
+}
+
+interface ProjectGist extends GistProject {
+  gist: GistDraft | null;
+}
+
+interface ScopedGistPiece {
+  piece: GistPiece;
+  projectLabel?: string;
+  projectPath?: string;
+  scopeKey: string;
 }
 
 const EMPTY_GIST: GistDraft = { pieces: [] };
@@ -33,8 +51,36 @@ function normalizeGist(value: GistDraft | { title?: string; body?: string } | nu
   };
 }
 
+function gistStorageKey(scopeKey: string) {
+  return `nomoreide:gist:current:${scopeKey}`;
+}
+
+function readStoredGist(scopeKey: string): GistDraft | null {
+  try {
+    const raw = window.localStorage.getItem(gistStorageKey(scopeKey));
+    return raw ? normalizeGist(JSON.parse(raw) as GistDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readProjectGists(projects: GistProject[]): ProjectGist[] {
+  return projects.map((project) => ({
+    ...project,
+    gist: readStoredGist(project.path),
+  }));
+}
+
 /** A small, persistent scratchpad for project notes, text snippets, and images. */
-export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
+export function GistPopover({
+  aggregateProjects = false,
+  projects = [],
+  scopeKey = "all",
+}: {
+  aggregateProjects?: boolean;
+  projects?: GistProject[];
+  scopeKey?: string;
+}) {
   const t = useT();
   const { sendToAgent } = useAgentDock();
   const [storedGist, setStoredGist] = usePersistentState<GistDraft | null>(`gist:current:${scopeKey}`, null);
@@ -43,8 +89,12 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
   const [textDraft, setTextDraft] = useState("");
   const [sent, setSent] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [pieceMenu, setPieceMenu] = useState<string | null>(null);
-  const [pieceMenuPosition, setPieceMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const projectSignature = JSON.stringify(
+    projects.map((project) => [project.name, project.path]),
+  );
+  const [projectGists, setProjectGists] = useState<ProjectGist[]>(() =>
+    aggregateProjects ? readProjectGists(projects) : [],
+  );
   const rootRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,18 +104,36 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
   }, [gist, setStoredGist, storedGist]);
 
   useEffect(() => {
+    setProjectGists(aggregateProjects ? readProjectGists(projects) : []);
+  }, [aggregateProjects, projectSignature]);
+
+  const scopedPieces = useMemo<ScopedGistPiece[]>(() => {
+    const currentPieces = (gist?.pieces ?? []).map((piece) => ({
+      piece,
+      projectLabel: aggregateProjects ? t("app.allProjects") : undefined,
+      scopeKey,
+    }));
+    if (!aggregateProjects) return currentPieces;
+    return [
+      ...currentPieces,
+      ...projectGists.flatMap((project) =>
+        (project.gist?.pieces ?? []).map((piece) => ({
+          piece,
+          projectLabel: project.name,
+          projectPath: project.path,
+          scopeKey: project.path,
+        })),
+      ),
+    ];
+  }, [aggregateProjects, gist, projectGists, scopeKey, t]);
+
+  useEffect(() => {
     if (!open) return;
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Element;
-      if (target.closest("[data-gist-menu]")) return;
-      if (target.closest("[data-gist-panel]")) {
-        setPieceMenu(null);
-        setPieceMenuPosition(null);
-        return;
-      }
+      if (target.closest("[data-app-context-menu]")) return;
+      if (target.closest("[data-gist-panel]")) return;
       if (!rootRef.current?.contains(event.target as Node)) {
-        setPieceMenu(null);
-        setPieceMenuPosition(null);
         setOpen(false);
       }
     };
@@ -87,6 +155,7 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
 
   const createGist = () => {
     setStoredGist((current) => normalizeGist(current) ?? EMPTY_GIST);
+    if (aggregateProjects) setProjectGists(readProjectGists(projects));
     setOpen(true);
     setSent(false);
   };
@@ -122,12 +191,41 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
     addImagePiece(image);
   };
 
-  const removePiece = (id: string) => {
-    updateGist({ pieces: (gist?.pieces ?? []).filter((piece) => piece.id !== id) });
+  const removePiece = (id: string, pieceScopeKey = scopeKey) => {
+    if (pieceScopeKey === scopeKey) {
+      updateGist({ pieces: (gist?.pieces ?? []).filter((piece) => piece.id !== id) });
+      return;
+    }
+    const projectGist = readStoredGist(pieceScopeKey);
+    const nextGist = {
+      ...(projectGist ?? EMPTY_GIST),
+      pieces: (projectGist?.pieces ?? []).filter((piece) => piece.id !== id),
+    };
+    try {
+      window.localStorage.setItem(gistStorageKey(pieceScopeKey), JSON.stringify(nextGist));
+    } catch {
+      return;
+    }
+    setProjectGists((current) =>
+      current.map((project) =>
+        project.path === pieceScopeKey ? { ...project, gist: nextGist } : project,
+      ),
+    );
+    setSent(false);
+  };
+
+  const sendPiece = (piece: GistPiece) => {
+    if (piece.type !== "text") return;
+    sendToAgent({
+      label: "Gist note",
+      mode: "send",
+      prompt: piece.value,
+      source: { type: "gist", label: "Gist note" },
+    });
   };
 
   const sendGist = (extraText = "") => {
-    const text = [...(gist?.pieces ?? []).map((piece) => piece.type === "text" ? piece.value : ""), extraText]
+    const text = [...scopedPieces.map(({ piece }) => piece.type === "text" ? piece.value : ""), extraText]
       .join("\n\n")
       .trim();
     if (!text) return;
@@ -137,13 +235,6 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
       source: { type: "gist", label: "Project gist" },
     });
     setSent(true);
-  };
-
-  const sendPieceToAgent = (piece: GistPiece, mode: "send" | "draft") => {
-    if (piece.type !== "text") return;
-    sendToAgent({ label: "Gist note", mode, prompt: piece.value, source: { type: "gist", label: "Gist note" } });
-    setPieceMenu(null);
-    setPieceMenuPosition(null);
   };
 
   const resizeTextArea = (element: HTMLTextAreaElement) => {
@@ -171,20 +262,31 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
       </Tooltip>
 
       {createPortal(
-        <div aria-hidden={!open} className={cn("fixed bottom-0 right-0 z-[80] flex w-96 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden border-l border-border bg-card shadow-xl will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none", open ? "translate-x-0" : "pointer-events-none translate-x-full")} data-gist-panel onContextMenu={(event) => { event.preventDefault(); const target = (event.target as Element).closest<HTMLElement>("[data-gist-piece-id]"); const id = target?.dataset.gistPieceId; if (!id) return; setPieceMenu(id); setPieceMenuPosition({ top: Math.min(event.clientY, window.innerHeight - 150), left: Math.min(event.clientX, window.innerWidth - 140) }); }} style={{ top: isTauri() ? 32 : 0 }}>
+        <div aria-hidden={!open} className={cn("fixed bottom-0 right-0 z-[80] flex w-96 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden border-l border-border bg-card shadow-xl will-change-transform transition-transform duration-300 ease-out motion-reduce:transition-none", open ? "translate-x-0" : "pointer-events-none translate-x-full")} data-gist-panel style={{ top: isTauri() ? 32 : 0 }}>
           <div className="flex h-10 items-center justify-between border-b border-border px-3">
             <div className="flex min-w-0 items-center gap-1.5">
               <FileText aria-hidden="true" className="size-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold">{t("gist.title")}</span>
-              {gist?.pieces.length ? <span className="font-mono text-[10px] text-muted-foreground">{gist.pieces.length}</span> : null}
+              {scopedPieces.length ? <span className="font-mono text-[10px] text-muted-foreground">{scopedPieces.length}</span> : null}
             </div>
             <button aria-label={t("common.close")} className="grid size-6 shrink-0 place-items-center text-muted-foreground hover:text-foreground" onClick={() => setOpen(false)} type="button">
               <X aria-hidden="true" className="size-3.5" />
             </button>
           </div>
           <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-            {(gist?.pieces ?? []).map((piece, index) => (
-              <div className="group px-3 py-2 transition-colors hover:bg-muted/20" data-gist-piece-id={piece.id} key={piece.id}>
+            {scopedPieces.map(({ piece, projectLabel, projectPath, scopeKey: pieceScopeKey }, index) => {
+              const row = (
+                <div className="group px-3 py-2 transition-colors hover:bg-muted/20" data-gist-piece-id={piece.id}>
+                {projectLabel ? (
+                  <Badge
+                    appearance="outline"
+                    className="mb-1.5 max-w-full font-normal"
+                    label={projectLabel}
+                    size="small"
+                    title={projectPath ?? projectLabel}
+                    variant="secondary"
+                  />
+                ) : null}
                 {piece.type === "text" ? (
                   <p className="whitespace-pre-wrap text-[12px] leading-relaxed">{piece.value}</p>
                 ) : (
@@ -193,9 +295,56 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
                     <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground"><FileImage className="size-3" />{piece.name}</div>
                   </div>
                 )}
+                <div className="mt-1.5 flex justify-end gap-1 opacity-70 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none">
+                  <button
+                    aria-label={t("gist.sendToAi")}
+                    className="grid size-6 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
+                    data-gist-piece-send={piece.id}
+                    disabled={piece.type !== "text"}
+                    onClick={() => sendPiece(piece)}
+                    title={t("gist.sendToAi")}
+                    type="button"
+                  >
+                    <Send aria-hidden="true" className="size-3.5" />
+                  </button>
+                  <button
+                    aria-label={t("gist.removePiece")}
+                    className="grid size-6 place-items-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-gist-piece-delete={piece.id}
+                    onClick={() => removePiece(piece.id, pieceScopeKey)}
+                    title={t("gist.removePiece")}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" className="size-3.5" />
+                  </button>
+                </div>
               </div>
-            ))}
-            {!(gist?.pieces.length) ? <p className="px-3 py-5 text-center text-[11px] text-muted-foreground">{t("gist.empty")}</p> : null}
+              );
+              return (
+                <AiContextTarget
+                  key={`${pieceScopeKey}:${piece.id}`}
+                  target={{
+                    label: piece.type === "text" ? "Gist note" : (piece.name || t("gist.imageAlt", { n: index + 1 })),
+                    intents: piece.type === "text" ? [{
+                      id: `gist-note-${piece.id}`,
+                      label: "Gist note",
+                      resolvePrompt: () => piece.value,
+                      source: { type: "gist", label: "Gist note" },
+                    }] : [],
+                    actions: [{
+                      id: `remove-gist-piece-${piece.id}`,
+                      label: t("gist.removePiece"),
+                      icon: <Trash2 aria-hidden="true" className="mr-2 size-4" />,
+                      destructive: true,
+                      onSelect: () => removePiece(piece.id, pieceScopeKey),
+                    }],
+                  }}
+                >
+                  {row}
+                </AiContextTarget>
+              );
+            })}
+            {!scopedPieces.length ? <p className="px-3 py-5 text-center text-[11px] text-muted-foreground">{t("gist.empty")}</p> : null}
           </div>
 
           <div className="flex items-end gap-1.5 border-t border-border bg-muted/10 p-2">
@@ -231,20 +380,6 @@ export function GistPopover({ scopeKey = "all" }: { scopeKey?: string }) {
         </div>,
         document.body,
       )}
-      {open && pieceMenu && pieceMenuPosition ? createPortal(
-        <div className="fixed z-[1100] w-32 rounded-md border border-border bg-card py-1 shadow-lg" data-gist-menu style={{ left: pieceMenuPosition.left, top: pieceMenuPosition.top }}>
-          {(() => {
-            const piece = gist?.pieces.find((item) => item.id === pieceMenu);
-            if (!piece) return null;
-            return <>
-              <button className="flex w-full px-2.5 py-1.5 text-left text-[11px] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40" data-gist-menu disabled={piece.type !== "text"} onClick={() => sendPieceToAgent(piece, "draft")} type="button">{t("gist.copyToAi")}</button>
-              <button className="flex w-full px-2.5 py-1.5 text-left text-[11px] hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40" data-gist-menu disabled={piece.type !== "text"} onClick={() => sendPieceToAgent(piece, "send")} type="button">{t("gist.sendToAi")}</button>
-              <button className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px] text-destructive hover:bg-muted" data-gist-menu onClick={() => { removePiece(piece.id); setPieceMenu(null); setPieceMenuPosition(null); }} type="button"><Trash2 aria-hidden="true" className="size-3" />{t("gist.removePiece")}</button>
-            </>;
-          })()}
-        </div>,
-        document.body,
-      ) : null}
     </div>
   );
 }

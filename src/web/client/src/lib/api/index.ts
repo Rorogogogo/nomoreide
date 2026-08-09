@@ -21,6 +21,7 @@ export * from "./github.js";
 export * from "./log-sources.js";
 export * from "./onboard.js";
 export * from "./services.js";
+export * from "./servers.js";
 export * from "./settings.js";
 export * from "./skills.js";
 export * from "./snapshots.js";

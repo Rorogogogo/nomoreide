@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import WebSocket from "ws";
 import type {
   TerminalSessionInfo,
@@ -22,6 +22,7 @@ class FakeTerminalSession {
   label?: string;
   readonly writes: string[] = [];
   readonly resizes: TerminalSize[] = [];
+  error?: string;
   startedWith?: TerminalSize;
   restartedWith?: TerminalSize;
   stopped = false;
@@ -40,6 +41,7 @@ class FakeTerminalSession {
     return {
       cols: this.cols,
       cwd: this.cwd,
+      error: this.error,
       label: this.label,
       rows: this.rows,
       shell: this.shell,
@@ -270,13 +272,15 @@ describe("web terminal socket", () => {
     expect(fake.resizes).toContainEqual({ cols: 120, rows: 40 });
   });
 
-  test("forwards restart and stop controls", async () => {
+  test("forwards restart, repair, and stop controls", async () => {
     const manager = new FakeTerminalManager(tempDir);
+    const repairTerminal = vi.fn();
     server = await createWebServer({
       cwd: tempDir,
       logDir: join(tempDir, "logs"),
       registryPath: join(tempDir, "runtime.json"),
       port: 0,
+      repairTerminal,
       terminalManager: manager,
     }).start();
     const client = await openTerminalSocket(
@@ -289,6 +293,12 @@ describe("web terminal socket", () => {
     await eventually(() =>
       expect(fake.restartedWith).toEqual({ cols: 90, rows: 25 }),
     );
+
+    fake.state = "error";
+    fake.error = "posix_spawnp failed.";
+    client.socket.send(JSON.stringify({ cols: 91, rows: 26, type: "repair" }));
+    await eventually(() => expect(repairTerminal).toHaveBeenCalledOnce());
+    expect(fake.restartedWith).toEqual({ cols: 91, rows: 26 });
 
     client.socket.send(JSON.stringify({ type: "stop" }));
     await eventually(() => expect(fake.stopped).toBe(true));

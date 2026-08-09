@@ -26,6 +26,11 @@ describe("GitHub top-level navigation", () => {
     expect(appSource).toContain("<GitHubView key={repoScopeKey}");
   });
 
+  test("all-project overviews remount per domain so each page shows its loader", () => {
+    expect(appSource).toContain("<ProjectOverviewTable");
+    expect(appSource).toContain("key={overviewDomain}");
+  });
+
   test("git review no longer embeds GitHub as a tab", () => {
     expect(gitReviewSource).not.toContain('| "github"');
     expect(gitReviewSource).not.toContain("GitHubView");

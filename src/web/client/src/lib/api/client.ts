@@ -1,4 +1,5 @@
 import { beginApiRequest } from "@/lib/api-activity";
+import { recordRuntimeApiFailure } from "@/lib/runtime-connection";
 
 export interface PortConflictDetail {
   code: "PORT_IN_USE";
@@ -39,9 +40,20 @@ export async function requestJson<T>(url: string, init?: RequestInit): Promise<T
   // still releases its slot.
   const settled = beginApiRequest();
   try {
-    const response = await fetch(url, init);
+    let response: Response;
+    try {
+      response = await fetch(url, init);
+    } catch (caught) {
+      recordRuntimeApiFailure(url, caught, init?.method);
+      throw caught;
+    }
     const body = await response.json().catch(() => undefined);
     if (!response.ok) {
+      recordRuntimeApiFailure(
+        url,
+        new Error(describeFailure(response, url, init)),
+        init?.method,
+      );
       if (response.status === 409 && body?.conflict?.code === "PORT_IN_USE") {
         throw new PortConflictResponseError(
           body?.error || "Port already in use",

@@ -5,6 +5,20 @@ import type { WorkflowTrigger } from "./workflow-triggers.js";
 
 export type ServiceKind = "local" | "docker-compose" | "ssh";
 
+/**
+ * A reusable remote machine reached through the user's OpenSSH configuration.
+ * NoMoreIDE stores only presentation metadata; credentials remain owned by
+ * ~/.ssh/config and ssh-agent.
+ */
+export interface SshServerDefinition {
+  /** Host alias passed to `ssh`, normally an explicit Host in ~/.ssh/config. */
+  host: string;
+  /** Optional human-friendly label; falls back to `host`. */
+  name?: string;
+  /** Free-form environment label such as Development, UAT, or Production. */
+  environment?: string;
+}
+
 export interface ServiceDefinition {
   name: string;
   kind?: ServiceKind;
@@ -209,6 +223,7 @@ export interface NoMoreIdeConfig {
   gitBoardRepositories?: string[];
   databases: DatabaseConnection[];
   logSources: LogSourceDefinition[];
+  sshServers: SshServerDefinition[];
   githubTokens: GitHubToken[];
   /** Resolved commit identities, keyed by host + login. */
   githubIdentities: GitHubIdentity[];

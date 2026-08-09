@@ -1,7 +1,8 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { translate } from "@/lib/i18n";
+import { translate, useT } from "@/lib/i18n";
 import { Terminal } from "@xterm/xterm";
+import { Wrench } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import {
   forwardRef,
@@ -9,7 +10,9 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
+import { Button } from "@/components/ui/button";
 import {
   tauri_onTerminalOutput,
   tauri_resizeTerminal,
@@ -33,6 +36,7 @@ export interface TerminalViewportStatus {
 }
 
 export interface TerminalViewportHandle {
+  repair(): void;
   restart(): void;
   stop(): void;
   focus(): void;
@@ -103,6 +107,8 @@ interface FitDimensionsLike {
   proposeDimensions(): { cols: number; rows: number } | undefined;
 }
 
+type TerminalControl = "repair" | "restart" | "stop";
+
 type ServerMessage =
   | {
       cols?: number;
@@ -123,6 +129,11 @@ const INITIAL_STATUS: TerminalViewportStatus = {
 };
 const WEB_SOCKET_OPEN = 1;
 const OUTPUT_BATCH_DELAY_MS = 8;
+// Layout transitions (notably the hover-expanded navigation rail) can emit a
+// ResizeObserver entry every animation frame. Forwarding every intermediate
+// width to the PTY makes interactive shells redraw their prompts repeatedly.
+// Wait for a short quiet period and resize once at the settled dimensions.
+export const TERMINAL_RESIZE_SETTLE_MS = 80;
 
 interface DisposableRenderer {
   dispose(): void;
@@ -247,7 +258,7 @@ export function terminalTheme(theme: ResolvedTheme) {
 export function createTerminalViewportHandle(options: {
   focus: () => void;
   refit: () => void;
-  sendControl: (type: "restart" | "stop") => void;
+  sendControl: (type: TerminalControl) => void;
   sendInput: (data: string) => void;
   paste?: (data: string, prefix?: string) => boolean;
 }): TerminalViewportHandle {
@@ -256,6 +267,7 @@ export function createTerminalViewportHandle(options: {
     input: options.sendInput,
     paste: options.paste ?? (() => false),
     refit: options.refit,
+    repair: () => options.sendControl("repair"),
     restart: () => options.sendControl("restart"),
     stop: () => options.sendControl("stop"),
   };
@@ -264,7 +276,7 @@ export function createTerminalViewportHandle(options: {
 export function sendWebTerminalControl(
   socket: TerminalSocketLike | null,
   fit: FitDimensionsLike | null,
-  type: "restart" | "stop",
+  type: TerminalControl,
 ): void {
   if (!socket || socket.readyState !== WEB_SOCKET_OPEN) return;
   const dimensions = fit?.proposeDimensions();
@@ -275,6 +287,10 @@ export function sendWebTerminalControl(
       type,
     }),
   );
+}
+
+export function isRecoverableTerminalSpawnError(detail: string): boolean {
+  return detail.includes("posix_spawnp failed");
 }
 
 export function scheduleTerminalActivation(
@@ -437,6 +453,7 @@ export const TerminalViewport = forwardRef<
   },
   forwardedRef,
 ) {
+  const t = useT();
   const resolvedTheme = useResolvedTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -446,6 +463,8 @@ export const TerminalViewport = forwardRef<
   const statusCallbackRef = useRef(onStatusChange);
   const displaySettingsRef = useRef(displaySettings);
   const statusRef = useRef<TerminalViewportStatus>(INITIAL_STATUS);
+  const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
+  const [repairing, setRepairing] = useState(false);
   // Desktop owns its PTY in Rust; the web build attaches to the Node server.
   const tauriMode = isTauri();
 
@@ -457,6 +476,10 @@ export const TerminalViewport = forwardRef<
     const next =
       typeof update === "function" ? update(statusRef.current) : update;
     statusRef.current = next;
+    setStatus(next);
+    if (next.state === "running" || next.state === "error") {
+      setRepairing(false);
+    }
     statusCallbackRef.current?.(next);
   }, []);
 
@@ -502,7 +525,7 @@ export const TerminalViewport = forwardRef<
   ]);
 
   const sendControl = useCallback(
-    (type: "restart" | "stop") => {
+    (type: TerminalControl) => {
       // The Rust PTY has no restart/stop commands yet, matching the existing
       // desktop behavior where these controls are no-ops.
       if (tauriMode) return;
@@ -669,12 +692,24 @@ export const TerminalViewport = forwardRef<
     window.addEventListener("resize", sendResize);
     const initialResizeTimer = window.setTimeout(sendResize, 0);
 
-    const observer = new ResizeObserver(() => sendResize());
+    let observedResizeTimer: number | undefined;
+    const observer = new ResizeObserver(() => {
+      if (observedResizeTimer !== undefined) {
+        window.clearTimeout(observedResizeTimer);
+      }
+      observedResizeTimer = window.setTimeout(() => {
+        observedResizeTimer = undefined;
+        sendResize();
+      }, TERMINAL_RESIZE_SETTLE_MS);
+    });
     observer.observe(container);
 
     return () => {
       window.removeEventListener("resize", sendResize);
       window.clearTimeout(initialResizeTimer);
+      if (observedResizeTimer !== undefined) {
+        window.clearTimeout(observedResizeTimer);
+      }
       observer.disconnect();
       cleanupTransport();
       selectionSubscription.dispose();
@@ -723,7 +758,7 @@ export const TerminalViewport = forwardRef<
     <section
       aria-label="terminal viewport"
       className={cn(
-        "h-full min-h-0 overflow-hidden bg-[#fcfcfc] px-3 py-0.5 dark:bg-[#090909]",
+        "relative h-full min-h-0 overflow-hidden bg-[#fcfcfc] px-3 py-0.5 dark:bg-[#090909]",
         !active && "hidden",
       )}
       data-terminal-session={sessionId}
@@ -731,6 +766,35 @@ export const TerminalViewport = forwardRef<
       {/* Padding stays outside xterm's mount so FitAddon does not provision an
           extra row and clip the final line. */}
       <div className="h-full w-full" ref={containerRef} />
+      {!tauriMode &&
+      status.state === "error" &&
+      isRecoverableTerminalSpawnError(status.detail) ? (
+        <div
+          className="absolute inset-x-3 top-3 z-20 flex items-start gap-2 border border-destructive/40 bg-background px-3 py-2 text-foreground shadow-sm"
+          role="alert"
+        >
+          <Wrench aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium">{t("terminal.repairTitle")}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+              {t("terminal.repairBody")}
+            </p>
+          </div>
+          <Button
+            className="shrink-0"
+            disabled={repairing}
+            onClick={() => {
+              setRepairing(true);
+              sendControl("repair");
+            }}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {repairing ? t("terminal.repairing") : t("terminal.repairAction")}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 });
