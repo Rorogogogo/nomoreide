@@ -57,22 +57,22 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
     this.writable = options.writable ?? false;
   }
 
-  private async db(): Promise<DatabaseSync> {
-    if (!this.dbPromise) {
-      this.dbPromise = (async () => {
-        let DatabaseSync: typeof import("node:sqlite").DatabaseSync;
-        try {
-          ({ DatabaseSync } = await import("node:sqlite"));
-        } catch {
-          throw new Error(
-            `SQLite browsing requires Node >=22.5 (uses the built-in node:sqlite module); you're on ${process.version}. Upgrade Node, or use a Postgres/MySQL connection instead.`,
-          );
-        }
-        // Read-only handles can't mutate the file at all; writable handles back
-        // the guarded executeWrite path only.
-        return new DatabaseSync(this.file, { readOnly: !this.writable });
-      })();
+  private async openDatabase(readOnly = !this.writable): Promise<DatabaseSync> {
+    let DatabaseSync: typeof import("node:sqlite").DatabaseSync;
+    try {
+      ({ DatabaseSync } = await import("node:sqlite"));
+    } catch {
+      throw new Error(
+        `SQLite browsing requires Node >=22.5 (uses the built-in node:sqlite module); you're on ${process.version}. Upgrade Node, or use a Postgres/MySQL connection instead.`,
+      );
     }
+    // Read-only handles can't mutate the file at all; writable handles back
+    // the guarded executeWrite path only.
+    return new DatabaseSync(this.file, { readOnly });
+  }
+
+  private async db(): Promise<DatabaseSync> {
+    if (!this.dbPromise) this.dbPromise = this.openDatabase();
     return this.dbPromise;
   }
 
@@ -239,7 +239,15 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
     columns: ColumnInfo[],
     options: StreamRowsOptions = {},
   ): AsyncIterable<Array<Record<string, unknown>>> {
-    const db = await this.db();
+    // Each stream gets its own connection, mirroring the Postgres and MySQL
+    // drivers, which check a connection out of their pool for the life of the
+    // scan. Sharing the cached handle is not safe here: SQLite cannot nest
+    // transactions, so a second concurrent export fails outright with "cannot
+    // start a transaction within a transaction", and whichever export finished
+    // first would ROLLBACK the snapshot out from under the others still
+    // streaming. Always read-only — an export never writes, even on a driver
+    // constructed writable.
+    const db = await this.openDatabase(true);
     const batchSize = clampLimit(options.batchSize, 1_000);
     const primaryKeys = columns.filter((column) => column.primaryKey);
     const orderColumns = primaryKeys.length > 0
@@ -249,12 +257,12 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
           return [`typeof(${identifier})`, `hex(${identifier})`];
         });
     const order = orderColumns.length > 0 ? ` ORDER BY ${orderColumns.join(", ")}` : "";
-    const statement = db.prepare(
-      `SELECT * FROM ${quoteIdentifier(table.name)}${order} LIMIT ? OFFSET ?`,
-    );
-    let offset = 0;
-    db.exec("BEGIN DEFERRED TRANSACTION");
     try {
+      const statement = db.prepare(
+        `SELECT * FROM ${quoteIdentifier(table.name)}${order} LIMIT ? OFFSET ?`,
+      );
+      let offset = 0;
+      db.exec("BEGIN DEFERRED TRANSACTION");
       while (!options.signal?.aborted) {
         const rows = statement.all(batchSize, offset) as Array<Record<string, unknown>>;
         if (rows.length === 0) break;
@@ -267,7 +275,14 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
         throw new DOMException("Database export cancelled", "AbortError");
       }
     } finally {
-      db.exec("ROLLBACK");
+      // Closing discards the transaction anyway; the explicit ROLLBACK states
+      // the intent, and must not mask an in-flight error if it fails.
+      try {
+        db.exec("ROLLBACK");
+      } catch {
+        // No active transaction — BEGIN itself failed, or the scan never ran.
+      }
+      db.close();
     }
   }
 
