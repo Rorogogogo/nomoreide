@@ -1,6 +1,8 @@
 # NoMoreIDE
 
-NoMoreIDE is an AI-native local development workbench for services, logs, Git review, GitHub PR/issues/Actions workflows, database inspection, SQL review, terminal access, and MCP workflows.
+NoMoreIDE is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and portable agent environments.
+
+Documentation reviewed for NoMoreIDE v0.1.99 in August 2026.
 
 Primary documentation:
 - Human docs: https://www.nomoreide.com/docs
@@ -9,7 +11,12 @@ Primary documentation:
 - GitHub: https://github.com/Rorogogogo/nomoreide
 - npm: https://www.npmjs.com/package/nomoreide
 
-Quick setup:
+Recommended setup (MCP plus the bundled nomoreide-debug skill):
+npx -y nomoreide setup codex
+npx -y nomoreide setup claude
+npx -y nomoreide setup gemini
+
+Manual MCP-only setup:
 claude mcp add --transport stdio nomoreide -- npx -y nomoreide
 codex mcp add nomoreide -- npx -y nomoreide
 

@@ -14,6 +14,9 @@ import { Button } from "./ui/button";
 const claudeSetup =
   "claude mcp add --transport stdio nomoreide -- npx -y nomoreide";
 const codexSetup = "codex mcp add nomoreide -- npx -y nomoreide";
+const recommendedSetup = `npx -y nomoreide setup codex
+npx -y nomoreide setup claude
+npx -y nomoreide setup gemini`;
 const geminiSetup = `{
   "mcpServers": {
     "nomoreide": {
@@ -27,7 +30,7 @@ const setupPrompt =
   "Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.";
 
 const sessionPrompt =
-  "Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; stage writes with a sql-write block so the human can review them in the Web UI SQL console.";
+  "Use NoMoreIDE as the shared local workbench for this session. Start by calling nomoreide_list_services and nomoreide_status. Before changing service state, check nomoreide_service_health and recent logs. For Git and GitHub work, inspect status, diffs, PRs, issues, and CI before staging, committing, or merging. For database work, keep MCP queries read-only; return one statement in a standard sql fence, identify the target connection, and direct the human to review it in the locked Web UI SQL console.";
 
 const localServiceCommand = `nomoreide add service backend \\
   --command "npm run dev" \\
@@ -78,24 +81,74 @@ const gitTools = [
   "nomoreide_git_stage",
   "nomoreide_git_unstage",
   "nomoreide_git_commit",
+  "nomoreide_git_push",
+  "nomoreide_git_clone",
   "nomoreide_git_register_repository",
   "nomoreide_git_select_repository",
+  "nomoreide_git_worktrees",
+  "nomoreide_git_create_worktree",
+  "nomoreide_git_select_worktree",
+  "nomoreide_git_prune_worktrees",
+];
+
+const snapshotTools = [
+  "nomoreide_snapshots_list",
+  "nomoreide_snapshot_create",
+];
+
+const databaseTools = [
+  "nomoreide_list_databases",
+  "nomoreide_register_database",
+  "nomoreide_check_database",
+  "nomoreide_db_schemas",
+  "nomoreide_db_objects",
+  "nomoreide_db_object_details",
+  "nomoreide_db_tables",
+  "nomoreide_db_sample",
+  "nomoreide_db_query",
+];
+
+const vercelTools = [
+  "nomoreide_vercel_list_projects",
+  "nomoreide_vercel_list_deployments",
+  "nomoreide_vercel_get_deployment",
+  "nomoreide_vercel_deployment_logs",
+];
+
+const agentEnvironmentTools = [
+  "nomoreide_agents_status",
+  "nomoreide_agents_read_configs",
+  "nomoreide_agents_doctor",
+  "nomoreide_agents_add_mcp",
+  "nomoreide_agents_remove_mcp",
+  "nomoreide_agents_move_mcp_scope",
+  "nomoreide_agents_move_skill_scope",
+  "nomoreide_agents_snapshot_agent",
+];
+
+const profileTools = [
+  "nomoreide_profiles_list",
+  "nomoreide_profiles_get",
+  "nomoreide_profiles_create",
+  "nomoreide_profiles_update",
+  "nomoreide_profiles_delete",
+  "nomoreide_profiles_snapshot",
+  "nomoreide_profiles_apply",
+  "nomoreide_profiles_export",
+  "nomoreide_profiles_import",
+  "nomoreide_profiles_copy_items",
+  "nomoreide_profiles_publish",
+  "nomoreide_profiles_install_from_registry",
+  "nomoreide_profiles_register_github",
 ];
 
 const toolGroups = [
   { title: "Service tools", tools: serviceTools },
   { title: "Repo onboarding", tools: ["nomoreide_onboard_repo"] },
   { title: "Git tools", tools: gitTools },
+  { title: "Snapshots", tools: snapshotTools },
   { title: "Error tools", tools: ["nomoreide_list_errors", "nomoreide_error_prompt"] },
-  {
-    title: "Database tools",
-    tools: [
-      "nomoreide_list_databases",
-      "nomoreide_db_tables",
-      "nomoreide_db_sample",
-      "nomoreide_db_query",
-    ],
-  },
+  { title: "Database tools", tools: databaseTools },
   {
     title: "GitHub tools",
     tools: [
@@ -114,7 +167,11 @@ const toolGroups = [
       "nomoreide_github_list_workflow_runs",
     ],
   },
-  { title: "Agent and UI tools", tools: ["nomoreide_open_ui", "nomoreide_close_ui"] },
+  { title: "Vercel tools", tools: vercelTools },
+  { title: "Documentation", tools: ["nomoreide_docs"] },
+  { title: "Agent and UI", tools: ["nomoreide_open_ui", "nomoreide_close_ui"] },
+  { title: "Agent environments", tools: agentEnvironmentTools },
+  { title: "Agent profiles and registry", tools: profileTools },
 ];
 
 const toc = [
@@ -192,7 +249,7 @@ export function DocsPage() {
           <section className="border-b border-border pb-10">
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <BookOpen className="size-4" />
-              Human guide and AI-fetchable reference
+              Reviewed for v0.1.99 · August 2026
             </div>
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight md:text-6xl">
               NoMoreIDE documentation
@@ -225,8 +282,8 @@ export function DocsPage() {
             <p>
               NoMoreIDE gives coding agents and humans a shared local control
               surface. It runs as a stdio MCP server, CLI, TUI, and local web
-              dashboard, all backed by the same core service, log, Git, database,
-              GitHub, workflow, and diagnostic modules.
+              or macOS desktop dashboard, all backed by the same service, log,
+              Git, GitHub, Vercel, database, workflow, and diagnostic modules.
             </p>
             <InfoGrid
               items={[
@@ -244,9 +301,12 @@ export function DocsPage() {
             title="MCP Setup"
           >
             <p>
-              Register NoMoreIDE as a local stdio MCP server, restart the agent
-              if required, then verify the server with <code>/mcp</code>.
+              The recommended setup installs both the local stdio MCP server and
+              the <code>nomoreide-debug</code> skill. Start a new agent session,
+              then verify the server with <code>/mcp</code>. Use the manual
+              commands below when you only want the MCP connection.
             </p>
+            <CodeBlock code={recommendedSetup} />
             <CodeBlock code={claudeSetup} />
             <CodeBlock code={codexSetup} />
             <CodeBlock code={geminiSetup} language="json" />
@@ -264,6 +324,7 @@ export function DocsPage() {
                 ["MCP server", "`nomoreide` starts the stdio server for connected agents."],
                 ["Terminal UI", "`nomoreide tui` opens the terminal interface."],
                 ["Web dashboard", "`nomoreide web` serves `http://127.0.0.1:4317` by default."],
+                ["macOS desktop", "Download the standalone app from GitHub Releases for a native dashboard without a separate Node backend."],
               ]}
             />
             <CodeBlock code={`nomoreide
@@ -303,14 +364,17 @@ nomoreide logs backend`}
             <InfoGrid
               items={[
                 ["Services", "Register local, Docker Compose, and SSH-backed services; start, stop, restart, and inspect health."],
-                ["Logs", "Read recent stdout and stderr in service context."],
-                ["Git Review", "Inspect status, diffs, staged diffs, branches, history, and commit reviewed staged work."],
-                ["GitHub", "Review PRs, issues, comments, CI status, and GitHub Actions workflow runs from the Git view."],
-                ["Workflows", "Run built-in commit/push/ship flows or author reusable action, agent, and approval-gate workflows."],
-                ["Error Inbox", "Review deduped stack traces and generate debugging prompts."],
-                ["Database", "Inspect tables, run read queries, generate SQL, and use unlock + preview + commit for human-approved writes."],
-                ["Terminal", "Keep shell work near service, Git, and agent context."],
-                ["Agent tools", "Inspect MCP servers, skills, plugins, hooks, usage, and recent tool-call activity."],
+                ["Activity", "Monitor process CPU, memory, energy impact, ports, and runtime health across projects."],
+                ["Docker", "Inspect containers, images, volumes, networks, Compose projects, logs, and resource details."],
+                ["Git Review", "Review multiple repositories, clone projects, manage branches and worktrees, inspect diffs/history, and create safe snapshots."],
+                ["GitHub", "Switch accounts and review PRs, issues, comments, CI status, branches, and Actions workflow runs."],
+                ["Vercel", "Inspect linked projects, deployments, production state, build logs, and all-project status; dashboard-only controls handle deployment mutations."],
+                ["Workflows", "Run commit/push/ship flows or author action, isolated-agent, approval-gate, resumable, and event-triggered workflows."],
+                ["Error Inbox", "Review deduplicated incidents and move through snapshot, agent fix, and reviewable change-set loops."],
+                ["Database", "Browse schemas and database objects, inspect definitions, query data, generate SQL, and gate writes behind unlock, preview, and commit."],
+                ["Terminal", "Use project shells, split agent task terminals, and a draggable bottom or side agent dock."],
+                ["Agent Environments", "Inspect and move MCPs, skills, and plugins; snapshot, apply, export, publish, and install portable profiles."],
+                ["Settings", "Search global and project-scoped preferences, including language, theme, accent, runtime, and agent configuration."],
               ]}
             />
           </Section>
@@ -363,6 +427,10 @@ nomoreide logs backend`}
                 ["databases", "Postgres, MySQL, and SQLite connection definitions."],
                 ["logSources", "File, SSH, command, journald, or Docker log readers."],
                 ["selectedGitRepository", "The active repository shown by the dashboard."],
+                ["githubTokens / githubIdentities", "Per-host tokens and selectable GitHub author/account identities."],
+                ["vercel", "The selected Vercel authentication scope and team connection."],
+                ["workflows", "Saved action, agent, and approval-gate workflows."],
+                ["workflowTriggers", "Event bindings that automatically start saved workflows."],
               ]}
             />
           </Section>
@@ -383,6 +451,8 @@ nomoreide logs backend`}
                 "Database MCP tools are read-only; writes are staged for the human-only SQL console.",
                 "Database writes require an explicit unlock and affected-rows preview before commit.",
                 "GitHub merge and comment tools require a configured token and explicit user intent.",
+                "Vercel MCP tools are read-only; redeploy, cancel, promote, and rollback stay in the human dashboard.",
+                "Agent environment changes create backups and profile credentials are redacted before export or publish.",
                 "SSH services rely on the user's local SSH config and ssh-agent.",
                 "Managed service logs are scoped to .nomoreide/logs/.",
               ].map((item) => (
@@ -411,7 +481,7 @@ nomoreide logs backend`}
                 ["Git review", "Inspect status and diffs before staging or committing."],
                 ["GitHub review", "Check PRs, issues, CI, and workflow runs before merge decisions."],
                 ["Database inspection", "List connections, list tables, sample rows, and keep MCP queries read-only."],
-                ["Database writes", "Return a sql-write block so the Web UI can stage the statement for human preview and commit."],
+                ["Database writes", "Return one statement in a standard SQL fence, identify the connection, and direct the human to the locked SQL console for preview and commit."],
               ]}
             />
           </Section>
