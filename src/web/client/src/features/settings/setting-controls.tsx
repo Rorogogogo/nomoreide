@@ -31,7 +31,7 @@ export function SaveStatus({ state, error }: { state: SettingsSaveState; error: 
 
 export function SettingRow({ id, label, description, children, disabled = false }: { id: string; label: string; description: string; children: ReactNode; disabled?: boolean }) {
   return (
-    <div className={cn("settings-row grid gap-3 border-b border-border/50 px-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center", disabled && "opacity-55")}>
+    <div className={cn("settings-row grid gap-3 border-b border-border/50 px-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center", disabled && "opacity-55")} data-setting-anchor={id} tabIndex={-1}>
       <div className="min-w-0">
         <label className="text-sm font-medium" htmlFor={id}>{label}</label>
         <p className="mt-0.5 max-w-xl text-xs leading-5 text-muted-foreground" id={`${id}-description`}>{description}</p>
@@ -102,8 +102,8 @@ export function SettingNumberInput({ id, label, description, value, min, max, on
   );
 }
 
-export function ManagementRow({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return <div className="settings-row flex flex-col items-stretch justify-between gap-3 border-b border-border/50 px-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4"><div className="min-w-0"><div className="text-sm font-medium">{title}</div><p className="mt-0.5 break-words text-xs leading-5 text-muted-foreground">{description}</p></div>{action ? <div className="w-full shrink-0 [&_button]:w-full sm:w-auto sm:[&_button]:w-auto">{action}</div> : null}</div>;
+export function ManagementRow({ title, description, action, id }: { title: string; description: string; action?: ReactNode; id?: string }) {
+  return <div className="settings-row flex flex-col items-stretch justify-between gap-3 border-b border-border/50 px-4 last:border-b-0 sm:flex-row sm:items-center sm:gap-4" id={id} tabIndex={id ? -1 : undefined}><div className="min-w-0"><div className="text-sm font-medium">{title}</div><p className="mt-0.5 break-words text-xs leading-5 text-muted-foreground">{description}</p></div>{action ? <div className="w-full shrink-0 [&_button]:w-full sm:w-auto sm:[&_button]:w-auto">{action}</div> : null}</div>;
 }
 
 export function UnavailableSetting({ children }: { children: ReactNode }) {

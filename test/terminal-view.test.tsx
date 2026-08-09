@@ -10,8 +10,10 @@ import {
   connectWebTerminal,
   createTerminalOutputBuffer,
   createTerminalViewportHandle,
+  isRecoverableTerminalSpawnError,
   scheduleTerminalActivation,
   sendWebTerminalControl,
+  TERMINAL_RESIZE_SETTLE_MS,
   TerminalViewport,
   type TerminalViewportStatus,
 } from "../src/web/client/src/features/terminal/terminal-viewport";
@@ -174,6 +176,11 @@ describe("TerminalViewport", () => {
     expect(markup).not.toContain("Stop");
   });
 
+  test("recognizes only the actionable node-pty spawn failure", () => {
+    expect(isRecoverableTerminalSpawnError("posix_spawnp failed.")).toBe(true);
+    expect(isRecoverableTerminalSpawnError("shell exited with code 1")).toBe(false);
+  });
+
   test("stays rendered while inactive", () => {
     const markup = renderToStaticMarkup(
       <TerminalViewport active={false} sessionId="term_hidden" />,
@@ -314,7 +321,7 @@ describe("TerminalViewport", () => {
     const focus = vi.fn();
     const refit = vi.fn();
     const fit = { proposeDimensions: vi.fn(() => ({ cols: 91, rows: 27 })) };
-    const sendControl = (type: "restart" | "stop") =>
+    const sendControl = (type: "repair" | "restart" | "stop") =>
       sendWebTerminalControl(socket, fit, type);
     const sendInput = (data: string) =>
       socket.send(JSON.stringify({ data, type: "input" }));
@@ -327,6 +334,7 @@ describe("TerminalViewport", () => {
       sendInput,
     });
 
+    handle.repair();
     handle.restart();
     handle.stop();
     handle.focus();
@@ -336,14 +344,18 @@ describe("TerminalViewport", () => {
 
     expect(socket.send).toHaveBeenNthCalledWith(
       1,
-      JSON.stringify({ cols: 91, rows: 27, type: "restart" }),
+      JSON.stringify({ cols: 91, rows: 27, type: "repair" }),
     );
     expect(socket.send).toHaveBeenNthCalledWith(
       2,
-      JSON.stringify({ cols: 91, rows: 27, type: "stop" }),
+      JSON.stringify({ cols: 91, rows: 27, type: "restart" }),
     );
     expect(socket.send).toHaveBeenNthCalledWith(
       3,
+      JSON.stringify({ cols: 91, rows: 27, type: "stop" }),
+    );
+    expect(socket.send).toHaveBeenNthCalledWith(
+      4,
       JSON.stringify({ data: "/verify ", type: "input" }),
     );
     expect(focus).toHaveBeenCalledOnce();
@@ -433,6 +445,30 @@ describe("TerminalViewport", () => {
     socket.readyState = 1;
     await act(async () => socket.emit("open", {}));
     expect(statuses.at(-1)?.state).toBe("running");
+    await act(async () =>
+      socket.emit("message", {
+        data: JSON.stringify({
+          cwd: "/repo",
+          error: "posix_spawnp failed.",
+          state: "error",
+          type: "state",
+        }),
+      }),
+    );
+    const repair = [...host.querySelectorAll("button")].find(
+      (button) => button.textContent === "Repair and retry",
+    );
+    expect(host.textContent).toContain("Terminal helper is not executable");
+    await act(async () => repair?.click());
+    expect(socket.send).toHaveBeenCalledWith(
+      JSON.stringify({ cols: 80, rows: 24, type: "repair" }),
+    );
+    await act(async () =>
+      socket.emit("message", {
+        data: JSON.stringify({ cwd: "/repo", state: "running", type: "state" }),
+      }),
+    );
+    expect(host.textContent).not.toContain("Terminal helper is not executable");
     viewportRef.current?.restart();
     viewportRef.current?.stop();
     viewportRef.current?.focus();
@@ -447,6 +483,27 @@ describe("TerminalViewport", () => {
 
     await act(async () => vi.runOnlyPendingTimers());
     terminal.focus.mockClear();
+    fit.fit.mockClear();
+    socket.send.mockClear();
+
+    // A CSS width transition reports many intermediate sizes. The viewport
+    // must wait for the final size so zsh receives only one resize/redraw.
+    await act(async () => {
+      observers[0]?.callback([], observers[0] as unknown as ResizeObserver);
+      vi.advanceTimersByTime(30);
+      observers[0]?.callback([], observers[0] as unknown as ResizeObserver);
+      vi.advanceTimersByTime(30);
+      observers[0]?.callback([], observers[0] as unknown as ResizeObserver);
+    });
+    expect(fit.fit).not.toHaveBeenCalled();
+    expect(socket.send).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(TERMINAL_RESIZE_SETTLE_MS));
+    expect(fit.fit).toHaveBeenCalledOnce();
+    expect(socket.send).toHaveBeenCalledOnce();
+    expect(socket.send).toHaveBeenCalledWith(
+      JSON.stringify({ cols: 80, rows: 24, type: "resize" }),
+    );
+
     fit.fit.mockClear();
     await act(async () => {
       root.render(

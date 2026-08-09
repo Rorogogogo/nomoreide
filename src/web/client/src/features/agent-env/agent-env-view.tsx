@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Puzzle, Stethoscope } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileWarning, Puzzle, Stethoscope } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { AgentColumn } from "./agent-column";
@@ -22,8 +23,18 @@ import { useT } from "@/lib/i18n";
  * preview → "Save & apply" gate (ROR-61), saved profiles with
  * snapshot/apply/export/import (ROR-62), and the hosted profile registry
  * (ROR-63) for sharing profiles by slug.
+ *
+ * `installSlug` carries the registry's "Open in NoMoreIDE" deep link
+ * (`/?install=<slug>`, parsed in app.tsx): the view opens on the Profiles tab
+ * and installs that slug once.
  */
-export function AgentEnvView() {
+export function AgentEnvView({
+  installSlug = null,
+  onInstallHandled,
+}: {
+  installSlug?: string | null;
+  onInstallHandled?: () => void;
+} = {}) {
   const t = useT();
   const { agents, configs, doctor, loading, error, refresh } = useAgentEnv();
   useRegisterRefresh(refresh);
@@ -32,7 +43,19 @@ export function AgentEnvView() {
   const profilesState = useProfiles(refresh);
   const registry = useRegistry(profilesState.refresh);
   const [publishing, setPublishing] = useState<string | null>(null);
-  const [tab, setTab] = useState<"agents" | "profiles">("agents");
+  const [tab, setTab] = useState<"agents" | "profiles">(installSlug ? "profiles" : "agents");
+
+  // One install per slug. `registry.install` is rebuilt whenever `busy` flips,
+  // so the effect re-runs mid-install; the ref is what keeps it to a single
+  // request (and absorbs StrictMode's double-mount in dev).
+  const installedSlug = useRef<string | null>(null);
+  useEffect(() => {
+    if (!installSlug || installedSlug.current === installSlug) return;
+    installedSlug.current = installSlug;
+    setTab("profiles");
+    void registry.install(installSlug, "confirm");
+    onInstallHandled?.();
+  }, [installSlug, onInstallHandled, registry.install]);
 
   const availabilityByAgent = new Map(agents.map((agent) => [agent.agent, agent]));
   const warnings = doctor?.checks.filter((check) => check.status !== "ok") ?? [];
@@ -95,6 +118,7 @@ export function AgentEnvView() {
         <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
           <ProfilesPanel
             busy={profilesState.busy}
+            loadError={profilesState.loadError}
             loading={profilesState.loading}
             onApply={profilesState.startApply}
             onChanged={profilesState.refresh}
@@ -103,6 +127,8 @@ export function AgentEnvView() {
             onImport={profilesState.importArchive}
             onPublish={setPublishing}
             onSnapshot={profilesState.snapshot}
+            onRefresh={profilesState.refreshOne}
+            onRetry={() => void profilesState.refresh()}
             profiles={profilesState.profiles}
           />
 
@@ -165,6 +191,37 @@ export function AgentEnvView() {
           onConfirm={() => void profilesState.confirmApply()}
           onToggle={profilesState.toggleSkip}
           pending={profilesState.pendingApply}
+        />
+      ) : null}
+
+      {registry.pendingOverwrite ? (
+        <ConfirmDialog
+          confirmLabel={t("agentEnv.replaceProfile")}
+          icon={<FileWarning />}
+          loading={registry.busy}
+          message={t("agentEnv.installCollisionBody", {
+            name: registry.pendingOverwrite.name,
+            slug: registry.pendingOverwrite.slug,
+          })}
+          onCancel={registry.cancelOverwrite}
+          onConfirm={() => void registry.confirmOverwrite()}
+          title={t("agentEnv.importCollisionTitle")}
+          tone="danger"
+        />
+      ) : null}
+
+      {profilesState.pendingImport ? (
+        <ConfirmDialog
+          confirmLabel={t("agentEnv.replaceProfile")}
+          icon={<FileWarning />}
+          loading={profilesState.busy}
+          message={t("agentEnv.importCollisionBody", {
+            name: profilesState.pendingImport.name,
+          })}
+          onCancel={profilesState.cancelImportReplace}
+          onConfirm={() => void profilesState.confirmImportReplace()}
+          title={t("agentEnv.importCollisionTitle")}
+          tone="danger"
         />
       ) : null}
     </div>

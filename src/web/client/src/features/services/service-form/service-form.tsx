@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GitRepositoryDefinition, ServiceDefinition } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { SshHostInput } from "@/features/servers/ssh-host-input";
 import { ProcessBadge } from "../process-badge";
 import { pathInScope } from "../project-scope";
 import { kindOptions, serviceCommandPresets } from "./presets";
@@ -238,10 +239,10 @@ export function ServiceForm({
           <legend className={legendClass}>{t("services.form.step3Ssh")}</legend>
           <Label>
             {t("services.form.sshHost")}
-            <Input
+            <SshHostInput
               className="h-8 font-mono text-sm"
               name="host"
-              onChange={(event) => setHost(event.target.value)}
+              onChange={setHost}
               placeholder="devbox"
               required
               value={host}

@@ -32,6 +32,8 @@ describe("NoMoreIDE docs MCP tool", () => {
     "cli",
     "dashboard",
     "tools",
+    "vercel",
+    "agent-environments",
     "safety",
     "troubleshooting",
     "architecture",

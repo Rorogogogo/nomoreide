@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
+import { NOMOREIDE_TOOL_NAMES } from "../src/mcp/server.js";
 
 const root = resolve(__dirname, "..");
 const appSource = readFileSync(resolve(root, "website/src/App.tsx"), "utf8");
@@ -14,6 +15,10 @@ const ctaSource = readFileSync(
 );
 const footerSource = readFileSync(
   resolve(root, "website/src/components/footer.tsx"),
+  "utf8",
+);
+const docsSource = readFileSync(
+  resolve(root, "website/src/components/docs-page.tsx"),
   "utf8",
 );
 
@@ -49,5 +54,25 @@ describe("website docs", () => {
     expect(full).toContain("Safety Model");
     expect(aiGuide).toContain("# NoMoreIDE AI Agent Guide");
     expect(aiGuide).toContain("nomoreide_list_services");
+    expect(docsSource).not.toContain("sql-write");
+    expect(full).not.toContain("sql-write");
+    expect(aiGuide).not.toContain("sql-write");
+  });
+
+  test("keeps every public tool reference aligned with the MCP registry", () => {
+    const full = readFileSync(
+      resolve(root, "website/public/llms-full.txt"),
+      "utf8",
+    );
+    const aiGuide = readFileSync(
+      resolve(root, "website/public/docs/ai-guide.md"),
+      "utf8",
+    );
+
+    for (const tool of NOMOREIDE_TOOL_NAMES) {
+      expect(docsSource, `${tool} is missing from the human docs`).toContain(tool);
+      expect(full, `${tool} is missing from llms-full.txt`).toContain(tool);
+      expect(aiGuide, `${tool} is missing from the AI guide`).toContain(tool);
+    }
   });
 });

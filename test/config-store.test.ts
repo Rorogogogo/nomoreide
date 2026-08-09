@@ -208,6 +208,7 @@ describe("ConfigStore", () => {
       gitRepositories: [],
       databases: [],
       logSources: [],
+      sshServers: [],
       githubTokens: [],
       workflows: [],
       githubIdentities: [],

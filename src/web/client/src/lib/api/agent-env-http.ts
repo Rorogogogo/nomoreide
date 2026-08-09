@@ -140,6 +140,14 @@ export const httpAgentEnvApi: AgentEnvApi = {
     return response.profile;
   },
 
+  async refreshAgentEnvProfile(name, agent) {
+    const response = await postJson<{ ok: true; profile: AgentEnvProfile }>(
+      `/api/agent-env/profiles/${encodeURIComponent(name)}/refresh`,
+      { agent },
+    );
+    return response.profile;
+  },
+
   async previewAgentEnvProfileApply(name, agent) {
     return postJson<AgentEnvProfileApplyPreview>(
       `/api/agent-env/profiles/${encodeURIComponent(name)}/apply-preview`,

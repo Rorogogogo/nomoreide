@@ -177,6 +177,39 @@ describe("headless result consumers", () => {
     expect(api.streamAgentChat).not.toHaveBeenCalled();
   });
 
+  test("stops SQL generation and ignores the aborted agent response", async () => {
+    let capturedSignal!: AbortSignal;
+    api.streamAgentChat.mockImplementation(
+      async (_prompt, _resume, _onEvent, signal: AbortSignal) => {
+        capturedSignal = signal;
+        await new Promise<void>((_resolve, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => reject(new DOMException("Aborted", "AbortError")),
+            { once: true },
+          );
+        });
+      },
+    );
+    const onGenerated = vi.fn();
+    const mounted = await mountHarness(() =>
+      useSqlGenerate("local", "postgres", false, onGenerated),
+    );
+
+    let generation!: Promise<void>;
+    act(() => {
+      generation = mounted.value.generate("show users");
+    });
+    await act(async () => Promise.resolve());
+    act(() => mounted.value.cancel());
+
+    expect(capturedSignal.aborted).toBe(true);
+    expect(mounted.value.generating).toBe(false);
+    await act(async () => generation);
+    expect(onGenerated).not.toHaveBeenCalled();
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("aborts a running workflow agent and does not refresh after unmount", async () => {
     const onRefresh = vi.fn();
     let capturedSignal!: AbortSignal;

@@ -12,6 +12,7 @@ import { prefixRoute, type Route } from "./context.js";
 export const shellPaths = new Set([
   "/",
   "/activity",
+  "/servers",
   "/docker",
   "/git",
   "/github",

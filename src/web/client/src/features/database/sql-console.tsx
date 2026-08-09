@@ -6,14 +6,17 @@ import {
   Lock,
   LockOpen,
   Play,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOperations } from "@/components/operations/operation-context";
 import { useToasts } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
+import { usePersistentState } from "@/lib/use-persistent-state";
 import { cn } from "@/lib/utils";
 import type { ColumnInfo, DatabaseEngine } from "@/lib/api";
 import { AgentMark } from "../agent/ai-spark";
+import { AgentWaveLoader } from "../agent/agent-wave-loader";
 import {
   AiContextTarget,
   type AiContextTargetDescriptor,
@@ -28,7 +31,15 @@ import {
 } from "./use-databases";
 import { useSqlGenerate } from "./use-sql-generate";
 import { formatCell } from "./table-grid";
+import { SqlQueryTabs } from "./saved-query-controls";
 import { UnlockDialog, WritePreviewDialog } from "./sql-write-dialogs";
+
+export interface SqlEditorAction {
+  connection: string;
+  mode: "insert" | "statement";
+  nonce: number;
+  sql: string;
+}
 
 /**
  * Ad-hoc SQL console. Locked by default: every statement runs read-only and
@@ -40,6 +51,7 @@ import { UnlockDialog, WritePreviewDialog } from "./sql-write-dialogs";
 export function SqlConsole({
   connection,
   engine,
+  editorAction,
   unlocked,
   seed,
   onWriteAccessChange,
@@ -47,6 +59,7 @@ export function SqlConsole({
 }: {
   connection: string;
   engine?: DatabaseEngine;
+  editorAction?: SqlEditorAction | null;
   unlocked: boolean;
   /** A statement staged from the dock agent, dropped into the editor (not run). */
   seed?: { sql: string; nonce: number } | null;
@@ -59,7 +72,11 @@ export function SqlConsole({
   const read = useSqlQuery(connection);
   const write = useSqlWrite(connection);
   const access = useWriteAccess(connection, onWriteAccessChange);
-  const [sql, setSql] = useState(seed?.sql ?? "");
+  const [sql, setSql] = usePersistentState(
+    `database:sql-draft:v1:${connection}`,
+    seed?.sql ?? "",
+  );
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [limit, setLimit] = useState<number>(() => preferences.resultLimit);
   const customizedLimitRef = useRef(false);
 
@@ -74,6 +91,20 @@ export function SqlConsole({
     if (seed) setSql(seed.sql);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seededNonce]);
+  const editorActionNonce = editorAction?.nonce;
+  useEffect(() => {
+    if (!editorAction || editorAction.connection !== connection) return;
+    const textarea = textareaRef.current;
+    setSql((current) => {
+      if (editorAction.mode === "statement") {
+        return current.trim() ? `${current.trimEnd()}\n\n${editorAction.sql}` : editorAction.sql;
+      }
+      const start = textarea?.selectionStart ?? current.length;
+      const end = textarea?.selectionEnd ?? start;
+      return `${current.slice(0, start)}${editorAction.sql}${current.slice(end)}`;
+    });
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [connection, editorActionNonce, setSql]);
   const [showUnlock, setShowUnlock] = useState(false);
   const generate = useSqlGenerate(connection, engine, unlocked, setSql);
 
@@ -85,7 +116,6 @@ export function SqlConsole({
   const running = read.running || write.previewing || write.committing;
   const writeOperationKey = `database:${connection}:write`;
   const writePending = isPending(writeOperationKey);
-
   function submit() {
     if (!sql.trim()) return;
     // Don't run a write read-only just to have the engine reject it — prompt the
@@ -127,9 +157,11 @@ export function SqlConsole({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <SqlQueryTabs connection={connection} setSql={setSql} sql={sql} />
       <div className="shrink-0 border-b border-border p-2">
         <GenerateField generate={generate} />
         <textarea
+          ref={textareaRef}
           value={sql}
           onChange={(event) => setSql(event.target.value)}
           onKeyDown={onKeyDown}
@@ -263,23 +295,35 @@ function GenerateField({ generate }: { generate: ReturnType<typeof useSqlGenerat
             onKeyDown={onKeyDown}
             disabled={generate.generating}
             placeholder={t("database.sql.generatePlaceholder")}
-            className="h-8 w-full rounded-md border border-border bg-background pl-7 pr-2 text-[12px] outline-none focus:border-ring disabled:opacity-60"
+            className={cn(
+              "h-8 w-full rounded-md border border-border bg-background pl-7 text-[12px] outline-none focus:border-ring disabled:opacity-60",
+              generate.generating ? "pr-44" : "pr-2",
+            )}
           />
+          {generate.generating ? (
+            <AgentWaveLoader
+              className="pointer-events-none absolute right-1 top-1/2 origin-right -translate-y-1/2 scale-[0.72]"
+              label={t("database.sql.generating")}
+            />
+          ) : null}
         </div>
         <Button
           size="sm"
           variant="outline"
-          className="h-8 px-3"
-          onClick={submit}
-          disabled={generate.generating || !intent.trim()}
+          className={cn(
+            "h-8 px-3",
+            generate.generating && "border-destructive/40 text-destructive hover:bg-destructive/10",
+          )}
+          onClick={generate.generating ? generate.cancel : submit}
+          disabled={!generate.generating && !intent.trim()}
           type="button"
         >
           {generate.generating ? (
-            <Loader2 className="size-3.5 animate-spin" />
+            <Square aria-hidden="true" className="size-3 fill-current" />
           ) : (
             <AgentMark className="size-3.5" />
           )}
-          {generate.generating ? t("database.sql.generating") : t("database.sql.askAi")}
+          {generate.generating ? t("database.sql.stopGenerating") : t("database.sql.askAi")}
         </Button>
       </div>
       {generate.error ? (

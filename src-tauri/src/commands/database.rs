@@ -1,10 +1,14 @@
 use crate::core::config::DatabaseDef;
 use crate::AppState;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
 use tauri::State;
+use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::sync::watch;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,6 +94,29 @@ pub struct ObjectRows {
     pub offset: i64,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RowFilter {
+    pub column: String,
+    pub operator: String,
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RowSort {
+    pub column: String,
+    pub direction: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RowBrowseQuery {
+    #[serde(default)]
+    pub filters: Vec<RowFilter>,
+    pub sort: Option<RowSort>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteOutcome {
@@ -108,6 +135,14 @@ pub struct DeleteDatabaseRowsInput {
     pub keys: Vec<serde_json::Map<String, Value>>,
     pub mode: String,
     pub expected_affected_rows: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DatabaseExportSummary {
+    rows_written: usize,
+    bytes_written: usize,
+    masked_columns: Vec<String>,
 }
 
 const MAX_DELETE_ROWS: usize = 500;
@@ -846,6 +881,7 @@ pub async fn sample_database_object(
     key: String,
     limit: Option<i64>,
     offset: Option<i64>,
+    query: Option<RowBrowseQuery>,
 ) -> Result<ObjectRows, String> {
     let database = connection(&state, &name).await?;
     let object = resolve_object(&database, &key).await?;
@@ -869,10 +905,14 @@ pub async fn sample_database_object(
         .map(|column| sample_column_expression(&database.engine, column))
         .collect::<Vec<_>>()
         .join(", ");
+    let (where_sql, order_by_sql) =
+        row_browse_clauses(&database.engine, &columns, query.unwrap_or_default())?;
     let result = run_query(
         &database.engine,
         &database.url,
-        &format!("SELECT {projection} FROM {table} LIMIT {limit} OFFSET {offset}"),
+        &format!(
+            "SELECT {projection} FROM {table}{where_sql}{order_by_sql} LIMIT {limit} OFFSET {offset}"
+        ),
     )
     .await?;
     let rows = result
@@ -906,6 +946,500 @@ pub async fn sample_database_object(
         limit,
         offset,
     })
+}
+
+fn row_browse_clauses(
+    engine: &str,
+    columns: &[ColumnInfo],
+    query: RowBrowseQuery,
+) -> Result<(String, String), String> {
+    if query.filters.len() > 8 {
+        return Err("A maximum of 8 row filters is supported.".into());
+    }
+    let column_names = columns
+        .iter()
+        .map(|column| column.name.as_str())
+        .collect::<HashSet<_>>();
+    let mut filters = Vec::with_capacity(query.filters.len());
+    for filter in query.filters {
+        if !column_names.contains(filter.column.as_str()) {
+            return Err(format!("Unknown filter column: {}", filter.column));
+        }
+        let column = quote_identifier(&filter.column, engine);
+        let expression = match filter.operator.as_str() {
+            "isNull" => format!("{column} IS NULL"),
+            "isNotNull" => format!("{column} IS NOT NULL"),
+            operator => {
+                let mut value = filter
+                    .value
+                    .ok_or_else(|| "This row filter requires a value.".to_string())?;
+                if value.chars().count() > 2_000 {
+                    return Err("Row filter values must be 2,000 characters or fewer.".into());
+                }
+                let sql_operator = match operator {
+                    "eq" => "=",
+                    "neq" => "<>",
+                    "gt" => ">",
+                    "gte" => ">=",
+                    "lt" => "<",
+                    "lte" => "<=",
+                    "contains" | "startsWith" | "endsWith" => {
+                        value = value
+                            .replace('!', "!!")
+                            .replace('%', "!%")
+                            .replace('_', "!_");
+                        if operator != "startsWith" {
+                            value.insert(0, '%');
+                        }
+                        if operator != "endsWith" {
+                            value.push('%');
+                        }
+                        "LIKE"
+                    }
+                    _ => return Err(format!("Unsupported row filter operator: {operator}")),
+                };
+                let like_escape = if sql_operator == "LIKE" {
+                    " ESCAPE '!'"
+                } else {
+                    ""
+                };
+                format!(
+                    "{column} {sql_operator} {}{like_escape}",
+                    sql_literal(&value)
+                )
+            }
+        };
+        filters.push(expression);
+    }
+
+    let mut order = Vec::new();
+    if let Some(sort) = query.sort {
+        if !column_names.contains(sort.column.as_str()) {
+            return Err(format!("Unknown sort column: {}", sort.column));
+        }
+        let direction = match sort.direction.as_str() {
+            "asc" => "ASC",
+            "desc" => "DESC",
+            _ => return Err("Sort direction must be asc or desc.".into()),
+        };
+        order.push((sort.column, direction));
+    }
+    for column in columns.iter().filter(|column| column.primary_key) {
+        if !order.iter().any(|(name, _)| name == &column.name) {
+            order.push((column.name.clone(), "ASC"));
+        }
+    }
+
+    Ok((
+        if filters.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", filters.join(" AND "))
+        },
+        if order.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " ORDER BY {}",
+                order
+                    .into_iter()
+                    .map(|(column, direction)| format!(
+                        "{} {direction}",
+                        quote_identifier(&column, engine)
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        },
+    ))
+}
+
+#[tauri::command]
+pub async fn export_database_object(
+    state: State<'_, AppState>,
+    request_id: String,
+    name: String,
+    key: String,
+    format: String,
+    path: String,
+) -> Result<DatabaseExportSummary, String> {
+    if format != "csv" && format != "json" {
+        return Err("format must be csv or json".into());
+    }
+    let (cancel_tx, cancel_rx) = watch::channel(false);
+    {
+        let mut exports = state.database_exports.lock().await;
+        match exports.remove(&request_id) {
+            Some(None) => return Err("Database export cancelled".into()),
+            Some(Some(existing)) => {
+                exports.insert(request_id, Some(existing));
+                return Err("A database export with this request ID already exists".into());
+            }
+            None => {
+                exports.insert(request_id.clone(), Some(cancel_tx));
+            }
+        }
+    }
+    let outcome = async {
+        let database = connection(&state, &name).await?;
+        let object = resolve_object(&database, &key).await?;
+        if !matches!(object.kind.as_str(), "table" | "view" | "materializedView") {
+            return Err("This database object cannot be exported".into());
+        }
+        let columns = columns_for(&database, &object).await?;
+        let destination = PathBuf::from(path);
+        if destination.file_name().is_none() || destination.is_dir() {
+            return Err("A valid export file path is required".into());
+        }
+        export_object_to_file(
+            &database,
+            &object,
+            &columns,
+            &format,
+            &destination,
+            &request_id,
+            cancel_rx,
+        )
+        .await
+    }
+    .await;
+    state.database_exports.lock().await.remove(&request_id);
+    outcome
+}
+
+#[tauri::command]
+pub async fn cancel_database_export(
+    state: State<'_, AppState>,
+    request_id: String,
+) -> Result<(), String> {
+    let mut exports = state.database_exports.lock().await;
+    match exports.get(&request_id) {
+        Some(Some(cancel)) => {
+            let _ = cancel.send(true);
+        }
+        Some(None) => {}
+        None => {
+            if exports.len() >= 128 {
+                if let Some(stale) = exports
+                    .iter()
+                    .find_map(|(id, sender)| sender.is_none().then(|| id.clone()))
+                {
+                    exports.remove(&stale);
+                }
+            }
+            exports.insert(request_id, None);
+        }
+    }
+    Ok(())
+}
+
+async fn export_object_to_file(
+    database: &DatabaseDef,
+    object: &CatalogObject,
+    columns: &[ColumnInfo],
+    format: &str,
+    destination: &Path,
+    request_id: &str,
+    cancel: watch::Receiver<bool>,
+) -> Result<DatabaseExportSummary, String> {
+    let filename = destination
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "A valid UTF-8 export filename is required".to_string())?;
+    let part = destination.with_file_name(format!(".{filename}.{request_id}.part"));
+    let outcome = async {
+        if *cancel.borrow() {
+            return Err("Database export cancelled".to_string());
+        }
+        let file = tokio::fs::File::create(&part)
+            .await
+            .map_err(|error| error.to_string())?;
+        let mut writer = ExportFileWriter::new(file, format, columns).await?;
+        export_engine_rows(database, object, columns, &mut writer, cancel.clone()).await?;
+        if *cancel.borrow() {
+            return Err("Database export cancelled".to_string());
+        }
+        writer.finish().await?;
+        if *cancel.borrow() {
+            return Err("Database export cancelled".to_string());
+        }
+        let summary = writer.summary();
+        publish_export_file(&part, destination).await?;
+        Ok(summary)
+    }
+    .await;
+    if outcome.is_err() {
+        let _ = tokio::fs::remove_file(&part).await;
+    }
+    outcome
+}
+
+#[cfg(not(target_os = "windows"))]
+async fn publish_export_file(part: &Path, destination: &Path) -> Result<(), String> {
+    tokio::fs::rename(part, destination)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "windows")]
+async fn publish_export_file(part: &Path, destination: &Path) -> Result<(), String> {
+    if !destination.exists() {
+        return tokio::fs::rename(part, destination)
+            .await
+            .map_err(|error| error.to_string());
+    }
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        ReplaceFileW, REPLACEFILE_IGNORE_MERGE_ERRORS,
+    };
+    let wide = |path: &Path| {
+        path.as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect::<Vec<_>>()
+    };
+    let destination = wide(destination);
+    let replacement = wide(part);
+    let replaced = unsafe {
+        ReplaceFileW(
+            destination.as_ptr(),
+            replacement.as_ptr(),
+            std::ptr::null(),
+            REPLACEFILE_IGNORE_MERGE_ERRORS,
+            std::ptr::null(),
+            std::ptr::null(),
+        )
+    };
+    if replaced == 0 {
+        Err(std::io::Error::last_os_error().to_string())
+    } else {
+        Ok(())
+    }
+}
+
+async fn export_engine_rows(
+    database: &DatabaseDef,
+    object: &CatalogObject,
+    columns: &[ColumnInfo],
+    writer: &mut ExportFileWriter,
+    cancel: watch::Receiver<bool>,
+) -> Result<(), String> {
+    let table = if database.engine == "sqlite" {
+        quote_identifier(&object.name, &database.engine)
+    } else {
+        format!(
+            "{}.{}",
+            quote_identifier(&object.schema, &database.engine),
+            quote_identifier(&object.name, &database.engine)
+        )
+    };
+    let projection = columns
+        .iter()
+        .map(|column| export_column_expression(&database.engine, column))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let primary_keys = columns
+        .iter()
+        .filter(|column| column.primary_key)
+        .map(|column| quote_identifier(&column.name, &database.engine))
+        .collect::<Vec<_>>();
+    let order_columns = if primary_keys.is_empty() {
+        columns
+            .iter()
+            .map(|column| export_order_expression(&database.engine, column))
+            .collect::<Vec<_>>()
+    } else {
+        primary_keys
+    };
+    let order = if order_columns.is_empty() {
+        String::new()
+    } else {
+        format!(" ORDER BY {}", order_columns.join(", "))
+    };
+    let sql = format!("SELECT {projection} FROM {table}{order}");
+    match database.engine.as_str() {
+        "postgres" => export_postgres_rows(&database.url, &sql, writer, cancel).await,
+        "mysql" => export_mysql_rows(&database.url, &sql, writer, cancel).await,
+        "sqlite" => export_sqlite_rows(&database.url, &sql, writer, cancel).await,
+        _ => Err(format!("Unsupported engine: {}", database.engine)),
+    }
+}
+
+fn export_column_expression(engine: &str, column: &ColumnInfo) -> String {
+    let identifier = quote_identifier(&column.name, engine);
+    let data_type = column.data_type.to_ascii_lowercase();
+    let native = match engine {
+        "postgres" => [
+            "boolean", "bool", "smallint", "int2", "integer", "int4", "bigint", "int8",
+            "real", "float4", "double precision", "float8", "json", "jsonb", "bytea", "text",
+            "name", "character", "char", "character varying", "varchar",
+        ]
+        .iter()
+        .any(|kind| data_type == *kind || data_type.starts_with(&format!("{kind}("))),
+        "mysql" => {
+            !data_type.contains("unsigned")
+                && (["tinyint", "smallint", "mediumint", "int", "integer", "bigint", "float", "double", "json"]
+                    .iter()
+                    .any(|kind| data_type == *kind || data_type.starts_with(&format!("{kind}(")))
+                    || data_type.contains("char")
+                    || data_type.contains("text")
+                    || data_type.contains("blob")
+                    || data_type.contains("binary")
+                    || data_type.starts_with("enum(")
+                    || data_type.starts_with("set("))
+        }
+        "sqlite" => {
+            data_type.contains("int")
+                || data_type.contains("real")
+                || data_type.contains("floa")
+                || data_type.contains("doub")
+                || data_type.contains("blob")
+                || data_type.contains("char")
+                || data_type.contains("clob")
+                || data_type.contains("text")
+        }
+        _ => false,
+    };
+    if native {
+        identifier
+    } else {
+        match engine {
+            "mysql" => format!("CAST({identifier} AS CHAR) AS {identifier}"),
+            _ => format!("CAST({identifier} AS TEXT) AS {identifier}"),
+        }
+    }
+}
+
+fn export_order_expression(engine: &str, column: &ColumnInfo) -> String {
+    let identifier = quote_identifier(&column.name, engine);
+    match engine {
+        "postgres" => format!(
+            "({identifier} IS NOT NULL), encode(convert_to(CAST({identifier} AS TEXT), 'UTF8'), 'hex') COLLATE \"C\""
+        ),
+        "mysql" => format!(
+            "({identifier} IS NOT NULL), HEX(CAST({identifier} AS BINARY))"
+        ),
+        _ => format!("typeof({identifier}), hex({identifier})"),
+    }
+}
+
+struct ExportFileWriter {
+    writer: BufWriter<tokio::fs::File>,
+    format: String,
+    columns: Vec<String>,
+    first_json_row: bool,
+    rows_written: usize,
+    bytes_written: usize,
+    masked_columns: Vec<String>,
+}
+
+impl ExportFileWriter {
+    async fn new(
+        file: tokio::fs::File,
+        format: &str,
+        columns: &[ColumnInfo],
+    ) -> Result<Self, String> {
+        let names = columns.iter().map(|column| column.name.clone()).collect::<Vec<_>>();
+        let masked_columns = names
+            .iter()
+            .filter(|name| is_sensitive_preview_column(name))
+            .cloned()
+            .collect();
+        let mut export = Self {
+            writer: BufWriter::new(file),
+            format: format.to_string(),
+            columns: names,
+            first_json_row: true,
+            rows_written: 0,
+            bytes_written: 0,
+            masked_columns,
+        };
+        if format == "csv" {
+            let header = format!(
+                "{}\r\n",
+                export.columns.iter().map(|name| csv_export_cell(name, true)).collect::<Vec<_>>().join(",")
+            );
+            export.write(header.as_bytes()).await?;
+        } else {
+            export.write(b"[").await?;
+        }
+        Ok(export)
+    }
+
+    async fn row(&mut self, values: Vec<Value>) -> Result<(), String> {
+        let masked = self
+            .columns
+            .iter()
+            .cloned()
+            .zip(values)
+            .map(|(column, value)| {
+                let value = if is_sensitive_preview_column(&column) && !value.is_null() {
+                    Value::String("••••".into())
+                } else {
+                    value
+                };
+                (column, value)
+            })
+            .collect::<Vec<_>>();
+        let chunk = if self.format == "csv" {
+            format!(
+                "{}\r\n",
+                masked.iter().map(|(_, value)| csv_export_value(value)).collect::<Vec<_>>().join(",")
+            )
+        } else {
+            let row = masked.into_iter().collect::<serde_json::Map<String, Value>>();
+            format!(
+                "{}{}",
+                if self.first_json_row { "" } else { "," },
+                serde_json::to_string(&row).map_err(|error| error.to_string())?
+            )
+        };
+        self.first_json_row = false;
+        self.write(chunk.as_bytes()).await?;
+        self.rows_written += 1;
+        Ok(())
+    }
+
+    async fn finish(&mut self) -> Result<(), String> {
+        if self.format == "json" {
+            self.write(b"]\n").await?;
+        }
+        self.writer.flush().await.map_err(|error| error.to_string())
+    }
+
+    async fn write(&mut self, bytes: &[u8]) -> Result<(), String> {
+        self.writer.write_all(bytes).await.map_err(|error| error.to_string())?;
+        self.bytes_written += bytes.len();
+        Ok(())
+    }
+
+    fn summary(&self) -> DatabaseExportSummary {
+        DatabaseExportSummary {
+            rows_written: self.rows_written,
+            bytes_written: self.bytes_written,
+            masked_columns: self.masked_columns.clone(),
+        }
+    }
+}
+
+fn csv_export_value(value: &Value) -> String {
+    match value {
+        Value::Null => String::new(),
+        Value::String(value) => csv_export_cell(value, true),
+        _ => csv_export_cell(&serde_json::to_string(value).unwrap_or_default(), false),
+    }
+}
+
+fn csv_export_cell(value: &str, spreadsheet_safe: bool) -> String {
+    let dangerous = spreadsheet_safe
+        && (value.starts_with(['\t', '\r'])
+            || value.trim_start().starts_with(['=', '+', '-', '@']));
+    let text = if dangerous { format!("'{value}") } else { value.to_string() };
+    if text.contains([',', '"', '\r', '\n']) {
+        format!("\"{}\"", text.replace('"', "\"\""))
+    } else {
+        text
+    }
 }
 
 fn sample_column_expression(engine: &str, column: &ColumnInfo) -> String {
@@ -1104,6 +1638,207 @@ async fn run_query(engine: &str, url: &str, sql: &str) -> Result<QueryResult, St
         "sqlite" => query_sqlite(url, sql).await,
         "mysql" => query_mysql(url, sql).await,
         _ => Err(format!("Unsupported engine: {engine}")),
+    }
+}
+
+async fn export_postgres_rows(
+    url: &str,
+    sql: &str,
+    writer: &mut ExportFileWriter,
+    mut cancel: watch::Receiver<bool>,
+) -> Result<(), String> {
+    use sqlx::postgres::PgPool;
+
+    let pool = PgPool::connect(url).await.map_err(|error| error.to_string())?;
+    let mut transaction = pool.begin().await.map_err(|error| error.to_string())?;
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| error.to_string())?;
+    sqlx::query("SET TRANSACTION READ ONLY")
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut rows = sqlx::query(sql).fetch(&mut *transaction);
+    loop {
+        if *cancel.borrow() {
+            return Err("Database export cancelled".into());
+        }
+        let next = tokio::select! {
+            changed = cancel.changed() => {
+                changed.map_err(|error| error.to_string())?;
+                return Err("Database export cancelled".into());
+            }
+            row = rows.try_next() => row.map_err(|error| error.to_string())?,
+        };
+        let Some(row) = next else { break };
+        writer.row(postgres_export_values(&row)?).await?;
+    }
+    drop(rows);
+    transaction.rollback().await.map_err(|error| error.to_string())
+}
+
+fn postgres_export_values(row: &sqlx::postgres::PgRow) -> Result<Vec<Value>, String> {
+    use sqlx::{Column, Row, TypeInfo};
+    (0..row.len())
+        .map(|index| {
+            let type_name = row.column(index).type_info().name().to_uppercase();
+            let decoded = match type_name.as_str() {
+                "BOOL" => row.try_get::<Option<bool>, _>(index).map(|value| value.map(Value::Bool)),
+                "INT2" | "SMALLINT" | "SMALLSERIAL" => row.try_get::<Option<i16>, _>(index).map(|value| value.map(|value| json!(value))),
+                "INT4" | "INT" | "INTEGER" | "SERIAL" => row.try_get::<Option<i32>, _>(index).map(|value| value.map(|value| json!(value))),
+                "INT8" | "BIGINT" | "BIGSERIAL" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| Value::String(value.to_string()))),
+                "FLOAT4" | "REAL" => row.try_get::<Option<f32>, _>(index).map(|value| value.map(|value| json!(value))),
+                "FLOAT8" | "DOUBLE PRECISION" => row.try_get::<Option<f64>, _>(index).map(|value| value.map(|value| json!(value))),
+                "JSON" | "JSONB" => row.try_get::<Option<Value>, _>(index),
+                "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(index).map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
+                _ => row.try_get::<Option<String>, _>(index).map(|value| value.map(Value::String)),
+            };
+            decoded
+                .map(|value| value.unwrap_or(Value::Null))
+                .map_err(|error| format!("Could not decode PostgreSQL export column {}: {error}", index + 1))
+        })
+        .collect()
+}
+
+async fn export_mysql_rows(
+    url: &str,
+    sql: &str,
+    writer: &mut ExportFileWriter,
+    mut cancel: watch::Receiver<bool>,
+) -> Result<(), String> {
+    use sqlx::mysql::MySqlPool;
+
+    let pool = MySqlPool::connect(url).await.map_err(|error| error.to_string())?;
+    let mut connection = pool.acquire().await.map_err(|error| error.to_string())?;
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        .execute(&mut *connection)
+        .await
+        .map_err(|error| error.to_string())?;
+    sqlx::query("START TRANSACTION READ ONLY")
+        .execute(&mut *connection)
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut rows = sqlx::query(sql).fetch(&mut *connection);
+    loop {
+        if *cancel.borrow() {
+            return Err("Database export cancelled".into());
+        }
+        let next = tokio::select! {
+            changed = cancel.changed() => {
+                changed.map_err(|error| error.to_string())?;
+                return Err("Database export cancelled".into());
+            }
+            row = rows.try_next() => row.map_err(|error| error.to_string())?,
+        };
+        let Some(row) = next else { break };
+        writer.row(mysql_export_values(&row)?).await?;
+    }
+    drop(rows);
+    sqlx::query("ROLLBACK")
+        .execute(&mut *connection)
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn mysql_export_values(row: &sqlx::mysql::MySqlRow) -> Result<Vec<Value>, String> {
+    use sqlx::{Column, Row, TypeInfo};
+    (0..row.len())
+        .map(|index| {
+            let type_name = row.column(index).type_info().name().to_uppercase();
+            let decoded = match type_name.as_str() {
+                "BOOLEAN" | "TINYINT(1)" => row.try_get::<Option<bool>, _>(index).map(|value| value.map(Value::Bool)),
+                "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| json!(value))),
+                "BIGINT" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| Value::String(value.to_string()))),
+                "FLOAT" => row.try_get::<Option<f32>, _>(index).map(|value| value.map(|value| json!(value))),
+                "DOUBLE" => row.try_get::<Option<f64>, _>(index).map(|value| value.map(|value| json!(value))),
+                "JSON" => row.try_get::<Option<Value>, _>(index),
+                "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "TINYBLOB" | "BINARY" | "VARBINARY" => row.try_get::<Option<Vec<u8>>, _>(index).map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
+                _ => row.try_get::<Option<String>, _>(index).map(|value| value.map(Value::String)),
+            };
+            decoded
+                .map(|value| value.unwrap_or(Value::Null))
+                .map_err(|error| format!("Could not decode MySQL export column {}: {error}", index + 1))
+        })
+        .collect()
+}
+
+async fn export_sqlite_rows(
+    url: &str,
+    sql: &str,
+    writer: &mut ExportFileWriter,
+    mut cancel: watch::Receiver<bool>,
+) -> Result<(), String> {
+    use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+    use std::str::FromStr;
+
+    let options = if url.starts_with("sqlite:") {
+        SqliteConnectOptions::from_str(url).map_err(|error| error.to_string())?
+    } else {
+        SqliteConnectOptions::new().filename(url)
+    }
+    .read_only(true);
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options)
+        .await
+        .map_err(|error| error.to_string())?;
+    let mut rows = sqlx::query(sql).fetch(&pool);
+    loop {
+        if *cancel.borrow() {
+            return Err("Database export cancelled".into());
+        }
+        let next = tokio::select! {
+            changed = cancel.changed() => {
+                changed.map_err(|error| error.to_string())?;
+                return Err("Database export cancelled".into());
+            }
+            row = rows.try_next() => row.map_err(|error| error.to_string())?,
+        };
+        let Some(row) = next else { break };
+        writer.row(sqlite_export_values(&row)?).await?;
+    }
+    Ok(())
+}
+
+fn sqlite_export_values(row: &sqlx::sqlite::SqliteRow) -> Result<Vec<Value>, String> {
+    use sqlx::{Row, TypeInfo, ValueRef};
+    (0..row.len())
+        .map(|index| {
+            let raw = row
+                .try_get_raw(index)
+                .map_err(|error| format!("Could not read SQLite export column {}: {error}", index + 1))?;
+            if raw.is_null() {
+                return Ok(Value::Null);
+            }
+            let type_name = raw.type_info().name().to_uppercase();
+            let decoded = match type_name.as_str() {
+                "INTEGER" | "INT" | "INT64" => row.try_get::<i64, _>(index).map(lossless_json_integer),
+                "REAL" => row.try_get::<f64, _>(index).map(|value| json!(value)),
+                "BLOB" => row.try_get::<Vec<u8>, _>(index).map(|value| Value::String(hex_bytes(&value))),
+                _ => row.try_get::<String, _>(index).map(Value::String),
+            };
+            decoded
+                .map_err(|error| format!("Could not decode SQLite export column {}: {error}", index + 1))
+        })
+        .collect()
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    let mut encoded = String::from("\\x");
+    for byte in bytes {
+        encoded.push_str(&format!("{byte:02x}"));
+    }
+    encoded
+}
+
+fn lossless_json_integer(value: i64) -> Value {
+    const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+    if (-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&value) {
+        json!(value)
+    } else {
+        Value::String(value.to_string())
     }
 }
 
@@ -1879,6 +2614,55 @@ mod tests {
     }
 
     #[test]
+    fn browser_filters_validate_columns_and_escape_like_wildcards() {
+        let columns = vec![
+            ColumnInfo {
+                name: "id".into(),
+                data_type: "INTEGER".into(),
+                nullable: false,
+                primary_key: true,
+            },
+            ColumnInfo {
+                name: "email".into(),
+                data_type: "TEXT".into(),
+                nullable: false,
+                primary_key: false,
+            },
+        ];
+        let (where_sql, order_sql) = row_browse_clauses(
+            "sqlite",
+            &columns,
+            RowBrowseQuery {
+                filters: vec![RowFilter {
+                    column: "email".into(),
+                    operator: "contains".into(),
+                    value: Some("a%b_!".into()),
+                }],
+                sort: Some(RowSort {
+                    column: "email".into(),
+                    direction: "desc".into(),
+                }),
+            },
+        )
+        .unwrap();
+        assert_eq!(where_sql, " WHERE \"email\" LIKE '%a!%b!_!!%' ESCAPE '!'");
+        assert_eq!(order_sql, " ORDER BY \"email\" DESC, \"id\" ASC");
+        assert!(row_browse_clauses(
+            "sqlite",
+            &columns,
+            RowBrowseQuery {
+                filters: vec![RowFilter {
+                    column: "email; DROP TABLE users".into(),
+                    operator: "eq".into(),
+                    value: Some("x".into()),
+                }],
+                sort: None,
+            },
+        )
+        .is_err());
+    }
+
+    #[test]
     fn primary_keys_are_sampled_as_lossless_text() {
         let column = ColumnInfo {
             name: "id".into(),
@@ -1894,5 +2678,59 @@ mod tests {
             sample_column_expression("sqlite", &column),
             "CAST(\"id\" AS TEXT) AS \"id\"",
         );
+    }
+
+    #[tokio::test]
+    async fn sqlite_export_preserves_native_values_and_replaces_safely() {
+        let (path, url) = sqlite_fixture_url();
+        execute_sqlite(
+            &url,
+            "CREATE TABLE values_table (id INTEGER PRIMARY KEY, score REAL, label TEXT, payload BLOB, amount NUMERIC, missing TEXT); INSERT INTO values_table VALUES (1, -42.5, '=safe', X'00ff', 12.25, NULL); INSERT INTO values_table VALUES (2, 1.5, X'80ff', NULL, 3, 'present'); INSERT INTO values_table VALUES (9007199254740993, 0, 'large', NULL, NULL, NULL)",
+            true,
+        )
+        .await
+        .unwrap();
+        let database = DatabaseDef {
+            name: "app".into(),
+            engine: "sqlite".into(),
+            url,
+            write_unlocked: None,
+            project_path: None,
+        };
+        let object = objects_for(&database, "main")
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|object| object.name == "values_table")
+            .unwrap();
+        let columns = columns_for(&database, &object).await.unwrap();
+        let destination = path.with_extension("json");
+        std::fs::write(&destination, "old export").unwrap();
+        let (_cancel_tx, cancel_rx) = watch::channel(false);
+
+        let summary = export_object_to_file(
+            &database,
+            &object,
+            &columns,
+            "json",
+            &destination,
+            "test-request",
+            cancel_rx,
+        )
+        .await
+        .unwrap();
+        let rows: Value = serde_json::from_str(&std::fs::read_to_string(&destination).unwrap())
+            .unwrap();
+        assert_eq!(summary.rows_written, 3);
+        assert_eq!(rows[0]["id"], json!(1));
+        assert_eq!(rows[0]["score"], json!(-42.5));
+        assert_eq!(rows[0]["label"], json!("=safe"));
+        assert_eq!(rows[0]["payload"], json!("\\x00ff"));
+        assert_eq!(rows[0]["amount"], json!("12.25"));
+        assert!(rows[0]["missing"].is_null());
+        assert_eq!(rows[1]["label"], json!("\\x80ff"));
+        assert_eq!(rows[2]["id"], json!("9007199254740993"));
+        let _ = std::fs::remove_file(destination);
+        let _ = std::fs::remove_file(path);
     }
 }

@@ -11,6 +11,7 @@ import {
 } from "./catalog.js";
 import {
   assertExpectedDeleteCount,
+  buildRowBrowseClauses,
   clampLimit,
   clampOffset,
   columnsFromNames,
@@ -21,7 +22,9 @@ import {
   type DbDriver,
   type DbWriteDriver,
   type QueryResult,
+  type RowBrowseQuery,
   type RowSample,
+  type StreamRowsOptions,
   type TableRef,
   type WriteResult,
 } from "./driver.js";
@@ -369,16 +372,22 @@ export class PostgresDriver implements DbDriver, DbWriteDriver {
     ].join("\n\n");
   }
 
-  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
+  async sampleRows(
+    table: TableRef,
+    limit: number,
+    offset?: number,
+    query?: RowBrowseQuery,
+  ): Promise<RowSample> {
     const schema = table.schema ?? "public";
     const name = table.name;
     const max = clampLimit(limit);
     const skip = clampOffset(offset);
     return this.withReadOnly(async (client) => {
       const columns = await this.columnsFor(client, schema, name);
+      const clauses = buildRowBrowseClauses(columns, query, quoteIdentifier, (index) => `$${index}`);
       const { rows } = await client.query(
-        `SELECT * FROM ${quoteIdentifier(schema)}.${quoteIdentifier(name)} LIMIT $1 OFFSET $2`,
-        [max, skip],
+        `SELECT * FROM ${quoteIdentifier(schema)}.${quoteIdentifier(name)}${clauses.whereSql}${clauses.orderBySql} LIMIT $${clauses.values.length + 1} OFFSET $${clauses.values.length + 2}`,
+        [...clauses.values, max, skip],
       );
       return {
         columns,
@@ -388,6 +397,50 @@ export class PostgresDriver implements DbDriver, DbWriteDriver {
         offset: skip,
       };
     });
+  }
+
+  async *streamRows(
+    table: TableRef,
+    columns: ColumnInfo[],
+    options: StreamRowsOptions = {},
+  ): AsyncIterable<Array<Record<string, unknown>>> {
+    const pool = await this.pool();
+    const client = await pool.connect();
+    const batchSize = clampLimit(options.batchSize, 1_000);
+    const qualifiedName = table.schema
+      ? `${quoteIdentifier(table.schema)}.${quoteIdentifier(table.name)}`
+      : quoteIdentifier(table.name);
+    const primaryKeys = columns.filter((column) => column.primaryKey);
+    const orderColumns = primaryKeys.length > 0
+      ? primaryKeys.map((column) => quoteIdentifier(column.name))
+      : columns.flatMap((column) => {
+          const identifier = quoteIdentifier(column.name);
+          return [
+            `${identifier} IS NOT NULL`,
+            `encode(convert_to(${identifier}::text, 'UTF8'), 'hex') COLLATE "C"`,
+          ];
+        });
+    const order = orderColumns.length > 0 ? ` ORDER BY ${orderColumns.join(", ")}` : "";
+    try {
+      await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
+      await client.query(
+        `DECLARE nmi_export_cursor NO SCROLL CURSOR FOR SELECT * FROM ${qualifiedName}${order}`,
+      );
+      while (!options.signal?.aborted) {
+        const { rows } = await client.query(
+          `FETCH FORWARD ${batchSize} FROM nmi_export_cursor`,
+        );
+        if (rows.length === 0) break;
+        yield rows.map((row: Record<string, unknown>) => normalizeRow(row));
+      }
+      if (options.signal?.aborted) {
+        throw new DOMException("Database export cancelled", "AbortError");
+      }
+    } finally {
+      await client.query("CLOSE nmi_export_cursor").catch(() => {});
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
   }
 
   async runQuery(sql: string, maxRows: number): Promise<QueryResult> {

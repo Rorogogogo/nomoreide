@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { Loading } from "@/components/ui/loading";
 import {
   deleteWorkflow,
   getAgentInfo,
@@ -202,9 +203,7 @@ export function WorkflowPanel() {
           {error}
         </Alert>
       ) : loading ? (
-        <div className="flex flex-1 items-center justify-center text-[12px] text-muted-foreground">
-          <Loader2 className="mr-2 size-4 animate-spin" /> {t("workflows.loading")}
-        </div>
+        <Loading className="flex-1" label={t("workflows.loading")} />
       ) : (
         <>
           {run ? (

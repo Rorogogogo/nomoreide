@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { GitBranch, GitPullRequest, PlayCircle, ShieldCheck } from "lucide-react";
 import { listGitHubBranches, type GitHubBranchInfo, type GitHubBranchesPayload } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 
@@ -62,7 +63,7 @@ export function BranchesView({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading && !payload ? (
-          <div className="p-4 text-[12px] text-muted-foreground">{t("github.branches.loading")}</div>
+          <Loading fill label={t("github.branches.loading")} />
         ) : branches.length === 0 ? (
           <div className="p-4 text-[12px] text-muted-foreground">{t("github.branches.empty")}</div>
         ) : (

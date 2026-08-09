@@ -3,6 +3,7 @@ import {
   Archive,
   Camera,
   ChevronRight,
+  RefreshCw,
   Trash2,
   Upload,
   UploadCloud,
@@ -19,6 +20,7 @@ import { ProfileContents } from "./profile-contents";
 import { useT } from "@/lib/i18n";
 
 const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
+const PROFILE_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 /**
  * Saved profiles (ROR-62): snapshot an agent's setup, apply a profile to an
@@ -28,8 +30,11 @@ const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
 export function ProfilesPanel({
   profiles,
   loading,
+  loadError,
   busy,
   onSnapshot,
+  onRefresh,
+  onRetry,
   onApply,
   onExport,
   onImport,
@@ -39,8 +44,11 @@ export function ProfilesPanel({
 }: {
   profiles: AgentEnvProfileSummary[];
   loading: boolean;
+  loadError: string | null;
   busy: boolean;
   onSnapshot: (agent: AgentEnvAgentName, name: string) => void;
+  onRefresh: (name: string, agent: AgentEnvAgentName) => void;
+  onRetry: () => void;
   onApply: (name: string, agent: AgentEnvAgentName) => void;
   onExport: (name: string) => void;
   onImport: (file: File) => void;
@@ -54,12 +62,18 @@ export function ProfilesPanel({
     useState<AgentEnvAgentName>("claude");
   const [snapshotName, setSnapshotName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmRefresh, setConfirmRefresh] = useState<{
+    name: string;
+    agent: AgentEnvAgentName;
+  } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const trimmedSnapshotName = snapshotName.trim();
+  const snapshotNameValid =
+    trimmedSnapshotName.length === 0 || PROFILE_NAME_PATTERN.test(trimmedSnapshotName);
 
   const submitSnapshot = () => {
-    const name = snapshotName.trim();
-    if (!name) return;
-    onSnapshot(snapshotAgent, name);
+    if (!trimmedSnapshotName || !snapshotNameValid) return;
+    onSnapshot(snapshotAgent, trimmedSnapshotName);
     setSnapshotName("");
   };
 
@@ -106,6 +120,8 @@ export function ProfilesPanel({
           </div>
           <input
             aria-label={t("agentEnv.newProfileAria")}
+            aria-invalid={!snapshotNameValid}
+            aria-describedby={!snapshotNameValid ? "agent-env-profile-name-error" : undefined}
             className="h-7 w-36 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onChange={(event) => setSnapshotName(event.target.value)}
             onKeyDown={(event) => {
@@ -115,7 +131,7 @@ export function ProfilesPanel({
             value={snapshotName}
           />
           <Button
-            disabled={busy || snapshotName.trim().length === 0}
+            disabled={busy || trimmedSnapshotName.length === 0 || !snapshotNameValid}
             onClick={submitSnapshot}
             size="sm"
             variant="outline"
@@ -123,6 +139,11 @@ export function ProfilesPanel({
             <Camera />
             {t("agentEnv.snapshot")}
           </Button>
+          {!snapshotNameValid ? (
+            <span className="basis-full text-right text-[10px] text-destructive" id="agent-env-profile-name-error">
+              {t("agentEnv.invalidProfileName")}
+            </span>
+          ) : null}
           <Button
             disabled={busy}
             onClick={() => fileInputRef.current?.click()}
@@ -150,6 +171,17 @@ export function ProfilesPanel({
         <p className="px-3 py-2 text-xs text-muted-foreground">
           {t("agentEnv.loadingProfiles")}
         </p>
+      ) : loadError && profiles.length === 0 ? (
+        <div className="flex items-center justify-between gap-3 px-3 py-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-destructive">{t("agentEnv.loadProfilesFailed")}</p>
+            <p className="truncate text-[11px] text-muted-foreground" title={loadError}>{loadError}</p>
+          </div>
+          <Button onClick={onRetry} size="sm" variant="outline">
+            <RefreshCw aria-hidden="true" />
+            {t("agentEnv.retry")}
+          </Button>
+        </div>
       ) : profiles.length === 0 ? (
         <p className="px-3 py-2 text-xs text-muted-foreground">
           {t("agentEnv.noProfiles")}
@@ -161,7 +193,7 @@ export function ProfilesPanel({
               <div className="flex items-center gap-2.5 px-3 py-2">
                 <button
                   aria-expanded={expanded === profile.name}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() =>
                     setExpanded(expanded === profile.name ? null : profile.name)
                   }
@@ -221,6 +253,11 @@ export function ProfilesPanel({
                   className="opacity-100"
                   items={[
                     ...ALL_AGENTS.map((agent) => ({
+                      label: t("agentEnv.updateFrom", { name: AGENT_LABELS[agent] }),
+                      icon: <RefreshCw className="size-3.5" />,
+                      onSelect: () => setConfirmRefresh({ name: profile.name, agent }),
+                    })),
+                    ...ALL_AGENTS.map((agent) => ({
                       label: t("agentEnv.applyTo", { name: AGENT_LABELS[agent] }),
                       onSelect: () => onApply(profile.name, agent),
                     })),
@@ -263,6 +300,23 @@ export function ProfilesPanel({
           }}
           title={t("agentEnv.deleteProfileTitle")}
           tone="danger"
+        />
+      ) : null}
+      {confirmRefresh ? (
+        <ConfirmDialog
+          confirmLabel={t("agentEnv.updateProfile")}
+          icon={<RefreshCw />}
+          loading={busy}
+          message={t("agentEnv.updateProfileBody", {
+            name: confirmRefresh.name,
+            agent: AGENT_LABELS[confirmRefresh.agent],
+          })}
+          onCancel={() => setConfirmRefresh(null)}
+          onConfirm={() => {
+            onRefresh(confirmRefresh.name, confirmRefresh.agent);
+            setConfirmRefresh(null);
+          }}
+          title={t("agentEnv.updateProfileTitle")}
         />
       ) : null}
     </div>

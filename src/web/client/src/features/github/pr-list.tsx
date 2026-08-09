@@ -1,4 +1,5 @@
 import { GitMerge, GitPullRequest, GitPullRequestClosed } from "lucide-react";
+import { Loading } from "@/components/ui/loading";
 import type { GitHubPR } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { LoadMoreButton } from "./load-more-button";
@@ -24,7 +25,7 @@ export function PrList({
 }) {
   const t = useT();
   if (loading && prs.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.prs.loading")}</div>;
+    return <Loading fill label={t("github.prs.loading")} />;
   }
   if (error) {
     return <div className="p-4 text-[12px] text-red-500">{error}</div>;

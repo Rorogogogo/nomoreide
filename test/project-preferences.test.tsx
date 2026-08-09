@@ -22,6 +22,12 @@ const api = vi.hoisted(() => ({
   setWriteAccess: vi.fn(),
 }));
 
+const sqlGenerate = vi.hoisted(() => ({
+  cancel: vi.fn(),
+  generate: vi.fn(),
+  generating: false,
+}));
+
 vi.mock("../src/web/client/src/lib/api", () => ({
   executeDatabaseWrite: api.executeWrite,
   getDatabaseRows: api.getRows,
@@ -40,7 +46,7 @@ vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
 }));
 
 vi.mock("../src/web/client/src/features/database/use-sql-generate", () => ({
-  useSqlGenerate: () => ({ error: null, generate: vi.fn(), generating: false }),
+  useSqlGenerate: () => ({ ...sqlGenerate, error: null }),
 }));
 
 async function mount(node: ReactNode): Promise<{ host: HTMLDivElement; root: Root }> {
@@ -62,12 +68,16 @@ async function enterSql(host: HTMLElement, sql: string) {
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  window.localStorage.clear();
   api.executeWrite.mockReset().mockResolvedValue({ affectedRows: 1, committed: true });
   api.runQuery.mockReset().mockResolvedValue({ columns: [], rows: [], truncated: false });
   api.getRows.mockReset();
   api.getTables.mockReset();
   api.listDatabases.mockReset();
   api.setWriteAccess.mockReset();
+  sqlGenerate.cancel.mockReset();
+  sqlGenerate.generate.mockReset();
+  sqlGenerate.generating = false;
 });
 
 afterEach(() => {
@@ -120,6 +130,40 @@ describe("project log preferences", () => {
 });
 
 describe("project database preferences", () => {
+  test("renders query tabs and saved-query controls inside the SQL workspace", async () => {
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+
+    expect(mounted.host.querySelector('[role="tablist"]')?.textContent).toContain("Untitled 1");
+    expect(mounted.host.textContent).toContain("Saved queries");
+    expect(mounted.host.textContent).not.toContain("Connectionprimary");
+    await act(async () => mounted.root.unmount());
+  });
+
+  test("shows the agent wave loader and Stop action while SQL is generating", async () => {
+    sqlGenerate.generating = true;
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+
+    expect(mounted.host.querySelector('[role="status"]')?.textContent).toContain("Generating");
+    const stop = [...mounted.host.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent?.trim() === "Stop",
+    );
+    await act(async () => stop?.click());
+    expect(sqlGenerate.cancel).toHaveBeenCalledOnce();
+    await act(async () => mounted.root.unmount());
+  });
+
   test("uses the project result limit initially without replacing an explicit lower choice", async () => {
     let browser!: ReturnType<typeof useTableBrowser>;
     function Harness({ resultLimit }: { resultLimit: number }) {
@@ -175,12 +219,12 @@ describe("project database preferences", () => {
     );
     await enterSql(mounted.host, "DELETE FROM jobs");
     const run = [...mounted.host.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Preview write"),
+      button.textContent?.includes("Dry run"),
     );
     await act(async () => run?.click());
 
     expect(api.executeWrite).toHaveBeenCalledWith("primary", "DELETE FROM jobs", "preview");
-    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Run & commit");
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Execute change");
     await act(async () => mounted.root.unmount());
   });
 
@@ -195,7 +239,7 @@ describe("project database preferences", () => {
     );
     await enterSql(mounted.host, "DELETE FROM jobs");
     const run = [...mounted.host.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Run write"),
+      button.textContent?.includes("Execute change"),
     );
     await act(async () => run?.click());
 
@@ -221,12 +265,156 @@ describe("project database preferences", () => {
     );
     await enterSql(mounted.host, "DELETE FROM jobs");
     const run = [...mounted.host.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Run write"),
+      button.textContent?.includes("Execute change"),
     )!;
     await act(async () => run.click());
 
     expect(run.disabled).toBe(true);
     await act(async () => resolveCommit({ affectedRows: 1, committed: true }));
+    await act(async () => mounted.root.unmount());
+  });
+
+  test("restores an automatic SQL draft after the console remounts", async () => {
+    const first = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    await enterSql(first.host, "SELECT * FROM users;");
+    await act(async () => first.root.unmount());
+
+    const second = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    expect(second.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "SELECT * FROM users;",
+    );
+    await act(async () => second.root.unmount());
+  });
+
+  test("accepts generated statements from the SQL object explorer without replacing the draft", async () => {
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        editorAction={{
+          connection: "primary",
+          mode: "statement",
+          nonce: 1,
+          sql: "SELECT * FROM public.users LIMIT 100;",
+        }}
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    expect(mounted.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "SELECT * FROM public.users LIMIT 100;",
+    );
+    await enterSql(mounted.host, "SELECT 1;");
+    await act(async () => mounted.root.render(
+      <OperationProvider>
+        <SqlConsole
+          connection="primary"
+          editorAction={{
+            connection: "primary",
+            mode: "statement",
+            nonce: 2,
+            sql: "SELECT * FROM public.jobs LIMIT 100;",
+          }}
+          onWriteAccessChange={vi.fn()}
+          unlocked={false}
+        />
+      </OperationProvider>,
+    ));
+    expect(mounted.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe(
+      "SELECT 1;\n\nSELECT * FROM public.jobs LIMIT 100;",
+    );
+    await act(async () => mounted.root.unmount());
+  });
+
+  test("saves the current draft as a named query", async () => {
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    await enterSql(mounted.host, "SELECT id FROM users;");
+    const save = [...mounted.host.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent?.trim() === "Save",
+    );
+    await act(async () => save?.click());
+
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+    const name = dialog?.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(name, "User IDs");
+      name?.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    });
+    const confirm = [...(dialog?.querySelectorAll("button") ?? [])].find(
+      (candidate) => candidate.textContent?.includes("Save query"),
+    );
+    await act(async () => confirm?.click());
+
+    const stored = JSON.parse(
+      window.localStorage.getItem("nomoreide:database:saved-queries:v1") ?? "[]",
+    ) as Array<{ connection: string; name: string; sql: string }>;
+    expect(stored).toMatchObject([
+      { connection: "primary", name: "User IDs", sql: "SELECT id FROM users;" },
+    ]);
+    await act(async () => mounted.root.unmount());
+  });
+
+  test("keeps independent drafts when switching open query tabs", async () => {
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    await enterSql(mounted.host, "SELECT 1;");
+    const add = [...mounted.host.querySelectorAll("button")].find(
+      (candidate) => candidate.getAttribute("aria-label") === "New query",
+    );
+    await act(async () => add?.click());
+    expect(mounted.host.querySelectorAll('[role="tab"]').length).toBe(2);
+    expect(mounted.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("");
+
+    await enterSql(mounted.host, "SELECT 2;");
+    const first = [...mounted.host.querySelectorAll("button")].find(
+      (candidate) => candidate.title === "Untitled 1",
+    );
+    await act(async () => first?.click());
+    expect(mounted.host.querySelector<HTMLTextAreaElement>("textarea")?.value).toBe("SELECT 1;");
+    await act(async () => mounted.root.unmount());
+  });
+
+  test("offers save and discard choices before closing a dirty query tab", async () => {
+    const mounted = await mount(
+      <SqlConsole
+        connection="primary"
+        onWriteAccessChange={vi.fn()}
+        unlocked={false}
+      />,
+    );
+    await enterSql(mounted.host, "SELECT 1;");
+    const close = [...mounted.host.querySelectorAll("button")].find(
+      (candidate) => candidate.getAttribute("aria-label") === "Close Untitled 1",
+    );
+    await act(async () => close?.click());
+
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.textContent).toContain("Discard changes");
+    expect(dialog?.textContent).toContain("Save");
+    expect(dialog?.textContent).toContain("Cancel");
     await act(async () => mounted.root.unmount());
   });
 });

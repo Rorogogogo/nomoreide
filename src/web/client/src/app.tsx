@@ -10,12 +10,13 @@ import {
 } from "lucide-react";
 import {
   getDashboard,
+  selectGitRepository,
   type DashboardData,
   type OverviewDomain,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert } from "@/components/ui/alert";
+import { Loading } from "@/components/ui/loading";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   headerActionClassName,
@@ -44,6 +45,7 @@ import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
+import { GlobalSearch } from "@/features/global-search/global-search";
 import { VercelView } from "@/features/vercel/vercel-view";
 import { ProjectOverviewTable } from "@/features/overview/project-overview-table";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
@@ -64,8 +66,17 @@ import { OperationProvider } from "@/components/operations/operation-context";
 import { OperationStrip } from "@/components/operations/operation-strip";
 import { ScrollProgressBar } from "@/components/ui/scroll-progress-bar";
 import { AppContextMenu } from "@/components/app-context-menu";
-import { ActivityView } from "@/features/activity/activity-view";
+import { ActivityPage } from "@/features/activity/activity-page";
+import { ServersView } from "@/features/servers/servers-view";
 import { GistPopover } from "@/components/gist-popover";
+import { RuntimeDiagnostics } from "@/components/runtime-diagnostics";
+import {
+  getRuntimeConnectionSnapshot,
+  probeRuntimeHealth,
+  recordRuntimeReachable,
+  useRuntimeConnection,
+} from "@/lib/runtime-connection";
+import { isTauri } from "@/lib/tauri";
 import {
   APP_NAV_SECTIONS,
   type AppPage,
@@ -77,6 +88,7 @@ type Page = AppPage;
 export const PAGE_PATHS: Record<Page, string> = {
   services: "/",
   activity: "/activity",
+  servers: "/servers",
   docker: "/docker",
   git: "/git",
   github: "/github",
@@ -94,6 +106,7 @@ export const PAGE_PATHS: Record<Page, string> = {
 const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   services: "nav.services",
   activity: "nav.activity",
+  servers: "nav.servers",
   docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
@@ -117,6 +130,30 @@ export function pageFromPath(pathname: string): Page {
     if (pathname === path) return page;
   }
   return "services";
+}
+
+/**
+ * The registry's "Open in NoMoreIDE" button links to `/?install=<slug>` (see
+ * the platform's public-profile-page.tsx). Returns the slug to install, or null
+ * when the param is absent or empty.
+ *
+ * The value is only ever handed to the install endpoint as a slug, never
+ * interpolated into markup or a URL path, so no escaping is needed here —
+ * `URLSearchParams` has already decoded it.
+ */
+export function installSlugFromSearch(search: string): string | null {
+  const slug = new URLSearchParams(search).get("install")?.trim();
+  return slug ? slug : null;
+}
+
+/**
+ * Page to open on first paint. A registry deep link lands on "/" — which would
+ * otherwise route to Services — but means "go install this", so the install
+ * param outranks the path.
+ */
+export function initialPage(location: { pathname: string; search: string }): Page {
+  if (installSlugFromSearch(location.search)) return "agent-env";
+  return pageFromPath(location.pathname);
 }
 
 export function sidebarShellClassName(docked = false) {
@@ -225,9 +262,15 @@ export function SettingsProjectSync({
 
 function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const t = useT();
+  const runtimeConnection = useRuntimeConnection();
   const [, startTransition] = useTransition();
+  // Read once at mount: the location-sync effect below rewrites the URL to the
+  // active page's path as soon as the page changes, dropping the query string.
+  const [pendingInstall, setPendingInstall] = useState<string | null>(() =>
+    syncLocation ? installSlugFromSearch(window.location.search) : null,
+  );
   const [page, setPage] = useState<Page>(() =>
-    syncLocation ? pageFromPath(window.location.pathname) : "services",
+    syncLocation ? initialPage(window.location) : "services",
   );
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
@@ -300,11 +343,19 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       } else {
         setData(nextData);
       }
+      if (!isTauri()) recordRuntimeReachable();
       return true;
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
-      showErrorToast(message);
+      if (!options.silent) showErrorToast(message);
+      const connectionPhase = getRuntimeConnectionSnapshot().phase;
+      if (
+        !isTauri() &&
+        (connectionPhase === "initializing" || connectionPhase === "connected")
+      ) {
+        void probeRuntimeHealth();
+      }
       // Reported, not rethrown: every caller is a fire-and-forget `void
       // refresh(...)`, so the outcome travels back as a value instead.
       return false;
@@ -372,6 +423,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const refreshAll = useCallback(() => {
     void runRefreshCycle({ manual: true });
   }, [runRefreshCycle]);
+  const refreshAfterReconnect = useCallback(
+    () => runRefreshCycle(),
+    [runRefreshCycle],
+  );
 
   // Child `onRefresh` props are typed `() => Promise<void>`; `refresh` now
   // reports success as a value, so hand them a void-returning view of it.
@@ -389,7 +444,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   }, []);
 
   useEffect(() => {
-    void refresh().then((ok) => {
+    void refresh({ silent: true }).then((ok) => {
       if (ok) setRefreshedAt(Date.now());
     });
   }, [refresh]);
@@ -628,7 +683,33 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              {error ? <Badge variant="danger">{error}</Badge> : null}
+              {error && runtimeConnection.phase === "connected" ? (
+                <Badge variant="danger">{error}</Badge>
+              ) : null}
+              <RuntimeDiagnostics onReconnect={refreshAfterReconnect} />
+              <GlobalSearch
+                data={data}
+                onNavigate={(nextPage) => setPage(nextPage)}
+                onOpenGit={() => {
+                  setScopeAll(false);
+                  setPage("git");
+                }}
+                onOpenService={(name) => {
+                  if (scopedServiceNames && !scopedServiceNames.has(name)) {
+                    setScopeAll(true);
+                    showMessageToast({ text: t("app.serviceOutsideScope") });
+                  }
+                  setFocusService(name);
+                  setPage("services");
+                  void refreshSilently();
+                }}
+                onSelectProject={async (name) => {
+                  await selectGitRepository(name);
+                  setScopeAll(false);
+                  await refreshSilently();
+                  setPage("services");
+                }}
+              />
               <GitHubHeaderIndicator onOpenGitHub={() => setPage("github")} />
               <div
                 aria-label="Dashboard quick actions"
@@ -655,8 +736,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                   </a>
                 </Tooltip>
                 <GistPopover
-                  key={data?.git.selectedRepository?.path ?? "all"}
-                  scopeKey={data?.git.selectedRepository?.path ?? "all"}
+                  aggregateProjects={scopeAll}
+                  key={scopeAll ? "all" : data?.git.selectedRepository?.path ?? "all"}
+                  projects={data?.config.gitRepositories ?? []}
+                  scopeKey={scopeAll ? "all" : data?.git.selectedRepository?.path ?? "all"}
                 />
               </div>
             </div>
@@ -687,9 +770,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           ) : null}
 
           {loading && !data ? (
-            <Alert variant="muted">
-              {t("app.loading")}
-            </Alert>
+            <Loading className="py-8" label={t("app.loading")} />
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
@@ -703,7 +784,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               />
             ) : null}
             {scopedData && page === "activity" ? (
-              <ActivityView
+              <ActivityPage
                 data={scopedData}
                 onOpenService={(name) => {
                   setFocusService(name);
@@ -712,10 +793,14 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 scopeName={activeProject?.name ?? null}
               />
             ) : null}
+            {page === "servers" ? (
+              <ServersView onOpenTerminal={() => setPage("terminal")} />
+            ) : null}
             {page === "docker" ? <DockerView /> : null}
             {overviewDomain ? (
               <ProjectOverviewTable
                 domain={overviewDomain}
+                key={overviewDomain}
                 onEnterProject={() => {
                   setScopeAll(false);
                   void refresh({ silent: true });
@@ -734,7 +819,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 onOpenAgentEnv={() => setPage("agent-env")}
               />
             ) : null}
-            {page === "agent-env" ? <AgentEnvView /> : null}
+            {page === "agent-env" ? (
+              <AgentEnvView
+                installSlug={pendingInstall}
+                onInstallHandled={() => setPendingInstall(null)}
+              />
+            ) : null}
             {page === "errors" ? (
               <ErrorInboxView
                 inScope={

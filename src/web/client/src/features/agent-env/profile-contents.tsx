@@ -6,8 +6,10 @@ import {
   Globe,
   Sparkles,
   TerminalSquare,
-  X,
+  Trash2,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   getAgentEnvProfile,
   updateAgentEnvProfile,
@@ -20,8 +22,8 @@ import { useOperations } from "@/components/operations/operation-context";
 /**
  * Expanded profile row: view the bundled MCPs/skills and lightly edit them —
  * per-item remove plus an editable description. Edits PATCH the stored profile
- * only; agents' live configs are never touched. Additions come from
- * re-snapshotting, so there is deliberately no "add item" form here.
+ * only; agents' live configs are never touched. Contents are added or replaced
+ * through the parent panel's guarded "Update from agent" flow.
  */
 export function ProfileContents({
   name,
@@ -37,9 +39,16 @@ export function ProfileContents({
   const operationKey = `agent-env:profile:${name}:update`;
   const busy = isPending(operationKey);
   const [description, setDescription] = useState("");
+  const [reloadCount, setReloadCount] = useState(0);
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    category: "mcp" | "skill" | "plugin";
+    key: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     getAgentEnvProfile(name)
       .then((loaded) => {
         if (cancelled || !loaded) return;
@@ -53,7 +62,7 @@ export function ProfileContents({
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [name, reloadCount]);
 
   const patch = async (
     input: Partial<Pick<AgentEnvProfile, "description" | "mcps" | "skills" | "plugins">>,
@@ -75,10 +84,21 @@ export function ProfileContents({
     }
   };
 
+  if (!profile && error) {
+    return (
+      <div className="flex items-center justify-between gap-3 px-3 pb-3 pl-9">
+        <p className="min-w-0 truncate text-[11px] text-destructive" title={error}>{error}</p>
+        <Button onClick={() => setReloadCount((count) => count + 1)} size="sm" variant="outline">
+          {t("agentEnv.retry")}
+        </Button>
+      </div>
+    );
+  }
+
   if (!profile) {
     return (
       <p className="px-3 pb-2 pl-9 text-[11px] text-muted-foreground">
-        {error ?? t("agentEnv.loadingProfile")}
+        {t("agentEnv.loadingProfile")}
       </p>
     );
   }
@@ -106,21 +126,47 @@ export function ProfileContents({
     if (trimmed === (profile.description ?? "")) return;
     void patch({ description: trimmed });
   };
+  const descriptionDirty = description.trim() !== (profile.description ?? "");
+
+  const confirmRemoval = () => {
+    if (!pendingRemoval) return;
+    if (pendingRemoval.category === "mcp") removeMcp(pendingRemoval.key);
+    else if (pendingRemoval.category === "skill") removeSkill(pendingRemoval.key);
+    else removePlugin(pendingRemoval.key);
+    setPendingRemoval(null);
+  };
 
   return (
     <div className="space-y-3 border-t border-border/40 px-3 py-3 pl-9">
-      <input
-        aria-label={t("agentEnv.profileDescAria")}
-        className="h-7 w-full rounded-md border border-transparent bg-transparent px-1.5 text-[11px] text-muted-foreground placeholder:text-muted-foreground/60 hover:border-border focus:border-border focus:bg-background focus:text-foreground focus:outline-none"
-        disabled={busy}
-        onBlur={saveDescription}
-        onChange={(event) => setDescription(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-        placeholder={t("agentEnv.profileDescPlaceholder")}
-        value={description}
-      />
+      <div className="flex items-center gap-2">
+        <input
+          aria-label={t("agentEnv.profileDescAria")}
+          className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 text-[11px] placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          disabled={busy}
+          onChange={(event) => setDescription(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && descriptionDirty) saveDescription();
+            if (event.key === "Escape") setDescription(profile.description ?? "");
+          }}
+          placeholder={t("agentEnv.profileDescPlaceholder")}
+          value={description}
+        />
+        {descriptionDirty ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <Button
+              disabled={busy}
+              onClick={() => setDescription(profile.description ?? "")}
+              size="sm"
+              variant="ghost"
+            >
+              {t("agentEnv.cancelEdit")}
+            </Button>
+            <Button disabled={busy} onClick={saveDescription} size="sm">
+              {t("agentEnv.saveDescription")}
+            </Button>
+          </span>
+        ) : null}
+      </div>
 
       <ItemSection
         busy={busy}
@@ -128,20 +174,20 @@ export function ProfileContents({
           key,
           name: key,
           detail: mcpDetail(entry),
-          icon: entry.kind === "remote" ? <Globe /> : <TerminalSquare />,
+          icon: entry.kind === "remote" ? <Globe aria-hidden="true" /> : <TerminalSquare aria-hidden="true" />,
         }))}
         label={t("agentEnv.mcpServers")}
-        onRemove={removeMcp}
+        onRemove={(key, itemName) => setPendingRemoval({ category: "mcp", key, name: itemName })}
       />
       <ItemSection
         busy={busy}
         items={profile.skills.map((skill) => ({
           key: skill.name,
           name: skill.name,
-          icon: <Sparkles />,
+          icon: <Sparkles aria-hidden="true" />,
         }))}
         label={t("agentEnv.skills")}
-        onRemove={removeSkill}
+        onRemove={(key, itemName) => setPendingRemoval({ category: "skill", key, name: itemName })}
       />
       <ItemSection
         busy={busy}
@@ -149,13 +195,25 @@ export function ProfileContents({
           key: plugin.bundleKey,
           name: plugin.name,
           detail: [plugin.sourceAgent, plugin.source, plugin.version].filter(Boolean).join(" · "),
-          icon: <Boxes />,
+          icon: <Boxes aria-hidden="true" />,
         }))}
         label={t("agentEnv.plugins")}
-        onRemove={removePlugin}
+        onRemove={(key, itemName) => setPendingRemoval({ category: "plugin", key, name: itemName })}
       />
 
       {error ? <p className="text-[11px] text-destructive">{error}</p> : null}
+      {pendingRemoval ? (
+        <ConfirmDialog
+          confirmLabel={t("agentEnv.remove")}
+          icon={<Trash2 />}
+          loading={busy}
+          message={t("agentEnv.removeItemBody", { name: pendingRemoval.name })}
+          onCancel={() => setPendingRemoval(null)}
+          onConfirm={confirmRemoval}
+          title={t("agentEnv.removeItemTitle")}
+          tone="danger"
+        />
+      ) : null}
     </div>
   );
 }
@@ -174,7 +232,7 @@ function ItemSection({
     icon: React.ReactNode;
   }>;
   busy: boolean;
-  onRemove: (key: string) => void;
+  onRemove: (key: string, name: string) => void;
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(() => items.length <= 5);
@@ -222,13 +280,14 @@ function ItemSection({
                 ) : null}
               </span>
               <button
-                className="rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/item:opacity-100"
+                aria-label={t("agentEnv.removeItemAria", { name: item.name })}
+                className="rounded p-1 text-muted-foreground opacity-60 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/item:opacity-100"
                 disabled={busy}
-                onClick={() => onRemove(item.key)}
-                title={t("agentEnv.removeFromProfile")}
+                onClick={() => onRemove(item.key, item.name)}
+                title={t("agentEnv.removeItemAria", { name: item.name })}
                 type="button"
               >
-                <X className="size-3.5" />
+                <Trash2 aria-hidden="true" className="size-3.5" />
               </button>
             </li>
           ))}

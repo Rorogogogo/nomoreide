@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { Database, Loader2, Plus, Sparkles, Table2, Terminal } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Database,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Sparkles,
+  Table2,
+  Terminal,
+} from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { cn } from "@/lib/utils";
@@ -17,8 +27,11 @@ import { connectionInScope } from "../services/project-scope";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { DATABASE_SETUP_PROMPT } from "../agent/prompts";
 import { AddConnectionDialog, type EditTarget } from "./add-connection-dialog";
-import { DatabaseExplorer } from "./database-explorer";
-import { SqlConsole } from "./sql-console";
+import {
+  DatabaseExplorer,
+  type SelectedCatalogObject,
+} from "./database-explorer";
+import { SqlConsole, type SqlEditorAction } from "./sql-console";
 import { useDatabases } from "./use-databases";
 
 type Dialog = { mode: "add" } | { mode: "edit"; target: EditTarget } | null;
@@ -61,6 +74,15 @@ export function DatabaseView({
     null,
   );
   const [mode, setMode] = usePersistentState<ViewMode>("database:mode", "browse");
+  const [selectedCatalogObject, setSelectedCatalogObject] =
+    usePersistentState<SelectedCatalogObject | null>("database:selected-object", null);
+  const [sqlExplorerOpen, setSqlExplorerOpen] = usePersistentState(
+    "database:sql-explorer-open",
+    true,
+  );
+  const [sqlMounted, setSqlMounted] = useState(mode === "query");
+  const [editorAction, setEditorAction] = useState<SqlEditorAction | null>(null);
+  const editorActionNonce = useRef(0);
   const [dialog, setDialog] = useState<Dialog>(null);
   // One-shot seed handed to the SQL console when a write is staged from the dock.
   const [seed, setSeed] = useState<{ sql: string; nonce: number } | null>(null);
@@ -71,6 +93,7 @@ export function DatabaseView({
   useEffect(() => {
     if (!staged) return;
     if (staged.connection) setSelected(staged.connection);
+    setSqlMounted(true);
     setMode("query");
     setSeed({ sql: staged.sql, nonce: staged.nonce });
     onStageConsumed?.();
@@ -112,54 +135,171 @@ export function DatabaseView({
     setDialog({ mode: "edit", target: connection });
   }
 
+  function changeMode(nextMode: ViewMode) {
+    if (nextMode === "query") setSqlMounted(true);
+    setMode(nextMode);
+  }
+
+  function openObjectInBrowse(selection: SelectedCatalogObject) {
+    setSelected(selection.connection);
+    setSelectedCatalogObject(selection);
+    setMode("browse");
+  }
+
+  function sendObjectToEditor(
+    selection: SelectedCatalogObject,
+    sql: string,
+    mode: SqlEditorAction["mode"],
+  ) {
+    editorActionNonce.current += 1;
+    setSelected(selection.connection);
+    setSelectedCatalogObject(selection);
+    setSqlMounted(true);
+    setMode("query");
+    setEditorAction({
+      connection: selection.connection,
+      mode,
+      nonce: editorActionNonce.current,
+      sql,
+    });
+  }
+
+  const selectedConnection = connections.find((connection) => connection.name === selected);
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Database aria-hidden="true" className="size-4 text-muted-foreground" />
-          <span className="text-sm font-semibold">{t("database.title")}</span>
-          {loading && connections.length === 0 ? (
-            <Loader2 aria-hidden="true" className="size-3.5 animate-spin text-muted-foreground motion-reduce:animate-none" />
+          <span className="shrink-0 text-sm font-semibold">{t("database.title")}</span>
+          {selectedConnection ? (
+            <>
+              <span aria-hidden="true" className="text-muted-foreground/50">/</span>
+              <code
+                className="min-w-0 truncate font-mono text-[11px] font-medium"
+                title={selectedConnection.name}
+              >
+                {selectedConnection.name}
+              </code>
+              <span className="shrink-0 text-[9px] uppercase tracking-wide text-muted-foreground">
+                {selectedConnection.engine}
+              </span>
+            </>
           ) : null}
         </div>
-        <div className="flex items-center gap-2">
-          {selected ? <ViewModeToggle mode={mode} onChange={setMode} /> : null}
+        <div className="flex min-w-0 items-center gap-2">
+          {selected && mode === "query" ? (
+            <Tooltip
+              align="end"
+              label={t(
+                sqlExplorerOpen
+                  ? "database.sql.hideExplorer"
+                  : "database.sql.showExplorer",
+              )}
+            >
+              <Button
+                aria-label={t(
+                  sqlExplorerOpen
+                    ? "database.sql.hideExplorer"
+                    : "database.sql.showExplorer",
+                )}
+                className="text-muted-foreground"
+                onClick={() => setSqlExplorerOpen((open) => !open)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                {sqlExplorerOpen ? <PanelLeftClose /> : <PanelLeftOpen />}
+              </Button>
+            </Tooltip>
+          ) : null}
+          {selected ? <ViewModeToggle mode={mode} onChange={changeMode} /> : null}
         </div>
       </header>
 
       <div className="min-h-0 flex-1">
-        {error ? (
+        {loading && connections.length === 0 ? (
+          <Loading fill label={t("common.loading")} />
+        ) : error ? (
           <div className="p-4">
             <Alert variant="muted" className="border-destructive/40 text-destructive">
               {error}
             </Alert>
           </div>
         ) : selected ? (
-          mode === "query" ? (
-            <SqlConsole
-              key={selected}
-              connection={selected}
-              engine={connections.find((c) => c.name === selected)?.engine}
-              unlocked={
-                connections.find((c) => c.name === selected)?.writeUnlocked ?? false
-              }
-              seed={seed}
-              onWriteAccessChange={refresh}
-              preferences={databasePreferences}
-            />
-          ) : (
-            <DatabaseExplorer
-              connections={connections}
-              onAddConnection={() => setDialog({ mode: "add" })}
-              onAddWithAi={addWithAi}
-              onEditConnection={startEdit}
-              onRemoveConnection={(name) => void remove(name)}
-              onSelectConnection={setSelected}
-              onWriteAccessChange={refresh}
-              resultLimit={databasePreferences.resultLimit}
-              selectedConnection={selected}
-            />
-          )
+          <>
+            <div
+              className={cn(
+                "h-full min-h-0 overflow-hidden",
+                mode === "query"
+                  ? sqlExplorerOpen
+                    ? "grid grid-cols-[minmax(12rem,18rem)_minmax(0,1fr)] max-sm:grid-cols-[minmax(9rem,44vw)_minmax(0,1fr)]"
+                    : "grid grid-cols-1"
+                  : "hidden",
+              )}
+              data-database-workspace="sql"
+            >
+              {sqlMounted && sqlExplorerOpen ? (
+                <DatabaseExplorer
+                  connections={connections}
+                  onAddConnection={() => setDialog({ mode: "add" })}
+                  onAddWithAi={addWithAi}
+                  onEditConnection={startEdit}
+                  onRemoveConnection={(name) => void remove(name)}
+                  onGenerateObjectSelect={(selection) =>
+                    sendObjectToEditor(
+                      selection,
+                      `SELECT * FROM ${selection.object.qualifiedName} LIMIT ${databasePreferences.resultLimit};`,
+                      "statement",
+                    )
+                  }
+                  onInsertObjectName={(selection) =>
+                    sendObjectToEditor(selection, selection.object.qualifiedName, "insert")
+                  }
+                  onOpenObjectInBrowse={openObjectInBrowse}
+                  onSelectConnection={setSelected}
+                  onSelectedCatalogObjectChange={setSelectedCatalogObject}
+                  resultLimit={databasePreferences.resultLimit}
+                  selectedCatalogObject={selectedCatalogObject}
+                  selectedConnection={selected}
+                  sidebarOnly
+                  surface="sql"
+                />
+              ) : null}
+              {sqlMounted ? (
+                <SqlConsole
+                  key={selected}
+                  connection={selected}
+                  editorAction={editorAction}
+                  engine={selectedConnection?.engine}
+                  unlocked={
+                    selectedConnection?.writeUnlocked ?? false
+                  }
+                  seed={seed}
+                  onWriteAccessChange={refresh}
+                  preferences={databasePreferences}
+                />
+              ) : null}
+            </div>
+            <div
+              className={cn("h-full min-h-0", mode !== "browse" && "hidden")}
+              data-database-workspace="browse"
+            >
+              <DatabaseExplorer
+                connections={connections}
+                onAddConnection={() => setDialog({ mode: "add" })}
+                onAddWithAi={addWithAi}
+                onEditConnection={startEdit}
+                onRemoveConnection={(name) => void remove(name)}
+                onSelectConnection={setSelected}
+                onSelectedCatalogObjectChange={setSelectedCatalogObject}
+                onWriteAccessChange={refresh}
+                resultLimit={databasePreferences.resultLimit}
+                selectedCatalogObject={selectedCatalogObject}
+                selectedConnection={selected}
+              />
+            </div>
+          </>
         ) : (
           <EmptyState onAdd={() => setDialog({ mode: "add" })} onAddWithAi={addWithAi} />
         )}

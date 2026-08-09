@@ -1,6 +1,6 @@
 {
   "name": "nomoreide",
-  "version": "0.1.99",
+  "version": "0.1.100",
   "description": "An AI-native terminal workbench for services, Git review, logs, and MCP workflows.",
   "repository": {
     "type": "git",
@@ -56,6 +56,7 @@
     "@radix-ui/react-context-menu": "^2.3.7",
     "@tailwindcss/vite": "^4.3.0",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",

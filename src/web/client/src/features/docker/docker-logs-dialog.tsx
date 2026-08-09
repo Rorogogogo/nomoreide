@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, ScrollText } from "lucide-react";
+import { RefreshCw, ScrollText } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { getDockerContainerLogs, type DockerContainerSummary } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { ComposerDialog } from "../services/service-form/composer-dialog";
@@ -58,10 +59,7 @@ export function DockerLogsDialog({
       {error ? (
         <Alert variant="destructive">{error}</Alert>
       ) : loading && logs === null ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          {t("docker.logs.loading")}
-        </div>
+        <Loading className="py-10" label={t("docker.logs.loading")} />
       ) : logs ? (
         <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-3 font-mono text-[11px]">
           {logs}

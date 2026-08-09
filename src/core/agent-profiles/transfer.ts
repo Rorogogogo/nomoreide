@@ -169,8 +169,11 @@ export async function importProfile(
 
   const extractDir = await mkdtemp(path.join(tmpdir(), "nomoreide-profile-import-"));
   try {
+    // Deliberately outside the catch below: this reports *why* an archive was
+    // rejected (unsafe path, link entry, legacy layout), and wrapping it in the
+    // generic message would throw that diagnosis away.
+    await validateArchiveMembers(input.archivePath);
     try {
-      await validateArchiveMembers(input.archivePath);
       await execFileAsync("tar", ["-xzf", input.archivePath, "-C", extractDir]);
     } catch {
       throw new Error("Could not extract the archive — is it a .tar.gz profile export?");
@@ -375,10 +378,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function validateArchiveMembers(archivePath: string): Promise<void> {
-  const [{ stdout }, { stdout: verbose }] = await Promise.all([
-    execFileAsync("tar", ["-tzf", archivePath]),
-    execFileAsync("tar", ["-tvzf", archivePath]),
-  ]);
+  let stdout: string;
+  let verbose: string;
+  try {
+    const [plain, detailed] = await Promise.all([
+      execFileAsync("tar", ["-tzf", archivePath]),
+      execFileAsync("tar", ["-tvzf", archivePath]),
+    ]);
+    stdout = plain.stdout;
+    verbose = detailed.stdout;
+  } catch {
+    // Only a genuinely unreadable file lands here — not a well-formed archive
+    // we are choosing to reject further down.
+    throw new Error("Could not extract the archive — is it a .tar.gz profile export?");
+  }
   for (const line of verbose.split("\n").filter(Boolean)) {
     if (line.startsWith("l") || line.startsWith("h")) {
       throw new Error("Profile archive contains a link entry, which is not allowed.");
@@ -387,6 +400,19 @@ async function validateArchiveMembers(archivePath: string): Promise<void> {
   const members = stdout.split("\n").filter(Boolean);
   if (members.length > 20_000) {
     throw new Error("Profile archive contains too many files.");
+  }
+  // Anything published before the NoMoreIDE rename carries brainctl's YAML
+  // layout (manifest.yaml / profile.yaml / mcps/). Every one of those trips the
+  // allowlist below, so name the real problem instead of reporting the first
+  // offending path as merely "unsafe".
+  const topLevel = new Set(
+    members.map((member) => member.replace(/^\.\/+/, "").split("/")[0]).filter(Boolean),
+  );
+  if (topLevel.has("manifest.yaml") || topLevel.has("profile.yaml")) {
+    throw new Error(
+      "This is a brainctl-era profile archive (YAML layout), which nomoreide cannot import. " +
+        "Re-snapshot the profile and publish it again with nomoreide.",
+    );
   }
   for (const member of members) {
     const normalized = member.replace(/^\.\/+/, "");

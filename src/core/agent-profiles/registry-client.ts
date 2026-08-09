@@ -21,7 +21,8 @@ export interface RegistryProfileVersion {
 export interface RegistryInstallDescriptor {
   slug: string;
   version: string;
-  source_kind: "brainctl" | "github" | string;
+  /** `"brainctl"` is the pre-rename spelling of `"hosted"`. */
+  source_kind: "hosted" | "brainctl" | "github" | string;
   download_url: string;
   checksum_sha256?: string | null;
 }

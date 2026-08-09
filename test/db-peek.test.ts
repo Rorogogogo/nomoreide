@@ -126,6 +126,23 @@ describe.skipIf(!sqliteAvailable)("DbPeek (SQLite)", () => {
     expect(sample.rowCount).toBe(1);
   });
 
+  test("filters, sorts, and validates sampled browser rows", async () => {
+    const users = (await dbPeek.listObjects("app", "main")).find(
+      (object) => object.name === "users",
+    );
+    const sample = await dbPeek.sampleObject("app", users?.key ?? "", 100, 0, {
+      filters: [{ column: "email", operator: "contains", value: "@x.com" }],
+      sort: { column: "email", direction: "desc" },
+    });
+    expect(sample.rows.map((row) => row.email)).toEqual(["b@x.com", "a@x.com"]);
+
+    await expect(
+      dbPeek.sampleObject("app", users?.key ?? "", 100, 0, {
+        filters: [{ column: "email; DROP TABLE users", operator: "eq", value: "x" }],
+      }),
+    ).rejects.toThrow(/Unknown filter column/);
+  });
+
   test("rejects tables that are not in the live catalog (injection guard)", async () => {
     await expect(
       dbPeek.sampleRows("app", "users; DROP TABLE users", 10),

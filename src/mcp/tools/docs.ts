@@ -20,6 +20,8 @@ const docsTopicSchema = z.enum([
   "cli",
   "dashboard",
   "tools",
+  "vercel",
+  "agent-environments",
   "safety",
   "troubleshooting",
   "architecture",
@@ -47,13 +49,13 @@ const topicEntries: DocsTopicEntry[] = [
     id: "overview",
     title: "Overview",
     body:
-      "NoMoreIDE is an AI-native local development workbench for services, logs, Git review, database inspection, terminal access, and MCP workflows. It gives humans and AI coding agents one shared local control surface.",
+      "NoMoreIDE v0.1.99 is an AI-native local development workbench for services, activity, Docker, Git and worktrees, GitHub, Vercel, databases, workflows, terminals, and agent environments. It gives humans and AI coding agents one shared local control surface through MCP, CLI, TUI, web, and macOS desktop interfaces.",
   },
   {
     id: "setup",
     title: "Setup",
     body:
-      "Run NoMoreIDE with `npx -y nomoreide`, install it globally with `npm install -g nomoreide`, or build from source with `npm install` and `npm run build`. Connect agents by registering a stdio MCP server that runs `npx -y nomoreide`.",
+      "Recommended NoMoreIDE agent setup is `npx -y nomoreide setup codex`, `npx -y nomoreide setup claude`, or `npx -y nomoreide setup gemini`; this installs both the local MCP connection and the bundled nomoreide-debug skill. Start a new agent session and verify with `/mcp`. You can also run with `npx -y nomoreide`, install globally with `npm install -g nomoreide`, download the macOS desktop app from GitHub Releases, or build from source.",
   },
   {
     id: "mcp",
@@ -65,25 +67,37 @@ const topicEntries: DocsTopicEntry[] = [
     id: "cli",
     title: "CLI reference",
     body:
-      "NoMoreIDE CLI commands include `setup`, `web`, `tui`, `list`, `add service`, `add bundle`, `start`, `stop`, `restart`, `logs`, and `git` subcommands. Use `nomoreide add service` to register local, Docker Compose, or SSH-backed services.",
+      "NoMoreIDE CLI commands include `setup`, `web`, `tui`, `daemon`, `list`, `add service`, `add bundle`, `start`, `stop`, `restart`, `logs`, `git`, `db`, `agents`, and `profile`. Use `nomoreide add service` for local, Docker Compose, or SSH services; `nomoreide agents` to inspect coding-agent configuration; and `nomoreide profile` to snapshot, preview, apply, export, import, publish, or install portable agent setups.",
   },
   {
     id: "dashboard",
     title: "Dashboard",
     body:
-      "The NoMoreIDE dashboard runs locally and includes Services, Git Review, Error Inbox, Database, Terminal, Agent, and Docs pages. Use it to keep service state, logs, diffs, data, and agent context visible.",
+      "The NoMoreIDE web and macOS dashboards include all-project Overview, Services, Activity, Docker, Error Inbox, Terminal, Git Review, GitHub, Vercel, Workflows, Database, Agent Console, Agent Environments, and searchable Settings surfaces. They keep runtime state, logs, diffs, deployments, data, workflows, and agent context visible.",
   },
   {
     id: "tools",
     title: "MCP tool reference",
     body:
-      "NoMoreIDE exposes tools for services, repo onboarding, Git, errors, database inspection, UI lifecycle, and docs. Important tools include `nomoreide_list_services`, `nomoreide_status`, `nomoreide_service_health`, `nomoreide_read_logs`, `nomoreide_git_status`, `nomoreide_git_diff`, `nomoreide_db_tables`, `nomoreide_open_ui`, and `nomoreide_docs`.",
+      "NoMoreIDE exposes domain tools for services, repo onboarding, Git and worktrees, snapshots, GitHub, Vercel, errors, database catalog inspection, documentation, UI lifecycle, agent environments, portable profiles, and the hosted profile registry. Fetch `https://www.nomoreide.com/llms-full.txt` for the complete tool-name reference.",
+  },
+  {
+    id: "vercel",
+    title: "Vercel",
+    body:
+      "Use NoMoreIDE's `nomoreide_vercel_list_projects`, `nomoreide_vercel_list_deployments`, `nomoreide_vercel_get_deployment`, and `nomoreide_vercel_deployment_logs` tools to inspect linked Vercel projects and diagnose builds. MCP access is read-only; redeploy, cancel, promote, and rollback remain explicit human actions in the dashboard.",
+  },
+  {
+    id: "agent-environments",
+    title: "Agent environments and profiles",
+    body:
+      "NoMoreIDE can inspect Claude Code, Codex, and Antigravity MCP servers, skills, and plugins; run configuration diagnostics; safely move items between agents and scopes; and package setups as profiles. Preview profile applications before writing. Agent configuration writes create backups, and exported or published profiles redact credentials.",
   },
   {
     id: "safety",
     title: "Safety model",
     body:
-      "NoMoreIDE avoids broad filesystem scans, does not kill external processes it did not start, reports port conflicts instead of terminating processes, omits destructive Git operations like hard reset, clean, force push, and branch deletion, and keeps database MCP tools read-only. Vercel MCP tools are read-only too: agents can inspect deployments and build logs, but redeploy, cancel, promote, and rollback are reachable only from the dashboard.",
+      "NoMoreIDE avoids broad filesystem scans, does not kill external processes it did not start, reports port conflicts instead of terminating processes, omits destructive Git operations like hard reset, clean, force push, and branch deletion, and keeps database MCP tools read-only. Vercel MCP tools are read-only too: agents can inspect deployments and build logs, but redeploy, cancel, promote, and rollback are reachable only from the dashboard. Agent environment writes create backups, and exported or published profiles redact credential values.",
   },
   {
     id: "troubleshooting",
@@ -95,13 +109,13 @@ const topicEntries: DocsTopicEntry[] = [
     id: "architecture",
     title: "Architecture",
     body:
-      "NoMoreIDE has a shared core layer for config, processes, logs, Git, health, database inspection, timeline, and error inbox. The MCP server wraps those core modules as FastMCP tools. The web server serves a React dashboard and REST API over localhost.",
+      "NoMoreIDE has a shared core and daemon for config, processes, logs, activity, Git/worktrees/snapshots, GitHub, Vercel, databases, workflows, agent environments, profiles, and diagnostics. FastMCP exposes narrow domain tools; the local server exposes a React dashboard and REST API; Tauri provides the standalone macOS shell.",
   },
   {
     id: "ai-agent",
     title: "AI agent guide",
     body:
-      "Agents should start with `nomoreide_list_services` and `nomoreide_status`, inspect health and logs before restarting services, inspect Git status and diffs before staging or committing, and prefer NoMoreIDE tools over ad hoc shell commands when an equivalent tool exists.",
+      "Agents should start with `nomoreide_list_services` and `nomoreide_status`, inspect health and logs before restarting services, inspect Git status and diffs before staging or committing, use read-only database and Vercel MCP tools, preview agent profile changes before applying, and prefer the narrowest matching NoMoreIDE tool over ad hoc shell access.",
   },
 ];
 

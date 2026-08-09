@@ -1,8 +1,10 @@
 mod commands;
 mod core;
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::{Manager, RunEvent, State, WindowEvent};
+use tokio::sync::{watch, Mutex};
 
 use commands::terminal::TerminalManager;
 use core::config::ConfigStore;
@@ -18,6 +20,7 @@ pub struct AppState {
     pub log_store: LogStore,
     pub process_manager: ProcessManager,
     pub terminal_manager: TerminalManager,
+    pub database_exports: Mutex<HashMap<String, Option<watch::Sender<bool>>>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -41,11 +44,13 @@ pub fn run() {
         log_store,
         process_manager,
         terminal_manager: TerminalManager::new(),
+        database_exports: Mutex::new(HashMap::new()),
     };
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             // agent introspection
@@ -141,6 +146,8 @@ pub fn run() {
             commands::database::list_database_objects,
             commands::database::get_database_object_details,
             commands::database::sample_database_object,
+            commands::database::export_database_object,
+            commands::database::cancel_database_export,
             commands::database::delete_database_rows,
             // github
             commands::github::get_github_token_status,

@@ -4,6 +4,7 @@ import type {
   ResultSetHeader,
   RowDataPacket,
 } from "mysql2/promise";
+import type { Connection as CoreConnection } from "mysql2";
 import type { DatabaseEngine } from "../types.js";
 import {
   capDefinition,
@@ -16,6 +17,7 @@ import {
 } from "./catalog.js";
 import {
   assertExpectedDeleteCount,
+  buildRowBrowseClauses,
   clampLimit,
   clampOffset,
   columnsFromNames,
@@ -26,7 +28,9 @@ import {
   type DbDriver,
   type DbWriteDriver,
   type QueryResult,
+  type RowBrowseQuery,
   type RowSample,
+  type StreamRowsOptions,
   type TableRef,
   type WriteResult,
 } from "./driver.js";
@@ -251,7 +255,12 @@ export class MysqlDriver implements DbDriver, DbWriteDriver {
     }
   }
 
-  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
+  async sampleRows(
+    table: TableRef,
+    limit: number,
+    offset?: number,
+    query?: RowBrowseQuery,
+  ): Promise<RowSample> {
     const name = table.name;
     const qualifiedName = table.schema
       ? `${quoteIdentifier(table.schema)}.${quoteIdentifier(name)}`
@@ -260,9 +269,10 @@ export class MysqlDriver implements DbDriver, DbWriteDriver {
     const skip = clampOffset(offset);
     return this.withReadOnly(async (conn) => {
       const columns = await this.columnsFor(conn, name, table.schema);
+      const clauses = buildRowBrowseClauses(columns, query, quoteIdentifier, () => "?");
       const [rows] = await conn.query<RowDataPacket[]>(
-        `SELECT * FROM ${qualifiedName} LIMIT ? OFFSET ?`,
-        [max, skip],
+        `SELECT * FROM ${qualifiedName}${clauses.whereSql}${clauses.orderBySql} LIMIT ? OFFSET ?`,
+        [...clauses.values, max, skip],
       );
       return {
         columns,
@@ -272,6 +282,56 @@ export class MysqlDriver implements DbDriver, DbWriteDriver {
         offset: skip,
       };
     });
+  }
+
+  async *streamRows(
+    table: TableRef,
+    columns: ColumnInfo[],
+    options: StreamRowsOptions = {},
+  ): AsyncIterable<Array<Record<string, unknown>>> {
+    const pool = await this.pool();
+    const conn = await pool.getConnection();
+    const batchSize = clampLimit(options.batchSize, 1_000);
+    const qualifiedName = table.schema
+      ? `${quoteIdentifier(table.schema)}.${quoteIdentifier(table.name)}`
+      : quoteIdentifier(table.name);
+    const primaryKeys = columns.filter((column) => column.primaryKey);
+    const orderColumns = primaryKeys.length > 0
+      ? primaryKeys.map((column) => quoteIdentifier(column.name))
+      : columns.flatMap((column) => {
+          const identifier = quoteIdentifier(column.name);
+          return [`${identifier} IS NOT NULL`, `HEX(CAST(${identifier} AS BINARY))`];
+        });
+    const order = orderColumns.length > 0 ? ` ORDER BY ${orderColumns.join(", ")}` : "";
+    try {
+      await conn.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+      await conn.query("START TRANSACTION READ ONLY");
+      const stream = (conn.connection as unknown as CoreConnection)
+        .query(`SELECT * FROM ${qualifiedName}${order}`)
+        .stream({ highWaterMark: batchSize });
+      const abort = () => stream.destroy(new DOMException("Database export cancelled", "AbortError"));
+      options.signal?.addEventListener("abort", abort, { once: true });
+      let batch: Array<Record<string, unknown>> = [];
+      try {
+        for await (const row of stream) {
+          batch.push(normalizeRow(row as Record<string, unknown>));
+          if (batch.length >= batchSize) {
+            yield batch;
+            batch = [];
+          }
+        }
+        if (batch.length > 0) yield batch;
+      } finally {
+        options.signal?.removeEventListener("abort", abort);
+        if (!stream.destroyed) stream.destroy();
+      }
+      if (options.signal?.aborted) {
+        throw new DOMException("Database export cancelled", "AbortError");
+      }
+    } finally {
+      await conn.query("ROLLBACK").catch(() => {});
+      conn.release();
+    }
   }
 
   async runQuery(sql: string, maxRows: number): Promise<QueryResult> {

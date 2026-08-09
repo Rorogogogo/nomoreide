@@ -34,6 +34,7 @@
   --input: 36 16% 84%;
   --ring: 170 34% 39%;
   --radius: 0.5rem;
+  --agent-wave-shadow: rgb(0 0 0 / 0.18);
   --context-card-border: hsla(0, 0%, 92%, 1);
   --ds-contrast-fg: #ffffff;
   --geist-background: #fff;
@@ -144,6 +145,7 @@
   --border: 24 6% 20%;
   --input: 24 6% 20%;
   --ring: 170 34% 45%;
+  --agent-wave-shadow: rgb(0 0 0 / 0.55);
   --context-card-border: hsla(0, 0%, 18%, 1);
   --geist-background: #000;
   --ds-shadow-menu:
@@ -176,6 +178,142 @@
   }
 }
 
+@keyframes agent-wave {
+  0%,
+  5%,
+  16%,
+  100% {
+    filter: drop-shadow(0 1px 1px var(--agent-wave-shadow));
+    opacity: 0.45;
+    transform: translateY(0) scale(0.92);
+  }
+  9% {
+    filter: drop-shadow(0 5px 3px var(--agent-wave-shadow));
+    opacity: 1;
+    transform: translateY(-5px) scale(1);
+  }
+}
+
+.agent-wave-mark {
+  animation: agent-wave 1.6s ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes agent-wave-signal {
+  0%,
+  4% {
+    opacity: 0;
+    offset-distance: 0%;
+  }
+  9%,
+  11% {
+    opacity: 1;
+    offset-distance: 0%;
+  }
+  20% {
+    opacity: 1;
+    offset-distance: 18.754%;
+  }
+  23% {
+    opacity: 1;
+    offset-distance: 18.754%;
+  }
+  31% {
+    opacity: 1;
+    offset-distance: 37.512%;
+  }
+  34% {
+    opacity: 1;
+    offset-distance: 37.512%;
+  }
+  42% {
+    opacity: 1;
+    offset-distance: 56.266%;
+  }
+  45% {
+    opacity: 1;
+    offset-distance: 56.266%;
+  }
+  53% {
+    opacity: 1;
+    offset-distance: 75.02%;
+  }
+  56% {
+    opacity: 1;
+    offset-distance: 75.02%;
+  }
+  65% {
+    opacity: 0.15;
+    offset-distance: 100%;
+  }
+  69%,
+  100% {
+    opacity: 0;
+    offset-distance: 100%;
+  }
+}
+
+@keyframes agent-wave-tail {
+  0%,
+  11%,
+  20%,
+  23%,
+  31%,
+  34%,
+  42%,
+  45%,
+  53%,
+  56%,
+  65%,
+  100% {
+    opacity: 0;
+    transform: translateY(-50%) scaleX(0.15);
+  }
+  13%,
+  18%,
+  25%,
+  29%,
+  36%,
+  40%,
+  47%,
+  51%,
+  58%,
+  63% {
+    opacity: 0.8;
+    transform: translateY(-50%) scaleX(1);
+  }
+}
+
+.agent-wave-signal {
+  position: absolute;
+  top: -0.5px;
+  left: 10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  color: hsl(var(--muted-foreground));
+  filter: drop-shadow(0 0 1px currentColor);
+  animation: agent-wave-signal 1.6s cubic-bezier(0.22, 0.8, 0.36, 1) infinite;
+  offset-anchor: 50% 50%;
+  offset-path: path("M 0 0 Q 14 -30 28 0 Q 42 -30 56 0 Q 70 -30 84 0 Q 98 -30 112 0 Q 133 -40 154 -12");
+  offset-rotate: auto;
+  will-change: offset-distance, opacity;
+}
+
+.agent-wave-signal::before {
+  position: absolute;
+  top: 50%;
+  right: 1px;
+  width: 8px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, currentColor);
+  content: "";
+  transform-origin: right center;
+  animation: agent-wave-tail 1.6s linear infinite;
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: none;
@@ -195,6 +333,7 @@
   label[for] {
     cursor: pointer;
   }
+
 }
 
 body {

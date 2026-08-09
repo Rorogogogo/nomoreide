@@ -33,6 +33,7 @@ export const tauriAgentEnvApi: AgentEnvApi = {
   updateAgentEnvProfile: notAvailable,
   deleteAgentEnvProfile: notAvailable,
   snapshotAgentEnvProfile: notAvailable,
+  refreshAgentEnvProfile: notAvailable,
   previewAgentEnvProfileApply: notAvailable,
   applyAgentEnvProfile: notAvailable,
   exportAgentEnvProfile: notAvailable,

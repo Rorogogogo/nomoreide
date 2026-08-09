@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ExternalLink } from "lucide-react";
 import type { GitHubWorkflowJob, GitHubWorkflowJobStep, GitHubWorkflowRun } from "@/lib/api";
+import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
@@ -64,7 +65,7 @@ export function ActionsView({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading && runs.length === 0 ? (
-          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.loadingRuns")}</div>
+          <Loading fill label={t("github.actions.loadingRuns")} />
         ) : runs.length === 0 ? (
           <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.noRuns")}</div>
         ) : (
@@ -234,7 +235,7 @@ function RunJobsDetail({
         {error ? (
           <div className="p-4 text-[12px] text-red-500">{error}</div>
         ) : loading ? (
-          <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.loadingJobs")}</div>
+          <Loading fill label={t("github.actions.loadingJobs")} />
         ) : jobs.length === 0 ? (
           <div className="p-4 text-[12px] text-muted-foreground">{t("github.actions.noJobs")}</div>
         ) : (

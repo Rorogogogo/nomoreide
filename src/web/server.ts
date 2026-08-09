@@ -28,10 +28,13 @@ import {
   TerminalSessionManager,
   type TerminalSessionManagerLike,
 } from "../core/terminal-manager.js";
-import type {
-  TerminalSessionLike,
-  TerminalSize,
-  TerminalSnapshot,
+import {
+  isNodePtySpawnHelperFailure,
+  NODE_PTY_SPAWN_FAILURE,
+  repairNodePtySpawnHelper,
+  type TerminalSessionLike,
+  type TerminalSize,
+  type TerminalSnapshot,
 } from "../core/terminal-session.js";
 import { TestRunner } from "../core/test-runner.js";
 import { TimelineStore } from "../core/timeline-store.js";
@@ -58,6 +61,8 @@ export interface WebServerOptions {
   registryPath?: string;
   port?: number;
   terminalManager?: TerminalSessionManagerLike;
+  /** Injectable terminal-helper repair for focused WebSocket tests. */
+  repairTerminal?: () => unknown;
   toolCallStore?: ToolCallStore;
   /** Daemon mode only: runs after `/api/daemon/shutdown` stopped all services. */
   onDaemonShutdown?: () => void | Promise<void>;
@@ -182,7 +187,10 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
       const server = http.createServer((request, response) => {
         void routeRequest(services, request, response);
       });
-      const terminalSocketServer = createTerminalSocketServer(terminalManager);
+      const terminalSocketServer = createTerminalSocketServer(
+        terminalManager,
+        options.repairTerminal,
+      );
       // When the host process exits (incl. after ProcessManager's signal
       // handlers re-raise), synchronously kill every PTY — important for
       // ssh/docker sessions that hold real connections.
@@ -236,6 +244,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
 
 function createTerminalSocketServer(
   terminalManager: TerminalSessionManagerLike,
+  repairTerminal: () => unknown = repairNodePtySpawnHelper,
 ): WebSocketServer {
   const server = new WebSocketServer({ noServer: true });
   server.on("connection", (socket, request) => {
@@ -256,10 +265,13 @@ function createTerminalSocketServer(
     socket.on("message", (data) => {
       try {
         terminalManager.touch(id); // client activity resets the idle timer
-        handleTerminalSocketMessage(session, data);
-      } catch {
+        handleTerminalSocketMessage(session, data, repairTerminal);
+      } catch (caught) {
         sendTerminalMessage(socket, {
-          error: "Invalid terminal socket message.",
+          error:
+            caught instanceof TerminalRepairError
+              ? caught.message
+              : "Invalid terminal socket message.",
           type: "error",
         });
       }
@@ -279,6 +291,7 @@ function createTerminalSocketServer(
 function handleTerminalSocketMessage(
   session: TerminalSessionLike,
   data: RawData,
+  repairTerminal: () => unknown,
 ): void {
   const message = JSON.parse(data.toString()) as Record<string, unknown>;
   if (message.type === "input" && typeof message.data === "string") {
@@ -294,10 +307,28 @@ function handleTerminalSocketMessage(
     session.restart(normalizeSize(message));
     return;
   }
+  if (message.type === "repair") {
+    if (!isNodePtySpawnHelperFailure(session.snapshot().error)) {
+      throw new TerminalRepairError(
+        "Automatic repair is not available for this terminal error.",
+      );
+    }
+    try {
+      repairTerminal();
+      session.restart(normalizeSize(message));
+    } catch (caught) {
+      throw new TerminalRepairError(
+        `Terminal repair failed after ${NODE_PTY_SPAWN_FAILURE}: ${errorMessage(caught)}`,
+      );
+    }
+    return;
+  }
   if (message.type === "stop") {
     session.stop();
   }
 }
+
+class TerminalRepairError extends Error {}
 
 function socketSize(url: URL): TerminalSize {
   return {

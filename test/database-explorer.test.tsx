@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { AppContextMenu } from "../src/web/client/src/components/app-context-menu";
@@ -11,12 +11,14 @@ import type { DatabaseConnection } from "../src/web/client/src/lib/api";
 const mocks = vi.hoisted(() => ({
   getCapabilities: vi.fn(),
   getDetails: vi.fn(),
+  exportObject: vi.fn(),
   getObjects: vi.fn(),
   getRows: vi.fn(),
   getSchemas: vi.fn(),
 }));
 
 vi.mock("@/lib/api", () => ({
+  exportDatabaseObject: mocks.exportObject,
   getDatabaseCapabilities: mocks.getCapabilities,
   getDatabaseObjectDetails: mocks.getDetails,
   getDatabaseObjectRows: mocks.getRows,
@@ -68,6 +70,7 @@ beforeEach(() => {
     columns: [{ name: "id", dataType: "INTEGER", nullable: false, primaryKey: true }],
     rows: [{ id: 1 }], rowCount: 1, limit: 100, offset: 0,
   });
+  mocks.exportObject.mockResolvedValue({ delivery: "browser", url: "/download.csv" });
 });
 
 afterEach(() => {
@@ -90,6 +93,74 @@ function button(label: string) {
 }
 
 describe("DatabaseExplorer", () => {
+  test("exports every row from the Data tab as CSV or JSON", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    act(() => {
+      root.render(
+        <StrictMode>
+          <DatabaseExplorer
+          connections={CONNECTIONS}
+          onAddConnection={vi.fn()}
+          onAddWithAi={vi.fn()}
+          onEditConnection={vi.fn()}
+          onRemoveConnection={vi.fn()}
+          onSelectConnection={vi.fn()}
+          resultLimit={100}
+          selectedConnection="app"
+          />
+        </StrictMode>,
+      );
+    });
+    await flush();
+    act(() => button("main")?.click());
+    await flush();
+    act(() => button("Tables")?.click());
+    act(() => button("users")?.click());
+    await flush();
+
+    act(() => button("Export")?.click());
+    expect(container.textContent).toContain("Sensitive columns stay masked");
+    act(() => button("Export all as CSV")?.click());
+    await flush();
+
+    expect(mocks.exportObject).toHaveBeenCalledWith(
+      "app",
+      "opaque-users",
+      "csv",
+      expect.stringMatching(/^app-users-\d{4}-\d{2}-\d{2}\.csv$/),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
+  });
+
+  test("renders the catalog tree without a detail pane for companion views", async () => {
+    act(() => {
+      root.render(
+        <DatabaseExplorer
+          connections={CONNECTIONS}
+          onAddConnection={vi.fn()}
+          onAddWithAi={vi.fn()}
+          onEditConnection={vi.fn()}
+          onRemoveConnection={vi.fn()}
+          onSelectConnection={vi.fn()}
+          resultLimit={100}
+          selectedConnection="app"
+          sidebarOnly
+        />,
+      );
+    });
+    await flush();
+
+    expect(container.querySelector('[data-testid="database-explorer-sidebar"]')).toBeTruthy();
+    expect(button("app")?.getAttribute("aria-current")).toBe("true");
+    expect(container.textContent).not.toContain("Select an object to inspect it.");
+
+    act(() => button("main")?.click());
+    await flush();
+    expect(mocks.getObjects).toHaveBeenCalledWith("app", "main");
+  });
+
   test("loads connection, schema, object, and detail branches lazily", async () => {
     act(() => {
       root.render(
@@ -128,9 +199,30 @@ describe("DatabaseExplorer", () => {
     await flush();
 
     expect(mocks.getDetails).toHaveBeenCalledWith("app", "opaque-users");
-    expect(mocks.getRows).toHaveBeenCalledWith("app", "opaque-users", 100, 0);
+    expect(mocks.getRows).toHaveBeenCalledWith("app", "opaque-users", 100, 0, {
+      filters: [],
+      sort: undefined,
+    });
     expect(container.querySelector('[data-testid="rows"]')?.textContent).toBe("1");
     expect(container.querySelector("#database-object-panel-structure")?.hasAttribute("hidden")).toBe(true);
+
+    act(() => button("Filter")?.click());
+    const filterValue = container.querySelector<HTMLInputElement>('[aria-label="Value"]');
+    act(() => {
+      if (filterValue) {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+          filterValue,
+          "1",
+        );
+        filterValue.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    act(() => button("Add filter")?.click());
+    await flush();
+    expect(mocks.getRows).toHaveBeenLastCalledWith("app", "opaque-users", 100, 0, {
+      filters: [{ column: "id", operator: "eq", value: "1" }],
+      sort: undefined,
+    });
 
     act(() => button("Structure")?.click());
     const structurePanel = container.querySelector("#database-object-panel-structure");
@@ -195,6 +287,95 @@ describe("DatabaseExplorer", () => {
     await act(async () => items[1]?.click());
     expect(onEditConnection).toHaveBeenCalledWith(CONNECTIONS[1]);
     expect(onRemoveConnection).not.toHaveBeenCalled();
+  });
+
+  test("keeps SQL object clicks in place and exposes browse, editor, and AI actions", async () => {
+    const onSelectConnection = vi.fn();
+    const onSelectionChange = vi.fn();
+    const onOpenInBrowse = vi.fn();
+    const onInsertName = vi.fn();
+    const onGenerateSelect = vi.fn();
+    act(() => {
+      root.render(
+        <AiContextMenuProvider>
+          <AppContextMenu onRefresh={vi.fn()}>
+            <div>
+              <DatabaseExplorer
+                connections={CONNECTIONS}
+                onAddConnection={vi.fn()}
+                onAddWithAi={vi.fn()}
+                onEditConnection={vi.fn()}
+                onGenerateObjectSelect={onGenerateSelect}
+                onInsertObjectName={onInsertName}
+                onOpenObjectInBrowse={onOpenInBrowse}
+                onRemoveConnection={vi.fn()}
+                onSelectConnection={onSelectConnection}
+                onSelectedCatalogObjectChange={onSelectionChange}
+                resultLimit={100}
+                selectedConnection="app"
+                sidebarOnly
+                surface="sql"
+              />
+            </div>
+          </AppContextMenu>
+        </AiContextMenuProvider>,
+      );
+    });
+    await flush();
+    act(() => button("main")?.click());
+    await flush();
+    act(() => button("Tables")?.click());
+    act(() => button("users")?.click());
+
+    expect(onSelectionChange).toHaveBeenCalledWith({
+      connection: "app",
+      object: expect.objectContaining({ name: "users" }),
+    });
+    expect(onOpenInBrowse).not.toHaveBeenCalled();
+
+    act(() => button("users")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+    expect(onInsertName).toHaveBeenCalledWith({
+      connection: "app",
+      object: expect.objectContaining({ name: "users" }),
+    });
+
+    const openButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Open in Browse: users"]',
+    );
+    act(() => openButton?.click());
+    expect(onOpenInBrowse).toHaveBeenCalledWith({
+      connection: "app",
+      object: expect.objectContaining({ name: "users" }),
+    });
+    onOpenInBrowse.mockClear();
+
+    await act(async () => {
+      button("users")?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          button: 2,
+          cancelable: true,
+          clientX: 40,
+          clientY: 60,
+        }),
+      );
+    });
+    const items = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    );
+    expect(items.map((item) => item.textContent)).toEqual([
+      "AI",
+      "Open in Browse",
+      "Insert qualified name",
+      "Generate SELECT",
+      "Refresh⌘R",
+    ]);
+
+    await act(async () => items[1]?.click());
+    expect(onOpenInBrowse).toHaveBeenCalledWith({
+      connection: "app",
+      object: expect.objectContaining({ name: "users" }),
+    });
   });
 
   test("copies structure names and definitions from the row context menu", async () => {

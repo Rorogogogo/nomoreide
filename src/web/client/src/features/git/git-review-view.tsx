@@ -22,6 +22,10 @@ import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
 import { WorktreesView } from "./worktrees-view";
+import {
+  consumeGlobalSearchFocus,
+  subscribeToGlobalSearchFocus,
+} from "@/features/global-search/global-search-navigation";
 
 type GitTab =
   | "changes"
@@ -69,6 +73,20 @@ export function GitReviewView({
   }, [statusFiles, locallyModifiedPaths]);
   const filePaths = useMemo(() => files.map((file) => file.path), [files]);
   const stats = useMemo(() => diffStats(diff), [diff]);
+
+  useEffect(() => {
+    const focusFile = (path: string) => {
+      if (!files.some((file) => file.path === path)) return;
+      setTab("changes");
+      setMode("changes");
+      setSelectedFile(path);
+    };
+    const pending = consumeGlobalSearchFocus("git-file");
+    if (pending) focusFile(pending.path);
+    return subscribeToGlobalSearchFocus("git-file", (intent) => {
+      if (intent.type === "git-file") focusFile(intent.path);
+    });
+  }, [files]);
 
   const runStaging = useCallback(
     async (action: (paths: string[]) => Promise<void>, paths: string[]) => {

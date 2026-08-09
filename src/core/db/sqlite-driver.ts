@@ -14,6 +14,7 @@ import {
 } from "./catalog.js";
 import {
   assertExpectedDeleteCount,
+  buildRowBrowseClauses,
   clampLimit,
   clampOffset,
   columnsFromNames,
@@ -25,7 +26,9 @@ import {
   type DbDriver,
   type DbWriteDriver,
   type QueryResult,
+  type RowBrowseQuery,
   type RowSample,
+  type StreamRowsOptions,
   type TableRef,
   type WriteResult,
 } from "./driver.js";
@@ -200,7 +203,12 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
     };
   }
 
-  async sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample> {
+  async sampleRows(
+    table: TableRef,
+    limit: number,
+    offset?: number,
+    query?: RowBrowseQuery,
+  ): Promise<RowSample> {
     const name = table.name;
     const max = clampLimit(limit);
     const skip = clampOffset(offset);
@@ -213,9 +221,10 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
       nullable: col.notnull === 0,
       primaryKey: col.pk > 0,
     }));
+    const clauses = buildRowBrowseClauses(columns, query, quoteIdentifier, () => "?");
     const rows = db
-      .prepare(`SELECT * FROM ${quoteIdentifier(name)} LIMIT ? OFFSET ?`)
-      .all(max, skip) as Array<Record<string, unknown>>;
+      .prepare(`SELECT * FROM ${quoteIdentifier(name)}${clauses.whereSql}${clauses.orderBySql} LIMIT ? OFFSET ?`)
+      .all(...clauses.values, max, skip) as Array<Record<string, unknown>>;
     return {
       columns,
       rows: rows.map((row) => normalizeRow(row)),
@@ -223,6 +232,43 @@ export class SqliteDriver implements DbDriver, DbWriteDriver {
       limit: max,
       offset: skip,
     };
+  }
+
+  async *streamRows(
+    table: TableRef,
+    columns: ColumnInfo[],
+    options: StreamRowsOptions = {},
+  ): AsyncIterable<Array<Record<string, unknown>>> {
+    const db = await this.db();
+    const batchSize = clampLimit(options.batchSize, 1_000);
+    const primaryKeys = columns.filter((column) => column.primaryKey);
+    const orderColumns = primaryKeys.length > 0
+      ? primaryKeys.map((column) => quoteIdentifier(column.name))
+      : columns.flatMap((column) => {
+          const identifier = quoteIdentifier(column.name);
+          return [`typeof(${identifier})`, `hex(${identifier})`];
+        });
+    const order = orderColumns.length > 0 ? ` ORDER BY ${orderColumns.join(", ")}` : "";
+    const statement = db.prepare(
+      `SELECT * FROM ${quoteIdentifier(table.name)}${order} LIMIT ? OFFSET ?`,
+    );
+    let offset = 0;
+    db.exec("BEGIN DEFERRED TRANSACTION");
+    try {
+      while (!options.signal?.aborted) {
+        const rows = statement.all(batchSize, offset) as Array<Record<string, unknown>>;
+        if (rows.length === 0) break;
+        yield rows.map((row) => normalizeRow(row));
+        if (rows.length < batchSize) break;
+        offset += rows.length;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      }
+      if (options.signal?.aborted) {
+        throw new DOMException("Database export cancelled", "AbortError");
+      }
+    } finally {
+      db.exec("ROLLBACK");
+    }
   }
 
   async runQuery(sql: string, maxRows: number): Promise<QueryResult> {

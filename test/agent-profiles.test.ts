@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyProfile,
@@ -13,6 +15,7 @@ import {
   previewProfileApply,
   profilePluginsDir,
   profileSkillsDir,
+  refreshProfileFromAgent,
   redactMcpCredentials,
   resolveMcpCredentials,
   snapshotProfileFromAgent,
@@ -127,6 +130,26 @@ describe("agent-profiles store + transfer + apply", () => {
     await expect(getProfile("dev", opts())).rejects.toThrow("not found");
   });
 
+  it("keeps the existing profile when refreshing from an unavailable agent fails", async () => {
+    await createProfile({ name: "safe", description: "Keep me" }, opts());
+    await updateProfile(
+      "safe",
+      { mcps: { docs: { kind: "remote", transport: "http", url: "https://example.com/mcp" } } },
+      opts(),
+    );
+
+    await expect(
+      refreshProfileFromAgent({ agent: "antigravity", name: "safe", cwd }, opts()),
+    ).rejects.toThrow("no live config");
+
+    await expect(getProfile("safe", opts())).resolves.toMatchObject({
+      name: "safe",
+      description: "Keep me",
+      mcps: { docs: { kind: "remote", url: "https://example.com/mcp" } },
+    });
+    expect(await listProfiles(opts())).toHaveLength(1);
+  });
+
   it("snapshots an agent's live MCPs, user skills, and self-contained plugins", async () => {
     await writeFile(
       path.join(homeDir, ".claude.json"),
@@ -164,7 +187,7 @@ describe("agent-profiles store + transfer + apply", () => {
     );
 
     const profile = await snapshotProfileFromAgent(
-      { agent: "claude", name: "claude-backup", cwd },
+      { agent: "claude", name: "claude-backup", description: "Team setup", cwd },
       opts(),
     );
 
@@ -197,6 +220,26 @@ describe("agent-profiles store + transfer + apply", () => {
     await expect(
       readFile(path.join(profileSkillsDir("claude-backup", opts()), "commit-push", "SKILL.md"), "utf8"),
     ).resolves.toContain("commit-push");
+
+    await writeFile(
+      path.join(homeDir, ".claude.json"),
+      JSON.stringify({ mcpServers: { linear: { command: "npx", args: ["linear-mcp"] } } }),
+      "utf8",
+    );
+    const refreshed = await refreshProfileFromAgent(
+      { agent: "claude", name: "claude-backup", cwd },
+      opts(),
+    );
+
+    expect(refreshed).toMatchObject({
+      name: "claude-backup",
+      description: "Team setup",
+      sourceAgent: "claude",
+    });
+    expect(refreshed.mcps).toEqual({
+      linear: { kind: "local", command: "npx", args: ["linear-mcp"] },
+    });
+    expect(await listProfiles(opts())).toHaveLength(1);
   });
 
   it("round-trips plugin bundles and restores native or managed targets on apply", async () => {
@@ -533,5 +576,43 @@ describe("agent-profiles store + transfer + apply", () => {
     expect(claudeResult.mcpsApplied).toContain("docs");
     const claude = await readClaudeConfig({ cwd, homeDir });
     expect(claude.remoteMcpServers.docs).toMatchObject({ transport: "sse" });
+  });
+});
+
+describe("profile archive rejection messages", () => {
+  const execFileAsync = promisify(execFile);
+
+  /** Builds a .tar.gz whose top-level members are exactly `files`. */
+  async function makeArchive(files: Record<string, string>): Promise<string> {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "nomoreide-archive-"));
+    for (const [name, contents] of Object.entries(files)) {
+      await writeFile(path.join(dir, name), contents, "utf8");
+    }
+    const archivePath = path.join(
+      await mkdtemp(path.join(os.tmpdir(), "nomoreide-archive-out-")),
+      "profile.tar.gz",
+    );
+    await execFileAsync("tar", ["-czf", archivePath, "-C", dir, "."]);
+    return archivePath;
+  }
+
+  it("names the brainctl YAML layout instead of blaming the file format", async () => {
+    const archivePath = await makeArchive({
+      "manifest.yaml": "name: legacy\n",
+      "profile.yaml": "name: legacy\n",
+    });
+    await expect(importProfile({ archivePath })).rejects.toThrow(/brainctl-era/);
+  });
+
+  it("reports an unsafe path rather than the generic extraction error", async () => {
+    const archivePath = await makeArchive({ "evil.sh": "#!/bin/sh\n" });
+    await expect(importProfile({ archivePath })).rejects.toThrow(/unsafe path/);
+  });
+
+  it("still reports a genuinely unreadable file as an extraction failure", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "nomoreide-archive-bad-"));
+    const archivePath = path.join(dir, "not-really.tar.gz");
+    await writeFile(archivePath, "this is not a gzip stream", "utf8");
+    await expect(importProfile({ archivePath })).rejects.toThrow(/Could not extract the archive/);
   });
 });

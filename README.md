@@ -21,6 +21,8 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 ---
 
+> Documentation reviewed for NoMoreIDE **v0.1.99** in **August 2026**. The canonical human and AI references are at [nomoreide.com/docs](https://www.nomoreide.com/docs).
+
 ## Product Tour
 
 <div align="center">
@@ -39,7 +41,7 @@ Give your coding agents and yourself a **shared local control surface** for serv
 
 NoMoreIDE is the shared local control plane between you and your coding agents. The native macOS app, web dashboard, TUI, CLI, and MCP server all operate on the same services, repositories, logs, databases, workflows, and agent configuration.
 
-- **For humans:** one place to run services, inspect logs and ports, review Git changes, manage GitHub work, browse databases, and open terminals.
+- **For humans:** one place to run services, inspect activity and Docker resources, review Git worktrees and GitHub changes, diagnose Vercel deployments, browse databases, and open terminals.
 - **For agents:** structured MCP tools expose the same live project state to Claude Code, Codex CLI, Gemini CLI, and other MCP clients.
 - **For safety:** destructive Git operations are omitted, database writes require human approval, secrets are redacted from shared profiles, and NoMoreIDE does not kill processes it did not start.
 
@@ -247,11 +249,16 @@ graph TD
 | Bundle orchestration | ✓ | | ✓ | ✓ |
 | Port conflict detection | | | ✓ | ✓ |
 | Real-time log streaming | ✓ | ✓ | ✓ | ✓ |
+| Activity and resource monitoring | | | ✓ | |
+| Docker resources and Compose | | | ✓ | |
 | Git status & diff | ✓ | | ✓ | ✓ |
 | Stage / unstage / commit | ✓ | | ✓ | ✓ |
 | Branch management | ✓ | | ✓ | ✓ |
+| Clone, push, worktrees, and snapshots | | | ✓ | ✓ |
 | GitHub PRs / issues / Actions | | | ✓ | ✓ |
+| Vercel projects / deployments / logs | | | ✓ | ✓ |
 | Reusable git/GitHub workflows | | | ✓ | |
+| Event-driven workflow triggers | | | ✓ | |
 | Database browse and SQL query | ✓ | | ✓ | ✓ |
 | Human-approved SQL writes | | | ✓ | |
 | Agent tools, hooks, plugins, usage | | | ✓ | |
@@ -445,8 +452,12 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_git_stage` | Stage specific files |
 | `nomoreide_git_unstage` | Unstage specific files |
 | `nomoreide_git_commit` | Commit staged changes |
+| `nomoreide_git_push` | Push a reviewed branch with resolved credentials |
+| `nomoreide_git_clone` | Clone an HTTPS or SSH repository into a scoped destination |
 | `nomoreide_git_register_repository` | Register a repo path |
 | `nomoreide_git_select_repository` | Select the active repo |
+| `nomoreide_git_worktrees` / `create_worktree` / `select_worktree` / `prune_worktrees` | Inspect and manage isolated Git worktrees |
+| `nomoreide_snapshots_list` / `nomoreide_snapshot_create` | Inspect or create safe repository snapshots |
 
 ### Database Tools
 
@@ -474,6 +485,17 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_github_get_commit_ci` | Inspect commit check status |
 | `nomoreide_github_list_workflow_runs` | List recent GitHub Actions workflow runs |
 
+### Vercel Tools
+
+| Tool | Description |
+|---|---|
+| `nomoreide_vercel_list_projects` | List accessible Vercel projects for the selected scope |
+| `nomoreide_vercel_list_deployments` | List project deployments and current state |
+| `nomoreide_vercel_get_deployment` | Inspect one deployment and its metadata |
+| `nomoreide_vercel_deployment_logs` | Read deployment build logs for diagnosis |
+
+Vercel MCP tools are read-only. Redeploy, cancel, promote, and rollback remain explicit human actions in the dashboard.
+
 ### Agent Environment & Profile Tools
 
 | Tool | Description |
@@ -488,6 +510,7 @@ All tools are prefixed with `nomoreide_` and are available to any connected MCP 
 | `nomoreide_profiles_export` / `nomoreide_profiles_import` | Credential-redacted portable archives |
 | `nomoreide_profiles_publish` / `nomoreide_profiles_install_from_registry` | Share profiles through the hosted registry |
 | `nomoreide_profiles_register_github` | Register a GitHub repo as a registry profile |
+| `nomoreide_docs` | Fetch a focused documentation topic or canonical docs links |
 
 ---
 
@@ -536,6 +559,8 @@ NoMoreIDE is designed to be **safe for AI agents to call without guard rails**:
 - Database MCP tools are read-only; writes are staged for the human-only SQL console
 - Database writes require explicit unlock, preview, and commit
 - GitHub create/comment/merge tools require a configured token and explicit user intent
+- Vercel MCP tools are read-only; deployment mutations remain in the human dashboard
+- Agent environment writes create backups; exported and published profiles redact credentials
 - Config is scoped to `~/.config/nomoreide/config.json`
 - Logs are written only to `~/.nomoreide/logs/`
 

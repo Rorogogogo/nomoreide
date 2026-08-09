@@ -6,7 +6,7 @@
  * agent-env-writers layer).
  */
 import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import {
@@ -279,6 +279,62 @@ export async function snapshotProfileFromAgent(
 
   await writeProfile(profile, options);
   return profile;
+}
+
+/**
+ * Rebuild an existing profile from an agent's current environment. The new
+ * bundle is prepared in a sibling profile first, then swapped into place so a
+ * failed read/copy never destroys the last good profile.
+ */
+export async function refreshProfileFromAgent(
+  input: { agent: AgentName; name: string; cwd: string },
+  options: ProfileStoreOptions = {},
+): Promise<Profile> {
+  const name = assertValidProfileName(input.name);
+  const existing = await getProfile(name, options);
+  const token = randomUUID();
+  const stagingName = `${name}.refresh-${token}`;
+  const currentDir = profileDir(name, options);
+  const stagingDir = profileDir(stagingName, options);
+  const backupDir = path.join(path.dirname(profilesRoot(options)), `.profile-backup-${token}`);
+  let staged = false;
+  let originalMoved = false;
+
+  try {
+    const captured = await snapshotProfileFromAgent(
+      {
+        agent: input.agent,
+        name: stagingName,
+        cwd: input.cwd,
+        description: existing.description,
+      },
+      options,
+    );
+    staged = true;
+
+    await writeFile(
+      path.join(stagingDir, "profile.json"),
+      `${JSON.stringify({ ...captured, name }, null, 2)}\n`,
+      "utf8",
+    );
+    await rename(currentDir, backupDir);
+    originalMoved = true;
+    try {
+      await rename(stagingDir, currentDir);
+      staged = false;
+    } catch (error) {
+      await rename(backupDir, currentDir);
+      originalMoved = false;
+      throw error;
+    }
+
+    await rm(backupDir, { recursive: true, force: true });
+    originalMoved = false;
+    return getProfile(name, options);
+  } finally {
+    if (staged) await rm(stagingDir, { recursive: true, force: true });
+    if (originalMoved) await rm(backupDir, { recursive: true, force: true });
+  }
 }
 
 function pluginBundleKey(agent: AgentName, name: string, source?: string): string {

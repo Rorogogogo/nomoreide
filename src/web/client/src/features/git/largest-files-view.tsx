@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -153,10 +154,7 @@ export function LargestFilesView({
           {error}
         </Alert>
       ) : loading && files.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          <Loader2 className="mr-2 size-4 animate-spin" />
-          {t("git.largest.scanning")}
-        </div>
+        <Loading className="flex-1" label={t("git.largest.scanning")} />
       ) : visible.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           {files.length === 0

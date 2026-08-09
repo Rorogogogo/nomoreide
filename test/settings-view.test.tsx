@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
 import { SettingsView } from "../src/web/client/src/features/settings/settings-view";
 import type { SettingsContextValue } from "../src/web/client/src/features/settings/settings-context";
+import { requestGlobalSearchFocus } from "../src/web/client/src/features/global-search/global-search-navigation";
 
 const settings = vi.hoisted(() => ({ current: null as SettingsContextValue | null }));
 
@@ -141,6 +142,54 @@ afterEach(async () => {
 });
 
 describe("SettingsView", () => {
+  test("focuses management settings opened from global search", async () => {
+    await renderView();
+
+    await act(async () => {
+      requestGlobalSearchFocus({
+        type: "setting",
+        category: "git-github",
+        setting: "github-connection",
+      });
+      await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    });
+
+    expect(document.activeElement?.id).toBe("setting-github-connection");
+    expect(host.textContent).toContain("GitHub connection");
+  });
+
+  test("uses the setting row as the focus target for accent color", async () => {
+    await renderView();
+
+    await act(async () => {
+      requestGlobalSearchFocus({ type: "setting", category: "appearance", setting: "accent" });
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+
+    expect((document.activeElement as HTMLElement)?.dataset.settingAnchor).toBe("setting-accent");
+  });
+
+  test("retries global-search focus after settings finish loading", async () => {
+    await renderView({}, { loading: true });
+    await act(async () => {
+      requestGlobalSearchFocus({ type: "setting", category: "appearance", setting: "theme" });
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+    expect(document.activeElement?.id).not.toBe("setting-theme");
+
+    settings.current = { ...baseSettings, loading: false };
+    await act(async () => {
+      root.render(
+        <OperationProvider>
+          <SettingsView activeProject={{ name: "Workbench", path: "/tmp/workbench" }} />
+        </OperationProvider>,
+      );
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    });
+
+    expect(document.activeElement?.id).toBe("setting-theme");
+  });
+
   test("shows all ten stable categories in the desktop navigation", async () => {
     await renderView();
 
@@ -315,9 +364,11 @@ describe("SettingsView", () => {
     expect(select?.options).toHaveLength(10);
   });
 
-  test("renders stable loading rows and a load error with retry", async () => {
+  test("renders the shared AI loader and a load error with retry", async () => {
     await renderView({}, { loading: true });
-    expect(host.querySelector('[aria-label="Loading settings"]')?.children.length).toBeGreaterThanOrEqual(3);
+    const loading = host.querySelector('[aria-label="Loading settings"]');
+    expect(loading?.getAttribute("role")).toBe("status");
+    expect(loading?.querySelectorAll(".agent-wave-mark")).toHaveLength(5);
 
     await act(async () => root.unmount());
     host.remove();

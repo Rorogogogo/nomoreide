@@ -23,6 +23,7 @@ import type {
   GitRepositoryDefinition,
   GitHubCredentialSelection,
   GitHubIdentity,
+  SshServerDefinition,
   ServiceDefinition,
   VercelConnection,
 } from "./types.js";
@@ -159,6 +160,19 @@ const logSourceSchema = z
     }
   });
 
+const sshHostPattern = /^[A-Za-z0-9][A-Za-z0-9._:@-]*$/;
+
+const sshServerSchema = z.object({
+  host: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .regex(sshHostPattern, "SSH host must be a host name or ~/.ssh/config alias."),
+  name: z.string().trim().min(1).max(80).optional(),
+  environment: z.string().trim().min(1).max(40).optional(),
+});
+
 const githubTokenSchema = z.object({
   host: z.string().min(1),
   token: z.string().min(1),
@@ -258,6 +272,7 @@ const configSchema = z.object({
   gitBoardRepositories: z.array(z.string().min(1)).optional(),
   databases: z.array(databaseSchema).default([]),
   logSources: z.array(logSourceSchema).default([]),
+  sshServers: z.array(sshServerSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
   githubIdentities: z.array(githubIdentitySchema).default([]),
   /** How the Vercel integration authenticates; absent = not connected. */
@@ -293,6 +308,7 @@ const defaultConfig: NoMoreIdeConfig = {
   gitRepositories: [],
   databases: [],
   logSources: [],
+  sshServers: [],
   githubTokens: [],
   githubIdentities: [],
   workflows: [],
@@ -685,6 +701,23 @@ export class ConfigStore {
   async removeLogSource(name: string): Promise<NoMoreIdeConfig> {
     return this.mutateConfig((config) => {
       config.logSources = config.logSources.filter((item) => item.name !== name);
+    });
+  }
+
+  async registerSshServer(server: SshServerDefinition): Promise<NoMoreIdeConfig> {
+    const parsed = sshServerSchema.parse(server);
+    return this.mutateConfig((config) => {
+      config.sshServers = [
+        ...config.sshServers.filter((item) => item.host !== parsed.host),
+        parsed,
+      ];
+    });
+  }
+
+  async removeSshServer(host: string): Promise<NoMoreIdeConfig> {
+    const target = sshServerSchema.shape.host.parse(host);
+    return this.mutateConfig((config) => {
+      config.sshServers = config.sshServers.filter((item) => item.host !== target);
     });
   }
 

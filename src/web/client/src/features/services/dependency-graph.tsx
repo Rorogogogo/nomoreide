@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Loading } from "@/components/ui/loading";
 import {
   getServiceGraph,
   type ServiceGraph,
@@ -58,12 +59,7 @@ export function DependencyGraph({
     return <Alert variant="destructive">{t("services.graph.loadError", { error })}</Alert>;
   }
   if (!graph || !layout) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        {t("services.graph.loading")}
-      </div>
-    );
+    return <Loading className="py-10" label={t("services.graph.loading")} />;
   }
 
   if (!hasDependencies) {

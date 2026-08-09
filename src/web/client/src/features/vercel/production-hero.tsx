@@ -48,7 +48,7 @@ export function ProductionHero({
 
   if (loading && !deployment) {
     return (
-      <div className="flex shrink-0 items-center border-b border-border px-4 py-3">
+      <div className="flex shrink-0 items-center justify-center border-b border-border px-4 py-3">
         <Loading label={t("common.loading")} />
       </div>
     );

@@ -145,7 +145,7 @@ export async function runProfileCli(
     const tokenManager = createRegistryTokenManager();
     if ((await tokenManager.getAccessToken()) === null) {
       throw new UsageError(
-        "Not signed in to the registry. Sign in from the web UI (Agent Environments) or set BRAINCTL_API_TOKEN.",
+        "Not signed in to the registry. Sign in from the web UI (Agent Environments) or set NOMOREIDE_API_TOKEN.",
       );
     }
     const result = await publishProfileToRegistry({

@@ -6,12 +6,14 @@ import {
   importAgentEnvProfile,
   listAgentEnvProfiles,
   previewAgentEnvProfileApply,
+  refreshAgentEnvProfile,
   snapshotAgentEnvProfile,
   type AgentEnvAgentName,
   type AgentEnvProfileApplyPreview,
   type AgentEnvProfileSummary,
 } from "@/lib/api";
 import { useToasts } from "@/components/ui/toast";
+import { isProfileCollision, profileNameFromCollision } from "./profile-collision";
 
 export interface PendingProfileApply {
   preview: AgentEnvProfileApplyPreview;
@@ -19,19 +21,27 @@ export interface PendingProfileApply {
   skipped: Set<string>;
 }
 
+export interface PendingProfileImport {
+  file: File;
+  name: string;
+}
+
 /** Profiles list + the snapshot/apply/export/import/delete flows (ROR-62). */
 export function useProfiles(onAgentsChanged: () => void) {
   const [profiles, setProfiles] = useState<AgentEnvProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingApply, setPendingApply] = useState<PendingProfileApply | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingProfileImport | null>(null);
   const toasts = useToasts();
 
   const refresh = useCallback(async () => {
+    setLoadError(null);
     try {
       setProfiles(await listAgentEnvProfiles());
-    } catch {
-      // profile listing is non-critical; the panel shows an empty state
+    } catch (caught) {
+      setLoadError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setLoading(false);
     }
@@ -62,6 +72,18 @@ export function useProfiles(onAgentsChanged: () => void) {
         const profile = await snapshotAgentEnvProfile({ agent, name });
         toasts.success(
           `Snapshotted ${agent} into "${profile.name}" (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills, ${profile.plugins?.length ?? 0} plugins)`,
+        );
+        await refresh();
+      }),
+    [refresh, run, toasts],
+  );
+
+  const refreshOne = useCallback(
+    (name: string, agent: AgentEnvAgentName) =>
+      run(async () => {
+        const profile = await refreshAgentEnvProfile(name, agent);
+        toasts.success(
+          `Updated "${profile.name}" from ${agent} (${Object.keys(profile.mcps).length} MCPs, ${profile.skills.length} skills, ${profile.plugins?.length ?? 0} plugins)`,
         );
         await refresh();
       }),
@@ -144,13 +166,23 @@ export function useProfiles(onAgentsChanged: () => void) {
           await refresh();
         } catch (caught) {
           const message = caught instanceof Error ? caught.message : String(caught);
-          if (!message.includes("already exists")) throw caught;
-          const result = await importAgentEnvProfile(file, { force: true });
-          toasts.success(`${importSummary(result.name, result.missingCredentials.length)} (overwrote existing)`);
-          await refresh();
+          if (!isProfileCollision(message)) throw caught;
+          setPendingImport({ file, name: profileNameFromCollision(message) });
         }
       }),
     [refresh, run, toasts],
+  );
+
+  const confirmImportReplace = useCallback(
+    () =>
+      run(async () => {
+        if (!pendingImport) return;
+        const result = await importAgentEnvProfile(pendingImport.file, { force: true });
+        setPendingImport(null);
+        toasts.success(`${importSummary(result.name, result.missingCredentials.length)} (replaced existing)`);
+        await refresh();
+      }),
+    [pendingImport, refresh, run, toasts],
   );
 
   const deleteOne = useCallback(
@@ -166,16 +198,21 @@ export function useProfiles(onAgentsChanged: () => void) {
   return {
     profiles,
     loading,
+    loadError,
     busy,
     pendingApply,
+    pendingImport,
     refresh,
     snapshot,
+    refreshOne,
     startApply,
     toggleSkip,
     confirmApply,
     cancelApply: () => setPendingApply(null),
     exportOne,
     importArchive,
+    confirmImportReplace,
+    cancelImportReplace: () => setPendingImport(null),
     deleteOne,
   };
 }

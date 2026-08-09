@@ -6,6 +6,10 @@ import {
   subscribeToApiActivity,
 } from "../src/web/client/src/lib/api-activity";
 import { requestJson } from "../src/web/client/src/lib/api/client";
+import {
+  getRuntimeConnectionSnapshot,
+  resetRuntimeConnectionForTests,
+} from "../src/web/client/src/lib/runtime-connection";
 
 const buttonSource = readFileSync(
   "src/web/client/src/components/header-refresh-button.tsx",
@@ -23,6 +27,7 @@ function jsonResponse(body: unknown, ok = true): Response {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  resetRuntimeConnectionForTests();
   // Every test must leave the counter at rest, or a leak here would silently
   // pin the header spinner for the rest of the suite.
   expect(isApiBusy()).toBe(false);
@@ -90,6 +95,9 @@ describe("requestJson reports its own activity", () => {
     // Without the `finally`, one failed request would wedge the icon spinning
     // for the rest of the session.
     expect(isApiBusy()).toBe(false);
+    expect(getRuntimeConnectionSnapshot().lastFailedEndpoint).toBe(
+      "GET /api/health",
+    );
   });
 
   test("releases its slot on a non-ok response", async () => {
@@ -97,6 +105,9 @@ describe("requestJson reports its own activity", () => {
 
     await expect(requestJson("/api/health")).rejects.toThrow("nope");
     expect(isApiBusy()).toBe(false);
+    expect(getRuntimeConnectionSnapshot().lastError).toContain(
+      "GET /api/health failed (500 Server Error)",
+    );
   });
 });
 
