@@ -54,7 +54,7 @@ export function useSqlGenerate(
           provider: provider?.id,
           signal: controller.signal,
         });
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || controller.signal.aborted) return;
         const sql = extractSql(reply);
         if (sql) {
           onGenerated(sql);
@@ -66,14 +66,25 @@ export function useSqlGenerate(
           setError(caught instanceof Error ? caught.message : String(caught));
         }
       } finally {
-        if (abortRef.current === controller) abortRef.current = null;
-        if (mountedRef.current) setGenerating(false);
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+          if (mountedRef.current) setGenerating(false);
+        }
       }
     },
     [connection, engine, unlocked, generating, onGenerated, provider?.id, t],
   );
 
-  return { generate, generating, error };
+  const cancel = useCallback(() => {
+    const controller = abortRef.current;
+    if (!controller) return;
+    abortRef.current = null;
+    controller.abort();
+    setGenerating(false);
+    setError(null);
+  }, []);
+
+  return { cancel, generate, generating, error };
 }
 
 /**

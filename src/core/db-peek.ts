@@ -2,7 +2,15 @@ import { join } from "node:path";
 import type { ConfigStore } from "./config-store.js";
 import { readEnvFile, entriesFromLines } from "./env-file.js";
 import type { DatabaseConnection, DatabaseEngine } from "./types.js";
-import type { DbDriver, QueryResult, RowSample, TableRef } from "./db/driver.js";
+import type {
+  DbDriver,
+  QueryResult,
+  RowBrowseQuery,
+  RowSample,
+  TableRef,
+} from "./db/driver.js";
+import type { ColumnInfo, StreamRowsOptions } from "./db/driver.js";
+import { maskDatabaseRows } from "./db/data-masking.js";
 import {
   resolveCatalogObject,
   tableRefForObject,
@@ -101,18 +109,19 @@ export class DbPeek {
     key: string,
     limit: number,
     offset = 0,
+    query?: RowBrowseQuery,
   ): Promise<{ engine: DatabaseEngine; object: DatabaseObject; table: TableRef } & RowSample> {
     const connection = await this.resolve(name);
     const driver = await this.driverFor(connection);
     const object = await this.resolveObject(driver, key);
     const table = tableRefForObject(object);
-    const sample = await driver.sampleRows(table, limit, offset);
+    const sample = await driver.sampleRows(table, limit, offset, query);
     return {
       engine: connection.engine,
       object,
       table,
       ...sample,
-      rows: maskAutomaticPreviewRows(sample.rows),
+      rows: maskDatabaseRows(sample.rows),
     };
   }
 
@@ -127,6 +136,32 @@ export class DbPeek {
     const table = await this.resolveTable(driver, qualifiedName);
     const sample = await driver.sampleRows(table, limit, offset);
     return { engine: connection.engine, table, ...sample };
+  }
+
+  async exportObjectSource(
+    name: string,
+    key: string,
+    options: StreamRowsOptions = {},
+  ): Promise<{
+    engine: DatabaseEngine;
+    object: DatabaseObject;
+    columns: ColumnInfo[];
+    rows: AsyncIterable<Array<Record<string, unknown>>>;
+  }> {
+    const connection = await this.resolve(name);
+    const driver = await this.driverFor(connection);
+    const object = await this.resolveObject(driver, key);
+    if (!["table", "view", "materializedView"].includes(object.kind)) {
+      throw new Error("This database object cannot be exported.");
+    }
+    const table = tableRefForObject(object);
+    const columns = (await driver.describeObject(object)).columns;
+    return {
+      engine: connection.engine,
+      object,
+      columns,
+      rows: driver.streamRows(table, columns, options),
+    };
   }
 
   /** Run a user-authored read-only query against a registered connection. */
@@ -286,20 +321,6 @@ export class DbPeek {
     }
     return resolveCatalogObject([], key);
   }
-}
-
-const SENSITIVE_PREVIEW_COLUMN =
-  /(^|_)(password|passwd|pwd|secret|token|api_?key|access_?key|private_?key|credential|authorization|cookie)(_|$)/i;
-
-function maskAutomaticPreviewRows(rows: RowSample["rows"]): RowSample["rows"] {
-  return rows.map((row) =>
-    Object.fromEntries(
-      Object.entries(row).map(([column, value]) => [
-        column,
-        SENSITIVE_PREVIEW_COLUMN.test(column) && value !== null ? "••••" : value,
-      ]),
-    ),
-  );
 }
 
 function createDriver(engine: DatabaseEngine, url: string): DbDriver {

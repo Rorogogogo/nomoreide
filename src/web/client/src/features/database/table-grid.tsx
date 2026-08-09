@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Braces,
   Database,
   FileSpreadsheet,
@@ -16,6 +19,7 @@ import { buildRowPrompt } from "@/features/agent/prompts";
 import {
   deleteDatabaseRows,
   type DatabaseRowKeyValue,
+  type RowBrowseQuery,
   type RowSample,
   type WriteOutcome,
 } from "@/lib/api";
@@ -38,7 +42,9 @@ export function TableGrid({
   sample,
   objectKey = sample.table.qualifiedName,
   onDeleted = NOOP,
+  onSortChange = NOOP,
   onWriteAccessChange = NOOP,
+  sort,
   writeUnlocked = false,
 }: {
   canDelete?: boolean;
@@ -47,6 +53,8 @@ export function TableGrid({
   onDeleted?: () => void | Promise<void>;
   onWriteAccessChange?: () => void;
   sample: RowSample;
+  sort?: RowBrowseQuery["sort"];
+  onSortChange?: (sort: RowBrowseQuery["sort"]) => void;
   writeUnlocked?: boolean;
 }) {
   const t = useT();
@@ -262,11 +270,32 @@ export function TableGrid({
                 />
               </th>
               {sample.columns.map((column) => (
-                <th key={column.name} className="whitespace-nowrap px-3 py-2 font-semibold text-foreground">
-                  <span className="flex items-center gap-1">
+                <th
+                  aria-sort={sort?.column === column.name ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
+                  className="whitespace-nowrap px-3 py-2 font-semibold text-foreground"
+                  key={column.name}
+                >
+                  <button
+                    aria-label={t("database.grid.sortBy", { column: column.name })}
+                    className="group flex items-center gap-1 rounded-sm hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => onSortChange(
+                      sort?.column !== column.name
+                        ? { column: column.name, direction: "asc" }
+                        : sort.direction === "asc"
+                          ? { column: column.name, direction: "desc" }
+                          : undefined,
+                    )}
+                    title={t("database.grid.sortBy", { column: column.name })}
+                    type="button"
+                  >
                     {column.primaryKey ? <KeyRound aria-hidden="true" className="size-3 text-amber-500" /> : null}
                     {column.name}
-                  </span>
+                    {sort?.column === column.name
+                      ? sort.direction === "asc"
+                        ? <ArrowUp aria-hidden="true" className="size-3" />
+                        : <ArrowDown aria-hidden="true" className="size-3" />
+                      : <ArrowUpDown aria-hidden="true" className="size-3 text-muted-foreground/50 group-hover:text-muted-foreground" />}
+                  </button>
                   <span className="block font-normal text-muted-foreground">{column.dataType}</span>
                 </th>
               ))}

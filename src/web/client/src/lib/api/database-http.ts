@@ -7,6 +7,7 @@ import type {
   DatabaseObject,
   DatabaseObjectDetails,
   DatabaseSchema,
+  DatabaseExportFormat,
   DetectedConnection,
   QueryResult,
   RowSample,
@@ -53,6 +54,13 @@ export const httpDatabaseApi: DatabaseApi = {
     const res = await requestJson<{ ok: true; capabilities: DatabaseCapabilities }>(
       `/api/databases/${encodeURIComponent(name)}/catalog/capabilities`,
     );
+    if (
+      !res.capabilities ||
+      !Array.isArray(res.capabilities.objectKinds) ||
+      !Array.isArray(res.capabilities.tableDetails)
+    ) {
+      throw new Error("Invalid database capabilities response.");
+    }
     return res.capabilities;
   },
 
@@ -60,6 +68,9 @@ export const httpDatabaseApi: DatabaseApi = {
     const res = await requestJson<{ ok: true; schemas: DatabaseSchema[] }>(
       `/api/databases/${encodeURIComponent(name)}/catalog/schemas`,
     );
+    if (!Array.isArray(res.schemas)) {
+      throw new Error("Invalid database schemas response.");
+    }
     return res.schemas;
   },
 
@@ -67,6 +78,9 @@ export const httpDatabaseApi: DatabaseApi = {
     const res = await requestJson<{ ok: true; objects: DatabaseObject[] }>(
       `/api/databases/${encodeURIComponent(name)}/catalog/objects?schema=${encodeURIComponent(schema)}`,
     );
+    if (!Array.isArray(res.objects)) {
+      throw new Error("Invalid database objects response.");
+    }
     return res.objects;
   },
 
@@ -74,12 +88,28 @@ export const httpDatabaseApi: DatabaseApi = {
     const res = await requestJson<{ ok: true; details: DatabaseObjectDetails }>(
       `/api/databases/${encodeURIComponent(name)}/catalog/details?key=${encodeURIComponent(key)}`,
     );
+    if (!res.details || !Array.isArray(res.details.columns)) {
+      throw new Error("Invalid database object details response.");
+    }
     return res.details;
   },
 
-  getDatabaseObjectRows(name, key, limit = 100, offset = 0) {
+  async exportDatabaseObject(name, key, format: DatabaseExportFormat) {
+    return {
+      delivery: "browser" as const,
+      url: `/api/databases/${encodeURIComponent(name)}/catalog/export?key=${encodeURIComponent(key)}&format=${format}`,
+    };
+  },
+
+  getDatabaseObjectRows(name, key, limit = 100, offset = 0, query) {
+    const params = new URLSearchParams({ key, limit: String(limit), offset: String(offset) });
+    if (query?.filters?.length) params.set("filters", JSON.stringify(query.filters));
+    if (query?.sort) {
+      params.set("sortColumn", query.sort.column);
+      params.set("sortDirection", query.sort.direction);
+    }
     return requestJson<{ ok: true } & RowSample & { object: DatabaseObject }>(
-      `/api/databases/${encodeURIComponent(name)}/catalog/rows?key=${encodeURIComponent(key)}&limit=${limit}&offset=${offset}`,
+      `/api/databases/${encodeURIComponent(name)}/catalog/rows?${params.toString()}`,
     );
   },
 

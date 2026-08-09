@@ -1,5 +1,10 @@
 import { mergeStoredPassword, redactDatabaseError } from "../../core/db-peek.js";
+import {
+  type DatabaseExportFormat,
+  writeDatabaseExport,
+} from "../../core/db/export.js";
 import type { DatabaseEngine } from "../../core/types.js";
+import type { RowBrowseQuery, RowFilter } from "../../core/db/driver.js";
 import {
   optionalFormValue,
   readForm,
@@ -9,6 +14,27 @@ import {
 import { patternRoute, route, type Route } from "./context.js";
 
 const ENGINES: DatabaseEngine[] = ["postgres", "mysql", "sqlite"];
+
+function parseRowBrowseQuery(url: URL): RowBrowseQuery {
+  const rawFilters = url.searchParams.get("filters");
+  let filters: RowFilter[] | undefined;
+  if (rawFilters) {
+    const parsed: unknown = JSON.parse(rawFilters);
+    if (!Array.isArray(parsed)) throw new Error("filters must be a JSON array");
+    filters = parsed as RowFilter[];
+  }
+  const sortColumn = url.searchParams.get("sortColumn");
+  const sortDirection = url.searchParams.get("sortDirection");
+  if (sortDirection && sortDirection !== "asc" && sortDirection !== "desc") {
+    throw new Error("sortDirection must be asc or desc");
+  }
+  return {
+    filters,
+    sort: sortColumn
+      ? { column: sortColumn, direction: sortDirection === "desc" ? "desc" : "asc" }
+      : undefined,
+  };
+}
 
 function parseEngine(value: string): DatabaseEngine {
   if (!ENGINES.includes(value as DatabaseEngine)) {
@@ -165,13 +191,95 @@ export const databaseRoutes: Route[] = [
       }
       const limit = Number(url.searchParams.get("limit")) || 100;
       const offset = Number(url.searchParams.get("offset")) || 0;
+      const query = parseRowBrowseQuery(url);
       const sample = await dbPeek.sampleObject(
         decodeURIComponent(params.name),
         key,
         limit,
         offset,
+        query,
       );
       sendJson(response, { ok: true, ...sample });
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/databases\/([^/]+)\/catalog\/export$/,
+    ["name"],
+    async ({ request, response, params, url, dbPeek }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const key = url.searchParams.get("key");
+      if (!key) {
+        sendJson(response, { ok: false, error: "key query param is required" }, 400);
+        return;
+      }
+      const format = parseExportFormat(url.searchParams.get("format"));
+      if (!format) {
+        sendJson(response, { ok: false, error: "format must be csv or json" }, 400);
+        return;
+      }
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      request.once("aborted", abort);
+      response.once("close", () => {
+        if (!response.writableEnded) abort();
+      });
+      try {
+        const name = decodeURIComponent(params.name);
+        const source = await dbPeek.exportObjectSource(name, key, {
+          signal: controller.signal,
+        });
+        const filename = exportFilename(name, source.object.qualifiedName, format);
+        response.writeHead(200, {
+          "cache-control": "no-store",
+          "content-disposition": contentDisposition(filename),
+          "content-type": format === "csv"
+            ? "text/csv; charset=utf-8"
+            : "application/json; charset=utf-8",
+          "x-content-type-options": "nosniff",
+        });
+        await writeDatabaseExport(
+          {
+            async write(chunk) {
+              if (!response.write(chunk)) {
+                await new Promise<void>((resolve, reject) => {
+                  const cleanup = () => {
+                    response.off("drain", onDrain);
+                    response.off("close", onClose);
+                  };
+                  const onDrain = () => {
+                    cleanup();
+                    resolve();
+                  };
+                  const onClose = () => {
+                    cleanup();
+                    reject(new Error("Database export download closed"));
+                  };
+                  response.once("drain", onDrain);
+                  response.once("close", onClose);
+                });
+              }
+            },
+          },
+          format,
+          source.columns,
+          source.rows,
+          { signal: controller.signal },
+        );
+        response.end();
+      } catch (error) {
+        if (response.headersSent) response.destroy(error instanceof Error ? error : undefined);
+        else {
+          sendJson(
+            response,
+            { ok: false, error: error instanceof Error ? error.message : String(error) },
+            400,
+          );
+        }
+      }
     },
   ),
 
@@ -336,6 +444,29 @@ export const databaseRoutes: Route[] = [
     },
   ),
 ];
+
+function parseExportFormat(value: string | null): DatabaseExportFormat | null {
+  return value === "csv" || value === "json" ? value : null;
+}
+
+function exportFilename(
+  connection: string,
+  object: string,
+  format: DatabaseExportFormat,
+): string {
+  const date = new Date().toISOString().slice(0, 10);
+  const stem = `${connection}-${object}-${date}`
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120) || "database-export";
+  return `${stem}.${format}`;
+}
+
+function contentDisposition(filename: string): string {
+  const ascii = filename.replace(/["\\\r\n]/g, "_");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
 
 function parseDeleteTuples(value: string): unknown {
   try {

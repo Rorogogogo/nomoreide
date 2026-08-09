@@ -32,6 +32,40 @@ export interface RowSample {
   offset: number;
 }
 
+export type RowFilterOperator =
+  | "eq"
+  | "neq"
+  | "contains"
+  | "startsWith"
+  | "endsWith"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte"
+  | "isNull"
+  | "isNotNull";
+
+export interface RowFilter {
+  column: string;
+  operator: RowFilterOperator;
+  value?: string;
+}
+
+export interface RowSort {
+  column: string;
+  direction: "asc" | "desc";
+}
+
+export interface RowBrowseQuery {
+  filters?: RowFilter[];
+  sort?: RowSort;
+}
+
+export interface StreamRowsOptions {
+  batchSize?: number;
+  signal?: AbortSignal;
+}
+
 /** Result of running a user-authored read-only query through the SQL console. */
 export interface QueryResult {
   columns: ColumnInfo[];
@@ -56,7 +90,18 @@ export interface DbDriver {
   listSchemas(): Promise<DatabaseSchema[]>;
   listObjects(schema: string, kinds?: DatabaseObjectKind[]): Promise<DatabaseObject[]>;
   describeObject(object: DatabaseObject): Promise<DatabaseObjectDetails>;
-  sampleRows(table: TableRef, limit: number, offset?: number): Promise<RowSample>;
+  sampleRows(
+    table: TableRef,
+    limit: number,
+    offset?: number,
+    query?: RowBrowseQuery,
+  ): Promise<RowSample>;
+  /** Stream a stable read-only snapshot in bounded batches. */
+  streamRows(
+    table: TableRef,
+    columns: ColumnInfo[],
+    options?: StreamRowsOptions,
+  ): AsyncIterable<Array<Record<string, unknown>>>;
   /** Run an arbitrary SELECT-style statement in a read-only context. */
   runQuery(sql: string, maxRows: number): Promise<QueryResult>;
   close(): Promise<void>;
@@ -138,6 +183,99 @@ export function clampLimit(limit: number | undefined, fallback = 100): number {
 export function clampOffset(offset: number | undefined): number {
   if (!Number.isFinite(offset) || offset === undefined) return 0;
   return Math.max(Math.trunc(offset), 0);
+}
+
+const ROW_FILTER_OPERATORS = new Set<RowFilterOperator>([
+  "eq",
+  "neq",
+  "contains",
+  "startsWith",
+  "endsWith",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "isNull",
+  "isNotNull",
+]);
+
+/** Validate browser query controls against columns read from the live catalog. */
+export function normalizeRowBrowseQuery(
+  columns: ColumnInfo[],
+  query: RowBrowseQuery | undefined,
+): RowBrowseQuery {
+  const columnNames = new Set(columns.map((column) => column.name));
+  const filters = query?.filters ?? [];
+  if (filters.length > 8) throw new Error("A maximum of 8 row filters is supported.");
+  const normalizedFilters = filters.map((filter) => {
+    if (!columnNames.has(filter.column)) {
+      throw new Error(`Unknown filter column: ${filter.column}`);
+    }
+    if (!ROW_FILTER_OPERATORS.has(filter.operator)) {
+      throw new Error(`Unsupported row filter operator: ${filter.operator}`);
+    }
+    const unary = filter.operator === "isNull" || filter.operator === "isNotNull";
+    const value = unary ? undefined : filter.value;
+    if (!unary && value === undefined) throw new Error("This row filter requires a value.");
+    if (value !== undefined && value.length > 2_000) {
+      throw new Error("Row filter values must be 2,000 characters or fewer.");
+    }
+    return { column: filter.column, operator: filter.operator, value };
+  });
+  const sort = query?.sort;
+  if (sort && !columnNames.has(sort.column)) {
+    throw new Error(`Unknown sort column: ${sort.column}`);
+  }
+  if (sort && sort.direction !== "asc" && sort.direction !== "desc") {
+    throw new Error("Sort direction must be asc or desc.");
+  }
+  return { filters: normalizedFilters, sort };
+}
+
+/** Build a parameterized WHERE/ORDER BY fragment shared by all Node drivers. */
+export function buildRowBrowseClauses(
+  columns: ColumnInfo[],
+  query: RowBrowseQuery | undefined,
+  quoteIdentifier: (value: string) => string,
+  placeholder: (index: number) => string,
+): { whereSql: string; orderBySql: string; values: string[] } {
+  const normalized = normalizeRowBrowseQuery(columns, query);
+  const values: string[] = [];
+  const filters = (normalized.filters ?? []).map((filter) => {
+    const column = quoteIdentifier(filter.column);
+    if (filter.operator === "isNull") return `${column} IS NULL`;
+    if (filter.operator === "isNotNull") return `${column} IS NOT NULL`;
+    let value = filter.value ?? "";
+    let operator = "=";
+    if (filter.operator === "neq") operator = "<>";
+    else if (filter.operator === "gt") operator = ">";
+    else if (filter.operator === "gte") operator = ">=";
+    else if (filter.operator === "lt") operator = "<";
+    else if (filter.operator === "lte") operator = "<=";
+    else if (["contains", "startsWith", "endsWith"].includes(filter.operator)) {
+      value = value.replaceAll("!", "!!").replaceAll("%", "!%").replaceAll("_", "!_");
+      if (filter.operator !== "startsWith") value = `%${value}`;
+      if (filter.operator !== "endsWith") value = `${value}%`;
+      operator = "LIKE";
+    }
+    values.push(value);
+    const likeEscape = operator === "LIKE" ? " ESCAPE '!'" : "";
+    return `${column} ${operator} ${placeholder(values.length)}${likeEscape}`;
+  });
+  const orderColumns: RowSort[] = [];
+  if (normalized.sort) orderColumns.push(normalized.sort);
+  for (const column of columns.filter((candidate) => candidate.primaryKey)) {
+    if (column.name !== normalized.sort?.column) {
+      orderColumns.push({ column: column.name, direction: "asc" });
+    }
+  }
+  return {
+    whereSql: filters.length > 0 ? ` WHERE ${filters.join(" AND ")}` : "",
+    orderBySql: orderColumns.length > 0
+      ? ` ORDER BY ${orderColumns.map((sort) => `${quoteIdentifier(sort.column)} ${sort.direction.toUpperCase()}`).join(", ")}`
+      : "",
+    values,
+  };
 }
 
 /**

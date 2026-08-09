@@ -4,8 +4,10 @@ import {
   Braces,
   ChevronDown,
   ChevronRight,
+  Code2,
   Columns3,
   Copy,
+  ExternalLink,
   Eye,
   FunctionSquare,
   KeyRound,
@@ -27,6 +29,7 @@ import {
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
 import { AiContextTarget } from "@/features/agent/context-menu/ai-context-menu";
@@ -42,12 +45,16 @@ import {
   type DatabaseObjectDetails,
   type DatabaseObjectKind,
   type DatabaseSchema,
+  type RowBrowseQuery,
+  type RowFilter,
   type RowSample,
 } from "@/lib/api";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { cn } from "@/lib/utils";
 import { TableGrid } from "./table-grid";
+import { DatabaseRowFilters } from "./database-row-filters";
+import { DatabaseExportMenu } from "./database-export-menu";
 import { DbAddMenu } from "./db-add-menu";
 import { databaseLimitOptions } from "./use-databases";
 import "../git/file-viewer-theme.css";
@@ -78,29 +85,46 @@ const CATEGORY_ORDER: Array<{
 const SAMPLEABLE = new Set<DatabaseObjectKind>(["table", "view", "materializedView"]);
 const NOOP = () => {};
 type ObjectDetailTab = "data" | "structure" | "script";
-type SelectedCatalogObject = {
+export type SelectedCatalogObject = {
   connection: string;
   object: DatabaseObject;
 };
 
+type ExplorerSurface = "browse" | "sql";
+
 export function DatabaseExplorer({
   connections,
   selectedConnection,
+  selectedCatalogObject,
+  sidebarOnly = false,
+  surface = "browse",
   onAddConnection,
   onAddWithAi,
   onEditConnection,
   onRemoveConnection,
   onSelectConnection,
+  onSelectedCatalogObjectChange,
+  onOpenObjectInBrowse,
+  onInsertObjectName,
+  onGenerateObjectSelect,
   onWriteAccessChange = NOOP,
   resultLimit,
 }: {
   connections: DatabaseConnection[];
   selectedConnection: string | null;
+  selectedCatalogObject?: SelectedCatalogObject | null;
+  /** Render only the catalog tree, for companion surfaces such as the SQL console. */
+  sidebarOnly?: boolean;
+  surface?: ExplorerSurface;
   onAddConnection: () => void;
   onAddWithAi: () => void;
   onEditConnection: (connection: DatabaseConnection) => void;
   onRemoveConnection: (name: string) => void;
   onSelectConnection: (name: string) => void;
+  onSelectedCatalogObjectChange?: (selection: SelectedCatalogObject | null) => void;
+  onOpenObjectInBrowse?: (selection: SelectedCatalogObject) => void;
+  onInsertObjectName?: (selection: SelectedCatalogObject) => void;
+  onGenerateObjectSelect?: (selection: SelectedCatalogObject) => void;
   onWriteAccessChange?: () => void;
   resultLimit: number;
 }) {
@@ -119,8 +143,16 @@ export function DatabaseExplorer({
   );
   const [catalogs, setCatalogs] = useState<Record<string, LoadState<ConnectionCatalog>>>({});
   const [objects, setObjects] = useState<Record<string, LoadState<DatabaseObject[]>>>({});
-  const [selectedObject, setSelectedObject] =
+  const [storedSelectedObject, setStoredSelectedObject] =
     usePersistentState<SelectedCatalogObject | null>("database:selected-object", null);
+  const selectedObject = selectedCatalogObject === undefined
+    ? storedSelectedObject
+    : selectedCatalogObject;
+
+  function setSelectedObject(selection: SelectedCatalogObject | null) {
+    if (selectedCatalogObject === undefined) setStoredSelectedObject(selection);
+    onSelectedCatalogObjectChange?.(selection);
+  }
 
   async function loadConnection(connection: string, force = false) {
     if (!force && (catalogs[connection]?.loading || catalogs[connection]?.value)) return;
@@ -236,10 +268,12 @@ export function DatabaseExplorer({
     setSelectedObject({ connection, object });
   }
 
-  return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(12rem,18rem)_minmax(0,1fr)] overflow-hidden max-sm:grid-cols-[minmax(9rem,44vw)_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col border-r border-border bg-background">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-2.5 py-1.5">
+  const sidebar = (
+    <aside
+      className="flex h-full min-h-0 min-w-0 flex-col border-r border-border bg-background"
+      data-testid="database-explorer-sidebar"
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-2.5 py-1.5">
           <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <ListTree aria-hidden="true" className="size-3.5" />
             {t("database.catalog.explorer")}
@@ -252,8 +286,8 @@ export function DatabaseExplorer({
               onAddWithAi={onAddWithAi}
             />
           </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-auto py-1">
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto py-1">
           {connections.map((connection) => {
             const open = expandedConnections.includes(connection.name);
             const state = catalogs[connection.name];
@@ -309,7 +343,7 @@ export function DatabaseExplorer({
                       onRetry={() => void loadConnection(connection.name, true)}
                     />
                   ) : (
-                    state?.value?.schemas.map((schema) => (
+                    (state?.value?.schemas ?? []).map((schema) => (
                       <SchemaBranch
                         capabilities={state.value?.capabilities}
                         connection={connection.name}
@@ -321,10 +355,14 @@ export function DatabaseExplorer({
                           setExpandedCategories((current) => toggleList(current, key))
                         }
                         onObjectSelect={selectObject}
+                        onGenerateObjectSelect={onGenerateObjectSelect}
+                        onInsertObjectName={onInsertObjectName}
+                        onOpenObjectInBrowse={onOpenObjectInBrowse}
                         onRetry={() => void loadSchema(connection.name, schema.name, true)}
                         onSchemaToggle={toggleSchema}
                         schema={schema}
                         selectedKey={selectedObject?.object.key ?? null}
+                        surface={surface}
                       />
                     ))
                   )
@@ -332,8 +370,15 @@ export function DatabaseExplorer({
               </div>
             );
           })}
-        </div>
-      </aside>
+      </div>
+    </aside>
+  );
+
+  if (sidebarOnly) return sidebar;
+
+  return (
+    <div className="grid h-full min-h-0 grid-cols-[minmax(12rem,18rem)_minmax(0,1fr)] overflow-hidden max-sm:grid-cols-[minmax(9rem,44vw)_minmax(0,1fr)]">
+      {sidebar}
 
       {selectedObject ? (
         <ObjectDetailsPanel
@@ -361,11 +406,15 @@ function SchemaBranch({
   expandedSchemas,
   objectState,
   onCategoryToggle,
+  onGenerateObjectSelect,
+  onInsertObjectName,
   onObjectSelect,
+  onOpenObjectInBrowse,
   onRetry,
   onSchemaToggle,
   schema,
   selectedKey,
+  surface,
 }: {
   capabilities?: DatabaseCapabilities;
   connection: string;
@@ -373,11 +422,15 @@ function SchemaBranch({
   expandedSchemas: string[];
   objectState?: LoadState<DatabaseObject[]>;
   onCategoryToggle: (key: string) => void;
+  onGenerateObjectSelect?: (selection: SelectedCatalogObject) => void;
+  onInsertObjectName?: (selection: SelectedCatalogObject) => void;
   onObjectSelect: (connection: string, object: DatabaseObject) => void;
+  onOpenObjectInBrowse?: (selection: SelectedCatalogObject) => void;
   onRetry: () => void;
   onSchemaToggle: (connection: string, schema: string) => void;
   schema: DatabaseSchema;
   selectedKey: string | null;
+  surface: ExplorerSurface;
 }) {
   const t = useT();
   const key = schemaKey(connection, schema.name);
@@ -422,13 +475,17 @@ function SchemaBranch({
                 />
                 {categoryOpen
                   ? entries.map((object) => (
-                      <TreeButton
+                      <CatalogObjectRow
                         active={selectedKey === object.key}
+                        connection={connection}
                         depth={3}
-                        icon={categoryIcon(object.kind)}
                         key={object.key}
-                        label={object.name}
-                        onClick={() => onObjectSelect(connection, object)}
+                        object={object}
+                        onGenerateSelect={onGenerateObjectSelect}
+                        onInsertName={onInsertObjectName}
+                        onOpenInBrowse={onOpenObjectInBrowse}
+                        onSelect={onObjectSelect}
+                        surface={surface}
                       />
                     ))
                   : null}
@@ -439,6 +496,134 @@ function SchemaBranch({
       ) : null}
     </div>
   );
+}
+
+function CatalogObjectRow({
+  active,
+  connection,
+  depth,
+  object,
+  onGenerateSelect,
+  onInsertName,
+  onOpenInBrowse,
+  onSelect,
+  surface,
+}: {
+  active: boolean;
+  connection: string;
+  depth: number;
+  object: DatabaseObject;
+  onGenerateSelect?: (selection: SelectedCatalogObject) => void;
+  onInsertName?: (selection: SelectedCatalogObject) => void;
+  onOpenInBrowse?: (selection: SelectedCatalogObject) => void;
+  onSelect: (connection: string, object: DatabaseObject) => void;
+  surface: ExplorerSurface;
+}) {
+  const t = useT();
+  const selection = { connection, object };
+  const actions = surface === "sql" ? [
+    {
+      icon: <ExternalLink aria-hidden="true" className="mr-2 size-4 text-muted-foreground" />,
+      id: "open-in-browse",
+      label: t("database.catalog.openInBrowse"),
+      onSelect: () => onOpenInBrowse?.(selection),
+    },
+    {
+      icon: <Code2 aria-hidden="true" className="mr-2 size-4 text-muted-foreground" />,
+      id: "insert-object-name",
+      label: t("database.catalog.insertQualifiedName"),
+      onSelect: () => onInsertName?.(selection),
+    },
+    {
+      icon: <Play aria-hidden="true" className="mr-2 size-4 text-muted-foreground" />,
+      id: "generate-select",
+      label: t("database.catalog.generateSelect"),
+      onSelect: () => onGenerateSelect?.(selection),
+    },
+  ] : undefined;
+
+  return (
+    <AiContextTarget
+      target={{
+        actions,
+        intents: [
+          {
+            id: "explain-object",
+            label: t("database.catalog.explainWithAi"),
+            resolvePrompt: () => buildObjectPrompt(connection, object, "explain"),
+            source: { type: "database-object", label: object.qualifiedName },
+          },
+          {
+            id: "query-object",
+            label: t("database.catalog.queryWithAi"),
+            resolvePrompt: () => buildObjectPrompt(connection, object, "query"),
+            source: { type: "database-object", label: object.qualifiedName },
+          },
+          {
+            id: "relationships-object",
+            label: t("database.catalog.relationshipsWithAi"),
+            resolvePrompt: () => buildObjectPrompt(connection, object, "relationships"),
+            source: { type: "database-object", label: object.qualifiedName },
+          },
+        ],
+        label: object.qualifiedName,
+      }}
+    >
+      <div className="group relative">
+        <TreeButton
+          active={active}
+          className={surface === "sql" ? "pr-7" : undefined}
+          depth={depth}
+          icon={categoryIcon(object.kind)}
+          label={object.name}
+          onClick={() => onSelect(connection, object)}
+          onDoubleClick={surface === "sql" ? () => onInsertName?.(selection) : undefined}
+        />
+        {surface === "sql" ? (
+          <Tooltip
+            align="end"
+            className="absolute right-1 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            label={t("database.catalog.openInBrowse")}
+            side="top"
+          >
+            <button
+              aria-label={`${t("database.catalog.openInBrowse")}: ${object.name}`}
+              className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenInBrowse?.(selection);
+              }}
+              type="button"
+            >
+              <ExternalLink aria-hidden="true" className="size-3" />
+            </button>
+          </Tooltip>
+        ) : null}
+      </div>
+    </AiContextTarget>
+  );
+}
+
+async function buildObjectPrompt(
+  connection: string,
+  object: DatabaseObject,
+  intent: "explain" | "query" | "relationships",
+): Promise<string> {
+  const details = await getDatabaseObjectDetails(connection, object.key);
+  const context = {
+    connection,
+    object: details.object,
+    columns: details.columns,
+    indexes: details.indexes,
+    constraints: details.constraints,
+    triggers: details.triggers,
+  };
+  const request = intent === "explain"
+    ? "Explain this database object, its purpose, and any notable design or safety concerns."
+    : intent === "query"
+      ? "Suggest useful read-only SQL queries for this database object."
+      : "Explain this object's relationships and suggest appropriate joins to related objects.";
+  return `${request}\n\nCatalog metadata (no credentials or row data):\n\`\`\`json\n${JSON.stringify(context, null, 2)}\n\`\`\``;
 }
 
 function ObjectDetailsPanel({
@@ -465,6 +650,8 @@ function ObjectDetailsPanel({
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(resultLimit);
   const [offset, setOffset] = useState(0);
+  const [filters, setFilters] = useState<RowFilter[]>([]);
+  const [sort, setSort] = useState<RowBrowseQuery["sort"]>();
   const [reloadToken, setReloadToken] = useState(0);
   const [activeTab, setActiveTab] = usePersistentState<ObjectDetailTab>(
     "database:object-tab",
@@ -475,6 +662,8 @@ function ObjectDetailsPanel({
   useEffect(() => {
     setOffset(0);
     setLimit(resultLimit);
+    setFilters([]);
+    setSort(undefined);
   }, [object.key, resultLimit]);
 
   useEffect(() => {
@@ -484,7 +673,7 @@ function ObjectDetailsPanel({
     const requests: [Promise<DatabaseObjectDetails>, Promise<RowSample | null>] = [
       getDatabaseObjectDetails(connection, object.key),
       sampleable
-        ? getDatabaseObjectRows(connection, object.key, limit, offset)
+        ? getDatabaseObjectRows(connection, object.key, limit, offset, { filters, sort })
         : Promise.resolve(null),
     ];
     Promise.all(requests)
@@ -508,7 +697,7 @@ function ObjectDetailsPanel({
     return () => {
       cancelled = true;
     };
-  }, [connection, limit, object.key, offset, reloadToken, sampleable]);
+  }, [connection, filters, limit, object.key, offset, reloadToken, sampleable, sort]);
 
   const canPrev = offset > 0;
   const canNext = sample?.rowCount === limit;
@@ -539,10 +728,7 @@ function ObjectDetailsPanel({
         ) : null}
       </header>
       {error ? <Alert className="m-3" variant="destructive">{error}</Alert> : loading && !details ? (
-        <div aria-live="polite" className="flex flex-1 items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
-          {t("database.catalog.loadingDetails")}
-        </div>
+        <Loading className="flex-1" label={t("database.catalog.loadingDetails")} />
       ) : details ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div
@@ -550,24 +736,33 @@ function ObjectDetailsPanel({
             className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5"
             role="tablist"
           >
-            <DetailTab
-              active={activeTab === "data"}
-              id="data"
-              label={sampleable ? t("database.catalog.data") : t("database.catalog.definition")}
-              onSelect={setActiveTab}
-            />
-            <DetailTab
-              active={activeTab === "structure"}
-              id="structure"
-              label={t("database.catalog.structure")}
-              onSelect={setActiveTab}
-            />
-            <DetailTab
-              active={activeTab === "script"}
-              id="script"
-              label={t("database.catalog.createScript")}
-              onSelect={setActiveTab}
-            />
+            <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+              <DetailTab
+                active={activeTab === "data"}
+                id="data"
+                label={sampleable ? t("database.catalog.data") : t("database.catalog.definition")}
+                onSelect={setActiveTab}
+              />
+              <DetailTab
+                active={activeTab === "structure"}
+                id="structure"
+                label={t("database.catalog.structure")}
+                onSelect={setActiveTab}
+              />
+              <DetailTab
+                active={activeTab === "script"}
+                id="script"
+                label={t("database.catalog.createScript")}
+                onSelect={setActiveTab}
+              />
+            </div>
+            {sampleable && activeTab === "data" ? (
+              <DatabaseExportMenu
+                connection={connection}
+                objectKey={objectKey}
+                qualifiedName={object.qualifiedName}
+              />
+            ) : null}
           </div>
           <div
             aria-labelledby="database-object-tab-data"
@@ -580,15 +775,24 @@ function ObjectDetailsPanel({
             role="tabpanel"
           >
             {sample ? (
-              <TableGrid
-                canDelete={object.kind === "table"}
-                connection={connection}
-                objectKey={objectKey}
-                onDeleted={() => setReloadToken((value) => value + 1)}
-                onWriteAccessChange={onWriteAccessChange}
-                sample={sample}
-                writeUnlocked={writeUnlocked}
-              />
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <DatabaseRowFilters
+                  columns={sample.columns}
+                  filters={filters}
+                  onChange={(next) => { setFilters(next); setOffset(0); }}
+                />
+                <TableGrid
+                  canDelete={object.kind === "table"}
+                  connection={connection}
+                  objectKey={objectKey}
+                  onDeleted={() => setReloadToken((value) => value + 1)}
+                  onSortChange={(next) => { setSort(next); setOffset(0); }}
+                  onWriteAccessChange={onWriteAccessChange}
+                  sample={sample}
+                  sort={sort}
+                  writeUnlocked={writeUnlocked}
+                />
+              </div>
             ) : (
               <pre className="min-h-full whitespace-pre-wrap break-words p-3 font-mono text-[11px] text-muted-foreground">{details.definition ?? t("database.catalog.noDefinition")}</pre>
             )}
@@ -639,7 +843,7 @@ function DetailTab({
       aria-controls={`database-object-panel-${id}`}
       aria-selected={active}
       className={cn(
-        "rounded px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "shrink-0 whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "bg-foreground text-background"
           : "text-muted-foreground hover:text-foreground",
@@ -793,7 +997,7 @@ function HighlightedSql({
   );
 }
 
-function TreeButton({ active, className, depth, description, expanded, icon, label, meta, onClick }: {
+function TreeButton({ active, className, depth, description, expanded, icon, label, meta, onClick, onDoubleClick }: {
   active?: boolean;
   className?: string;
   depth: number;
@@ -803,9 +1007,11 @@ function TreeButton({ active, className, depth, description, expanded, icon, lab
   label: string;
   meta?: string;
   onClick: () => void;
+  onDoubleClick?: () => void;
 }) {
   return (
     <button
+      aria-current={active ? "true" : undefined}
       aria-expanded={expanded}
       className={cn(
         "flex w-full min-w-0 items-center gap-1.5 py-1 pr-2 text-left font-mono text-[11px] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
@@ -813,6 +1019,7 @@ function TreeButton({ active, className, depth, description, expanded, icon, lab
         className,
       )}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       style={{ paddingLeft: 6 + depth * 12 }}
       title={description ? `${label} (${description})` : label}
       type="button"

@@ -108,6 +108,16 @@ pub struct LogSourceDef {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct SshServerDef {
+    pub host: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct GithubTokenDef {
     pub host: String,
     pub token: String,
@@ -179,6 +189,9 @@ pub struct Config {
     pub databases: Vec<DatabaseDef>,
     #[serde(default)]
     pub log_sources: Vec<LogSourceDef>,
+    /// Saved SSH server metadata. Keys remain in ~/.ssh/config / ssh-agent.
+    #[serde(default)]
+    pub ssh_servers: Vec<SshServerDef>,
     #[serde(default)]
     pub github_tokens: Vec<GithubTokenDef>,
     #[serde(default)]
@@ -212,6 +225,7 @@ impl Default for Config {
             git_board_repositories: None,
             databases: vec![],
             log_sources: vec![],
+            ssh_servers: vec![],
             github_tokens: vec![],
             github_identities: vec![],
             vercel: None,

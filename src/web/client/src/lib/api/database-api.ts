@@ -4,6 +4,18 @@
  */
 
 export type DatabaseEngine = "postgres" | "mysql" | "sqlite";
+export type DatabaseExportFormat = "csv" | "json";
+
+export type DatabaseExportResult =
+  | { delivery: "browser"; url: string }
+  | {
+      delivery: "file";
+      path: string;
+      rowsWritten: number;
+      bytesWritten: number;
+      maskedColumns: string[];
+    }
+  | { delivery: "cancelled" };
 
 export interface DatabaseConnection {
   name: string;
@@ -83,6 +95,30 @@ export interface RowSample {
   offset: number;
 }
 
+export type RowFilterOperator =
+  | "eq"
+  | "neq"
+  | "contains"
+  | "startsWith"
+  | "endsWith"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte"
+  | "isNull"
+  | "isNotNull";
+
+export interface RowFilter {
+  column: string;
+  operator: RowFilterOperator;
+  value?: string;
+}
+
+export interface RowBrowseQuery {
+  filters?: RowFilter[];
+  sort?: { column: string; direction: "asc" | "desc" };
+}
+
 export interface QueryResult {
   engine: DatabaseEngine;
   columns: ColumnInfo[];
@@ -136,7 +172,16 @@ export interface DatabaseApi {
     key: string,
     limit?: number,
     offset?: number,
+    query?: RowBrowseQuery,
   ): Promise<RowSample & { object: DatabaseObject }>;
+  /** Export every row without transferring the dataset through React memory. */
+  exportDatabaseObject(
+    name: string,
+    key: string,
+    format: DatabaseExportFormat,
+    suggestedFilename: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<DatabaseExportResult>;
   runDatabaseQuery(name: string, sql: string, limit?: number): Promise<QueryResult>;
   /** Lock or unlock write access for a connection's SQL console. */
   setDatabaseWriteAccess(name: string, unlocked: boolean): Promise<void>;

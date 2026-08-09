@@ -91,6 +91,29 @@ async function renderGrid(props: Partial<React.ComponentProps<typeof TableGrid>>
 }
 
 describe("TableGrid row actions", () => {
+  test("cycles a column through ascending, descending, and default order", async () => {
+    const onSortChange = vi.fn();
+    await renderGrid({ onSortChange });
+    expect(button("email", host)?.querySelector(".lucide-arrow-up-down")).toBeTruthy();
+    await act(async () => button("email", host)?.click());
+    expect(onSortChange).toHaveBeenLastCalledWith({ column: "email", direction: "asc" });
+
+    await renderGrid({
+      onSortChange,
+      sort: { column: "email", direction: "asc" },
+    });
+    await act(async () => button("email", host)?.click());
+    expect(onSortChange).toHaveBeenLastCalledWith({ column: "email", direction: "desc" });
+
+    await renderGrid({
+      onSortChange,
+      sort: { column: "email", direction: "desc" },
+    });
+    expect(button("email", host)?.querySelector(".lucide-arrow-down")).toBeTruthy();
+    await act(async () => button("email", host)?.click());
+    expect(onSortChange).toHaveBeenLastCalledWith(undefined);
+  });
+
   test("selects multiple rows and copies them as one CSV document", async () => {
     await renderGrid();
 

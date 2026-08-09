@@ -17,6 +17,8 @@ import {
   tauri_removeDatabase,
   tauri_setDatabaseWriteAccess,
   tauri_sampleDatabaseObject,
+  tauri_exportDatabaseObject,
+  tauri_cancelDatabaseExport,
   tauri_testDatabaseConnection,
 } from "./tauri-bridge.js";
 import type {
@@ -104,10 +106,39 @@ export const tauriDatabaseApi: DatabaseApi = {
     return (await tauri_getDatabaseObjectDetails(name, key)) as DatabaseObjectDetails;
   },
 
-  async getDatabaseObjectRows(name, key, limit = 100, offset = 0) {
-    return (await tauri_sampleDatabaseObject(name, key, limit, offset)) as RowSample & {
+  async getDatabaseObjectRows(name, key, limit = 100, offset = 0, query) {
+    return (await tauri_sampleDatabaseObject(name, key, limit, offset, query)) as RowSample & {
       object: DatabaseObject;
     };
+  },
+
+  async exportDatabaseObject(name, key, format, suggestedFilename, options) {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const path = await save({
+      defaultPath: suggestedFilename,
+      filters: [{ name: format.toUpperCase(), extensions: [format] }],
+    });
+    if (!path) return { delivery: "cancelled" as const };
+    if (options?.signal?.aborted) return { delivery: "cancelled" as const };
+    const requestId = crypto.randomUUID();
+    const cancel = () => void tauri_cancelDatabaseExport(requestId).catch(() => {});
+    options?.signal?.addEventListener("abort", cancel, { once: true });
+    try {
+      const result = await tauri_exportDatabaseObject({
+        requestId,
+        name,
+        key,
+        format,
+        path,
+      }) as {
+        rowsWritten: number;
+        bytesWritten: number;
+        maskedColumns: string[];
+      };
+      return { delivery: "file" as const, path, ...result };
+    } finally {
+      options?.signal?.removeEventListener("abort", cancel);
+    }
   },
 
   async runDatabaseQuery(name, sql, limit = 100) {

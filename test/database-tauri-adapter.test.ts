@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   capabilities: vi.fn(),
   details: vi.fn(),
+  exportObject: vi.fn(),
+  cancelExport: vi.fn(),
   deleteRows: vi.fn(),
   execute: vi.fn(),
   listDatabases: vi.fn(),
@@ -12,12 +14,17 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   sample: vi.fn(),
   test: vi.fn(),
+  save: vi.fn(),
 }));
+
+vi.mock("@tauri-apps/plugin-dialog", () => ({ save: mocks.save }));
 
 vi.mock("../src/web/client/src/lib/api/tauri-bridge", () => ({
   tauri_databaseCapabilities: mocks.capabilities,
   tauri_deleteDatabaseRows: mocks.deleteRows,
   tauri_executeDatabase: mocks.execute,
+  tauri_exportDatabaseObject: mocks.exportObject,
+  tauri_cancelDatabaseExport: mocks.cancelExport,
   tauri_getDatabaseObjectDetails: mocks.details,
   tauri_listDatabaseObjects: mocks.listObjects,
   tauri_listDatabaseSchemas: mocks.listSchemas,
@@ -41,6 +48,33 @@ beforeEach(() => {
 });
 
 describe("Tauri database adapter", () => {
+  test("saves an all-row export directly through the native writer", async () => {
+    mocks.save.mockResolvedValue("/tmp/users.csv");
+    mocks.exportObject.mockResolvedValue({
+      rowsWritten: 5001,
+      bytesWritten: 120000,
+      maskedColumns: ["api_token"],
+    });
+
+    await expect(
+      tauriDatabaseApi.exportDatabaseObject("app", "opaque", "csv", "app-users.csv"),
+    ).resolves.toMatchObject({
+      delivery: "file",
+      path: "/tmp/users.csv",
+      rowsWritten: 5001,
+    });
+    expect(mocks.save).toHaveBeenCalledWith({
+      defaultPath: "app-users.csv",
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    expect(mocks.exportObject).toHaveBeenCalledWith(expect.objectContaining({
+      name: "app",
+      key: "opaque",
+      format: "csv",
+      path: "/tmp/users.csv",
+    }));
+  });
+
   test("tests the unsaved connection instead of a fake registered name", async () => {
     await expect(
       tauriDatabaseApi.testDatabase({ engine: "postgres", url: "postgres://user:secret@host/app" }),
@@ -84,5 +118,17 @@ describe("Tauri database adapter", () => {
       affectedRows: 2,
     });
     expect(mocks.deleteRows).toHaveBeenCalledWith("app", input);
+  });
+
+  test("passes browser filters and sorting to the native catalog command", async () => {
+    mocks.sample.mockResolvedValue({ rows: [], columns: [], rowCount: 0 });
+    const query = {
+      filters: [{ column: "name", operator: "startsWith" as const, value: "sam" }],
+      sort: { column: "created_at", direction: "desc" as const },
+    };
+
+    await tauriDatabaseApi.getDatabaseObjectRows("app", "opaque", 50, 100, query);
+
+    expect(mocks.sample).toHaveBeenCalledWith("app", "opaque", 50, 100, query);
   });
 });
