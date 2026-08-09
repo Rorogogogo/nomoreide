@@ -1,4 +1,5 @@
 import { CircleDot } from "lucide-react";
+import { Loading } from "@/components/ui/loading";
 import type { GitHubIssue } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { IssueLabelSwatch } from "./issue-label-swatch";
@@ -25,7 +26,7 @@ export function IssueList({
 }) {
   const t = useT();
   if (loading && issues.length === 0) {
-    return <div className="p-4 text-[12px] text-muted-foreground">{t("github.issues.loading")}</div>;
+    return <Loading fill label={t("github.issues.loading")} />;
   }
   if (error) {
     return <div className="p-4 text-[12px] text-red-500">{error}</div>;

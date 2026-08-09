@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/cvui-badge";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { useToasts } from "@/components/ui/toast";
 import { useAgentDock } from "../agent/chat/agent-context";
 import {
@@ -275,10 +276,7 @@ export function WorktreesView({
 
       <div className="min-h-0 flex-1 overflow-auto">
         {loading ? (
-          <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            {t("git.worktrees.loading")}
-          </div>
+          <Loading fill label={t("git.worktrees.loading")} />
         ) : worktrees.length === 0 ? (
           <div className="px-4 py-10 text-center text-xs text-muted-foreground">
             {t("git.worktrees.empty")}

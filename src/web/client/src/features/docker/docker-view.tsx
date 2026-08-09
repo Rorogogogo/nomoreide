@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { Container, Layers3, Loader2 } from "lucide-react";
+import { Container, Layers3 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -89,10 +90,7 @@ export function DockerView() {
       ) : null}
 
       {loading && status === null ? (
-        <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
-          {t("docker.loading")}
-        </div>
+        <Loading className="flex-1" label={t("docker.loading")} />
       ) : status && !available ? (
         <DockerUnavailable error={status.error} />
       ) : tab === "containers" ? (

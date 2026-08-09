@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addLogSource, type LogSource } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { SshHostInput } from "@/features/servers/ssh-host-input";
 import type { TranslationKey } from "@/lib/i18n/en";
 import { ComposerDialog } from "./service-form/composer-dialog";
 
@@ -108,8 +109,8 @@ export function LogSourceForm({
 
         {type === "journald" || type === "docker" ? (
           <Field label={t("services.log.hostOptional")}>
-            <Input
-              onChange={(event) => setHost(event.target.value)}
+            <SshHostInput
+              onChange={setHost}
               placeholder="jobjourney-prod (an alias from ~/.ssh/config)"
               value={host}
             />
@@ -138,8 +139,8 @@ export function LogSourceForm({
 
         {type === "ssh" ? (
           <Field label={t("services.log.host")}>
-            <Input
-              onChange={(event) => setHost(event.target.value)}
+            <SshHostInput
+              onChange={setHost}
               placeholder="prod (an alias from ~/.ssh/config)"
               value={host}
             />

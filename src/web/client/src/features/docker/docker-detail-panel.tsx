@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { ChevronDown, EyeOff, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDockerContainerDetail,
@@ -68,7 +69,7 @@ export function DockerDetailPanel({
         {error ? (
           <p className="p-3 text-xs text-destructive">{error}</p>
         ) : !detail ? (
-          <DetailSkeleton t={t} />
+          <Loading className="min-h-40" label={t("docker.detail.loading")} />
         ) : (
           <DetailBody detail={detail} t={t} />
         )}
@@ -163,51 +164,6 @@ function DetailBody({ detail, t }: { detail: DockerContainerDetail; t: Translate
         </DetailSection>
       ) : null}
     </>
-  );
-}
-
-function DetailSkeleton({ t }: { t: Translate }) {
-  return (
-    <div
-      aria-label={t("docker.detail.loading")}
-      aria-live="polite"
-      className="animate-pulse motion-reduce:animate-none"
-      role="status"
-    >
-      <SkeletonSection rows={6} title={t("docker.detail.overview")} />
-      <SkeletonSection rows={2} title={t("docker.detail.ports")} />
-      <SkeletonSection rows={2} title={t("docker.detail.mounts")} />
-    </div>
-  );
-}
-
-const SKELETON_ROWS = [
-  { id: "first", width: "82%" },
-  { id: "second", width: "68%" },
-  { id: "third", width: "54%" },
-  { id: "fourth", width: "82%" },
-  { id: "fifth", width: "68%" },
-  { id: "sixth", width: "54%" },
-] as const;
-
-function SkeletonSection({ rows, title }: { rows: number; title: string }) {
-  return (
-    <section className="border-b border-border">
-      <div className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-        {title}
-      </div>
-      <div className="space-y-2 px-3 pb-2.5">
-        {SKELETON_ROWS.slice(0, rows).map((row) => (
-          <div
-            className="grid grid-cols-[minmax(3.5rem,0.22fr)_minmax(0,1fr)] gap-3"
-            key={row.id}
-          >
-            <span className="h-2 rounded-sm bg-muted" />
-            <span className="h-2 rounded-sm bg-muted" style={{ width: row.width }} />
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 

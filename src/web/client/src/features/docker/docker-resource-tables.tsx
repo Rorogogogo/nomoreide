@@ -1,5 +1,6 @@
-import { HardDrive, Layers3, Loader2, Network, type LucideIcon } from "lucide-react";
+import { HardDrive, Layers3, Network, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Loading } from "@/components/ui/loading";
 import {
   getDockerImages,
   getDockerNetworks,
@@ -181,12 +182,7 @@ function ResourceShell({
     );
   }
   if (loading && rowCount === 0) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-        <Loader2 aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
-        {t("docker.loading")}
-      </div>
-    );
+    return <Loading className="py-16" label={t("docker.loading")} />;
   }
   if (rowCount === 0) return <EmptyState label={empty} />;
 

@@ -6,7 +6,6 @@ import {
   Clock3,
   Database,
   Gauge,
-  Loader2,
   Server,
 } from "lucide-react";
 import {
@@ -20,6 +19,7 @@ import {
 } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import {
   getActivityMetrics,
@@ -177,10 +177,7 @@ export function ActivityView({
 
       <div className="min-h-0 flex-1 overflow-auto">
         {loading && !metrics ? (
-          <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t("activity.loading")}
-          </div>
+          <Loading fill label={t("activity.loading")} />
         ) : metrics && current ? (
           <div className="space-y-4 p-4">
             <HostOverview current={current} samples={metrics.host.samples} />
@@ -264,18 +261,7 @@ function useActivityMetrics(includeProcesses: boolean) {
 
 function ActivitySectionLoading() {
   const t = useT();
-  return (
-    <div
-      aria-live="polite"
-      className="flex min-h-40 items-center justify-center gap-2 text-sm text-muted-foreground"
-    >
-      <Loader2
-        aria-hidden="true"
-        className="size-4 animate-spin motion-reduce:animate-none"
-      />
-      {t("activity.sectionLoading")}
-    </div>
-  );
+  return <Loading className="min-h-40" label={t("activity.sectionLoading")} />;
 }
 
 function DeferredProcessSection() {
