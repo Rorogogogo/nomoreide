@@ -44,17 +44,28 @@ function buildDashboard(health: ServiceHealth): DashboardData {
   } as unknown as DashboardData;
 }
 
-function renderServicesView(data: DashboardData) {
+function renderServicesView(data: DashboardData, scopeName?: string) {
   return renderToStaticMarkup(
     <AgentProvider>
       <OperationProvider>
-        <ServicesView data={data} onRefresh={async () => undefined} />
+        <ServicesView data={data} onRefresh={async () => undefined} scopeName={scopeName} />
       </OperationProvider>
     </AgentProvider>,
   );
 }
 
 describe("service health UI", () => {
+  test("covers the body grid for a scoped project with no services", () => {
+    const data = buildDashboard({} as ServiceHealth);
+    data.config.services = [];
+    data.runtime.services = {};
+
+    const markup = renderServicesView(data, "nomoreide-platform");
+
+    expect(markup).toContain("No services in nomoreide-platform");
+    expect(markup).toContain("bg-background");
+  });
+
   test("detail header shows warning, process count, CPU, and RAM", () => {
     const health: ServiceHealth = {
       service: "frontend",

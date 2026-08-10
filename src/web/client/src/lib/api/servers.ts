@@ -21,6 +21,11 @@ export interface SshServerProbe {
   error?: string;
 }
 
+export interface SshSetupStatus {
+  publicKeys: string[];
+  sshCopyIdAvailable: boolean;
+}
+
 export interface RemoteProcessMetric {
   pid: number;
   ppid: number;
@@ -92,6 +97,28 @@ export async function openSshTerminal(host: string): Promise<TerminalSessionInfo
   const response = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
     `/api/servers/${encodeURIComponent(host)}/terminal`,
     { method: "POST" },
+  );
+  return response.session;
+}
+
+export async function getSshSetupStatus(): Promise<SshSetupStatus> {
+  const response = await requestJson<{ ok: true; setup: SshSetupStatus }>(
+    "/api/servers/setup/status",
+  );
+  return response.setup;
+}
+
+export async function openSshSetupTerminal(
+  action: "generate-key" | "install-key",
+  host?: string,
+): Promise<TerminalSessionInfo> {
+  const response = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
+    "/api/servers/setup/terminal",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, host }),
+    },
   );
   return response.session;
 }

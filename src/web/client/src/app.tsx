@@ -272,6 +272,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? initialPage(window.location) : "services",
   );
+  const [activityHost, setActivityHost] = useState("local");
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
   const [focusService, setFocusService] = useState<string | null>(null);
@@ -389,7 +390,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
       }
       const [dashboardOk, pageOk] = await Promise.all([
         refresh({ silent: !manual }),
-        runActiveRefresh().then(
+        runActiveRefresh({ manual }).then(
           () => true,
           () => false,
         ),
@@ -786,6 +787,8 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {scopedData && page === "activity" ? (
               <ActivityPage
                 data={scopedData}
+                host={activityHost}
+                onHostChange={setActivityHost}
                 onOpenService={(name) => {
                   setFocusService(name);
                   setPage("services");
@@ -794,7 +797,13 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               />
             ) : null}
             {page === "servers" ? (
-              <ServersView onOpenTerminal={() => setPage("terminal")} />
+              <ServersView
+                onOpenActivity={(host) => {
+                  setActivityHost(host);
+                  setPage("activity");
+                }}
+                onOpenTerminal={() => setPage("terminal")}
+              />
             ) : null}
             {page === "docker" ? <DockerView /> : null}
             {overviewDomain ? (

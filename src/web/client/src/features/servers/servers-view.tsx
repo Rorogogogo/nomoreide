@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Activity,
   Check,
+  KeyRound,
   Pencil,
   Plus,
   RefreshCw,
@@ -26,10 +28,22 @@ import {
   type SshServerSummary,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { SshSetupPanel } from "./ssh-setup-panel";
 
 const AUTO_PROBE_LIMIT = 12;
+const AUTO_PROBE_INTERVAL_MS = 30_000;
+const COMPACT_FIELD_CLASS = "h-7 px-2 py-0 text-[11px] shadow-none";
+const COMPACT_MACHINE_FIELD_CLASS = `${COMPACT_FIELD_CLASS} font-mono`;
+const COMPACT_BUTTON_CLASS = "h-7 px-2 text-[11px] [&_svg]:size-3.5";
+const COMPACT_LABEL_CLASS = "text-[10px] uppercase tracking-wide";
 
-export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) {
+export function ServersView({
+  onOpenActivity,
+  onOpenTerminal,
+}: {
+  onOpenActivity: (host: string) => void;
+  onOpenTerminal: () => void;
+}) {
   const t = useT();
   const [servers, setServers] = useState<SshServerSummary[]>([]);
   const [probes, setProbes] = useState<Record<string, SshServerProbe>>({});
@@ -38,13 +52,18 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SshServerSummary | null | "new">(null);
   const [saving, setSaving] = useState(false);
+  const activeProbesRef = useRef(new Set<string>());
+  const lastProbeCycleRef = useRef(0);
 
   const runProbe = useCallback(async (host: string) => {
+    if (activeProbesRef.current.has(host)) return;
+    activeProbesRef.current.add(host);
     setProbing((current) => new Set(current).add(host));
     try {
       const probe = await probeSshServer(host);
       setProbes((current) => ({ ...current, [host]: probe }));
     } finally {
+      activeProbesRef.current.delete(host);
       setProbing((current) => {
         const next = new Set(current);
         next.delete(host);
@@ -53,13 +72,16 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
     }
   }, []);
 
-  const load = useCallback(async (silent = false) => {
+  const load = useCallback(async (silent = false, probe = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
       const next = await listSshServers();
       setServers(next);
-      void Promise.all(next.slice(0, AUTO_PROBE_LIMIT).map((server) => runProbe(server.host)));
+      if (probe) {
+        lastProbeCycleRef.current = Date.now();
+        void Promise.all(next.slice(0, AUTO_PROBE_LIMIT).map((server) => runProbe(server.host)));
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : String(nextError));
     } finally {
@@ -68,9 +90,27 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
   }, [runProbe]);
 
   useEffect(() => {
-    void load();
+    void load(false, true);
   }, [load]);
-  useRegisterRefresh(() => load(true));
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastProbeCycleRef.current >= AUTO_PROBE_INTERVAL_MS
+      ) {
+        void load(true, true);
+      }
+    };
+    const interval = window.setInterval(refreshIfStale, AUTO_PROBE_INTERVAL_MS);
+    window.addEventListener("focus", refreshIfStale);
+    document.addEventListener("visibilitychange", refreshIfStale);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfStale);
+      document.removeEventListener("visibilitychange", refreshIfStale);
+    };
+  }, [load]);
+  useRegisterRefresh(({ manual }) => manual ? load(true, true) : undefined);
 
   const reachable = useMemo(
     () => Object.values(probes).filter((probe) => probe.reachable).length,
@@ -103,6 +143,7 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
         <ServerForm
           initial={editing === "new" ? null : editing}
           onCancel={() => setEditing(null)}
+          onOpenTerminal={onOpenTerminal}
           onSave={async (values) => {
             setSaving(true);
             try {
@@ -132,9 +173,9 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
           <table className="w-full table-fixed text-left text-xs">
             <thead className="sticky top-0 z-10 border-b border-border bg-background/95 text-[10px] uppercase tracking-wide text-muted-foreground backdrop-blur">
               <tr>
-                <th className="w-[32%] px-3 py-2 font-semibold">{t("servers.server")}</th>
-                <th className="w-[18%] px-3 py-2 font-semibold">{t("servers.environment")}</th>
-                <th className="w-[28%] px-3 py-2 font-semibold">{t("servers.status")}</th>
+                <th className="w-[28%] px-3 py-2 font-semibold">{t("servers.server")}</th>
+                <th className="w-[24%] px-3 py-2 font-semibold">{t("servers.context")}</th>
+                <th className="w-[30%] px-3 py-2 font-semibold">{t("servers.status")}</th>
                 <th className="px-3 py-2 text-right font-semibold">{t("servers.actions")}</th>
               </tr>
             </thead>
@@ -158,8 +199,16 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
                           {server.environment}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {t("servers.environmentUnassigned")}
+                        </span>
                       )}
+                      <div className="mt-1 truncate font-mono text-[9px] text-muted-foreground">
+                        {[
+                          server.discovered ? t("servers.sourceSshConfig") : null,
+                          server.saved ? t("servers.sourceSaved") : null,
+                        ].filter(Boolean).join(" · ")}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <ServerStatus probe={probe} probing={isProbing} />
@@ -171,6 +220,12 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
                           onClick={() => void runProbe(server.host)}
                         >
                           <RefreshCw aria-hidden="true" className={isProbing ? "animate-spin motion-reduce:animate-none" : ""} />
+                        </IconButton>
+                        <IconButton
+                          label={t("servers.activity")}
+                          onClick={() => onOpenActivity(server.host)}
+                        >
+                          <Activity aria-hidden="true" />
                         </IconButton>
                         <IconButton
                           label={t("servers.terminal")}
@@ -216,46 +271,68 @@ export function ServersView({ onOpenTerminal }: { onOpenTerminal: () => void }) 
 function ServerForm({
   initial,
   onCancel,
+  onOpenTerminal,
   onSave,
   saving,
 }: {
   initial: SshServerSummary | null;
   onCancel: () => void;
+  onOpenTerminal: () => void;
   onSave: (values: { host: string; name?: string; environment?: string }) => Promise<void>;
   saving: boolean;
 }) {
   const t = useT();
-  const [host, setHost] = useState(initial?.host ?? "");
+  const initialDestination = splitSshDestination(initial?.host ?? "");
+  const [host, setHost] = useState(initialDestination.host);
+  const [username, setUsername] = useState(initialDestination.username);
   const [name, setName] = useState(initial?.name ?? "");
   const [environment, setEnvironment] = useState(initial?.environment ?? "");
+  const [showSetup, setShowSetup] = useState(initial === null);
+  const destination = formatSshDestination(host, username);
 
   return (
     <form
-      className="grid shrink-0 gap-3 border-b border-border bg-muted/20 px-3 py-3 sm:grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(120px,.7fr)_auto] sm:items-end"
+      className="grid max-h-[calc(100%_-_41px)] shrink-0 gap-2 overflow-y-auto border-b border-border bg-muted/20 px-3 py-2 sm:grid-cols-2 lg:grid-cols-[minmax(180px,1.1fr)_minmax(110px,.6fr)_minmax(150px,1fr)_minmax(120px,.7fr)_max-content] lg:items-end"
       onSubmit={(event) => {
         event.preventDefault();
         void onSave({
-          host: host.trim(),
+          host: destination,
           name: name.trim() || undefined,
           environment: environment.trim() || undefined,
         });
       }}
     >
       <div className="space-y-1">
-        <Label htmlFor="server-host">{t("servers.host")}</Label>
+        <Label className={COMPACT_LABEL_CLASS} htmlFor="server-host">{t("servers.host")}</Label>
         <Input
           autoFocus
+          className={COMPACT_MACHINE_FIELD_CLASS}
           disabled={Boolean(initial?.saved)}
           id="server-host"
           onChange={(event) => setHost(event.target.value)}
-          placeholder="prod-web"
+          placeholder={t("servers.hostPlaceholder")}
           required
           value={host}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="server-name">{t("servers.name")}</Label>
+        <Label className={COMPACT_LABEL_CLASS} htmlFor="server-username">
+          {t("servers.username")}
+        </Label>
         <Input
+          autoComplete="username"
+          className={COMPACT_MACHINE_FIELD_CLASS}
+          disabled={Boolean(initial?.saved)}
+          id="server-username"
+          onChange={(event) => setUsername(event.target.value)}
+          placeholder={t("servers.usernamePlaceholder")}
+          value={username}
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className={COMPACT_LABEL_CLASS} htmlFor="server-name">{t("servers.name")}</Label>
+        <Input
+          className={COMPACT_FIELD_CLASS}
           id="server-name"
           onChange={(event) => setName(event.target.value)}
           placeholder={t("servers.namePlaceholder")}
@@ -263,26 +340,71 @@ function ServerForm({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="server-environment">{t("servers.environment")}</Label>
+        <Label className={COMPACT_LABEL_CLASS} htmlFor="server-environment">
+          {t("servers.environment")}
+        </Label>
         <Input
+          className={COMPACT_FIELD_CLASS}
           id="server-environment"
           onChange={(event) => setEnvironment(event.target.value)}
           placeholder="Production"
           value={environment}
         />
       </div>
-      <div className="flex gap-1">
-        <Button loading={saving} size="sm" type="submit">
+      <div className="flex gap-1 sm:col-span-2 lg:col-span-1">
+        <Button className={COMPACT_BUTTON_CLASS} loading={saving} size="sm" type="submit">
           <Check aria-hidden="true" />
           {t("servers.save")}
         </Button>
-        <Button disabled={saving} onClick={onCancel} size="sm" type="button" variant="outline">
+        <Button
+          className={COMPACT_BUTTON_CLASS}
+          onClick={() => setShowSetup((current) => !current)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <KeyRound aria-hidden="true" />
+          {showSetup ? t("servers.setup.hide") : t("servers.setup.show")}
+        </Button>
+        <Button
+          className={COMPACT_BUTTON_CLASS}
+          disabled={saving}
+          onClick={onCancel}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
           <X aria-hidden="true" />
           {t("servers.cancel")}
         </Button>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:col-span-2 lg:col-span-5">
+        <p className="min-w-0 flex-1 text-[9px] leading-4 text-muted-foreground">
+          {t("servers.authentication")}
+        </p>
+      </div>
+      {showSetup ? (
+        <SshSetupPanel destination={destination} onOpenTerminal={onOpenTerminal} />
+      ) : null}
     </form>
   );
+}
+
+function splitSshDestination(destination: string): { host: string; username: string } {
+  const separator = destination.lastIndexOf("@");
+  if (separator <= 0 || separator === destination.length - 1) {
+    return { host: destination, username: "" };
+  }
+  return {
+    host: destination.slice(separator + 1),
+    username: destination.slice(0, separator),
+  };
+}
+
+function formatSshDestination(host: string, username: string): string {
+  const cleanHost = host.trim();
+  const cleanUsername = username.trim();
+  return cleanUsername ? `${cleanUsername}@${cleanHost}` : cleanHost;
 }
 
 function ServerStatus({ probe, probing }: { probe?: SshServerProbe; probing: boolean }) {
@@ -303,7 +425,7 @@ function ServerStatus({ probe, probing }: { probe?: SshServerProbe; probing: boo
     <div className="flex min-w-0 items-center gap-2">
       <Badge appearance="subtle" size="small" variant="success">{t("servers.online")}</Badge>
       <span className="truncate font-mono text-[9px] text-muted-foreground">
-        {probe.hostname} · {probe.latencyMs} ms
+        {[probe.hostname, probe.platform, `${probe.latencyMs} ms`].filter(Boolean).join(" · ")}
       </span>
     </div>
   );

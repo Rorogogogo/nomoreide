@@ -308,11 +308,15 @@ function SummaryDivider() {
   );
 }
 
-function HostOverview({
+export function HostOverview({
   current,
+  headingId = "activity-host-heading",
+  label,
   samples,
 }: {
   current: HostMetricSample;
+  headingId?: string;
+  label?: string;
   samples: HostMetricSample[];
 }) {
   const t = useT();
@@ -323,14 +327,14 @@ function HostOverview({
       : Math.min(100, (load / current.logicalCpuCount) * 100);
 
   return (
-    <section aria-labelledby="activity-host-heading">
+    <section aria-labelledby={headingId}>
       <div className="mb-3 flex items-center justify-between">
         <h3
           className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
-          id="activity-host-heading"
+          id={headingId}
         >
-          <CircleGauge className="size-3.5" />
-          {t("activity.thisMachine")}
+          <CircleGauge aria-hidden="true" className="size-3.5" />
+          {label ?? t("activity.thisMachine")}
         </h3>
         <span className="font-mono text-[10px] text-muted-foreground">
           {t("activity.sampled", {
@@ -385,7 +389,7 @@ function HostOverview({
         <aside className="overflow-hidden border-y border-border/70">
           <div className="border-b border-border px-3 py-2.5">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              <Clock3 className="size-3.5" />
+              <Clock3 aria-hidden="true" className="size-3.5" />
               {t("activity.loadUptime")}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">

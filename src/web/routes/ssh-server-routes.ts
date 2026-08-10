@@ -4,6 +4,11 @@ import {
   probeSshServer,
   readRemoteHostMetrics,
 } from "../../core/ssh-servers.js";
+import {
+  inspectSshSetup,
+  resolveSshSetupTerminal,
+  type SshSetupAction,
+} from "../../core/ssh-setup.js";
 import type { SshServerDefinition } from "../../core/types.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
@@ -20,6 +25,33 @@ export const sshServerRoutes: Route[] = [
       servers: mergeSshServers(config.sshServers, discovered),
     });
   }),
+
+  route("GET", "/api/servers/setup/status", async ({ response }) => {
+    sendJson(response, { ok: true, setup: await inspectSshSetup() });
+  }),
+
+  route(
+    "POST",
+    "/api/servers/setup/terminal",
+    async ({ request, response, terminalManager }) => {
+      const body = await readJson(request);
+      const action = body.action;
+      if (action !== "generate-key" && action !== "install-key") {
+        sendJson(response, { ok: false, error: "Unknown SSH setup action." }, 400);
+        return;
+      }
+      try {
+        const options = resolveSshSetupTerminal(
+          action as SshSetupAction,
+          typeof body.host === "string" ? body.host : undefined,
+        );
+        const session = terminalManager.create({}, options);
+        sendJson(response, { ok: true, session }, 201);
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
 
   route("POST", "/api/servers", async ({ request, response, configStore }) => {
     const body = await readJson(request);
