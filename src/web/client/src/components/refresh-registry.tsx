@@ -7,13 +7,17 @@ import {
   type ReactNode,
 } from "react";
 
-type RefreshHandler = () => void | Promise<void>;
+export interface RefreshOptions {
+  manual: boolean;
+}
+
+type RefreshHandler = (options: RefreshOptions) => void | Promise<void>;
 
 export interface RefreshRegistry {
   /** A page registers how it reloads its own data; returns an unregister fn. */
   register: (handler: RefreshHandler) => () => void;
   /** Fire every registered handler — in practice, the mounted page's own. */
-  runActive: () => Promise<void>;
+  runActive: (options?: RefreshOptions) => Promise<void>;
 }
 
 const RefreshRegistryContext = createContext<RefreshRegistry | null>(null);
@@ -34,9 +38,9 @@ export function useRefreshRegistry(): RefreshRegistry {
       handlers.current.delete(handler);
     };
   }, []);
-  const runActive = useCallback(async () => {
+  const runActive = useCallback(async (options: RefreshOptions = { manual: false }) => {
     await Promise.all(
-      [...handlers.current].map((handler) => Promise.resolve().then(handler)),
+      [...handlers.current].map((handler) => Promise.resolve().then(() => handler(options))),
     );
   }, []);
   return { register, runActive };

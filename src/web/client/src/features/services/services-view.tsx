@@ -232,7 +232,7 @@ export function ServicesView({
       {!hasServices && scopeName ? (
         // A scoped project with no services isn't a first run — the machine
         // may run plenty elsewhere. Offer the way back out instead.
-        <div className="flex h-full items-center justify-center p-8 text-center">
+        <div className="flex h-full items-center justify-center bg-background p-8 text-center">
           <div className="max-w-sm text-sm text-muted-foreground">
             <p className="font-medium text-foreground">
               No services in {scopeName}
