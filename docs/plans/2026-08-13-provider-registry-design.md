@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** in progress — steps 1–6 of §8 landed. Both contracts now have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Three in-tree providers exist, which is the bar §9 set before `apiVersion: 1` could be frozen — step 7 is the decision about whether to freeze it.
+**Status:** steps 1–7 of §8 decided. Both contracts have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Step 7 is **decided in §11: `apiVersion: 1` is not frozen and providers stay in-tree** — the three-implementation bar measured contract churn, which is genuinely settled, but a freeze is a promise about a manifest schema, a loader and a sandbox, none of which exist yet. §11 holds the gate for re-opening it; the next unit of work is the generic view (tax #1).
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -339,7 +339,7 @@ export interface HostProvider {
    **The bridge is the payoff, and it is where the design earns its keep.** A Vultr instance is a row in the SSH server list the user already has, merged on the host string so a machine they had already saved metadata for is one row and *their* name wins. `probeSshServer`, `readRemoteHostMetrics`, the terminal route and the remote service runner all work against it unchanged, because what the provider hands over is a plain `SshServerDefinition`. Two rules the bridge enforces: it **never throws** (a vendor outage must not blank a page listing the user's own hosts), and it caches for 30s (that page reloads on an interval *and* on every window focus).
 
    **Deliberately not done:** `environment` is not inferred from Vultr tags — they are free-form, and guessing "Production" from one would eventually put that label on the wrong machine. Destructive operations (`delete`, `reinstall`) are absent from the manifest entirely, the line `GitManager` draws around `reset --hard`.
-7. **Only then** consider freezing `apiVersion: 1` and allowing downloadable providers.
+7. ~~**Consider freezing `apiVersion: 1`**~~ — decided, **no**. The contracts are stable enough; the manifest, the loader and the sandbox that a version number would actually be promising are not written. Providers stay in-tree. Full reasoning and the gate for re-opening it are in §11.
 
 ## 9. Risks
 
@@ -354,3 +354,43 @@ export interface HostProvider {
 Runtime loading of third-party React. The dashboard is a Vite-built SPA served from `dist/`; shipping external React into it needs either an install-time rebuild (Backstage's approach) or a module loader with externalized React and a versioned UI SDK (Grafana's). Declarative, manifest-driven providers cover Cloudflare, Vultr, Fly, Railway, Render, DO and Netlify without either. Revisit only when a concrete provider cannot be expressed declaratively.
 
 Distribution infrastructure is already built — `agent-profiles/registry-client.ts` implements `createProfile` / `createVersion` / `package` / `publish` / `install` against `https://api.nomoreide.com`. Providers would be a second artifact type in that store, not a second store.
+
+---
+
+## 11. Step 7 — the freeze decision
+
+**Decided: `apiVersion: 1` is not frozen, and downloadable providers stay closed. Providers remain in-tree.** Re-open on the gate below rather than on a count of implementations.
+
+§9 set the bar at "three in-tree implementations before any external commitment", and three now exist. That bar measured the right *risk* — contract churn — but it is not the whole precondition. Freezing an `apiVersion` is not a promise that `DeployProvider` is stable; it is a promise about **a manifest schema, a loader, and a sandbox**, and those are the parts that do not yet exist.
+
+### What the three implementations did buy
+
+The contracts are, on the evidence, right — worth stating plainly, because this is the part that worked:
+
+- `DeployProvider`'s signatures survived Cloudflare **unchanged** (§8.5). Every collision was absorbed by something designed as a pressure valve: `rawState` twice (§8.5, §8.6), `settings` as a list, `ProviderProject.id` as "whatever the vendor addresses projects by".
+- The one shared-layer change Cloudflare forced — `adoptSoleScope`'s `cliSelectsScope` — was a policy refinement, not a signature change.
+- `providers/credentials.ts` carried over to a provider on the *other* contract untouched, which is the strongest single piece of evidence that the layer generalized rather than being renamed.
+- The two contracts stayed disjoint under pressure exactly as §2 predicted: `HostProvider` needed no project resolution, `DeployProvider` needed no `toSshTarget`.
+
+So the interfaces would survive being frozen. That is not what freezing costs.
+
+### The four things that are not ready
+
+1. **There is no manifest to freeze.** `apiVersion` appears nowhere in `src/` — only in this document. A registry entry today is **code, not data**: `RegisteredDeployProvider` carries four function-valued fields (`context()`, `actions()`, `hooks.repoUrl`, `auth.cliSession`), where §6 assumed a JSON manifest with a `server: "./server.js"` pointer beside it. A version number is a promise about a schema, and that schema has not been written. Designing it *is* the work a freeze implies, not its precondition.
+
+2. **Half the manifest is write-only.** All three providers declare `capabilities`, `productionAffecting` and `scopeLabel`; **nothing reads any of them.** The only manifest field with a consumer is `actions`, validated at the two action routes. `capabilities` was §6's central claim — "what lets one generic React view render every provider" — but the view is still `features/vercel/`, Vercel-bound (tax #1), so a provider declaring `capabilities: ["env"]` buys exactly nothing. Freezing v1 tells an external author their declarations are honoured, while three of six fields are inert. That is the shortest path to needing a v2.
+
+3. **The security boundary exists only in prose.** §6 calls `api.hosts` "the security boundary" and requires a host-supplied `ctx.fetch`. Neither appears in `src/`; all three managers call global `fetch` directly. In-tree that is fine — the code is reviewed and the egress is auditable. For downloadable code it is the *entire* barrier between a third party and a daemon holding GitHub tokens, `db-write.ts` access and process-spawn ability. This gate is independent of contract stability, and it is the one that actually blocks third-party loading.
+
+4. **§9's live-API risk is still open.** Cloudflare and Vultr have met stubbed `fetch` only. The behaviours a spec does not state — Cloudflare's PATCH-merge env semantics, whether a Vultr power action's 204 precedes the reported state change — are exactly the kind that force an adapter shape change, and a freeze would put that change on the far side of a compatibility promise.
+
+### The gate
+
+Re-open the question when all four hold, in this order, because each is cheap only after the one before it:
+
+1. **The generic view lands** (tax #1), giving `capabilities` and `scopeLabel` a real consumer. This is the next unit of work and earns its keep independently: Cloudflare is reachable over HTTP and MCP today but has no dashboard tab.
+2. **Manifest strings move out of `en.ts`/`zh.ts`** (tax #2), with the locale-parity test §9 asks for — the change that makes the declarative half genuinely declarative.
+3. **`ctx.fetch` replaces global `fetch`** in all three managers, enforced by `api.hosts`, with a test that a provider cannot reach an unlisted host. Worth doing in-tree regardless, since it makes provider egress auditable.
+4. **One live-token pass each** against Cloudflare and Vultr, retiring §9's last open risk.
+
+Provider #4 (DigitalOcean — one line plus a directory) is deliberately *not* on that list. It would add a fourth implementation while touching none of the four gates, which is the precise sense in which "three implementations" was the wrong bar to freeze on.
