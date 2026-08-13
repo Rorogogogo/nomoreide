@@ -41,7 +41,7 @@ describe("Vercel CLI session discovery", () => {
 
     await expect(readVercelCliSession(env)).resolves.toEqual({
       token: "cli-token",
-      currentTeam: "team_acme",
+      currentScope: "team_acme",
     });
   });
 
@@ -62,8 +62,8 @@ describe("Vercel credential resolution", () => {
     await expect(resolveVercelCredential(config, env)).resolves.toEqual({
       source: "stored",
       token: "pat-token",
-      teamId: "team_x",
-      teamSlug: undefined,
+      scopeId: "team_x",
+      scopeSlug: undefined,
     });
   });
 
@@ -77,8 +77,8 @@ describe("Vercel credential resolution", () => {
       token: "fresh-cli-token",
       // Inherited from the CLI's own scope, so the dashboard opens on the same
       // team `vercel` is pointed at.
-      teamId: "team_acme",
-      teamSlug: undefined,
+      scopeId: "team_acme",
+      scopeSlug: undefined,
     });
   });
 
@@ -87,7 +87,7 @@ describe("Vercel credential resolution", () => {
     const config = makeConfig({ source: "cli", scopeId: "team_chosen" });
 
     await expect(resolveVercelCredential(config, env)).resolves.toMatchObject({
-      teamId: "team_chosen",
+      scopeId: "team_chosen",
     });
   });
 

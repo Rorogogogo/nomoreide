@@ -158,7 +158,8 @@ export const vercelRoutes: Route[] = [
         user: { username: viewer.username, avatar: viewer.avatar ?? undefined },
         teams,
         project: context.project,
-        teamId: context.credential.teamId,
+        // The wire keeps Vercel's own vocabulary; the credential no longer does.
+        teamId: context.credential.scopeId,
       });
     } catch (error) {
       sendJson(response, {
@@ -181,7 +182,7 @@ export const vercelRoutes: Route[] = [
         if (!session) throw new Error("No Vercel CLI login found. Run `vercel login` first.");
         await configStore.setConnection(VERCEL_PROVIDER_ID, {
           source: "cli",
-          scopeId: session.currentTeam,
+          scopeId: session.currentScope,
         });
       } else {
         await configStore.setConnection(VERCEL_PROVIDER_ID, {

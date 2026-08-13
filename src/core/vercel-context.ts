@@ -42,10 +42,10 @@ export async function requireVercelContext(
   });
   const identity = credential.source === "oauth" ? ("oidc" as const) : ("user" as const);
   const teamId =
-    credential.teamId ?? (await adoptDefaultTeam(configStore, credential, identity));
+    credential.scopeId ?? (await adoptDefaultTeam(configStore, credential, identity));
   const manager = new VercelManager(credential.token, teamId, undefined, { identity });
   const project = await resolveProject(config, manager, gitCwd);
-  return { manager, credential: { ...credential, teamId }, project };
+  return { manager, credential: { ...credential, scopeId: teamId }, project };
 }
 
 /**
@@ -113,7 +113,7 @@ export async function requireVercelActions(
         })
         .then(() => undefined),
   });
-  return new VercelActions({ token: credential.token, teamId: credential.teamId });
+  return new VercelActions({ token: credential.token, teamId: credential.scopeId });
 }
 
 /**
