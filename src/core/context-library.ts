@@ -45,9 +45,24 @@ const INTERNAL_DIR = ".nomoreide";
 const SETTINGS_FILE = "settings.json";
 const MAX_NOTES = 2_000;
 const MAX_NOTE_BYTES = 1024 * 1024;
+const MAX_PROJECT_MARKDOWN_FILES = 2_000;
+const MAX_PROJECT_MARKDOWN_BYTES = 1024 * 1024;
 const MAX_CONTEXT_CHARS = 96 * 1024;
 const MAX_GRAPH_NODES = 250;
 const IGNORED_DIRS = new Set([".git", ".obsidian", ".trash", INTERNAL_DIR]);
+const PROJECT_IGNORED_DIRS = new Set([
+  ...IGNORED_DIRS,
+  ".next",
+  ".turbo",
+  ".vercel",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "target",
+  "vendor",
+]);
+const PROJECT_MARKDOWN_EXTENSIONS = new Set([".md", ".mdx", ".markdown"]);
 const WIKI_LINK = /(!)?\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g;
 
 interface ContextSettings {
@@ -110,7 +125,7 @@ export class ContextLibrary {
     const pinnedKeys = new Set(pinned.map(refKey));
     const q = options.q?.trim().toLowerCase();
     const kinds = options.kinds ? new Set(options.kinds) : null;
-    const items = [...notes, ...derived]
+    const items = [...notes, ...derived.items]
       .map((item) => ({ ...item, pinned: pinnedKeys.has(refKey(item.ref)) }))
       .filter((item) => !kinds || kinds.has(item.kind))
       .filter((item) => !options.projectPath || item.projectPath === options.projectPath || (item.kind === "note" && (item as ContextNote).projectPaths.includes(options.projectPath)))
@@ -123,8 +138,9 @@ export class ContextLibrary {
       diagnostics: [
         ...noteDiagnostics,
         ...(notes.length >= MAX_NOTES ? [`Only the first ${MAX_NOTES} Markdown notes were indexed.`] : []),
+        ...derived.diagnostics,
       ],
-      truncated: notes.length >= MAX_NOTES,
+      truncated: notes.length >= MAX_NOTES || derived.truncated,
     };
   }
 
@@ -249,11 +265,21 @@ export class ContextLibrary {
         if (target && visibleKeys.has(refKey(target.ref))) edges.push({ from: serviceItem.ref, to: target.ref, type: "depends-on" });
       }
     }
+    for (const file of snapshot.items.filter((item) => item.kind === "file")) {
+      if (!visibleKeys.has(refKey(file.ref))) continue;
+      const project = snapshot.items.find(
+        (item) => item.kind === "project" && item.ref.id === file.projectPath,
+      );
+      if (project && visibleKeys.has(refKey(project.ref))) {
+        edges.push({ from: file.ref, to: project.ref, type: "belongs-to" });
+      }
+    }
     return { nodes, edges, truncated: snapshot.items.length > MAX_GRAPH_NODES };
   }
 
   async preview(attachment: ContextAttachment, projectPath?: string): Promise<ContextPreview> {
     const snapshot = await this.list();
+    const config = await this.configStore.load();
     const requested = [...attachment.refs];
     if (attachment.includePinned) requested.push(...snapshot.pinned);
     const unique = [...new Map(requested.map((ref) => [refKey(ref), ref])).values()];
@@ -270,10 +296,33 @@ export class ContextLibrary {
         missing.push(ref);
         continue;
       }
-      if (projectPath && item.projectPath && item.projectPath !== projectPath && item.kind !== "note") {
+      const belongsToCurrentProject = !projectPath || !item.projectPath || item.projectPath === projectPath ||
+        config.gitRepositories.some(
+          (repository) => repository.path === item.projectPath && repository.activeWorktreePath === projectPath,
+        );
+      if (!belongsToCurrentProject && item.kind !== "note") {
         warnings.push(`${item.title} belongs to another project.`);
       }
-      const rendered = renderContextItem(item, notes.get(refKey(ref)));
+      let fileBody: string | undefined;
+      if (item.kind === "file") {
+        const repository = config.gitRepositories.find((entry) => entry.path === item.projectPath);
+        const repositoryRoot = repository ? resolve(repository.activeWorktreePath ?? repository.path) : undefined;
+        try {
+          if (!repositoryRoot || !item.path || !PROJECT_MARKDOWN_EXTENSIONS.has(extname(item.path).toLowerCase())) {
+            throw new Error("Markdown file is no longer part of a registered project.");
+          }
+          await assertContained(repositoryRoot, item.path);
+          fileBody = await readFile(item.path, "utf8");
+          if (Buffer.byteLength(fileBody) > MAX_PROJECT_MARKDOWN_BYTES) {
+            warnings.push(`${item.title} was omitted because it exceeds 1 MiB.`);
+            continue;
+          }
+        } catch {
+          warnings.push(`${item.title} could not be read from the project.`);
+          continue;
+        }
+      }
+      const rendered = renderContextItem(item, notes.get(refKey(ref)), fileBody);
       if (used + rendered.length > MAX_CONTEXT_CHARS) {
         warnings.push(`${item.title} was omitted because the context limit was reached.`);
         continue;
@@ -297,7 +346,11 @@ export class ContextLibrary {
     };
   }
 
-  private async derivedItems(kinds?: ContextKind[]): Promise<ContextItem[]> {
+  private async derivedItems(kinds?: ContextKind[]): Promise<{
+    items: ContextItem[];
+    diagnostics: string[];
+    truncated: boolean;
+  }> {
     const requestedKinds = kinds ? new Set(kinds) : null;
     const includes = (kind: ContextKind) => !requestedKinds || requestedKinds.has(kind);
     const config = await this.configStore.load();
@@ -343,7 +396,46 @@ export class ContextLibrary {
       updatedAt: session.updatedAt,
       tags: [session.provider], aliases: [], pinned: false, editable: false,
     }));
-    return [...projects, ...services, ...incidents, ...sessions];
+    const projectMarkdown: ContextItem[] = [];
+    if (includes("file")) {
+      for (const repository of config.gitRepositories) {
+        const repositoryRoot = resolve(repository.activeWorktreePath ?? repository.path);
+        const remaining = MAX_PROJECT_MARKDOWN_FILES - projectMarkdown.length;
+        if (remaining <= 0) break;
+        const paths = await markdownFiles(
+          repositoryRoot,
+          remaining,
+          PROJECT_MARKDOWN_EXTENSIONS,
+          PROJECT_IGNORED_DIRS,
+        );
+        for (const path of paths) {
+          const relativePath = relative(repositoryRoot, path);
+          projectMarkdown.push({
+            ref: {
+              kind: "file",
+              id: createHash("sha256").update(`${repository.path}\0${relativePath}`).digest("hex").slice(0, 32),
+            },
+            title: relativePath,
+            kind: "file",
+            excerpt: `Markdown · ${repository.name}`,
+            projectPath: repository.path,
+            path,
+            tags: ["markdown"],
+            aliases: [basename(path)],
+            pinned: false,
+            editable: false,
+          });
+        }
+      }
+    }
+    const truncated = projectMarkdown.length >= MAX_PROJECT_MARKDOWN_FILES;
+    return {
+      items: [...projects, ...services, ...incidents, ...sessions, ...projectMarkdown],
+      diagnostics: truncated
+        ? [`Only the first ${MAX_PROJECT_MARKDOWN_FILES} project Markdown files were indexed.`]
+        : [],
+      truncated,
+    };
   }
 
   private async scanNotes(): Promise<ContextNote[]> {
@@ -487,9 +579,10 @@ function resolveLink(target: string, lookup: Map<string, ContextItem[]>): Contex
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-function renderContextItem(item: ContextItem, note?: ContextNote): string {
+function renderContextItem(item: ContextItem, note?: ContextNote, fileBody?: string): string {
   const lines = [`<context-item kind="${item.kind}" id="${escapeAttribute(item.ref.id)}" title="${escapeAttribute(item.title)}">`];
   if (note) lines.push(escapeText(note.body.trim()));
+  else if (fileBody !== undefined) lines.push(escapeText(fileBody.trim()));
   else {
     if (item.projectPath) lines.push(`Project: ${item.projectPath}`);
     if (item.path) lines.push(`Path: ${item.path}`);
@@ -522,7 +615,12 @@ function uniqueNotes(notes: ContextNote[]): {
   };
 }
 
-async function markdownFiles(root: string, limit: number): Promise<string[]> {
+async function markdownFiles(
+  root: string,
+  limit: number,
+  extensions = new Set([".md"]),
+  ignoredDirs = IGNORED_DIRS,
+): Promise<string[]> {
   const output: string[] = [];
   async function walk(dir: string): Promise<void> {
     if (output.length >= limit) return;
@@ -531,8 +629,8 @@ async function markdownFiles(root: string, limit: number): Promise<string[]> {
     for (const entry of entries) {
       if (output.length >= limit || entry.isSymbolicLink()) continue;
       const path = join(dir, entry.name);
-      if (entry.isDirectory() && !IGNORED_DIRS.has(entry.name)) await walk(path);
-      else if (entry.isFile() && extname(entry.name).toLowerCase() === ".md") output.push(path);
+      if (entry.isDirectory() && !ignoredDirs.has(entry.name)) await walk(path);
+      else if (entry.isFile() && extensions.has(extname(entry.name).toLowerCase())) output.push(path);
     }
   }
   await walk(root);

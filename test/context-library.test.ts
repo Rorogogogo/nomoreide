@@ -1,4 +1,4 @@
-import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -12,12 +12,13 @@ import { ErrorInbox } from "../src/core/error-inbox.js";
 import { LogStore } from "../src/core/log-store.js";
 
 let tempDir: string;
+let configStore: ConfigStore;
 let inbox: ErrorInbox;
 let library: ContextLibrary;
 
 beforeEach(async () => {
   tempDir = await mkdtemp(join(tmpdir(), "nomoreide-context-"));
-  const configStore = new ConfigStore(join(tempDir, "config.json"));
+  configStore = new ConfigStore(join(tempDir, "config.json"));
   const logs = new LogStore({ baseDir: join(tempDir, "logs") });
   inbox = new ErrorInbox({ configStore, logStore: logs, cwd: tempDir });
   library = new ContextLibrary({
@@ -100,6 +101,47 @@ describe("ContextLibrary", () => {
     });
     expect(assembled.prompt).toContain("Never log credentials.");
     expect(assembled.prompt).toContain("<user-request>\nReview the handler.");
+  });
+
+  test("indexes project Markdown files and includes their contents in previews", async () => {
+    const repositoryPath = join(tempDir, "project");
+    await mkdir(join(repositoryPath, "docs"), { recursive: true });
+    await mkdir(join(repositoryPath, "node_modules", "ignored"), { recursive: true });
+    await writeFile(join(repositoryPath, "README.md"), "# Project\n\nStart with `npm run dev`.", "utf8");
+    await writeFile(join(repositoryPath, "docs", "architecture.mdx"), "# Architecture\n\nAPI and worker.", "utf8");
+    await writeFile(join(repositoryPath, "node_modules", "ignored", "README.md"), "dependency docs", "utf8");
+    const config = await configStore.load();
+    config.gitRepositories = [{ name: "project", path: repositoryPath }];
+    await configStore.save(config);
+
+    const snapshot = await library.list({ kinds: ["file"], projectPath: repositoryPath });
+    expect(snapshot.items.map((item) => item.title)).toEqual([
+      "docs/architecture.mdx",
+      "README.md",
+    ]);
+    expect(snapshot.items.some((item) => item.path?.includes("node_modules"))).toBe(false);
+
+    const readme = snapshot.items.find((item) => item.title === "README.md");
+    const preview = await library.preview({ refs: [readme!.ref], includePinned: false }, repositoryPath);
+    expect(preview.context).toContain("# Project");
+    expect(preview.context).toContain("npm run dev");
+    expect(preview.resolved).toContainEqual(readme);
+
+    const assembled = await library.assemblePrompt(
+      "Explain how to start this project.",
+      { refs: [readme!.ref], includePinned: false },
+      repositoryPath,
+    );
+    expect(assembled.prompt).toContain("# Project");
+    expect(assembled.prompt).toContain("Start with `npm run dev`.");
+    expect(assembled.prompt).toContain("<user-request>\nExplain how to start this project.");
+
+    const graph = await library.graph({ kinds: ["project", "file"], projectPath: repositoryPath });
+    expect(graph.edges).toContainEqual({
+      from: readme!.ref,
+      to: { kind: "project", id: repositoryPath },
+      type: "belongs-to",
+    });
   });
 
   test("validates note size and title boundaries", async () => {
