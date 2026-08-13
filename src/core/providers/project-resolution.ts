@@ -85,6 +85,14 @@ export async function readLinkedProjectId(
   }
 }
 
+/** The working directory provider operations run against — mirrors the GitHub seam. */
+export function selectedProviderCwd(config: NoMoreIdeConfig, fallbackCwd: string): string {
+  const repository =
+    config.gitRepositories.find((entry) => entry.name === config.selectedGitRepository)
+    ?? config.gitRepositories[0];
+  return repository?.activeWorktreePath ?? repository?.path ?? fallbackCwd;
+}
+
 export interface AdoptSoleScopeOptions<S extends Pick<ProviderScope, "id" | "slug">> {
   /** A `cli` credential follows the vendor CLI's own scope; see below. */
   source: "cli" | "stored" | "oauth";

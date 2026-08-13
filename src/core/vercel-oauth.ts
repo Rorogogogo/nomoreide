@@ -32,7 +32,7 @@ export const VERCEL_OAUTH: ProviderOAuthSpec = {
   name: "Vercel",
   issuer: "https://vercel.com",
   scope: "offline_access",
-  callbackPath: "/api/vercel/oauth/callback",
+  callbackPath: "/api/providers/vercel/oauth/callback",
 };
 
 export type VercelOAuthMetadata = OAuthMetadata;

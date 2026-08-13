@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { listVercelProjects, setVercelProject, type VercelProject } from "@/lib/api";
+import {
+  type ProviderProject,
+} from "@/lib/api";
+import {
+  listVercelProjects,
+  setVercelProject,
+} from "./provider-client";
 import { LinkIcon } from "./vercel-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -24,7 +30,7 @@ export function ProjectPicker({
   onLinked: () => void;
 }) {
   const t = useT();
-  const [projects, setProjects] = useState<VercelProject[]>([]);
+  const [projects, setProjects] = useState<ProviderProject[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -42,7 +42,7 @@ export interface ProviderOAuthSpec {
   issuer: string;
   /** Scopes requested at authorize time, space-separated. */
   scope: string;
-  /** Path the loopback redirect points at, e.g. `/api/vercel/oauth/callback`. */
+  /** Path the loopback redirect points at, e.g. `/api/providers/vercel/oauth/callback`. */
   callbackPath: string;
   /** Name registered with the authorization server. */
   clientName?: string;

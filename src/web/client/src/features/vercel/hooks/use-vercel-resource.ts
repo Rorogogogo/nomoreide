@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  type ProviderDeployment,
+  type ProviderDomain,
+  type ProviderEnvVar,
+  type ProviderProject,
+} from "@/lib/api";
+import {
   getVercelProject,
   listVercelDeployments,
   listVercelDomains,
   listVercelEnv,
-  type VercelDeployment,
-  type VercelDomain,
-  type VercelEnvVar,
-  type VercelProject,
-} from "@/lib/api";
+} from "../provider-client";
 
 /**
  * One-shot loader for the project-scoped tabs (env, domains, settings).
@@ -52,15 +54,15 @@ function useVercelResource<T>(fetcher: () => Promise<T>, empty: T) {
 }
 
 export function useVercelEnv() {
-  return useVercelResource<VercelEnvVar[]>(listVercelEnv, []);
+  return useVercelResource<ProviderEnvVar[]>(listVercelEnv, []);
 }
 
 export function useVercelDomains() {
-  return useVercelResource<VercelDomain[]>(listVercelDomains, []);
+  return useVercelResource<ProviderDomain[]>(listVercelDomains, []);
 }
 
 export function useVercelProjectSettings() {
-  return useVercelResource<VercelProject | null>(getVercelProject, null);
+  return useVercelResource<ProviderProject | null>(getVercelProject, null);
 }
 
 /**
@@ -75,5 +77,5 @@ async function fetchProductionDeployment() {
 }
 
 export function useVercelProductionDeployment() {
-  return useVercelResource<VercelDeployment | null>(fetchProductionDeployment, null);
+  return useVercelResource<ProviderDeployment | null>(fetchProductionDeployment, null);
 }

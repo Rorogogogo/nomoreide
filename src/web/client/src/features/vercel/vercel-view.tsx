@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { disconnectVercel } from "@/lib/api";
+import type { ProviderProject } from "@/lib/api";
+import { disconnectVercel } from "./provider-client";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
@@ -35,6 +36,16 @@ const HERO_SECTION_LABELS: Record<VercelHeroSection, TranslationKey> = {
   settings: "vercel.tabs.settings",
 };
 
+/**
+ * What the hero shows under "Build": the provider's build command when it has
+ * one, else the framework it detected. Reads the settings list rather than a
+ * `buildCommand` field, because which settings exist is the provider's call.
+ */
+function buildLabel(project: ProviderProject | null): string | null {
+  const command = project?.settings.find((setting) => setting.key === "buildCommand")?.value;
+  return command?.trim() || project?.framework || null;
+}
+
 export function VercelView() {
   const t = useT();
   const status = useVercelStatus();
@@ -64,7 +75,7 @@ export function VercelView() {
     // Reuses the setup screen for "sign in as somebody else": connecting is
     // the same flow whether or not a connection already exists, and `onCancel`
     // is what makes it escapable when one does.
-    content = <VercelProject onSwitchAccount={() => setForceSetup(true)} />;
+    content = <ConnectedProject onSwitchAccount={() => setForceSetup(true)} />;
   }
 
   return (
@@ -141,7 +152,7 @@ function VercelConnectionRecovery({
  * entry points rendering the identical panel — the redundancy cost a tab strip
  * and a mode to keep track of without buying anything the chips don't.
  */
-function VercelProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
+function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
   const [filter, setFilter] = usePersistentState<DeploymentFilter>("vercel:filter", "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -195,12 +206,12 @@ function VercelProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
       setSelectedId(null);
       return;
     }
-    if (!deployments.some((deployment) => deployment.uid === selectedId)) {
-      setSelectedId(deployments[0]?.uid ?? null);
+    if (!deployments.some((deployment) => deployment.id === selectedId)) {
+      setSelectedId(deployments[0]?.id ?? null);
     }
   }, [deployments, selectedId]);
 
-  const selected = deployments.find((deployment) => deployment.uid === selectedId) ?? null;
+  const selected = deployments.find((deployment) => deployment.id === selectedId) ?? null;
 
   return (
     <>
@@ -242,7 +253,7 @@ function VercelProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
 
       <ProductionHero
         activeSection={heroSection}
-        buildLabel={settings?.buildCommand?.trim() || settings?.framework || null}
+        buildLabel={buildLabel(settings)}
         deployment={productionDeployment}
         domains={domains}
         envCount={env.length}

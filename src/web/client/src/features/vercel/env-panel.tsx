@@ -1,11 +1,13 @@
 import { useState } from "react";
 import {
+  type ProviderEnvVar,
+} from "@/lib/api";
+import {
   createVercelEnv,
   deleteVercelEnv,
   getVercelEnvValue,
   updateVercelEnv,
-  type VercelEnvVar,
-} from "@/lib/api";
+} from "./provider-client";
 import { Button } from "@/components/ui/button";
 import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -39,7 +41,7 @@ const TARGET_LABEL = {
 } as const;
 
 /** What `EnvVarDialog` is editing; absent means it is creating a new one. */
-export type EnvDialogTarget = Pick<VercelEnvVar, "id" | "key" | "target">;
+export type EnvDialogTarget = Pick<ProviderEnvVar, "id" | "key" | "environments">;
 
 /** What the panel's add/edit dialog is currently showing, if anything. */
 export type EnvDialogState = "add" | EnvDialogTarget | null;
@@ -68,7 +70,7 @@ export function EnvPanel({
   dialog,
   onDialogChange,
 }: {
-  env: VercelEnvVar[];
+  env: ProviderEnvVar[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -106,7 +108,7 @@ export function EnvPanel({
             <EnvRow
               key={variable.id}
               onEdit={() =>
-                onDialogChange({ id: variable.id, key: variable.key, target: variable.target })
+                onDialogChange({ id: variable.id, key: variable.key, environments: variable.environments })
               }
               variable={variable}
             />
@@ -125,7 +127,7 @@ export function EnvPanel({
   );
 }
 
-function EnvRow({ variable, onEdit }: { variable: VercelEnvVar; onEdit: () => void }) {
+function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => void }) {
   const t = useT();
   const toasts = useToasts();
   const [value, setValue] = useState<string | null>(null);
@@ -176,7 +178,7 @@ function EnvRow({ variable, onEdit }: { variable: VercelEnvVar; onEdit: () => vo
     }
   }
 
-  const targets = [...variable.target].sort(
+  const targets = [...variable.environments].sort(
     (a, b) => TARGET_ORDER.indexOf(a) - TARGET_ORDER.indexOf(b),
   );
 
@@ -300,7 +302,7 @@ function EnvVarDialog({
   const [key, setKey] = useState(target?.key ?? "");
   const [value, setValue] = useState("");
   const [targets, setTargets] = useState<Set<string>>(
-    new Set(target?.target ?? ["production", "preview", "development"]),
+    new Set(target?.environments ?? ["production", "preview", "development"]),
   );
   const [saving, setSaving] = useState(false);
 
@@ -330,12 +332,12 @@ function EnvVarDialog({
     try {
       if (isEditing && target) {
         await updateVercelEnv(target.id, {
-          target: Array.from(targets),
+          environments: Array.from(targets),
           ...(value ? { value } : {}),
         });
         toasts.success(t("vercel.env.updated", { key: key.trim() }));
       } else {
-        await createVercelEnv({ key: key.trim(), value, target: Array.from(targets) });
+        await createVercelEnv({ key: key.trim(), value, environments: Array.from(targets) });
         toasts.success(t("vercel.env.created", { key: key.trim() }));
       }
       onSaved();

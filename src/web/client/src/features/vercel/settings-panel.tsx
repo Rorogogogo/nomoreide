@@ -1,4 +1,4 @@
-import type { VercelProject } from "@/lib/api";
+import type { ProviderProject } from "@/lib/api";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
 import { SettingsIcon } from "./vercel-icons";
@@ -16,12 +16,21 @@ import { PanelEmpty } from "./panel-empty";
  * Data is owned by the parent tab view, not fetched here — the header's build
  * summary needs the same project record this panel renders.
  */
+/** Settings whose values are paths or commands, so they read better monospaced. */
+const MONO_SETTINGS = new Set([
+  "rootDirectory",
+  "buildCommand",
+  "installCommand",
+  "devCommand",
+  "outputDirectory",
+]);
+
 export function SettingsPanel({
   project,
   loading,
   error,
 }: {
-  project: VercelProject | null;
+  project: ProviderProject | null;
   loading: boolean;
   error: string | null;
 }) {
@@ -39,15 +48,17 @@ export function SettingsPanel({
     return <PanelEmpty icon={<SettingsIcon />}>{t("vercel.settings.empty")}</PanelEmpty>;
   }
 
+  // Settings arrive as a provider-declared list rather than known fields, so
+  // this renders whatever the provider reports, in the order it reports it.
+  // The labels are the provider's own words; only the framework and repository
+  // rows below are ours, because they are not build settings.
   const rows: { label: string; value: string | null | undefined; mono?: boolean }[] = [
     { label: t("vercel.settings.framework"), value: project.framework },
-    { label: t("vercel.settings.nodeVersion"), value: project.nodeVersion },
-    { label: t("vercel.settings.rootDirectory"), value: project.rootDirectory, mono: true },
-    { label: t("vercel.settings.buildCommand"), value: project.buildCommand, mono: true },
-    { label: t("vercel.settings.installCommand"), value: project.installCommand, mono: true },
-    { label: t("vercel.settings.devCommand"), value: project.devCommand, mono: true },
-    { label: t("vercel.settings.outputDirectory"), value: project.outputDirectory, mono: true },
-    { label: t("vercel.settings.region"), value: project.serverlessFunctionRegion },
+    ...project.settings.map((setting) => ({
+      label: setting.label,
+      value: setting.value,
+      mono: MONO_SETTINGS.has(setting.key),
+    })),
     { label: t("vercel.settings.productionBranch"), value: project.link?.productionBranch },
     {
       label: t("vercel.settings.repository"),

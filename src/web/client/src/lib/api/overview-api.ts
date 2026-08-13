@@ -6,7 +6,7 @@
  * registered, so there is nothing here that changes anything.
  */
 
-import type { VercelDeploymentState } from "./vercel-api.js";
+import type { ProviderDeploymentState } from "./provider-api.js";
 
 export type OverviewDomain = "git" | "github" | "vercel";
 
@@ -28,7 +28,7 @@ export interface ProjectGitHubSummary {
 export interface ProjectVercelSummary {
   projectId: string;
   projectName: string;
-  state?: VercelDeploymentState;
+  state?: ProviderDeploymentState;
   url?: string;
   createdAt?: number;
 }

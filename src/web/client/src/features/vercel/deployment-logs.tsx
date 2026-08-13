@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
+import type { ProviderLogLine } from "@/lib/api";
 import {
   getVercelRuntimeLogs,
-  type VercelBuildLogLine,
-  type VercelRuntimeLogLine,
-} from "@/lib/api";
+} from "./provider-client";
 import { Loading } from "@/components/ui/loading";
 import { TabStrip } from "@/components/ui/tab-strip";
 import { useT } from "@/lib/i18n";
@@ -26,7 +25,7 @@ export function DeploymentLogs({
   loading,
   uid,
 }: {
-  buildLogs: VercelBuildLogLine[];
+  buildLogs: ProviderLogLine[];
   loading: boolean;
   uid: string;
 }) {
@@ -59,7 +58,7 @@ export function DeploymentLogs({
   );
 }
 
-function BuildLogs({ lines, loading }: { lines: VercelBuildLogLine[]; loading: boolean }) {
+function BuildLogs({ lines, loading }: { lines: ProviderLogLine[]; loading: boolean }) {
   const t = useT();
   if (loading && lines.length === 0) return <Loading fill label={t("vercel.logs.loading")} />;
   if (lines.length === 0) {
@@ -74,7 +73,7 @@ function BuildLogs({ lines, loading }: { lines: VercelBuildLogLine[]; loading: b
 
 function RuntimeLogs({ uid }: { uid: string }) {
   const t = useT();
-  const [lines, setLines] = useState<VercelRuntimeLogLine[]>([]);
+  const [lines, setLines] = useState<ProviderLogLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,23 +118,23 @@ function RuntimeLogs({ uid }: { uid: string }) {
           <span className="shrink-0 text-muted-foreground">
             {new Date(line.createdAt).toLocaleTimeString()}
           </span>
-          {line.statusCode ? (
+          {line.request?.statusCode ? (
             <span
               className={cn(
                 "shrink-0",
-                line.statusCode >= 500
+                line.request.statusCode >= 500
                   ? "text-red-500"
-                  : line.statusCode >= 400
+                  : line.request.statusCode >= 400
                     ? "text-amber-500"
                     : "text-emerald-500",
               )}
             >
-              {line.statusCode}
+              {line.request.statusCode}
             </span>
           ) : null}
-          {line.requestPath ? (
+          {line.request?.path ? (
             <span className="shrink-0 max-w-[14rem] truncate text-muted-foreground">
-              {[line.requestMethod, line.requestPath].filter(Boolean).join(" ")}
+              {[line.request.method, line.request.path].filter(Boolean).join(" ")}
             </span>
           ) : null}
           <span
@@ -145,7 +144,7 @@ function RuntimeLogs({ uid }: { uid: string }) {
               line.level === "warning" && "text-amber-500",
             )}
           >
-            {line.message}
+            {line.text}
           </span>
         </div>
       ))}

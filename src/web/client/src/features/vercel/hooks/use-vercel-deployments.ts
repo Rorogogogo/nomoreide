@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  listVercelDeployments,
-  type VercelDeployment,
-  type VercelProject,
+  type ProviderDeployment,
+  type ProviderProject,
 } from "@/lib/api";
+import {
+  listVercelDeployments,
+} from "../provider-client";
 
 export type DeploymentFilter = "all" | "production" | "preview";
 
 /** A build in one of these states is still moving, so the list keeps polling. */
-const IN_FLIGHT = new Set(["BUILDING", "INITIALIZING", "QUEUED"]);
+const IN_FLIGHT = new Set(["building", "queued"]);
 const POLL_MS = 8_000;
 
 /**
@@ -19,8 +21,8 @@ const POLL_MS = 8_000;
  * for Refresh — which is the whole point of watching a deploy from here.
  */
 export function useVercelDeployments(filter: DeploymentFilter, enabled = true) {
-  const [deployments, setDeployments] = useState<VercelDeployment[]>([]);
-  const [project, setProject] = useState<VercelProject | null>(null);
+  const [deployments, setDeployments] = useState<ProviderDeployment[]>([]);
+  const [project, setProject] = useState<ProviderProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const generation = useRef(0);

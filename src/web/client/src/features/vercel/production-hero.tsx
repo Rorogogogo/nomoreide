@@ -1,4 +1,4 @@
-import type { VercelDeployment, VercelDomain } from "@/lib/api";
+import type { ProviderDeployment, ProviderDomain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
@@ -24,7 +24,7 @@ export type VercelHeroSection = "env" | "domains" | "settings";
  * and selection.
  *
  * The chips are the only way into env / domains / build: they expand inline
- * below the hero (see `VercelProject`), keeping the hero and the deployment
+ * below the hero (see `ProviderProject`), keeping the hero and the deployment
  * history in view instead of navigating away from them.
  */
 export function ProductionHero({
@@ -36,9 +36,9 @@ export function ProductionHero({
   activeSection,
   onToggleSection,
 }: {
-  deployment: VercelDeployment | null;
+  deployment: ProviderDeployment | null;
   loading: boolean;
-  domains: VercelDomain[];
+  domains: ProviderDomain[];
   envCount: number;
   buildLabel: string | null;
   activeSection: VercelHeroSection | null;
@@ -62,7 +62,7 @@ export function ProductionHero({
   return (
     <div className="shrink-0 space-y-2 border-b border-border px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <DeploymentStateBadge state={deployment.state} />
+        <DeploymentStateBadge rawState={deployment.rawState} state={deployment.state} />
         <span className="text-[11px] font-medium text-muted-foreground">
           {t("vercel.hero.production")}
         </span>
@@ -84,7 +84,7 @@ export function ProductionHero({
       </div>
 
       <p className="truncate text-[13px] font-medium">
-        {deployment.meta.commitMessage || deployment.url || deployment.uid}
+        {deployment.meta.commitMessage || deployment.url || deployment.id}
       </p>
       <p className="truncate text-[11px] text-muted-foreground">
         {[deployment.meta.branch, deployment.meta.sha?.slice(0, 7), deployment.creator?.username]

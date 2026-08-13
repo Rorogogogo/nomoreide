@@ -1,4 +1,4 @@
-import type { VercelDomain } from "@/lib/api";
+import type { ProviderDomain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useToasts } from "@/components/ui/toast";
@@ -29,7 +29,7 @@ export function DomainsPanel({
   loading,
   error,
 }: {
-  domains: VercelDomain[];
+  domains: ProviderDomain[];
   loading: boolean;
   error: string | null;
 }) {
@@ -61,7 +61,7 @@ export function DomainsPanel({
   );
 }
 
-function DomainRow({ domain }: { domain: VercelDomain }) {
+function DomainRow({ domain }: { domain: ProviderDomain }) {
   const t = useT();
   const toasts = useToasts();
 

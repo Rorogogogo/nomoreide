@@ -16,8 +16,8 @@
 import type { ConfigStore } from "./config-store.js";
 import { GitManager } from "./git-manager.js";
 import { optionalGitHubContext } from "./github-context.js";
-import { optionalVercelContext } from "./vercel-context.js";
-import type { VercelDeploymentState } from "./vercel-manager.js";
+import { optionalProviderContext } from "./providers/registry.js";
+import type { ProviderDeploymentState } from "./providers/deploy-provider.js";
 import type { GitRepositoryDefinition } from "./types.js";
 
 export type OverviewDomain = "git" | "github" | "vercel";
@@ -43,7 +43,7 @@ export interface ProjectVercelSummary {
   projectId: string;
   projectName: string;
   /** Absent when the project has never deployed. */
-  state?: VercelDeploymentState;
+  state?: ProviderDeploymentState;
   url?: string;
   createdAt?: number;
 }
@@ -141,12 +141,12 @@ function normalizeChecks(state: string): ProjectGitHubSummary["checks"] {
 }
 
 async function vercelOverview(configStore: ConfigStore, cwd: string): Promise<ProjectVercelSummary> {
-  const context = await optionalVercelContext(configStore, cwd);
+  const context = await optionalProviderContext("vercel", configStore, cwd);
   if (!context?.project) throw new Error("No Vercel project is linked to this project.");
 
   // Production only, and only the latest: the card answers "is what users see
   // healthy", not "what has been built lately".
-  const [latest] = await context.manager.listDeployments({
+  const [latest] = await context.provider.listDeployments({
     projectId: context.project.id,
     target: "production",
     limit: 1,

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { setVercelScope } from "@/lib/api";
+import {
+  setVercelScope,
+} from "./provider-client";
 import { TeamIcon } from "./vercel-icons";
 import { useT } from "@/lib/i18n";
 import { refreshVercelStatus, useVercelStatus } from "./hooks/use-vercel-status";
@@ -20,18 +22,18 @@ export function TeamSwitcher() {
   const t = useT();
   const { info } = useVercelStatus();
   const [busy, setBusy] = useState(false);
-  const teams = info?.teams ?? [];
+  const scopes = info?.scopes ?? [];
 
   // Nothing to switch between: one team is already the adopted default, and
   // zero means this account has no team scope to choose.
-  if (teams.length < 2) return null;
+  if (scopes.length < 2) return null;
 
-  async function choose(teamId: string) {
+  async function choose(scopeId: string) {
     setBusy(true);
     try {
-      const team = teams.find((entry) => entry.id === teamId);
+      const scope = scopes.find((entry) => entry.id === scopeId);
       await setVercelScope(
-        team ? { teamId: team.id, teamSlug: team.slug } : { teamId: undefined },
+        scope ? { scopeId: scope.id, scopeSlug: scope.slug } : { scopeId: undefined },
       );
       await refreshVercelStatus();
     } finally {
@@ -47,12 +49,12 @@ export function TeamSwitcher() {
         className="max-w-[12rem] truncate rounded border border-border bg-transparent px-1.5 py-0.5 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
         disabled={busy}
         onChange={(event) => void choose(event.target.value)}
-        value={info?.teamId ?? ""}
+        value={info?.scopeId ?? ""}
       >
         <option value="">{t("vercel.team.personal")}</option>
-        {teams.map((team) => (
-          <option key={team.id} value={team.id}>
-            {team.name ?? team.slug}
+        {scopes.map((scope) => (
+          <option key={scope.id} value={scope.id}>
+            {scope.name ?? scope.slug}
           </option>
         ))}
       </select>

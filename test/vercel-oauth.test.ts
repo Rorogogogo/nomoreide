@@ -18,7 +18,7 @@ const DISCOVERY = {
   userinfo_endpoint: "https://api.vercel.com/login/oauth/userinfo",
 };
 
-const REDIRECT = "http://127.0.0.1:4317/api/vercel/oauth/callback";
+const REDIRECT = "http://127.0.0.1:4317/api/providers/vercel/oauth/callback";
 
 interface Call {
   url: string;
@@ -206,7 +206,7 @@ describe("VercelLoginSessions", () => {
 
 describe("vercelCallbackUrl", () => {
   test.each(["127.0.0.1:4317", "localhost:5173"])("accepts the loopback host %s", (host) => {
-    expect(vercelCallbackUrl(host)).toBe(`http://${host}/api/vercel/oauth/callback`);
+    expect(vercelCallbackUrl(host)).toBe(`http://${host}/api/providers/vercel/oauth/callback`);
   });
 
   test.each(["example.com", "192.168.1.10:4317", undefined])(

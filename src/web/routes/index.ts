@@ -23,7 +23,7 @@ import { shellRoutes } from "./shell-routes.js";
 import { snapshotRoutes } from "./snapshot-routes.js";
 import { skillsRoutes } from "./skills-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
-import { vercelRoutes } from "./vercel-routes.js";
+import { providerRoutes } from "./provider-routes.js";
 import { workflowRoutes } from "./workflow-routes.js";
 import { workflowTriggerRoutes } from "./workflow-trigger-routes.js";
 
@@ -62,7 +62,7 @@ export const routes: Route[] = [
   ...skillsRoutes,
   ...snapshotRoutes,
   ...terminalRoutes,
-  ...vercelRoutes,
+  ...providerRoutes,
   ...shellRoutes,
 ];
 

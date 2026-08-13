@@ -1,4 +1,4 @@
-import type { VercelDeploymentState } from "@/lib/api";
+import type { ProviderDeploymentState } from "@/lib/api";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -14,48 +14,57 @@ import {
  * header, and the header indicator can't drift on color or wording.
  */
 const STATES: Record<
-  VercelDeploymentState,
+  ProviderDeploymentState,
   { labelKey: TranslationKey; className: string; dotClassName: string; spin?: boolean }
 > = {
-  READY: {
+  ready: {
     labelKey: "vercel.state.ready",
     className: "text-emerald-500",
     dotClassName: "bg-emerald-500",
   },
-  BUILDING: {
+  building: {
     labelKey: "vercel.state.building",
     className: "text-amber-500",
     dotClassName: "bg-amber-500",
     spin: true,
   },
-  INITIALIZING: {
-    labelKey: "vercel.state.initializing",
-    className: "text-amber-500",
-    dotClassName: "bg-amber-500",
-    spin: true,
-  },
-  QUEUED: {
+  queued: {
     labelKey: "vercel.state.queued",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
-  ERROR: { labelKey: "vercel.state.error", className: "text-red-500", dotClassName: "bg-red-500" },
-  CANCELED: {
+  error: { labelKey: "vercel.state.error", className: "text-red-500", dotClassName: "bg-red-500" },
+  canceled: {
     labelKey: "vercel.state.canceled",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
-  BLOCKED: {
+  blocked: {
     labelKey: "vercel.state.blocked",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
-  DELETED: {
+  deleted: {
     labelKey: "vercel.state.deleted",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
 };
+
+/**
+ * Vendor states that deserve a finer label than the neutral state they fold
+ * into. This is what `rawState` is *for*: `INITIALIZING` and `BUILDING` are
+ * both `building`, and without this the badge would silently start calling one
+ * of them the other. A provider whose raw state isn't listed just reads as its
+ * neutral state, which is always a true statement.
+ */
+const RAW_LABELS: Record<string, TranslationKey> = {
+  INITIALIZING: "vercel.state.initializing",
+};
+
+const specFor = (state: ProviderDeploymentState) => STATES[state] ?? STATES.queued;
+const labelFor = (state: ProviderDeploymentState, rawState?: string): TranslationKey =>
+  (rawState && RAW_LABELS[rawState]) || specFor(state).labelKey;
 
 /**
  * A quieter stand-in for {@link DeploymentStateIcon} in dense lists — a row of
@@ -67,10 +76,10 @@ export function DeploymentStateDot({
   state,
   className,
 }: {
-  state: VercelDeploymentState;
+  state: ProviderDeploymentState;
   className?: string;
 }) {
-  const spec = STATES[state] ?? STATES.QUEUED;
+  const spec = specFor(state);
   return (
     <span
       className={cn(
@@ -87,31 +96,45 @@ export function DeploymentStateIcon({
   state,
   className,
 }: {
-  state: VercelDeploymentState;
+  state: ProviderDeploymentState;
   className?: string;
 }) {
-  const spec = STATES[state] ?? STATES.QUEUED;
+  const spec = specFor(state);
   const classes = cn("size-4 shrink-0", spec.className, className);
   if (spec.spin) return <SpinnerIcon className={cn(classes, "animate-spin")} />;
   // The verified-check glyph doubles as "ready" — same meaning, same drawing.
-  if (state === "READY") return <VerifiedIcon className={classes} />;
-  if (state === "ERROR") return <FailedIcon className={classes} />;
-  if (state === "CANCELED") return <CanceledIcon className={classes} />;
+  if (state === "ready") return <VerifiedIcon className={classes} />;
+  if (state === "error") return <FailedIcon className={classes} />;
+  if (state === "canceled") return <CanceledIcon className={classes} />;
   return <PendingIcon className={classes} />;
 }
 
-export function DeploymentStateBadge({ state }: { state: VercelDeploymentState }) {
+export function DeploymentStateBadge({
+  state,
+  rawState,
+}: {
+  state: ProviderDeploymentState;
+  /** The vendor's own word, when the caller has it — see {@link RAW_LABELS}. */
+  rawState?: string;
+}) {
   const t = useT();
-  const spec = STATES[state] ?? STATES.QUEUED;
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium", spec.className)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] font-medium",
+        specFor(state).className,
+      )}
+    >
       <DeploymentStateIcon state={state} />
-      {t(spec.labelKey)}
+      {t(labelFor(state, rawState))}
     </span>
   );
 }
 
-export function useDeploymentStateLabel(): (state: VercelDeploymentState) => string {
+export function useDeploymentStateLabel(): (
+  state: ProviderDeploymentState,
+  rawState?: string,
+) => string {
   const t = useT();
-  return (state) => t((STATES[state] ?? STATES.QUEUED).labelKey);
+  return (state, rawState) => t(labelFor(state, rawState));
 }

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  type ProviderStatusInfo,
+} from "@/lib/api";
+import {
   connectVercel,
   getVercelOAuthPhase,
   startVercelOAuth,
-  type VercelStatusInfo,
-} from "@/lib/api";
+} from "./provider-client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +25,7 @@ export function VercelSetup({
   onCancel,
   onConnected,
 }: {
-  info: VercelStatusInfo | null;
+  info: ProviderStatusInfo | null;
   onCancel?: () => void;
   onConnected: () => void;
 }) {

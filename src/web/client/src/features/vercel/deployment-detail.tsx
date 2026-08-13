@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  type ProviderDeployment,
+  type ProviderDeploymentDetail,
+  type ProviderLogLine,
+} from "@/lib/api";
+import {
   getVercelDeployment,
   getVercelDeploymentLogs,
   runVercelDeploymentAction,
-  type VercelBuildLogLine,
-  type VercelDeployment,
-  type VercelDeploymentAction,
-  type VercelDeploymentDetail,
-} from "@/lib/api";
+} from "./provider-client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -25,7 +26,14 @@ import {
 } from "./vercel-icons";
 import { DeploymentStateBadge } from "./deployment-state-badge";
 
-const IN_FLIGHT = new Set(["BUILDING", "INITIALIZING", "QUEUED"]);
+/**
+ * The actions this view puts a button behind. Each must also appear in the
+ * provider's manifest `actions` — the server rejects anything that doesn't, so
+ * a name that drifts fails loudly rather than silently doing nothing.
+ */
+type DeploymentAction = "redeploy" | "cancel" | "promote" | "rollback";
+
+const IN_FLIGHT = new Set(["building", "queued"]);
 const LOG_POLL_MS = 5_000;
 
 /**
@@ -40,19 +48,19 @@ export function DeploymentDetail({
   deployment: summary,
   onChanged,
 }: {
-  deployment: VercelDeployment;
+  deployment: ProviderDeployment;
   onChanged: () => void;
 }) {
   const t = useT();
   const toasts = useToasts();
-  const [detail, setDetail] = useState<VercelDeploymentDetail | null>(null);
-  const [logs, setLogs] = useState<VercelBuildLogLine[]>([]);
+  const [detail, setDetail] = useState<ProviderDeploymentDetail | null>(null);
+  const [logs, setLogs] = useState<ProviderLogLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<VercelDeploymentAction | null>(null);
+  const [pending, setPending] = useState<DeploymentAction | null>(null);
   const [confirming, setConfirming] = useState<"promote" | "rollback" | null>(null);
 
-  const uid = summary.uid;
+  const uid = summary.id;
   const live = IN_FLIGHT.has(detail?.state ?? summary.state);
 
   useEffect(() => {
@@ -65,7 +73,7 @@ export function DeploymentDetail({
       try {
         const [nextDetail, nextLogs] = await Promise.all([
           getVercelDeployment(uid),
-          getVercelDeploymentLogs(uid).catch(() => [] as VercelBuildLogLine[]),
+          getVercelDeploymentLogs(uid).catch(() => [] as ProviderLogLine[]),
         ]);
         if (!active) return;
         setDetail(nextDetail);
@@ -106,12 +114,12 @@ export function DeploymentDetail({
     };
   }, [live, uid]);
 
-  async function run(action: VercelDeploymentAction) {
+  async function run(action: DeploymentAction) {
     setPending(action);
     try {
       const res = await runVercelDeploymentAction(uid, action);
       toasts.success(
-        action === "redeploy" && res.deployment?.uid
+        action === "redeploy" && res.deployment?.id
           ? t("vercel.action.redeployStarted")
           : t(`vercel.action.${action}Done`),
       );
@@ -132,7 +140,7 @@ export function DeploymentDetail({
     <div className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 space-y-2 border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <DeploymentStateBadge state={current.state} />
+          <DeploymentStateBadge rawState={current.rawState} state={current.state} />
           <span className="text-[11px] text-muted-foreground">
             {formatRelativeTime(new Date(current.createdAt).toISOString())}
           </span>
@@ -177,7 +185,7 @@ export function DeploymentDetail({
                 {t("vercel.action.redeploy")}
               </Button>
             )}
-            {current.state === "READY" && !current.isCurrentProduction ? (
+            {current.state === "ready" && !current.isCurrentProduction ? (
               <Button
                 loading={pending === "promote"}
                 onClick={() => setConfirming("promote")}
@@ -189,7 +197,7 @@ export function DeploymentDetail({
                 {t("vercel.action.promote")}
               </Button>
             ) : null}
-            {current.state === "READY" && isProduction && !current.isCurrentProduction ? (
+            {current.state === "ready" && isProduction && !current.isCurrentProduction ? (
               <Button
                 loading={pending === "rollback"}
                 onClick={() => setConfirming("rollback")}
@@ -205,7 +213,7 @@ export function DeploymentDetail({
         </div>
 
         <p className="truncate text-[13px] font-medium">
-          {current.meta.commitMessage || current.url || current.uid}
+          {current.meta.commitMessage || current.url || current.id}
         </p>
         <p className="truncate text-[11px] text-muted-foreground">
           {[

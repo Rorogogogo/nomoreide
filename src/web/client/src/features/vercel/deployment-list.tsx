@@ -1,4 +1,4 @@
-import type { VercelDeployment } from "@/lib/api";
+import type { ProviderDeployment } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { DeploymentStateDot } from "./deployment-state-badge";
@@ -10,7 +10,7 @@ export function DeploymentList({
   selectedId,
   onSelect,
 }: {
-  deployments: VercelDeployment[];
+  deployments: ProviderDeployment[];
   loading: boolean;
   error: string | null;
   selectedId: string | null;
@@ -35,20 +35,20 @@ export function DeploymentList({
   return (
     <ul className="divide-y divide-border">
       {deployments.map((deployment) => (
-        <li key={deployment.uid}>
+        <li key={deployment.id}>
           <button
-            aria-current={selectedId === deployment.uid || undefined}
+            aria-current={selectedId === deployment.id || undefined}
             className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-              selectedId === deployment.uid ? "bg-muted/45" : ""
+              selectedId === deployment.id ? "bg-muted/45" : ""
             }`}
-            onClick={() => onSelect(deployment.uid)}
+            onClick={() => onSelect(deployment.id)}
             type="button"
           >
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5">
                 <DeploymentStateDot state={deployment.state} />
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                  {deployment.meta.commitMessage || deployment.url || deployment.uid}
+                  {deployment.meta.commitMessage || deployment.url || deployment.id}
                 </span>
               </span>
               <span className="block truncate text-[11px] text-muted-foreground">

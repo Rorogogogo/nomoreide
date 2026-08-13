@@ -1,9 +1,11 @@
 import { useCallback, useSyncExternalStore } from "react";
 import {
-  getVercelStatus,
-  type VercelConnectionStatus,
-  type VercelStatusInfo,
+  type ProviderConnectionStatus,
+  type ProviderStatusInfo,
 } from "@/lib/api";
+import {
+  getVercelStatus,
+} from "../provider-client";
 
 /**
  * Connection state in a module-level store rather than per-component state,
@@ -13,9 +15,9 @@ import {
  */
 interface VercelStatusState {
   loading: boolean;
-  status: VercelConnectionStatus;
+  status: ProviderConnectionStatus;
   error: string | null;
-  info: VercelStatusInfo | null;
+  info: ProviderStatusInfo | null;
 }
 
 let state: VercelStatusState = {

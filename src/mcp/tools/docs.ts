@@ -85,7 +85,7 @@ const topicEntries: DocsTopicEntry[] = [
     id: "vercel",
     title: "Vercel",
     body:
-      "Use NoMoreIDE's `nomoreide_vercel_list_projects`, `nomoreide_vercel_list_deployments`, `nomoreide_vercel_get_deployment`, and `nomoreide_vercel_deployment_logs` tools to inspect linked Vercel projects and diagnose builds. MCP access is read-only; redeploy, cancel, promote, and rollback remain explicit human actions in the dashboard.",
+      "Use NoMoreIDE's `nomoreide_deploy_list_projects`, `nomoreide_deploy_list_deployments`, `nomoreide_deploy_get_deployment`, and `nomoreide_deploy_logs` tools to inspect linked deploy-provider projects and diagnose builds. Each takes a `provider` id (default `vercel`). MCP access is read-only; redeploy, cancel, promote, and rollback remain explicit human actions in the dashboard.",
   },
   {
     id: "agent-environments",

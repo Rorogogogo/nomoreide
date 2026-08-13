@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** in progress — steps 1–3 of §8 landed; step 4 (generic routes + MCP + client seam) is next.
+**Status:** in progress — steps 1–4 of §8 landed; step 5 (Cloudflare) is next, and is what will actually test the contract.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -300,7 +300,11 @@ export interface HostProvider {
 1. ~~**Config migration**~~ — done (`bf52d44`). `config.vercel` → `connections.vercel`, `vercelProjectId` → `providerProjects`, `teamId` → `scopeId`. Mirrored in the Tauri Rust core, which shares the file.
 2. ~~**Shared credential + OAuth**~~ — done (`3c837aa`). `providers/oauth.ts` + `providers/credentials.ts`; Vercel is reduced to CLI file locations, four OAuth constants, and six message strings. Discovery is cached per issuer, not per module.
 3. ~~**Contract + Vercel as implementation #1**~~ — done. `providers/deploy-provider.ts` (contract), `providers/project-resolution.ts` (the three-tier ladder + sole-scope adoption, consumed by `vercel-context.ts` today), `vercel-provider.ts` (the adapter). HTTP surface unchanged.
-4. **Generic routes + MCP + client seam** — the 15 taxes disappear here. This is where `/api/vercel/*` becomes `/api/providers/:id/*` and the wire finally carries the neutral shapes the contract already defines.
+4. ~~**Generic routes + MCP + client seam**~~ — done. `/api/vercel/*` → `/api/providers/:id/*` (`provider-routes.ts`, provider-agnostic), 4 MCP tools with a `provider` parameter, the client's 4-file seam collapsed to `provider-*.ts`, and `mock-api.ts` down to one handler set. The wire now carries the neutral shapes.
+
+   **Two taxes deliberately survive**, because paying them now would be guessing:
+   - `features/vercel/` is still a Vercel-named view. It reaches the seam through `provider-client.ts`, which binds the id once, so making it generic is a prop change — but *what* a generic view should look like is a question Cloudflare answers, not one to invent here (§9, over-abstraction).
+   - Provider strings still live in `en.ts`/`zh.ts` rather than a manifest `strings` block, for the same reason. `DeploymentStateBadge` does now consume `rawState` for labels, which is the mechanism a manifest would feed.
 5. **Cloudflare** — validates `DeployProvider`. Expect the contract to move; that is the point of doing it before publishing anything.
 6. **Vultr + `HostProvider`** — validates the second contract and the `ssh-servers` bridge.
 7. **Only then** consider freezing `apiVersion: 1` and allowing downloadable providers.

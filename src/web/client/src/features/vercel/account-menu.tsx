@@ -1,4 +1,6 @@
-import { disconnectVercel } from "@/lib/api";
+import {
+  disconnectVercel,
+} from "./provider-client";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useT } from "@/lib/i18n";
 import { TeamIcon, UnlinkIcon } from "./vercel-icons";

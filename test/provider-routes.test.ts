@@ -107,7 +107,7 @@ describe("Vercel routes", () => {
     });
     await startServer();
 
-    const body = await (await fetch(`${server.url}/api/vercel/status`)).json();
+    const body = await (await fetch(`${server.url}/api/providers/vercel/status`)).json();
     expect(body).toMatchObject({
       ok: true,
       status: "connected",
@@ -129,7 +129,7 @@ describe("Vercel routes", () => {
     });
     await startServer();
 
-    expect(await (await fetch(`${server.url}/api/vercel/status`)).json()).toMatchObject({
+    expect(await (await fetch(`${server.url}/api/providers/vercel/status`)).json()).toMatchObject({
       status: "no_project",
     });
   });
@@ -149,7 +149,7 @@ describe("Vercel routes", () => {
     });
     await startServer();
 
-    expect(await (await fetch(`${server.url}/api/vercel/status`)).json()).toMatchObject({
+    expect(await (await fetch(`${server.url}/api/providers/vercel/status`)).json()).toMatchObject({
       project: { id: "prj_linked", name: "linked-app" },
     });
     expect(apiCalls.some((call) => call.url.pathname === "/v10/projects")).toBe(false);
@@ -164,12 +164,13 @@ describe("Vercel routes", () => {
     await startServer();
 
     const body = await (
-      await fetch(`${server.url}/api/vercel/deployments?target=production`)
+      await fetch(`${server.url}/api/providers/vercel/deployments?target=production`)
     ).json();
     expect(body.deployments).toHaveLength(1);
     expect(body.deployments[0]).toMatchObject({
-      uid: "dpl_1",
-      state: "READY",
+      id: "dpl_1",
+      state: "ready",
+      rawState: "READY",
       isCurrentProduction: true,
       meta: { branch: "main", sha: "abc1234" },
     });
@@ -186,12 +187,12 @@ describe("Vercel routes", () => {
     });
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/deployments/dpl_1/redeploy`, {
+    const response = await fetch(`${server.url}/api/providers/vercel/deployments/dpl_1/redeploy`, {
       method: "POST",
     });
     expect(await response.json()).toMatchObject({
       ok: true,
-      deployment: { uid: "dpl_2" },
+      deployment: { id: "dpl_2" },
     });
 
     const created = apiCalls.find(
@@ -210,7 +211,7 @@ describe("Vercel routes", () => {
     });
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/deployments/dpl_1/promote`, {
+    const response = await fetch(`${server.url}/api/providers/vercel/deployments/dpl_1/promote`, {
       method: "POST",
     });
     expect(await response.json()).toEqual({ ok: true });
@@ -223,7 +224,7 @@ describe("Vercel routes", () => {
     stubVercelApi(() => ({}));
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/deployments/dpl_1/promote`);
+    const response = await fetch(`${server.url}/api/providers/vercel/deployments/dpl_1/promote`);
     expect(response.status).toBe(405);
     // The method check runs before anything else, so production is untouched.
     expect(apiCalls.some((call) => call.url.pathname.includes("/promote/"))).toBe(false);
@@ -233,7 +234,7 @@ describe("Vercel routes", () => {
     stubVercelApi(() => ({}));
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/deployments/dpl_1/delete`, {
+    const response = await fetch(`${server.url}/api/providers/vercel/deployments/dpl_1/delete`, {
       method: "POST",
     });
     expect(response.status).not.toBe(200);
@@ -244,7 +245,7 @@ describe("Vercel routes", () => {
     stubVercelApi(() => ({}));
     await startServer();
 
-    await fetch(`${server.url}/api/vercel/connect`, {
+    await fetch(`${server.url}/api/providers/vercel/connect`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ source: "stored", token: "new-token" }),
@@ -254,7 +255,7 @@ describe("Vercel routes", () => {
       token: "new-token",
     });
 
-    await fetch(`${server.url}/api/vercel/connect`, { method: "DELETE" });
+    await fetch(`${server.url}/api/providers/vercel/connect`, { method: "DELETE" });
     expect((await new ConfigStore(configPath).load()).connections.vercel).toBeUndefined();
   });
 
@@ -280,7 +281,7 @@ describe("Vercel routes", () => {
     }
 
     async function startSignIn(): Promise<URL> {
-      const res = await fetch(`${server.url}/api/vercel/oauth/start`, { method: "POST" });
+      const res = await fetch(`${server.url}/api/providers/vercel/oauth/start`, { method: "POST" });
       const body = (await res.json()) as { url: string };
       return new URL(body.url);
     }
@@ -293,10 +294,10 @@ describe("Vercel routes", () => {
 
       expect(authorize.origin + authorize.pathname).toBe("https://vercel.com/oauth/authorize");
       expect(authorize.searchParams.get("redirect_uri")).toBe(
-        `${server.url}/api/vercel/oauth/callback`,
+        `${server.url}/api/providers/vercel/oauth/callback`,
       );
       expect(authorize.searchParams.get("scope")).toBe("offline_access");
-      expect(await (await fetch(`${server.url}/api/vercel/oauth/status`)).json()).toMatchObject({
+      expect(await (await fetch(`${server.url}/api/providers/vercel/oauth/status`)).json()).toMatchObject({
         phase: "pending",
       });
     });
@@ -307,11 +308,11 @@ describe("Vercel routes", () => {
       const authorize = await startSignIn();
 
       const callback = await fetch(
-        `${server.url}/api/vercel/oauth/callback?code=the-code&state=${authorize.searchParams.get("state")}`,
+        `${server.url}/api/providers/vercel/oauth/callback?code=the-code&state=${authorize.searchParams.get("state")}`,
       );
 
       expect(callback.status).toBe(200);
-      expect(await (await fetch(`${server.url}/api/vercel/oauth/status`)).json()).toMatchObject({
+      expect(await (await fetch(`${server.url}/api/providers/vercel/oauth/status`)).json()).toMatchObject({
         phase: "connected",
       });
       expect((await new ConfigStore(configPath).load()).connections.vercel).toMatchObject({
@@ -322,7 +323,7 @@ describe("Vercel routes", () => {
       });
 
       // The status route reports the connection, never its secrets.
-      const status = await (await fetch(`${server.url}/api/vercel/status`)).text();
+      const status = await (await fetch(`${server.url}/api/providers/vercel/status`)).text();
       expect(status).not.toContain("at_new");
       expect(status).not.toContain("rt_new");
     });
@@ -333,7 +334,7 @@ describe("Vercel routes", () => {
       await startSignIn();
 
       const callback = await fetch(
-        `${server.url}/api/vercel/oauth/callback?code=the-code&state=forged`,
+        `${server.url}/api/providers/vercel/oauth/callback?code=the-code&state=forged`,
       );
 
       expect(callback.status).toBe(400);
@@ -349,11 +350,11 @@ describe("Vercel routes", () => {
       await startSignIn();
 
       const callback = await fetch(
-        `${server.url}/api/vercel/oauth/callback?error=access_denied&error_description=Denied`,
+        `${server.url}/api/providers/vercel/oauth/callback?error=access_denied&error_description=Denied`,
       );
 
       expect(callback.status).toBe(400);
-      expect(await (await fetch(`${server.url}/api/vercel/oauth/status`)).json()).toMatchObject({
+      expect(await (await fetch(`${server.url}/api/providers/vercel/oauth/status`)).json()).toMatchObject({
         phase: "error",
         error: "Denied",
       });
@@ -379,7 +380,7 @@ describe("Vercel routes", () => {
       });
       await startServer();
 
-      const body = await (await fetch(`${server.url}/api/vercel/projects`)).json();
+      const body = await (await fetch(`${server.url}/api/providers/vercel/projects`)).json();
       expect(body.projects).toHaveLength(1);
 
       // Persisted, so the lookup is one-time rather than per-request.
@@ -404,7 +405,7 @@ describe("Vercel routes", () => {
       });
       await startServer();
 
-      await fetch(`${server.url}/api/vercel/projects`);
+      await fetch(`${server.url}/api/providers/vercel/projects`);
 
       expect(
         (await new ConfigStore(configPath).load()).connections.vercel?.scopeId,
@@ -423,7 +424,7 @@ describe("Vercel routes", () => {
       });
       await startServer();
 
-      await fetch(`${server.url}/api/vercel/projects`);
+      await fetch(`${server.url}/api/providers/vercel/projects`);
 
       const lookup = apiCalls.find((call) => call.url.pathname === "/v10/projects");
       expect(lookup?.url.searchParams.get("teamId")).toBe("team_chosen");
@@ -455,7 +456,7 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const body = await (await fetch(`${server.url}/api/vercel/env`)).json();
+    const body = await (await fetch(`${server.url}/api/providers/vercel/env`)).json();
 
     expect(body.ok).toBe(true);
     expect(body.env.map((entry: { key: string }) => entry.key)).toEqual(["PLAIN", "SECRET"]);
@@ -474,10 +475,10 @@ describe("Vercel project-scoped reads", () => {
     await startServer();
 
     // A GET must not be a way in: revealing is an action, not a page read.
-    const rejected = await fetch(`${server.url}/api/vercel/env/e1/reveal`);
+    const rejected = await fetch(`${server.url}/api/providers/vercel/env/e1/reveal`);
     expect(rejected.status).toBe(405);
 
-    const response = await fetch(`${server.url}/api/vercel/env/e1/reveal`, { method: "POST" });
+    const response = await fetch(`${server.url}/api/providers/vercel/env/e1/reveal`, { method: "POST" });
     expect(await response.json()).toEqual({ ok: true, value: "s3cret" });
   });
 
@@ -490,15 +491,15 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/env`, {
+    const response = await fetch(`${server.url}/api/providers/vercel/env`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key: "API_KEY", value: "s3cret", target: ["production"] }),
+      body: JSON.stringify({ key: "API_KEY", value: "s3cret", environments: ["production"] }),
     });
 
     expect(await response.json()).toMatchObject({
       ok: true,
-      env: { id: "e1", key: "API_KEY", target: ["production"] },
+      env: { id: "e1", key: "API_KEY", environments: ["production"] },
     });
     const created = apiCalls.find(
       (call) => call.url.pathname === "/v10/projects/prj_web/env" && call.method === "POST",
@@ -510,17 +511,17 @@ describe("Vercel project-scoped reads", () => {
     stubResolvedProject(() => ({}));
     await startServer();
 
-    const noKey = await fetch(`${server.url}/api/vercel/env`, {
+    const noKey = await fetch(`${server.url}/api/providers/vercel/env`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ value: "x", target: ["production"] }),
+      body: JSON.stringify({ value: "x", environments: ["production"] }),
     });
     expect(noKey.status).toBe(400);
 
-    const noTarget = await fetch(`${server.url}/api/vercel/env`, {
+    const noTarget = await fetch(`${server.url}/api/providers/vercel/env`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key: "A", value: "x", target: [] }),
+      body: JSON.stringify({ key: "A", value: "x", environments: [] }),
     });
     expect(noTarget.status).toBe(400);
   });
@@ -534,14 +535,14 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const patched = await fetch(`${server.url}/api/vercel/env/e1`, {
+    const patched = await fetch(`${server.url}/api/providers/vercel/env/e1`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ target: ["preview"] }),
+      body: JSON.stringify({ environments: ["preview"] }),
     });
-    expect(await patched.json()).toMatchObject({ ok: true, env: { target: ["preview"] } });
+    expect(await patched.json()).toMatchObject({ ok: true, env: { environments: ["preview"] } });
 
-    const deleted = await fetch(`${server.url}/api/vercel/env/e1`, { method: "DELETE" });
+    const deleted = await fetch(`${server.url}/api/providers/vercel/env/e1`, { method: "DELETE" });
     expect(await deleted.json()).toEqual({ ok: true });
     expect(
       apiCalls.some(
@@ -554,7 +555,7 @@ describe("Vercel project-scoped reads", () => {
     stubResolvedProject(() => ({}));
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/env/e1`);
+    const response = await fetch(`${server.url}/api/providers/vercel/env/e1`);
     expect(response.status).toBe(405);
   });
 
@@ -577,7 +578,7 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const body = await (await fetch(`${server.url}/api/vercel/domains`)).json();
+    const body = await (await fetch(`${server.url}/api/providers/vercel/domains`)).json();
     expect(body.domains[0]).toMatchObject({
       name: "shop.acme.com",
       verified: false,
@@ -594,11 +595,18 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const body = await (await fetch(`${server.url}/api/vercel/project`)).json();
+    const body = await (await fetch(`${server.url}/api/providers/vercel/project`)).json();
     // The list endpoint that resolved the project omits these, so the route
     // must not simply hand back what `status` already had.
-    expect(body.project).toMatchObject({ installCommand: "npm ci", nodeVersion: "22.x" });
-    expect(body.project.buildCommand).toBeNull();
+    const settings = Object.fromEntries(
+      body.project.settings.map((setting: { key: string; value: string | null }) => [
+        setting.key,
+        setting.value,
+      ]),
+    );
+    expect(settings).toMatchObject({ installCommand: "npm ci", nodeVersion: "22.x" });
+    // Null survives the trip: it means "framework default", not "unknown".
+    expect(settings.buildCommand).toBeNull();
   });
 
   test("serves runtime logs, and reports none rather than failing on a plan without them", async () => {
@@ -617,13 +625,13 @@ describe("Vercel project-scoped reads", () => {
     await startServer();
 
     const served = await (
-      await fetch(`${server.url}/api/vercel/deployments/dpl_1/runtime-logs`)
+      await fetch(`${server.url}/api/providers/vercel/deployments/dpl_1/runtime-logs`)
     ).json();
     expect(served.logs).toHaveLength(1);
-    expect(served.logs[0]).toMatchObject({ level: "error", statusCode: 500 });
+    expect(served.logs[0]).toMatchObject({ level: "error", kind: "runtime", request: { statusCode: 500 } });
 
     const gated = await (
-      await fetch(`${server.url}/api/vercel/deployments/dpl_2/runtime-logs`)
+      await fetch(`${server.url}/api/providers/vercel/deployments/dpl_2/runtime-logs`)
     ).json();
     expect(gated).toEqual({ ok: true, logs: [] });
   });
@@ -636,8 +644,8 @@ describe("Vercel project-scoped reads", () => {
     });
     await startServer();
 
-    const response = await fetch(`${server.url}/api/vercel/env`);
+    const response = await fetch(`${server.url}/api/providers/vercel/env`);
     expect(response.status).toBe(500);
-    expect((await response.json()).error).toMatch(/No Vercel project is linked/);
+    expect((await response.json()).error).toMatch(/No project is linked/);
   });
 });
