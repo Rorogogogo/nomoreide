@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Download, Globe, LogIn, LogOut } from "lucide-react";
+import { Download, ExternalLink, Globe, LogIn, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AgentEnvRegistryStatus } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { openExternal } from "@/lib/tauri";
 
 /**
- * Hosted profile registry bar (ROR-63): sign-in state, browser sign-in /
- * sign-out, and install-by-slug. Publishing lives in each profile's overflow
- * menu (ProfilesPanel) since it needs a profile as input.
+ * Hosted profile registry controls (ROR-63): compact header-level sign-in
+ * state and install-by-slug. Publishing lives in each profile's overflow menu
+ * (ProfilesPanel) since it needs a profile as input.
  */
 export function RegistryPanel({
   status,
@@ -36,11 +37,22 @@ export function RegistryPanel({
   };
 
   return (
-    <section className="flex min-w-0 flex-wrap content-start items-center gap-2 bg-background px-3 py-2">
-      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <section className="ml-auto flex min-w-0 basis-full flex-wrap items-center justify-end gap-1.5 lg:basis-auto lg:flex-1">
+      <span className="flex shrink-0 items-center text-muted-foreground" title={t("agentEnv.registryTitle")}>
         <Globe aria-hidden="true" className="size-3.5" />
-        {t("agentEnv.registryTitle")}
+        <span className="sr-only">{t("agentEnv.registryTitle")}</span>
       </span>
+
+      {status ? (
+        <Button
+          onClick={() => void openExternal(status.apiFrontendUrl)}
+          size="sm"
+          variant="ghost"
+        >
+          <ExternalLink aria-hidden="true" />
+          {t("agentEnv.browseRegistry")}
+        </Button>
+      ) : null}
 
       {status === null ? (
         <span className="text-[11px] text-muted-foreground">{t("agentEnv.checkingSignIn")}</span>
@@ -76,27 +88,27 @@ export function RegistryPanel({
         </Badge>
       ) : null}
 
-      <span className="flex-1" />
-
-      <input
-        aria-label={t("agentEnv.slugAria")}
-        className="h-7 w-44 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onChange={(event) => setSlug(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") submitInstall();
-        }}
-        placeholder={t("agentEnv.slugPlaceholder")}
-        value={slug}
-      />
-      <Button
-        disabled={busy || slug.trim().length === 0}
-        onClick={submitInstall}
-        size="sm"
-        variant="outline"
-      >
-        <Download />
-        {t("agentEnv.install")}
-      </Button>
+      <span className="flex min-w-0 basis-full items-center justify-end gap-1.5 sm:basis-auto sm:flex-none">
+        <input
+          aria-label={t("agentEnv.slugAria")}
+          className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-2 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-44 sm:flex-none"
+          onChange={(event) => setSlug(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") submitInstall();
+          }}
+          placeholder={t("agentEnv.slugPlaceholder")}
+          value={slug}
+        />
+        <Button
+          disabled={busy || slug.trim().length === 0}
+          onClick={submitInstall}
+          size="sm"
+          variant="outline"
+        >
+          <Download />
+          {t("agentEnv.install")}
+        </Button>
+      </span>
     </section>
   );
 }

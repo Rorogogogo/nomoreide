@@ -129,10 +129,12 @@ pub async fn vercel_oauth_phase() -> Result<Value, String> {
 pub async fn vercel_status(state: State<'_, AppState>) -> Result<Value, String> {
     let config = load_config(&state).await?;
     let cli = cli_status().await;
-    let repository_name = config
-        .selected_git_repository
-        .clone()
-        .or_else(|| config.git_repositories.first().map(|repo| repo.name.clone()));
+    let repository_name = config.selected_git_repository.clone().or_else(|| {
+        config
+            .git_repositories
+            .first()
+            .map(|repo| repo.name.clone())
+    });
 
     let mut body = serde_json::json!({
         "ok": true,
@@ -161,7 +163,12 @@ pub async fn vercel_status(state: State<'_, AppState>) -> Result<Value, String> 
                         body["connection"] = serde_json::json!({ "source": "cli" });
                     }
                     body["status"] = Value::String(
-                        if context.project.is_some() { "connected" } else { "no_project" }.into(),
+                        if context.project.is_some() {
+                            "connected"
+                        } else {
+                            "no_project"
+                        }
+                        .into(),
                     );
                     body["user"] = serde_json::json!({
                         "username": viewer.get("username").cloned().unwrap_or(Value::Null),
@@ -304,7 +311,12 @@ pub async fn vercel_set_project(
     let repository = config
         .selected_git_repository
         .clone()
-        .or_else(|| config.git_repositories.first().map(|repo| repo.name.clone()))
+        .or_else(|| {
+            config
+                .git_repositories
+                .first()
+                .map(|repo| repo.name.clone())
+        })
         .ok_or("No Git repository is selected.")?;
     state
         .config_store

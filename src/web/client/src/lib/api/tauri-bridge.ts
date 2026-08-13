@@ -933,6 +933,30 @@ export async function tauri_renameTerminalSession(id: string, label: string) {
   };
 }
 
+export async function tauri_getTerminalCapabilities() {
+  return tauriInvoke<{ externalTerminal: boolean }>("get_terminal_capabilities");
+}
+
+export async function tauri_openTerminalInSystemTerminal(id: string) {
+  return tauriInvoke<TerminalSessionInfo>("open_terminal_in_system_terminal", { id });
+}
+
+export async function tauri_reclaimTerminalToDock(id: string) {
+  return tauriInvoke<TerminalSessionInfo>("reclaim_terminal_to_dock", { id });
+}
+
+export async function tauri_insertAgentPrompt(id: string, prompt: string) {
+  await tauriInvoke("insert_agent_prompt", { id, prompt });
+}
+
+export async function tauri_onTerminalSessionChanged(
+  handler: (session: TerminalSessionInfo) => void,
+): Promise<() => void> {
+  return tauriListen("terminal-session-changed", (payload) =>
+    handler(payload as TerminalSessionInfo),
+  );
+}
+
 export async function tauri_writeTerminalInput(id: string, data: string) {
   await tauriInvoke("write_terminal_input", { id, data });
 }

@@ -44,8 +44,24 @@ export function TabStrip<T extends string>({
           )}
           id={`${idPrefix}-tab-${tab.id}`}
           key={tab.id}
+          onKeyDown={(event) => {
+            const currentIndex = tabs.findIndex((entry) => entry.id === tab.id);
+            let nextIndex: number | null = null;
+            if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+            if (event.key === "ArrowLeft") {
+              nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            }
+            if (event.key === "Home") nextIndex = 0;
+            if (event.key === "End") nextIndex = tabs.length - 1;
+            if (nextIndex === null) return;
+            event.preventDefault();
+            const nextTab = tabs[nextIndex];
+            onSelect(nextTab.id);
+            document.getElementById(`${idPrefix}-tab-${nextTab.id}`)?.focus();
+          }}
           onClick={() => onSelect(tab.id)}
           role="tab"
+          tabIndex={value === tab.id ? 0 : -1}
           type="button"
         >
           {tab.label}

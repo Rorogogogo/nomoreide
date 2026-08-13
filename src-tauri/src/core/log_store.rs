@@ -1,11 +1,11 @@
+use anyhow::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
-use anyhow::Result;
 
 const MAX_LINES: usize = 500;
 
@@ -21,7 +21,11 @@ pub struct LogEntry {
 }
 
 impl LogEntry {
-    pub fn new(service: impl Into<String>, stream: impl Into<String>, text: impl Into<String>) -> Self {
+    pub fn new(
+        service: impl Into<String>,
+        stream: impl Into<String>,
+        text: impl Into<String>,
+    ) -> Self {
         let text = text.into();
         let severity = classify_severity(&text);
         LogEntry {
@@ -91,7 +95,9 @@ impl LogStore {
 
     pub fn read(&self, service: &str, limit: usize) -> Vec<LogEntry> {
         let inner = self.inner.read().unwrap();
-        inner.buffers.get(service)
+        inner
+            .buffers
+            .get(service)
             .map(|buf| {
                 let start = buf.len().saturating_sub(limit);
                 buf[start..].to_vec()
@@ -113,7 +119,11 @@ async fn append_to_disk(log_dir: &PathBuf, entry: &LogEntry) -> Result<()> {
     let safe_name = entry.service.replace(['/', '\\', ':'], "_");
     let path = log_dir.join(format!("{safe_name}.log"));
     let line = serde_json::to_string(entry)? + "\n";
-    let mut file = OpenOptions::new().create(true).append(true).open(&path).await?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await?;
     file.write_all(line.as_bytes()).await?;
     Ok(())
 }

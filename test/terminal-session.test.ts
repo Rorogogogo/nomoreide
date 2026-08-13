@@ -127,9 +127,16 @@ describe("TerminalSession", () => {
         adapter,
         cwd: "/repo",
         env: {
+          __CFBundleIdentifier: "com.mitchellh.ghostty",
           CLAUDECODE: "1",
+          COLORFGBG: "15;0",
+          COLORTERM: "truecolor",
+          GHOSTTY_RESOURCES_DIR: "/Applications/Ghostty.app/Contents/Resources",
           NO_COLOR: "1",
           PATH: "/usr/bin",
+          TERM_PROGRAM: "ghostty",
+          TERM_PROGRAM_VERSION: "1.3.1",
+          TERM_SESSION_ID: "session-parent",
         },
         kind,
       });
@@ -137,12 +144,18 @@ describe("TerminalSession", () => {
       session.start();
 
       expect(adapter.active?.options.env).toMatchObject({
-        COLORTERM: "truecolor",
         PATH: "/usr/bin",
         TERM: "xterm-256color",
       });
       expect(adapter.active?.options.env.CLAUDECODE).toBeUndefined();
+      expect(adapter.active?.options.env.__CFBundleIdentifier).toBeUndefined();
+      expect(adapter.active?.options.env.COLORFGBG).toBeUndefined();
+      expect(adapter.active?.options.env.COLORTERM).toBeUndefined();
+      expect(adapter.active?.options.env.GHOSTTY_RESOURCES_DIR).toBeUndefined();
       expect(adapter.active?.options.env.NO_COLOR).toBeUndefined();
+      expect(adapter.active?.options.env.TERM_PROGRAM).toBeUndefined();
+      expect(adapter.active?.options.env.TERM_PROGRAM_VERSION).toBeUndefined();
+      expect(adapter.active?.options.env.TERM_SESSION_ID).toBeUndefined();
     },
   );
 
@@ -165,6 +178,22 @@ describe("TerminalSession", () => {
       kind: "agent",
       provider: "codex",
     });
+  });
+
+  test("keeps embedded Codex colors palette-driven across dashboard themes", () => {
+    const adapter = new FakePtyAdapter();
+    const session = new TerminalSession({
+      adapter,
+      cwd: "/repo",
+      env: { FORCE_COLOR: "3" },
+      kind: "agent",
+      provider: "codex",
+      shell: "codex",
+    });
+
+    session.start();
+
+    expect(adapter.active?.options.env.FORCE_COLOR).toBe("1");
   });
 
   test("renames a live session without restarting its pty", () => {

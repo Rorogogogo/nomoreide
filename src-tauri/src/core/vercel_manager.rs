@@ -233,7 +233,9 @@ impl VercelManager {
         if target == Some("preview") {
             return Ok(deployments
                 .into_iter()
-                .filter(|deployment| deployment.get("target") != Some(&Value::String("production".into())))
+                .filter(|deployment| {
+                    deployment.get("target") != Some(&Value::String("production".into()))
+                })
                 .collect());
         }
         Ok(deployments)

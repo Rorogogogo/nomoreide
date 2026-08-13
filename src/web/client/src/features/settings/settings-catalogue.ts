@@ -39,7 +39,7 @@ export interface SettingsCategory {
 export const SETTINGS_CATEGORIES: SettingsCategory[] = [
   { id: "general", label: "General", description: "Language, navigation, and startup context.", icon: Languages, scope: "global", keywords: ["language", "sidebar", "dock", "agent", "project scope"] },
   { id: "appearance", label: "Appearance", description: "Theme, density, type size, and motion.", icon: Palette, scope: "global", keywords: ["theme", "dark", "light", "font", "motion", "accent", "color", "colour"] },
-  { id: "terminal", label: "Terminal", description: "Terminal rendering and process safeguards.", icon: SquareTerminal, scope: "global", keywords: ["shell", "cursor", "scrollback", "copy", "terminate", "smooth", "scroll"] },
+  { id: "terminal", label: "Terminal", description: "Terminal rendering and process safeguards.", icon: SquareTerminal, scope: "global", keywords: ["shell", "cursor", "scrollback", "copy", "terminate", "smooth", "scroll", "external", "ghostty", "iterm", "terminal app"] },
   { id: "services-logs", label: "Services & Logs", description: "How this project presents runtime output.", icon: Server, scope: "project", keywords: ["timestamps", "wrap", "runtime", "services"] },
   { id: "git-github", label: "Git & GitHub", description: "Source-control preferences and connection status.", icon: GitBranch, scope: "mixed", keywords: ["git", "github", "co-author", "repository"] },
   { id: "agents-mcp", label: "Agents & MCP", description: "Agent environments and MCP management.", icon: Bot, scope: "mixed", keywords: ["agent", "model", "mcp", "claude", "codex", "sound", "chime", "completion"] },
@@ -59,6 +59,7 @@ export const SETTING_COPY = {
   "code-font": { category: "appearance", label: "Code font size", description: "Size used by code and log surfaces." },
   "reduced-motion": { category: "appearance", label: "Reduced motion", description: "Reduce non-essential movement and animated transitions." },
   accent: { category: "appearance", label: "Accent color", description: "Recolor the workbench, globally or per project." },
+  "external-terminal": { category: "terminal", label: "External terminal", description: "Choose which macOS terminal opens agent sessions outside the dock." },
   "terminal-font": { category: "terminal", label: "Terminal font size", description: "Text size for terminal sessions." },
   cursor: { category: "terminal", label: "Cursor style", description: "Shape of the active terminal cursor." },
   scrollback: { category: "terminal", label: "Scrollback limit", description: "Number of previous terminal lines kept in memory." },

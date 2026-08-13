@@ -35,6 +35,8 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   loading?: boolean;
   loadingLabel?: React.ReactNode;
+  /** React 19 passes ref as a plain prop; it rides `...props` onto <button>. */
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 export function Button({

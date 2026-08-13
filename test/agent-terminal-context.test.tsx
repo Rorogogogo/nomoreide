@@ -13,9 +13,13 @@ const api = vi.hoisted(() => ({
   closeTerminalSession: vi.fn(),
   createAgentTerminalSession: vi.fn(),
   createTerminalSession: vi.fn(),
+  getTerminalCapabilities: vi.fn(),
   getAgentChatStatus: vi.fn(),
   listAgentTranscripts: vi.fn(),
   listTerminalSessions: vi.fn(),
+  onTerminalSessionChanged: vi.fn(),
+  openTerminalInSystemTerminal: vi.fn(),
+  reclaimTerminalToDock: vi.fn(),
   renameTerminalSession: vi.fn(),
   setChatProvider: vi.fn(),
   streamAgentChat: vi.fn(),
@@ -119,6 +123,10 @@ beforeEach(() => {
   });
   api.listTerminalSessions.mockResolvedValue([]);
   api.listAgentTranscripts.mockResolvedValue([]);
+  api.getTerminalCapabilities.mockResolvedValue({ externalTerminal: false });
+  api.onTerminalSessionChanged.mockResolvedValue(() => {});
+  api.openTerminalInSystemTerminal.mockResolvedValue(session("external"));
+  api.reclaimTerminalToDock.mockResolvedValue(session("external"));
   api.closeTerminalSession.mockResolvedValue(undefined);
   api.renameTerminalSession.mockImplementation(
     async (id: string, label: string) => ({ ...session(id), label }),
@@ -136,6 +144,54 @@ afterEach(() => {
 });
 
 describe("AgentProvider terminal tasks", () => {
+  test("keeps a presentation event that arrives before stale hydration", async () => {
+    const listed = deferred<Array<ReturnType<typeof session> & { presentation: "dock" }>>();
+    let listener: ((value: ReturnType<typeof session> & { presentation: "terminal" }) => void) | undefined;
+    api.listTerminalSessions.mockReturnValue(listed.promise);
+    api.onTerminalSessionChanged.mockImplementation(async (handler) => {
+      listener = handler;
+      return () => {};
+    });
+    const mounted = await mountProvider();
+
+    await act(async () => {
+      listener?.({ ...session("external"), presentation: "terminal" });
+    });
+    await act(async () => {
+      listed.resolve([{ ...session("external"), presentation: "dock" }]);
+    });
+
+    expect(mounted.value.tasks[0]?.presentation).toBe("terminal");
+    await unmount(mounted.root, mounted.host);
+  });
+
+  test("keeps a newer presentation event when the launch response resolves later", async () => {
+    const launching = deferred<ReturnType<typeof session> & { presentation: "terminalLaunching" }>();
+    let listener: ((value: ReturnType<typeof session> & { presentation: "terminal" }) => void) | undefined;
+    api.listTerminalSessions.mockResolvedValue([{ ...session("external"), presentation: "dock" }]);
+    api.onTerminalSessionChanged.mockImplementation(async (handler) => {
+      listener = handler;
+      return () => {};
+    });
+    api.openTerminalInSystemTerminal.mockReturnValue(launching.promise);
+    const mounted = await mountProvider();
+
+    let action: Promise<boolean> | undefined;
+    act(() => {
+      action = mounted.value.openTaskInTerminal("external");
+    });
+    await act(async () => {
+      listener?.({ ...session("external"), presentation: "terminal" });
+    });
+    await act(async () => {
+      launching.resolve({ ...session("external"), presentation: "terminalLaunching" });
+      await action;
+    });
+
+    expect(mounted.value.tasks[0]?.presentation).toBe("terminal");
+    await unmount(mounted.root, mounted.host);
+  });
+
   test("restores the dock open state across provider remounts", async () => {
     const first = await mountProvider();
     expect(first.value.open).toBe(false);

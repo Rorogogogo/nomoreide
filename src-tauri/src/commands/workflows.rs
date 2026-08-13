@@ -1,6 +1,6 @@
-use tauri::State;
-use serde_json::Value;
 use crate::AppState;
+use serde_json::Value;
+use tauri::State;
 
 /// The Phase-1 starter set — the same built-in templates the Node backend ships
 /// (`src/core/workflows.ts`). These are plain data, not hardcoded UI, so a user
@@ -115,9 +115,9 @@ fn merge_workflows(stored: &[Value]) -> Vec<Value> {
         })
         .collect();
 
-    let extras = stored.iter().filter(|w| {
-        workflow_id(w).map_or(true, |id| !builtin_ids.iter().any(|b| b == id))
-    });
+    let extras = stored
+        .iter()
+        .filter(|w| workflow_id(w).map_or(true, |id| !builtin_ids.iter().any(|b| b == id)));
     merged.extend(extras.cloned());
     merged
 }
@@ -133,15 +133,20 @@ pub async fn save_workflow(
     state: State<'_, AppState>,
     workflow: Value,
 ) -> Result<Vec<Value>, String> {
-    let config = state.config_store.save_workflow(workflow).await.map_err(|e| e.to_string())?;
+    let config = state
+        .config_store
+        .save_workflow(workflow)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(merge_workflows(&config.workflows))
 }
 
 #[tauri::command]
-pub async fn delete_workflow(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<Vec<Value>, String> {
-    let config = state.config_store.remove_workflow(&id).await.map_err(|e| e.to_string())?;
+pub async fn delete_workflow(state: State<'_, AppState>, id: String) -> Result<Vec<Value>, String> {
+    let config = state
+        .config_store
+        .remove_workflow(&id)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(merge_workflows(&config.workflows))
 }

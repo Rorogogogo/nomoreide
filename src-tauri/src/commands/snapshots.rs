@@ -1,8 +1,8 @@
-use tauri::State;
+use crate::AppState;
 use chrono;
 use serde::{Deserialize, Serialize};
+use tauri::State;
 use tokio::process::Command;
-use crate::AppState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,7 +80,9 @@ pub async fn list_snapshots(
             let parts: Vec<&str> = line.splitn(3, '|').collect();
             Snapshot {
                 sha: parts.first().copied().unwrap_or("").to_string(),
-                label: parts.get(1).map(|s| s.replace("On stash: ", "").replace("WIP on stash: ", "")),
+                label: parts
+                    .get(1)
+                    .map(|s| s.replace("On stash: ", "").replace("WIP on stash: ", "")),
                 created_at: parts.get(2).copied().unwrap_or("").to_string(),
             }
         })
@@ -174,9 +176,13 @@ pub async fn get_snapshot_diff(
     let cwd = resolve_cwd(&config, repo.as_deref())?;
 
     let mut args: Vec<&str> = vec!["diff", &sha];
-    if path.is_some() { args.push("--"); }
+    if path.is_some() {
+        args.push("--");
+    }
     let path_ref: Option<String> = path;
-    if let Some(ref p) = path_ref { args.push(p.as_str()); }
+    if let Some(ref p) = path_ref {
+        args.push(p.as_str());
+    }
 
     let out = Command::new("git")
         .args(&args)
@@ -190,17 +196,32 @@ pub async fn get_snapshot_diff(
 
 fn resolve_cwd(config: &crate::core::config::Config, repo: Option<&str>) -> Result<String, String> {
     if let Some(name) = repo {
-        return config.git_repositories.iter()
+        return config
+            .git_repositories
+            .iter()
             .find(|r| r.name == name)
-            .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
+            .map(|r| {
+                r.active_worktree_path
+                    .clone()
+                    .unwrap_or_else(|| r.path.clone())
+            })
             .ok_or_else(|| format!("Repository '{name}' not found"));
     }
     if let Some(sel) = &config.selected_git_repository {
         if let Some(r) = config.git_repositories.iter().find(|r| &r.name == sel) {
-            return Ok(r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()));
+            return Ok(r
+                .active_worktree_path
+                .clone()
+                .unwrap_or_else(|| r.path.clone()));
         }
     }
-    config.git_repositories.first()
-        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
+    config
+        .git_repositories
+        .first()
+        .map(|r| {
+            r.active_worktree_path
+                .clone()
+                .unwrap_or_else(|| r.path.clone())
+        })
         .ok_or_else(|| "No git repository configured".to_string())
 }

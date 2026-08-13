@@ -18,6 +18,36 @@ export interface RegistryProfileVersion {
   version: string;
 }
 
+export type RegistryProfileSort = "recent" | "stars" | "downloads" | "alpha";
+
+export interface RegistryPublicProfile {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  stars_count: number;
+  downloads_count: number;
+  author?: {
+    id: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } | null;
+  source: {
+    kind: string;
+    github_repo_url?: string | null;
+    github_stars_count?: number | null;
+  };
+  latest_version: {
+    id: string;
+    profile_id: string;
+    version: string;
+    changelog: string;
+    manifest_json: Record<string, unknown>;
+    created_at: string;
+    published_at?: string | null;
+  };
+}
+
 export interface RegistryInstallDescriptor {
   slug: string;
   version: string;
@@ -38,6 +68,10 @@ export interface RegisterGithubProfileInput {
 }
 
 export interface RegistryClient {
+  listPublicProfiles(input?: {
+    query?: string;
+    sort?: RegistryProfileSort;
+  }): Promise<RegistryPublicProfile[]>;
   getProfileBySlug(slug: string): Promise<RegistryProfile | null>;
   createProfile(input: {
     slug: string;
@@ -81,6 +115,18 @@ export function createRegistryClient(options: {
   }
 
   return {
+    async listPublicProfiles(input = {}) {
+      const url = new URL(`${baseUrl}/profiles`);
+      const query = input.query?.trim();
+      if (query) url.searchParams.set("q", query);
+      if (input.sort && input.sort !== "recent") {
+        url.searchParams.set("sort", input.sort);
+      }
+      const response = await fetchImpl(url, { headers: authHeaders });
+      await failIfNotOk(response, "List profiles");
+      return (await response.json()) as RegistryPublicProfile[];
+    },
+
     async getProfileBySlug(slug) {
       const response = await fetchImpl(`${baseUrl}/profiles/${slug}`, {
         headers: authHeaders,

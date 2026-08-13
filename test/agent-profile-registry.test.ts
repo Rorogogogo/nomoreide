@@ -4,6 +4,7 @@ import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   createProfile,
+  createRegistryClient,
   createRegistryConfigService,
   createRegistryTokenManager,
   exportProfile,
@@ -11,11 +12,69 @@ import {
   installProfileFromRegistry,
   profileSkillsDir,
   publishProfileToRegistry,
+  readProfileRegistryLink,
   resolveRegistryApiTarget,
   resolveRegistryApiToken,
   resolveRegistryFrontendUrl,
   updateProfile,
 } from "../src/core/agent-profiles/index.js";
+
+describe("registry public catalog", () => {
+  it("lists public profiles with encoded search and sort parameters", async () => {
+    let requestedUrl = "";
+    const client = createRegistryClient({
+      baseUrl: "https://api.example.com/",
+      fetch: async (input) => {
+        requestedUrl = String(input);
+        return Response.json([
+          {
+            id: "profile-1",
+            slug: "review-stack",
+            title: "Review Stack",
+            summary: "Review tools",
+            stars_count: 4,
+            downloads_count: 12,
+            source: { kind: "hosted" },
+            latest_version: {
+              id: "version-1",
+              profile_id: "profile-1",
+              version: "1.2.0",
+              changelog: "",
+              manifest_json: { skills: [{ name: "review" }] },
+              created_at: "2026-08-10T00:00:00Z",
+              published_at: "2026-08-10T00:00:00Z",
+            },
+          },
+        ]);
+      },
+    });
+
+    const profiles = await client.listPublicProfiles({
+      query: " review & plan ",
+      sort: "downloads",
+    });
+
+    expect(requestedUrl).toBe(
+      "https://api.example.com/profiles?q=review+%26+plan&sort=downloads",
+    );
+    expect(profiles[0]).toMatchObject({
+      slug: "review-stack",
+      downloads_count: 12,
+      latest_version: { version: "1.2.0" },
+    });
+  });
+
+  it("reports upstream catalog failures with status context", async () => {
+    const client = createRegistryClient({
+      baseUrl: "https://api.example.com",
+      fetch: async () => new Response("temporarily unavailable", { status: 503 }),
+    });
+
+    await expect(client.listPublicProfiles()).rejects.toThrow(
+      "List profiles failed: HTTP 503 — temporarily unavailable",
+    );
+  });
+});
 
 describe("registry config", () => {
   let configPath: string;
@@ -332,6 +391,13 @@ describe("registry publish + install", () => {
     expect(uploadedBytes![1]).toBe(0x8b);
     // and the raw secret never appears in the uploaded package
     expect(Buffer.from(uploadedBytes!).includes(Buffer.from("ghp_super_secret"))).toBe(false);
+    await expect(readProfileRegistryLink("shareable", opts())).resolves.toMatchObject({
+      origin: "published",
+      slug: "dev-kit",
+      version: "2.0.0",
+      profileId: "p1",
+      versionId: "v1",
+    });
   });
 
   it("installs a published package end-to-end via importProfile", async () => {
@@ -377,6 +443,11 @@ describe("registry publish + install", () => {
     expect(result.missingCredentials.map((spec) => spec.key)).toEqual(["github_token"]);
     const installed = await getProfile("installed", opts());
     expect(installed.mcps.github.env).toEqual({ GITHUB_TOKEN: "${credentials.github_token}" });
+    await expect(readProfileRegistryLink("installed", opts())).resolves.toMatchObject({
+      origin: "installed",
+      slug: "dev-kit",
+      version: "1.2.3",
+    });
 
     // installing again without force refuses to clobber
     await expect(

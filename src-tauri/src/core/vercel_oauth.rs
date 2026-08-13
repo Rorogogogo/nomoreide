@@ -187,10 +187,14 @@ impl PendingLogin {
             .map_err(|_| "Vercel sign-in timed out. Start the sign-in again.".to_string())?;
 
         match outcome {
-            Ok(code) => match exchange_code(&self.redirect_uri, &self.client_id, &self.verifier, &code).await {
-                Ok(tokens) => Ok(tokens),
-                Err(error) => Err(error),
-            },
+            Ok(code) => {
+                match exchange_code(&self.redirect_uri, &self.client_id, &self.verifier, &code)
+                    .await
+                {
+                    Ok(tokens) => Ok(tokens),
+                    Err(error) => Err(error),
+                }
+            }
             Err(error) => Err(error),
         }
     }
@@ -223,7 +227,10 @@ impl PendingLogin {
                 return Err(denied);
             }
 
-            let state = params.iter().find(|(key, _)| key == "state").map(|(_, v)| v);
+            let state = params
+                .iter()
+                .find(|(key, _)| key == "state")
+                .map(|(_, v)| v);
             // An unknown `state` is not our callback — a stray probe, a stale
             // tab, or a forged request. Keep listening rather than failing.
             if state.map(String::as_str) != Some(self.state.as_str()) {

@@ -42,6 +42,7 @@ const FALLBACK_GLOBAL: AppSettings = {
     copyOnSelect: false,
     confirmTerminate: true,
     smoothScroll: true,
+    externalTerminal: "automatic",
   },
 };
 

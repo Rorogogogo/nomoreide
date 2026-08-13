@@ -64,9 +64,7 @@ fn topo_sort(services: &[ServiceDef], wanted: &HashSet<String>) -> Result<Vec<St
             .iter()
             .flatten()
             .filter(|dep| {
-                *dep != &service.name
-                    && registered.contains(dep.as_str())
-                    && wanted.contains(*dep)
+                *dep != &service.name && registered.contains(dep.as_str()) && wanted.contains(*dep)
             })
             .filter(|dep| seen.insert((*dep).clone()))
             .cloned()
@@ -80,7 +78,10 @@ fn topo_sort(services: &[ServiceDef], wanted: &HashSet<String>) -> Result<Vec<St
     for name in &nodes {
         for dep in &deps[name] {
             *in_degree.get_mut(name.as_str()).unwrap() += 1;
-            dependents.get_mut(dep.as_str()).unwrap().push(name.as_str());
+            dependents
+                .get_mut(dep.as_str())
+                .unwrap()
+                .push(name.as_str());
         }
     }
 
@@ -105,10 +106,7 @@ fn topo_sort(services: &[ServiceDef], wanted: &HashSet<String>) -> Result<Vec<St
     if order.len() == nodes.len() {
         Ok(order)
     } else {
-        let stuck: Vec<String> = nodes
-            .into_iter()
-            .filter(|n| !order.contains(n))
-            .collect();
+        let stuck: Vec<String> = nodes.into_iter().filter(|n| !order.contains(n)).collect();
         Err(format!(
             "Service dependency cycle detected among: {}.",
             stuck.join(", ")

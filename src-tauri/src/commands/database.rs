@@ -1189,9 +1189,7 @@ async fn publish_export_file(part: &Path, destination: &Path) -> Result<(), Stri
             .map_err(|error| error.to_string());
     }
     use std::os::windows::ffi::OsStrExt;
-    use windows_sys::Win32::Storage::FileSystem::{
-        ReplaceFileW, REPLACEFILE_IGNORE_MERGE_ERRORS,
-    };
+    use windows_sys::Win32::Storage::FileSystem::{ReplaceFileW, REPLACEFILE_IGNORE_MERGE_ERRORS};
     let wide = |path: &Path| {
         path.as_os_str()
             .encode_wide()
@@ -1270,17 +1268,45 @@ fn export_column_expression(engine: &str, column: &ColumnInfo) -> String {
     let data_type = column.data_type.to_ascii_lowercase();
     let native = match engine {
         "postgres" => [
-            "boolean", "bool", "smallint", "int2", "integer", "int4", "bigint", "int8",
-            "real", "float4", "double precision", "float8", "json", "jsonb", "bytea", "text",
-            "name", "character", "char", "character varying", "varchar",
+            "boolean",
+            "bool",
+            "smallint",
+            "int2",
+            "integer",
+            "int4",
+            "bigint",
+            "int8",
+            "real",
+            "float4",
+            "double precision",
+            "float8",
+            "json",
+            "jsonb",
+            "bytea",
+            "text",
+            "name",
+            "character",
+            "char",
+            "character varying",
+            "varchar",
         ]
         .iter()
         .any(|kind| data_type == *kind || data_type.starts_with(&format!("{kind}("))),
         "mysql" => {
             !data_type.contains("unsigned")
-                && (["tinyint", "smallint", "mediumint", "int", "integer", "bigint", "float", "double", "json"]
-                    .iter()
-                    .any(|kind| data_type == *kind || data_type.starts_with(&format!("{kind}(")))
+                && ([
+                    "tinyint",
+                    "smallint",
+                    "mediumint",
+                    "int",
+                    "integer",
+                    "bigint",
+                    "float",
+                    "double",
+                    "json",
+                ]
+                .iter()
+                .any(|kind| data_type == *kind || data_type.starts_with(&format!("{kind}(")))
                     || data_type.contains("char")
                     || data_type.contains("text")
                     || data_type.contains("blob")
@@ -1339,7 +1365,10 @@ impl ExportFileWriter {
         format: &str,
         columns: &[ColumnInfo],
     ) -> Result<Self, String> {
-        let names = columns.iter().map(|column| column.name.clone()).collect::<Vec<_>>();
+        let names = columns
+            .iter()
+            .map(|column| column.name.clone())
+            .collect::<Vec<_>>();
         let masked_columns = names
             .iter()
             .filter(|name| is_sensitive_preview_column(name))
@@ -1357,7 +1386,12 @@ impl ExportFileWriter {
         if format == "csv" {
             let header = format!(
                 "{}\r\n",
-                export.columns.iter().map(|name| csv_export_cell(name, true)).collect::<Vec<_>>().join(",")
+                export
+                    .columns
+                    .iter()
+                    .map(|name| csv_export_cell(name, true))
+                    .collect::<Vec<_>>()
+                    .join(",")
             );
             export.write(header.as_bytes()).await?;
         } else {
@@ -1384,10 +1418,16 @@ impl ExportFileWriter {
         let chunk = if self.format == "csv" {
             format!(
                 "{}\r\n",
-                masked.iter().map(|(_, value)| csv_export_value(value)).collect::<Vec<_>>().join(",")
+                masked
+                    .iter()
+                    .map(|(_, value)| csv_export_value(value))
+                    .collect::<Vec<_>>()
+                    .join(",")
             )
         } else {
-            let row = masked.into_iter().collect::<serde_json::Map<String, Value>>();
+            let row = masked
+                .into_iter()
+                .collect::<serde_json::Map<String, Value>>();
             format!(
                 "{}{}",
                 if self.first_json_row { "" } else { "," },
@@ -1408,7 +1448,10 @@ impl ExportFileWriter {
     }
 
     async fn write(&mut self, bytes: &[u8]) -> Result<(), String> {
-        self.writer.write_all(bytes).await.map_err(|error| error.to_string())?;
+        self.writer
+            .write_all(bytes)
+            .await
+            .map_err(|error| error.to_string())?;
         self.bytes_written += bytes.len();
         Ok(())
     }
@@ -1434,7 +1477,11 @@ fn csv_export_cell(value: &str, spreadsheet_safe: bool) -> String {
     let dangerous = spreadsheet_safe
         && (value.starts_with(['\t', '\r'])
             || value.trim_start().starts_with(['=', '+', '-', '@']));
-    let text = if dangerous { format!("'{value}") } else { value.to_string() };
+    let text = if dangerous {
+        format!("'{value}")
+    } else {
+        value.to_string()
+    };
     if text.contains([',', '"', '\r', '\n']) {
         format!("\"{}\"", text.replace('"', "\"\""))
     } else {
@@ -1649,7 +1696,9 @@ async fn export_postgres_rows(
 ) -> Result<(), String> {
     use sqlx::postgres::PgPool;
 
-    let pool = PgPool::connect(url).await.map_err(|error| error.to_string())?;
+    let pool = PgPool::connect(url)
+        .await
+        .map_err(|error| error.to_string())?;
     let mut transaction = pool.begin().await.map_err(|error| error.to_string())?;
     sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         .execute(&mut *transaction)
@@ -1675,7 +1724,10 @@ async fn export_postgres_rows(
         writer.row(postgres_export_values(&row)?).await?;
     }
     drop(rows);
-    transaction.rollback().await.map_err(|error| error.to_string())
+    transaction
+        .rollback()
+        .await
+        .map_err(|error| error.to_string())
 }
 
 fn postgres_export_values(row: &sqlx::postgres::PgRow) -> Result<Vec<Value>, String> {
@@ -1684,19 +1736,40 @@ fn postgres_export_values(row: &sqlx::postgres::PgRow) -> Result<Vec<Value>, Str
         .map(|index| {
             let type_name = row.column(index).type_info().name().to_uppercase();
             let decoded = match type_name.as_str() {
-                "BOOL" => row.try_get::<Option<bool>, _>(index).map(|value| value.map(Value::Bool)),
-                "INT2" | "SMALLINT" | "SMALLSERIAL" => row.try_get::<Option<i16>, _>(index).map(|value| value.map(|value| json!(value))),
-                "INT4" | "INT" | "INTEGER" | "SERIAL" => row.try_get::<Option<i32>, _>(index).map(|value| value.map(|value| json!(value))),
-                "INT8" | "BIGINT" | "BIGSERIAL" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| Value::String(value.to_string()))),
-                "FLOAT4" | "REAL" => row.try_get::<Option<f32>, _>(index).map(|value| value.map(|value| json!(value))),
-                "FLOAT8" | "DOUBLE PRECISION" => row.try_get::<Option<f64>, _>(index).map(|value| value.map(|value| json!(value))),
+                "BOOL" => row
+                    .try_get::<Option<bool>, _>(index)
+                    .map(|value| value.map(Value::Bool)),
+                "INT2" | "SMALLINT" | "SMALLSERIAL" => row
+                    .try_get::<Option<i16>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
+                "INT4" | "INT" | "INTEGER" | "SERIAL" => row
+                    .try_get::<Option<i32>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
+                "INT8" | "BIGINT" | "BIGSERIAL" => row
+                    .try_get::<Option<i64>, _>(index)
+                    .map(|value| value.map(|value| Value::String(value.to_string()))),
+                "FLOAT4" | "REAL" => row
+                    .try_get::<Option<f32>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
+                "FLOAT8" | "DOUBLE PRECISION" => row
+                    .try_get::<Option<f64>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
                 "JSON" | "JSONB" => row.try_get::<Option<Value>, _>(index),
-                "BYTEA" => row.try_get::<Option<Vec<u8>>, _>(index).map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
-                _ => row.try_get::<Option<String>, _>(index).map(|value| value.map(Value::String)),
+                "BYTEA" => row
+                    .try_get::<Option<Vec<u8>>, _>(index)
+                    .map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
+                _ => row
+                    .try_get::<Option<String>, _>(index)
+                    .map(|value| value.map(Value::String)),
             };
             decoded
                 .map(|value| value.unwrap_or(Value::Null))
-                .map_err(|error| format!("Could not decode PostgreSQL export column {}: {error}", index + 1))
+                .map_err(|error| {
+                    format!(
+                        "Could not decode PostgreSQL export column {}: {error}",
+                        index + 1
+                    )
+                })
         })
         .collect()
 }
@@ -1709,7 +1782,9 @@ async fn export_mysql_rows(
 ) -> Result<(), String> {
     use sqlx::mysql::MySqlPool;
 
-    let pool = MySqlPool::connect(url).await.map_err(|error| error.to_string())?;
+    let pool = MySqlPool::connect(url)
+        .await
+        .map_err(|error| error.to_string())?;
     let mut connection = pool.acquire().await.map_err(|error| error.to_string())?;
     sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         .execute(&mut *connection)
@@ -1748,18 +1823,37 @@ fn mysql_export_values(row: &sqlx::mysql::MySqlRow) -> Result<Vec<Value>, String
         .map(|index| {
             let type_name = row.column(index).type_info().name().to_uppercase();
             let decoded = match type_name.as_str() {
-                "BOOLEAN" | "TINYINT(1)" => row.try_get::<Option<bool>, _>(index).map(|value| value.map(Value::Bool)),
-                "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| json!(value))),
-                "BIGINT" => row.try_get::<Option<i64>, _>(index).map(|value| value.map(|value| Value::String(value.to_string()))),
-                "FLOAT" => row.try_get::<Option<f32>, _>(index).map(|value| value.map(|value| json!(value))),
-                "DOUBLE" => row.try_get::<Option<f64>, _>(index).map(|value| value.map(|value| json!(value))),
+                "BOOLEAN" | "TINYINT(1)" => row
+                    .try_get::<Option<bool>, _>(index)
+                    .map(|value| value.map(Value::Bool)),
+                "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" => row
+                    .try_get::<Option<i64>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
+                "BIGINT" => row
+                    .try_get::<Option<i64>, _>(index)
+                    .map(|value| value.map(|value| Value::String(value.to_string()))),
+                "FLOAT" => row
+                    .try_get::<Option<f32>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
+                "DOUBLE" => row
+                    .try_get::<Option<f64>, _>(index)
+                    .map(|value| value.map(|value| json!(value))),
                 "JSON" => row.try_get::<Option<Value>, _>(index),
-                "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "TINYBLOB" | "BINARY" | "VARBINARY" => row.try_get::<Option<Vec<u8>>, _>(index).map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
-                _ => row.try_get::<Option<String>, _>(index).map(|value| value.map(Value::String)),
+                "BLOB" | "MEDIUMBLOB" | "LONGBLOB" | "TINYBLOB" | "BINARY" | "VARBINARY" => row
+                    .try_get::<Option<Vec<u8>>, _>(index)
+                    .map(|value| value.map(|value| Value::String(hex_bytes(&value)))),
+                _ => row
+                    .try_get::<Option<String>, _>(index)
+                    .map(|value| value.map(Value::String)),
             };
             decoded
                 .map(|value| value.unwrap_or(Value::Null))
-                .map_err(|error| format!("Could not decode MySQL export column {}: {error}", index + 1))
+                .map_err(|error| {
+                    format!(
+                        "Could not decode MySQL export column {}: {error}",
+                        index + 1
+                    )
+                })
         })
         .collect()
 }
@@ -1806,21 +1900,29 @@ fn sqlite_export_values(row: &sqlx::sqlite::SqliteRow) -> Result<Vec<Value>, Str
     use sqlx::{Row, TypeInfo, ValueRef};
     (0..row.len())
         .map(|index| {
-            let raw = row
-                .try_get_raw(index)
-                .map_err(|error| format!("Could not read SQLite export column {}: {error}", index + 1))?;
+            let raw = row.try_get_raw(index).map_err(|error| {
+                format!("Could not read SQLite export column {}: {error}", index + 1)
+            })?;
             if raw.is_null() {
                 return Ok(Value::Null);
             }
             let type_name = raw.type_info().name().to_uppercase();
             let decoded = match type_name.as_str() {
-                "INTEGER" | "INT" | "INT64" => row.try_get::<i64, _>(index).map(lossless_json_integer),
+                "INTEGER" | "INT" | "INT64" => {
+                    row.try_get::<i64, _>(index).map(lossless_json_integer)
+                }
                 "REAL" => row.try_get::<f64, _>(index).map(|value| json!(value)),
-                "BLOB" => row.try_get::<Vec<u8>, _>(index).map(|value| Value::String(hex_bytes(&value))),
+                "BLOB" => row
+                    .try_get::<Vec<u8>, _>(index)
+                    .map(|value| Value::String(hex_bytes(&value))),
                 _ => row.try_get::<String, _>(index).map(Value::String),
             };
-            decoded
-                .map_err(|error| format!("Could not decode SQLite export column {}: {error}", index + 1))
+            decoded.map_err(|error| {
+                format!(
+                    "Could not decode SQLite export column {}: {error}",
+                    index + 1
+                )
+            })
         })
         .collect()
 }
@@ -2719,8 +2821,8 @@ mod tests {
         )
         .await
         .unwrap();
-        let rows: Value = serde_json::from_str(&std::fs::read_to_string(&destination).unwrap())
-            .unwrap();
+        let rows: Value =
+            serde_json::from_str(&std::fs::read_to_string(&destination).unwrap()).unwrap();
         assert_eq!(summary.rows_written, 3);
         assert_eq!(rows[0]["id"], json!(1));
         assert_eq!(rows[0]["score"], json!(-42.5));

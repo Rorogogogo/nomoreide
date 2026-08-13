@@ -34,20 +34,34 @@ export {
   assertValidProfileName,
   copySkillBetweenProfiles,
   copyPluginBetweenProfiles,
+  clearProfileRegistryLink,
   createProfile,
   deleteProfile,
   getProfile,
+  getProfileRegistryDiff,
   listProfiles,
   profileDir,
   profilePluginsDir,
   profilesRoot,
   profileSkillsDir,
   refreshProfileFromAgent,
+  readProfileRegistryLink,
   snapshotProfileFromAgent,
   updateProfile,
   writeProfile,
+  writeProfileRegistryLink,
   type ProfileStoreOptions,
 } from "./store.js";
+export {
+  createProfileRegistrySnapshot,
+  diffProfileRegistrySnapshots,
+  profileRegistryLinkSchema,
+  profileRegistrySnapshotSchema,
+  type ProfileRegistryDiff,
+  type ProfileRegistryItemDiff,
+  type ProfileRegistryLink,
+  type ProfileRegistrySnapshot,
+} from "./publication.js";
 export { exportProfile, importProfile, type ExportResult, type ImportResult } from "./transfer.js";
 export {
   createRegistryConfigService,
@@ -73,6 +87,8 @@ export {
   type RegistryClient,
   type RegistryInstallDescriptor,
   type RegistryProfile,
+  type RegistryProfileSort,
+  type RegistryPublicProfile,
 } from "./registry-client.js";
 export {
   installProfileFromRegistry,

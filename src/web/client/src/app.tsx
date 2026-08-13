@@ -24,6 +24,7 @@ import {
 } from "@/components/header-action";
 import { HeaderRefreshButton, type RefreshPhase } from "@/components/header-refresh-button";
 import { AgentView } from "@/features/agent/agent-view";
+import { ContextView } from "@/features/context/context-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
 import { AgentProvider } from "@/features/agent/chat/agent-context";
 import { AiContextMenuProvider } from "@/features/agent/context-menu/ai-context-menu";
@@ -99,6 +100,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   terminal: "/terminal",
   agent: "/agent",
   "agent-env": "/agent-env",
+  context: "/context",
   settings: "/settings",
 };
 
@@ -117,6 +119,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   terminal: "nav.terminal",
   agent: "pageTitle.agent",
   "agent-env": "pageTitle.agentEnv",
+  context: "pageTitle.context",
   settings: "nav.settings",
 };
 
@@ -828,6 +831,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 onOpenAgentEnv={() => setPage("agent-env")}
               />
             ) : null}
+            {page === "context" ? <ContextView projectPath={activeProject?.path ?? null} /> : null}
             {page === "agent-env" ? (
               <AgentEnvView
                 installSlug={pendingInstall}

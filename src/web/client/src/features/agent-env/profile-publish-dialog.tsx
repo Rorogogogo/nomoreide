@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import type { AgentEnvProfileRegistryLinkSummary } from "@/lib/api";
 import type { PublishFormInput } from "./use-registry";
 import { useT } from "@/lib/i18n";
 
@@ -18,18 +19,21 @@ function slugify(input: string): string {
 export function ProfilePublishDialog({
   profileName,
   busy,
+  registryLink,
   onConfirm,
   onCancel,
 }: {
   profileName: string;
   busy: boolean;
+  registryLink?: AgentEnvProfileRegistryLinkSummary;
   onConfirm: (input: PublishFormInput) => void;
   onCancel: () => void;
 }) {
   const t = useT();
-  const [slug, setSlug] = useState(slugify(profileName));
+  const isUpdate = registryLink?.origin === "published";
+  const [slug, setSlug] = useState(registryLink?.slug ?? slugify(profileName));
   const [title, setTitle] = useState(profileName);
-  const [version, setVersion] = useState("1.0.0");
+  const [version, setVersion] = useState(nextVersion(registryLink?.version));
   const [summary, setSummary] = useState("");
 
   const valid = slug.trim().length > 0 && title.trim().length > 0;
@@ -52,6 +56,7 @@ export function ProfilePublishDialog({
             <span className="text-[11px] font-medium">{t("agentEnv.slugField")}</span>
             <input
               className={fieldClass}
+              disabled={isUpdate}
               onChange={(event) => setSlug(slugify(event.target.value))}
               value={slug}
             />
@@ -99,4 +104,11 @@ export function ProfilePublishDialog({
       tone="success"
     />
   );
+}
+
+function nextVersion(current?: string): string {
+  if (!current) return "1.0.0";
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(current);
+  if (!match) return current;
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
 }

@@ -9,6 +9,7 @@ import {
   deleteProfile,
   exportProfile,
   getProfile,
+  getProfileRegistryDiff,
   importProfile,
   listProfiles,
   previewProfileApply,
@@ -126,6 +127,28 @@ export const agentProfileRoutes: Route[] = [
       sendJson(response, { ok: false, error: errorMessage(error) }, 500);
     }
   }),
+
+  patternRoute(
+    /^\/api\/agent-env\/profiles\/([^/]+)\/registry-diff$/,
+    ["name"],
+    async ({ request, response, params }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const result = await getProfileRegistryDiff(decodeURIComponent(params.name));
+        if (!result) {
+          sendJson(response, { ok: false, error: "Profile is not linked to the registry." }, 404);
+          return;
+        }
+        const { baseline: _baseline, ...link } = result.link;
+        sendJson(response, { ok: true, link, diff: result.diff });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+      }
+    },
+  ),
 
   patternRoute(
     /^\/api\/agent-env\/profiles\/([^/]+)\/(apply-preview|apply|export|refresh)$/,

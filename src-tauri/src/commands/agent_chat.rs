@@ -1,11 +1,11 @@
+use crate::AppState;
+use serde::Serialize;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::process::Stdio;
-use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
-use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
-use crate::AppState;
 
 const PREVIEW_LIMIT: usize = 400;
 
@@ -123,13 +123,21 @@ pub async fn start_agent_chat(
     provider: Option<String>,
 ) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let cwd = config.selected_git_repository
+    let cwd = config
+        .selected_git_repository
         .as_ref()
         .and_then(|sel| config.git_repositories.iter().find(|r| &r.name == sel))
         .or_else(|| config.git_repositories.first())
-        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
+        .map(|r| {
+            r.active_worktree_path
+                .clone()
+                .unwrap_or_else(|| r.path.clone())
+        })
         .unwrap_or_else(|| {
-            std::env::current_dir().unwrap_or_default().to_string_lossy().into_owned()
+            std::env::current_dir()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned()
         });
 
     // Turn override wins; else the saved choice; else Claude.
@@ -210,7 +218,10 @@ async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: b
     let stdout = match child.stdout.take() {
         Some(s) => s,
         None => {
-            let _ = app.emit("agent-chat-event", json!({"type":"error","message":"No stdout pipe"}));
+            let _ = app.emit(
+                "agent-chat-event",
+                json!({"type":"error","message":"No stdout pipe"}),
+            );
             return;
         }
     };
@@ -234,7 +245,9 @@ async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: b
 
     while let Ok(Some(line)) = lines.next_line().await {
         let line = line.trim().to_string();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
 
         let event = if is_codex {
             handle_codex_line(&line, &mut tool_names)
@@ -263,7 +276,10 @@ async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: b
     }
 
     if !done_sent {
-        let _ = app.emit("agent-chat-event", json!({"type":"done","stopReason": null}));
+        let _ = app.emit(
+            "agent-chat-event",
+            json!({"type":"done","stopReason": null}),
+        );
     }
 }
 
@@ -311,10 +327,18 @@ fn handle_claude_line(line: &str, tool_names: &mut HashMap<String, String>) -> O
             for block in content {
                 if block.get("type")?.as_str()? == "tool_result" {
                     let id = block.get("tool_use_id")?.as_str()?.to_string();
-                    let name = tool_names.get(&id).cloned().unwrap_or_else(|| "tool".to_string());
+                    let name = tool_names
+                        .get(&id)
+                        .cloned()
+                        .unwrap_or_else(|| "tool".to_string());
                     let preview = preview_of(block.get("content"));
-                    let is_error = block.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
-                    return Some(json!({"type":"tool_result","id": id,"name": name,"preview": preview,"isError": is_error}));
+                    let is_error = block
+                        .get("is_error")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    return Some(
+                        json!({"type":"tool_result","id": id,"name": name,"preview": preview,"isError": is_error}),
+                    );
                 }
             }
             None
@@ -349,13 +373,24 @@ fn handle_codex_line(line: &str, tool_names: &mut HashMap<String, String>) -> Op
                 tool_names.insert(id.clone(), "command".to_string());
                 if !is_completed {
                     let command = item.get("command").and_then(|v| v.as_str()).unwrap_or("");
-                    return Some(json!({"type":"tool_use","id": id,"name":"command","input":{"command": command}}));
+                    return Some(
+                        json!({"type":"tool_use","id": id,"name":"command","input":{"command": command}}),
+                    );
                 }
                 let preview = preview_of(item.get("aggregated_output"));
-                let is_error = item.get("exit_code").and_then(|v| v.as_i64()).map(|c| c != 0)
-                    .or_else(|| item.get("status").and_then(|v| v.as_str()).map(|s| s == "failed"))
+                let is_error = item
+                    .get("exit_code")
+                    .and_then(|v| v.as_i64())
+                    .map(|c| c != 0)
+                    .or_else(|| {
+                        item.get("status")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s == "failed")
+                    })
                     .unwrap_or(false);
-                return Some(json!({"type":"tool_result","id": id,"name":"command","preview": preview,"isError": is_error}));
+                return Some(
+                    json!({"type":"tool_result","id": id,"name":"command","preview": preview,"isError": is_error}),
+                );
             }
 
             if item_type == "agent_message" && is_completed {
@@ -379,11 +414,19 @@ fn preview_of(content: Option<&Value>) -> String {
     let text = match content {
         None => String::new(),
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Array(arr)) => arr.iter().map(|b| match b {
-            Value::String(s) => s.clone(),
-            Value::Object(o) => o.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            _ => String::new(),
-        }).collect::<Vec<_>>().join(" "),
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .map(|b| match b {
+                Value::String(s) => s.clone(),
+                Value::Object(o) => o
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                _ => String::new(),
+            })
+            .collect::<Vec<_>>()
+            .join(" "),
         _ => String::new(),
     };
     let text = text.trim().to_string();

@@ -3,6 +3,7 @@ import {
   Activity,
   Bot,
   Container,
+  Brain,
   Database,
   GitBranch,
   Inbox,
@@ -27,6 +28,7 @@ export type AppPage =
   | "workflows"
   | "agent"
   | "agent-env"
+  | "context"
   | "errors"
   | "database"
   | "terminal"
@@ -72,6 +74,7 @@ export const APP_NAV_SECTIONS: Array<{
     labelKey: "nav.section.agent",
     items: [
       { page: "agent", labelKey: "nav.agentConsole", icon: <Bot /> },
+      { page: "context", labelKey: "nav.context", icon: <Brain /> },
       { page: "agent-env", labelKey: "nav.agentEnv", icon: <Puzzle /> },
     ],
   },

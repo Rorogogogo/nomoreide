@@ -148,6 +148,40 @@ export interface AgentEnvProfileSummary {
   skillCount: number;
   pluginCount?: number;
   updatedAt: string;
+  registry?: AgentEnvProfileRegistryLinkSummary;
+}
+
+export interface AgentEnvProfileRegistryLinkSummary {
+  origin: "published" | "installed";
+  slug: string;
+  version: string;
+  linkedAt: string;
+  hasLocalChanges: boolean;
+}
+
+export interface AgentEnvProfileRegistryItemDiff {
+  added: string[];
+  removed: string[];
+  changed: string[];
+}
+
+export interface AgentEnvProfileRegistryDiff {
+  link: {
+    origin: "published" | "installed";
+    slug: string;
+    version: string;
+    profileId?: string;
+    versionId?: string;
+    linkedAt: string;
+  };
+  diff: {
+    descriptionChanged: boolean;
+    sourceAgentChanged: boolean;
+    hasLocalChanges: boolean;
+    mcps: AgentEnvProfileRegistryItemDiff;
+    skills: AgentEnvProfileRegistryItemDiff;
+    plugins: AgentEnvProfileRegistryItemDiff;
+  };
 }
 
 export interface AgentEnvProfilePlugin {
@@ -218,6 +252,25 @@ export interface AgentEnvRegistryStatus {
   apiFrontendUrl: string;
 }
 
+export type AgentEnvRegistryProfileSort = "recent" | "stars" | "downloads" | "alpha";
+
+export interface AgentEnvRegistryProfileSummary {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  version: string;
+  sourceKind: string;
+  githubRepoUrl?: string;
+  starsCount: number;
+  downloadsCount: number;
+  author?: { id: string; displayName?: string; avatarUrl?: string };
+  publishedAt?: string;
+  mcpCount: number;
+  skillCount: number;
+  pluginCount: number;
+}
+
 export interface AgentEnvRegistryPublishResult {
   slug: string;
   profileId: string;
@@ -247,6 +300,7 @@ export interface AgentEnvApi {
     model: string,
   ): Promise<{ settings: AgentEnvSettings; backup: string | null }>;
   listAgentEnvProfiles(): Promise<AgentEnvProfileSummary[]>;
+  getAgentEnvProfileRegistryDiff(name: string): Promise<AgentEnvProfileRegistryDiff>;
   getAgentEnvProfile(name: string): Promise<AgentEnvProfile>;
   updateAgentEnvProfile(
     name: string,
@@ -270,6 +324,10 @@ export interface AgentEnvApi {
   }): Promise<AgentEnvProfileApplyResult>;
   exportAgentEnvProfile(name: string): Promise<{ archivePath: string }>;
   importAgentEnvProfile(file: Blob, options?: { force?: boolean }): Promise<AgentEnvProfileImportResult>;
+  listAgentEnvRegistryProfiles(input?: {
+    query?: string;
+    sort?: AgentEnvRegistryProfileSort;
+  }): Promise<AgentEnvRegistryProfileSummary[]>;
   getRegistryAuthStatus(): Promise<AgentEnvRegistryStatus>;
   startRegistryAuth(): Promise<{ url: string; state: string }>;
   getRegistryAuthOutcome(state: string): Promise<{ status: string; message?: string }>;

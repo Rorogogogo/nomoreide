@@ -98,6 +98,13 @@ export interface ProfileSummary {
   skillCount: number;
   pluginCount: number;
   updatedAt: string;
+  registry?: {
+    origin: "published" | "installed";
+    slug: string;
+    version: string;
+    linkedAt: string;
+    hasLocalChanges: boolean;
+  };
 }
 
 export function slugifyProfileName(input: string): string {

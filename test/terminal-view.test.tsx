@@ -29,6 +29,9 @@ const xtermMocks = vi.hoisted(() => ({
     focus: ReturnType<typeof vi.fn>;
     inputDispose: ReturnType<typeof vi.fn>;
     options: Record<string, unknown>;
+    parser: {
+      registerOscHandler: ReturnType<typeof vi.fn>;
+    };
     selectionDispose: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
   }>,
@@ -41,6 +44,10 @@ vi.mock("@xterm/xterm", () => ({
     getSelection = vi.fn(() => "");
     inputDispose = vi.fn();
     options: Record<string, unknown>;
+    oscDispose = vi.fn();
+    parser = {
+      registerOscHandler: vi.fn(() => ({ dispose: this.oscDispose })),
+    };
     selectionDispose = vi.fn();
     write = vi.fn();
     constructor(options: Record<string, unknown>) {
@@ -498,11 +505,8 @@ describe("TerminalViewport", () => {
     expect(fit.fit).not.toHaveBeenCalled();
     expect(socket.send).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTime(TERMINAL_RESIZE_SETTLE_MS));
-    expect(fit.fit).toHaveBeenCalledOnce();
-    expect(socket.send).toHaveBeenCalledOnce();
-    expect(socket.send).toHaveBeenCalledWith(
-      JSON.stringify({ cols: 80, rows: 24, type: "resize" }),
-    );
+    expect(fit.fit).not.toHaveBeenCalled();
+    expect(socket.send).not.toHaveBeenCalled();
 
     fit.fit.mockClear();
     await act(async () => {
@@ -519,6 +523,10 @@ describe("TerminalViewport", () => {
     await act(async () => vi.runOnlyPendingTimers());
     expect(terminal.focus).toHaveBeenCalledOnce();
     expect(fit.fit).toHaveBeenCalledOnce();
+    expect(socket.send).toHaveBeenCalledOnce();
+    expect(socket.send).toHaveBeenCalledWith(
+      JSON.stringify({ cols: 80, rows: 24, type: "resize" }),
+    );
 
     const statusCount = statuses.length;
     await act(async () => root.unmount());

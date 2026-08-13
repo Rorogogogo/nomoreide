@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalPane } from "../src/web/client/src/features/terminal/terminal-pane";
-import { TerminalViewport } from "../src/web/client/src/features/terminal/terminal-viewport";
+import { TerminalViewport, type TerminalViewportHandle } from "../src/web/client/src/features/terminal/terminal-viewport";
 import { TerminalView } from "../src/web/client/src/features/terminal/terminal-view";
 
 const mocks = vi.hoisted(() => ({
@@ -26,7 +26,10 @@ const mocks = vi.hoisted(() => ({
     dispose: ReturnType<typeof vi.fn>;
     getSelection: ReturnType<typeof vi.fn>;
     inputDispose: ReturnType<typeof vi.fn>;
+    oscHandlers: Map<number, (data: string) => boolean>;
     options: Record<string, unknown>;
+    refresh: ReturnType<typeof vi.fn>;
+    rows: number;
     selectionDispose: ReturnType<typeof vi.fn>;
     selectionListener?: () => void;
   }>,
@@ -62,7 +65,16 @@ vi.mock("@xterm/xterm", () => ({
     focus = vi.fn();
     getSelection = vi.fn(() => "selected output");
     inputDispose = vi.fn();
+    oscHandlers = new Map<number, (data: string) => boolean>();
     options: Record<string, unknown>;
+    parser = {
+      registerOscHandler: vi.fn((identifier: number, handler: (data: string) => boolean) => {
+        this.oscHandlers.set(identifier, handler);
+        return { dispose: vi.fn(() => this.oscHandlers.delete(identifier)) };
+      }),
+    };
+    refresh = vi.fn();
+    rows = 24;
     selectionDispose = vi.fn();
     selectionListener?: () => void;
     write = vi.fn();
@@ -151,6 +163,32 @@ afterEach(() => {
 });
 
 describe("terminal display preferences", () => {
+  test("keeps Codex palette-neutral by consuming startup color queries", async () => {
+    const mounted = await mount(
+      <TerminalViewport active sessionId="term_codex" suppressColorQueries />,
+    );
+    const terminal = mocks.terminals[0];
+
+    expect(terminal.oscHandlers.get(10)?.("?")).toBe(true);
+    expect(terminal.oscHandlers.get(11)?.(" ? ")).toBe(true);
+    expect(terminal.oscHandlers.get(11)?.("rgb:ffff/ffff/ffff")).toBe(false);
+
+    await act(async () => mounted.root.unmount());
+    expect(terminal.oscHandlers.size).toBe(0);
+  });
+
+  test("observer mode renders a terminal but refuses imperative paste", async () => {
+    const ref = { current: null as TerminalViewportHandle | null };
+    const mounted = await mount(
+      <TerminalViewport active interactive={false} ref={ref} sessionId="term_observer" />,
+    );
+
+    expect(mocks.terminals[0].constructorOptions.disableStdin).toBe(true);
+    expect(ref.current?.paste("do not forward")).toBe(false);
+
+    await act(async () => mounted.root.unmount());
+  });
+
   test("constructs xterm from settings and updates confirmed options live", async () => {
     const settings = { ...mocks.display, fontSize: 14, cursorStyle: "bar" as const, scrollback: 9_000 };
     const mounted = await mount(
@@ -182,6 +220,7 @@ describe("terminal display preferences", () => {
     });
     expect(fit.fit).toHaveBeenCalled();
 
+    terminal.refresh.mockClear();
     mocks.resolvedTheme = "dark";
     await act(async () => {
       mounted.root.render(
@@ -194,6 +233,7 @@ describe("terminal display preferences", () => {
         foreground: "#f2f2f2",
       }),
     );
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 23);
     expect(mocks.terminals).toHaveLength(1);
     await act(async () => mounted.root.unmount());
   });

@@ -57,10 +57,15 @@ export async function readForm(
 /** Read a JSON request body, returning `{}` for an empty or invalid payload. */
 export async function readJson(
   request: IncomingMessage,
+  maxBytes = Number.POSITIVE_INFINITY,
 ): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
+  let bytes = 0;
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bytes += buffer.length;
+    if (bytes > maxBytes) throw new RequestBodyTooLargeError();
+    chunks.push(buffer);
   }
   const raw = Buffer.concat(chunks).toString("utf8").trim();
   if (!raw) return {};
@@ -71,6 +76,12 @@ export async function readJson(
       : {};
   } catch {
     return {};
+  }
+}
+
+export class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("Request body is too large.");
   }
 }
 

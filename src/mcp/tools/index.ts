@@ -15,6 +15,7 @@ import { ONBOARD_TOOL_NAMES, registerOnboardTools } from "./onboard.js";
 import { registerServiceTools, SERVICE_TOOL_NAMES } from "./services.js";
 import { registerSnapshotTools, SNAPSHOT_TOOL_NAMES } from "./snapshots.js";
 import { registerVercelTools, VERCEL_TOOL_NAMES } from "./vercel.js";
+import { registerTerminalTools, TERMINAL_TOOL_NAMES } from "./terminal.js";
 
 /**
  * Every tool name NoMoreIDE exposes, in registration order. Each domain owns
@@ -38,6 +39,7 @@ export const NOMOREIDE_TOOL_NAMES = [
   ...AGENT_ENV_TOOL_NAMES,
   ...AGENT_PROFILE_TOOL_NAMES,
   ...AGENT_REGISTRY_TOOL_NAMES,
+  ...TERMINAL_TOOL_NAMES,
 ] as const;
 
 interface RegisterNoMoreIdeToolsOptions extends ToolContext {
@@ -67,6 +69,7 @@ export function registerNoMoreIdeTools(
   registerAgentEnvTools(server, ctx);
   registerAgentProfileTools(server, ctx);
   registerAgentRegistryTools(server, ctx);
+  registerTerminalTools(server, ctx);
 }
 
 export type { ToolContext } from "./context.js";

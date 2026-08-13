@@ -277,6 +277,14 @@ nomoreide_open_ui
 nomoreide_close_ui
 ```
 
+Terminal presentation tools (macOS):
+
+```text
+nomoreide_list_terminal_sessions
+nomoreide_open_terminal
+nomoreide_reclaim_terminal
+```
+
 Agent environment tools:
 
 ```text

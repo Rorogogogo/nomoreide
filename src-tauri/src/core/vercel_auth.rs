@@ -112,10 +112,7 @@ pub async fn cli_status() -> CliStatus {
 ///
 /// Returns an actionable message rather than None: every caller needs a token
 /// to do anything, and the message is what the UI shows.
-pub async fn resolve(
-    store: &ConfigStore,
-    config: &Config,
-) -> Result<ResolvedCredential, String> {
+pub async fn resolve(store: &ConfigStore, config: &Config) -> Result<ResolvedCredential, String> {
     let connection = config.vercel.as_ref();
     let team_id = connection.and_then(|c| c.team_id.clone());
 
@@ -173,9 +170,11 @@ async fn oauth_access_token(store: &ConfigStore, config: &Config) -> Result<Stri
         return Err("Your Vercel sign-in has expired. Sign in to Vercel again.".into());
     };
 
-    let tokens = refresh_tokens(client_id, refresh_token).await.map_err(|error| {
-        format!("Could not renew your Vercel sign-in ({error}). Sign in to Vercel again.")
-    })?;
+    let tokens = refresh_tokens(client_id, refresh_token)
+        .await
+        .map_err(|error| {
+            format!("Could not renew your Vercel sign-in ({error}). Sign in to Vercel again.")
+        })?;
     store
         .update_vercel_tokens(
             tokens.access_token.clone(),

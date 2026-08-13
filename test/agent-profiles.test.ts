@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -240,6 +240,26 @@ describe("agent-profiles store + transfer + apply", () => {
       linear: { kind: "local", command: "npx", args: ["linear-mcp"] },
     });
     expect(await listProfiles(opts())).toHaveLength(1);
+  });
+
+  it("materializes a linked skill when snapshotting an agent", async () => {
+    const sourceDir = await mkdtemp(path.join(os.tmpdir(), "nomoreide-linked-skill-"));
+    await writeFile(path.join(sourceDir, "SKILL.md"), "# linked helper\n", "utf8");
+    const liveSkillsDir = path.join(homeDir, ".claude", "skills");
+    await mkdir(liveSkillsDir, { recursive: true });
+    await symlink(sourceDir, path.join(liveSkillsDir, "linked-helper"));
+
+    const profile = await snapshotProfileFromAgent(
+      { agent: "claude", name: "linked-snapshot", cwd },
+      opts(),
+    );
+
+    expect(profile.skills).toEqual([{ name: "linked-helper" }]);
+    const storedDir = path.join(profileSkillsDir(profile.name, opts()), "linked-helper");
+    expect((await lstat(storedDir)).isSymbolicLink()).toBe(false);
+    await expect(readFile(path.join(storedDir, "SKILL.md"), "utf8")).resolves.toBe(
+      "# linked helper\n",
+    );
   });
 
   it("round-trips plugin bundles and restores native or managed targets on apply", async () => {
@@ -518,6 +538,92 @@ describe("agent-profiles store + transfer + apply", () => {
     ).resolves.toMatchObject({ name: "secure" });
   });
 
+  it("exports linked skill directories and files as portable content", async () => {
+    await createProfile({ name: "linked" }, opts());
+
+    const externalSkill = await mkdtemp(path.join(os.tmpdir(), "nomoreide-external-skill-"));
+    await writeFile(path.join(externalSkill, "SKILL.md"), "# root link\n", "utf8");
+    await mkdir(profileSkillsDir("linked", opts()), { recursive: true });
+    await symlink(externalSkill, path.join(profileSkillsDir("linked", opts()), "root-link"));
+
+    const nestedSkill = path.join(profileSkillsDir("linked", opts()), "nested-link");
+    await mkdir(nestedSkill, { recursive: true });
+    const externalFile = path.join(cwd, "SKILL.md");
+    await writeFile(externalFile, "# nested link\n", "utf8");
+    await symlink(externalFile, path.join(nestedSkill, "SKILL.md"));
+    const internalDocs = path.join(nestedSkill, "docs");
+    await mkdir(internalDocs, { recursive: true });
+    await writeFile(path.join(internalDocs, "guide.md"), "portable docs\n", "utf8");
+    await symlink(internalDocs, path.join(nestedSkill, "linked-docs"));
+
+    await updateProfile(
+      "linked",
+      { skills: [{ name: "root-link" }, { name: "nested-link" }] },
+      opts(),
+    );
+
+    const archivePath = path.join(cwd, "linked.tar.gz");
+    await exportProfile({ name: "linked", outputPath: archivePath, cwd }, opts());
+    const listing = await promisify(execFile)("tar", ["-tvzf", archivePath]);
+    expect(listing.stdout.split("\n").filter(Boolean).every((line) => !/^[lh]/.test(line))).toBe(
+      true,
+    );
+
+    const importedHome = await mkdtemp(path.join(os.tmpdir(), "nomoreide-linked-import-"));
+    await expect(importProfile({ archivePath }, { homeDir: importedHome })).resolves.toMatchObject({
+      name: "linked",
+      skillCount: 2,
+    });
+    const importedSkills = profileSkillsDir("linked", { homeDir: importedHome });
+    expect((await lstat(path.join(importedSkills, "root-link"))).isSymbolicLink()).toBe(false);
+    expect((await lstat(path.join(importedSkills, "nested-link", "SKILL.md"))).isSymbolicLink()).toBe(
+      false,
+    );
+    expect((await lstat(path.join(importedSkills, "nested-link", "linked-docs"))).isSymbolicLink()).toBe(
+      false,
+    );
+    await expect(readFile(path.join(importedSkills, "root-link", "SKILL.md"), "utf8")).resolves.toBe(
+      "# root link\n",
+    );
+    await expect(
+      readFile(path.join(importedSkills, "nested-link", "SKILL.md"), "utf8"),
+    ).resolves.toBe("# nested link\n");
+    await expect(
+      readFile(path.join(importedSkills, "nested-link", "linked-docs", "guide.md"), "utf8"),
+    ).resolves.toBe("portable docs\n");
+  });
+
+  it("refuses to export a profile with a broken bundled skill link", async () => {
+    await createProfile({ name: "broken-link" }, opts());
+    const skillDir = path.join(profileSkillsDir("broken-link", opts()), "helper");
+    await mkdir(skillDir, { recursive: true });
+    await symlink(path.join(cwd, "missing-SKILL.md"), path.join(skillDir, "SKILL.md"));
+    await updateProfile("broken-link", { skills: [{ name: "helper" }] }, opts());
+
+    const archivePath = path.join(cwd, "broken-link.tar.gz");
+    await writeFile(archivePath, "previous valid export", "utf8");
+    await expect(
+      exportProfile({ name: "broken-link", outputPath: archivePath, cwd }, opts()),
+    ).rejects.toThrow('Could not export bundled skill "helper".');
+    await expect(readFile(archivePath, "utf8")).resolves.toBe("previous valid export");
+  });
+
+  it("refuses to export a nested link that escapes the skill bundle", async () => {
+    await createProfile({ name: "escaping-link" }, opts());
+    const skillDir = path.join(profileSkillsDir("escaping-link", opts()), "helper");
+    await mkdir(skillDir, { recursive: true });
+    const externalFile = path.join(cwd, ".env");
+    await writeFile(externalFile, "SECRET=do-not-publish\n", "utf8");
+    await symlink(externalFile, path.join(skillDir, "notes.txt"));
+    await updateProfile("escaping-link", { skills: [{ name: "helper" }] }, opts());
+
+    const archivePath = path.join(cwd, "escaping-link.tar.gz");
+    await expect(
+      exportProfile({ name: "escaping-link", outputPath: archivePath, cwd }, opts()),
+    ).rejects.toThrow('Could not export bundled skill "helper".');
+    await expect(stat(archivePath)).rejects.toThrow();
+  });
+
   it("previews add/identical/conflict and applies with skips + backups", async () => {
     await mkdir(path.join(homeDir, ".codex"), { recursive: true });
     await writeFile(
@@ -607,6 +713,21 @@ describe("profile archive rejection messages", () => {
   it("reports an unsafe path rather than the generic extraction error", async () => {
     const archivePath = await makeArchive({ "evil.sh": "#!/bin/sh\n" });
     await expect(importProfile({ archivePath })).rejects.toThrow(/unsafe path/);
+  });
+
+  it("identifies a rejected link entry", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "nomoreide-archive-link-"));
+    await writeFile(path.join(dir, "manifest.json"), "{}\n", "utf8");
+    await symlink("manifest.json", path.join(dir, "profile.json"));
+    const archivePath = path.join(
+      await mkdtemp(path.join(os.tmpdir(), "nomoreide-archive-out-")),
+      "profile.tar.gz",
+    );
+    await execFileAsync("tar", ["-czf", archivePath, "-C", dir, "."]);
+
+    await expect(importProfile({ archivePath })).rejects.toThrow(
+      "Profile archive contains a link entry, which is not allowed: ./profile.json",
+    );
   });
 
   it("still reports a genuinely unreadable file as an extraction failure", async () => {

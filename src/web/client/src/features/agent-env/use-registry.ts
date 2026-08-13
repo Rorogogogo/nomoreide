@@ -167,8 +167,9 @@ export function useRegistry(onProfilesChanged: () => void) {
           text: `Published "${result.slug}" v${result.version} to the registry (credentials redacted)`,
           preserve: true,
         });
+        await onProfilesChanged();
       }),
-    [run, toasts],
+    [onProfilesChanged, run, toasts],
   );
 
   return {

@@ -12,6 +12,7 @@ import {
   defaultGlobalConfigPath,
 } from "../core/config-store.js";
 import { DbPeek } from "../core/db-peek.js";
+import { ContextLibrary } from "../core/context-library.js";
 import { DbWrite } from "../core/db-write.js";
 import { ErrorInbox } from "../core/error-inbox.js";
 import { FixLoop } from "../core/fix-loop.js";
@@ -51,6 +52,7 @@ import { errorMessage } from "./routes/context.js";
 export interface WebServerOptions {
   configPath?: string;
   settingsPath?: string;
+  contextRoot?: string;
   cwd?: string;
   logDir?: string;
   /**
@@ -108,11 +110,21 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
   metricsStore.start();
   const toolCallStore = options.toolCallStore ?? new ToolCallStore();
   const errorInbox = new ErrorInbox({ logStore, configStore, cwd });
+  const contextLibrary = new ContextLibrary({
+    configStore,
+    errorInbox,
+    cwd,
+    root: options.contextRoot,
+  });
   const dbPeek = new DbPeek({ configStore });
   const dbWrite = new DbWrite({ configStore });
   const testRunner = new TestRunner({ logStore, configStore, cwd });
   const terminalManager =
-    options.terminalManager ?? new TerminalSessionManager({ cwd });
+    options.terminalManager ?? new TerminalSessionManager({
+      cwd,
+      externalTerminalPreference: async () =>
+        (await appSettings.load()).terminal.externalTerminal,
+    });
   const reproBundle = new ReproBundleBuilder({
     errorInbox,
     manager,
@@ -151,6 +163,7 @@ export function createWebServer(options: WebServerOptions = {}): WebServerApp {
     agentSessions,
     appSettings,
     configStore,
+    contextLibrary,
     cwd,
     dbPeek,
     dbWrite,
@@ -265,7 +278,7 @@ function createTerminalSocketServer(
     socket.on("message", (data) => {
       try {
         terminalManager.touch(id); // client activity resets the idle timer
-        handleTerminalSocketMessage(session, data, repairTerminal);
+        handleTerminalSocketMessage(terminalManager, id, session, data, repairTerminal);
       } catch (caught) {
         sendTerminalMessage(socket, {
           error:
@@ -289,18 +302,22 @@ function createTerminalSocketServer(
 }
 
 function handleTerminalSocketMessage(
+  terminalManager: TerminalSessionManagerLike,
+  id: string,
   session: TerminalSessionLike,
   data: RawData,
   repairTerminal: () => unknown,
 ): void {
   const message = JSON.parse(data.toString()) as Record<string, unknown>;
   if (message.type === "input" && typeof message.data === "string") {
-    session.write(message.data);
+    if (terminalManager.writeFromDock) terminalManager.writeFromDock(id, message.data);
+    else session.write(message.data);
     return;
   }
   if (message.type === "resize") {
     const size = normalizeSize(message);
-    session.resize(size.cols, size.rows);
+    if (terminalManager.resizeFromDock) terminalManager.resizeFromDock(id, size.cols, size.rows);
+    else session.resize(size.cols, size.rows);
     return;
   }
   if (message.type === "restart") {
@@ -330,10 +347,12 @@ function handleTerminalSocketMessage(
 
 class TerminalRepairError extends Error {}
 
-function socketSize(url: URL): TerminalSize {
+function socketSize(url: URL): Partial<TerminalSize> {
+  const cols = parseDimension(url.searchParams.get("cols"));
+  const rows = parseDimension(url.searchParams.get("rows"));
   return {
-    cols: normalizeDimension(url.searchParams.get("cols"), 80),
-    rows: normalizeDimension(url.searchParams.get("rows"), 24),
+    ...(cols === undefined ? {} : { cols }),
+    ...(rows === undefined ? {} : { rows }),
   };
 }
 
@@ -345,8 +364,12 @@ function normalizeSize(input: Record<string, unknown>): TerminalSize {
 }
 
 function normalizeDimension(value: unknown, fallback: number): number {
+  return parseDimension(value) ?? fallback;
+}
+
+function parseDimension(value: unknown): number | undefined {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
 }
 
 function stateMessage(snapshot: TerminalSnapshot): Record<string, unknown> {

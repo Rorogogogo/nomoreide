@@ -164,7 +164,11 @@ pub async fn get_agent_info(state: State<'_, AppState>) -> Result<AgentInfo, Str
         .as_ref()
         .and_then(|name| config.git_repositories.iter().find(|r| &r.name == name))
         .or_else(|| config.git_repositories.first())
-        .map(|r| r.active_worktree_path.clone().unwrap_or_else(|| r.path.clone()))
+        .map(|r| {
+            r.active_worktree_path
+                .clone()
+                .unwrap_or_else(|| r.path.clone())
+        })
         .unwrap_or_else(|| home_dir().to_string_lossy().into_owned());
 
     let home = home_dir();
@@ -236,7 +240,10 @@ fn detect_agent() -> Detected {
         if env("CLAUDE_PROJECT_DIR").is_some() {
             signals.push("CLAUDE_PROJECT_DIR set".into());
         }
-    } else if env("CODEX_HOME").is_some() || env("CODEX_SANDBOX").is_some() || env("CODEX_CLI").is_some() {
+    } else if env("CODEX_HOME").is_some()
+        || env("CODEX_SANDBOX").is_some()
+        || env("CODEX_CLI").is_some()
+    {
         name = "codex".into();
         label = "OpenAI Codex CLI".into();
         if env("CODEX_HOME").is_some() {
@@ -245,7 +252,10 @@ fn detect_agent() -> Detected {
         if env("CODEX_SANDBOX").is_some() {
             signals.push("CODEX_SANDBOX set".into());
         }
-    } else if env("GEMINI_API_KEY").is_some() || env("GEMINI_CLI").is_some() || env("GOOGLE_GENAI_USE_VERTEXAI").is_some() {
+    } else if env("GEMINI_API_KEY").is_some()
+        || env("GEMINI_CLI").is_some()
+        || env("GOOGLE_GENAI_USE_VERTEXAI").is_some()
+    {
         name = "gemini".into();
         label = "Gemini CLI".into();
         if env("GEMINI_CLI").is_some() {
@@ -345,7 +355,11 @@ fn claude_project_memory(cwd: &str, home: &Path) -> ProjectInfo {
     }
 
     let slug = project_slug(cwd);
-    let memory_dir = home.join(".claude").join("projects").join(&slug).join("memory");
+    let memory_dir = home
+        .join(".claude")
+        .join("projects")
+        .join(&slug)
+        .join("memory");
     if let Ok(entries) = fs::read_dir(&memory_dir) {
         result.memory_dir = Some(memory_dir.to_string_lossy().into_owned());
         let mut files = read_md_memory_files(entries);
@@ -423,9 +437,22 @@ fn read_codex_memory_dir(dir: &Path, out: &mut ProjectInfo) {
 
 fn claude_skills(home: &Path, cwd: &str) -> Vec<Skill> {
     let mut skills = Vec::new();
-    read_skills_dir(&home.join(".claude").join("skills"), "user", &mut skills, false);
-    read_skills_dir(&Path::new(cwd).join(".claude").join("skills"), "project", &mut skills, false);
-    read_plugin_skills(&home.join(".claude").join("plugins").join("data"), &mut skills);
+    read_skills_dir(
+        &home.join(".claude").join("skills"),
+        "user",
+        &mut skills,
+        false,
+    );
+    read_skills_dir(
+        &Path::new(cwd).join(".claude").join("skills"),
+        "project",
+        &mut skills,
+        false,
+    );
+    read_plugin_skills(
+        &home.join(".claude").join("plugins").join("data"),
+        &mut skills,
+    );
     skills.sort_by(|a, b| a.name.cmp(&b.name));
     skills
 }
@@ -433,8 +460,18 @@ fn claude_skills(home: &Path, cwd: &str) -> Vec<Skill> {
 fn codex_skills(codex_home: &Path, cwd: &str) -> Vec<Skill> {
     let mut skills = Vec::new();
     read_skills_dir(&codex_home.join("skills"), "user", &mut skills, true);
-    read_skills_dir(&codex_home.join("skills").join(".system"), "system", &mut skills, false);
-    read_skills_dir(&Path::new(cwd).join(".codex").join("skills"), "project", &mut skills, false);
+    read_skills_dir(
+        &codex_home.join("skills").join(".system"),
+        "system",
+        &mut skills,
+        false,
+    );
+    read_skills_dir(
+        &Path::new(cwd).join(".codex").join("skills"),
+        "project",
+        &mut skills,
+        false,
+    );
     skills.sort_by(|a, b| {
         if a.scope != b.scope {
             return a.scope.cmp(&b.scope);
@@ -515,7 +552,10 @@ fn read_skill_description(skill_dir: &Path) -> Option<String> {
 // ---- Claude: plugins ----
 
 fn claude_plugins(home: &Path) -> Vec<Plugin> {
-    let registry = home.join(".claude").join("plugins").join("installed_plugins.json");
+    let registry = home
+        .join(".claude")
+        .join("plugins")
+        .join("installed_plugins.json");
     let raw = match fs::read_to_string(&registry) {
         Ok(r) => r,
         Err(_) => return vec![],
@@ -679,7 +719,10 @@ fn claude_mcp_servers(home: &Path, cwd: &str) -> Vec<McpServer> {
 }
 
 fn mcp_entry(name: &str, scope: &str, raw: &serde_json::Value) -> McpServer {
-    let command = raw.get("command").and_then(|v| v.as_str()).map(String::from);
+    let command = raw
+        .get("command")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let args = raw.get("args").and_then(|v| v.as_array()).map(|a| {
         a.iter()
             .filter_map(|x| x.as_str().map(String::from))
@@ -768,10 +811,26 @@ fn base_name(path: &str) -> String {
 
 fn claude_hooks(home: &Path, cwd: &str) -> Vec<Hook> {
     let mut hooks = Vec::new();
-    read_hooks_file(&home.join(".claude").join("settings.json"), "user", &mut hooks);
-    read_hooks_file(&home.join(".claude").join("settings.local.json"), "user", &mut hooks);
-    read_hooks_file(&Path::new(cwd).join(".claude").join("settings.json"), "project", &mut hooks);
-    read_hooks_file(&Path::new(cwd).join(".claude").join("settings.local.json"), "project", &mut hooks);
+    read_hooks_file(
+        &home.join(".claude").join("settings.json"),
+        "user",
+        &mut hooks,
+    );
+    read_hooks_file(
+        &home.join(".claude").join("settings.local.json"),
+        "user",
+        &mut hooks,
+    );
+    read_hooks_file(
+        &Path::new(cwd).join(".claude").join("settings.json"),
+        "project",
+        &mut hooks,
+    );
+    read_hooks_file(
+        &Path::new(cwd).join(".claude").join("settings.local.json"),
+        "project",
+        &mut hooks,
+    );
     sort_hooks(&mut hooks);
     hooks
 }
@@ -801,7 +860,10 @@ fn read_hooks_file(settings_path: &Path, scope: &str, out: &mut Vec<Hook>) {
                 Some(o) => o,
                 None => continue,
             };
-            let matcher = entry.get("matcher").and_then(|v| v.as_str()).map(String::from);
+            let matcher = entry
+                .get("matcher")
+                .and_then(|v| v.as_str())
+                .map(String::from);
             let raw_hooks = entry.get("hooks").and_then(|v| v.as_array());
             let raw_hooks = match raw_hooks {
                 Some(h) => h,
@@ -819,7 +881,10 @@ fn read_hooks_file(settings_path: &Path, scope: &str, out: &mut Vec<Hook>) {
                     settings_path: path_str.clone(),
                     matcher: matcher.clone(),
                     kind: hook.get("type").and_then(|v| v.as_str()).map(String::from),
-                    command: hook.get("command").and_then(|v| v.as_str()).map(String::from),
+                    command: hook
+                        .get("command")
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
                     status: "default".to_string(),
                     trusted: None,
                 });
@@ -834,11 +899,18 @@ fn sort_hooks(hooks: &mut [Hook]) {
         if event != std::cmp::Ordering::Equal {
             return event;
         }
-        let matcher = a.matcher.clone().unwrap_or_default().cmp(&b.matcher.clone().unwrap_or_default());
+        let matcher = a
+            .matcher
+            .clone()
+            .unwrap_or_default()
+            .cmp(&b.matcher.clone().unwrap_or_default());
         if matcher != std::cmp::Ordering::Equal {
             return matcher;
         }
-        a.command.clone().unwrap_or_default().cmp(&b.command.clone().unwrap_or_default())
+        a.command
+            .clone()
+            .unwrap_or_default()
+            .cmp(&b.command.clone().unwrap_or_default())
     });
 }
 
@@ -864,10 +936,7 @@ fn read_codex_config(codex_home: &Path) -> CodexConfig {
             result.mcp_servers.insert(parts[1].clone(), values);
         } else if parts.first().map(|s| s.as_str()) == Some("projects") && parts.len() == 2 {
             result.projects.insert(parts[1].clone(), values);
-        } else if parts.len() == 3
-            && parts[0] == "hooks"
-            && parts[1] == "state"
-        {
+        } else if parts.len() == 3 && parts[0] == "hooks" && parts[1] == "state" {
             result.hooks_state.insert(parts[2].clone(), values);
         }
     }
@@ -884,7 +953,9 @@ fn parse_toml_sections(raw: &str) -> HashMap<String, serde_json::Value> {
         }
         if trimmed.starts_with('[') && trimmed.ends_with(']') {
             let inner = trimmed[1..trimmed.len() - 1].to_string();
-            sections.entry(inner.clone()).or_insert_with(|| serde_json::json!({}));
+            sections
+                .entry(inner.clone())
+                .or_insert_with(|| serde_json::json!({}));
             current = Some(inner);
             continue;
         }
@@ -1000,7 +1071,11 @@ fn codex_mcp_servers(config: &CodexConfig) -> Vec<McpServer> {
 fn codex_hooks(codex_home: &Path, cwd: &str, config: &CodexConfig) -> Vec<Hook> {
     let mut hooks = Vec::new();
     read_hooks_file(&codex_home.join("hooks.json"), "user", &mut hooks);
-    read_hooks_file(&Path::new(cwd).join(".codex").join("hooks.json"), "project", &mut hooks);
+    read_hooks_file(
+        &Path::new(cwd).join(".codex").join("hooks.json"),
+        "project",
+        &mut hooks,
+    );
 
     for hook in &mut hooks {
         let state = config
@@ -1146,9 +1221,7 @@ fn collect_jsonl_files(dir: &Path, out: &mut Vec<PathBuf>) {
         };
         if file_type.is_dir() {
             collect_jsonl_files(&path, out);
-        } else if file_type.is_file()
-            && path.extension().map(|e| e == "jsonl").unwrap_or(false)
-        {
+        } else if file_type.is_file() && path.extension().map(|e| e == "jsonl").unwrap_or(false) {
             out.push(path);
         }
     }

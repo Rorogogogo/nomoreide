@@ -14,6 +14,7 @@ export * from "./agent-chat.js";
 export * from "./agent-env.js";
 export * from "./activity.js";
 export * from "./database.js";
+export * from "./context.js";
 export * from "./docker.js";
 export * from "./errors.js";
 export * from "./git.js";

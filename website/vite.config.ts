@@ -27,6 +27,7 @@ const browserPackageAliases = [
   "@radix-ui/react-slot",
   "@tauri-apps/api",
   "@tauri-apps/plugin-dialog",
+  "@xyflow/react",
   "class-variance-authority",
   "clsx",
   "codemirror",

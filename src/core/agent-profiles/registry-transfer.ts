@@ -9,7 +9,11 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRegistryClient, type RegistryClient } from "./registry-client.js";
-import { getProfile, type ProfileStoreOptions } from "./store.js";
+import {
+  getProfile,
+  writeProfileRegistryLink,
+  type ProfileStoreOptions,
+} from "./store.js";
 import { exportProfile, importProfile, type ImportResult } from "./transfer.js";
 
 export interface PublishProfileInput {
@@ -95,6 +99,18 @@ export async function publishProfileToRegistry(
       versionId: registryVersion.id,
     });
 
+    await writeProfileRegistryLink(
+      input.name,
+      {
+        origin: "published",
+        slug: input.slug,
+        version,
+        profileId: registryProfile.id,
+        versionId: registryVersion.id,
+      },
+      options,
+    );
+
     return {
       slug: input.slug,
       profileId: registryProfile.id,
@@ -158,6 +174,15 @@ export async function installProfileFromRegistry(
         force: input.force,
         as: input.as,
         credentials: input.credentials,
+      },
+      options,
+    );
+    await writeProfileRegistryLink(
+      result.name,
+      {
+        origin: "installed",
+        slug,
+        version: descriptor.version,
       },
       options,
     );

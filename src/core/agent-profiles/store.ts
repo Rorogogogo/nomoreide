@@ -5,7 +5,18 @@
  * an agent goes through `apply.ts` (which uses the write-guarded
  * agent-env-writers layer).
  */
-import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  cp,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -24,6 +35,13 @@ import {
   type ProfileSummary,
 } from "./types.js";
 import { pluginBundleDigest } from "./plugin-bundle.js";
+import {
+  createProfileRegistrySnapshot,
+  diffProfileRegistrySnapshots,
+  profileRegistryLinkSchema,
+  type ProfileRegistryDiff,
+  type ProfileRegistryLink,
+} from "./publication.js";
 
 export interface ProfileStoreOptions {
   /** Injectable for tmpdir tests, like the agent-env readers. */
@@ -41,6 +59,10 @@ export function profileDir(name: string, options: ProfileStoreOptions = {}): str
 
 function profileFile(name: string, options: ProfileStoreOptions = {}): string {
   return path.join(profileDir(name, options), "profile.json");
+}
+
+function profileRegistryFile(name: string, options: ProfileStoreOptions = {}): string {
+  return path.join(profileDir(name, options), "registry.json");
 }
 
 export function profileSkillsDir(name: string, options: ProfileStoreOptions = {}): string {
@@ -80,6 +102,7 @@ export async function listProfiles(
       const filePath = profileFile(entry.name, options);
       const info = await stat(filePath);
       const profile = await getProfile(entry.name, options);
+      const registry = await profileRegistrySummary(entry.name, profile, options);
       summaries.push({
         name: profile.name,
         description: profile.description,
@@ -88,6 +111,7 @@ export async function listProfiles(
         skillCount: profile.skills.length,
         pluginCount: profile.plugins.length,
         updatedAt: info.mtime.toISOString(),
+        ...(registry ? { registry } : {}),
         mtimeMs: info.mtimeMs,
       });
     } catch {
@@ -197,6 +221,83 @@ export async function writeProfile(
   await rename(tmpPath, filePath);
 }
 
+export async function readProfileRegistryLink(
+  name: string,
+  options: ProfileStoreOptions = {},
+): Promise<ProfileRegistryLink | null> {
+  try {
+    const parsed = profileRegistryLinkSchema.safeParse(
+      JSON.parse(await readFile(profileRegistryFile(name, options), "utf8")),
+    );
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeProfileRegistryLink(
+  name: string,
+  input: Omit<ProfileRegistryLink, "schemaVersion" | "linkedAt" | "baseline">,
+  options: ProfileStoreOptions = {},
+): Promise<ProfileRegistryLink> {
+  const profile = await getProfile(name, options);
+  const link: ProfileRegistryLink = {
+    schemaVersion: 1,
+    ...input,
+    linkedAt: new Date().toISOString(),
+    baseline: await createProfileRegistrySnapshot(profile, profileDir(name, options)),
+  };
+  await writeProfileRegistryLinkData(name, link, options);
+  return link;
+}
+
+export async function clearProfileRegistryLink(
+  name: string,
+  options: ProfileStoreOptions = {},
+): Promise<void> {
+  await rm(profileRegistryFile(name, options), { force: true });
+}
+
+export async function getProfileRegistryDiff(
+  name: string,
+  options: ProfileStoreOptions = {},
+): Promise<{ link: ProfileRegistryLink; diff: ProfileRegistryDiff } | null> {
+  const link = await readProfileRegistryLink(name, options);
+  if (!link) return null;
+  const profile = await getProfile(name, options);
+  const current = await createProfileRegistrySnapshot(profile, profileDir(name, options));
+  return { link, diff: diffProfileRegistrySnapshots(link.baseline, current) };
+}
+
+async function profileRegistrySummary(
+  name: string,
+  profile: Profile,
+  options: ProfileStoreOptions,
+): Promise<ProfileSummary["registry"]> {
+  const link = await readProfileRegistryLink(name, options);
+  if (!link) return undefined;
+  const current = await createProfileRegistrySnapshot(profile, profileDir(name, options));
+  return {
+    origin: link.origin,
+    slug: link.slug,
+    version: link.version,
+    linkedAt: link.linkedAt,
+    hasLocalChanges: current.contentDigest !== link.baseline.contentDigest,
+  };
+}
+
+async function writeProfileRegistryLinkData(
+  name: string,
+  link: ProfileRegistryLink,
+  options: ProfileStoreOptions,
+): Promise<void> {
+  const filePath = profileRegistryFile(name, options);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.tmp.${Date.now()}`;
+  await writeFile(tmpPath, `${JSON.stringify(link, null, 2)}\n`, "utf8");
+  await rename(tmpPath, filePath);
+}
+
 /**
  * Capture an agent's live config (MCPs + local skills) into a new profile.
  * Raw credential values are kept — the profile lives in the user's own config
@@ -246,7 +347,7 @@ export async function snapshotProfileFromAgent(
     try {
       const target = path.join(profilePluginsDir(name, options), bundleKey);
       await mkdir(path.dirname(target), { recursive: true });
-      await cp(plugin.installPath, target, { recursive: true, filter: profileAssetFilter });
+      await copyProfileAssetTree(plugin.installPath, target);
       const digest = await pluginBundleDigest(target);
       profile.plugins.push(toProfilePlugin(input.agent, plugin, bundleKey, digest));
       for (const skill of [...(plugin.pluginSkills ?? []), ...(plugin.pluginCommands ?? [])]) {
@@ -270,7 +371,7 @@ export async function snapshotProfileFromAgent(
     try {
       const target = path.join(profileSkillsDir(name, options), path.basename(skill.name));
       await mkdir(path.dirname(target), { recursive: true });
-      await cp(skill.installPath, target, { recursive: true, filter: profileAssetFilter });
+      await copyProfileAssetTree(skill.installPath, target);
       profile.skills.push({ name: skill.name });
     } catch {
       // unreadable skill dir — skip it rather than failing the snapshot
@@ -292,6 +393,7 @@ export async function refreshProfileFromAgent(
 ): Promise<Profile> {
   const name = assertValidProfileName(input.name);
   const existing = await getProfile(name, options);
+  const registryLink = await readProfileRegistryLink(name, options);
   const token = randomUUID();
   const stagingName = `${name}.refresh-${token}`;
   const currentDir = profileDir(name, options);
@@ -322,6 +424,9 @@ export async function refreshProfileFromAgent(
     try {
       await rename(stagingDir, currentDir);
       staged = false;
+      if (registryLink) {
+        await writeProfileRegistryLinkData(name, registryLink, options);
+      }
     } catch (error) {
       await rename(backupDir, currentDir);
       originalMoved = false;
@@ -373,6 +478,91 @@ function profileAssetFilter(source: string): boolean {
   return base !== ".git" && base !== ".DS_Store";
 }
 
+/**
+ * Copy portable profile content as real files and directories. Agent skill
+ * directories are often links into a shared skill checkout; preserving those
+ * links would make the profile machine-specific and produce archives that the
+ * importer correctly refuses to extract.
+ */
+export async function copyProfileAssetTree(source: string, target: string): Promise<void> {
+  try {
+    await validateProfileAssetTree(source);
+    await cp(source, target, {
+      recursive: true,
+      dereference: true,
+      filter: profileAssetFilter,
+    });
+  } catch (error) {
+    await rm(target, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function validateProfileAssetTree(source: string): Promise<void> {
+  const root = await realpath(source);
+
+  async function visit(
+    directory: string,
+    relativeDirectory: string,
+    ancestors: ReadonlySet<string>,
+  ): Promise<void> {
+    const resolvedDirectory = await realpath(directory);
+    if (ancestors.has(resolvedDirectory)) {
+      throw new Error(`Profile asset contains a circular link: ${relativeDirectory || "."}`);
+    }
+    const nextAncestors = new Set(ancestors).add(resolvedDirectory);
+
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!profileAssetFilter(entry.name)) continue;
+      const entryPath = path.join(directory, entry.name);
+      const relative = relativeDirectory
+        ? path.join(relativeDirectory, entry.name)
+        : entry.name;
+      const info = await lstat(entryPath);
+
+      if (info.isSymbolicLink()) {
+        const resolved = await realpath(entryPath);
+        const targetInfo = await stat(resolved);
+        if (targetInfo.isDirectory()) {
+          if (!pathIsWithin(root, resolved)) {
+            throw new Error(`Profile asset link escapes its bundle: ${relative}`);
+          }
+          await visit(resolved, relative, nextAncestors);
+          continue;
+        }
+        if (!targetInfo.isFile()) {
+          throw new Error(`Profile asset contains an unsupported link: ${relative}`);
+        }
+        if (!pathIsWithin(root, resolved) && !isExternalSkillDocument(relative, resolved)) {
+          throw new Error(`Profile asset link escapes its bundle: ${relative}`);
+        }
+        continue;
+      }
+      if (info.isDirectory()) {
+        await visit(entryPath, relative, nextAncestors);
+        continue;
+      }
+      if (!info.isFile()) {
+        throw new Error(`Profile asset contains an unsupported file: ${relative}`);
+      }
+    }
+  }
+
+  await visit(root, "", new Set());
+}
+
+function pathIsWithin(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return (
+    relative === "" ||
+    (!path.isAbsolute(relative) && !relative.startsWith(`..${path.sep}`) && relative !== "..")
+  );
+}
+
+function isExternalSkillDocument(relative: string, resolved: string): boolean {
+  return relative === "SKILL.md" && path.basename(resolved) === "SKILL.md";
+}
+
 export function toLocalProfileMcp(entry: AgentMcpEntry): ProfileMcp {
   return {
     kind: "local",
@@ -404,7 +594,7 @@ export async function copySkillBetweenProfiles(
   const targetDir = path.join(profileSkillsDir(to, options), path.basename(skillName));
   await mkdir(path.dirname(targetDir), { recursive: true });
   await rm(targetDir, { recursive: true, force: true });
-  await cp(sourceDir, targetDir, { recursive: true });
+  await copyProfileAssetTree(sourceDir, targetDir);
 }
 
 export async function copyPluginBetweenProfiles(
@@ -419,7 +609,7 @@ export async function copyPluginBetweenProfiles(
   const targetDir = path.join(profilePluginsDir(to, options), safeKey);
   await mkdir(path.dirname(targetDir), { recursive: true });
   await rm(targetDir, { recursive: true, force: true });
-  await cp(sourceDir, targetDir, { recursive: true });
+  await copyProfileAssetTree(sourceDir, targetDir);
 }
 
 export async function pathExists(target: string): Promise<boolean> {

@@ -6,8 +6,14 @@
  */
 
 export type TerminalState = "idle" | "running" | "exited" | "error";
+export type TerminalPresentation = "dock" | "terminalLaunching" | "terminal";
+
+export interface TerminalCapabilities {
+  externalTerminal: boolean;
+}
 
 import type { OneTimeSkillSelection } from "./skills-api.js";
+import type { ContextAttachment } from "./context-api.js";
 export type { OneTimeSkillSelection } from "./skills-api.js";
 
 export interface CreateAgentTerminalOptions {
@@ -20,6 +26,8 @@ export interface CreateAgentTerminalOptions {
   resumeId?: string;
   /** Model for this session. Omitted = the provider's saved pin, else CLI default. */
   model?: string;
+  /** User-visible Context Library references resolved by the backend. */
+  context?: ContextAttachment;
 }
 
 export interface AgentTranscriptInfo {
@@ -46,6 +54,8 @@ export interface TerminalSessionInfo {
   /** Tab label when the session is scoped to a service. */
   label?: string;
   error?: string;
+  /** Which surface currently owns keyboard input and terminal resizing. */
+  presentation?: TerminalPresentation;
 }
 
 export interface TerminalApi {
@@ -54,5 +64,10 @@ export interface TerminalApi {
   createTerminalSession(opts?: { serviceName?: string }): Promise<TerminalSessionInfo>;
   createAgentTerminalSession(opts: CreateAgentTerminalOptions): Promise<TerminalSessionInfo>;
   renameTerminalSession(id: string, label: string): Promise<TerminalSessionInfo>;
+  getTerminalCapabilities(): Promise<TerminalCapabilities>;
+  openTerminalInSystemTerminal(id: string): Promise<TerminalSessionInfo>;
+  reclaimTerminalToDock(id: string): Promise<TerminalSessionInfo>;
+  insertAgentPrompt(id: string, prompt: string): Promise<void>;
+  onTerminalSessionChanged(handler: (session: TerminalSessionInfo) => void): Promise<() => void>;
   closeTerminalSession(id: string): Promise<void>;
 }

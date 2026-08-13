@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowUp, Link, Paperclip, Sparkles, SquareTerminal, X } from "lucide-react";
+import { AppWindow, ArrowUp, Brain, Link, Paperclip, Sparkles, SquareTerminal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { onboardRepoPrompt } from "../prompts";
@@ -22,8 +22,38 @@ export function taskLabel(prompt: string, explicit?: string) {
 
 export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, shellMode = false }: { capabilities?: AgentCapabilities; onNavigate?: (page: AgentDockPage) => void; onShellMode?: (shell: boolean) => void; shellMode?: boolean }) {
   const t = useT();
-  const { activeSource, clearOneTimeSkill, clearSource, configured, consumeOneTimeSkill, createShellTask, createTask, creating, draft, focusNonce, insertPath, insertPrompt, models, onboarding, pendingOneTimeSkill, provider, providers, selectModel, selectProvider, setDraft, setOnboarding } = useAgentDock();
+  const {
+    activeSource,
+    clearContextItems = () => {},
+    clearOneTimeSkill,
+    clearSource,
+    configured,
+    consumeOneTimeSkill,
+    createShellTask,
+    createTask,
+    creating,
+    draft,
+    focusNonce,
+    includePinnedContext = false,
+    insertPath,
+    insertPrompt,
+    models,
+    openTaskInTerminal,
+    onboarding,
+    pendingContextItems = [],
+    pendingOneTimeSkill,
+    provider,
+    providers,
+    removeContextItem = () => {},
+    selectModel,
+    selectProvider,
+    setDraft,
+    setIncludePinnedContext = () => {},
+    setOnboarding,
+    terminalCapabilities,
+  } = useAgentDock();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [launchTarget, setLaunchTarget] = useState<"dock" | "terminal">("dock");
   const [url, setUrl] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { const id = requestAnimationFrame(() => { const input = inputRef.current; if (!input) return; input.focus(); const end = input.value.length; input.setSelectionRange(end, end); }); return () => cancelAnimationFrame(id); }, [focusNonce]);
@@ -45,9 +75,14 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
     if (configured !== true) return;
     const oneTimeSkill = pendingOneTimeSkill ?? undefined;
     // Creating a foreground task selects its tab, which is what leaves compose.
-    const result = await createTask({ prompt, label: taskLabel(prompt, label ?? activeSource?.label), oneTimeSkill, source: activeSource ?? undefined });
+    const context = pendingContextItems.length || includePinnedContext
+      ? { refs: pendingContextItems.map((item) => item.ref), includePinned: includePinnedContext }
+      : undefined;
+    const result = await createTask({ prompt, label: taskLabel(prompt, label ?? activeSource?.label), oneTimeSkill, context, source: activeSource ?? undefined });
     if (!result) return;
+    if (launchTarget === "terminal") await openTaskInTerminal(result.id);
     if (oneTimeSkill) consumeOneTimeSkill(oneTimeSkill);
+    clearContextItems();
     setDraft(""); clearSource(); setOnboarding(false); setUrl("");
   }
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submit(); } }
@@ -66,6 +101,7 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
       {!shellMode && configured === false ? <div className="mb-3 border-l-2 border-amber-500/70 pl-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">{t("dock.notInstalled", { name: provider?.label ?? "Agent" })}</span> {provider?.installHint}</div> : null}
       {activeSource ? <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="font-mono uppercase tracking-wide">{t("dock.sourceLabel")}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{activeSource.label}</span><button aria-label={t("dock.clearSourceAria")} onClick={clearSource} type="button"><X className="size-3" /></button></div> : null}
       {!shellMode && pendingOneTimeSkill ? <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Sparkles className="size-3" /><span className="font-mono uppercase tracking-wide">{t("dock.skillTemp")}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 text-foreground">{pendingOneTimeSkill.name}</span><button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} onClick={clearOneTimeSkill} type="button"><X className="size-3" /></button><span>{t("dock.skillTempHint")}</span></div> : null}
+      {!shellMode && (pendingContextItems.length || includePinnedContext) ? <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground"><Brain aria-hidden="true" className="size-3" /><span className="font-mono uppercase tracking-wide">{t("dock.context")}</span>{pendingContextItems.map((item) => <span className="flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-foreground" key={`${item.ref.kind}:${item.ref.id}`}>{item.title}<button aria-label={t("dock.removeContext", { title: item.title })} onClick={() => removeContextItem(item)} type="button"><X className="size-3" /></button></span>)}<label className="flex items-center gap-1"><input checked={includePinnedContext} onChange={(event) => setIncludePinnedContext(event.target.checked)} type="checkbox" />{t("dock.pinnedContext")}</label></div> : null}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {onboarding && !shellMode ? <div className="flex items-center gap-2 border-b border-border px-3 py-2"><Link className="size-4 text-muted-foreground" /><input aria-label={t("dock.repoUrlAria")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" disabled={configured !== true} onChange={(e) => setUrl(e.target.value)} placeholder="https://github.com/owner/repository" value={url} /><Button disabled={configured !== true || !url.trim() || !!creating} onClick={() => void submit(onboardRepoPrompt(url), `Onboard ${url}`)} size="sm">{t("dock.onboard")}</Button></div> : null}
         <textarea aria-label={shellMode ? t("dock.shellCommandAria") : t("dock.promptAria")} className={cn("block max-h-40 min-h-20 w-full resize-none bg-transparent px-3 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground", shellMode && "font-mono")} disabled={!shellMode && configured !== true} onChange={(e) => setDraft(e.target.value)} onKeyDown={keyDown} placeholder={shellMode ? t("dock.shellPlaceholder") : t("dock.promptPlaceholder")} ref={inputRef} rows={2} value={draft} />
@@ -83,6 +119,7 @@ export function AgentTerminalComposer({ capabilities, onNavigate, onShellMode, s
               is the surface that starts sessions, so the pin it changes is the
               one that will actually be used by the next Enter. */}
           {shellMode || !provider ? null : <AgentModelChip onSelect={(model) => void selectModel(provider.id, model)} pinned={models[provider.id]} provider={provider.id} />}
+          {!shellMode && terminalCapabilities?.externalTerminal ? <fieldset aria-label={t("dock.launchTargetAria")} className="flex h-7 items-center rounded-sm border border-border p-0.5"><button aria-label={t("dock.launchInDock")} aria-pressed={launchTarget === "dock"} className={cn("grid size-6 place-items-center rounded-sm text-muted-foreground", launchTarget === "dock" && "bg-muted text-foreground")} onClick={() => setLaunchTarget("dock")} title={t("dock.launchInDock")} type="button"><AppWindow className="size-3.5" /></button><button aria-label={t("dock.launchInTerminal")} aria-pressed={launchTarget === "terminal"} className={cn("grid size-6 place-items-center rounded-sm text-muted-foreground", launchTarget === "terminal" && "bg-muted text-foreground")} onClick={() => setLaunchTarget("terminal")} title={t("dock.launchInTerminal")} type="button"><SquareTerminal className="size-3.5" /></button></fieldset> : null}
           <span className="hidden text-[10px] text-muted-foreground sm:inline">{shellMode ? t("dock.shellEnterHint") : t("dock.shiftEnterHint")}</span>
           <Button aria-label={shellMode ? t("dock.openShellAria") : t("dock.runAria")} className="size-7" disabled={blocked} onClick={() => void submit()} size="icon"><ArrowUp /></Button>
         </div>

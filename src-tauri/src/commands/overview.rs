@@ -30,10 +30,7 @@ use crate::AppState;
 const CONCURRENCY: usize = 6;
 
 #[tauri::command]
-pub async fn project_overview(
-    state: State<'_, AppState>,
-    domain: String,
-) -> Result<Value, String> {
+pub async fn project_overview(state: State<'_, AppState>, domain: String) -> Result<Value, String> {
     if !matches!(domain.as_str(), "git" | "github" | "vercel") {
         return Err(format!("Unknown overview domain: {domain}"));
     }
@@ -60,7 +57,10 @@ pub async fn project_overview(
             let repository = config.git_repositories[index].clone();
             let domain = domain.clone();
             running.spawn(async move {
-                (index, summarize(&store, &config, &repository, &domain).await)
+                (
+                    index,
+                    summarize(&store, &config, &repository, &domain).await,
+                )
             });
         }
         if let Some(Ok((index, row))) = running.join_next().await {
@@ -120,8 +120,9 @@ async fn github_overview(config: &Config, repository: &GitRepoDef) -> Result<Val
         .active_worktree_path
         .as_ref()
         .unwrap_or(&repository.path);
-    let (owner, repo) =
-        remote_slug(cwd).await.ok_or("No GitHub repository resolves for this project.")?;
+    let (owner, repo) = remote_slug(cwd)
+        .await
+        .ok_or("No GitHub repository resolves for this project.")?;
     let (token, host, _) = github_auth::resolve(config, Some(&repository.name), "github.com")
         .await
         .map_err(|error| error.to_string())?;
@@ -147,13 +148,10 @@ async fn github_overview(config: &Config, repository: &GitRepoDef) -> Result<Val
     }))
 }
 
-async fn default_branch_checks(
-    token: &str,
-    host: &str,
-    owner: &str,
-    repo: &str,
-) -> Option<String> {
-    let info = gh_json(token, host, &format!("/repos/{owner}/{repo}")).await.ok()?;
+async fn default_branch_checks(token: &str, host: &str, owner: &str, repo: &str) -> Option<String> {
+    let info = gh_json(token, host, &format!("/repos/{owner}/{repo}"))
+        .await
+        .ok()?;
     let branch = info.get("default_branch").and_then(Value::as_str)?;
     let runs = gh_json(
         token,
@@ -179,10 +177,12 @@ async fn default_branch_checks(
     {
         return Some("pending".into());
     }
-    if runs
-        .iter()
-        .any(|run| matches!(conclusion(run).as_str(), "failure" | "timed_out" | "cancelled"))
-    {
+    if runs.iter().any(|run| {
+        matches!(
+            conclusion(run).as_str(),
+            "failure" | "timed_out" | "cancelled"
+        )
+    }) {
         return Some("failure".into());
     }
     Some("success".into())
