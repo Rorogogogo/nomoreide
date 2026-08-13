@@ -98,6 +98,20 @@ export interface AdoptSoleScopeOptions<S extends Pick<ProviderScope, "id" | "slu
   source: "cli" | "stored" | "oauth";
   listScopes: () => Promise<S[]>;
   persist: (scope: { scopeId: string; scopeSlug: string }) => Promise<void>;
+  /**
+   * Whether the vendor's CLI selects a scope of its own that ours must not
+   * override. True by default, which is Vercel: `vercel switch` writes a
+   * current team, the credential resolver has already inherited it, and a scope
+   * written here would outrank it from then on — so a `cli` credential adopts
+   * nothing at all.
+   *
+   * False says the CLI has no such notion (Wrangler has no account switch; the
+   * account comes from the environment). Then the sole scope *is* adopted for a
+   * `cli` credential — a provider that needs a scope for every call would
+   * otherwise have no way to get one — but still never persisted, because a
+   * saved scope would outrank the environment variable that should win.
+   */
+  cliSelectsScope?: boolean;
 }
 
 /**
@@ -119,14 +133,18 @@ export interface AdoptSoleScopeOptions<S extends Pick<ProviderScope, "id" | "slu
 export async function adoptSoleScope<S extends Pick<ProviderScope, "id" | "slug">>(
   options: AdoptSoleScopeOptions<S>,
 ): Promise<string | undefined> {
-  // A `cli` connection follows the CLI's own scope, so persisting one here
-  // would override the vendor's own `switch` command from then on.
-  if (options.source === "cli") return undefined;
+  const fromCli = options.source === "cli";
+  // A `cli` connection to a CLI that selects its own scope has already had it
+  // inherited, so there is nothing to adopt and persisting would override the
+  // vendor's own `switch` command from then on.
+  if (fromCli && (options.cliSelectsScope ?? true)) return undefined;
   try {
     const scopes = await options.listScopes();
     if (scopes.length !== 1) return undefined;
     const [scope] = scopes;
-    await options.persist({ scopeId: scope.id, scopeSlug: scope.slug });
+    // Adopted in memory either way; written to config only when nothing in the
+    // user's environment has a better claim to the answer.
+    if (!fromCli) await options.persist({ scopeId: scope.id, scopeSlug: scope.slug });
     return scope.id;
   } catch {
     return undefined;

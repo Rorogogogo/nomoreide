@@ -1,3 +1,4 @@
+import { cloudflareDeployProvider } from "../cloudflare-context.js";
 import type { ConfigStore } from "../config-store.js";
 import { vercelDeployProvider } from "../vercel-context.js";
 import type { ProviderAuthSpec, ProviderCredential } from "./credentials.js";
@@ -41,7 +42,10 @@ export interface RegisteredDeployProvider {
   actions(configStore: ConfigStore): Promise<DeployProviderActions>;
 }
 
-export const deployProviders: RegisteredDeployProvider[] = [vercelDeployProvider];
+export const deployProviders: RegisteredDeployProvider[] = [
+  vercelDeployProvider,
+  cloudflareDeployProvider,
+];
 
 export function findDeployProvider(id: string): RegisteredDeployProvider | undefined {
   return deployProviders.find((provider) => provider.manifest.id === id);

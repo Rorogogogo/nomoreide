@@ -649,3 +649,167 @@ describe("Vercel project-scoped reads", () => {
     expect((await response.json()).error).toMatch(/No project is linked/);
   });
 });
+
+/**
+ * The registry's actual claim, tested at the HTTP surface: a second provider is
+ * served by these routes without any of them having been edited for it.
+ *
+ * Everything below hits the same `/api/providers/:id/*` handlers the Vercel
+ * cases above do. If adding Cloudflare had needed a route, this block could not
+ * have been written without one.
+ */
+function stubCloudflareApi(responder: (url: URL, method: string) => unknown): void {
+  const realFetch = globalThis.fetch;
+  vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const raw = input instanceof Request ? input.url : String(input);
+    if (!raw.startsWith("https://api.cloudflare.com")) {
+      return realFetch(input as string | URL, init);
+    }
+    const url = new URL(raw);
+    const method = init?.method ?? "GET";
+    apiCalls.push({ url, method, body: typeof init?.body === "string" ? init.body : undefined });
+    const payload = responder(url, method);
+    if (payload instanceof Response) return payload;
+    return new Response(JSON.stringify({ success: true, errors: [], result: payload ?? {} }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  });
+}
+
+const CF_PROJECT = {
+  id: "7b162ea7-uuid",
+  name: "acme-web",
+  framework: "next",
+  production_branch: "main",
+  build_config: { build_command: "npm run build", destination_dir: "dist" },
+  source: { type: "github", config: { owner: "acme", repo_name: "web" } },
+  canonical_deployment: { id: "dep_1" },
+};
+
+const CF_DEPLOYMENT = {
+  id: "dep_1",
+  project_name: "acme-web",
+  url: "https://abc123.acme-web.pages.dev",
+  environment: "production",
+  created_on: "2021-03-09T00:55:03.923456Z",
+  latest_stage: { name: "deploy", status: "success" },
+  deployment_trigger: { metadata: { branch: "main", commit_hash: "abc1234" } },
+};
+
+/** A Cloudflare connection with its account already chosen. */
+async function connectCloudflare(): Promise<void> {
+  await new ConfigStore(configPath).setConnection("cloudflare", {
+    source: "stored",
+    token: "cf-token",
+    scopeId: "acct_1",
+  });
+}
+
+describe("a second provider, served by the same routes", () => {
+  test("the registry lists both providers with their own capabilities and actions", async () => {
+    await startServer();
+
+    const body = await (await fetch(`${server.url}/api/providers`)).json();
+
+    expect(body.providers.map((manifest: { id: string }) => manifest.id)).toEqual([
+      "vercel",
+      "cloudflare",
+    ]);
+    expect(body.providers[1]).toMatchObject({
+      id: "cloudflare",
+      scopeLabel: "Account",
+      actions: ["redeploy", "rollback"],
+      productionAffecting: ["rollback"],
+    });
+    // Cloudflare serves no runtime logs, so the generic view hides that tab
+    // rather than rendering one that errors.
+    expect(body.providers[1].capabilities).not.toContain("runtimeLogs");
+  });
+
+  test("resolves the repo's Pages project from its remote and lists deployments", async () => {
+    await connectCloudflare();
+    stubCloudflareApi((url) => {
+      if (url.pathname.endsWith("/pages/projects")) return [CF_PROJECT];
+      if (url.pathname.endsWith("/pages/projects/acme-web")) return CF_PROJECT;
+      if (url.pathname.endsWith("/deployments")) return [CF_DEPLOYMENT];
+      return {};
+    });
+    await startServer();
+
+    const body = await (
+      await fetch(`${server.url}/api/providers/cloudflare/deployments?target=production`)
+    ).json();
+
+    expect(body.project).toMatchObject({ id: "acme-web", name: "acme-web" });
+    expect(body.deployments[0]).toMatchObject({
+      id: "dep_1",
+      state: "ready",
+      // The vendor's own words survive normalization, which is what lets a
+      // provider whose states do not map cleanly need no contract change.
+      rawState: "deploy:success",
+      target: "production",
+      url: "abc123.acme-web.pages.dev",
+      isCurrentProduction: true,
+      meta: { branch: "main", sha: "abc1234" },
+    });
+    // Every Pages path is account-scoped; nothing here is Vercel's flat namespace.
+    expect(apiCalls.every((call) => call.url.pathname.startsWith("/client/v4/accounts/acct_1"))).toBe(
+      true,
+    );
+  });
+
+  test("project settings arrive under the neutral keys the shared panel reads", async () => {
+    await connectCloudflare();
+    stubCloudflareApi((url) =>
+      url.pathname.endsWith("/pages/projects") ? [CF_PROJECT] : CF_PROJECT,
+    );
+    await startServer();
+
+    const body = await (await fetch(`${server.url}/api/providers/cloudflare/project`)).json();
+
+    expect(body.project.settings).toEqual([
+      { key: "buildCommand", label: "Build command", value: "npm run build" },
+      { key: "outputDirectory", label: "Output directory", value: "dist" },
+      { key: "rootDirectory", label: "Root directory", value: null },
+      { key: "productionBranch", label: "Production branch", value: "main" },
+    ]);
+  });
+
+  test("the write door accepts this provider's actions and refuses Vercel's", async () => {
+    await connectCloudflare();
+    stubCloudflareApi((url, method) => {
+      if (url.pathname.endsWith("/retry") && method === "POST") {
+        return { id: "dep_2", url: "https://new.acme-web.pages.dev" };
+      }
+      if (url.pathname.endsWith("/pages/projects")) return [CF_PROJECT];
+      if (url.pathname.endsWith("/pages/projects/acme-web")) return CF_PROJECT;
+      if (url.pathname.endsWith("/deployments/dep_1")) return CF_DEPLOYMENT;
+      return {};
+    });
+    await startServer();
+
+    const redeployed = await fetch(
+      `${server.url}/api/providers/cloudflare/deployments/dep_1/redeploy`,
+      { method: "POST" },
+    );
+    expect(await redeployed.json()).toMatchObject({ ok: true, deployment: { id: "dep_2" } });
+
+    // `promote` is Vercel's word and is absent from Cloudflare's manifest, so
+    // the route rejects it by name before any client is built.
+    const promoted = await fetch(
+      `${server.url}/api/providers/cloudflare/deployments/dep_1/promote`,
+      { method: "POST" },
+    );
+    expect(promoted.status).toBe(404);
+    expect((await promoted.json()).error).toMatch(/has no action "promote"/);
+  });
+
+  test("an unknown provider id is a 404 naming what was asked for", async () => {
+    await startServer();
+
+    const response = await fetch(`${server.url}/api/providers/netlify/status`);
+    expect(response.status).toBe(404);
+    expect((await response.json()).error).toMatch(/Unknown provider "netlify"/);
+  });
+});

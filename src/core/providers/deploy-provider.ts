@@ -88,6 +88,11 @@ export type ProviderDeploymentState =
 export interface ProviderDeployment {
   id: string;
   name: string;
+  /**
+   * The deployment's hostname, **without a scheme** — consumers prefix
+   * `https://`. Vercel returns it this way; Cloudflare returns a full URL and
+   * its adapter strips the scheme.
+   */
   url: string | null;
   /** Drives the icon and the filter. */
   state: ProviderDeploymentState;

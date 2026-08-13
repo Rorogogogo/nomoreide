@@ -206,6 +206,24 @@ describe("adoptSoleScope", () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
+  test("a CLI with no scope of its own still adopts the sole scope, in memory only", async () => {
+    // Cloudflare's case: Wrangler has no account switch, so refusing to adopt
+    // would leave a `wrangler login` unable to read a single project — every
+    // Pages path contains an account id. Persisting it would be just as wrong,
+    // because a saved scope outranks CLOUDFLARE_ACCOUNT_ID from then on.
+    const persist = vi.fn(async () => undefined);
+
+    await expect(
+      adoptSoleScope({
+        source: "cli",
+        cliSelectsScope: false,
+        listScopes: async () => scopes("acct_1"),
+        persist,
+      }),
+    ).resolves.toBe("acct_1");
+    expect(persist).not.toHaveBeenCalled();
+  });
+
   test("a failed lookup leaves the client unscoped rather than erroring", async () => {
     await expect(
       adoptSoleScope({

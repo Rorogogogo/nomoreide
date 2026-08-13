@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** in progress — steps 1–4 of §8 landed; step 5 (Cloudflare) is next, and is what will actually test the contract.
+**Status:** in progress — steps 1–5 of §8 landed. Cloudflare is in, and the contract held: one new directory of `cloudflare-*.ts`, one line in the registry, and one shared-layer change (§8.5). Step 6 (Vultr + `HostProvider`) is next.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -305,7 +305,20 @@ export interface HostProvider {
    **Two taxes deliberately survive**, because paying them now would be guessing:
    - `features/vercel/` is still a Vercel-named view. It reaches the seam through `provider-client.ts`, which binds the id once, so making it generic is a prop change — but *what* a generic view should look like is a question Cloudflare answers, not one to invent here (§9, over-abstraction).
    - Provider strings still live in `en.ts`/`zh.ts` rather than a manifest `strings` block, for the same reason. `DeploymentStateBadge` does now consume `rawState` for labels, which is the mechanism a manifest would feed.
-5. **Cloudflare** — validates `DeployProvider`. Expect the contract to move; that is the point of doing it before publishing anything.
+5. ~~**Cloudflare**~~ — done. `cloudflare-{manager,actions,auth,provider,context}.ts` plus one entry in `providers/registry.ts`. No route, no MCP tool, no client seam and no `mock-api.ts` change — which is the claim §4 made, now tested at the HTTP surface in `test/provider-routes.test.ts` ("a second provider, served by the same routes").
+
+   **What the contract had to absorb, and did, without a signature change:**
+   - *Deployment reads are project-scoped.* Cloudflare has no global deployment endpoint, so `createCloudflareDeployProvider(manager, projectName)` closes over the project the caller already resolved instead of `getDeployment(id)` growing a second argument. `ProviderContext` bundles a provider with its project anyway.
+   - *`ProviderProject.id` is whatever the vendor addresses projects by.* Cloudflare's paths use the project **name**; its UUID addresses nothing. A pinned project therefore stores a name.
+   - *`rawState` paid for itself on day one.* Cloudflare's state is a `(stage, status)` pair, not an enum — there was no eight-value list to map from. The pair rides through as `deploy:success`, and `skipped` (an outcome the neutral enum has no room for) folds into `canceled` while keeping its own word.
+   - *No `runtimeLogs`, no `oauth`, no `linkFile`.* Three optional things declined by provider #2, which is the first evidence the optionality was real: Pages tails runtime output over a websocket, Cloudflare's authorization server serves neither OIDC discovery nor dynamic client registration (so `providers/oauth.ts` cannot mint a client for it), and Wrangler writes no link file.
+   - *`url` is a bare hostname.* Undocumented but load-bearing — the client renders `https://${url}`. Cloudflare returns a full URL, so the adapter strips the scheme. Now stated on the contract.
+
+   **The one shared-layer change:** `adoptSoleScope` grew `cliSelectsScope`. The old rule — a `cli` credential adopts nothing, because `vercel switch` already chose — is wrong for a CLI that has no scope switch: every Pages path contains an account id, so a `wrangler login` would have been unable to read a single project. It now adopts the sole scope in memory but still never persists it, since a saved scope would outrank `CLOUDFLARE_ACCOUNT_ID`. Vercel's behaviour is unchanged (the flag defaults to the old rule).
+
+   **What Cloudflare says the manifest still lacks**, deferred with the two taxes below rather than guessed at now:
+   - `authSources`. Vercel has all three; Cloudflare has two. A generic setup screen cannot know whether to offer "Sign in with browser" without being told. Derivable from `ProviderAuthSpec`, so this is a wiring decision, not new data.
+   - `scope.required` (§6 has it, `DeployProviderManifest` does not). Vercel works unscoped; Cloudflare cannot. Today an unscoped Cloudflare connection reports `no_project` with `scopes` populated — workable, but the UI has to infer the real problem.
 6. **Vultr + `HostProvider`** — validates the second contract and the `ssh-servers` bridge.
 7. **Only then** consider freezing `apiVersion: 1` and allowing downloadable providers.
 
