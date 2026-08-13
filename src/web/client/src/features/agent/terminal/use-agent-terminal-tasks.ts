@@ -3,9 +3,13 @@ import {
   closeTerminalSession,
   createAgentTerminalSession,
   createTerminalSession,
+  getTerminalCapabilities,
   getAgentChatStatus,
   listAgentTranscripts,
   listTerminalSessions,
+  onTerminalSessionChanged,
+  openTerminalInSystemTerminal,
+  reclaimTerminalToDock,
   renameTerminalSession,
   setChatModel as setChatModelApi,
   setChatProvider as setChatProviderApi,
@@ -14,7 +18,9 @@ import {
   type AgentChatProviderOption,
   type AgentTranscriptInfo,
   type OneTimeSkillSelection,
+  type ContextAttachment,
   type TerminalSessionInfo,
+  type TerminalCapabilities,
 } from "@/lib/api";
 
 /** Session kinds the dock adopts as tabs — agent tasks and plain shells. */
@@ -40,6 +46,7 @@ export interface CreateAgentTerminalTaskOptions {
   oneTimeSkill?: OneTimeSkillSelection;
   source?: AgentTerminalTaskSource;
   background?: boolean;
+  context?: ContextAttachment;
 }
 
 type AgentProviderId = AgentChatProviderInfo["id"];
@@ -79,8 +86,13 @@ export function useAgentTerminalTasks() {
   const [tasksHydrationSettled, setTasksHydrationSettled] = useState(false);
   const [activeTaskId, setActiveTaskIdState] = useState<string | null>(null);
   const activeTaskIdRef = useRef<string | null>(null);
+  const presentationEventRevisionsRef = useRef(new Map<string, number>());
+  const latestTerminalSessionEventsRef = useRef(new Map<string, TerminalSessionInfo>());
   const [creating, setCreating] = useState(0);
   const [terminalError, setTerminalError] = useState<string | null>(null);
+  const [terminalCapabilities, setTerminalCapabilities] = useState<TerminalCapabilities>({
+    externalTerminal: false,
+  });
   const [transcripts, setTranscripts] = useState<AgentTranscriptInfo[]>([]);
   const [transcriptsLoading, setTranscriptsLoading] = useState(false);
   const [transcriptsError, setTranscriptsError] = useState<string | null>(null);
@@ -160,14 +172,16 @@ export function useAgentTerminalTasks() {
         );
         const hydrated = attached.map((session) => {
           const existing = existingById.get(session.id);
+          const latestEvent = latestTerminalSessionEventsRef.current.get(session.id);
           return existing
             ? {
                 ...session,
+                ...latestEvent,
                 label: existing.label ?? session.label,
                 source: existing.source,
                 createdAt: existing.createdAt,
               }
-            : session;
+            : { ...session, ...latestEvent };
         });
         const attachedIds = new Set(hydrated.map((session) => session.id));
         const merged = [
@@ -186,6 +200,48 @@ export function useAgentTerminalTasks() {
         }
       });
   }, [activateFirstAttached, setTasks, sortTasks]);
+
+  useEffect(() => {
+    void Promise.resolve(getTerminalCapabilities())
+        .then((capabilities) => {
+          if (mountedRef.current && capabilities) setTerminalCapabilities(capabilities);
+        })
+        .catch(() => {});
+    let off: (() => void) | undefined;
+    void Promise.resolve(
+      onTerminalSessionChanged((session) => {
+        if (!mountedRef.current) return;
+        presentationEventRevisionsRef.current.set(
+          session.id,
+          (presentationEventRevisionsRef.current.get(session.id) ?? 0) + 1,
+        );
+        latestTerminalSessionEventsRef.current.set(session.id, session);
+        const existing = tasksRef.current.some((task) => task.id === session.id);
+        if (existing) {
+          setTasks(
+            tasksRef.current.map((task) =>
+              task.id === session.id ? { ...task, ...session, id: task.id } : task,
+            ),
+          );
+        } else if (
+          DOCK_SESSION_KINDS.has(session.kind ?? "") &&
+          !closedIdsRef.current.has(session.id)
+        ) {
+          if (!taskOrderRef.current.has(session.id)) {
+            taskOrderRef.current.set(session.id, {
+              group: "attached",
+              index: taskOrderRef.current.size,
+            });
+          }
+          setTasks(sortTasks([...tasksRef.current, session]));
+        }
+      }),
+    ).then((dispose) => {
+      if (!mountedRef.current) dispose();
+      else off = dispose;
+    }).catch(() => {});
+    return () => off?.();
+  }, [setTasks, sortTasks]);
 
   useEffect(() => {
     const selectionAtRequest = providerSelectionSequenceRef.current;
@@ -341,7 +397,7 @@ export function useAgentTerminalTasks() {
   );
 
   const createTask = useCallback(
-    ({ prompt, provider: requestedProvider, model, label, oneTimeSkill, source, background }: CreateAgentTerminalTaskOptions) => {
+    ({ prompt, provider: requestedProvider, model, label, oneTimeSkill, source, background, context }: CreateAgentTerminalTaskOptions) => {
       const selectedProvider = requestedProvider ?? providerRef.current ?? "claude";
       return runCreate(
         () =>
@@ -350,6 +406,7 @@ export function useAgentTerminalTasks() {
             prompt,
             label,
             oneTimeSkill,
+            context,
             model: model ?? modelsRef.current[selectedProvider],
           }),
         { background, label, source },
@@ -550,6 +607,49 @@ export function useAgentTerminalTasks() {
     [setTasks],
   );
 
+  const runPresentationAction = useCallback(
+    async (
+      id: string,
+      action: (sessionId: string) => Promise<TerminalSessionInfo>,
+    ) => {
+      if (pendingTaskIdsRef.current.has(id)) return false;
+      pendingTaskIdsRef.current.add(id);
+      const eventRevision = presentationEventRevisionsRef.current.get(id) ?? 0;
+      setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+      setTerminalError(null);
+      try {
+        const session = await action(id);
+        if (!mountedRef.current) return false;
+        if ((presentationEventRevisionsRef.current.get(id) ?? 0) === eventRevision) {
+          setTasks(
+            tasksRef.current.map((task) =>
+              task.id === id ? { ...task, ...session, id } : task,
+            ),
+          );
+        }
+        return true;
+      } catch (error) {
+        if (mountedRef.current) setTerminalError(errorMessage(error));
+        return false;
+      } finally {
+        pendingTaskIdsRef.current.delete(id);
+        if (mountedRef.current) {
+          setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+        }
+      }
+    },
+    [setTasks],
+  );
+
+  const openTaskInTerminal = useCallback(
+    (id: string) => runPresentationAction(id, openTerminalInSystemTerminal),
+    [runPresentationAction],
+  );
+  const bringTaskBackToDock = useCallback(
+    (id: string) => runPresentationAction(id, reclaimTerminalToDock),
+    [runPresentationAction],
+  );
+
   return {
     tasks,
     tasksHydrated,
@@ -558,6 +658,7 @@ export function useAgentTerminalTasks() {
     setActiveTaskId,
     creating,
     terminalError,
+    terminalCapabilities,
     pendingTaskIds,
     error: terminalError,
     provider,
@@ -578,5 +679,7 @@ export function useAgentTerminalTasks() {
     stopTask,
     renameTask,
     updateTaskStatus,
+    openTaskInTerminal,
+    bringTaskBackToDock,
   };
 }

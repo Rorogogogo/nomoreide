@@ -22,10 +22,12 @@ const dock = vi.hoisted(() => ({
     focusedPane: "left" as "left" | "right",
     historyRailOpen: false,
   },
-  draft: "", focusNonce: 0, insertPath: vi.fn(), onboarding: false, open: false,
+  draft: "", focusNonce: 0, insertPath: vi.fn(), insertPrompt: vi.fn(), onboarding: false, open: false,
   foregroundAgentDeliveryHandler: null as null | ((delivery: { label?: string; prompt: string; source?: { type: string; label: string } }) => "draft" | "handled"),
   loadTranscripts: vi.fn(),
   models: {} as Partial<Record<"claude" | "codex", string>>,
+  bringTaskBackToDock: vi.fn(),
+  openTaskInTerminal: vi.fn(),
   selectModel: vi.fn(),
   provider: { id: "claude", label: "Claude Code", commandName: "claude", installHint: "", intro: "" },
   pendingTaskIds: new Set<string>(),
@@ -54,6 +56,7 @@ const dock = vi.hoisted(() => ({
   tasksHydrated: true,
   tasksHydrationSettled: true,
   terminalError: null as string | null,
+  terminalCapabilities: { externalTerminal: false },
   transcripts: [] as Array<Record<string, unknown>>,
   transcriptsError: null as string | null,
   transcriptsLoading: false,
@@ -67,6 +70,7 @@ const uiSettings = vi.hoisted(() => ({
 }));
 const skillPromptApi = vi.hoisted(() => ({
   load: vi.fn(),
+  insertAgentPrompt: vi.fn(),
 }));
 const toast = vi.hoisted(() => ({
   error: vi.fn(),
@@ -89,6 +93,7 @@ vi.mock("@/lib/api", () => ({
   getAgentUsage: vi.fn().mockResolvedValue({}),
   getMcpAuthStatuses: vi.fn().mockResolvedValue([]),
   loadOneTimeSkillPrompt: skillPromptApi.load,
+  insertAgentPrompt: skillPromptApi.insertAgentPrompt,
 }));
 vi.mock("@/features/settings/settings-context", () => ({
   useOptionalSettings: () => uiSettings,
@@ -216,6 +221,7 @@ beforeEach(() => {
     })),
   });
   Object.assign(dock, { activeSource: null, activeTaskId: null, configured: true, creating: 0, draft: "", focusNonce: 0, foregroundAgentDeliveryHandler: null, onboarding: false, open: false, pendingOneTimeSkill: null, pendingTaskIds: new Set(), tasks: [], terminalError: null });
+  dock.terminalCapabilities = { externalTerminal: false };
   dock.dockLayout = {
     version: 1,
     open: false,
@@ -237,6 +243,7 @@ beforeEach(() => {
   dock.loadTranscripts.mockResolvedValue([]);
   dock.closeTask.mockResolvedValue(true);
   skillPromptApi.load.mockResolvedValue("skill context\n");
+  skillPromptApi.insertAgentPrompt.mockResolvedValue(undefined);
 });
 afterEach(async () => {
   const roots = mountedRoots; mountedRoots = [];
@@ -266,6 +273,50 @@ describe("AgentTerminalDock", () => {
     expect(occupied.host.querySelector('[aria-label="Agent task prompt"]')).toBeNull();
   });
 
+  test("opens a managed agent in Terminal and offers to bring it back", async () => {
+    Object.assign(dock, {
+      activeTaskId: "local-agent",
+      open: true,
+      terminalCapabilities: { externalTerminal: true },
+      tasks: [{
+        id: "local-agent",
+        kind: "agent",
+        label: "Local agent",
+        presentation: "dock",
+        provider: "codex",
+        state: "running",
+      }],
+    });
+    const mounted = await render();
+    expect(mounted.host.querySelector('[data-session="local-agent"]')).not.toBeNull();
+    await act(async () => (
+      mounted.host.querySelector('[aria-label="Open Local agent in Terminal"]') as HTMLButtonElement
+    ).click());
+    expect(dock.openTaskInTerminal).toHaveBeenCalledWith("local-agent");
+
+    dock.pendingOneTimeSkill = { name: "review", source: "owner/repo@review" };
+    dock.tasks = [{ ...dock.tasks[0], presentation: "terminalLaunching" }];
+    await rerender(mounted);
+    expect(mounted.host.querySelector('[data-session="local-agent"]')).toBeNull();
+    expect(mounted.host.textContent).toContain("Opening in Terminal");
+    expect(skillPromptApi.load).not.toHaveBeenCalled();
+    expect(mounted.host.querySelector("[data-one-time-skill-status]")).toBeNull();
+
+    dock.tasks = [{ ...dock.tasks[0], presentation: "terminal" }];
+    await rerender(mounted);
+    expect(mounted.host.querySelector('[data-session="local-agent"]')).toBeNull();
+    expect(mounted.host.textContent).toContain("This session is active in Terminal");
+    await act(async () => (
+      mounted.host.querySelector('[aria-label="Bring Local agent back to NoMoreIDE"]') as HTMLButtonElement
+    ).click());
+    expect(dock.bringTaskBackToDock).toHaveBeenCalledWith("local-agent");
+
+    dock.pendingOneTimeSkill = null;
+    dock.tasks = [{ ...dock.tasks[0], presentation: "dock" }];
+    await rerender(mounted);
+    expect(mounted.host.querySelector('[data-session="local-agent"]')).not.toBeNull();
+  });
+
   test("collapsed rail reports only the active task state accessibly", async () => {
     Object.assign(dock, { activeTaskId: "active", tasks: [
       { id: "active", label: "Waiting", state: "exited" },
@@ -275,6 +326,48 @@ describe("AgentTerminalDock", () => {
     expect(host.textContent).toContain("Waiting");
     expect(host.textContent).toContain("Exited");
     expect(host.textContent).toContain("Active task status: Exited");
+  });
+
+  test("shows compact task tabs in the collapsed bottom dock and opens the selected task", async () => {
+    Object.assign(dock, {
+      activeTaskId: "one",
+      tasks: [
+        { id: "one", kind: "agent", label: "Review API", presentation: "dock", provider: "claude", state: "running" },
+        { id: "two", kind: "agent", label: "Fix parser", presentation: "terminal", provider: "codex", state: "running" },
+      ],
+    });
+    const { host } = await render();
+    const tabs = host.querySelector("[data-collapsed-agent-tabs]");
+    const externalTab = host.querySelector('[data-collapsed-agent-task="two"]') as HTMLButtonElement;
+
+    expect(tabs?.getAttribute("role")).toBe("tablist");
+    expect(tabs?.querySelectorAll('[role="tab"]')).toHaveLength(2);
+    expect(externalTab.dataset.presentation).toBe("terminal");
+    expect(externalTab.querySelectorAll("svg")).toHaveLength(2);
+
+    await act(async () => externalTab.click());
+    expect(dock.setActiveTaskId).toHaveBeenCalledWith("two");
+    expect(dock.setOpen).toHaveBeenCalledWith(true);
+  });
+
+  test("keeps the active task visible in a bounded collapsed tab window", async () => {
+    Object.assign(dock, {
+      activeTaskId: "5",
+      tasks: Array.from({ length: 6 }, (_, index) => ({
+        id: `${index + 1}`,
+        kind: "agent",
+        label: `Task ${index + 1}`,
+        presentation: "dock",
+        provider: "codex",
+        state: "running",
+      })),
+    });
+    const { host } = await render();
+
+    expect(host.querySelectorAll("[data-collapsed-agent-task]")).toHaveLength(4);
+    expect(host.querySelector('[data-collapsed-agent-task="5"]')).not.toBeNull();
+    expect(host.textContent).toContain("+2");
+    expect(host.textContent).toContain("2 more tasks");
   });
 
   test("collapsed rail keeps the latest task status after the task is gone", async () => {
@@ -316,6 +409,26 @@ describe("AgentTerminalDock", () => {
     const rail = host.querySelector('[aria-label="Open agent terminal"]') as HTMLButtonElement;
     expect(rail.textContent).toContain("Codex");
     expect(rail.textContent).not.toContain("Claude Code");
+  });
+
+  test("matches agent tabs to their external provider colours without replacing status", async () => {
+    Object.assign(dock, {
+      activeTaskId: "claude-task",
+      open: true,
+      tasks: [
+        { id: "claude-task", label: "Review API", state: "exited", provider: "claude" },
+        { id: "codex-task", label: "Fix parser", state: "exited", provider: "codex" },
+      ],
+    });
+    const { host } = await render();
+    const claudeTab = host.querySelector("#agent-tab-claude-task")?.parentElement;
+    const codexTab = host.querySelector("#agent-tab-codex-task")?.parentElement;
+
+    expect(claudeTab?.dataset.providerAccent).toBe("claude");
+    expect(claudeTab?.className).toContain("before:bg-[#D97757]");
+    expect(codexTab?.dataset.providerAccent).toBe("codex");
+    expect(codexTab?.className).toContain("before:bg-emerald-500");
+    expect(codexTab?.querySelector(".fill-muted-foreground\\/50")).not.toBeNull();
   });
 
   test("submits the full prompt with a compact label and selected provider", async () => {
@@ -818,6 +931,80 @@ describe("AgentTerminalDock", () => {
     expect(dock.createTask).not.toHaveBeenCalled();
   });
 
+  test("inserts into an externally presented agent without opening or mounting a viewport", async () => {
+    Object.assign(dock, {
+      open: false,
+      activeTaskId: "external",
+      tasks: [{
+        id: "external",
+        kind: "agent",
+        label: "External task",
+        presentation: "terminal",
+        provider: "codex",
+        state: "running",
+      }],
+    });
+    const mounted = await render();
+
+    let result: "draft" | "handled" = "draft";
+    await act(async () => {
+      result = dock.foregroundAgentDeliveryHandler?.({ prompt: "Review externally" }) ?? "draft";
+      await Promise.resolve();
+    });
+
+    expect(result).toBe("handled");
+    expect(skillPromptApi.insertAgentPrompt).toHaveBeenCalledWith("external", "Review externally");
+    expect(mounted.host.querySelector('[data-session="external"]')).toBeNull();
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+    expect(terminalHandle.focus).not.toHaveBeenCalled();
+    expect(dock.setOpen).not.toHaveBeenCalled();
+    expect(dock.bringTaskBackToDock).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith("Inserted into Codex. Press Enter to send.");
+  });
+
+  test("stages the prompt as a draft when external insertion fails", async () => {
+    skillPromptApi.insertAgentPrompt.mockRejectedValueOnce(new Error("unavailable"));
+    Object.assign(dock, {
+      open: true,
+      activeTaskId: "external",
+      tasks: [{
+        id: "external",
+        kind: "agent",
+        presentation: "terminal",
+        provider: "claude",
+        state: "running",
+      }],
+    });
+    await render();
+
+    await act(async () => {
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Keep this draft" })).toBe("handled");
+      await Promise.resolve();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("That agent is no longer ready. Opened a new task instead.");
+    expect(dock.insertPrompt).toHaveBeenCalledWith("Keep this draft");
+    expect(dock.sendToAgent).not.toHaveBeenCalled();
+  });
+
+  test("excludes an agent while its external Terminal is still launching", async () => {
+    Object.assign(dock, {
+      open: false,
+      activeTaskId: "launching",
+      tasks: [{
+        id: "launching",
+        kind: "agent",
+        presentation: "terminalLaunching",
+        provider: "codex",
+        state: "running",
+      }],
+    });
+    await render();
+
+    expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Wait" })).toBe("draft");
+    expect(skillPromptApi.insertAgentPrompt).not.toHaveBeenCalled();
+  });
+
   test("reopens a collapsed running agent and inserts the foreground send", async () => {
     Object.assign(dock, {
       open: false,
@@ -874,27 +1061,76 @@ describe("AgentTerminalDock", () => {
     expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(0);
   });
 
-  test("reopens a collapsed split and asks which agent should receive the send", async () => {
+  test("routes a mixed split chooser selection through the external prompt API", async () => {
+    Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
+      { id: "one", kind: "agent", label: "Dock task", state: "running", provider: "claude", presentation: "dock" },
+      { id: "two", kind: "agent", label: "External task", state: "running", provider: "codex", presentation: "dock" },
+    ] });
+    const mounted = await render();
+    await dragTaskToSplit(mounted.host, "two");
+    dock.tasks = [dock.tasks[0], { ...dock.tasks[1], presentation: "terminal" }];
+    await rerender(mounted);
+
+    await act(async () => {
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Choose external" })).toBe("handled");
+    });
+    await act(async () => (
+      mounted.host.querySelector('[aria-label="Insert into Codex"]') as HTMLButtonElement
+    ).click());
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(skillPromptApi.insertAgentPrompt).toHaveBeenCalledWith("two", "Choose external");
+    expect(terminalHandle.paste).not.toHaveBeenCalled();
+    expect(mounted.host.querySelector('[data-session="two"]')).toBeNull();
+    expect(document.activeElement?.id).toBe("agent-tab-two");
+  });
+
+  test("only opens a collapsed split when the chosen agent is internal", async () => {
     Object.assign(dock, { open: true, activeTaskId: "one", tasks: [
       { id: "one", kind: "agent", label: "First task", state: "running", provider: "claude" },
       { id: "two", kind: "agent", label: "Second task", state: "running", provider: "codex" },
     ] });
     const mounted = await render();
     await dragTaskToSplit(mounted.host, "two");
+    dock.tasks = [dock.tasks[0], { ...dock.tasks[1], presentation: "terminal" }];
     dock.open = false;
     await rerender(mounted);
+    dock.setOpen.mockClear();
 
     await act(async () => {
-      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Choose after opening" })).toBe("handled");
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Choose while closed" })).toBe("handled");
     });
 
-    expect(dock.setOpen).toHaveBeenCalledWith(true);
+    expect(dock.setOpen).not.toHaveBeenCalled();
     expect(dock.createTask).not.toHaveBeenCalled();
     expect(terminalHandle.paste).not.toHaveBeenCalled();
-
-    dock.open = true;
-    await rerender(mounted);
+    expect(mounted.host.querySelector("[data-agent-delivery-chooser]")).not.toBeNull();
     expect(mounted.host.querySelectorAll("[data-agent-delivery-target]")).toHaveLength(2);
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Insert into First task");
+
+    await act(async () => (
+      mounted.host.querySelector('[aria-label="Insert into Second task"]') as HTMLButtonElement
+    ).click());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(skillPromptApi.insertAgentPrompt).toHaveBeenCalledWith("two", "Choose while closed");
+    expect(dock.setOpen).not.toHaveBeenCalled();
+    expect(mounted.host.querySelector("[data-agent-delivery-chooser]")).toBeNull();
+
+    await act(async () => {
+      expect(dock.foregroundAgentDeliveryHandler?.({ prompt: "Choose internal" })).toBe("handled");
+    });
+    await act(async () => (
+      mounted.host.querySelector('[aria-label="Insert into First task"]') as HTMLButtonElement
+    ).click());
+
+    expect(dock.setOpen).toHaveBeenCalledWith(true);
+    expect(dock.setActiveTaskId).toHaveBeenCalledWith("one");
+    expect(terminalHandle.paste).toHaveBeenCalledWith("Choose internal");
   });
 
   test("splits a dragged task and keeps it in the right group when activated", async () => {

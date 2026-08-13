@@ -1,5 +1,6 @@
 import type { NoMoreIdeStatus } from "./process-manager.js";
 import type { PortHolder } from "./port-utils.js";
+import type { TerminalSessionInfo } from "./terminal-manager.js";
 import type {
   LogEntry,
   NoMoreIdeConfig,
@@ -129,6 +130,34 @@ export class DaemonClient {
     await this.request<{ ok: boolean }>("POST", "/api/daemon/shutdown");
   }
 
+  async listTerminalSessions(): Promise<TerminalSessionInfo[]> {
+    const body = await this.request<{ sessions: TerminalSessionInfo[] }>(
+      "GET",
+      "/api/terminal/sessions",
+    );
+    return body.sessions;
+  }
+
+  async openTerminal(id: string): Promise<TerminalSessionInfo> {
+    const body = await this.request<{ session: TerminalSessionInfo }>(
+      "POST",
+      `/api/terminal/sessions/${encodeURIComponent(id)}/open-system-terminal`,
+      undefined,
+      { "x-nomoreide-terminal-control": "1" },
+    );
+    return body.session;
+  }
+
+  async reclaimTerminal(id: string): Promise<TerminalSessionInfo> {
+    const body = await this.request<{ session: TerminalSessionInfo }>(
+      "POST",
+      `/api/terminal/sessions/${encodeURIComponent(id)}/reclaim-dock`,
+      undefined,
+      { "x-nomoreide-terminal-control": "1" },
+    );
+    return body.session;
+  }
+
   private async serviceAction(
     name: string,
     action: "start" | "stop" | "restart",
@@ -159,15 +188,19 @@ export class DaemonClient {
     method: "GET" | "POST",
     path: string,
     form?: URLSearchParams,
+    headers?: Record<string, string>,
   ): Promise<T> {
     const response = await this.fetchFn(new URL(path, this.url), {
       method,
       ...(form
         ? {
             body: form.toString(),
-            headers: { "content-type": "application/x-www-form-urlencoded" },
+            headers: {
+              "content-type": "application/x-www-form-urlencoded",
+              ...headers,
+            },
           }
-        : {}),
+        : headers ? { headers } : {}),
     });
     const body = (await response.json().catch(() => ({}))) as T & {
       ok?: boolean;

@@ -1042,6 +1042,13 @@ const agentEnvProfiles = [
     skillCount: 1,
     pluginCount: 1,
     updatedAt: "2026-07-05T09:30:00.000Z",
+    registry: {
+      origin: "installed",
+      slug: "review-stack",
+      version: "1.2.0",
+      linkedAt: "2026-07-05T09:30:00.000Z",
+      hasLocalChanges: true,
+    },
   },
   {
     name: "backup-claude",
@@ -1187,6 +1194,57 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
 
   // Profile registry (ROR-63). GET /auth/status is read-on-mount; the rest
   // back the registry bar's click actions with plausible demo data.
+  if (path === "/api/agent-env/registry/profiles") {
+    const registryProfiles = [
+      {
+        id: "registry-review-stack",
+        slug: "review-stack",
+        title: "Review Stack",
+        summary: "Code review MCPs, skills, and agent conventions in one portable setup.",
+        version: "1.3.0",
+        sourceKind: "hosted",
+        starsCount: 28,
+        downloadsCount: 164,
+        publishedAt: "2026-08-08T09:00:00Z",
+        mcpCount: 2,
+        skillCount: 4,
+        pluginCount: 1,
+      },
+      {
+        id: "registry-planning-kit",
+        slug: "planning-kit",
+        title: "Planning Kit",
+        summary: "A focused toolkit for architecture exploration and implementation planning.",
+        version: "1.0.2",
+        sourceKind: "github",
+        githubRepoUrl: "https://github.com/example/planning-kit",
+        starsCount: 12,
+        downloadsCount: 73,
+        publishedAt: "2026-08-03T09:00:00Z",
+        mcpCount: 0,
+        skillCount: 3,
+        pluginCount: 0,
+      },
+    ];
+    const query = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
+    const sort = url.searchParams.get("sort") ?? "recent";
+    const profiles = registryProfiles
+      .filter((profile) =>
+        [profile.title, profile.slug, profile.summary].some((value) =>
+          value.toLocaleLowerCase().includes(query),
+        ),
+      )
+      .sort((left, right) => {
+        if (sort === "stars") return right.starsCount - left.starsCount;
+        if (sort === "downloads") return right.downloadsCount - left.downloadsCount;
+        if (sort === "alpha") return left.title.localeCompare(right.title);
+        return right.publishedAt.localeCompare(left.publishedAt);
+      });
+    return json({
+      ok: true,
+      profiles,
+    });
+  }
   if (path === "/api/agent-env/auth/status") {
     return json({
       ok: true,
@@ -1218,6 +1276,28 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path === "/api/agent-env/profiles/register-github") {
     return json({ ok: true, result: { slug: "demo-profile" } });
+  }
+  {
+    const registryDiff = path.match(/^\/api\/agent-env\/profiles\/([^/]+)\/registry-diff$/);
+    if (registryDiff && method === "GET") {
+      return json({
+        ok: true,
+        link: {
+          origin: "installed",
+          slug: "review-stack",
+          version: "1.2.0",
+          linkedAt: "2026-07-05T09:30:00.000Z",
+        },
+        diff: {
+          descriptionChanged: false,
+          sourceAgentChanged: false,
+          hasLocalChanges: true,
+          mcps: { added: ["docs"], removed: [], changed: [] },
+          skills: { added: [], removed: [], changed: [] },
+          plugins: { added: [], removed: [], changed: ["code-review"] },
+        },
+      });
+    }
   }
   {
     const profilePublish = path.match(/^\/api\/agent-env\/profiles\/([^/]+)\/publish$/);
@@ -2312,6 +2392,87 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   // explicitly keeps the demo console free of the unhandled-path warning below.
   if (/^\/api\/services\/[^/]+\/project$/.test(path)) {
     return json({ ok: true });
+  }
+
+  const demoContextNote = {
+    ref: { kind: "note", id: "demo-context-architecture" },
+    title: "Architecture decisions",
+    kind: "note",
+    excerpt: "The API and worker communicate through the queue.",
+    projectPath: "/Users/demo/projects/acme",
+    path: "Notes/architecture-decisions.md",
+    tags: ["architecture"],
+    aliases: ["ADR"],
+    pinned: true,
+    editable: true,
+    body: "The [[api]] and [[worker]] communicate through the queue.",
+    revision: "a".repeat(64),
+    links: [
+      { target: "api", embed: false },
+      { target: "worker", embed: false },
+    ],
+    projectPaths: ["/Users/demo/projects/acme"],
+    frontmatter: { id: "demo-context-architecture", type: "note" },
+  };
+  const demoContextItems = [
+    demoContextNote,
+    {
+      ref: { kind: "project", id: "/Users/demo/projects/acme" },
+      title: "acme",
+      kind: "project",
+      excerpt: "/Users/demo/projects/acme",
+      projectPath: "/Users/demo/projects/acme",
+      path: "/Users/demo/projects/acme",
+      tags: [],
+      aliases: [],
+      pinned: false,
+      editable: false,
+    },
+    ...serviceDefinitions.map((service) => ({
+      ref: { kind: "service", id: `/Users/demo/projects/acme:${service.name}` },
+      title: service.name,
+      kind: "service",
+      excerpt: `local · ${service.command}`,
+      projectPath: "/Users/demo/projects/acme",
+      path: service.cwd,
+      tags: [],
+      aliases: [],
+      pinned: false,
+      editable: false,
+    })),
+  ];
+  if (path === "/api/context") {
+    return json({
+      ok: true,
+      vaultPath: "/Users/demo/.nomoreide/context-vault",
+      items: demoContextItems,
+      pinned: [demoContextNote.ref],
+      diagnostics: [],
+      truncated: false,
+    });
+  }
+  if (path === "/api/context/graph") {
+    return json({
+      ok: true,
+      graph: {
+        nodes: demoContextItems.map((item) => ({ ref: item.ref, title: item.title, kind: item.kind, pinned: item.pinned })),
+        edges: [
+          { from: demoContextNote.ref, to: demoContextItems[1].ref, type: "belongs-to" },
+          { from: demoContextNote.ref, to: demoContextItems[2].ref, type: "wiki" },
+          { from: demoContextNote.ref, to: demoContextItems[3].ref, type: "wiki" },
+        ],
+        truncated: false,
+      },
+    });
+  }
+  if (path === `/api/context/notes/${demoContextNote.ref.id}`) {
+    return json({ ok: true, note: demoContextNote });
+  }
+  if (path === "/api/context/pins") {
+    return json({ ok: true, pinned: [demoContextNote.ref] });
+  }
+  if (path === "/api/context/preview") {
+    return json({ ok: true, preview: { context: demoContextNote.body, estimatedTokens: 15, resolved: [demoContextNote], missing: [], warnings: [] } });
   }
 
   if (path === "/api/services" || path === "/api/bundles" || path === "/api/fs/directories") {

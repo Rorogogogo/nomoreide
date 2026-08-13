@@ -3,6 +3,7 @@ import type { AgentSessionStore } from "../../core/agent-sessions.js";
 import type { ApprovalBroker } from "../../core/approval-broker.js";
 import type { AppSettingsStore } from "../../core/app-settings.js";
 import type { ConfigStore } from "../../core/config-store.js";
+import type { ContextLibrary } from "../../core/context-library.js";
 import type { DbPeek } from "../../core/db-peek.js";
 import type { DbWrite } from "../../core/db-write.js";
 import type { ErrorInbox } from "../../core/error-inbox.js";
@@ -24,6 +25,7 @@ export interface RouteServices {
   agentSessions: AgentSessionStore;
   appSettings: AppSettingsStore;
   configStore: ConfigStore;
+  contextLibrary: ContextLibrary;
   cwd: string;
   dbPeek: DbPeek;
   dbWrite: DbWrite;

@@ -1,5 +1,7 @@
-pub mod config;
 pub mod agent_transcripts;
+pub mod config;
+pub mod context_library;
+pub mod external_terminal;
 pub mod git_identity;
 pub mod git_manager;
 pub mod github_auth;

@@ -1,6 +1,10 @@
 mod commands;
 mod core;
 
+pub fn run_terminal_attach(socket_path: &str, token: &str) -> Result<(), String> {
+    core::external_terminal::run_attach(socket_path, token)
+}
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::{Manager, RunEvent, State, WindowEvent};
@@ -59,6 +63,15 @@ pub fn run() {
             commands::agent_chat::get_agent_chat_status,
             commands::agent_chat::start_agent_chat,
             commands::config::set_chat_provider,
+            // context library
+            commands::context::list_context,
+            commands::context::get_context_graph,
+            commands::context::get_context_note,
+            commands::context::create_context_note,
+            commands::context::update_context_note,
+            commands::context::delete_context_note,
+            commands::context::set_context_pins,
+            commands::context::preview_context,
             // onboard
             commands::onboard::scan_repo_url,
             commands::onboard::run_install_command,
@@ -134,6 +147,10 @@ pub fn run() {
             commands::terminal::start_terminal_stream,
             commands::terminal::write_terminal_input,
             commands::terminal::resize_terminal,
+            commands::terminal::get_terminal_capabilities,
+            commands::terminal::open_terminal_in_system_terminal,
+            commands::terminal::reclaim_terminal_to_dock,
+            commands::terminal::insert_agent_prompt,
             commands::terminal::close_terminal_session,
             // database
             commands::database::list_databases,
@@ -206,19 +223,30 @@ pub fn run() {
             commands::workflows::delete_workflow,
         ])
         .on_window_event(|window, event| {
-            // No tray icon, so a hidden window would be unrecoverable — quit the
-            // app on close instead. RunEvent::Exit below still kills child procs.
-            if let WindowEvent::CloseRequested { .. } = event {
-                window.app_handle().exit(0);
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let state: State<AppState> = window.state();
+                if state.terminal_manager.has_external_presentations() {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else {
+                    window.app_handle().exit(0);
+                }
             }
         })
         .build(tauri::generate_context!())
         .expect("error building tauri application")
-        .run(|app, event| {
-            if let RunEvent::Exit = event {
+        .run(|app, event| match event {
+            RunEvent::Exit => {
                 let state: State<AppState> = app.state();
                 let _ = state.terminal_manager.close_all();
                 state.process_manager.kill_all();
             }
+            RunEvent::Reopen { .. } => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            _ => {}
         });
 }

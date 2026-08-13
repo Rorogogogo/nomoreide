@@ -7,6 +7,7 @@ export interface AppSettings {
     copyOnSelect: boolean;
     confirmTerminate: boolean;
     smoothScroll: boolean;
+    externalTerminal: "automatic" | "ghostty" | "iterm2" | "terminal";
   };
 }
 

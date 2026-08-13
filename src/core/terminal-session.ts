@@ -94,19 +94,41 @@ export interface TerminalSessionOptions {
 type Listener<T> = (value: T) => void;
 
 /**
- * Every xterm-backed PTY should advertise its real capabilities even when
- * NoMoreIDE itself was launched by a parent process that suppresses colour.
- * This also covers Claude or Codex launched later from an ordinary shell.
+ * A daemon-owned PTY must advertise a capability set that remains valid when
+ * presentation moves between xterm.js, Ghostty, iTerm2, and Terminal.app.
+ * Terminal.app does not reliably render the truecolor background sequences
+ * used by agent TUIs, so the stable contract is xterm's 256-color palette.
  */
 export function interactiveTerminalEnv(
   inherited: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...inherited,
-    COLORTERM: "truecolor",
     TERM: "xterm-256color",
   };
   delete env.NO_COLOR;
+  delete env.COLORTERM;
+  // A daemon-owned PTY can move between xterm.js, Ghostty, iTerm2, and
+  // Terminal.app without restarting its process. Parent-emulator fingerprints
+  // therefore become stale as soon as presentation moves and can make TUIs
+  // select the wrong renderer or palette. Keep only the stable generic
+  // TERM contract above.
+  for (const key of [
+    "__CFBundleIdentifier",
+    "COLORFGBG",
+    "GHOSTTY_BIN_DIR",
+    "GHOSTTY_RESOURCES_DIR",
+    "GHOSTTY_SHELL_FEATURES",
+    "ITERM_PROFILE",
+    "ITERM_SESSION_ID",
+    "LC_TERMINAL",
+    "LC_TERMINAL_VERSION",
+    "TERM_PROGRAM",
+    "TERM_PROGRAM_VERSION",
+    "TERM_SESSION_ID",
+  ]) {
+    delete env[key];
+  }
   // The machine-global daemon may be auto-started by the Claude Code MCP.
   // That parent exports CLAUDECODE=1, but a terminal opened in NoMoreIDE is a
   // new top-level session. Forwarding the marker makes Claude reject its own
@@ -151,6 +173,12 @@ export class TerminalSession implements TerminalSessionLike {
     this.adapter = options.adapter ?? new NodePtyAdapter();
     this.cwd = options.cwd;
     this.env = interactiveTerminalEnv(options.env ?? process.env);
+    // Codex snapshots the queried terminal background and emits derived RGB
+    // surfaces for the lifetime of the process. The dashboard can change its
+    // palette without restarting that process, so keep embedded Codex on the
+    // ANSI-16 contract: semantic colors remain palette-driven and xterm can
+    // switch light/dark themes without stale light RGB composer backgrounds.
+    if (options.provider === "codex") this.env.FORCE_COLOR = "1";
     this.shell = options.shell ?? defaultShell();
     this.args = options.args ?? [];
     this.label = options.label;

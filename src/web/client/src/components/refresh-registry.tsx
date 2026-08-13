@@ -71,6 +71,6 @@ export function useRegisterRefresh(handler: RefreshHandler) {
   ref.current = handler;
   useEffect(() => {
     if (!ctx) return;
-    return ctx.register(() => ref.current());
+    return ctx.register((options) => ref.current(options));
   }, [ctx]);
 }

@@ -67,6 +67,59 @@ export const httpTerminalApi: TerminalApi = {
     return res.session;
   },
 
+  async getTerminalCapabilities() {
+    return await requestJson<{ externalTerminal: boolean }>(
+      "/api/terminal/capabilities",
+    );
+  },
+
+  async openTerminalInSystemTerminal(id) {
+    const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
+      `/api/terminal/sessions/${encodeURIComponent(id)}/open-system-terminal`,
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+    return res.session;
+  },
+
+  async reclaimTerminalToDock(id) {
+    const res = await requestJson<{ ok: true; session: TerminalSessionInfo }>(
+      `/api/terminal/sessions/${encodeURIComponent(id)}/reclaim-dock`,
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+    return res.session;
+  },
+
+  async insertAgentPrompt(id, prompt) {
+    await requestJson(
+      `/api/terminal/sessions/${encodeURIComponent(id)}/insert-prompt`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-nomoreide-terminal-control": "1",
+        },
+        body: JSON.stringify({ prompt }),
+      },
+    );
+  },
+
+  async onTerminalSessionChanged(handler) {
+    const events = new EventSource("/api/terminal/events");
+    const onSession = (event: MessageEvent<string>) => {
+      try {
+        handler(JSON.parse(event.data) as TerminalSessionInfo);
+      } catch {}
+    };
+    events.addEventListener("session", onSession as EventListener);
+    return () => events.close();
+  },
+
   async closeTerminalSession(id) {
     await requestJson(`/api/terminal/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",

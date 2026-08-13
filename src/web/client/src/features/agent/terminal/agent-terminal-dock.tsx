@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Grip, LoaderCircle, Maximize2, Minimize2, PanelBottom, PanelLeft, PanelRight, Plus, RotateCcw, Sparkles, SquareTerminal, X } from "lucide-react";
 // SquareTerminal doubles as the shell tab/rail mark — see AgentTerminalTabs.
 import {
+  insertAgentPrompt,
   loadOneTimeSkillPrompt,
   type DashboardData,
   type OneTimeSkillSelection,
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { type ForegroundAgentDelivery, useAgentDock } from "../chat/agent-context";
 import { useToasts } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
 import { GitSituationBanner } from "../../git/git-situation-banner";
 import { TerminalViewport, type TerminalViewportHandle, type TerminalViewportStatus } from "../../terminal/terminal-viewport";
 import { AgentCapabilityBadges } from "./agent-capability-strip";
@@ -41,7 +43,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const t = useT();
   const { error: showError, success: showSuccess } = useToasts();
   const settings = useOptionalSettings();
-  const { activeTaskId, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, pendingOneTimeSkill, pendingTaskIds, provider, registerForegroundAgentDeliveryHandler, renameTask, resumeTask, selectOneTimeSkill, sendToAgent, setActiveTaskId, setOpen, tasks, tasksHydrated, tasksHydrationSettled, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
+  const { activeTaskId, bringTaskBackToDock, claimInitialInput, clearOneTimeSkill, closeTask, consumeOneTimeSkill, dockLayout, draft, focusNonce, insertPrompt, loadTranscripts, onboarding, open, openTaskInTerminal, pendingOneTimeSkill, pendingTaskIds, provider, registerForegroundAgentDeliveryHandler, renameTask, resumeTask, selectOneTimeSkill, sendToAgent, setActiveTaskId, setOpen, tasks, tasksHydrated, tasksHydrationSettled, terminalCapabilities, terminalError, transcripts, transcriptsError, transcriptsLoading, updateDockLayout, updateTaskStatus } = useAgentDock();
   const [height, setHeight] = useState<number | null>(dockLayout.bottomHeight);
   const [width, setWidth] = useState(dockLayout.rightWidth);
   const [resizing, setResizing] = useState(false);
@@ -448,7 +450,12 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         ]
   ).filter(
     (task): task is NonNullable<typeof focusedTask> =>
-      Boolean(task && task.kind !== "shell" && task.state === "running"),
+      Boolean(
+        task &&
+          task.kind !== "shell" &&
+          task.state === "running" &&
+          task.presentation !== "terminalLaunching",
+      ),
   );
   useEffect(() => {
     if (currentRailTask) setLatestRailTask(currentRailTask);
@@ -523,6 +530,19 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const collapsedTaskLabel =
     collapsedTask?.label ||
     (collapsedShell ? t("dock.shellFallback") : t("dock.newTask"));
+  const collapsedTaskLimit = 4;
+  const collapsedTaskIndex = collapsedTask
+    ? tasks.findIndex((task) => task.id === collapsedTask.id)
+    : 0;
+  const collapsedTaskWindowStart = Math.min(
+    Math.max(collapsedTaskIndex - 1, 0),
+    Math.max(tasks.length - collapsedTaskLimit, 0),
+  );
+  const collapsedTaskTabs = tasks.slice(
+    collapsedTaskWindowStart,
+    collapsedTaskWindowStart + collapsedTaskLimit,
+  );
+  const collapsedHiddenTaskCount = tasks.length - collapsedTaskTabs.length;
   const collapsedStatusLabel = focusedTask
     ? t("dock.activeStatusSr")
     : t("dock.latestStatusSr");
@@ -559,7 +579,9 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   const injectableTask =
     focusedTask &&
     focusedTask.kind !== "shell" &&
-    focusedTask.state === "running"
+    focusedTask.state === "running" &&
+    focusedTask.presentation !== "terminal" &&
+    focusedTask.presentation !== "terminalLaunching"
       ? focusedTask
       : null;
   useEffect(() => {
@@ -638,17 +660,26 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     task: NonNullable<typeof focusedTask>,
     delivery: ForegroundAgentDelivery,
   ) => {
+    const providerLabel = task.provider === "codex" ? "Codex" : "Claude Code";
+    if (task.presentation === "terminal") {
+      void insertAgentPrompt(task.id, delivery.prompt)
+        .then(() => showSuccess(t("dock.insertedInto", { name: providerLabel })))
+        .catch(() => {
+          showError(t("dock.insertUnavailable"));
+          insertPrompt(delivery.prompt);
+        });
+      return true;
+    }
     const handle = viewportHandlesRef.current.get(task.id);
     if (!handle?.paste(delivery.prompt)) return false;
     focusPaneTask(rightTaskIds.has(task.id) ? "right" : "left");
     handle.focus();
-    const providerLabel = task.provider === "codex" ? "Codex" : "Claude Code";
     showSuccess(t("dock.insertedInto", { name: providerLabel }));
     return true;
   };
   foregroundDeliveryHandlerRef.current = (delivery) => {
     if (deliveryTargets.length === 0) return "draft";
-    if (!open) {
+    if (!open && deliveryTargets.length === 1 && deliveryTargets[0]?.presentation !== "terminal") {
       setOpen(true);
       if (composing) {
         const leftTarget = deliveryTargets.find(
@@ -669,6 +700,12 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     const delivery = pendingDelivery;
     if (!delivery) return;
     setPendingDelivery(null);
+    if (!open && task.presentation !== "terminal") {
+      setOpen(true);
+    }
+    if (open && task.presentation === "terminal") {
+      window.setTimeout(() => document.getElementById(`agent-tab-${task.id}`)?.focus(), 0);
+    }
     if (insertDeliveryIntoTask(task, delivery)) return;
     showError(t("dock.insertUnavailable"));
     sendToAgent({ ...delivery, mode: "draft" });
@@ -806,6 +843,42 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
     setDraggedTaskId(null);
   };
   return <>
+    {pendingDelivery && !open ? (
+      <section
+        aria-label={t("dock.chooseAgentTarget")}
+        className={cn(
+          "fixed z-[60] flex max-w-[calc(100vw-1.5rem)] flex-col border border-border bg-background p-1 shadow-lg",
+          sideDocked ? "bottom-3 right-11 w-64" : "bottom-11 left-1/2 w-72 -translate-x-1/2",
+        )}
+        data-agent-delivery-chooser
+      >
+        <span className="px-2 py-1 text-[10px] font-medium text-muted-foreground">
+          {t("dock.chooseAgentTarget")}
+        </span>
+        {deliveryTargets.map((task, index) => {
+          const providerLabel = task.provider === "codex" ? "Codex" : "Claude Code";
+          const taskLabel = task.label || t("dock.taskFallback", { provider: providerLabel });
+          const TaskLogo = task.provider === "codex" ? CodexLogo : ClaudeLogo;
+          return (
+            <button
+              aria-label={t("dock.insertInto", { name: taskLabel })}
+              className="flex min-w-0 items-center gap-2 px-2 py-1.5 text-left hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              data-agent-delivery-target
+              key={task.id}
+              onClick={() => chooseDeliveryTarget(task)}
+              ref={index === 0 ? deliveryTargetButtonRef : undefined}
+              type="button"
+            >
+              <TaskLogo aria-hidden="true" className="size-3.5 shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-[11px] font-medium">{taskLabel}</span>
+              <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
+                {task.presentation === "terminal" ? t("dock.externalActive") : providerLabel}
+              </span>
+            </button>
+          );
+        })}
+      </section>
+    ) : null}
     {!open ? sideDocked ? (
       <button
         aria-label={t("dock.openAria")}
@@ -844,10 +917,69 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             <span>{collapsedProviderLabel}</span>
           </button>
           <span className="h-3 w-px bg-border" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{collapsedTaskLabel}</span>
+          {collapsedTaskTabs.length ? (
+            <div
+              aria-label={t("dock.tasksAria")}
+              className="pointer-events-auto flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+              data-collapsed-agent-tabs
+              role="tablist"
+            >
+              {collapsedTaskTabs.map((task) => {
+                const label = task.label || (task.kind === "shell" ? t("dock.shellFallback") : t("dock.taskFallback", { provider: task.provider === "codex" ? "Codex" : "Claude Code" }));
+                const active = task.id === collapsedTask?.id;
+                const TaskLogo = task.kind === "shell"
+                  ? SquareTerminal
+                  : task.provider === "codex"
+                    ? CodexLogo
+                    : ClaudeLogo;
+                return (
+                  <button
+                    aria-label={t("dock.openTaskAria", { label })}
+                    aria-selected={active}
+                    className={cn(
+                      "relative flex h-6 min-w-12 max-w-36 flex-1 items-center gap-1.5 overflow-hidden rounded-sm px-2 text-[11px] transition-colors before:absolute before:inset-x-0 before:top-0 before:h-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      task.provider === "codex" ? "before:bg-emerald-500" : task.provider === "claude" ? "before:bg-[#D97757]" : "before:bg-muted-foreground/40",
+                      active
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-muted/45 hover:text-foreground",
+                    )}
+                    data-collapsed-agent-task={task.id}
+                    data-presentation={task.presentation}
+                    key={task.id}
+                    onClick={() => {
+                      if (rightTaskIds.has(task.id)) activateRight(task.id);
+                      else activateLeft(task.id);
+                      setOpen(true);
+                    }}
+                    role="tab"
+                    title={label}
+                    type="button"
+                  >
+                    <TaskLogo aria-hidden="true" className="size-3 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate font-mono">{label}</span>
+                    {task.presentation === "terminal" ? <SquareTerminal aria-hidden="true" className="size-2.5 shrink-0 opacity-70" /> : null}
+                    {active ? <span className="sr-only">{collapsedStatusLabel}{stateLabel(task.state)}</span> : null}
+                    <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-muted-foreground/50", task.state === "running" && "bg-emerald-500", task.state === "error" && "bg-destructive")} />
+                  </button>
+                );
+              })}
+              {collapsedHiddenTaskCount > 0 ? (
+                <span
+                  className="shrink-0 font-mono text-[10px] text-muted-foreground"
+                  title={t("dock.moreTasks", { count: collapsedHiddenTaskCount })}
+                >
+                  <span aria-hidden="true">+{collapsedHiddenTaskCount}</span>
+                  <span className="sr-only">{t("dock.moreTasks", { count: collapsedHiddenTaskCount })}</span>
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
+              {collapsedTaskLabel}
+              {collapsedTask ? <span className="sr-only">{collapsedStatusLabel}{stateLabel(collapsedTask.state)}</span> : null}
+            </span>
+          )}
           <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={collapsedProviderId} variant="strip" />
-          {collapsedTask ? <span className={cn("font-mono text-[10px] text-muted-foreground", collapsedTask.state === "running" && "text-emerald-600", collapsedTask.state === "error" && "text-destructive")}><span className="sr-only">{collapsedStatusLabel}</span>{stateLabel(collapsedTask.state)}</span> : null}
-          {tasks.length > 1 ? <span className="font-mono text-[10px] text-muted-foreground">{tasks.length}</span> : null}
           <ChevronUp className="size-3.5 text-muted-foreground" />
         </div>
       </div>
@@ -925,7 +1057,7 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             data-agent-pane-tabs="left"
             style={{ right: `${100 - splitPercent}%` }}
           >
-            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={false} onActivate={activateLeft} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
+            <AgentTerminalTabs activeTaskId={activeTaskId} ariaLabel={t("dock.leftTasksAria")} composing={false} onActivate={activateLeft} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void closeLeft(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={leftTasks} />
             {leftAgentContext ? <AgentCapabilityBadges capabilities={capabilitiesFor(leftProviderId)} onInsert={(text) => insertPaneCapability("left", leftActive, text)} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={(skill) => stagePaneOneTimeSkill("left", leftActive, skill)} providerLabel={leftProviderLabel} /> : null}
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={leftProviderId} variant="dock" />
           </div>
@@ -938,14 +1070,14 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
             data-agent-pane-tabs="right"
             style={{ left: `${splitPercent}%` }}
           >
-            <AgentTerminalTabs activeTaskId={rightActive?.id ?? null} ariaLabel={t("dock.rightTasksAria")} composing={false} onActivate={activateRight} onClose={(id) => void closeRight(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={rightTasks} />
+            <AgentTerminalTabs activeTaskId={rightActive?.id ?? null} ariaLabel={t("dock.rightTasksAria")} composing={false} onActivate={activateRight} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void closeRight(id)} onDragEnd={() => setDraggedTaskId(null)} onDragStart={setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={rightTasks} />
             {rightAgentContext ? <AgentCapabilityBadges capabilities={capabilitiesFor(rightProviderId)} onInsert={(text) => insertPaneCapability("right", rightActive, text)} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={(skill) => stagePaneOneTimeSkill("right", rightActive, skill)} providerLabel={rightProviderLabel} /> : null}
             <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={rightProviderId} variant="dock" />
           </div>
         </div>
       ) : (
         <>
-          <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />
+          <AgentTerminalTabs activeTaskId={sideDocked ? sideActiveTaskId : activeTaskId} composing={composing} onActivate={(id) => sideDocked && rightTaskIds.has(id) ? activateRight(id) : activateLeft(id)} onBringBackToDock={terminalCapabilities?.externalTerminal ? (id) => void bringTaskBackToDock(id) : undefined} onClose={(id) => void (rightTaskIds.has(id) ? closeRight(id) : closeLeft(id))} onDragEnd={sideDocked ? undefined : () => setDraggedTaskId(null)} onDragStart={sideDocked ? undefined : setDraggedTaskId} onOpenInTerminal={terminalCapabilities?.externalTerminal ? (id) => void openTaskInTerminal(id) : undefined} onRename={(id, label) => void renameTask(id, label)} pendingTaskIds={pendingTaskIds} tasks={sideDocked ? tasks : leftTasks} />
           {!sideDocked && agentContext ? <AgentCapabilityBadges capabilities={capabilities} onInsert={insertCapability} onNavigate={onNavigate ? navigate : undefined} onSelectOneTimeSkill={stageOneTimeSkill} providerLabel={railProviderLabel} /> : <span className="flex-1" />}
           {!sideDocked ? <DockStatusStrip git={git} onOpenActions={openGitHubActions} provider={railProviderId} variant="dock" /> : null}
         </>
@@ -1024,18 +1156,23 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         const shown = open && !composing && (sideDocked ? task.id === sideActiveTaskId : inRightPane ? task.id === rightActive?.id : task.id === activeTaskId);
         const focused = shown && focusedPane === (inRightPane ? "right" : "left");
         const paneStyle = contentSplit ? (inRightPane ? { left: `${splitPercent}%`, right: 0 } : { left: 0, right: `${100 - splitPercent}%` }) : undefined;
+        const externallyPresented =
+          task.presentation === "terminal" ||
+          task.presentation === "terminalLaunching";
         const showSkillStatus =
           shown &&
           focused &&
+          !externallyPresented &&
           task.kind !== "shell" &&
           task.state === "running" &&
           pendingOneTimeSkill;
         const deliveryTarget = Boolean(
           pendingDelivery &&
+            open &&
             deliveryTargets.some((candidate) => candidate.id === task.id),
         );
         const deliveryProviderLabel = task.provider === "codex" ? "Codex" : "Claude Code";
-        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute bottom-0 top-0", !contentSplit && "inset-x-0", !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane(inRightPane ? "right" : "left"); }} role="tabpanel" style={paneStyle}><TerminalViewport active={shown} claimInitialInput={() => claimInitialInput(task.id)} displaySettings={settings?.confirmedGlobal.terminal} focused={focused} onStatusChange={(status: TerminalViewportStatus) => handleTaskStatus(task, status)} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} />{deliveryTarget ? <section aria-label={t("dock.chooseAgentTarget")} className="absolute inset-0 z-30 grid place-items-center bg-background/65 backdrop-blur-[1px]" data-agent-delivery-target><button aria-label={t("dock.insertInto", { name: deliveryProviderLabel })} className="flex max-w-[calc(100%-2rem)] flex-col items-center border border-border bg-background px-3 py-2 text-foreground shadow-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => chooseDeliveryTarget(task)} ref={task.id === deliveryTargets[0]?.id ? deliveryTargetButtonRef : undefined} type="button"><span className="text-[11px] font-medium">{t("dock.insertHere")}</span><span className="max-w-full truncate font-mono text-[9px] text-muted-foreground">{deliveryProviderLabel} · {task.label || t("dock.taskFallback", { provider: deliveryProviderLabel })}</span></button></section> : null}{showSkillStatus ? <div className="absolute bottom-2 left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1.5 border border-border bg-card px-2 py-1 text-[10px] shadow-sm" data-one-time-skill-status><Sparkles aria-hidden="true" className="size-3 text-muted-foreground" /><span className="truncate font-medium text-foreground">{pendingOneTimeSkill.name}</span>{skillPromptBusy ? <><LoaderCircle aria-hidden="true" className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="text-muted-foreground">{t("dock.skillLoading")}</span></> : null}{skillPromptError ? <><span className="max-w-48 truncate text-destructive" role="alert" title={skillPromptError}>{skillPromptError}</span><button aria-label={t("dock.skillRetry")} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => setSkillInjectionRetry((value) => value + 1)} type="button"><RotateCcw aria-hidden="true" className="size-3" /></button></> : null}<button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => { clearOneTimeSkill(); setSkillPromptError(null); }} type="button"><X aria-hidden="true" className="size-3" /></button></div> : null}</div>;
+        return <div aria-labelledby={`agent-tab-${task.id}`} className={cn("absolute bottom-0 top-0", !contentSplit && "inset-x-0", !shown && "invisible pointer-events-none")} id={`agent-panel-${task.id}`} key={task.id} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane(inRightPane ? "right" : "left"); }} role="tabpanel" style={paneStyle}>{externallyPresented ? <section aria-label={t("dock.externalActive")} className="absolute inset-0 z-20 grid place-items-center bg-background"><div className="flex flex-col items-center gap-2 px-4 py-3"><SquareTerminal aria-hidden="true" className="size-5 text-muted-foreground" /><span className="text-xs font-medium">{task.presentation === "terminalLaunching" ? t("dock.openingInTerminal") : t("dock.activeInTerminal")}</span>{task.presentation === "terminal" ? <Button onClick={() => void bringTaskBackToDock(task.id)} size="sm" type="button" variant="outline">{t("dock.bringBack")}</Button> : null}</div></section> : <TerminalViewport active={shown} claimInitialInput={() => claimInitialInput(task.id)} displaySettings={settings?.confirmedGlobal.terminal} focused={focused} onStatusChange={(status: TerminalViewportStatus) => handleTaskStatus(task, status)} ref={(handle) => { if (handle) viewportHandlesRef.current.set(task.id, handle); else viewportHandlesRef.current.delete(task.id); }} sessionId={task.id} suppressColorQueries={task.provider === "codex"} />}{deliveryTarget ? <section aria-label={t("dock.chooseAgentTarget")} className="absolute inset-0 z-30 grid place-items-center bg-background/65 backdrop-blur-[1px]" data-agent-delivery-target><button aria-label={t("dock.insertInto", { name: deliveryProviderLabel })} className="flex max-w-[calc(100%-2rem)] flex-col items-center border border-border bg-background px-3 py-2 text-foreground shadow-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => chooseDeliveryTarget(task)} ref={task.id === deliveryTargets[0]?.id ? deliveryTargetButtonRef : undefined} type="button"><span className="text-[11px] font-medium">{t("dock.insertHere")}</span><span className="max-w-full truncate font-mono text-[9px] text-muted-foreground">{deliveryProviderLabel} · {task.label || t("dock.taskFallback", { provider: deliveryProviderLabel })}</span></button></section> : null}{showSkillStatus ? <div className="absolute bottom-2 left-1/2 z-20 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-1.5 border border-border bg-card px-2 py-1 text-[10px] shadow-sm" data-one-time-skill-status><Sparkles aria-hidden="true" className="size-3 text-muted-foreground" /><span className="truncate font-medium text-foreground">{pendingOneTimeSkill.name}</span>{skillPromptBusy ? <><LoaderCircle aria-hidden="true" className="size-3 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="text-muted-foreground">{t("dock.skillLoading")}</span></> : null}{skillPromptError ? <><span className="max-w-48 truncate text-destructive" role="alert" title={skillPromptError}>{skillPromptError}</span><button aria-label={t("dock.skillRetry")} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => setSkillInjectionRetry((value) => value + 1)} type="button"><RotateCcw aria-hidden="true" className="size-3" /></button></> : null}<button aria-label={t("dock.skillTempClear", { name: pendingOneTimeSkill.name })} className="grid size-5 place-items-center text-muted-foreground hover:text-foreground" onClick={() => { clearOneTimeSkill(); setSkillPromptError(null); }} type="button"><X aria-hidden="true" className="size-3" /></button></div> : null}</div>;
       })}
       {open && composing ? <div aria-label={layoutSplit ? t("dock.newTask") : undefined} aria-labelledby={layoutSplit ? undefined : `agent-tab-${COMPOSE_TAB_ID}`} className="absolute inset-x-0 bottom-0 top-0 bg-background" id={`agent-panel-${COMPOSE_TAB_ID}`} onPointerDown={() => { markLayoutMutation(); paneIntentSequenceRef.current += 1; setFocusedPane("left"); }} role="tabpanel"><AgentTerminalComposer capabilities={shellMode ? undefined : capabilities} onNavigate={onNavigate ? navigate : undefined} onShellMode={setShellMode} shellMode={shellMode} /></div> : null}
       {contentSplit ? <hr aria-label={t("dock.splitResizeAria")} aria-orientation="vertical" aria-valuemax={75} aria-valuemin={25} aria-valuenow={Math.round(splitPercent)} className="absolute inset-y-0 z-20 h-auto w-3 -translate-x-1/2 cursor-col-resize touch-none border-0 bg-transparent after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-border after:transition-colors hover:after:bg-primary focus-visible:after:bg-primary" onDoubleClick={() => { splitPercentRef.current = 50; setSplitPercent(50); updateDockLayout({ splitPercent: 50 }); }} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); const next = Math.max(25, Math.min(75, splitPercentRef.current + (event.key === "ArrowLeft" ? -5 : 5))); splitPercentRef.current = next; setSplitPercent(next); updateDockLayout({ splitPercent: next }); } }} onPointerDown={splitResizeStart} style={{ left: `${splitPercent}%` }} tabIndex={0} /> : null}

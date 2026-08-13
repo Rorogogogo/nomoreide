@@ -11,6 +11,7 @@ import {
 import {
   lazy,
   Suspense,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -59,10 +60,12 @@ const HISTORY_PLOT_BOTTOM = 96;
 
 export function ActivityView({
   data,
+  headerControl,
   onOpenService,
   scopeName,
 }: {
   data: DashboardData;
+  headerControl?: ReactNode;
   onOpenService: (name: string) => void;
   scopeName?: string | null;
 }) {
@@ -132,6 +135,7 @@ export function ActivityView({
               {t("activity.title")}
             </h2>
             <HostStateBadge sample={current} />
+            {headerControl}
           </div>
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
             {scopeName

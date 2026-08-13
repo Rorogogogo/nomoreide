@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Archive,
   Camera,
@@ -17,6 +17,9 @@ import type { AgentEnvAgentName, AgentEnvProfileSummary } from "@/lib/api";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { AGENT_LABELS, AgentLogo } from "./agent-column";
 import { ProfileContents } from "./profile-contents";
+import { ProfilePublicationDetails } from "./profile-publication-details";
+import { RegistryProfilesPanel } from "./registry-profiles-panel";
+import { useRegistryProfiles } from "./use-registry-profiles";
 import { useT } from "@/lib/i18n";
 
 const ALL_AGENTS: AgentEnvAgentName[] = ["claude", "codex", "antigravity"];
@@ -41,6 +44,9 @@ export function ProfilesPanel({
   onDelete,
   onPublish,
   onChanged,
+  registryBusy,
+  registryFrontendUrl,
+  onInstallRegistry,
 }: {
   profiles: AgentEnvProfileSummary[];
   loading: boolean;
@@ -55,6 +61,9 @@ export function ProfilesPanel({
   onDelete: (name: string) => void;
   onPublish: (name: string) => void;
   onChanged: () => void;
+  registryBusy: boolean;
+  registryFrontendUrl?: string;
+  onInstallRegistry: (slug: string) => Promise<boolean>;
 }) {
   const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +76,12 @@ export function ProfilesPanel({
     agent: AgentEnvAgentName;
   } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [publicationExpanded, setPublicationExpanded] = useState<string | null>(null);
+  const publicationCatalog = useRegistryProfiles(true);
+  const registryVersions = useMemo(
+    () => new Map(publicationCatalog.profiles.map((profile) => [profile.slug, profile.version])),
+    [publicationCatalog.profiles],
+  );
   const trimmedSnapshotName = snapshotName.trim();
   const snapshotNameValid =
     trimmedSnapshotName.length === 0 || PROFILE_NAME_PATTERN.test(trimmedSnapshotName);
@@ -78,117 +93,129 @@ export function ProfilesPanel({
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card/75 px-3 py-2">
-        <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          <Archive aria-hidden="true" className="size-3.5" />
-          {t("agentEnv.profilesTitle")}
-          {profiles.length > 0 ? (
-            <Badge size="small" variant="outline">
-              {profiles.length}
-            </Badge>
-          ) : null}
-        </span>
-        <div className="flex flex-wrap items-center gap-2">
-          <div
-            aria-label={t("agentEnv.snapshotAgentAria")}
-            className="flex h-7 items-center gap-1"
-            role="radiogroup"
-          >
-            {ALL_AGENTS.map((agent) => (
-              <label
-                className={cn(
-                  "flex h-full w-7 cursor-pointer items-center justify-center rounded transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
-                  snapshotAgent === agent
-                    ? "bg-foreground text-background"
-                    : "opacity-40 hover:opacity-100",
-                )}
-                key={agent}
-                title={t("agentEnv.snapshotAgentTitle", { name: AGENT_LABELS[agent] })}
-              >
-                <input
-                  checked={snapshotAgent === agent}
-                  className="sr-only"
-                  name="agent-env-snapshot-agent"
-                  onChange={() => setSnapshotAgent(agent)}
-                  type="radio"
-                  value={agent}
-                />
-                <AgentLogo agent={agent} className="size-4" />
-              </label>
-            ))}
-          </div>
-          <input
-            aria-label={t("agentEnv.newProfileAria")}
-            aria-invalid={!snapshotNameValid}
-            aria-describedby={!snapshotNameValid ? "agent-env-profile-name-error" : undefined}
-            className="h-7 w-36 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onChange={(event) => setSnapshotName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") submitSnapshot();
-            }}
-            placeholder={t("agentEnv.profileNamePlaceholder")}
-            value={snapshotName}
-          />
-          <Button
-            disabled={busy || trimmedSnapshotName.length === 0 || !snapshotNameValid}
-            onClick={submitSnapshot}
-            size="sm"
-            variant="outline"
-          >
-            <Camera />
-            {t("agentEnv.snapshot")}
-          </Button>
-          {!snapshotNameValid ? (
-            <span className="basis-full text-right text-[10px] text-destructive" id="agent-env-profile-name-error">
-              {t("agentEnv.invalidProfileName")}
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-border md:grid-cols-2 md:divide-x md:divide-y-0">
+        <section
+          aria-labelledby="agent-profiles-local-title"
+          className="flex min-h-0 min-w-0 flex-col"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card/75 px-3 py-2">
+            <span
+              className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium"
+              id="agent-profiles-local-title"
+            >
+              <Archive aria-hidden="true" className="size-3.5 text-muted-foreground" />
+              {t("agentEnv.profileSourceLocal")}
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {profiles.length}
+              </span>
             </span>
-          ) : null}
-          <Button
-            disabled={busy}
-            onClick={() => fileInputRef.current?.click()}
-            size="sm"
-            variant="outline"
-          >
-            <Upload />
-            {t("agentEnv.import")}
-          </Button>
-          <input
-            accept=".tar.gz,.tgz,application/gzip"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) onImport(file);
-              event.target.value = "";
-            }}
-            ref={fileInputRef}
-            type="file"
-          />
-        </div>
-      </div>
-
-      {loading ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">
-          {t("agentEnv.loadingProfiles")}
-        </p>
-      ) : loadError && profiles.length === 0 ? (
-        <div className="flex items-center justify-between gap-3 px-3 py-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-destructive">{t("agentEnv.loadProfilesFailed")}</p>
-            <p className="truncate text-[11px] text-muted-foreground" title={loadError}>{loadError}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                aria-label={t("agentEnv.snapshotAgentAria")}
+                className="flex h-7 items-center gap-1"
+                role="radiogroup"
+              >
+                {ALL_AGENTS.map((agent) => (
+                  <label
+                    className={cn(
+                      "flex h-full w-7 cursor-pointer items-center justify-center rounded transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                      snapshotAgent === agent
+                        ? "bg-foreground text-background"
+                        : "opacity-40 hover:opacity-100",
+                    )}
+                    key={agent}
+                    title={t("agentEnv.snapshotAgentTitle", { name: AGENT_LABELS[agent] })}
+                  >
+                    <input
+                      checked={snapshotAgent === agent}
+                      className="sr-only"
+                      name="agent-env-snapshot-agent"
+                      onChange={() => setSnapshotAgent(agent)}
+                      type="radio"
+                      value={agent}
+                    />
+                    <AgentLogo agent={agent} className="size-4" />
+                  </label>
+                ))}
+              </div>
+              <input
+                aria-describedby={!snapshotNameValid ? "agent-env-profile-name-error" : undefined}
+                aria-invalid={!snapshotNameValid}
+                aria-label={t("agentEnv.newProfileAria")}
+                className="h-7 w-36 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onChange={(event) => setSnapshotName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") submitSnapshot();
+                }}
+                placeholder={t("agentEnv.profileNamePlaceholder")}
+                value={snapshotName}
+              />
+              <Button
+                disabled={busy || trimmedSnapshotName.length === 0 || !snapshotNameValid}
+                onClick={submitSnapshot}
+                size="sm"
+                variant="outline"
+              >
+                <Camera />
+                {t("agentEnv.snapshot")}
+              </Button>
+              {!snapshotNameValid ? (
+                <span
+                  className="basis-full text-right text-[10px] text-destructive"
+                  id="agent-env-profile-name-error"
+                >
+                  {t("agentEnv.invalidProfileName")}
+                </span>
+              ) : null}
+              <Button
+                disabled={busy}
+                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                variant="outline"
+              >
+                <Upload />
+                {t("agentEnv.import")}
+              </Button>
+              <input
+                accept=".tar.gz,.tgz,application/gzip"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) onImport(file);
+                  event.target.value = "";
+                }}
+                ref={fileInputRef}
+                type="file"
+              />
+            </div>
           </div>
-          <Button onClick={onRetry} size="sm" variant="outline">
-            <RefreshCw aria-hidden="true" />
-            {t("agentEnv.retry")}
-          </Button>
-        </div>
-      ) : profiles.length === 0 ? (
-        <p className="px-3 py-2 text-xs text-muted-foreground">
-          {t("agentEnv.noProfiles")}
-        </p>
-      ) : (
-        <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto">
-          {profiles.map((profile) => (
+          {loading ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {t("agentEnv.loadingProfiles")}
+            </p>
+          ) : loadError && profiles.length === 0 ? (
+            <div className="flex items-center justify-between gap-3 px-3 py-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-destructive">
+                  {t("agentEnv.loadProfilesFailed")}
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground" title={loadError}>
+                  {loadError}
+                </p>
+              </div>
+              <Button onClick={onRetry} size="sm" variant="outline">
+                <RefreshCw aria-hidden="true" />
+                {t("agentEnv.retry")}
+              </Button>
+            </div>
+          ) : profiles.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-muted-foreground">
+              {t("agentEnv.noProfiles")}
+            </p>
+          ) : (
+            <ul className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto">
+              {profiles.map((profile) => (
             <li className="group transition-colors hover:bg-muted/20" key={profile.name}>
               <div className="flex items-center gap-2.5 px-3 py-2">
                 <button
@@ -246,6 +273,37 @@ export function ProfilesPanel({
                     ) : null}
                   </span>
                 </button>
+                <button
+                  aria-expanded={
+                    profile.registry ? publicationExpanded === profile.name : undefined
+                  }
+                  className="shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    if (!profile.registry) {
+                      onPublish(profile.name);
+                      return;
+                    }
+                    setPublicationExpanded(
+                      publicationExpanded === profile.name ? null : profile.name,
+                    );
+                  }}
+                  title={
+                    profile.registry
+                      ? t("agentEnv.publicationViewDetails")
+                      : t("agentEnv.publicationNotPublishedTitle")
+                  }
+                  type="button"
+                >
+                  <ProfilePublicationBadge
+                    hasLocalChanges={profile.registry?.hasLocalChanges ?? false}
+                    origin={profile.registry?.origin}
+                    registryChanged={
+                      Boolean(profile.registry && registryVersions.get(profile.registry.slug)) &&
+                      registryVersions.get(profile.registry?.slug ?? "") !== profile.registry?.version
+                    }
+                    version={profile.registry?.version}
+                  />
+                </button>
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {formatRelativeTime(profile.updatedAt)}
                 </span>
@@ -283,10 +341,29 @@ export function ProfilesPanel({
               {expanded === profile.name ? (
                 <ProfileContents name={profile.name} onChanged={onChanged} />
               ) : null}
+              {profile.registry && publicationExpanded === profile.name ? (
+                <ProfilePublicationDetails
+                  busy={registryBusy}
+                  link={profile.registry}
+                  name={profile.name}
+                  onInstall={onInstallRegistry}
+                  onPublish={onPublish}
+                  registryFrontendUrl={registryFrontendUrl}
+                  registryVersion={registryVersions.get(profile.registry.slug)}
+                />
+              ) : null}
             </li>
-          ))}
-        </ul>
-      )}
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <RegistryProfilesPanel
+          busy={registryBusy}
+          catalog={publicationCatalog}
+          onInstall={onInstallRegistry}
+        />
+      </div>
 
       {confirmDelete ? (
         <ConfirmDialog
@@ -320,5 +397,44 @@ export function ProfilesPanel({
         />
       ) : null}
     </div>
+  );
+}
+
+function ProfilePublicationBadge({
+  hasLocalChanges,
+  origin,
+  registryChanged,
+  version,
+}: {
+  hasLocalChanges: boolean;
+  origin?: "published" | "installed";
+  registryChanged: boolean;
+  version?: string;
+}) {
+  const t = useT();
+  if (!origin || !version) {
+    return (
+      <Badge appearance="subtle" size="small" variant="secondary">
+        {t("agentEnv.publicationNotPublished")}
+      </Badge>
+    );
+  }
+  if (hasLocalChanges && registryChanged) {
+    return <Badge size="small" variant="warning">{t("agentEnv.publicationDiverged")}</Badge>;
+  }
+  if (hasLocalChanges) {
+    return <Badge size="small" variant="warning">{t("agentEnv.publicationLocalChanges")}</Badge>;
+  }
+  if (registryChanged) {
+    return (
+      <Badge appearance="subtle" size="small" variant="primary">
+        {t("agentEnv.publicationRegistryUpdate")}
+      </Badge>
+    );
+  }
+  return (
+    <Badge size="small" variant="success">
+      {t(origin === "published" ? "agentEnv.publicationPublished" : "agentEnv.publicationInstalled")} · v{version}
+    </Badge>
   );
 }

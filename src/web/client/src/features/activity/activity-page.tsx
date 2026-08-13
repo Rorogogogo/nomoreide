@@ -1,5 +1,13 @@
-import { Activity, Cpu, Search, Server } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, Check, ChevronDown, Cpu, Search, Server } from "lucide-react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/cvui-badge";
 import { Input } from "@/components/ui/input";
@@ -40,7 +48,6 @@ export function ActivityPage({
   onOpenService: (name: string) => void;
   scopeName: string | null;
 }) {
-  const t = useT();
   const [servers, setServers] = useState<SshServerSummary[]>([]);
 
   const loadServers = useCallback(async () => {
@@ -52,45 +59,195 @@ export function ActivityPage({
   useRegisterRefresh(({ manual }) => manual ? loadServers() : undefined);
 
   const selected = servers.find((server) => server.host === host);
+  const hostSelector = (
+    <ActivityHostSelect
+      host={selected ? host : "local"}
+      onHostChange={onHostChange}
+      servers={servers}
+    />
+  );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/75 px-3 py-1.5">
-        <Server aria-hidden="true" className="size-3.5 text-muted-foreground" />
-        <label className="text-[10px] font-medium text-muted-foreground" htmlFor="activity-host">
-          {t("activity.host")}
-        </label>
-        <select
-          className="h-7 min-w-40 rounded border border-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          id="activity-host"
-          onChange={(event) => onHostChange(event.target.value)}
-          value={selected ? host : "local"}
-        >
-          <option value="local">{t("activity.thisMachine")}</option>
-          {servers.map((server) => (
-            <option key={server.host} value={server.host}>
-              {server.name ?? server.host}{server.environment ? ` · ${server.environment}` : ""}
-            </option>
-          ))}
-        </select>
-        {selected ? (
-          <Badge appearance="subtle" size="small" variant="secondary">
-            SSH · {selected.host}
-          </Badge>
-        ) : null}
-      </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {selected ? (
-          <RemoteActivityView key={selected.host} server={selected} />
-        ) : (
-          <ActivityView data={data} onOpenService={onOpenService} scopeName={scopeName} />
-        )}
-      </div>
-    </div>
+    selected ? (
+      <RemoteActivityView
+        headerControl={hostSelector}
+        key={selected.host}
+        server={selected}
+      />
+    ) : (
+      <ActivityView
+        data={data}
+        headerControl={hostSelector}
+        onOpenService={onOpenService}
+        scopeName={scopeName}
+      />
+    )
   );
 }
 
-export function RemoteActivityView({ server }: { server: SshServerSummary }) {
+function ActivityHostSelect({
+  host,
+  onHostChange,
+  servers,
+}: {
+  host: string;
+  onHostChange: (host: string) => void;
+  servers: SshServerSummary[];
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ left: 0, top: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const selected = servers.find((server) => server.host === host);
+  const label = selected?.name ?? selected?.host ?? t("activity.thisMachine");
+
+  function toggle() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuWidth = Math.max(rect.width, 192);
+      setCoords({
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8)),
+        top: rect.bottom + 4,
+      });
+    }
+    setOpen((value) => !value);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function dismiss(event: PointerEvent) {
+      const target = event.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    }
+    function dismissOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    const dismissOnViewportChange = () => setOpen(false);
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", dismissOnEscape);
+    window.addEventListener("resize", dismissOnViewportChange);
+    window.addEventListener("scroll", dismissOnViewportChange, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", dismissOnEscape);
+      window.removeEventListener("resize", dismissOnViewportChange);
+      window.removeEventListener("scroll", dismissOnViewportChange, true);
+    };
+  }, [open]);
+
+  function choose(nextHost: string) {
+    setOpen(false);
+    onHostChange(nextHost);
+  }
+
+  return (
+    <>
+      <button
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`${t("activity.host")}: ${label}`}
+        className={cn(
+          "flex h-6 min-w-0 max-w-44 items-center gap-1 rounded border border-border bg-background px-1.5 text-[10px] text-foreground transition-colors hover:bg-muted",
+          open && "bg-muted",
+        )}
+        onClick={toggle}
+        ref={triggerRef}
+        title={`${t("activity.host")}: ${label}`}
+        type="button"
+      >
+        <Server aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
+        <span className="truncate">{label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn(
+            "size-3 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+      {open
+        ? createPortal(
+            <div
+              aria-label={t("activity.host")}
+              className="fixed z-[100] max-h-72 min-w-48 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+              ref={menuRef}
+              role="menu"
+              style={coords}
+            >
+              <ActivityHostOption
+                active={host === "local"}
+                label={t("activity.thisMachine")}
+                onSelect={() => choose("local")}
+              />
+              {servers.map((server) => (
+                <ActivityHostOption
+                  active={host === server.host}
+                  detail={server.environment
+                    ? `${server.environment} · ${server.host}`
+                    : server.host}
+                  key={server.host}
+                  label={server.name ?? server.host}
+                  onSelect={() => choose(server.host)}
+                />
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+function ActivityHostOption({
+  active,
+  detail,
+  label,
+  onSelect,
+}: {
+  active: boolean;
+  detail?: string;
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      aria-checked={active}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-muted",
+        active && "bg-muted/60",
+      )}
+      onClick={onSelect}
+      role="menuitemradio"
+      type="button"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs">{label}</span>
+        {detail ? (
+          <span className="block truncate font-mono text-[9px] text-muted-foreground">
+            {detail}
+          </span>
+        ) : null}
+      </span>
+      {active ? (
+        <Check aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+      ) : null}
+    </button>
+  );
+}
+
+export function RemoteActivityView({
+  headerControl,
+  server,
+}: {
+  headerControl?: ReactNode;
+  server: SshServerSummary;
+}) {
   const t = useT();
   const [metrics, setMetrics] = useState<RemoteHostMetrics | null>(null);
   const [samples, setSamples] = useState<HostMetricSample[]>([]);
@@ -146,6 +303,7 @@ export function RemoteActivityView({ server }: { server: SshServerSummary }) {
             <Badge appearance="subtle" size="small" variant="secondary">
               {t("activity.remoteBadge")}
             </Badge>
+            {headerControl}
           </div>
           <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
             {metrics

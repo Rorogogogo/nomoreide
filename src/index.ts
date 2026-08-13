@@ -5,10 +5,20 @@ import { createTuiApp } from "./tui/app.js";
 import { ensureDaemon } from "./core/daemon-lifecycle.js";
 import { runCli } from "./cli/commands.js";
 import { runDaemonCli } from "./cli/daemon.js";
+import { runExternalTerminalAttach } from "./core/external-terminal.js";
 
 const command = process.argv[2] ?? "mcp";
 
-if (command === "mcp" || (command === "start" && process.argv.length <= 3)) {
+if (command === "__terminal-attach") {
+  const socketPath = process.argv[3] ?? "";
+  const token = process.argv[4] ?? "";
+  try {
+    await runExternalTerminalAttach(socketPath, token);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  }
+} else if (command === "mcp" || (command === "start" && process.argv.length <= 3)) {
   await startNoMoreIdeMcpServer();
 } else if (command === "tui") {
   await createTuiApp().start();

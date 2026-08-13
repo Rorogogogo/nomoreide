@@ -11,8 +11,10 @@ import type {
   AgentEnvProfileApplyPreview,
   AgentEnvProfileApplyResult,
   AgentEnvProfileImportResult,
+  AgentEnvProfileRegistryDiff,
   AgentEnvProfileSummary,
   AgentEnvRegistryInstallResult,
+  AgentEnvRegistryProfileSummary,
   AgentEnvRegistryPublishResult,
   AgentEnvRegistryStatus,
   AgentEnvSettings,
@@ -107,6 +109,14 @@ export const httpAgentEnvApi: AgentEnvApi = {
     return response.profiles;
   },
 
+  async getAgentEnvProfileRegistryDiff(name) {
+    const response = await requestJson<{ ok: true } & AgentEnvProfileRegistryDiff>(
+      `/api/agent-env/profiles/${encodeURIComponent(name)}/registry-diff`,
+    );
+    const { ok: _ok, ...result } = response;
+    return result;
+  },
+
   async getAgentEnvProfile(name) {
     const response = await requestJson<{ ok: true; profile: AgentEnvProfile }>(
       `/api/agent-env/profiles/${encodeURIComponent(name)}`,
@@ -175,6 +185,18 @@ export const httpAgentEnvApi: AgentEnvApi = {
       `/api/agent-env/profiles/import${options?.force ? "?force=1" : ""}`,
       { method: "POST", headers: { "content-type": "application/gzip" }, body: file },
     );
+  },
+
+  async listAgentEnvRegistryProfiles(input = {}) {
+    const query = new URLSearchParams();
+    if (input.query?.trim()) query.set("q", input.query.trim());
+    if (input.sort && input.sort !== "recent") query.set("sort", input.sort);
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    const response = await requestJson<{
+      ok: true;
+      profiles: AgentEnvRegistryProfileSummary[];
+    }>(`/api/agent-env/registry/profiles${suffix}`);
+    return response.profiles;
   },
 
   async getRegistryAuthStatus() {

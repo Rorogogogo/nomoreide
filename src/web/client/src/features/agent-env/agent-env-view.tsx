@@ -106,6 +106,14 @@ export function AgentEnvView({
             ))}
           </span>
         ) : null}
+        <RegistryPanel
+          busy={registry.busy}
+          onInstall={registry.install}
+          onSignIn={() => void registry.signIn()}
+          onSignOut={registry.signOut}
+          signingIn={registry.signingIn}
+          status={registry.status}
+        />
       </header>
 
       {error ? (
@@ -115,7 +123,7 @@ export function AgentEnvView({
       ) : null}
 
       {tab === "profiles" ? (
-        <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-border lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:divide-x lg:divide-y-0">
+        <div className="flex min-h-0 flex-1">
           <ProfilesPanel
             busy={profilesState.busy}
             loadError={profilesState.loadError}
@@ -130,15 +138,9 @@ export function AgentEnvView({
             onRefresh={profilesState.refreshOne}
             onRetry={() => void profilesState.refresh()}
             profiles={profilesState.profiles}
-          />
-
-          <RegistryPanel
-            busy={registry.busy}
-            onInstall={registry.install}
-            onSignIn={() => void registry.signIn()}
-            onSignOut={registry.signOut}
-            signingIn={registry.signingIn}
-            status={registry.status}
+            registryBusy={registry.busy}
+            registryFrontendUrl={registry.status?.apiFrontendUrl}
+            onInstallRegistry={(slug) => registry.install(slug, "confirm")}
           />
         </div>
       ) : configs.length > 0 ? (
@@ -181,6 +183,7 @@ export function AgentEnvView({
             });
           }}
           profileName={publishing}
+          registryLink={profilesState.profiles.find((profile) => profile.name === publishing)?.registry}
         />
       ) : null}
 

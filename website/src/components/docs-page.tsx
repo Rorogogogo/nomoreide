@@ -170,6 +170,14 @@ const toolGroups = [
   { title: "Vercel tools", tools: vercelTools },
   { title: "Documentation", tools: ["nomoreide_docs"] },
   { title: "Agent and UI", tools: ["nomoreide_open_ui", "nomoreide_close_ui"] },
+  {
+    title: "Terminal presentation",
+    tools: [
+      "nomoreide_list_terminal_sessions",
+      "nomoreide_open_terminal",
+      "nomoreide_reclaim_terminal",
+    ],
+  },
   { title: "Agent environments", tools: agentEnvironmentTools },
   { title: "Agent profiles and registry", tools: profileTools },
 ];

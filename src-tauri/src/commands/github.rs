@@ -97,10 +97,16 @@ async fn get_token_and_host(
     owner: &str,
     repo: &str,
 ) -> Result<(String, String), String> {
-    let definition = config.git_repositories.iter().find(|entry| entry.name == repository)
+    let definition = config
+        .git_repositories
+        .iter()
+        .find(|entry| entry.name == repository)
         .ok_or("The GitHub repository is not registered in NoMoreIDE.")?;
-    if registered_remote(definition).await?.as_ref() != Some(&(owner.to_string(), repo.to_string())) {
-        return Err("The requested GitHub repository does not match the registered project.".into());
+    if registered_remote(definition).await?.as_ref() != Some(&(owner.to_string(), repo.to_string()))
+    {
+        return Err(
+            "The requested GitHub repository does not match the registered project.".into(),
+        );
     }
     let (token, host, _) = github_auth::resolve(config, Some(repository), "github.com").await?;
     Ok((token, host))
@@ -109,10 +115,19 @@ async fn get_token_and_host(
 async fn registered_remote(
     repository: &crate::core::config::GitRepoDef,
 ) -> Result<Option<(String, String)>, String> {
-    let cwd = repository.active_worktree_path.as_ref().unwrap_or(&repository.path);
-    let output = Command::new("git").args(["remote", "get-url", "origin"])
-        .current_dir(cwd).output().await.map_err(|error| error.to_string())?;
-    Ok(parse_github_remote(&String::from_utf8_lossy(&output.stdout)))
+    let cwd = repository
+        .active_worktree_path
+        .as_ref()
+        .unwrap_or(&repository.path);
+    let output = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(cwd)
+        .output()
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(parse_github_remote(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
 }
 
 fn parse_github_remote(remote: &str) -> Option<(String, String)> {
@@ -195,7 +210,10 @@ pub async fn get_github_token_status(state: State<'_, AppState>) -> Result<Value
             .find(|repo| &repo.name == name)
     });
     let selected = repository.and_then(|repo| repo.github_credential.clone());
-    let stored_configured = state.config_store.get_github_token(&config, "github.com").is_some();
+    let stored_configured = state
+        .config_store
+        .get_github_token(&config, "github.com")
+        .is_some();
     match github_auth::resolve(
         &config,
         config.selected_git_repository.as_deref(),
@@ -215,62 +233,73 @@ pub async fn get_github_token_status(state: State<'_, AppState>) -> Result<Value
                 .map(|(owner, repo)| format!("{owner}/{repo}"));
             let validation = match repository {
                 Some(_) => match &remote {
-                    Some((owner, repo)) => gh_get(&token, &host, &format!("/repos/{owner}/{repo}")).await,
+                    Some((owner, repo)) => {
+                        gh_get(&token, &host, &format!("/repos/{owner}/{repo}")).await
+                    }
                     None => Err("Could not parse the selected repository's GitHub remote.".into()),
                 },
                 None => gh_get(&token, &host, "/user").await,
             };
             match validation {
-            Ok(resource) => {
-                let user = resolve_account(&state, &config, &credential, &token, &host, repository.is_none().then_some(&resource)).await;
-                Ok(serde_json::json!({
-                "configured": true,
-                "storedConfigured": stored_configured,
-                "deviceFlowAvailable": true,
-                "status": "connected",
-                "accounts": accounts.accounts,
-                "cliAvailable": accounts.available,
-                "cliError": accounts.error,
-                "selected": selected,
-                "credential": credential,
-                "repositoryName": repository.map(|repo| repo.name.clone()),
-                "repositorySlug": repository_slug,
-                "repository": if repository.is_some() { Some(resource.clone()) } else { None },
-                "user": user,
-            }))
-            },
-            Err(error) => {
-                // A 404 on the repository means the credential authenticated and
-                // GitHub answered "not for you" — an access problem, not a
-                // broken connection, and the UI says so instead of asking for a
-                // reconnect. Mirrors the daemon's `/api/github/token`.
-                let no_repo_access = repository_slug.is_some()
-                    && error.starts_with("GitHub API request failed (404");
-                let user = resolve_account(&state, &config, &credential, &token, &host, None).await;
-                Ok(serde_json::json!({
-                "configured": true,
-                "storedConfigured": stored_configured,
-                "deviceFlowAvailable": true,
-                "status": if error.starts_with("GitHub authentication failed") {
-                    "auth_error"
-                } else if no_repo_access {
-                    "repo_access"
-                } else {
-                    "connection_error"
-                },
-                "accounts": accounts.accounts,
-                "cliAvailable": accounts.available,
-                "cliError": accounts.error,
-                "selected": selected,
-                "credential": credential,
-                "repositoryName": repository.map(|repo| repo.name.clone()),
-                "repositorySlug": repository_slug,
-                "user": user,
-                "error": error,
-            }))
-            },
+                Ok(resource) => {
+                    let user = resolve_account(
+                        &state,
+                        &config,
+                        &credential,
+                        &token,
+                        &host,
+                        repository.is_none().then_some(&resource),
+                    )
+                    .await;
+                    Ok(serde_json::json!({
+                        "configured": true,
+                        "storedConfigured": stored_configured,
+                        "deviceFlowAvailable": true,
+                        "status": "connected",
+                        "accounts": accounts.accounts,
+                        "cliAvailable": accounts.available,
+                        "cliError": accounts.error,
+                        "selected": selected,
+                        "credential": credential,
+                        "repositoryName": repository.map(|repo| repo.name.clone()),
+                        "repositorySlug": repository_slug,
+                        "repository": if repository.is_some() { Some(resource.clone()) } else { None },
+                        "user": user,
+                    }))
+                }
+                Err(error) => {
+                    // A 404 on the repository means the credential authenticated and
+                    // GitHub answered "not for you" — an access problem, not a
+                    // broken connection, and the UI says so instead of asking for a
+                    // reconnect. Mirrors the daemon's `/api/github/token`.
+                    let no_repo_access = repository_slug.is_some()
+                        && error.starts_with("GitHub API request failed (404");
+                    let user =
+                        resolve_account(&state, &config, &credential, &token, &host, None).await;
+                    Ok(serde_json::json!({
+                        "configured": true,
+                        "storedConfigured": stored_configured,
+                        "deviceFlowAvailable": true,
+                        "status": if error.starts_with("GitHub authentication failed") {
+                            "auth_error"
+                        } else if no_repo_access {
+                            "repo_access"
+                        } else {
+                            "connection_error"
+                        },
+                        "accounts": accounts.accounts,
+                        "cliAvailable": accounts.available,
+                        "cliError": accounts.error,
+                        "selected": selected,
+                        "credential": credential,
+                        "repositoryName": repository.map(|repo| repo.name.clone()),
+                        "repositorySlug": repository_slug,
+                        "user": user,
+                        "error": error,
+                    }))
+                }
+            }
         }
-        },
         Err(error) => Ok(serde_json::json!({
             "configured": false,
             "storedConfigured": stored_configured,

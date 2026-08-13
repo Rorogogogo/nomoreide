@@ -58,12 +58,10 @@ pub async fn require_actions(
     config: &Config,
 ) -> Result<VercelActions, String> {
     let credential = resolve(store, config).await?;
-    Ok(VercelActions::new(
-        super::vercel_manager::RequestAuth {
-            token: credential.token,
-            team_id: credential.team_id,
-        },
-    ))
+    Ok(VercelActions::new(super::vercel_manager::RequestAuth {
+        token: credential.token,
+        team_id: credential.team_id,
+    }))
 }
 
 /// The team scope to use when the user has never chosen one.
@@ -97,10 +95,7 @@ async fn adopt_default_team(
     let team = teams.first()?;
     let id = team.get("id").and_then(Value::as_str)?.to_string();
     let slug = team.get("slug").and_then(Value::as_str).map(str::to_string);
-    store
-        .set_vercel_scope(Some(id.clone()), slug)
-        .await
-        .ok()?;
+    store.set_vercel_scope(Some(id.clone()), slug).await.ok()?;
     Some(id)
 }
 
@@ -114,12 +109,10 @@ async fn adopt_default_team(
 ///
 /// Returns None rather than guessing when none of those answer, since the wrong
 /// project would show deployments for unrelated code.
-async fn resolve_project(
-    config: &Config,
-    manager: &VercelManager,
-    git_cwd: &str,
-) -> Option<Value> {
-    let top_level = git_top_level(git_cwd).await.unwrap_or_else(|| git_cwd.to_string());
+async fn resolve_project(config: &Config, manager: &VercelManager, git_cwd: &str) -> Option<Value> {
+    let top_level = git_top_level(git_cwd)
+        .await
+        .unwrap_or_else(|| git_cwd.to_string());
 
     let pinned = config
         .git_repositories
@@ -191,7 +184,12 @@ pub fn selected_cwd(config: &Config, fallback: &str) -> String {
     let repository = config
         .selected_git_repository
         .as_ref()
-        .and_then(|name| config.git_repositories.iter().find(|repo| &repo.name == name))
+        .and_then(|name| {
+            config
+                .git_repositories
+                .iter()
+                .find(|repo| &repo.name == name)
+        })
         .or_else(|| config.git_repositories.first());
     repository
         .map(|repo| {
@@ -220,7 +218,9 @@ mod tests {
     #[test]
     fn the_active_worktree_wins_over_the_repository_root() {
         let mut config = Config::default();
-        config.git_repositories.push(repo("app", "/repos/app", Some("/repos/app-wt")));
+        config
+            .git_repositories
+            .push(repo("app", "/repos/app", Some("/repos/app-wt")));
         config.selected_git_repository = Some("app".into());
         assert_eq!(selected_cwd(&config, "/fallback"), "/repos/app-wt");
     }
@@ -228,7 +228,9 @@ mod tests {
     #[test]
     fn an_unregistered_selection_falls_back_to_the_first_repository() {
         let mut config = Config::default();
-        config.git_repositories.push(repo("app", "/repos/app", None));
+        config
+            .git_repositories
+            .push(repo("app", "/repos/app", None));
         config.selected_git_repository = Some("missing".into());
         assert_eq!(selected_cwd(&config, "/fallback"), "/repos/app");
     }

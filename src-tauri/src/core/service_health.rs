@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use serde::{Deserialize, Serialize};
 use super::log_store::LogEntry;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -33,10 +33,17 @@ pub fn compute_health(
             Some(0) | None => HealthStatus::Unknown,
             Some(_) => HealthStatus::Unhealthy,
         };
-        return ServiceHealth { status, last_error: None, rss_mb, cpu_pct: None };
+        return ServiceHealth {
+            status,
+            last_error: None,
+            rss_mb,
+            cpu_pct: None,
+        };
     }
 
-    let last_error = recent_logs.iter().rev()
+    let last_error = recent_logs
+        .iter()
+        .rev()
         .find(|e| e.severity.as_deref() == Some("error"))
         .map(|e| e.text.clone());
 
@@ -49,5 +56,10 @@ pub fn compute_health(
         HealthStatus::Healthy
     };
 
-    ServiceHealth { status, last_error, rss_mb, cpu_pct: None }
+    ServiceHealth {
+        status,
+        last_error,
+        rss_mb,
+        cpu_pct: None,
+    }
 }

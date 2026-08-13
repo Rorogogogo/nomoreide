@@ -20,6 +20,7 @@ export const shellPaths = new Set([
   "/workflows",
   "/agent",
   "/agent-env",
+  "/context",
   "/errors",
   "/database",
   "/terminal",

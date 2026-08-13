@@ -125,6 +125,7 @@ class FakeTerminalSession {
 
 class FakeTerminalManager implements TerminalSessionManagerLike {
   readonly sessions = new Map<string, FakeTerminalSession>();
+  readonly ensureSizes: Array<Partial<TerminalSize>> = [];
   /** Options the most recent `create` call received, for assertions. */
   lastCreateOptions?: TerminalSpawnOptions;
   private counter = 0;
@@ -177,9 +178,14 @@ class FakeTerminalManager implements TerminalSessionManagerLike {
   }
 
   ensure(id: string, size: Partial<TerminalSize> = {}): FakeTerminalSession {
+    this.ensureSizes.push(size);
     const existing = this.sessions.get(id);
     if (existing) {
-      existing.start(size);
+      if (existing.state === "running") {
+        if (size.cols && size.rows) existing.resize(size.cols, size.rows);
+      } else {
+        existing.start(size);
+      }
       return existing;
     }
     const session = new FakeTerminalSession(this.cwd);
@@ -199,6 +205,29 @@ class FakeTerminalManager implements TerminalSessionManagerLike {
   disposeAll(): void {
     for (const session of this.sessions.values()) session.dispose();
     this.sessions.clear();
+  }
+}
+
+class PresentationTerminalManager extends FakeTerminalManager {
+  readonly insertedPrompts: Array<{ id: string; prompt: string }> = [];
+  externalTerminalAvailable(): boolean { return true; }
+
+  async openInSystemTerminal(id: string): Promise<TerminalSessionInfo> {
+    const session = this.get(id);
+    if (!session) throw new Error(`Unknown terminal session: ${id}`);
+    return { id, ...session.snapshot(), presentation: "terminal" };
+  }
+
+  reclaimToDock(id: string): TerminalSessionInfo | undefined {
+    const session = this.get(id);
+    return session ? { id, ...session.snapshot(), presentation: "dock" } : undefined;
+  }
+
+  insertAgentPrompt(id: string, prompt: string): TerminalSessionInfo {
+    const session = this.get(id);
+    if (!session) throw new Error(`Unknown terminal session: ${id}`);
+    this.insertedPrompts.push({ id, prompt });
+    return { id, ...session.snapshot(), kind: "agent", presentation: "terminal" };
   }
 }
 
@@ -247,6 +276,31 @@ describe("web terminal socket", () => {
     expect(JSON.parse(second)).toEqual({
       data: "ready\r\n",
       type: "output",
+    });
+  });
+
+  test("reattaches without applying fallback dimensions to a running session", async () => {
+    const manager = new FakeTerminalManager(tempDir);
+    const existing = manager.createWithId("term_existing");
+    manager.get(existing.id)?.resize(132, 43);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const client = await openTerminalSocket(
+      `${server.url.replace("http", "ws")}/api/terminal/socket?id=${existing.id}`,
+    );
+    await client.nextMessage();
+
+    expect(manager.ensureSizes.at(-1)).toEqual({});
+    expect(manager.get(existing.id)?.snapshot()).toMatchObject({
+      cols: 132,
+      rows: 43,
+      state: "running",
     });
   });
 
@@ -438,6 +492,156 @@ describe("web terminal socket", () => {
       },
     );
     expect(unicodeBoundary.status).toBe(400);
+  });
+});
+
+describe("external terminal HTTP controls", () => {
+  test("inserts a validated prompt through the trusted control without reclaiming", async () => {
+    const manager = new PresentationTerminalManager(tempDir);
+    const created = manager.create();
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+    const path = `${server.url}/api/terminal/sessions/${created.id}/insert-prompt`;
+
+    expect((await fetch(path, { method: "POST" })).status).toBe(403);
+    const inserted = await fetch(path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nomoreide-terminal-control": "1",
+      },
+      body: JSON.stringify({ prompt: "Review this\nwithout submitting" }),
+    });
+
+    expect(inserted.status).toBe(200);
+    expect((await inserted.json()).session.presentation).toBe("terminal");
+    expect(manager.insertedPrompts).toEqual([{
+      id: created.id,
+      prompt: "Review this\nwithout submitting",
+    }]);
+
+    const invalid = await fetch(path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nomoreide-terminal-control": "1",
+      },
+      body: JSON.stringify({ prompt: "submit\r" }),
+    });
+    expect(invalid.status).toBe(400);
+    expect(manager.insertedPrompts).toHaveLength(1);
+
+    const oversized = await fetch(path, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nomoreide-terminal-control": "1",
+      },
+      body: JSON.stringify({ prompt: "x".repeat(512 * 1024 * 6 + 2_000) }),
+    });
+    expect(oversized.status).toBe(413);
+    expect(manager.insertedPrompts).toHaveLength(1);
+  });
+
+  test("advertises capability and requires the non-simple control header", async () => {
+    const manager = new PresentationTerminalManager(tempDir);
+    const created = manager.create();
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const capabilities = await fetch(`${server.url}/api/terminal/capabilities`);
+    expect(await capabilities.json()).toEqual({ externalTerminal: true });
+
+    const path = `${server.url}/api/terminal/sessions/${created.id}/open-system-terminal`;
+    expect((await fetch(path, { method: "POST" })).status).toBe(403);
+    const opened = await fetch(path, {
+      method: "POST",
+      headers: { "x-nomoreide-terminal-control": "1" },
+    });
+    expect(opened.status).toBe(200);
+    expect((await opened.json()).session.presentation).toBe("terminal");
+
+    const reclaimed = await fetch(
+      `${server.url}/api/terminal/sessions/${created.id}/reclaim-dock`,
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+    expect((await reclaimed.json()).session.presentation).toBe("dock");
+  });
+
+  test("rejects unbounded or path-like terminal ids", async () => {
+    const manager = new PresentationTerminalManager(tempDir);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+    const response = await fetch(
+      `${server.url}/api/terminal/sessions/${encodeURIComponent("../../tmp/socket")}/reclaim-dock`,
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+    expect(response.status).toBe(400);
+  });
+
+  test("keeps existing service ids with spaces and dots closable", async () => {
+    const manager = new PresentationTerminalManager(tempDir);
+    const id = "svc:web api.v1";
+    manager.createWithId(id);
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+
+    const response = await fetch(
+      `${server.url}/api/terminal/sessions/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+
+    expect(response.status).toBe(200);
+    expect(manager.get(id)).toBeUndefined();
+  });
+
+  test("streams an authoritative session snapshot when SSE connects", async () => {
+    const manager = new PresentationTerminalManager(tempDir);
+    const created = manager.create();
+    server = await createWebServer({
+      cwd: tempDir,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+      terminalManager: manager,
+    }).start();
+    const abort = new AbortController();
+    const response = await fetch(`${server.url}/api/terminal/events`, {
+      signal: abort.signal,
+    });
+    const chunk = await response.body?.getReader().read();
+    const text = new TextDecoder().decode(chunk?.value);
+
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(text).toContain("event: session");
+    expect(text).toContain(created.id);
+    abort.abort();
   });
 });
 

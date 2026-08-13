@@ -72,6 +72,7 @@ describe("web server", () => {
           copyOnSelect: false,
           confirmTerminate: true,
           smoothScroll: true,
+          externalTerminal: "automatic",
         },
       },
       project: {
@@ -95,6 +96,7 @@ describe("web server", () => {
       copyOnSelect: false,
       confirmTerminate: true,
       smoothScroll: true,
+      externalTerminal: "automatic",
     });
 
     response = await fetch(

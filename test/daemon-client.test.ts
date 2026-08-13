@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:net";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ConfigStore } from "../src/core/config-store.js";
 import {
   DaemonClient,
@@ -48,6 +48,38 @@ async function startServer(
 }
 
 describe("DaemonClient", () => {
+  test("uses bounded session-id terminal controls with the control header", async () => {
+    const fetch = vi.fn().mockImplementation(async () =>
+      Response.json({
+        ok: true,
+        sessions: [],
+        session: { id: "term_1", presentation: "terminal" },
+      }),
+    );
+    const client = new DaemonClient("http://127.0.0.1:4317", { fetch });
+
+    await expect(client.listTerminalSessions()).resolves.toEqual([]);
+    await expect(client.openTerminal("term_1")).resolves.toMatchObject({ id: "term_1" });
+    await client.reclaimTerminal("term_1");
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      new URL("http://127.0.0.1:4317/api/terminal/sessions/term_1/open-system-terminal"),
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      new URL("http://127.0.0.1:4317/api/terminal/sessions/term_1/reclaim-dock"),
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+  });
+
   test("reads status, logs, and timeline over HTTP", async () => {
     const client = await startServer();
 

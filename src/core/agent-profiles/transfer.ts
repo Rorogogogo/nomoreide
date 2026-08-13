@@ -9,7 +9,8 @@
  * Windows 10+), matching what brainctl shipped.
  */
 import { execFile } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -20,6 +21,8 @@ import {
 } from "./credentials.js";
 import {
   getProfile,
+  clearProfileRegistryLink,
+  copyProfileAssetTree,
   pathExists,
   profileDir,
   profilePluginsDir,
@@ -81,29 +84,29 @@ export async function exportProfile(
 
     for (const skill of profile.skills) {
       const sourceDir = path.join(profileSkillsDir(input.name, options), path.basename(skill.name));
-      if (!(await pathExists(sourceDir))) continue;
+      if (!(await pathExists(sourceDir))) {
+        throw new Error(`Profile "${profile.name}" is missing bundled skill "${skill.name}".`);
+      }
       const target = path.join(stagingDir, "skills", path.basename(skill.name));
       await mkdir(path.dirname(target), { recursive: true });
-      await cp(sourceDir, target, {
-        recursive: true,
-        filter: (src) => {
-          const base = path.basename(src);
-          return base !== ".git" && base !== ".DS_Store";
-        },
-      });
+      try {
+        await copyProfileAssetTree(sourceDir, target);
+      } catch (error) {
+        throw new Error(`Could not export bundled skill "${skill.name}".`, { cause: error });
+      }
     }
     for (const plugin of profile.plugins) {
       const sourceDir = path.join(profilePluginsDir(input.name, options), plugin.bundleKey);
-      if (!(await pathExists(sourceDir))) continue;
+      if (!(await pathExists(sourceDir))) {
+        throw new Error(`Profile "${profile.name}" is missing bundled plugin "${plugin.name}".`);
+      }
       const target = path.join(stagingDir, "plugins", plugin.bundleKey);
       await mkdir(path.dirname(target), { recursive: true });
-      await cp(sourceDir, target, {
-        recursive: true,
-        filter: (src) => {
-          const base = path.basename(src);
-          return base !== ".git" && base !== ".DS_Store";
-        },
-      });
+      try {
+        await copyProfileAssetTree(sourceDir, target);
+      } catch (error) {
+        throw new Error(`Could not export bundled plugin "${plugin.name}".`, { cause: error });
+      }
       await redactPluginMcpFile(target, credentials);
     }
     const exportedPlugins = await Promise.all(
@@ -136,7 +139,18 @@ export async function exportProfile(
 
     const archivePath = input.outputPath ?? path.join(input.cwd, `${profile.name}.tar.gz`);
     await mkdir(path.dirname(archivePath), { recursive: true });
-    await execFileAsync("tar", ["-czf", archivePath, "-C", stagingDir, "."]);
+    const pendingArchivePath = path.join(
+      path.dirname(archivePath),
+      `.${path.basename(archivePath)}.${randomUUID()}.tmp`,
+    );
+    try {
+      await execFileAsync("tar", ["-czf", pendingArchivePath, "-C", stagingDir, "."]);
+      await validateArchiveMembers(pendingArchivePath);
+      await rename(pendingArchivePath, archivePath);
+    } catch (error) {
+      await rm(pendingArchivePath, { force: true });
+      throw error;
+    }
 
     return { archivePath, credentials: Array.from(credentials.values()) };
   } finally {
@@ -260,6 +274,7 @@ export async function importProfile(
       pluginCount += 1;
     }
     await writeProfile(profile, options);
+    await clearProfileRegistryLink(name, options);
 
     // Anything a spec listed but resolution didn't reach (or that remains as
     // a placeholder in the stored profile) counts as missing.
@@ -392,12 +407,15 @@ async function validateArchiveMembers(archivePath: string): Promise<void> {
     // we are choosing to reject further down.
     throw new Error("Could not extract the archive — is it a .tar.gz profile export?");
   }
-  for (const line of verbose.split("\n").filter(Boolean)) {
+  const members = stdout.split("\n").filter(Boolean);
+  for (const [index, line] of verbose.split("\n").filter(Boolean).entries()) {
     if (line.startsWith("l") || line.startsWith("h")) {
-      throw new Error("Profile archive contains a link entry, which is not allowed.");
+      const member = members[index];
+      throw new Error(
+        `Profile archive contains a link entry, which is not allowed${member ? `: ${member}` : "."}`,
+      );
     }
   }
-  const members = stdout.split("\n").filter(Boolean);
   if (members.length > 20_000) {
     throw new Error("Profile archive contains too many files.");
   }

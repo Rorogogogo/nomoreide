@@ -51,6 +51,7 @@ describe("AppSettingsStore", () => {
     const settings = await new AppSettingsStore(settingsPath).load();
 
     expect(settings.terminal.smoothScroll).toBe(true);
+    expect(settings.terminal.externalTerminal).toBe("automatic");
     expect(settings.terminal.fontSize).toBe(15);
     expect(settings.terminal.confirmTerminate).toBe(false);
   });
@@ -116,6 +117,14 @@ describe("AppSettingsStore", () => {
 
     expect(await readFile(settingsPath, "utf8")).toBe(lastValidFile);
     expect((await store.load()).terminal.scrollback).toBe(8_000);
+  });
+
+  test("persists a validated external terminal preference", async () => {
+    const store = new AppSettingsStore(settingsPath);
+
+    await store.update({ terminal: { externalTerminal: "iterm2" } });
+
+    expect((await store.load()).terminal.externalTerminal).toBe("iterm2");
   });
 
   test("reset persists and returns independent defaults", async () => {

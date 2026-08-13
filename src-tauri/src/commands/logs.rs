@@ -1,6 +1,6 @@
-use tauri::State;
-use crate::AppState;
 use crate::core::log_store::LogEntry;
+use crate::AppState;
+use tauri::State;
 
 #[tauri::command]
 pub async fn get_logs(

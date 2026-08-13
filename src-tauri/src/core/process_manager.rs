@@ -1,13 +1,13 @@
+use super::config::ServiceDef;
+use super::log_store::{LogEntry, LogStore};
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::time::{sleep, Duration};
-use super::config::ServiceDef;
-use super::log_store::{LogEntry, LogStore};
 
 /// A macOS app launched from Finder/Dock inherits only a minimal PATH
 /// (`/usr/bin:/bin:/usr/sbin:/sbin`), so Homebrew/nvm/pnpm tools like `npm` and
@@ -30,7 +30,12 @@ pub(crate) fn service_path() -> String {
             {
                 if out.status.success() {
                     let p = String::from_utf8_lossy(&out.stdout);
-                    dirs.extend(p.trim().split(':').filter(|s| !s.is_empty()).map(String::from));
+                    dirs.extend(
+                        p.trim()
+                            .split(':')
+                            .filter(|s| !s.is_empty())
+                            .map(String::from),
+                    );
                 }
             }
 
@@ -41,8 +46,13 @@ pub(crate) fn service_path() -> String {
                 dirs.push(format!("{home}/Library/pnpm"));
             }
             for d in [
-                "/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin",
-                "/usr/bin", "/bin", "/usr/sbin", "/sbin",
+                "/opt/homebrew/bin",
+                "/opt/homebrew/sbin",
+                "/usr/local/bin",
+                "/usr/bin",
+                "/bin",
+                "/usr/sbin",
+                "/sbin",
             ] {
                 dirs.push(d.to_string());
             }
@@ -105,14 +115,17 @@ impl ProcessManager {
 
     pub fn status(&self) -> Vec<ServiceStatus> {
         let procs = self.processes.lock().unwrap();
-        procs.iter().map(|(name, p)| ServiceStatus {
-            name: name.clone(),
-            state: p.state.clone(),
-            pid: p.child.id(),
-            pgid: p.pgid,
-            exit_code: p.exit_code,
-            url: p.url.clone(),
-        }).collect()
+        procs
+            .iter()
+            .map(|(name, p)| ServiceStatus {
+                name: name.clone(),
+                state: p.state.clone(),
+                pid: p.child.id(),
+                pgid: p.pgid,
+                exit_code: p.exit_code,
+                url: p.url.clone(),
+            })
+            .collect()
     }
 
     pub fn service_status(&self, name: &str) -> Option<ServiceStatus> {
@@ -151,11 +164,18 @@ impl ProcessManager {
     }
 
     async fn start_local(&self, def: &ServiceDef) -> Result<()> {
-        let command = def.command.as_deref().ok_or_else(|| anyhow!("Local service missing command"))?;
-        let cwd = def.cwd.as_deref().ok_or_else(|| anyhow!("Local service missing cwd"))?;
+        let command = def
+            .command
+            .as_deref()
+            .ok_or_else(|| anyhow!("Local service missing command"))?;
+        let cwd = def
+            .cwd
+            .as_deref()
+            .ok_or_else(|| anyhow!("Local service missing cwd"))?;
 
         let mut cmd = Command::new("sh");
-        cmd.arg("-c").arg(command)
+        cmd.arg("-c")
+            .arg(command)
             .current_dir(cwd)
             .env("PATH", service_path())
             .stdout(Stdio::piped())
@@ -181,13 +201,16 @@ impl ProcessManager {
             // forever, so the UI never showed them as running. URL detection
             // below still upgrades the status with a detected URL when one prints.
             let mut procs = self.processes.lock().unwrap();
-            procs.insert(def.name.clone(), ManagedProcess {
-                child,
-                pgid,
-                state: ServiceState::Running,
-                exit_code: None,
-                url: None,
-            });
+            procs.insert(
+                def.name.clone(),
+                ManagedProcess {
+                    child,
+                    pgid,
+                    state: ServiceState::Running,
+                    exit_code: None,
+                    url: None,
+                },
+            );
         }
 
         // Stream stdout
@@ -227,8 +250,14 @@ impl ProcessManager {
     }
 
     async fn start_docker_compose(&self, def: &ServiceDef) -> Result<()> {
-        let cwd = def.cwd.as_deref().ok_or_else(|| anyhow!("Docker service missing cwd"))?;
-        let svc = def.compose_service.as_deref().ok_or_else(|| anyhow!("Missing composeService"))?;
+        let cwd = def
+            .cwd
+            .as_deref()
+            .ok_or_else(|| anyhow!("Docker service missing cwd"))?;
+        let svc = def
+            .compose_service
+            .as_deref()
+            .ok_or_else(|| anyhow!("Missing composeService"))?;
 
         let args = vec!["up", "--no-build", svc];
         let mut cmd = Command::new("docker-compose");
@@ -242,19 +271,28 @@ impl ProcessManager {
         let pgid = child.id();
 
         let mut procs = self.processes.lock().unwrap();
-        procs.insert(def.name.clone(), ManagedProcess {
-            child,
-            pgid,
-            state: ServiceState::Running,
-            exit_code: None,
-            url: None,
-        });
+        procs.insert(
+            def.name.clone(),
+            ManagedProcess {
+                child,
+                pgid,
+                state: ServiceState::Running,
+                exit_code: None,
+                url: None,
+            },
+        );
         Ok(())
     }
 
     async fn start_ssh(&self, def: &ServiceDef) -> Result<()> {
-        let host = def.host.as_deref().ok_or_else(|| anyhow!("SSH service missing host"))?;
-        let command = def.command.as_deref().ok_or_else(|| anyhow!("SSH service missing command"))?;
+        let host = def
+            .host
+            .as_deref()
+            .ok_or_else(|| anyhow!("SSH service missing host"))?;
+        let command = def
+            .command
+            .as_deref()
+            .ok_or_else(|| anyhow!("SSH service missing command"))?;
         let cwd = def.cwd.as_deref().unwrap_or("~");
 
         let remote_cmd = format!("cd {cwd} && {command}");
@@ -268,13 +306,16 @@ impl ProcessManager {
         let pgid = child.id();
 
         let mut procs = self.processes.lock().unwrap();
-        procs.insert(def.name.clone(), ManagedProcess {
-            child,
-            pgid,
-            state: ServiceState::Running,
-            exit_code: None,
-            url: None,
-        });
+        procs.insert(
+            def.name.clone(),
+            ManagedProcess {
+                child,
+                pgid,
+                state: ServiceState::Running,
+                exit_code: None,
+                url: None,
+            },
+        );
         Ok(())
     }
 
@@ -346,7 +387,11 @@ fn detect_url(line: &str, port: Option<u16>) -> Option<String> {
     // Match "http://localhost:3000" or "Local: http://localhost:3000"
     let re = regex::Regex::new(r"https?://[^\s]+").ok()?;
     if let Some(m) = re.find(line) {
-        return Some(m.as_str().trim_end_matches([',', '.', ';', ')']).to_string());
+        return Some(
+            m.as_str()
+                .trim_end_matches([',', '.', ';', ')'])
+                .to_string(),
+        );
     }
     // Try to build from port if mentioned
     if let Some(p) = port {

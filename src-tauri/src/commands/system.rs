@@ -14,5 +14,7 @@ pub async fn open_external(url: String) -> Result<(), String> {
         .args(["/C", "start", "", &url])
         .spawn();
 
-    spawn.map(|_| ()).map_err(|e| format!("Failed to open {url}: {e}"))
+    spawn
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open {url}: {e}"))
 }

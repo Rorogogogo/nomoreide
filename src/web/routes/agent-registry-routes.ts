@@ -50,6 +50,11 @@ const registerGithubBodySchema = z.object({
   profilePath: z.string().optional(),
 });
 
+const registryProfilesQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  sort: z.enum(["recent", "stars", "downloads", "alpha"]).default("recent"),
+});
+
 type AuthOutcome =
   | { status: "pending" }
   | { status: "success" }
@@ -103,6 +108,20 @@ function upstreamStatus(message: string): number {
   return code && /^4\d\d$/.test(code) ? Number(code) : 502;
 }
 
+function installStatus(message: string): number {
+  if (message.includes("already exists")) return 409;
+  if (
+    message.startsWith("Profile archive contains") ||
+    message.startsWith("Archive has") ||
+    message.startsWith("Archive is missing") ||
+    message.startsWith("This is a brainctl-era profile archive") ||
+    message.startsWith("Could not extract the archive")
+  ) {
+    return 422;
+  }
+  return upstreamStatus(message);
+}
+
 function authResultHtml(kind: "ok" | "error", message: string): string {
   const tone = kind === "ok" ? "#16a34a" : "#dc2626";
   const title = kind === "ok" ? "Signed in" : "Sign-in failed";
@@ -115,6 +134,57 @@ function authResultHtml(kind: "ok" | "error", message: string): string {
 }
 
 export const agentRegistryRoutes: Route[] = [
+  route("GET", "/api/agent-env/registry/profiles", async ({ response, url }) => {
+    const query = registryProfilesQuerySchema.safeParse({
+      q: url.searchParams.get("q") || undefined,
+      sort: url.searchParams.get("sort") || undefined,
+    });
+    if (!query.success) {
+      sendJson(response, { ok: false, error: "Invalid registry profile query." }, 400);
+      return;
+    }
+    try {
+      const client = createRegistryClient({
+        baseUrl: await resolveRegistryApiBaseUrl(),
+      });
+      const profiles = await client.listPublicProfiles({
+        query: query.data.q,
+        sort: query.data.sort,
+      });
+      sendJson(response, {
+        ok: true,
+        profiles: profiles.map((profile) => {
+          const manifest = profile.latest_version.manifest_json;
+          return {
+            id: profile.id,
+            slug: profile.slug,
+            title: profile.title,
+            summary: profile.summary,
+            version: profile.latest_version.version,
+            sourceKind: profile.source.kind,
+            githubRepoUrl: profile.source.github_repo_url ?? undefined,
+            starsCount: profile.stars_count,
+            downloadsCount: profile.downloads_count,
+            author: profile.author
+              ? {
+                  id: profile.author.id,
+                  displayName: profile.author.display_name ?? undefined,
+                  avatarUrl: profile.author.avatar_url ?? undefined,
+                }
+              : undefined,
+            publishedAt: profile.latest_version.published_at ?? undefined,
+            mcpCount: Array.isArray(manifest.mcps) ? manifest.mcps.length : 0,
+            skillCount: Array.isArray(manifest.skills) ? manifest.skills.length : 0,
+            pluginCount: Array.isArray(manifest.plugins) ? manifest.plugins.length : 0,
+          };
+        }),
+      });
+    } catch (error) {
+      const message = errorMessage(error);
+      sendJson(response, { ok: false, error: message }, upstreamStatus(message));
+    }
+  }),
+
   route("GET", "/api/agent-env/auth/status", async ({ response }) => {
     const target = await resolveRegistryApiTarget();
     const apiFrontendUrl = await resolveRegistryFrontendUrl({ apiBaseUrl: target.apiBaseUrl });
@@ -263,8 +333,7 @@ export const agentRegistryRoutes: Route[] = [
       sendJson(response, { ok: true, ...result });
     } catch (error) {
       const message = errorMessage(error);
-      const status = message.includes("already exists") ? 409 : upstreamStatus(message);
-      sendJson(response, { ok: false, error: message }, status);
+      sendJson(response, { ok: false, error: message }, installStatus(message));
     }
   }),
 

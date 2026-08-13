@@ -1,9 +1,9 @@
+use crate::core::config::{Config, GitRepoDef};
+use crate::core::git_identity;
 use crate::core::git_manager::{
     FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitPushResult, GitStatus,
     GitWorktree,
 };
-use crate::core::config::{Config, GitRepoDef};
-use crate::core::git_identity;
 use crate::core::process_manager::ServiceState;
 use crate::AppState;
 use std::path::Path;
@@ -534,14 +534,33 @@ pub async fn get_github_repo(
     state: State<'_, AppState>,
     repo: Option<String>,
 ) -> Result<(String, String, String), String> {
-    let config = state.config_store.load().await.map_err(|error| error.to_string())?;
-    let repository = repo.as_ref()
-        .and_then(|name| config.git_repositories.iter().find(|entry| &entry.name == name))
-        .or_else(|| config.selected_git_repository.as_ref()
-            .and_then(|name| config.git_repositories.iter().find(|entry| &entry.name == name)))
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|error| error.to_string())?;
+    let repository = repo
+        .as_ref()
+        .and_then(|name| {
+            config
+                .git_repositories
+                .iter()
+                .find(|entry| &entry.name == name)
+        })
+        .or_else(|| {
+            config.selected_git_repository.as_ref().and_then(|name| {
+                config
+                    .git_repositories
+                    .iter()
+                    .find(|entry| &entry.name == name)
+            })
+        })
         .or_else(|| config.git_repositories.first())
         .ok_or("No Git repository is selected")?;
-    let cwd = repository.active_worktree_path.as_ref().unwrap_or(&repository.path);
+    let cwd = repository
+        .active_worktree_path
+        .as_ref()
+        .unwrap_or(&repository.path);
     let out = Command::new("git")
         .args(["remote", "get-url", "origin"])
         .current_dir(&cwd)

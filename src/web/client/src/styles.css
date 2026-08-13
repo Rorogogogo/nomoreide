@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@xyflow/react/dist/style.css";
 
 @font-face {
   font-family: "Symbols Nerd Font Mono";
@@ -72,6 +73,45 @@
 
 .code-font-size {
   font-size: var(--code-font-size);
+}
+
+.context-flow {
+  --xy-background-color: hsl(var(--background));
+  --xy-edge-stroke: hsl(var(--border));
+  --xy-edge-label-color: hsl(var(--muted-foreground));
+  --xy-edge-label-background-color: hsl(var(--background) / 0.88);
+  --xy-minimap-background-color: hsl(var(--card));
+  --xy-controls-button-background-color: hsl(var(--card));
+  --xy-controls-button-background-color-hover: hsl(var(--muted));
+  --xy-controls-button-color: hsl(var(--foreground));
+  --xy-controls-button-border-color: hsl(var(--border));
+}
+
+.context-flow .react-flow__controls,
+.context-flow .react-flow__minimap,
+.context-flow-panel {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  background: hsl(var(--card) / 0.92);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+}
+
+.context-flow .react-flow__controls-button {
+  height: 24px;
+  width: 24px;
+  border-bottom-color: hsl(var(--border));
+}
+
+.context-flow .react-flow__minimap {
+  height: 96px;
+  overflow: hidden;
+  width: 156px;
+}
+
+.context-flow-panel {
+  margin: 8px;
+  padding: 5px 7px;
 }
 
 [data-reduced-motion="true"] *,

@@ -4,7 +4,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { Circle, Plus, SquareTerminal, X } from "lucide-react";
+import { Circle, ExternalLink, Plus, RotateCcw, SquareTerminal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "../agent-logos";
 import { COMPOSE_TAB_ID } from "./compose-tab";
@@ -17,7 +17,13 @@ function stateTone(state: AgentTerminalTask["state"]) {
   return "fill-muted-foreground/50 text-muted-foreground/50";
 }
 
-export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, onActivate, onClose, onDragEnd, onDragStart, onRename, pendingTaskIds }: {
+function providerTabAccent(provider: AgentTerminalTask["provider"]) {
+  return provider === "codex"
+    ? "before:bg-emerald-500"
+    : "before:bg-[#D97757]";
+}
+
+export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, onActivate, onClose, onDragEnd, onDragStart, onRename, onOpenInTerminal, onBringBackToDock, pendingTaskIds }: {
   tasks: AgentTerminalTask[]; activeTaskId: string | null;
   ariaLabel?: string;
   /** Whether the compose tab is showing — it is the selected tab while true. */
@@ -25,6 +31,8 @@ export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, o
   onActivate: (id: string) => void; onClose: (id: string) => void;
   onDragEnd?: () => void; onDragStart?: (id: string) => void;
   onRename?: (id: string, label: string) => void;
+  onOpenInTerminal?: (id: string) => void;
+  onBringBackToDock?: (id: string) => void;
   pendingTaskIds?: Set<string>;
 }) {
   const t = useT();
@@ -83,7 +91,7 @@ export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, o
       const editing = editingTaskId === task.id;
       const draggable = Boolean(onDragStart) && !editing;
       const ProviderLogo = shell ? SquareTerminal : task.provider === "codex" ? CodexLogo : ClaudeLogo;
-      return <div className={cn("group/tab flex h-9 shrink-0 items-center border-x border-transparent", active && "border-border bg-background")} key={task.id}>
+      return <div className={cn("group/tab relative flex h-9 shrink-0 items-center border-x border-transparent", !shell && "before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:content-['']", !shell && providerTabAccent(task.provider), active && "border-border bg-background")} data-provider-accent={shell ? undefined : task.provider} key={task.id}>
         {editing ? <div className="flex h-full max-w-56 items-center gap-2 px-3 text-xs">
           <button aria-controls={`agent-panel-${task.id}`} aria-label={t("dock.openTaskAria", { label })} aria-selected={active} className="sr-only" id={`agent-tab-${task.id}`} role="tab" tabIndex={-1} type="button">{label}</button>
           <ProviderLogo className={cn("size-3 shrink-0", shell && "text-foreground")} />
@@ -99,6 +107,8 @@ export function AgentTerminalTabs({ tasks, activeTaskId, ariaLabel, composing, o
         {/* Always visible and never squeezed: the label truncates inside its own
             button, so a long task name can't push the close control out of the
             tab or hide it behind the text. */}
+        {!shell && onOpenInTerminal && task.presentation !== "terminal" ? <button aria-label={t("dock.openInTerminalAria", { label })} className="grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-25" disabled={editing || pendingTaskIds?.has(task.id) || task.presentation === "terminalLaunching" || task.state !== "running"} onClick={() => onOpenInTerminal(task.id)} title={t("dock.openInTerminal")} type="button"><ExternalLink className="size-3" /></button> : null}
+        {!shell && onBringBackToDock && task.presentation === "terminal" ? <button aria-label={t("dock.bringBackAria", { label })} className="grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-25" disabled={editing || pendingTaskIds?.has(task.id)} onClick={() => onBringBackToDock(task.id)} title={t("dock.bringBack")} type="button"><RotateCcw className="size-3" /></button> : null}
         <button aria-label={t("dock.closeTaskAria", { label })} className="mr-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-25" disabled={editing || pendingTaskIds?.has(task.id)} onClick={() => onClose(task.id)} type="button"><X className="size-3" /></button>
       </div>;
     })}

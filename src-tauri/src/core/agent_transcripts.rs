@@ -256,14 +256,11 @@ pub fn list_agent_transcripts(
     let mut claude = Vec::new();
     let claude_root = home.join(".claude").join("projects");
     let expected_key = repo_path.map(path_key);
-    for directory in directory_names(&claude_root)
-        .into_iter()
-        .filter(|name| {
-            expected_key
-                .as_ref()
-                .is_none_or(|expected| path_key(name) == *expected)
-        })
-    {
+    for directory in directory_names(&claude_root).into_iter().filter(|name| {
+        expected_key
+            .as_ref()
+            .is_none_or(|expected| path_key(name) == *expected)
+    }) {
         let path = claude_root.join(directory);
         for name in directory_names(&path)
             .into_iter()

@@ -62,6 +62,10 @@ export interface TerminalViewportProps {
   initialInputIntervalMs?: number;
   /** Confirmed display preferences; optional for isolated consumers/tests. */
   displaySettings?: TerminalDisplaySettings;
+  /** False keeps output mirrored while another surface owns input and resize. */
+  interactive?: boolean;
+  /** Prevents a child TUI from caching the host palette at process startup. */
+  suppressColorQueries?: boolean;
 }
 
 export interface TerminalDisplaySettings {
@@ -137,6 +141,37 @@ export const TERMINAL_RESIZE_SETTLE_MS = 80;
 
 interface DisposableRenderer {
   dispose(): void;
+  clearTextureAtlas?(): void;
+}
+
+interface ThemeableTerminal {
+  options: Terminal["options"];
+  refresh(start: number, end: number): void;
+  rows: number;
+}
+
+/**
+ * Palette assignment alone is not enough for every renderer. In particular,
+ * WebGL can retain cells drawn with the previous default foreground/background,
+ * which leaves Codex's full-width composer and tool rows as light blocks after
+ * a light-to-dark switch. Invalidate both the glyph atlas and visible rows so
+ * existing terminal content is repainted against the new palette immediately.
+ */
+export function applyTerminalTheme(
+  terminal: ThemeableTerminal,
+  container: HTMLElement | null,
+  theme: ReturnType<typeof terminalTheme>,
+  renderer?: DisposableRenderer | null,
+) {
+  terminal.options.theme = theme;
+  const viewport = container?.querySelector<HTMLElement>(".xterm-viewport");
+  if (viewport) viewport.style.backgroundColor = theme.background;
+  renderer?.clearTextureAtlas?.();
+  if (terminal.rows > 0) terminal.refresh(0, terminal.rows - 1);
+}
+
+export function suppressTerminalColorQuery(data: string): boolean {
+  return data.trim() === "?";
 }
 
 export function attachWebglRenderer(
@@ -149,6 +184,9 @@ export function attachWebglRenderer(
   let disposed = false;
   let contextLossSubscription: { dispose(): void } | undefined;
   const renderer = {
+    clearTextureAtlas: () => {
+      if (!disposed) addon.clearTextureAtlas();
+    },
     dispose: () => {
       if (disposed) return;
       disposed = true;
@@ -450,6 +488,8 @@ export const TerminalViewport = forwardRef<
     initialInputIntervalMs,
     onStatusChange,
     displaySettings = DEFAULT_TERMINAL_DISPLAY_SETTINGS,
+    interactive = true,
+    suppressColorQueries = false,
   },
   forwardedRef,
 ) {
@@ -462,15 +502,30 @@ export const TerminalViewport = forwardRef<
   const socketRef = useRef<TerminalSocketLike | null>(null);
   const statusCallbackRef = useRef(onStatusChange);
   const displaySettingsRef = useRef(displaySettings);
+  const interactiveRef = useRef(interactive);
+  const activeRef = useRef(active);
+  const suppressColorQueriesRef = useRef(suppressColorQueries);
   const statusRef = useRef<TerminalViewportStatus>(INITIAL_STATUS);
   const [status, setStatus] = useState<TerminalViewportStatus>(INITIAL_STATUS);
   const [repairing, setRepairing] = useState(false);
   // Desktop owns its PTY in Rust; the web build attaches to the Node server.
   const tauriMode = isTauri();
 
+  activeRef.current = active;
+
   useEffect(() => {
     statusCallbackRef.current = onStatusChange;
   }, [onStatusChange]);
+
+  useEffect(() => {
+    interactiveRef.current = interactive;
+    const terminal = terminalRef.current;
+    if (terminal) terminal.options.disableStdin = !interactive;
+  }, [interactive]);
+
+  useEffect(() => {
+    suppressColorQueriesRef.current = suppressColorQueries;
+  }, [suppressColorQueries]);
 
   const reportStatus = useCallback((update: StatusUpdate) => {
     const next =
@@ -484,6 +539,10 @@ export const TerminalViewport = forwardRef<
   }, []);
 
   const sendResize = useCallback(() => {
+    // Hidden panes stay mounted for scrollback, but their zero/settling
+    // geometry must never resize the shared PTY. Activation schedules the
+    // authoritative fit once the pane is visible again.
+    if (!interactiveRef.current || !activeRef.current) return;
     const fit = fitRef.current;
     if (!fit) return;
     fit.fit();
@@ -503,6 +562,10 @@ export const TerminalViewport = forwardRef<
       }),
     );
   }, [tauriMode, sessionId]);
+
+  useEffect(() => {
+    if (interactive) sendResize();
+  }, [interactive, sendResize]);
 
   useEffect(() => {
     displaySettingsRef.current = displaySettings;
@@ -536,6 +599,7 @@ export const TerminalViewport = forwardRef<
 
   const sendInput = useCallback(
     (data: string) => {
+      if (!interactiveRef.current) return;
       if (tauriMode) {
         void tauri_writeTerminalInput(sessionId, data);
         return;
@@ -551,11 +615,14 @@ export const TerminalViewport = forwardRef<
     forwardedRef,
     () =>
       createTerminalViewportHandle({
-        focus: () => terminalRef.current?.focus(),
+        focus: () => {
+          if (interactiveRef.current) terminalRef.current?.focus();
+        },
         refit: sendResize,
         sendControl,
         sendInput,
         paste: (data, prefix) => {
+          if (!interactiveRef.current) return false;
           const terminal = terminalRef.current;
           if (!terminal) return false;
           if (prefix) sendInput(prefix);
@@ -582,10 +649,18 @@ export const TerminalViewport = forwardRef<
       smoothScrollDuration: displaySettingsRef.current.smoothScroll
         ? SMOOTH_SCROLL_DURATION_MS
         : 0,
+      disableStdin: !interactiveRef.current,
       theme: terminalTheme(resolvedTheme),
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    const colorQuerySubscriptions = [10, 11].map((identifier) =>
+      terminal.parser.registerOscHandler(
+        identifier,
+        (data) =>
+          suppressColorQueriesRef.current && suppressTerminalColorQuery(data),
+      ),
+    );
     terminal.open(container);
     const outputBuffer = createTerminalOutputBuffer({
       write: (data) => terminal.write(data),
@@ -618,6 +693,7 @@ export const TerminalViewport = forwardRef<
       let disposed = false;
       let initialInputTimer: number | undefined;
       const inputSubscription = terminal.onData((data) => {
+        if (!interactiveRef.current) return;
         void tauri_writeTerminalInput(sessionId, data);
       });
       void tauri_onTerminalOutput(sessionId, (data) => {
@@ -677,7 +753,9 @@ export const TerminalViewport = forwardRef<
         sendResize,
         sessionId,
         terminal: {
-          onData: (callback) => terminal.onData(callback),
+          onData: (callback) => terminal.onData((data) => {
+            if (interactiveRef.current) callback(data);
+          }),
           write: (data) => outputBuffer.push(data),
         },
       });
@@ -713,6 +791,9 @@ export const TerminalViewport = forwardRef<
       observer.disconnect();
       cleanupTransport();
       selectionSubscription.dispose();
+      colorQuerySubscriptions.forEach((subscription) => {
+        subscription.dispose();
+      });
       outputBuffer.dispose();
       webglRendererRef.current?.dispose();
       webglRendererRef.current = null;
@@ -735,10 +816,14 @@ export const TerminalViewport = forwardRef<
   useEffect(() => {
     const terminal = terminalRef.current;
     const theme = terminalTheme(resolvedTheme);
-    if (terminal) terminal.options.theme = theme;
-    const viewport =
-      containerRef.current?.querySelector<HTMLElement>(".xterm-viewport");
-    if (viewport) viewport.style.backgroundColor = theme.background;
+    if (terminal) {
+      applyTerminalTheme(
+        terminal,
+        containerRef.current,
+        theme,
+        webglRendererRef.current,
+      );
+    }
   }, [resolvedTheme]);
 
   // A hidden xterm has zero dimensions. Refit after it is revealed, but only
@@ -747,7 +832,7 @@ export const TerminalViewport = forwardRef<
     return scheduleTerminalActivation(active, {
       cancel: (id) => window.clearTimeout(id),
       focus: () => {
-        if (focused) terminalRef.current?.focus();
+        if (focused && interactiveRef.current) terminalRef.current?.focus();
       },
       refit: sendResize,
       schedule: (callback) => window.setTimeout(callback, 0),

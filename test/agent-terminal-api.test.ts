@@ -211,4 +211,63 @@ describe("agent terminal client API", () => {
     expect(terminalSource).toContain("terminalApi().renameTerminalSession(id, label)");
     expect(terminalSource).toContain("CreateAgentTerminalOptions");
   });
+
+  test("desktop sessions expose external Terminal presentation and lifecycle actions", async () => {
+    expect(contractSource).toContain('"dock" | "terminalLaunching" | "terminal"');
+    expect(contractSource).toContain("openTerminalInSystemTerminal(id: string)");
+    expect(contractSource).toContain("reclaimTerminalToDock(id: string)");
+    expect(contractSource).toContain("insertAgentPrompt(id: string, prompt: string)");
+    expect(tauriSource).toContain("tauri_openTerminalInSystemTerminal");
+    expect(tauriSource).toContain("tauri_reclaimTerminalToDock");
+    expect(tauriSource).toContain("tauri_insertAgentPrompt");
+    expect(bridgeSource).toContain('"open_terminal_in_system_terminal"');
+    expect(bridgeSource).toContain('"reclaim_terminal_to_dock"');
+    expect(bridgeSource).toContain('"insert_agent_prompt"');
+    expect(bridgeSource).toContain('"terminal-session-changed"');
+
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({ externalTerminal: true }))
+      .mockResolvedValueOnce(Response.json({
+        ok: true,
+        session: { id: "agent-1", presentation: "terminal" },
+      }));
+    vi.stubGlobal("fetch", fetch);
+
+    await expect(httpTerminalApi.getTerminalCapabilities()).resolves.toEqual({
+      externalTerminal: true,
+    });
+    await expect(httpTerminalApi.openTerminalInSystemTerminal("agent-1")).resolves.toMatchObject({
+      id: "agent-1",
+      presentation: "terminal",
+    });
+    expect(fetch).toHaveBeenNthCalledWith(1, "/api/terminal/capabilities", undefined);
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/terminal/sessions/agent-1/open-system-terminal",
+      {
+        method: "POST",
+        headers: { "x-nomoreide-terminal-control": "1" },
+      },
+    );
+  });
+
+  test("HTTP prompt insertion uses the guarded endpoint and preserves the draft payload", async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ ok: true }));
+    vi.stubGlobal("fetch", fetch);
+
+    await httpTerminalApi.insertAgentPrompt("agent/1", "Review this\nwithout submitting");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/terminal/sessions/agent%2F1/insert-prompt",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-nomoreide-terminal-control": "1",
+        },
+        body: JSON.stringify({ prompt: "Review this\nwithout submitting" }),
+      },
+    );
+    expect(terminalSource).toContain("terminalApi().insertAgentPrompt(id, prompt)");
+  });
 });

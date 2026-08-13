@@ -40,6 +40,8 @@ const baseSettings: SettingsContextValue = {
       scrollback: 5_000,
       copyOnSelect: false,
       confirmTerminate: true,
+      smoothScroll: true,
+      externalTerminal: "automatic",
     },
   },
   confirmedGlobal: {
@@ -50,6 +52,8 @@ const baseSettings: SettingsContextValue = {
       scrollback: 5_000,
       copyOnSelect: false,
       confirmTerminate: true,
+      smoothScroll: true,
+      externalTerminal: "automatic",
     },
   },
   project: {
@@ -217,6 +221,25 @@ describe("SettingsView", () => {
     expect(host.querySelector("main h2")?.textContent).toBe("Terminal");
     expect(button("Terminal").getAttribute("aria-current")).toBe("page");
     expect(button("General").hasAttribute("aria-current")).toBe(false);
+  });
+
+  test("saves the selected external terminal", async () => {
+    await renderView();
+    await click(button("Terminal"));
+    const select = host.querySelector<HTMLSelectElement>("#setting-external-terminal")!;
+
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(
+        HTMLSelectElement.prototype,
+        "value",
+      )?.set;
+      setValue?.call(select, "iterm2");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(baseSettings.updateGlobal).toHaveBeenCalledWith({
+      terminal: { externalTerminal: "iterm2" },
+    });
   });
 
   test("searches labels, descriptions, and category keywords without changing selection", async () => {

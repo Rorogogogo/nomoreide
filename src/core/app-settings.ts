@@ -13,8 +13,15 @@ export interface AppSettings {
     copyOnSelect: boolean;
     confirmTerminate: boolean;
     smoothScroll: boolean;
+    externalTerminal: ExternalTerminalPreference;
   };
 }
+
+export type ExternalTerminalPreference =
+  | "automatic"
+  | "ghostty"
+  | "iterm2"
+  | "terminal";
 
 export const DEFAULT_APP_SETTINGS: AppSettings = Object.freeze({
   version: 1,
@@ -25,6 +32,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = Object.freeze({
     copyOnSelect: false,
     confirmTerminate: true,
     smoothScroll: true,
+    externalTerminal: "automatic",
   }),
 });
 
@@ -37,6 +45,11 @@ const terminalSettingsShape = {
   // Defaulted rather than required: settings.json files written before this
   // setting existed still have to load, and `load()` only forgives ENOENT.
   smoothScroll: z.boolean().default(true),
+  // Defaulted for settings.json files written before external terminal
+  // selection was configurable.
+  externalTerminal: z
+    .enum(["automatic", "ghostty", "iterm2", "terminal"])
+    .default("automatic"),
 };
 
 // Input is `unknown` because this parses JSON off disk, where the defaulted

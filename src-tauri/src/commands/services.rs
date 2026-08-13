@@ -1,12 +1,12 @@
-use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
-use serde::Serialize;
-use tauri::State;
-use crate::AppState;
 use crate::core::config::ServiceDef;
 use crate::core::port_utils;
 use crate::core::process_manager::{ServiceState, ServiceStatus};
 use crate::core::service_graph;
+use crate::AppState;
+use serde::Serialize;
+use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant};
+use tauri::State;
 
 #[tauri::command]
 pub async fn list_services(state: State<'_, AppState>) -> Result<Vec<ServiceStatus>, String> {
@@ -68,9 +68,15 @@ fn process_tree(root_pid: Option<u32>, pgid: Option<u32>) -> Option<ProcessTreeS
     let mut children: HashMap<u32, Vec<u32>> = HashMap::new();
     for line in text.lines() {
         let mut it = line.split_whitespace();
-        let Some(pid) = it.next().and_then(|s| s.parse::<u32>().ok()) else { continue };
-        let Some(ppid) = it.next().and_then(|s| s.parse::<u32>().ok()) else { continue };
-        let Some(row_pgid) = it.next().and_then(|s| s.parse::<u32>().ok()) else { continue };
+        let Some(pid) = it.next().and_then(|s| s.parse::<u32>().ok()) else {
+            continue;
+        };
+        let Some(ppid) = it.next().and_then(|s| s.parse::<u32>().ok()) else {
+            continue;
+        };
+        let Some(row_pgid) = it.next().and_then(|s| s.parse::<u32>().ok()) else {
+            continue;
+        };
         let cpu = it.next().and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
         let rss = it.next().and_then(|s| s.parse::<f64>().ok()).unwrap_or(0.0);
         let command = it.collect::<Vec<_>>().join(" ");
@@ -103,7 +109,8 @@ fn process_tree(root_pid: Option<u32>, pgid: Option<u32>) -> Option<ProcessTreeS
     // dev server. For services spawned by the current backend, the stored process
     // group remains stable and captures those descendants.
     if let Some(group) = pgid {
-        let mut group_pids: Vec<u32> = all.iter()
+        let mut group_pids: Vec<u32> = all
+            .iter()
             .filter_map(|(pid, (_ppid, row_pgid, _cpu, _rss, _command))| {
                 (*row_pgid == group).then_some(*pid)
             })
@@ -145,46 +152,52 @@ fn process_tree(_root_pid: Option<u32>, _pgid: Option<u32>) -> Option<ProcessTre
 }
 
 #[tauri::command]
-pub async fn start_service(
-    state: State<'_, AppState>,
-    name: String,
-) -> Result<(), String> {
+pub async fn start_service(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let def = config.services.iter()
+    let def = config
+        .services
+        .iter()
         .find(|s| s.name == name)
         .cloned()
         .ok_or_else(|| format!("Service '{name}' not found"))?;
-    state.process_manager.start_service(&def).await.map_err(|e| e.to_string())
+    state
+        .process_manager
+        .start_service(&def)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn stop_service(
-    state: State<'_, AppState>,
-    name: String,
-) -> Result<(), String> {
-    state.process_manager.stop_service(&name).await.map_err(|e| e.to_string())
+pub async fn stop_service(state: State<'_, AppState>, name: String) -> Result<(), String> {
+    state
+        .process_manager
+        .stop_service(&name)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn restart_service(
-    state: State<'_, AppState>,
-    name: String,
-) -> Result<(), String> {
+pub async fn restart_service(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let def = config.services.iter()
+    let def = config
+        .services
+        .iter()
         .find(|s| s.name == name)
         .cloned()
         .ok_or_else(|| format!("Service '{name}' not found"))?;
-    state.process_manager.restart_service(&def).await.map_err(|e| e.to_string())
+    state
+        .process_manager
+        .restart_service(&def)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn start_bundle(
-    state: State<'_, AppState>,
-    name: String,
-) -> Result<(), String> {
+pub async fn start_bundle(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let bundle = config.bundles.iter()
+    let bundle = config
+        .bundles
+        .iter()
         .find(|b| b.name == name)
         .cloned()
         .ok_or_else(|| format!("Bundle '{name}' not found"))?;
@@ -193,8 +206,11 @@ pub async fn start_bundle(
     // dependencies come up before dependents. Errs on a cycle instead of
     // half-starting the bundle.
     let order = service_graph::resolve_start_order(&config.services, &bundle.services)?;
-    let by_name: HashMap<&str, &ServiceDef> =
-        config.services.iter().map(|s| (s.name.as_str(), s)).collect();
+    let by_name: HashMap<&str, &ServiceDef> = config
+        .services
+        .iter()
+        .map(|s| (s.name.as_str(), s))
+        .collect();
 
     for svc_name in &order {
         let Some(def) = by_name.get(svc_name.as_str()) else {
@@ -209,7 +225,11 @@ pub async fn start_bundle(
                 }
             }
         }
-        state.process_manager.start_service(def).await.map_err(|e| e.to_string())?;
+        state
+            .process_manager
+            .start_service(def)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -239,12 +259,11 @@ async fn wait_for_service_ready(state: &State<'_, AppState>, def: &ServiceDef) {
 }
 
 #[tauri::command]
-pub async fn stop_bundle(
-    state: State<'_, AppState>,
-    name: String,
-) -> Result<(), String> {
+pub async fn stop_bundle(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let bundle = config.bundles.iter()
+    let bundle = config
+        .bundles
+        .iter()
         .find(|b| b.name == name)
         .cloned()
         .ok_or_else(|| format!("Bundle '{name}' not found"))?;
@@ -262,7 +281,11 @@ pub async fn stop_bundle(
     order.reverse();
 
     for svc_name in &order {
-        state.process_manager.stop_service(svc_name).await.map_err(|e| e.to_string())?;
+        state
+            .process_manager
+            .stop_service(svc_name)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }

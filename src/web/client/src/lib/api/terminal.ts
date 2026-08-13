@@ -40,6 +40,28 @@ export function renameTerminalSession(id: string, label: string) {
   return terminalApi().renameTerminalSession(id, label);
 }
 
+export function getTerminalCapabilities() {
+  return terminalApi().getTerminalCapabilities();
+}
+
+export function openTerminalInSystemTerminal(id: string) {
+  return terminalApi().openTerminalInSystemTerminal(id);
+}
+
+export function reclaimTerminalToDock(id: string) {
+  return terminalApi().reclaimTerminalToDock(id);
+}
+
+export function insertAgentPrompt(id: string, prompt: string) {
+  return terminalApi().insertAgentPrompt(id, prompt);
+}
+
+export function onTerminalSessionChanged(
+  handler: Parameters<TerminalApi["onTerminalSessionChanged"]>[0],
+) {
+  return terminalApi().onTerminalSessionChanged(handler);
+}
+
 export function closeTerminalSession(id: string) {
   return terminalApi().closeTerminalSession(id);
 }
@@ -49,6 +71,8 @@ export type {
   AgentTranscriptScope,
   CreateAgentTerminalOptions,
   TerminalApi,
+  TerminalCapabilities,
+  TerminalPresentation,
   TerminalState,
   TerminalSessionInfo,
 } from "./terminal-api.js";

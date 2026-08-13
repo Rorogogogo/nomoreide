@@ -94,7 +94,10 @@ impl VercelActions {
             urlencoding::encode(deployment_id)
         );
         if let Some(description) = description {
-            path.push_str(&format!("?description={}", urlencoding::encode(description)));
+            path.push_str(&format!(
+                "?description={}",
+                urlencoding::encode(description)
+            ));
         }
         request(&self.auth, "POST", &path, None).await?;
         Ok(())

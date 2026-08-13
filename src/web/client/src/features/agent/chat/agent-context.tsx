@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { OneTimeSkillSelection } from "@/lib/api";
+import type { ContextItem, OneTimeSkillSelection } from "@/lib/api";
 import {
   type AgentDockLayoutPatch,
   type AgentDockLayoutPreferences,
@@ -68,6 +68,13 @@ type AgentContextValue = ReturnType<typeof useAgentTerminalTasks> & {
   selectOneTimeSkill: (skill: OneTimeSkillSelection) => void;
   clearOneTimeSkill: () => void;
   consumeOneTimeSkill: (skill: OneTimeSkillSelection) => void;
+  /** Context Library items staged for the next successfully created session. */
+  pendingContextItems: ContextItem[];
+  includePinnedContext: boolean;
+  setIncludePinnedContext: (value: boolean) => void;
+  attachContextItem: (item: ContextItem) => void;
+  removeContextItem: (item: ContextItem) => void;
+  clearContextItems: () => void;
   /** Bumped whenever the input should re-focus (draft prefill, path insert). */
   focusNonce: number;
   /** The one entry point every feature uses to push an action into the dock. */
@@ -112,6 +119,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
   const [activeSource, setActiveSource] = useState<AgentSource | null>(null);
   const [pendingOneTimeSkill, setPendingOneTimeSkill] =
     useState<OneTimeSkillSelection | null>(null);
+  const [pendingContextItems, setPendingContextItems] = useState<ContextItem[]>([]);
+  const [includePinnedContext, setIncludePinnedContext] = useState(true);
   const [focusNonce, setFocusNonce] = useState(0);
   const [onboarding, setOnboarding] = useState(false);
   const foregroundDeliveryHandlerRef =
@@ -132,6 +141,21 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       current?.source === skill.source ? null : current,
     );
   }, []);
+  const attachContextItem = useCallback((item: ContextItem) => {
+    setPendingContextItems((current) =>
+      current.some((candidate) => candidate.ref.kind === item.ref.kind && candidate.ref.id === item.ref.id)
+        ? current
+        : [...current, item],
+    );
+    setOpen(true);
+    bumpFocus();
+  }, [bumpFocus]);
+  const removeContextItem = useCallback((item: ContextItem) => {
+    setPendingContextItems((current) => current.filter(
+      (candidate) => candidate.ref.kind !== item.ref.kind || candidate.ref.id !== item.ref.id,
+    ));
+  }, []);
+  const clearContextItems = useCallback(() => setPendingContextItems([]), []);
   const startOnboard = useCallback(() => {
     setOpen(true);
     setOnboarding(true);
@@ -222,6 +246,12 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     selectOneTimeSkill,
     clearOneTimeSkill,
     consumeOneTimeSkill,
+    pendingContextItems,
+    includePinnedContext,
+    setIncludePinnedContext,
+    attachContextItem,
+    removeContextItem,
+    clearContextItems,
     focusNonce,
     sendToAgent,
     registerForegroundAgentDeliveryHandler,
