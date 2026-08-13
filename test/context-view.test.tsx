@@ -198,8 +198,59 @@ describe("ContextView", () => {
     const attach = [...host.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.textContent === "Attach to agent");
     if (!attach) throw new Error("attach to agent button did not render");
+    expect(attach.className).toContain("h-7");
+    expect(host.querySelector<HTMLButtonElement>('button[aria-label="Pin context"]')?.className)
+      .toContain("size-7");
     await act(async () => attach.click());
 
     expect(agentDock.attachContextItem).toHaveBeenCalledWith(markdown);
+  });
+
+  test("shows recursively indexed Markdown files as an expandable folder tree", async () => {
+    const markdown = (title: string, id: string) => ({
+      ref: { kind: "file" as const, id },
+      title,
+      kind: "file" as const,
+      excerpt: "Markdown · project",
+      projectPath: "/workspace/project",
+      path: `/workspace/project/${title}`,
+      tags: ["markdown"],
+      aliases: [title.split("/").at(-1)!],
+      pinned: false,
+      editable: false,
+    });
+    api.listContext.mockResolvedValue({
+      vaultPath: "/tmp/context",
+      items: [
+        markdown("README.md", "readme"),
+        markdown("docs/architecture.md", "architecture"),
+        markdown("docs/design/decisions.mdx", "decisions"),
+      ],
+      pinned: [],
+      diagnostics: [],
+      truncated: false,
+    });
+
+    await act(async () => {
+      root.render(<ContextView projectPath="/workspace/project" />);
+    });
+    await act(async () => Promise.resolve());
+
+    expect(host.textContent).toContain("Project Markdown");
+    expect(host.textContent).toContain("3 indexed");
+    expect(host.textContent).toContain("README.md");
+    expect(host.textContent).not.toContain("architecture.md");
+
+    const docs = [...host.querySelectorAll<HTMLButtonElement>('button[aria-expanded="false"]')]
+      .find((button) => button.textContent?.includes("docs"));
+    if (!docs) throw new Error("docs folder did not render");
+    await act(async () => docs.click());
+    expect(host.textContent).toContain("architecture.md");
+
+    const design = [...host.querySelectorAll<HTMLButtonElement>('button[aria-expanded="false"]')]
+      .find((button) => button.textContent?.includes("design"));
+    if (!design) throw new Error("design folder did not render");
+    await act(async () => design.click());
+    expect(host.textContent).toContain("decisions.mdx");
   });
 });
