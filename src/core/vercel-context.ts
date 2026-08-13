@@ -1,15 +1,17 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { ConfigStore } from "./config-store.js";
-import { GitManager } from "./git-manager.js";
-import { matchRegisteredRepository } from "./repo-match.js";
+import {
+  adoptSoleScope,
+  readLinkedProjectId as readProviderLinkedProjectId,
+  resolveProviderProject,
+} from "./providers/project-resolution.js";
 import {
   resolveVercelCredential,
   VERCEL_PROVIDER_ID,
   type ResolvedVercelCredential,
 } from "./vercel-auth.js";
 import { VercelActions } from "./vercel-actions.js";
-import { VercelManager, vercelRepoUrl, type VercelProject } from "./vercel-manager.js";
+import { VERCEL_HOOKS } from "./vercel-provider.js";
+import { VercelManager, type VercelProject } from "./vercel-manager.js";
 import type { NoMoreIdeConfig } from "./types.js";
 
 export interface VercelContext {
@@ -48,43 +50,19 @@ export async function requireVercelContext(
   return { manager, credential: { ...credential, scopeId: teamId }, project };
 }
 
-/**
- * The team scope to use when the user has never chosen one.
- *
- * Vercel puts a personal account's projects under an implicit "<name>'s
- * projects" team, not under the account itself, so an unscoped client lists
- * nothing at all — which reads as "no projects" rather than "wrong scope". A
- * `cli` connection avoids this by inheriting the CLI's own scope; a browser
- * sign-in or a pasted token has nothing to inherit, so the sole team is adopted
- * here and persisted, making this a one-time lookup.
- *
- * With several teams there is no unambiguous answer, so none is chosen and the
- * dashboard's team switcher is left to ask. Failures are swallowed: an
- * unscoped client still works, and the caller's own request should be what
- * surfaces an auth problem.
- */
-async function adoptDefaultTeam(
+/** The team scope to use when the user has never chosen one — see {@link adoptSoleScope}. */
+function adoptDefaultTeam(
   configStore: ConfigStore,
   credential: ResolvedVercelCredential,
   identity: "user" | "oidc",
 ): Promise<string | undefined> {
-  // A `cli` connection follows the CLI's own scope, so persisting one here
-  // would override `vercel switch` from then on.
-  if (credential.source === "cli") return undefined;
-  try {
-    const teams = await new VercelManager(credential.token, undefined, undefined, {
-      identity,
-    }).listTeams();
-    if (teams.length !== 1) return undefined;
-    const [team] = teams;
-    await configStore.setConnectionScope(VERCEL_PROVIDER_ID, {
-      scopeId: team.id,
-      scopeSlug: team.slug,
-    });
-    return team.id;
-  } catch {
-    return undefined;
-  }
+  return adoptSoleScope({
+    source: credential.source,
+    listScopes: () =>
+      new VercelManager(credential.token, undefined, undefined, { identity }).listTeams(),
+    persist: (scope) =>
+      configStore.setConnectionScope(VERCEL_PROVIDER_ID, scope).then(() => undefined),
+  });
 }
 
 export async function optionalVercelContext(
@@ -117,59 +95,31 @@ export async function requireVercelActions(
 }
 
 /**
- * Which Vercel project this repository deploys, in order of confidence:
- *
- * 1. an explicit pin the user chose in the dashboard;
- * 2. `.vercel/project.json`, written by `vercel link` — the same file the CLI
- *    trusts, so a linked repo needs no configuration here at all;
- * 3. a lookup by the repo's git remote, which is how Vercel itself keys an
- *    imported project.
- *
- * Returns undefined rather than guessing when none of those answer, since the
- * wrong project would show deployments for unrelated code.
+ * Which Vercel project this repository deploys — the shared three-tier ladder,
+ * given Vercel's own two hooks. Still returns a `VercelProject` rather than the
+ * neutral shape: the dashboard's wire format is unchanged until the routes move
+ * to `/api/providers/:id/*`.
  */
-async function resolveProject(
+function resolveProject(
   config: NoMoreIdeConfig,
   manager: VercelManager,
   gitCwd: string,
 ): Promise<VercelProject | undefined> {
-  const git = new GitManager(gitCwd);
-  const topLevel = await git.root().catch(() => gitCwd);
-
-  const repository = await matchRegisteredRepository(config, topLevel).catch(() => undefined);
-  const pinned = repository?.providerProjects?.[VERCEL_PROVIDER_ID];
-  if (pinned) {
-    const project = await manager.getProject(pinned).catch(() => undefined);
-    if (project) return project;
-  }
-
-  const linkedId = await readLinkedProjectId(topLevel);
-  if (linkedId) {
-    const project = await manager.getProject(linkedId).catch(() => undefined);
-    if (project) return project;
-  }
-
-  const remoteUrl = await git.remoteUrl("origin").catch(() => null);
-  const repoUrl = remoteUrl ? vercelRepoUrl(remoteUrl) : null;
-  if (repoUrl) {
-    const [project] = await manager.listProjects({ repoUrl, limit: 2 }).catch(() => []);
-    if (project) return project;
-  }
-
-  return undefined;
+  return resolveProviderProject<VercelProject>({
+    providerId: VERCEL_PROVIDER_ID,
+    hooks: VERCEL_HOOKS,
+    config,
+    gitCwd,
+    getProject: (id) => manager.getProject(id),
+    findByRepoUrl: async (repoUrl) =>
+      (await manager.listProjects({ repoUrl, limit: 2 }))[0],
+  });
 }
 
 /** `projectId` from `.vercel/project.json`, when the repo has been `vercel link`ed. */
-export async function readLinkedProjectId(repoRoot: string): Promise<string | undefined> {
-  try {
-    const raw = await readFile(join(repoRoot, ".vercel", "project.json"), "utf8");
-    const parsed = JSON.parse(raw) as { projectId?: unknown };
-    return typeof parsed.projectId === "string" && parsed.projectId.trim()
-      ? parsed.projectId.trim()
-      : undefined;
-  } catch {
-    return undefined;
-  }
+export function readLinkedProjectId(repoRoot: string): Promise<string | undefined> {
+  // biome-ignore lint/style/noNonNullAssertion: VERCEL_HOOKS declares a link file.
+  return readProviderLinkedProjectId(repoRoot, VERCEL_HOOKS.linkFile!);
 }
 
 /** The working directory Vercel operations run against — mirrors the GitHub seam. */

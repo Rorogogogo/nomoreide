@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** design sketch, not yet approved for implementation.
+**Status:** in progress — steps 1–3 of §8 landed; step 4 (generic routes + MCP + client seam) is next.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -297,10 +297,10 @@ export interface HostProvider {
 
 ## 8. Sequencing
 
-1. **Config migration** — `config.vercel` → `connections.vercel`, `vercelProjectId` → `providerProjects`. Own PR, own tests. Highest blast radius, zero feature value; do it while it's cheap.
-2. **Shared credential + OAuth** — ~450 lines of `vercel-auth` + `vercel-oauth` become generic. Biggest single win, and independently verifiable against the existing Vercel flows.
-3. **Contract + Vercel as implementation #1** — types, hooks, `DeployProvider`. No new behaviour; the dashboard should be byte-identical.
-4. **Generic routes + MCP + client seam** — the 15 taxes disappear here.
+1. ~~**Config migration**~~ — done (`bf52d44`). `config.vercel` → `connections.vercel`, `vercelProjectId` → `providerProjects`, `teamId` → `scopeId`. Mirrored in the Tauri Rust core, which shares the file.
+2. ~~**Shared credential + OAuth**~~ — done (`3c837aa`). `providers/oauth.ts` + `providers/credentials.ts`; Vercel is reduced to CLI file locations, four OAuth constants, and six message strings. Discovery is cached per issuer, not per module.
+3. ~~**Contract + Vercel as implementation #1**~~ — done. `providers/deploy-provider.ts` (contract), `providers/project-resolution.ts` (the three-tier ladder + sole-scope adoption, consumed by `vercel-context.ts` today), `vercel-provider.ts` (the adapter). HTTP surface unchanged.
+4. **Generic routes + MCP + client seam** — the 15 taxes disappear here. This is where `/api/vercel/*` becomes `/api/providers/:id/*` and the wire finally carries the neutral shapes the contract already defines.
 5. **Cloudflare** — validates `DeployProvider`. Expect the contract to move; that is the point of doing it before publishing anything.
 6. **Vultr + `HostProvider`** — validates the second contract and the `ssh-servers` bridge.
 7. **Only then** consider freezing `apiVersion: 1` and allowing downloadable providers.
