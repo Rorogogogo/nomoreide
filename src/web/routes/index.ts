@@ -12,6 +12,7 @@ import { dockerRoutes } from "./docker-routes.js";
 import { errorRoutes } from "./errors-routes.js";
 import { gitRoutes } from "./git-routes.js";
 import { githubRoutes } from "./github-routes.js";
+import { hostRoutes } from "./host-routes.js";
 import { logSourceRoutes } from "./log-sources-routes.js";
 import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
@@ -63,6 +64,7 @@ export const routes: Route[] = [
   ...snapshotRoutes,
   ...terminalRoutes,
   ...providerRoutes,
+  ...hostRoutes,
   ...shellRoutes,
 ];
 

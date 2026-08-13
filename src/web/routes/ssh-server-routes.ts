@@ -1,3 +1,4 @@
+import { hostProviderSshTargets } from "../../core/providers/host-bridge.js";
 import {
   discoverSshHosts,
   mergeSshServers,
@@ -13,16 +14,24 @@ import type { SshServerDefinition } from "../../core/types.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
 
-/** Saved/discovered SSH servers, connection checks, and read-only Linux metrics. */
+/**
+ * Saved/discovered SSH servers, connection checks, and read-only Linux metrics.
+ *
+ * "Discovered" now has a third source: any host provider the user has connected
+ * contributes its instances as SSH targets, so a Vultr machine is probed,
+ * measured and opened in a terminal by the same routes as a `~/.ssh/config`
+ * alias. Nothing below knows which provider — see `providers/host-bridge.ts`.
+ */
 export const sshServerRoutes: Route[] = [
   route("GET", "/api/servers", async ({ response, configStore }) => {
-    const [config, discovered] = await Promise.all([
+    const [config, discovered, hostTargets] = await Promise.all([
       configStore.load(),
       discoverSshHosts(),
+      hostProviderSshTargets(configStore),
     ]);
     sendJson(response, {
       ok: true,
-      servers: mergeSshServers(config.sshServers, discovered),
+      servers: mergeSshServers(config.sshServers, discovered, hostTargets),
     });
   }),
 
@@ -136,11 +145,12 @@ export const sshServerRoutes: Route[] = [
         return;
       }
       const host = decodeURIComponent(params.host);
-      const [config, discovered] = await Promise.all([
+      const [config, discovered, hostTargets] = await Promise.all([
         configStore.load(),
         discoverSshHosts(),
+        hostProviderSshTargets(configStore),
       ]);
-      const server = mergeSshServers(config.sshServers, discovered).find(
+      const server = mergeSshServers(config.sshServers, discovered, hostTargets).find(
         (entry) => entry.host === host,
       );
       if (!server) {

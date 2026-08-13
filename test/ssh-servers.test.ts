@@ -43,6 +43,57 @@ describe("SSH servers", () => {
     ]);
   });
 
+  test("adopts host-provider instances as a third source of servers", () => {
+    const target = {
+      host: "root@45.32.10.1",
+      name: "api-01",
+      instance: {
+        providerId: "vultr",
+        providerName: "Vultr",
+        instanceId: "i_1",
+        state: "running" as const,
+        rawState: "running",
+      },
+    };
+
+    expect(mergeSshServers([], [], [target])).toEqual([
+      { host: "root@45.32.10.1", name: "api-01", instance: target.instance, discovered: false, saved: false },
+    ]);
+  });
+
+  test("a saved name outranks the provider's, and the two stay one row", () => {
+    const target = {
+      host: "root@45.32.10.1",
+      name: "api-01",
+      instance: {
+        providerId: "vultr",
+        providerName: "Vultr",
+        instanceId: "i_1",
+        state: "running" as const,
+        rawState: "running",
+      },
+    };
+
+    // The provider supplies a starting point, not an override: a user who
+    // renamed the host keeps their name and gains the instance detail.
+    expect(
+      mergeSshServers(
+        [{ host: "root@45.32.10.1", name: "Production API", environment: "Production" }],
+        [],
+        [target],
+      ),
+    ).toEqual([
+      {
+        host: "root@45.32.10.1",
+        name: "Production API",
+        environment: "Production",
+        instance: target.instance,
+        discovered: false,
+        saved: true,
+      },
+    ]);
+  });
+
   test("parses the fixed Linux metrics response", () => {
     const metrics = parseRemoteMetrics("prod", `NMI_META\tapi-01\tLinux
 NMI_CPU\t12.5

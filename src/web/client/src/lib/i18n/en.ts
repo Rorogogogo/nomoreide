@@ -84,6 +84,7 @@ export const en = {
   "servers.environmentUnassigned": "No environment",
   "servers.sourceSshConfig": "SSH config",
   "servers.sourceSaved": "Saved metadata",
+  "servers.sourceProvider": "{provider} · {state}",
   "servers.status": "Status",
   "servers.actions": "Actions",
   "servers.host": "Host alias, hostname, or IP",

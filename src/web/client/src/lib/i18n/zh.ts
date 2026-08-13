@@ -92,6 +92,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "servers.setup.install": "安装公钥…",
   "servers.setup.installHint": "设置终端可能会要求输入一次远程账户密码。密码会通过终端发送给 SSH 进程，NoMoreIDE 永远不会保存它。",
   "servers.setup.error": "无法启动 SSH 设置：{error}",
+  "servers.sourceProvider": "{provider} · {state}",
   "servers.activity": "查看活动",
 
   "activity.title": "活动监视器",

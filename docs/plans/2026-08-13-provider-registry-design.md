@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** in progress — steps 1–5 of §8 landed. Cloudflare is in, and the contract held: one new directory of `cloudflare-*.ts`, one line in the registry, and one shared-layer change (§8.5). Step 6 (Vultr + `HostProvider`) is next.
+**Status:** in progress — steps 1–6 of §8 landed. Both contracts now have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Three in-tree providers exist, which is the bar §9 set before `apiVersion: 1` could be frozen — step 7 is the decision about whether to freeze it.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -279,6 +279,8 @@ A provider necessarily receives credentials, and it runs inside the daemon — t
 
 ## 7. `HostProvider` — the Vultr half
 
+*Landed (§8.6). The sketch below is what was planned; three of its four lines changed on contact, which is recorded after it.*
+
 ```ts
 export interface HostProvider {
   listInstances(): Promise<HostInstance[]>;
@@ -292,6 +294,12 @@ export interface HostProvider {
 ```
 
 `toSshTarget` is the reason this contract earns its keep. A Vultr instance shows up in the existing SSH server list, with existing metrics and existing remote service running, without the user registering it by hand. That is a feature the current architecture cannot express and a generic plugin interface would never have produced — it only falls out of writing the third implementation against a contract shaped by the first two.
+
+**What the sketch got wrong**, all three found by writing the implementation:
+
+- **`run?()` does not belong on the read interface.** Halting a production box is not something an agent holding read tools should be one call away from, and every other write in this codebase is a separate object (`git-actions`, `db-write`, `vercel-actions`). It became `HostProviderActions`, resolved separately, and never an MCP tool.
+- **`metrics?()` is redundant, so it was dropped.** `toSshTarget` already hands the instance to `readRemoteHostMetrics`, which is a better answer anyway: it measures the machine over SSH rather than trusting a vendor's aggregate. Keeping a contract method nothing implements is precisely the over-abstraction §9 warns about.
+- **`toSshTarget` returns `SshServerDefinition | null`, and needs the machine's login.** An instance that is still provisioning has no address; inventing a placeholder would put a permanently-failing row on the servers page. And an address alone is not reachable — `ssh 45.32.10.1` tries the *local* username — so `HostInstance` carries `defaultUser` (`root`, Vultr's `linuxuser`, elsewhere `ubuntu`).
 
 ---
 
@@ -319,7 +327,18 @@ export interface HostProvider {
    **What Cloudflare says the manifest still lacks**, deferred with the two taxes below rather than guessed at now:
    - `authSources`. Vercel has all three; Cloudflare has two. A generic setup screen cannot know whether to offer "Sign in with browser" without being told. Derivable from `ProviderAuthSpec`, so this is a wiring decision, not new data.
    - `scope.required` (§6 has it, `DeployProviderManifest` does not). Vercel works unscoped; Cloudflare cannot. Today an unscoped Cloudflare connection reports `no_project` with `scopes` populated — workable, but the UI has to infer the real problem.
-6. **Vultr + `HostProvider`** — validates the second contract and the `ssh-servers` bridge.
+6. ~~**Vultr + `HostProvider`**~~ — done. `providers/host-provider.ts` (the second contract), `providers/host-bridge.ts` (the SSH adoption), `vultr-{manager,actions,auth,provider,context}.ts`, `web/routes/host-routes.ts`, and the host half of the registry.
+
+   **A second *contract* costs central edits; a second *provider within* a contract does not.** That distinction is the real result of this step. Cloudflare cost one line in `registry.ts`. Vultr cost that line plus `routes/index.ts`, the `mergeSshServers` signature, one client type, one line of UI and two i18n keys — because it introduced a kind, not because it introduced a provider. DigitalOcean will cost one line and its own directory.
+
+   **What generalized, and what correctly did not:**
+   - *`providers/credentials.ts` carried over untouched.* Vultr is neither a deploy platform nor an OAuth one, and it reuses the three-source resolver exactly — the first evidence that layer generalized beyond the contract it was extracted from. It also stretches the model to its narrowest: a `cli` source backed by `VULTR_API_KEY` with **no CLI file at all**. What makes a source `cli` turns out to be the *policy* (re-read at use time, never persisted), not where the token lives — which is what `credentials.ts` already said, now tested.
+   - *`providers/project-resolution.ts` is not part of this contract, and should not be.* An instance belongs to an account, not to a repository. There is no working directory in `HostContext`, no `repoUrl` hook, no link file, no scope — Vultr's API key addresses exactly one account. `vultr-context.ts` is the shortest registry entry so far, and the missing parts are the argument for two contracts rather than one wide one.
+   - *`rawState` paid for itself a second time.* Vultr describes a machine with three fields (`status`, `power_status`, `server_status`) and only their combination says whether it is reachable. `suspended` — a vendor lock the user must act on — has no neutral equivalent, so it maps to `error` and survives verbatim, exactly as Cloudflare's `skipped` did.
+
+   **The bridge is the payoff, and it is where the design earns its keep.** A Vultr instance is a row in the SSH server list the user already has, merged on the host string so a machine they had already saved metadata for is one row and *their* name wins. `probeSshServer`, `readRemoteHostMetrics`, the terminal route and the remote service runner all work against it unchanged, because what the provider hands over is a plain `SshServerDefinition`. Two rules the bridge enforces: it **never throws** (a vendor outage must not blank a page listing the user's own hosts), and it caches for 30s (that page reloads on an interval *and* on every window focus).
+
+   **Deliberately not done:** `environment` is not inferred from Vultr tags — they are free-form, and guessing "Production" from one would eventually put that label on the wrong machine. Destructive operations (`delete`, `reinstall`) are absent from the manifest entirely, the line `GitManager` draws around `reset --hard`.
 7. **Only then** consider freezing `apiVersion: 1` and allowing downloadable providers.
 
 ## 9. Risks
@@ -328,6 +347,7 @@ export interface HostProvider {
 - **Lossy state mapping.** `rawState` passthrough.
 - **Over-abstraction.** If Cloudflare needs a view Vercel's generic one can't render, give it a custom component and keep the shared route/auth/seam layers. Escaping the generic UI must stay cheap, or the contract starts distorting features.
 - **i18n regression.** `zh.ts` is a `Partial`, so a missing key renders English rather than failing the build — a provider's `strings.zh` being incomplete will be silent. Worth a test that asserts manifest string sets match across locales.
+- **Neither new provider has met its live API.** Cloudflare and Vultr are both tested against stubbed `fetch` only. Their request and response shapes come from authoritative sources — Cloudflare's OpenAPI spec via the `cloudflare-api` MCP server, Vultr's from the official `github.com/vultr/govultr` SDK — so the risk is not in the field names but in the behaviours a spec does not state: Cloudflare's PATCH-merge env semantics, and whether a Vultr power action's 204 arrives before the instance's reported state changes. One manual pass each with a real token, before anyone relies on env writes or on the servers list refreshing after a reboot.
 
 ## 10. Deliberately out of scope
 
