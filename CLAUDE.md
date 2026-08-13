@@ -16,13 +16,14 @@ npm run tauri:dev    # Tauri desktop app in dev mode (tauri:build to package)
 
 The compiled binary entry point is `dist/index.js`, exposed as `nomoreide` when installed globally.
 
-**What CI actually gates.** `.github/workflows/ci.yml` and `deploy.yml` run only `npm run build`, `npm test`, and `npm audit`. Neither Biome nor the web client's type check runs in CI, and `vite build` does not typecheck — so **client type errors and lint violations reach main unnoticed**. Run these yourself before shipping client work:
+**What CI gates.** `.github/workflows/ci.yml` runs `npm run build` + `npm test` across the Node matrix, and a `quality` job running the web client's type check and Biome. `vite build` does not typecheck, which is why the client check is its own step. To reproduce the `quality` job locally:
 
 ```bash
 npx tsc -p src/web/client/tsconfig.json --noEmit   # client types (server types are covered by npm run build)
+npm run lint
 ```
 
-`src/web/client/src/lib/api/tauri-bridge.ts` and `snapshots-tauri.ts` have known pre-existing errors there; ignore those two, not yours.
+Both are currently clean, so any error you see there is yours.
 
 **Merging does not release.** `deploy.yml` is `workflow_dispatch`-only — merges accumulate on `main` (tested there by `ci.yml`) until someone cuts a release with `gh workflow run deploy.yml -f bump=patch`. That job bumps the version, tags `v<version>`, and publishes to npm; the tag push is in turn what triggers `desktop-release.yml` to build the dmg and create the GitHub Release, whose notes come from the body of the PR behind the tag's parent commit (`## Release note` preferred — see `.github/pull_request_template.md`).
 
