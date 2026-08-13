@@ -32,6 +32,22 @@ jobs:
       - run: npm run build
       - run: npm test
 
+  # `npm run build` runs vite (which does not typecheck) plus tsc over the
+  # server only, so client type errors and lint violations used to reach main
+  # unnoticed. These run once rather than across the Node matrix.
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Type check web client
+        run: npx tsc -p src/web/client/tsconfig.json --noEmit
+      - run: npm run lint
+
   audit:
     runs-on: ubuntu-latest
     continue-on-error: true
