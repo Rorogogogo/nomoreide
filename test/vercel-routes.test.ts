@@ -35,7 +35,7 @@ beforeEach(async () => {
 
   const configStore = new ConfigStore(configPath);
   await configStore.registerGitRepository({ name: "web", path: repoPath });
-  await configStore.setVercelConnection({ source: "stored", token: "test-token" });
+  await configStore.setConnection("vercel", { source: "stored", token: "test-token" });
 });
 
 afterEach(async () => {
@@ -249,13 +249,13 @@ describe("Vercel routes", () => {
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ source: "stored", token: "new-token" }),
     });
-    expect((await new ConfigStore(configPath).load()).vercel).toMatchObject({
+    expect((await new ConfigStore(configPath).load()).connections.vercel).toMatchObject({
       source: "stored",
       token: "new-token",
     });
 
     await fetch(`${server.url}/api/vercel/connect`, { method: "DELETE" });
-    expect((await new ConfigStore(configPath).load()).vercel).toBeUndefined();
+    expect((await new ConfigStore(configPath).load()).connections.vercel).toBeUndefined();
   });
 
   describe("browser sign-in", () => {
@@ -314,7 +314,7 @@ describe("Vercel routes", () => {
       expect(await (await fetch(`${server.url}/api/vercel/oauth/status`)).json()).toMatchObject({
         phase: "connected",
       });
-      expect((await new ConfigStore(configPath).load()).vercel).toMatchObject({
+      expect((await new ConfigStore(configPath).load()).connections.vercel).toMatchObject({
         source: "oauth",
         token: "at_new",
         refreshToken: "rt_new",
@@ -338,7 +338,7 @@ describe("Vercel routes", () => {
 
       expect(callback.status).toBe(400);
       // Nothing was exchanged, so the pre-existing connection stands.
-      expect((await new ConfigStore(configPath).load()).vercel).toMatchObject({
+      expect((await new ConfigStore(configPath).load()).connections.vercel).toMatchObject({
         source: "stored",
       });
     });
@@ -383,9 +383,9 @@ describe("Vercel routes", () => {
       expect(body.projects).toHaveLength(1);
 
       // Persisted, so the lookup is one-time rather than per-request.
-      expect((await new ConfigStore(configPath).load()).vercel).toMatchObject({
-        teamId: "team_1",
-        teamSlug: "acme",
+      expect((await new ConfigStore(configPath).load()).connections.vercel).toMatchObject({
+        scopeId: "team_1",
+        scopeSlug: "acme",
       });
     });
 
@@ -406,13 +406,15 @@ describe("Vercel routes", () => {
 
       await fetch(`${server.url}/api/vercel/projects`);
 
-      expect((await new ConfigStore(configPath).load()).vercel?.teamId).toBeUndefined();
+      expect(
+        (await new ConfigStore(configPath).load()).connections.vercel?.scopeId,
+      ).toBeUndefined();
       const lookup = apiCalls.find((call) => call.url.pathname === "/v10/projects");
       expect(lookup?.url.searchParams.get("teamId")).toBeNull();
     });
 
     test("leaves an explicitly chosen scope alone", async () => {
-      await new ConfigStore(configPath).setVercelScope({ teamId: "team_chosen" });
+      await new ConfigStore(configPath).setConnectionScope("vercel", { scopeId: "team_chosen" });
       stubVercelApi((url) => {
         if (url.pathname === "/v2/teams") {
           return { teams: [{ id: "team_other", slug: "other", name: "Other" }] };

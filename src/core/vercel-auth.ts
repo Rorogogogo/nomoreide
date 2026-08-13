@@ -7,7 +7,10 @@ import {
   type VercelOAuthDeps,
   type VercelOAuthTokens,
 } from "./vercel-oauth.js";
-import type { NoMoreIdeConfig, VercelConnection } from "./types.js";
+import type { NoMoreIdeConfig, ProviderConnection } from "./types.js";
+
+/** Provider id this integration stores its connection under. */
+export const VERCEL_PROVIDER_ID = "vercel";
 
 /**
  * Where a Vercel token comes from.
@@ -111,8 +114,8 @@ export async function resolveVercelCredential(
   env: NodeJS.ProcessEnv = process.env,
   options: ResolveVercelOptions = {},
 ): Promise<ResolvedVercelCredential> {
-  const connection = config.vercel;
-  const scope = { teamId: connection?.teamId, teamSlug: connection?.teamSlug };
+  const connection = config.connections[VERCEL_PROVIDER_ID];
+  const scope = { teamId: connection?.scopeId, teamSlug: connection?.scopeSlug };
 
   if (connection?.source === "oauth") {
     return { source: "oauth", token: await oauthAccessToken(connection, options), ...scope };
@@ -132,8 +135,8 @@ export async function resolveVercelCredential(
       token: session.token,
       // An explicitly chosen scope wins; otherwise inherit whatever scope the
       // CLI is pointed at, so the dashboard opens on the same team `vercel` uses.
-      teamId: connection?.teamId ?? session.currentTeam,
-      teamSlug: connection?.teamSlug,
+      teamId: connection?.scopeId ?? session.currentTeam,
+      teamSlug: connection?.scopeSlug,
     };
   }
 
@@ -150,7 +153,7 @@ export async function resolveVercelCredential(
  * `onTokensRefreshed` so the rotated refresh token replaces the spent one.
  */
 async function oauthAccessToken(
-  connection: VercelConnection,
+  connection: ProviderConnection,
   options: ResolveVercelOptions,
 ): Promise<string> {
   const expiresAt = connection.expiresAt ?? 0;
@@ -179,8 +182,8 @@ async function oauthAccessToken(
 
 /** The connection stripped of its secrets, safe to return over the API. */
 export function publicVercelConnection(
-  connection: VercelConnection | undefined,
-): Omit<VercelConnection, "token" | "refreshToken"> | undefined {
+  connection: ProviderConnection | undefined,
+): Omit<ProviderConnection, "token" | "refreshToken"> | undefined {
   if (!connection) return undefined;
   const { token: _token, refreshToken: _refreshToken, ...rest } = connection;
   return rest;

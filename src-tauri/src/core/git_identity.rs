@@ -375,7 +375,8 @@ mod tests {
             github_credential: Some(GithubCredentialSelection::Stored {
                 host: "github.com".into(),
             }),
-            vercel_project_id: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
         };
 
         assert!(
@@ -398,7 +399,8 @@ mod tests {
             path: "/tmp/app".into(),
             active_worktree_path: None,
             github_credential: None,
-            vercel_project_id: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
         };
 
         assert!(

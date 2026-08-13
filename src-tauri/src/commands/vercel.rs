@@ -9,7 +9,7 @@ use serde_json::Value;
 use std::sync::Mutex;
 use tauri::State;
 
-use crate::core::config::{Config, ConfigStore, VercelConnectionDef};
+use crate::core::config::{Config, ConfigStore, ProviderConnectionDef, LEGACY_PROVIDER_ID};
 use crate::core::vercel_auth::{cli_status, public_connection, read_cli_session};
 use crate::core::vercel_context::{require_actions, require_context, selected_cwd};
 use crate::core::vercel_oauth;
@@ -82,16 +82,17 @@ pub async fn vercel_oauth_start(_state: State<'_, AppState>) -> Result<Value, St
             Ok(tokens) => {
                 let store = ConfigStore::new(config_path);
                 let saved = store
-                    .set_vercel_connection(VercelConnectionDef {
-                        source: "oauth".into(),
-                        token: Some(tokens.access_token),
-                        refresh_token: tokens.refresh_token,
-                        expires_at: Some(tokens.expires_at),
-                        client_id: Some(client_id),
-                        team_id: None,
-                        team_slug: None,
-                        username: None,
-                    })
+                    .set_connection(
+                        LEGACY_PROVIDER_ID,
+                        ProviderConnectionDef {
+                            source: "oauth".into(),
+                            token: Some(tokens.access_token),
+                            refresh_token: tokens.refresh_token,
+                            expires_at: Some(tokens.expires_at),
+                            client_id: Some(client_id),
+                            ..Default::default()
+                        },
+                    )
                     .await;
                 match saved {
                     Ok(_) => set_phase("connected", None),
@@ -144,7 +145,7 @@ pub async fn vercel_status(state: State<'_, AppState>) -> Result<Value, String> 
         "repositoryName": repository_name,
     });
 
-    if config.vercel.is_none() && !cli.available {
+    if !config.connections.contains_key(LEGACY_PROVIDER_ID) && !cli.available {
         body["status"] = Value::String("not_configured".into());
         return Ok(body);
     }
@@ -214,36 +215,26 @@ pub async fn vercel_connect(
         let session = read_cli_session()
             .await
             .ok_or("No Vercel CLI login found. Run `vercel login` first.")?;
-        VercelConnectionDef {
+        ProviderConnectionDef {
             source: "cli".into(),
-            token: None,
-            refresh_token: None,
-            expires_at: None,
-            client_id: None,
-            team_id: session.current_team,
-            team_slug: None,
-            username: None,
+            scope_id: session.current_team,
+            ..Default::default()
         }
     } else {
         let token = token
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty())
             .ok_or("A Vercel token is required.")?;
-        VercelConnectionDef {
+        ProviderConnectionDef {
             source: "stored".into(),
             token: Some(token),
-            refresh_token: None,
-            expires_at: None,
-            client_id: None,
-            team_id: None,
-            team_slug: None,
-            username: None,
+            ..Default::default()
         }
     };
 
     state
         .config_store
-        .set_vercel_connection(connection)
+        .set_connection(LEGACY_PROVIDER_ID, connection)
         .await
         .map(|_| ())
         .map_err(|error| error.to_string())
@@ -254,7 +245,7 @@ pub async fn vercel_disconnect(state: State<'_, AppState>) -> Result<(), String>
     set_phase("idle", None);
     state
         .config_store
-        .remove_vercel_connection()
+        .remove_connection(LEGACY_PROVIDER_ID)
         .await
         .map(|_| ())
         .map_err(|error| error.to_string())
@@ -268,7 +259,7 @@ pub async fn vercel_set_scope(
 ) -> Result<(), String> {
     state
         .config_store
-        .set_vercel_scope(team_id, team_slug)
+        .set_connection_scope(LEGACY_PROVIDER_ID, team_id, team_slug)
         .await
         .map(|_| ())
         .map_err(|error| error.to_string())
@@ -320,7 +311,7 @@ pub async fn vercel_set_project(
         .ok_or("No Git repository is selected.")?;
     state
         .config_store
-        .set_vercel_project(&repository, project_id)
+        .set_provider_project(LEGACY_PROVIDER_ID, &repository, project_id)
         .await
         .map(|_| ())
         .map_err(|error| error.to_string())

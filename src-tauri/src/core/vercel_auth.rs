@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 use tokio::fs;
 
-use super::config::{Config, ConfigStore};
+use super::config::{Config, ConfigStore, LEGACY_PROVIDER_ID};
 use super::vercel_oauth::{now_ms, refresh_tokens, TOKEN_REFRESH_SKEW_MS};
 
 #[derive(Debug, Clone)]
@@ -113,8 +113,8 @@ pub async fn cli_status() -> CliStatus {
 /// Returns an actionable message rather than None: every caller needs a token
 /// to do anything, and the message is what the UI shows.
 pub async fn resolve(store: &ConfigStore, config: &Config) -> Result<ResolvedCredential, String> {
-    let connection = config.vercel.as_ref();
-    let team_id = connection.and_then(|c| c.team_id.clone());
+    let connection = config.connections.get(LEGACY_PROVIDER_ID);
+    let team_id = connection.and_then(|c| c.scope_id.clone());
 
     match connection.map(|c| c.source.as_str()) {
         Some("oauth") => Ok(ResolvedCredential {
@@ -155,7 +155,10 @@ pub async fn resolve(store: &ConfigStore, config: &Config) -> Result<ResolvedCre
 /// has expired (or is about to). The rotated pair is persisted, because the
 /// refresh token we just spent is no longer accepted.
 async fn oauth_access_token(store: &ConfigStore, config: &Config) -> Result<String, String> {
-    let connection = config.vercel.as_ref().ok_or("Vercel is not connected.")?;
+    let connection = config
+        .connections
+        .get(LEGACY_PROVIDER_ID)
+        .ok_or("Vercel is not connected.")?;
     let expires_at = connection.expires_at.unwrap_or(0);
     if let Some(token) = connection.token.as_ref() {
         if now_ms() + TOKEN_REFRESH_SKEW_MS < expires_at {
@@ -176,7 +179,8 @@ async fn oauth_access_token(store: &ConfigStore, config: &Config) -> Result<Stri
             format!("Could not renew your Vercel sign-in ({error}). Sign in to Vercel again.")
         })?;
     store
-        .update_vercel_tokens(
+        .update_connection_tokens(
+            LEGACY_PROVIDER_ID,
             tokens.access_token.clone(),
             tokens.refresh_token.clone(),
             tokens.expires_at,
@@ -188,7 +192,7 @@ async fn oauth_access_token(store: &ConfigStore, config: &Config) -> Result<Stri
 
 /// The connection stripped of its secrets, safe to return to the frontend.
 pub fn public_connection(config: &Config) -> Option<Value> {
-    let connection = config.vercel.as_ref()?;
+    let connection = config.connections.get(LEGACY_PROVIDER_ID)?;
     let mut value = serde_json::to_value(connection).ok()?;
     if let Some(object) = value.as_object_mut() {
         object.remove("token");
@@ -211,17 +215,19 @@ async fn read_json_field(path: &PathBuf, field: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::VercelConnectionDef;
+    use crate::core::config::ProviderConnectionDef;
 
-    fn connection(source: &str) -> VercelConnectionDef {
-        VercelConnectionDef {
+    fn connection(source: &str) -> ProviderConnectionDef {
+        ProviderConnectionDef {
             source: source.into(),
             token: Some("secret-token".into()),
             refresh_token: Some("secret-refresh".into()),
             expires_at: None,
             client_id: Some("cl_1".into()),
-            team_id: Some("team_1".into()),
-            team_slug: None,
+            scope_id: Some("team_1".into()),
+            scope_slug: None,
+            legacy_team_id: None,
+            legacy_team_slug: None,
             username: None,
         }
     }
@@ -229,13 +235,15 @@ mod tests {
     #[test]
     fn the_public_connection_masks_both_secrets() {
         let mut config = Config::default();
-        config.vercel = Some(connection("oauth"));
+        config
+            .connections
+            .insert(LEGACY_PROVIDER_ID.into(), connection("oauth"));
 
         let public = public_connection(&config).unwrap();
         assert!(public.get("token").is_none());
         assert!(public.get("refreshToken").is_none());
         // The non-secret scope must survive, or the UI cannot show it.
-        assert_eq!(public["teamId"], "team_1");
+        assert_eq!(public["scopeId"], "team_1");
         assert!(!serde_json::to_string(&public).unwrap().contains("secret"));
     }
 
@@ -243,7 +251,9 @@ mod tests {
     async fn a_stored_connection_uses_its_token_and_scope() {
         let store = ConfigStore::new(std::path::PathBuf::from("/tmp/unused-vercel.json"));
         let mut config = Config::default();
-        config.vercel = Some(connection("stored"));
+        config
+            .connections
+            .insert(LEGACY_PROVIDER_ID.into(), connection("stored"));
 
         let credential = resolve(&store, &config).await.unwrap();
         assert_eq!(credential.token, "secret-token");
@@ -258,7 +268,7 @@ mod tests {
         let mut oauth = connection("oauth");
         oauth.refresh_token = None;
         oauth.expires_at = Some(0);
-        config.vercel = Some(oauth);
+        config.connections.insert(LEGACY_PROVIDER_ID.into(), oauth);
 
         let error = resolve(&store, &config).await.unwrap_err();
         assert!(error.contains("Sign in to Vercel again"));
@@ -270,7 +280,7 @@ mod tests {
         let mut config = Config::default();
         let mut oauth = connection("oauth");
         oauth.expires_at = Some(now_ms() + 3_600_000);
-        config.vercel = Some(oauth);
+        config.connections.insert(LEGACY_PROVIDER_ID.into(), oauth);
 
         // Would otherwise hit the network, which a unit test must not do.
         let credential = resolve(&store, &config).await.unwrap();

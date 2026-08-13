@@ -4,6 +4,7 @@ import {
   publicVercelConnection,
   readVercelCliSession,
   vercelCliStatus,
+  VERCEL_PROVIDER_ID,
 } from "../../core/vercel-auth.js";
 import { VercelApiError } from "../../core/vercel-manager.js";
 import {
@@ -102,7 +103,7 @@ export const vercelRoutes: Route[] = [
 
     try {
       const tokens = await completeVercelLogin(pending, code);
-      await configStore.setVercelConnection({
+      await configStore.setConnection(VERCEL_PROVIDER_ID, {
         source: "oauth",
         token: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -131,13 +132,13 @@ export const vercelRoutes: Route[] = [
     const selectedRepository = getSelectedGitRepository(config);
     const base = {
       ok: true,
-      connection: publicVercelConnection(config.vercel),
+      connection: publicVercelConnection(config.connections[VERCEL_PROVIDER_ID]),
       cliAvailable: cli.available,
       cliError: cli.error,
       repositoryName: selectedRepository?.name,
     };
 
-    if (!config.vercel && !cli.available) {
+    if (!config.connections[VERCEL_PROVIDER_ID] && !cli.available) {
       sendJson(response, { ...base, status: "not_configured" });
       return;
     }
@@ -178,12 +179,12 @@ export const vercelRoutes: Route[] = [
       if (source === "cli") {
         const session = await readVercelCliSession();
         if (!session) throw new Error("No Vercel CLI login found. Run `vercel login` first.");
-        await configStore.setVercelConnection({
+        await configStore.setConnection(VERCEL_PROVIDER_ID, {
           source: "cli",
-          teamId: session.currentTeam,
+          scopeId: session.currentTeam,
         });
       } else {
-        await configStore.setVercelConnection({
+        await configStore.setConnection(VERCEL_PROVIDER_ID, {
           source: "stored",
           token: requiredFormValue(form, "token"),
         });
@@ -195,7 +196,7 @@ export const vercelRoutes: Route[] = [
   }),
 
   route("DELETE", "/api/vercel/connect", async ({ response, configStore }) => {
-    await configStore.removeVercelConnection();
+    await configStore.removeConnection(VERCEL_PROVIDER_ID);
     loginPhase = { phase: "idle" };
     sendJson(response, { ok: true });
   }),
@@ -203,9 +204,9 @@ export const vercelRoutes: Route[] = [
   route("PUT", "/api/vercel/scope", async ({ request, response, configStore }) => {
     try {
       const body = await readJson(request);
-      await configStore.setVercelScope({
-        teamId: typeof body.teamId === "string" ? body.teamId : undefined,
-        teamSlug: typeof body.teamSlug === "string" ? body.teamSlug : undefined,
+      await configStore.setConnectionScope(VERCEL_PROVIDER_ID, {
+        scopeId: typeof body.teamId === "string" ? body.teamId : undefined,
+        scopeSlug: typeof body.teamSlug === "string" ? body.teamSlug : undefined,
       });
       sendJson(response, { ok: true });
     } catch (error) {
@@ -254,7 +255,7 @@ export const vercelRoutes: Route[] = [
       const repository = getSelectedGitRepository(config);
       if (!repository) throw new Error("No Git repository is selected.");
       const projectId = typeof body.projectId === "string" ? body.projectId : undefined;
-      await configStore.setVercelProject(repository.name, projectId);
+      await configStore.setProviderProject(VERCEL_PROVIDER_ID, repository.name, projectId);
       sendJson(response, { ok: true });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 400);

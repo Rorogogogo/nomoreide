@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -61,9 +61,15 @@ pub struct GitRepoDef {
     pub active_worktree_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub github_credential: Option<GithubCredentialSelection>,
-    /// Vercel project this repository deploys, when the user pinned one.
+    /// Deploy-provider project this repository ships, keyed by provider id.
+    /// A missing entry means "infer it" — from the provider's link file, else
+    /// the git remote.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub vercel_project_id: Option<String>,
+    pub provider_projects: Option<BTreeMap<String, String>>,
+    /// Pre-registry shape, read so an older config still resolves and dropped
+    /// on the next write. See `Config::normalize_legacy_providers`.
+    #[serde(default, rename = "vercelProjectId", skip_serializing)]
+    pub legacy_vercel_project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -141,14 +147,14 @@ pub struct GithubIdentityDef {
     pub email: String,
 }
 
-/// How the Vercel integration authenticates. Mirrors the TypeScript
-/// `VercelConnection`: `cli` holds no secret (the token is re-read from the
-/// Vercel CLI's own auth file), `stored` carries a pasted token, and `oauth` is
-/// the browser sign-in whose access token expires hourly and is renewed from
+/// How a provider integration authenticates. Mirrors the TypeScript
+/// `ProviderConnection`: `cli` holds no secret (the token is re-read from the
+/// vendor CLI's own auth file), `stored` carries a pasted token, and `oauth` is
+/// the browser sign-in whose access token expires and is renewed from
 /// `refresh_token`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct VercelConnectionDef {
+pub struct ProviderConnectionDef {
     /// "cli" | "stored" | "oauth"
     pub source: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -162,12 +168,18 @@ pub struct VercelConnectionDef {
     /// `oauth` only: the registered client the tokens belong to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// Account scope within the provider — a Vercel team, a Cloudflare account.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub team_id: Option<String>,
+    pub scope_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub team_slug: Option<String>,
+    pub scope_slug: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
+    /// Pre-registry scope fields, read once and then dropped on write.
+    #[serde(default, rename = "teamId", skip_serializing)]
+    pub legacy_team_id: Option<String>,
+    #[serde(default, rename = "teamSlug", skip_serializing)]
+    pub legacy_team_slug: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -196,9 +208,13 @@ pub struct Config {
     pub github_tokens: Vec<GithubTokenDef>,
     #[serde(default)]
     pub github_identities: Vec<GithubIdentityDef>,
-    /// How the Vercel integration authenticates; absent = not connected.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub vercel: Option<VercelConnectionDef>,
+    /// How each provider authenticates, keyed by provider id (`vercel`, …).
+    /// A missing entry means that provider is not connected.
+    #[serde(default)]
+    pub connections: BTreeMap<String, ProviderConnectionDef>,
+    /// Pre-registry Vercel connection, lifted into `connections` on load.
+    #[serde(default, rename = "vercel", skip_serializing)]
+    pub legacy_vercel: Option<ProviderConnectionDef>,
     #[serde(default)]
     pub workflows: Vec<serde_json::Value>,
     /// Node-owned keys the desktop never reads but must not destroy. `save()`
@@ -212,6 +228,50 @@ pub struct Config {
     /// chosen → fall back to detection. Shares the `chatProvider` key with Node.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chat_provider: Option<String>,
+}
+
+/// Provider id the pre-registry fields belonged to.
+pub const LEGACY_PROVIDER_ID: &str = "vercel";
+
+impl Config {
+    /// Lift the pre-registry Vercel fields into their provider-keyed homes:
+    ///
+    ///   config.vercel                  → config.connections["vercel"]
+    ///   connection.teamId / .teamSlug  → .scopeId / .scopeSlug
+    ///   repository.vercelProjectId     → repository.providerProjects["vercel"]
+    ///
+    /// Mirrors `migrateLegacyProviderFields` in `src/core/config-store.ts` — the
+    /// two runtimes share one config.json, so both must read the old shape. The
+    /// legacy fields are `skip_serializing`, so they vanish on the next write.
+    ///
+    /// Existing provider-keyed values win; the legacy key is then discarded.
+    fn normalize_legacy_providers(&mut self) {
+        if let Some(mut legacy) = self.legacy_vercel.take() {
+            legacy.scope_id = legacy.scope_id.or(legacy.legacy_team_id.take());
+            legacy.scope_slug = legacy.scope_slug.or(legacy.legacy_team_slug.take());
+            self.connections
+                .entry(LEGACY_PROVIDER_ID.to_string())
+                .or_insert(legacy);
+        }
+        for connection in self.connections.values_mut() {
+            connection.scope_id = connection
+                .scope_id
+                .take()
+                .or(connection.legacy_team_id.take());
+            connection.scope_slug = connection
+                .scope_slug
+                .take()
+                .or(connection.legacy_team_slug.take());
+        }
+        for repo in &mut self.git_repositories {
+            if let Some(project_id) = repo.legacy_vercel_project_id.take() {
+                repo.provider_projects
+                    .get_or_insert_with(BTreeMap::new)
+                    .entry(LEGACY_PROVIDER_ID.to_string())
+                    .or_insert(project_id);
+            }
+        }
+    }
 }
 
 impl Default for Config {
@@ -228,7 +288,8 @@ impl Default for Config {
             ssh_servers: vec![],
             github_tokens: vec![],
             github_identities: vec![],
-            vercel: None,
+            connections: BTreeMap::new(),
+            legacy_vercel: None,
             workflows: vec![],
             workflow_triggers: vec![],
             preferences: None,
@@ -269,8 +330,9 @@ impl ConfigStore {
     pub async fn load(&self) -> Result<Config> {
         match fs::read_to_string(&self.path).await {
             Ok(raw) => {
-                let config: Config =
+                let mut config: Config =
                     serde_json::from_str(&raw).context("Failed to parse config.json")?;
+                config.normalize_legacy_providers();
                 Ok(config)
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Config::default()),
@@ -323,8 +385,8 @@ impl ConfigStore {
         if repo.github_credential.is_none() {
             repo.github_credential = existing.and_then(|r| r.github_credential.clone());
         }
-        if repo.vercel_project_id.is_none() {
-            repo.vercel_project_id = existing.and_then(|r| r.vercel_project_id.clone());
+        if repo.provider_projects.is_none() {
+            repo.provider_projects = existing.and_then(|r| r.provider_projects.clone());
         }
         config.git_repositories.retain(|r| r.name != repo.name);
         config.git_repositories.push(repo);
@@ -504,11 +566,13 @@ impl ConfigStore {
             .map(|t| t.token.as_str())
     }
 
-    /// Save how Vercel is connected. A `cli` connection deliberately drops any
-    /// token, so `vercel logout` revokes us too instead of leaving a stale copy.
-    pub async fn set_vercel_connection(
+    /// Save how a provider is connected. A `cli` connection deliberately drops
+    /// any token, so `vercel logout` revokes us too instead of leaving a stale
+    /// copy behind.
+    pub async fn set_connection(
         &self,
-        mut connection: VercelConnectionDef,
+        provider_id: &str,
+        mut connection: ProviderConnectionDef,
     ) -> Result<Config> {
         if connection.source == "cli" {
             connection.token = None;
@@ -517,62 +581,67 @@ impl ConfigStore {
             connection.client_id = None;
         }
         let mut config = self.load().await?;
-        config.vercel = Some(connection);
+        config
+            .connections
+            .insert(provider_id.to_string(), connection);
         self.save(&config).await?;
         Ok(config)
     }
 
     /// Replace the tokens of an existing `oauth` connection after a refresh.
-    /// Separate from `set_vercel_connection` because it runs mid-request on an
+    /// Separate from `set_connection` because it runs mid-request on an
     /// already-connected config and must not disturb the chosen scope.
-    pub async fn update_vercel_tokens(
+    pub async fn update_connection_tokens(
         &self,
+        provider_id: &str,
         token: String,
         refresh_token: Option<String>,
         expires_at: i64,
     ) -> Result<Config> {
         let mut config = self.load().await?;
-        if let Some(vercel) = config.vercel.as_mut() {
-            if vercel.source == "oauth" {
-                vercel.token = Some(token);
-                // Vercel rotates refresh tokens; keep the previous one only if
+        if let Some(connection) = config.connections.get_mut(provider_id) {
+            if connection.source == "oauth" {
+                connection.token = Some(token);
+                // Providers rotate refresh tokens; keep the previous one only if
                 // this response did not carry a replacement.
                 if refresh_token.is_some() {
-                    vercel.refresh_token = refresh_token;
+                    connection.refresh_token = refresh_token;
                 }
-                vercel.expires_at = Some(expires_at);
+                connection.expires_at = Some(expires_at);
             }
         }
         self.save(&config).await?;
         Ok(config)
     }
 
-    pub async fn set_vercel_scope(
+    pub async fn set_connection_scope(
         &self,
-        team_id: Option<String>,
-        team_slug: Option<String>,
+        provider_id: &str,
+        scope_id: Option<String>,
+        scope_slug: Option<String>,
     ) -> Result<Config> {
         let mut config = self.load().await?;
-        let vercel = config
-            .vercel
-            .as_mut()
-            .ok_or_else(|| anyhow::anyhow!("Vercel is not connected."))?;
-        vercel.team_id = team_id;
-        vercel.team_slug = team_slug;
+        let connection = config
+            .connections
+            .get_mut(provider_id)
+            .ok_or_else(|| anyhow::anyhow!("{provider_id} is not connected."))?;
+        connection.scope_id = scope_id;
+        connection.scope_slug = scope_slug;
         self.save(&config).await?;
         Ok(config)
     }
 
-    pub async fn remove_vercel_connection(&self) -> Result<Config> {
+    pub async fn remove_connection(&self, provider_id: &str) -> Result<Config> {
         let mut config = self.load().await?;
-        config.vercel = None;
+        config.connections.remove(provider_id);
         self.save(&config).await?;
         Ok(config)
     }
 
-    /// Pin which Vercel project a registered repository deploys.
-    pub async fn set_vercel_project(
+    /// Pin which provider project a registered repository deploys.
+    pub async fn set_provider_project(
         &self,
+        provider_id: &str,
         repository: &str,
         project_id: Option<String>,
     ) -> Result<Config> {
@@ -582,7 +651,23 @@ impl ConfigStore {
             .iter_mut()
             .find(|repo| repo.name == repository)
             .ok_or_else(|| anyhow::anyhow!("Git repository \"{repository}\" is not registered."))?;
-        repo.vercel_project_id = project_id.filter(|id| !id.trim().is_empty());
+        match project_id.filter(|id| !id.trim().is_empty()) {
+            Some(id) => {
+                repo.provider_projects
+                    .get_or_insert_with(BTreeMap::new)
+                    .insert(provider_id.to_string(), id);
+            }
+            None => {
+                if let Some(projects) = repo.provider_projects.as_mut() {
+                    projects.remove(provider_id);
+                    // Drop the key entirely when nothing is pinned, so an
+                    // untouched repo serializes as it did before providers.
+                    if projects.is_empty() {
+                        repo.provider_projects = None;
+                    }
+                }
+            }
+        }
         self.save(&config).await?;
         Ok(config)
     }
@@ -633,8 +718,8 @@ mod tests {
 
     /// `save()` serializes the whole struct, so any Node-owned key missing from
     /// `Config` is a key the desktop silently deletes from the shared config.
-    #[test]
-    fn round_trip_preserves_node_owned_keys() {
+    #[tokio::test]
+    async fn round_trip_preserves_node_owned_keys() {
         let raw = r#"{
             "version": 1,
             "services": [],
@@ -652,19 +737,31 @@ mod tests {
             "vercel": { "source": "oauth", "token": "at", "refreshToken": "rt", "clientId": "cl_1", "teamId": "team_1" }
         }"#;
 
-        let config: Config = serde_json::from_str(raw).expect("config should parse");
+        // Goes through ConfigStore::load rather than deserializing directly,
+        // because that is the only path production takes — and it is where the
+        // legacy provider fields are lifted into `connections`.
+        let dir = std::env::temp_dir().join(format!("nomoreide-round-trip-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.json");
+        std::fs::write(&path, raw).unwrap();
+        let store = ConfigStore::new(path.clone());
+
+        let config = store.load().await.expect("config should parse");
         assert_eq!(config.github_identities.len(), 1);
         assert_eq!(config.github_identities[0].email, "work@example.test");
 
+        store.save(&config).await.unwrap();
         let written: serde_json::Value =
-            serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(written["workflowTriggers"][0]["id"], "t1");
         assert_eq!(written["preferences"]["logs"]["showTimestamps"], true);
         assert_eq!(written["githubIdentities"][0]["login"], "work");
-        // A dropped Vercel connection would silently sign the user out of the
-        // web app the next time the desktop wrote the shared config.
-        assert_eq!(written["vercel"]["refreshToken"], "rt");
-        assert_eq!(written["vercel"]["teamId"], "team_1");
+        // A dropped connection would silently sign the user out of the web app
+        // the next time the desktop wrote the shared config.
+        assert_eq!(written["connections"]["vercel"]["refreshToken"], "rt");
+        assert_eq!(written["connections"]["vercel"]["scopeId"], "team_1");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The repo-level Vercel pin lives on `GitRepoDef`, which is rewritten
@@ -679,7 +776,11 @@ mod tests {
                 path: "/tmp/app".into(),
                 active_worktree_path: None,
                 github_credential: None,
-                vercel_project_id: Some("prj_1".into()),
+                provider_projects: Some(BTreeMap::from([(
+                    LEGACY_PROVIDER_ID.to_string(),
+                    "prj_1".to_string(),
+                )])),
+                legacy_vercel_project_id: None,
             })
             .await
             .unwrap();
@@ -690,15 +791,93 @@ mod tests {
                 path: "/tmp/app".into(),
                 active_worktree_path: None,
                 github_credential: None,
-                vercel_project_id: None,
+                provider_projects: None,
+                legacy_vercel_project_id: None,
             })
             .await
             .unwrap();
 
         assert_eq!(
-            config.git_repositories[0].vercel_project_id.as_deref(),
+            config.git_repositories[0]
+                .provider_projects
+                .as_ref()
+                .and_then(|projects| projects.get(LEGACY_PROVIDER_ID))
+                .map(String::as_str),
             Some("prj_1")
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A config.json written by a pre-registry build must keep working: both
+    /// runtimes share the file, so the desktop has to read the old shape too.
+    #[tokio::test]
+    async fn lifts_legacy_vercel_fields_into_their_provider_keyed_homes() {
+        let dir = std::env::temp_dir().join(format!("nomoreide-legacy-cfg-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.json");
+        std::fs::write(
+            &path,
+            r#"{
+              "version": 1,
+              "gitRepositories": [
+                { "name": "web", "path": "/tmp/web", "vercelProjectId": "prj_legacy" },
+                { "name": "api", "path": "/tmp/api" }
+              ],
+              "vercel": {
+                "source": "stored",
+                "token": "pat_legacy",
+                "teamId": "team_abc",
+                "teamSlug": "acme"
+              }
+            }"#,
+        )
+        .unwrap();
+
+        let config = ConfigStore::new(path.clone()).load().await.unwrap();
+
+        let connection = config.connections.get(LEGACY_PROVIDER_ID).unwrap();
+        assert_eq!(connection.token.as_deref(), Some("pat_legacy"));
+        assert_eq!(connection.scope_id.as_deref(), Some("team_abc"));
+        assert_eq!(connection.scope_slug.as_deref(), Some("acme"));
+        assert!(config.legacy_vercel.is_none());
+        assert_eq!(
+            config.git_repositories[0]
+                .provider_projects
+                .as_ref()
+                .and_then(|projects| projects.get(LEGACY_PROVIDER_ID))
+                .map(String::as_str),
+            Some("prj_legacy")
+        );
+        // A repo that never pinned one stays absent rather than gaining a map.
+        assert!(config.git_repositories[1].provider_projects.is_none());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// `save()` serializes the whole struct, so the legacy keys must be gone —
+    /// and, critically, `connections` must survive a desktop-side write.
+    #[tokio::test]
+    async fn drops_legacy_keys_and_preserves_connections_on_write() {
+        let dir = std::env::temp_dir().join(format!("nomoreide-legacy-w-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.json");
+        std::fs::write(
+            &path,
+            r#"{"version":1,"vercel":{"source":"stored","token":"pat","teamId":"team_abc"}}"#,
+        )
+        .unwrap();
+        let store = ConfigStore::new(path.clone());
+
+        let config = store.load().await.unwrap();
+        store.save(&config).await.unwrap();
+
+        let raw: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(raw.get("vercel").is_none());
+        assert_eq!(raw["connections"]["vercel"]["scopeId"], "team_abc");
+        assert_eq!(raw["connections"]["vercel"]["token"], "pat");
+        assert!(raw["connections"]["vercel"].get("teamId").is_none());
+
         let _ = std::fs::remove_dir_all(&dir);
     }
 

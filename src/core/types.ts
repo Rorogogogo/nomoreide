@@ -62,10 +62,12 @@ export interface GitRepositoryDefinition {
   /** GitHub identity used for API operations in this logical repository. */
   githubCredential?: GitHubCredentialSelection;
   /**
-   * Vercel project this repository deploys, when the user pinned one. Absent
-   * means "infer it" — from `.vercel/project.json`, else the git remote.
+   * Deploy-provider project this repository ships, keyed by provider id
+   * (`vercel`, `cloudflare`, …), when the user pinned one. A missing entry
+   * means "infer it" — from the provider's link file (Vercel:
+   * `.vercel/project.json`), else the git remote.
    */
-  vercelProjectId?: string;
+  providerProjects?: Record<string, string>;
 }
 
 export type GitHubCredentialSelection =
@@ -176,13 +178,16 @@ export interface GitHubIdentity {
 }
 
 /**
- * How the Vercel integration authenticates. `cli` holds no secret — the token
- * is re-read from the Vercel CLI's own auth file each time, so `vercel logout`
- * revokes NoMoreIDE's access too. `stored` carries a pasted token. `oauth` is
- * the browser sign-in, whose access token expires hourly and is renewed from
- * `refreshToken` (see `vercel-oauth.ts`).
+ * How an external provider integration authenticates, keyed by provider id in
+ * {@link NoMoreIdeConfig.connections}.
+ *
+ * The three sources are the same everywhere: `cli` holds no secret — the token
+ * is re-read from the vendor CLI's own auth file each time, so `vercel logout`
+ * (or `wrangler logout`) revokes NoMoreIDE's access too. `stored` carries a
+ * pasted token. `oauth` is the browser sign-in, whose access token expires and
+ * is renewed from `refreshToken` (see `vercel-oauth.ts`).
  */
-export interface VercelConnection {
+export interface ProviderConnection {
   source: "cli" | "stored" | "oauth";
   /** The pasted token (`stored`) or the current access token (`oauth`). Masked out of every API response. */
   token?: string;
@@ -192,9 +197,12 @@ export interface VercelConnection {
   expiresAt?: number;
   /** `oauth` only: the registered client the tokens belong to, needed to refresh them. */
   clientId?: string;
-  /** Team scope. Absent means the personal account. */
-  teamId?: string;
-  teamSlug?: string;
+  /**
+   * Account scope within the provider — a Vercel team, a Cloudflare account.
+   * Absent means the provider's own default (for Vercel, the personal account).
+   */
+  scopeId?: string;
+  scopeSlug?: string;
   /** Cached account identity, captured at connect time. */
   username?: string;
 }
@@ -227,8 +235,11 @@ export interface NoMoreIdeConfig {
   githubTokens: GitHubToken[];
   /** Resolved commit identities, keyed by host + login. */
   githubIdentities: GitHubIdentity[];
-  /** How the Vercel integration authenticates; absent = not connected. */
-  vercel?: VercelConnection;
+  /**
+   * How each external provider authenticates, keyed by provider id (`vercel`,
+   * `cloudflare`, …). A missing entry means that provider is not connected.
+   */
+  connections: Record<string, ProviderConnection>;
   /** User-saved git/GitHub workflows (forks/edits of the built-in templates). */
   workflows: Workflow[];
   /** Event→workflow bindings that auto-fire workflows (IDEAS #16). */

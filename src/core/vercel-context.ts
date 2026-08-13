@@ -3,7 +3,11 @@ import { join } from "node:path";
 import type { ConfigStore } from "./config-store.js";
 import { GitManager } from "./git-manager.js";
 import { matchRegisteredRepository } from "./repo-match.js";
-import { resolveVercelCredential, type ResolvedVercelCredential } from "./vercel-auth.js";
+import {
+  resolveVercelCredential,
+  VERCEL_PROVIDER_ID,
+  type ResolvedVercelCredential,
+} from "./vercel-auth.js";
 import { VercelActions } from "./vercel-actions.js";
 import { VercelManager, vercelRepoUrl, type VercelProject } from "./vercel-manager.js";
 import type { NoMoreIdeConfig } from "./types.js";
@@ -29,7 +33,7 @@ export async function requireVercelContext(
   const credential = await resolveVercelCredential(config, process.env, {
     onTokensRefreshed: (tokens) =>
       configStore
-        .updateVercelTokens({
+        .updateConnectionTokens(VERCEL_PROVIDER_ID, {
           token: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresAt: tokens.expiresAt,
@@ -73,7 +77,10 @@ async function adoptDefaultTeam(
     }).listTeams();
     if (teams.length !== 1) return undefined;
     const [team] = teams;
-    await configStore.setVercelScope({ teamId: team.id, teamSlug: team.slug });
+    await configStore.setConnectionScope(VERCEL_PROVIDER_ID, {
+      scopeId: team.id,
+      scopeSlug: team.slug,
+    });
     return team.id;
   } catch {
     return undefined;
@@ -99,7 +106,7 @@ export async function requireVercelActions(
   const credential = await resolveVercelCredential(config, process.env, {
     onTokensRefreshed: (tokens) =>
       configStore
-        .updateVercelTokens({
+        .updateConnectionTokens(VERCEL_PROVIDER_ID, {
           token: tokens.accessToken,
           refreshToken: tokens.refreshToken,
           expiresAt: tokens.expiresAt,
@@ -130,7 +137,7 @@ async function resolveProject(
   const topLevel = await git.root().catch(() => gitCwd);
 
   const repository = await matchRegisteredRepository(config, topLevel).catch(() => undefined);
-  const pinned = repository?.vercelProjectId;
+  const pinned = repository?.providerProjects?.[VERCEL_PROVIDER_ID];
   if (pinned) {
     const project = await manager.getProject(pinned).catch(() => undefined);
     if (project) return project;
