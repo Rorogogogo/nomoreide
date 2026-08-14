@@ -718,10 +718,15 @@ describe("a second provider, served by the same routes", () => {
     ]);
     expect(body.providers[1]).toMatchObject({
       id: "cloudflare",
-      scopeLabel: "Account",
       actions: ["redeploy", "rollback"],
       productionAffecting: ["rollback"],
     });
+    // The provider's own words travel with it, so the client can label a
+    // Cloudflare action without the host holding a key for it. `scope.label`
+    // is here rather than in `i18n/en.ts` for the same reason it is per-locale:
+    // Cloudflare groups projects under an Account, Vercel under a Team.
+    expect(body.providers[1].strings.en["scope.label"]).toBe("Cloudflare account");
+    expect(body.providers[1].strings.zh["action.rollback"]).toBe("回滚");
     // Cloudflare serves no runtime logs, so the generic view hides that tab
     // rather than rendering one that errors.
     expect(body.providers[1].capabilities).not.toContain("runtimeLogs");

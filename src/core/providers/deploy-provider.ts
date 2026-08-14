@@ -23,6 +23,7 @@
  */
 
 import type { ProviderApiSpec } from "./egress.js";
+import type { ProviderStrings } from "./strings.js";
 
 /** Signed-in account. ← `VercelViewer` */
 export interface ProviderAccount {
@@ -298,8 +299,17 @@ export interface DeployProviderManifest {
   id: string;
   name: string;
   kind: "deploy";
-  /** What this provider calls a scope — "Team" for Vercel, "Account" for Cloudflare. */
-  scopeLabel: string;
+  /**
+   * This provider's own words, per locale — its action labels, their toasts and
+   * confirmations, and what it calls a scope (`scope.label`: "Team" for Vercel,
+   * "Account" for Cloudflare).
+   *
+   * Here rather than in the host's `i18n/en.ts` because the provider, not the
+   * host, determines which keys exist: `actions` is a free list of vendor
+   * vocabulary, so the host cannot hold a catalogue entry for a word it has
+   * never seen. See `providers/strings.ts`.
+   */
+  strings: ProviderStrings;
   /**
    * How this provider can be connected.
    *

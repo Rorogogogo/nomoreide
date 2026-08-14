@@ -36,6 +36,7 @@ import {
   updateProviderEnv,
 } from "@/lib/api";
 import type { DeployCapability, ProviderApi, ProviderManifest } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n";
 
 /**
  * The provider selected when nothing is stored yet. Vercel only because it is
@@ -139,7 +140,47 @@ export function useCapability(capability: DeployCapability): boolean {
   return manifest ? manifest.capabilities.includes(capability) : true;
 }
 
+/**
+ * The provider's display name, for the host sentences that mention it.
+ *
+ * Several strings in `i18n/en.ts` are the host's own — one sentence for every
+ * provider — but need the provider's name inside them ("Reconnect {name}").
+ * Those stay in the catalogue and interpolate this; only strings whose *keys*
+ * the provider determines move into the manifest.
+ *
+ * Falls back to the provider id, which is a recognisable word (`vercel`,
+ * `cloudflare`) rather than a placeholder, so the sentence still reads if the
+ * manifest has not arrived.
+ */
+export function useProviderName(): string {
+  const { id, manifest } = useContext(ProviderContext);
+  return manifest?.name ?? id;
+}
+
+/**
+ * Resolve one of the provider's *own* strings — its action labels, their
+ * toasts and confirmations, and what it calls a scope.
+ *
+ * The counterpart to `useT()`, and the split between them is the point of §11
+ * gate item 2: `useT` holds the sentences the host writes once for every
+ * provider ("No deployments yet."), while this holds the ones only the provider
+ * can know, because it is the provider that decides `actions` and therefore
+ * decides which keys exist. See `core/providers/strings.ts`.
+ *
+ * Falls back locale → English → `undefined`, so a caller can substitute
+ * something better than a raw key: an action's own name reads acceptably on a
+ * button, which is what a plugin missing `action.publish` gets.
+ */
+export function useProviderString(): (key: string) => string | undefined {
+  const [language] = useLanguage();
+  const manifest = useProviderManifest();
+  return useMemo(() => {
+    const strings = manifest?.strings;
+    return (key: string) => strings?.[language]?.[key] ?? strings?.en[key];
+  }, [manifest, language]);
+}
+
 /** What this provider calls a scope — "Team" for Vercel, "Account" for Cloudflare. */
 export function useScopeLabel(): string | null {
-  return useProviderManifest()?.scopeLabel ?? null;
+  return useProviderString()("scope.label") ?? null;
 }

@@ -27,13 +27,36 @@ export type DeployCapability =
   | "env"
   | "domains";
 
+/**
+ * One locale's worth of a provider's strings, keyed `scope.label` /
+ * `action.<name>` / `action.<name>.done` / `action.<name>.confirm[Title]`.
+ */
+export type ProviderStringBundle = Record<string, string>;
+
+/**
+ * A manifest's strings. `en` is required and every other locale optional, so a
+ * plugin author can ship English only and lookup falls back rather than fails.
+ * In-tree providers must be complete in every locale — enforced by
+ * `test/provider-strings.test.ts`, not by this type.
+ */
+export interface ProviderStrings {
+  en: ProviderStringBundle;
+  zh?: ProviderStringBundle;
+}
+
 /** The declarative half of a provider — what the generic view renders from. */
 export interface ProviderManifest {
   id: string;
   name: string;
   kind: "deploy";
-  /** What this provider calls a scope — "Team" for Vercel, "Account" for Cloudflare. */
-  scopeLabel: string;
+  /**
+   * The provider's own words, per locale — action labels, their toasts and
+   * confirmations, and `scope.label` ("Team" for Vercel, "Account" for
+   * Cloudflare). Mirrors `core/providers/strings.ts`; resolved through
+   * `useProviderString` rather than `useT`, because the host's catalogue cannot
+   * hold keys named after a vendor's vocabulary.
+   */
+  strings: ProviderStrings;
   /** Which connect paths the setup screen may offer. Cloudflare has no `oauth`. */
   authSources: ("cli" | "stored" | "oauth")[];
   capabilities: DeployCapability[];

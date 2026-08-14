@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   type ProviderDeployment,
   type ProviderDeploymentDetail,
   type ProviderLogLine,
 } from "@/lib/api";
-import { useProviderApi } from "./provider-client";
+import { useProviderApi, useProviderManifest, useProviderString } from "./provider-client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,23 +22,78 @@ import {
 } from "./provider-icons";
 import { DeploymentStateBadge } from "./deployment-state-badge";
 
-/**
- * The actions this view puts a button behind. Each must also appear in the
- * provider's manifest `actions` — the server rejects anything that doesn't, so
- * a name that drifts fails loudly rather than silently doing nothing.
- */
-type DeploymentAction = "redeploy" | "cancel" | "promote" | "rollback";
-
 const IN_FLIGHT = new Set(["building", "queued"]);
 const LOG_POLL_MS = 5_000;
 
+/** Just enough of a deployment to decide whether an action applies to it. */
+type ActionSubject = Pick<
+  ProviderDeploymentDetail,
+  "state" | "target" | "isCurrentProduction"
+>;
+
 /**
- * One deployment: its state, where it came from, and its build log — plus the
- * four actions that can change it.
+ * Where the host puts an action, and when it applies — keyed by action name.
  *
- * `promote` and `rollback` re-point production, so both confirm first; they
- * are the only irreversible-in-effect things this tab can do. `redeploy` and
- * `cancel` don't, and fire straight away.
+ * **This table is the host's half; the provider's half is its manifest.** The
+ * provider decides *which* actions exist (`manifest.actions`), what each is
+ * called and what its confirmation says (`manifest.strings`); the host decides
+ * what a button looks like and which deployment states it makes sense for. That
+ * split is why Cloudflare — two actions, no `promote` — renders correctly
+ * through the same component that renders Vercel's four.
+ *
+ * Keying placement by name is the residue this change deliberately leaves
+ * behind. It means a provider inventing a genuinely new verb gets a button in
+ * the default position rather than a well-placed one, which is a far smaller
+ * failure than the previous behaviour (no button at all, and a label that
+ * rendered as `provider.action.publish`). Making placement itself declarative
+ * needs a vocabulary for "when does this apply", and inventing one before a
+ * provider needs it is the over-abstraction §9 warns against — it belongs with
+ * the rest of §12 stage 3, where the manifest becomes data.
+ */
+const PLACEMENT: Record<
+  string,
+  { icon: ReactNode; variant: "default" | "outline"; applies: (d: ActionSubject) => boolean }
+> = {
+  cancel: {
+    icon: <CancelIcon />,
+    variant: "outline",
+    applies: (d) => IN_FLIGHT.has(d.state),
+  },
+  // Complementary to `cancel`: a build either can be stopped or can be run
+  // again, never both. Two predicates rather than the if/else this replaced.
+  redeploy: {
+    icon: <RefreshIcon />,
+    variant: "outline",
+    applies: (d) => !IN_FLIGHT.has(d.state),
+  },
+  promote: {
+    icon: <PromoteIcon />,
+    variant: "default",
+    applies: (d) => d.state === "ready" && !d.isCurrentProduction,
+  },
+  rollback: {
+    icon: <RollbackIcon />,
+    variant: "outline",
+    applies: (d) =>
+      d.state === "ready" && d.target === "production" && !d.isCurrentProduction,
+  },
+};
+
+/** An action name the host has no placement for — see the note on {@link PLACEMENT}. */
+const DEFAULT_PLACEMENT = {
+  icon: <RefreshIcon />,
+  variant: "outline" as const,
+  applies: (d: ActionSubject) => !IN_FLIGHT.has(d.state),
+};
+
+/**
+ * One deployment: its state, where it came from, and its build log — plus
+ * whichever actions the provider declares can change it.
+ *
+ * Which actions those are comes from `manifest.actions`, and which of them
+ * confirm first from `manifest.productionAffecting`. Nothing here names Vercel's
+ * four, which is what stops Cloudflare — with `["redeploy", "rollback"]` — from
+ * rendering a Promote button the server then rejects.
  */
 export function DeploymentDetail({
   deployment: summary,
@@ -49,13 +104,15 @@ export function DeploymentDetail({
 }) {
   const t = useT();
   const api = useProviderApi();
+  const manifest = useProviderManifest();
+  const ps = useProviderString();
   const toasts = useToasts();
   const [detail, setDetail] = useState<ProviderDeploymentDetail | null>(null);
   const [logs, setLogs] = useState<ProviderLogLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<DeploymentAction | null>(null);
-  const [confirming, setConfirming] = useState<"promote" | "rollback" | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const uid = summary.id;
   const live = IN_FLIGHT.has(detail?.state ?? summary.state);
@@ -111,15 +168,13 @@ export function DeploymentDetail({
     };
   }, [live, uid]);
 
-  async function run(action: DeploymentAction) {
+  async function run(action: string) {
     setPending(action);
     try {
-      const res = await api.runDeploymentAction(uid, action);
-      toasts.success(
-        action === "redeploy" && res.deployment?.id
-          ? t("provider.action.redeployStarted")
-          : t(`provider.action.${action}Done`),
-      );
+      await api.runDeploymentAction(uid, action);
+      // Falls back to the action's own name: a provider that declared an action
+      // but no `.done` string still gets a truthful toast rather than a raw key.
+      toasts.success(ps(`action.${action}.done`) ?? action);
       onChanged();
     } catch (caught) {
       toasts.error(caught instanceof Error ? caught.message : String(caught));
@@ -130,8 +185,18 @@ export function DeploymentDetail({
   }
 
   const current = detail ?? { ...summary, aliases: [] as string[] };
-  const canCancel = IN_FLIGHT.has(current.state);
   const isProduction = current.target === "production";
+
+  // A null manifest yields no buttons — deliberately the opposite of
+  // `useCapability`, which assumes support while loading. The asymmetry follows
+  // the cost: wrongly hiding a *tab* costs a visible feature for one paint,
+  // while wrongly showing an *action* costs a write the server rejects. This
+  // view is only reachable once the provider has answered, so the state is
+  // near-unobservable either way.
+  const available = (manifest?.actions ?? []).filter((action) =>
+    (PLACEMENT[action] ?? DEFAULT_PLACEMENT).applies(current),
+  );
+  const confirms = (action: string) => manifest?.productionAffecting.includes(action) ?? false;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -159,53 +224,24 @@ export function DeploymentDetail({
                 {t("provider.visit")}
               </Button>
             ) : null}
-            {canCancel ? (
-              <Button
-                loading={pending === "cancel"}
-                onClick={() => void run("cancel")}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <CancelIcon />
-                {t("provider.action.cancel")}
-              </Button>
-            ) : (
-              <Button
-                loading={pending === "redeploy"}
-                onClick={() => void run("redeploy")}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <RefreshIcon />
-                {t("provider.action.redeploy")}
-              </Button>
-            )}
-            {current.state === "ready" && !current.isCurrentProduction ? (
-              <Button
-                loading={pending === "promote"}
-                onClick={() => setConfirming("promote")}
-                size="sm"
-                type="button"
-                variant="default"
-              >
-                <PromoteIcon />
-                {t("provider.action.promote")}
-              </Button>
-            ) : null}
-            {current.state === "ready" && isProduction && !current.isCurrentProduction ? (
-              <Button
-                loading={pending === "rollback"}
-                onClick={() => setConfirming("rollback")}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <RollbackIcon />
-                {t("provider.action.rollback")}
-              </Button>
-            ) : null}
+            {available.map((action) => {
+              const placement = PLACEMENT[action] ?? DEFAULT_PLACEMENT;
+              return (
+                <Button
+                  key={action}
+                  loading={pending === action}
+                  onClick={() =>
+                    confirms(action) ? setConfirming(action) : void run(action)
+                  }
+                  size="sm"
+                  type="button"
+                  variant={placement.variant}
+                >
+                  {placement.icon}
+                  {ps(`action.${action}`) ?? action}
+                </Button>
+              );
+            })}
           </span>
         </div>
 
@@ -231,20 +267,25 @@ export function DeploymentDetail({
 
       {confirming ? (
         <ConfirmDialog
-          confirmLabel={t(`provider.action.${confirming}`)}
-          icon={confirming === "promote" ? <PromoteIcon /> : <RollbackIcon />}
+          confirmLabel={ps(`action.${confirming}`) ?? confirming}
+          icon={(PLACEMENT[confirming] ?? DEFAULT_PLACEMENT).icon}
           loading={pending === confirming}
-          message={t(
-            confirming === "promote" ? "provider.confirm.promote" : "provider.confirm.rollback",
-          )}
+          // Falls back to the generic warning: a provider that declared an
+          // action production-affecting but wrote no confirmation still gets a
+          // dialog, because losing the *confirmation step* is the one failure
+          // mode here that costs more than a bad string.
+          message={ps(`action.${confirming}.confirm`) ?? t("provider.confirm.generic")}
           onCancel={() => setConfirming(null)}
           onConfirm={() => void run(confirming)}
-          title={t(
-            confirming === "promote"
-              ? "provider.confirm.promoteTitle"
-              : "provider.confirm.rollbackTitle",
-          )}
-          tone={confirming === "promote" ? "success" : "danger"}
+          title={ps(`action.${confirming}.confirmTitle`) ?? t("provider.confirm.genericTitle")}
+          // `default` is the host's "this is the forward move" variant, which
+          // among Vercel's actions is exactly `promote`. Anything else — an
+          // unplaced action included — confirms in the cautious tone.
+          tone={
+            (PLACEMENT[confirming] ?? DEFAULT_PLACEMENT).variant === "default"
+              ? "success"
+              : "danger"
+          }
         />
       ) : null}
     </div>

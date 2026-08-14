@@ -1,6 +1,7 @@
 import type { SshServerDefinition } from "../types.js";
 import type { ProviderAccount } from "./deploy-provider.js";
 import type { ProviderApiSpec } from "./egress.js";
+import type { ProviderStrings } from "./strings.js";
 
 /**
  * The contract an infrastructure host implements — Vultr today, DigitalOcean
@@ -147,6 +148,16 @@ export interface HostProviderManifest {
   id: string;
   name: string;
   kind: "host";
+  /**
+   * This provider's own words, per locale — the same field, the same meaning
+   * and the same enforcement as a deploy provider's.
+   *
+   * A host provider needs it at least as much: "halt" is Vultr's word,
+   * "power_off" is DigitalOcean's, and neither is a sentence a host catalogue
+   * could have been written to contain. No `scope.label` here — a host
+   * provider's instances are not grouped under anything the user picks between.
+   */
+  strings: ProviderStrings;
   /** Action names accepted by {@link HostProviderActions.run}. */
   actions: string[];
   /** The subset of `actions` that interrupts a running machine; the UI confirms these first. */

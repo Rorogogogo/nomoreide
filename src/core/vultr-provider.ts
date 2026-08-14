@@ -44,6 +44,38 @@ export const VULTR_MANIFEST: HostProviderManifest = {
   id: VULTR_PROVIDER_ID,
   name: "Vultr",
   kind: "host",
+  // Three action names that share not one word with either deploy provider,
+  // which is the clearest evidence for why these strings belong to the plugin:
+  // no host catalogue written for Vercel could ever have contained "halt".
+  // No `scope.label` — a host provider has no scopes.
+  strings: {
+    en: {
+      "action.start": "Start",
+      "action.start.done": "Instance starting.",
+      "action.halt": "Stop",
+      "action.halt.done": "Instance stopping.",
+      "action.halt.confirmTitle": "Stop this instance?",
+      "action.halt.confirm":
+        "The machine powers off immediately. Anything running on it stops.",
+      "action.reboot": "Reboot",
+      "action.reboot.done": "Instance rebooting.",
+      "action.reboot.confirmTitle": "Reboot this instance?",
+      "action.reboot.confirm":
+        "The machine restarts immediately. Anything running on it stops.",
+    },
+    zh: {
+      "action.start": "启动",
+      "action.start.done": "实例正在启动。",
+      "action.halt": "停止",
+      "action.halt.done": "实例正在停止。",
+      "action.halt.confirmTitle": "停止该实例？",
+      "action.halt.confirm": "机器将立即关机，其上运行的一切都会停止。",
+      "action.reboot": "重启",
+      "action.reboot.done": "实例正在重启。",
+      "action.reboot.confirmTitle": "重启该实例？",
+      "action.reboot.confirm": "机器将立即重启，其上运行的一切都会停止。",
+    },
+  },
   actions: [...VULTR_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],
   // The API only. An adopted instance is reached over SSH by `ssh-servers.ts`,

@@ -109,7 +109,7 @@ describe("host provider routes", () => {
     const hosts = await (await fetch(`${server.url}/api/hosts`)).json();
     const deploys = await (await fetch(`${server.url}/api/providers`)).json();
 
-    expect(hosts.providers).toEqual([
+    expect(hosts.providers).toMatchObject([
       {
         id: "vultr",
         name: "Vultr",
@@ -119,6 +119,10 @@ describe("host provider routes", () => {
         api: { hosts: ["api.vultr.com"] },
       },
     ]);
+    // A host provider carries its own vocabulary too — "halt" is Vultr's word,
+    // and no host catalogue written for a deploy platform could have held it.
+    // The full key set is checked by `test/provider-strings.test.ts`.
+    expect(hosts.providers[0].strings.en["action.halt"]).toBe("Stop");
     // Two contracts, two registries: a host provider must never show up where
     // the dashboard expects projects and deployments.
     expect(deploys.providers.map((manifest: { id: string }) => manifest.id)).not.toContain("vultr");

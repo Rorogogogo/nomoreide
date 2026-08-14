@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** steps 1–7 of §8 decided. Both contracts have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Step 7 is **decided in §11: `apiVersion: 1` is not frozen and providers stay in-tree** — the three-implementation bar measured contract churn, which is genuinely settled, but a freeze is a promise about a manifest schema, a loader and a sandbox, and only the sandbox now exists. Of §11's four gate items, **1 (the generic view) and 3 (the egress sandbox) have landed**; 2 (manifest strings) and 4 (live-token passes) are open. §12 holds the plugin/marketplace direction the work now serves, and its stage 2 — Extensions as a manager — has landed.
+**Status:** steps 1–7 of §8 decided. Both contracts have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Step 7 is **decided in §11: `apiVersion: 1` is not frozen and providers stay in-tree** — the three-implementation bar measured contract churn, which is genuinely settled, but a freeze is a promise about a manifest schema, a loader and a sandbox, and only the sandbox now exists. Of §11's four gate items, **1 (the generic view), 2 (manifest strings) and 3 (the egress sandbox) have landed**; only 4 (live-token passes against Cloudflare and Vultr) is open. §12 holds the plugin/marketplace direction the work now serves, and its stage 2 — Extensions as a manager — has landed.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -391,11 +391,11 @@ So the interfaces would survive being frozen. That is not what freezing costs.
 Re-open the question when all four hold, in this order, because each is cheap only after the one before it:
 
 1. ~~**The generic view lands**~~ (tax #1), giving `capabilities` and `scopeLabel` a real consumer. **Landed.** `features/vercel/` became `features/deploy/`, one nav entry with an in-view provider switcher, and the manifest gained `authSources` — the gap §8.5 predicted, since Cloudflare serves no OIDC discovery and a sign-in button there could only fail.
-2. **Manifest strings move out of `en.ts`/`zh.ts`** (tax #2), with the locale-parity test §9 asks for — the change that makes the declarative half genuinely declarative.
+2. ~~**Manifest strings move out of `en.ts`/`zh.ts`**~~ (tax #2), with the locale-parity test §9 asks for. **Landed**, as `providers/strings.ts` + `test/provider-strings.test.ts`. Notes below.
 3. ~~**`ctx.fetch` replaces global `fetch`**~~ in all three managers, enforced by `api.hosts`. **Landed**, as `providers/egress.ts`. Notes below.
 4. **One live-token pass each** against Cloudflare and Vultr, retiring §9's last open risk.
 
-Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one.
+Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one. Only item 4 — the live-token passes — is now open.
 
 #### What landing item 3 settled
 
@@ -404,6 +404,14 @@ Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is 
 - **No wildcard hosts, and that is a decision, not an omission.** Every vendor here has a customer-controlled subdomain space (`*.vercel.app`, `*.pages.dev`), so a `*.vendor.com` form reads as a convenience while admitting hosts the vendor does not control.
 - **The scoped `fetch` is minted only in the three `*-context.ts` files.** A manager built anywhere else gets global `fetch` — which keeps every existing `vi.stubGlobal("fetch")` test working, and means "did this client come from the registry?" and "is it sandboxed?" are the same question.
 - **What is still outside the boundary**, and would need to move before anything third-party loads: `node:fs` (a provider's hooks read a link file), and the OAuth leg, which resolves its endpoints from the auth spec rather than through `api.hosts`.
+
+#### What landing item 2 settled
+
+- **The rule that decides where a string lives is who determines the *key set*, not what the string is about.** Most of the deploy view is "about" a provider and correctly stays in `i18n/en.ts`, because "No deployments yet." is one sentence for all of them. `actions` is a free list of vendor vocabulary, so the host cannot hold a catalogue entry for a word it has never seen — those keys, and only those, moved.
+- **`scopeLabel` was the sharper bug.** It was a bare English string *on the manifest* (`"Team"` / `"Account"`) rendered straight into the DOM, so it was never translated at all — a zh reader was shown "Team". Every other manifest field that reaches a user has to be read the same way, which is the general lesson: a declarative field holding display text is an untranslated string unless something forces otherwise.
+- **The type is lenient and the test is strict, deliberately.** `ProviderStrings.zh` is optional so a third-party author can ship English only and still work; nothing in-tree may be half-translated. Only a test can tell those two cases apart, which is exactly the §9 hazard (`zh.ts` is a `Partial`, so a gap renders English rather than failing a build). `test/provider-strings.test.ts` asserts key-set parity in *both* directions, that every declared action has a label and a toast, that every guarded action has confirmation copy, that no string exists for an action the provider does not offer, and that only deploy providers name a scope.
+- **The view had been shipping actions Cloudflare rejects.** `deployment-detail.tsx` hard-coded the union `"redeploy" | "cancel" | "promote" | "rollback"` and rendered four unconditional branches, so Cloudflare — which declares two — showed Cancel and Promote buttons that `provider-routes.ts` refuses by name. Buttons now come from `manifest.actions` and confirm-first from `productionAffecting`. This is the same failure item 1 fixed for tabs: a declared field with no reader is a promise no one is keeping.
+- **Placement stayed keyed by action name, and that is the residue.** The host still decides what a button looks like and which deployment states it applies to; the provider decides which actions exist and what they are called. A provider inventing a genuinely new verb therefore gets a button in a default position rather than a well-placed one — a much smaller failure than the previous one (no button at all), and making placement itself declarative needs a "when does this apply" vocabulary that belongs with the rest of stage 3.
 
 Provider #4 (DigitalOcean — one line plus a directory) is deliberately *not* on that list. It would add a fourth implementation while touching none of the four gates, which is the precise sense in which "three implementations" was the wrong bar to freeze on.
 

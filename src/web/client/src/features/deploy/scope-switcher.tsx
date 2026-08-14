@@ -14,8 +14,10 @@ import { useProviderStatus } from "./hooks/use-provider-status";
  * when there are several, and what lets anyone move between them afterwards.
  *
  * The word for a scope is the provider's own — Vercel calls it a Team,
- * Cloudflare an Account — so the label comes from the manifest's `scopeLabel`
- * rather than being hard-coded here.
+ * Cloudflare an Account — so the label comes from the manifest's
+ * `strings["scope.label"]`, translated per locale, rather than being hard-coded
+ * here. It used to be a bare English `scopeLabel` field on the manifest, which
+ * meant a zh reader was shown "Team".
  *
  * Rendered as a bare select rather than a dialog: it is a lens on the current
  * view, not a form, so switching should cost one click.
@@ -48,7 +50,7 @@ export function ScopeSwitcher() {
   return (
     <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
       <TeamIcon aria-hidden className="size-3.5" />
-      <span className="sr-only">{scopeLabel ?? t("provider.team.label")}</span>
+      <span className="sr-only">{scopeLabel ?? t("provider.scope.label")}</span>
       <select
         className="max-w-[12rem] truncate rounded border border-border bg-transparent px-1.5 py-0.5 text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
         disabled={busy}

@@ -58,7 +58,30 @@ export const CLOUDFLARE_MANIFEST: DeployProviderManifest = {
   id: CLOUDFLARE_PROVIDER_ID,
   name: "Cloudflare",
   kind: "deploy",
-  scopeLabel: "Account",
+  // Two actions, not Vercel's four — and no `promote`, which is why these
+  // strings cannot live in a host catalogue keyed by action name. Cloudflare
+  // groups projects under an Account where Vercel uses a Team.
+  strings: {
+    en: {
+      "scope.label": "Cloudflare account",
+      "action.redeploy": "Retry build",
+      "action.redeploy.done": "Build retried.",
+      "action.rollback": "Roll back",
+      "action.rollback.done": "Rolled back production.",
+      "action.rollback.confirmTitle": "Roll production back?",
+      "action.rollback.confirm":
+        "Production traffic switches back to this older deployment immediately.",
+    },
+    zh: {
+      "scope.label": "Cloudflare 账户",
+      "action.redeploy": "重试构建",
+      "action.redeploy.done": "已重试构建。",
+      "action.rollback": "回滚",
+      "action.rollback.done": "已回滚生产环境。",
+      "action.rollback.confirmTitle": "回滚生产环境？",
+      "action.rollback.confirm": "生产流量将立即切回这个较旧的部署。",
+    },
+  },
   authSources: ["cli", "stored"],
   // No `runtimeLogs`: Pages serves runtime output over a websocket tail, not a
   // REST read, so the tab is hidden rather than shown and made to error.

@@ -6,6 +6,7 @@ import {
   useCapability,
   useProviderApi,
   useProviderId,
+  useProviderName,
 } from "./provider-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -203,6 +204,7 @@ function ProviderConnectionRecovery({
 }) {
   const t = useT();
   const api = useProviderApi();
+  const name = useProviderName();
   const authError = status.status === "auth_error";
 
   return (
@@ -211,9 +213,11 @@ function ProviderConnectionRecovery({
         <div className="flex items-start gap-2.5">
           <ProviderLogo className="mt-0.5 size-4 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold">{t("provider.connFailed")}</h2>
+            <h2 className="text-sm font-semibold">{t("provider.connFailed", { name })}</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-              {authError ? t("provider.tokenRejected") : t("provider.cantValidate")}
+              {authError
+                ? t("provider.tokenRejected", { name })
+                : t("provider.cantValidate", { name })}
             </p>
           </div>
         </div>
@@ -235,7 +239,7 @@ function ProviderConnectionRecovery({
             {t("common.refresh")}
           </Button>
           <Button onClick={onReconnect} type="button" variant={authError ? "default" : "outline"}>
-            {t("provider.reconnect")}
+            {t("provider.reconnect", { name })}
           </Button>
           <Button
             onClick={() => {
@@ -266,6 +270,7 @@ function ProviderConnectionRecovery({
  */
 function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
+  const providerName = useProviderName();
   // The manifest deciding what renders. Cloudflare declares no `runtimeLogs`,
   // so its log panel shows one tab rather than a second that always errors.
   const canEnv = useCapability("env");
@@ -359,7 +364,7 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
             <Button
               onClick={() => openExternal(dashboardUrl)}
               size="icon-sm"
-              title={t("provider.openDashboard")}
+              title={t("provider.openDashboard", { name: providerName })}
               type="button"
               variant="ghost"
             >

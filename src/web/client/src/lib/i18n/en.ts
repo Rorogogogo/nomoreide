@@ -2573,7 +2573,7 @@ export const en = {
   "provider.filter.label": "Deployment environment",
   "provider.filter.all": "All",
   "provider.buildingNow": "Build in progress…",
-  "provider.openDashboard": "Open Vercel dashboard",
+  "provider.openDashboard": "Open {name} dashboard",
   "provider.visit": "Visit",
   "provider.deployments.loading": "Loading deployments…",
   "provider.deployments.empty": "No deployments yet.",
@@ -2582,28 +2582,20 @@ export const en = {
   "provider.hero.domainsMore": "+{count} more",
   "provider.logs.loading": "Loading build log…",
   "provider.logs.empty": "No build output for this deployment.",
-  "provider.action.redeploy": "Redeploy",
-  "provider.action.cancel": "Cancel build",
-  "provider.action.promote": "Promote",
-  "provider.action.rollback": "Roll back",
-  "provider.action.redeployStarted": "Redeploy started.",
-  "provider.action.redeployDone": "Redeploy started.",
-  "provider.action.cancelDone": "Build canceled.",
-  "provider.action.promoteDone": "Promoted to production.",
-  "provider.action.rollbackDone": "Rolled back production.",
-  "provider.confirm.promoteTitle": "Promote to production?",
-  "provider.confirm.promote":
-    "Production traffic switches to this deployment immediately.",
-  "provider.confirm.rollbackTitle": "Roll production back?",
-  "provider.confirm.rollback":
-    "Production traffic switches back to this older deployment immediately.",
-  "provider.connFailed": "Vercel connection failed",
-  "provider.tokenRejected": "The saved Vercel credential is no longer accepted.",
-  "provider.cantValidate": "NoMoreIDE could not validate the Vercel connection.",
-  "provider.reconnect": "Reconnect Vercel",
+  // Action labels, their toasts and their confirmations are *not* here: the
+  // provider names its own actions, so the keys cannot be known in advance.
+  // They live in the manifest's `strings` — see `core/providers/strings.ts`.
+  // These two are the fallback for a provider that marked an action
+  // production-affecting but shipped no confirmation copy for it.
+  "provider.confirm.genericTitle": "Run this action?",
+  "provider.confirm.generic": "This changes what production serves.",
+  "provider.connFailed": "{name} connection failed",
+  "provider.tokenRejected": "The saved {name} credential is no longer accepted.",
+  "provider.cantValidate": "NoMoreIDE could not validate the {name} connection.",
+  "provider.reconnect": "Reconnect {name}",
   "provider.disconnect": "Disconnect",
   "provider.switchAccount": "Switch account…",
-  "provider.accountMenu": "Vercel account",
+  "provider.accountMenu": "{name} account",
   "provider.connectedAs": "Connected as {name}",
   "provider.setup.title": "Connect {name}",
   "provider.setup.desc":
@@ -2625,7 +2617,11 @@ export const en = {
   "provider.link.descFor": "Choose which {name} project {repo} deploys.",
   "provider.link.search": "Search projects…",
   "provider.link.empty": "No {name} projects in this scope. If your projects live under a team, switch to it above.",
-  "provider.team.label": "Vercel scope",
+  // What a provider *calls* a scope is its own word and moved to the manifest
+  // as `scope.label`. These two stay: this is the neutral fallback for a
+  // manifest that omits it, and "Personal account" is the host's name for the
+  // *absence* of a scope, which is the same idea everywhere.
+  "provider.scope.label": "Scope",
   "provider.team.personal": "Personal account",
   "provider.link.action": "Link",
   "overview.empty": "No projects are registered yet.",

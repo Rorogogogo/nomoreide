@@ -1,4 +1,4 @@
-import { useProviderApi } from "./provider-client";
+import { useProviderApi, useProviderName } from "./provider-client";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useT } from "@/lib/i18n";
 import { TeamIcon, UnlinkIcon } from "./provider-icons";
@@ -20,6 +20,7 @@ import { useProviderStatus } from "./hooks/use-provider-status";
 export function ProviderAccountMenu({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
   const api = useProviderApi();
+  const name = useProviderName();
   const { info, refresh } = useProviderStatus();
   const username = info?.user?.username;
 
@@ -52,7 +53,7 @@ export function ProviderAccountMenu({ onSwitchAccount }: { onSwitchAccount: () =
             },
           },
         ]}
-        label={t("provider.accountMenu")}
+        label={t("provider.accountMenu", { name })}
       />
     </span>
   );
