@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
-import type { ProviderProject } from "@/lib/api";
-import { disconnectVercel } from "./provider-client";
+import { useEffect, useMemo, useState } from "react";
+import { listProviders, type ProviderManifest, type ProviderProject } from "@/lib/api";
+import {
+  DEFAULT_PROVIDER_ID,
+  ProviderSelectionProvider,
+  useCapability,
+  useProviderApi,
+  useProviderId,
+} from "./provider-client";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
@@ -11,29 +18,43 @@ import { DeploymentDetail } from "./deployment-detail";
 import { DeploymentList } from "./deployment-list";
 import { DomainsPanel } from "./domains-panel";
 import { EnvPanel, type EnvDialogState } from "./env-panel";
-import { ProductionHero, type VercelHeroSection } from "./production-hero";
+import { ProductionHero, type HeroSection } from "./production-hero";
 import { ProjectPicker } from "./project-picker";
 import { SettingsPanel } from "./settings-panel";
 import { StateFilter } from "@/components/ui/tab-strip";
-import { TeamSwitcher } from "./team-switcher";
-import { VercelAccountMenu } from "./account-menu";
-import { useVercelDeployments, type DeploymentFilter } from "./hooks/use-vercel-deployments";
+import { ScopeSwitcher } from "./scope-switcher";
+import { ProviderAccountMenu } from "./account-menu";
+import { useProviderDeployments, type DeploymentFilter } from "./hooks/use-provider-deployments";
 import {
-  useVercelDomains,
-  useVercelEnv,
-  useVercelProductionDeployment,
-  useVercelProjectSettings,
-} from "./hooks/use-vercel-resource";
-import { useVercelStatus } from "./hooks/use-vercel-status";
-import { CloseIcon, ExternalIcon, PlusIcon, RefreshIcon, UnlinkIcon } from "./vercel-icons";
-import { VercelLogo } from "./vercel-logo";
-import { VercelSetup } from "./vercel-setup";
+  useProviderDomains,
+  useProviderEnv,
+  useProviderProductionDeployment,
+  useProviderProjectSettings,
+} from "./hooks/use-provider-resource";
+import { useProviderStatus } from "./hooks/use-provider-status";
+import { CloseIcon, ExternalIcon, PlusIcon, RefreshIcon, UnlinkIcon } from "./provider-icons";
+import { ProviderLogo } from "./provider-logo";
+import { ProviderSetup } from "./provider-setup";
+
+/**
+ * Where "open the vendor's own dashboard" goes.
+ *
+ * A per-provider constant is a deliberate small escape from the generic view —
+ * §9 of the design plan asks that escaping stays cheap. It belongs in the
+ * manifest, which carries no URLs yet; until then a provider that is not listed
+ * simply does not get the button, rather than getting one that opens somebody
+ * else's dashboard.
+ */
+const DASHBOARD_URLS: Record<string, string> = {
+  vercel: "https://vercel.com/dashboard",
+  cloudflare: "https://dash.cloudflare.com/",
+};
 
 /** Heading shown above a hero section once its chip expands it. */
-const HERO_SECTION_LABELS: Record<VercelHeroSection, TranslationKey> = {
-  env: "vercel.tabs.env",
-  domains: "vercel.tabs.domains",
-  settings: "vercel.tabs.settings",
+const HERO_SECTION_LABELS: Record<HeroSection, TranslationKey> = {
+  env: "provider.tabs.env",
+  domains: "provider.tabs.domains",
+  settings: "provider.tabs.settings",
 };
 
 /**
@@ -46,9 +67,101 @@ function buildLabel(project: ProviderProject | null): string | null {
   return command?.trim() || project?.framework || null;
 }
 
-export function VercelView() {
+/**
+ * The deploy page: a provider selection wrapped around one generic workspace.
+ *
+ * Everything below this component is provider-agnostic — it reads the id from
+ * context (`provider-client.ts`) and the manifest for what the provider can do.
+ * Vercel and Cloudflare render through the identical tree; the only thing that
+ * differs is what `/api/providers/:id/*` answers.
+ *
+ * `key={selected}` on the workspace is load-bearing: switching providers must
+ * drop every piece of local state under it — the selected deployment, the open
+ * hero section, the loaded env list — rather than showing one provider's data
+ * under another's name until each fetch resolves.
+ */
+export function DeployView() {
+  const [providers, setProviders] = useState<ProviderManifest[]>([]);
+  const [selected, setSelected] = usePersistentState<string>(
+    "deploy:provider",
+    DEFAULT_PROVIDER_ID,
+  );
+
+  useEffect(() => {
+    void listProviders()
+      .then(setProviders)
+      // A registry that cannot be read is not a reason to blank the page: the
+      // stored id still addresses a provider, and capability checks fall back
+      // to "assume supported" precisely so this stays usable.
+      .catch(() => setProviders([]));
+  }, []);
+
+  // A stored id for a provider that no longer exists would otherwise leave the
+  // page addressing nothing.
+  const known = providers.length === 0 || providers.some((entry) => entry.id === selected);
+  const providerId = known ? selected : (providers[0]?.id ?? DEFAULT_PROVIDER_ID);
+  const manifest = providers.find((entry) => entry.id === providerId) ?? null;
+
+  const selection = useMemo(() => ({ id: providerId, manifest }), [providerId, manifest]);
+
+  return (
+    <ProviderSelectionProvider value={selection}>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+        {providers.length > 1 ? (
+          <ProviderSwitcher onSelect={setSelected} providers={providers} selected={providerId} />
+        ) : null}
+        <ProviderWorkspace key={providerId} />
+      </div>
+    </ProviderSelectionProvider>
+  );
+}
+
+/**
+ * One row of provider tabs, shown only when there is more than one to choose
+ * from — a single-provider install (everyone today) sees no new chrome.
+ *
+ * Lives in the shell rather than the connected header so that switching works
+ * in every state: the whole point is to reach a provider you have *not*
+ * connected yet, which is exactly when the connected header is not rendered.
+ */
+function ProviderSwitcher({
+  onSelect,
+  providers,
+  selected,
+}: {
+  onSelect: (id: string) => void;
+  providers: ProviderManifest[];
+  selected: string;
+}) {
   const t = useT();
-  const status = useVercelStatus();
+
+  return (
+    <nav
+      aria-label={t("provider.switcher.label")}
+      className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5"
+    >
+      {providers.map((provider) => (
+        <button
+          aria-current={provider.id === selected ? "page" : undefined}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-3.5",
+            provider.id === selected && "bg-muted text-foreground",
+          )}
+          key={provider.id}
+          onClick={() => onSelect(provider.id)}
+          type="button"
+        >
+          <ProviderLogo providerId={provider.id} />
+          <span>{provider.name}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function ProviderWorkspace() {
+  const t = useT();
+  const status = useProviderStatus();
   const [forceSetup, setForceSetup] = useState(false);
 
   let content: React.ReactNode;
@@ -56,7 +169,7 @@ export function VercelView() {
     content = <Loading fill label={t("common.loading")} />;
   } else if (forceSetup || status.status === "not_configured") {
     content = (
-      <VercelSetup
+      <ProviderSetup
         info={status.info}
         onCancel={forceSetup ? () => setForceSetup(false) : undefined}
         onConnected={() => {
@@ -66,7 +179,7 @@ export function VercelView() {
       />
     );
   } else if (status.status === "auth_error" || status.status === "connection_error") {
-    content = <VercelConnectionRecovery onReconnect={() => setForceSetup(true)} status={status} />;
+    content = <ProviderConnectionRecovery onReconnect={() => setForceSetup(true)} status={status} />;
   } else if (status.status === "no_project") {
     content = (
       <ProjectPicker onLinked={status.refresh} repositoryName={status.info?.repositoryName} />
@@ -78,30 +191,29 @@ export function VercelView() {
     content = <ConnectedProject onSwitchAccount={() => setForceSetup(true)} />;
   }
 
-  return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">{content}</div>
-  );
+  return <>{content}</>;
 }
 
-function VercelConnectionRecovery({
+function ProviderConnectionRecovery({
   onReconnect,
   status,
 }: {
   onReconnect: () => void;
-  status: ReturnType<typeof useVercelStatus>;
+  status: ReturnType<typeof useProviderStatus>;
 }) {
   const t = useT();
+  const api = useProviderApi();
   const authError = status.status === "auth_error";
 
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="w-full max-w-md space-y-3 rounded-md border border-border bg-card p-4">
         <div className="flex items-start gap-2.5">
-          <VercelLogo className="mt-0.5 size-4 shrink-0" />
+          <ProviderLogo className="mt-0.5 size-4 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold">{t("vercel.connFailed")}</h2>
+            <h2 className="text-sm font-semibold">{t("provider.connFailed")}</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-              {authError ? t("vercel.tokenRejected") : t("vercel.cantValidate")}
+              {authError ? t("provider.tokenRejected") : t("provider.cantValidate")}
             </p>
           </div>
         </div>
@@ -123,17 +235,17 @@ function VercelConnectionRecovery({
             {t("common.refresh")}
           </Button>
           <Button onClick={onReconnect} type="button" variant={authError ? "default" : "outline"}>
-            {t("vercel.reconnect")}
+            {t("provider.reconnect")}
           </Button>
           <Button
             onClick={() => {
-              void disconnectVercel().then(status.refresh);
+              void api.disconnect().then(status.refresh);
             }}
             type="button"
             variant="ghost"
           >
             <UnlinkIcon />
-            {t("vercel.disconnect")}
+            {t("provider.disconnect")}
           </Button>
         </div>
       </div>
@@ -154,10 +266,16 @@ function VercelConnectionRecovery({
  */
 function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
-  const [filter, setFilter] = usePersistentState<DeploymentFilter>("vercel:filter", "all");
+  // The manifest deciding what renders. Cloudflare declares no `runtimeLogs`,
+  // so its log panel shows one tab rather than a second that always errors.
+  const canEnv = useCapability("env");
+  const canDomains = useCapability("domains");
+  const providerId = useProviderId();
+  const dashboardUrl = DASHBOARD_URLS[providerId];
+  const [filter, setFilter] = usePersistentState<DeploymentFilter>("deploy:filter", "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { deployments, project, loading, error, hasInFlight, refresh, refreshQuietly } =
-    useVercelDeployments(filter);
+    useProviderDeployments(filter);
 
   // Fetched here rather than inside each panel: the hero's chips summarise this
   // data (counts, domain names, build command) before any section is expanded,
@@ -167,30 +285,30 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
     loading: envLoading,
     error: envError,
     refresh: refreshEnv,
-  } = useVercelEnv();
+  } = useProviderEnv(canEnv);
   const {
     data: domains,
     loading: domainsLoading,
     error: domainsError,
     refresh: refreshDomains,
-  } = useVercelDomains();
+  } = useProviderDomains(canDomains);
   const {
     data: settings,
     loading: settingsLoading,
     error: settingsError,
     refresh: refreshSettings,
-  } = useVercelProjectSettings();
+  } = useProviderProjectSettings();
   const {
     data: productionDeployment,
     loading: productionLoading,
     refresh: refreshProduction,
-  } = useVercelProductionDeployment();
+  } = useProviderProductionDeployment();
   const [envDialog, setEnvDialog] = useState<EnvDialogState>(null);
   // A hero chip expands its section right below itself, keeping the hero and
   // the deployment history in view. Clicking the same chip again collapses it,
   // and only one section is open at a time.
-  const [heroSection, setHeroSection] = useState<VercelHeroSection | null>(null);
-  const toggleHeroSection = (section: VercelHeroSection) =>
+  const [heroSection, setHeroSection] = useState<HeroSection | null>(null);
+  const toggleHeroSection = (section: HeroSection) =>
     setHeroSection((current) => (current === section ? null : section));
 
   useRegisterRefresh(refresh);
@@ -216,32 +334,32 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
   return (
     <>
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-        <VercelLogo className="size-3.5" />
+        <ProviderLogo className="size-3.5" providerId={providerId} />
         <span className="truncate text-[12px] font-medium">
-          {project?.name ?? t("nav.vercel")}
+          {project?.name ?? t("nav.deploy")}
         </span>
         {hasInFlight ? (
-          <span className="text-[11px] text-amber-500">{t("vercel.buildingNow")}</span>
+          <span className="text-[11px] text-amber-500">{t("provider.buildingNow")}</span>
         ) : null}
 
         <span className="ml-auto flex items-center gap-2">
-          <VercelAccountMenu onSwitchAccount={onSwitchAccount} />
-          <TeamSwitcher />
+          <ProviderAccountMenu onSwitchAccount={onSwitchAccount} />
+          <ScopeSwitcher />
           <StateFilter<DeploymentFilter>
-            ariaLabel={t("vercel.filter.label")}
+            ariaLabel={t("provider.filter.label")}
             onChange={setFilter}
             options={[
-              { id: "all", label: t("vercel.filter.all") },
-              { id: "production", label: t("vercel.target.production") },
-              { id: "preview", label: t("vercel.target.preview") },
+              { id: "all", label: t("provider.filter.all") },
+              { id: "production", label: t("provider.target.production") },
+              { id: "preview", label: t("provider.target.preview") },
             ]}
             value={filter}
           />
-          {project ? (
+          {project && dashboardUrl ? (
             <Button
-              onClick={() => openExternal(`https://vercel.com/dashboard`)}
+              onClick={() => openExternal(dashboardUrl)}
               size="icon-sm"
-              title={t("vercel.openDashboard")}
+              title={t("provider.openDashboard")}
               type="button"
               variant="ghost"
             >
@@ -259,6 +377,8 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
         envCount={env.length}
         loading={productionLoading}
         onToggleSection={toggleHeroSection}
+        showDomains={canDomains}
+        showEnv={canEnv}
       />
 
       {/* Capped rather than free-growing so the deployment history underneath
@@ -277,7 +397,7 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
                 <Button
                   onClick={() => setEnvDialog("add")}
                   size="icon-sm"
-                  title={t("vercel.env.add")}
+                  title={t("provider.env.add")}
                   type="button"
                   variant="ghost"
                 >
@@ -337,7 +457,7 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-[12px] text-muted-foreground">
-              {t("vercel.deployments.selectHint")}
+              {t("provider.deployments.selectHint")}
             </div>
           )}
         </div>

@@ -59,6 +59,7 @@ export const CLOUDFLARE_MANIFEST: DeployProviderManifest = {
   name: "Cloudflare",
   kind: "deploy",
   scopeLabel: "Account",
+  authSources: ["cli", "stored"],
   // No `runtimeLogs`: Pages serves runtime output over a websocket tail, not a
   // REST read, so the tab is hidden rather than shown and made to error.
   capabilities: ["projects", "deployments", "buildLogs", "env", "domains"],

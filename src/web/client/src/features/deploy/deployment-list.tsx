@@ -20,7 +20,7 @@ export function DeploymentList({
 
   if (loading && deployments.length === 0) {
     return (
-      <div className="p-4 text-[12px] text-muted-foreground">{t("vercel.deployments.loading")}</div>
+      <div className="p-4 text-[12px] text-muted-foreground">{t("provider.deployments.loading")}</div>
     );
   }
   if (error) {
@@ -28,7 +28,7 @@ export function DeploymentList({
   }
   if (deployments.length === 0) {
     return (
-      <div className="p-4 text-[12px] text-muted-foreground">{t("vercel.deployments.empty")}</div>
+      <div className="p-4 text-[12px] text-muted-foreground">{t("provider.deployments.empty")}</div>
     );
   }
 
@@ -70,12 +70,12 @@ export function DeploymentList({
                     deployment.isCurrentProduction ? "bg-emerald-500" : "bg-muted-foreground/50",
                   )}
                 />
-                {t("vercel.target.production")}
+                {t("provider.target.production")}
               </span>
             ) : (
               <span className="inline-flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
                 <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
-                {t("vercel.target.preview")}
+                {t("provider.target.preview")}
               </span>
             )}
           </button>

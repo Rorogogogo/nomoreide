@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ProviderLogLine } from "@/lib/api";
-import {
-  getVercelRuntimeLogs,
-} from "./provider-client";
+import { useCapability, useProviderApi } from "./provider-client";
 import { Loading } from "@/components/ui/loading";
 import { TabStrip } from "@/components/ui/tab-strip";
 import { useT } from "@/lib/i18n";
@@ -30,19 +28,27 @@ export function DeploymentLogs({
   uid: string;
 }) {
   const t = useT();
+  const canRuntimeLogs = useCapability("runtimeLogs");
   const [tab, setTab] = useState<LogTab>("build");
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-muted/10">
       <div className="shrink-0 border-b border-border px-3 py-1.5">
         <TabStrip<LogTab>
-          ariaLabel={t("vercel.logs.tabsLabel")}
-          idPrefix="vercel-logs"
+          ariaLabel={t("provider.logs.tabsLabel")}
+          idPrefix="provider-logs"
           onSelect={setTab}
-          tabs={[
-            { id: "build", label: t("vercel.logs.build") },
-            { id: "runtime", label: t("vercel.logs.runtime") },
-          ]}
+          tabs={
+            // Cloudflare Pages tails runtime output over a websocket rather
+            // than serving it as a log read, so it declares no `runtimeLogs`
+            // and gets one tab instead of two — one of which would only error.
+            canRuntimeLogs
+              ? [
+                  { id: "build", label: t("provider.logs.build") },
+                  { id: "runtime", label: t("provider.logs.runtime") },
+                ]
+              : [{ id: "build", label: t("provider.logs.build") }]
+          }
           value={tab}
         />
       </div>
@@ -60,9 +66,9 @@ export function DeploymentLogs({
 
 function BuildLogs({ lines, loading }: { lines: ProviderLogLine[]; loading: boolean }) {
   const t = useT();
-  if (loading && lines.length === 0) return <Loading fill label={t("vercel.logs.loading")} />;
+  if (loading && lines.length === 0) return <Loading fill label={t("provider.logs.loading")} />;
   if (lines.length === 0) {
-    return <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.logs.empty")}</p>;
+    return <p className="p-4 text-[12px] text-muted-foreground">{t("provider.logs.empty")}</p>;
   }
   return (
     <pre className="whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed">
@@ -73,6 +79,7 @@ function BuildLogs({ lines, loading }: { lines: ProviderLogLine[]; loading: bool
 
 function RuntimeLogs({ uid }: { uid: string }) {
   const t = useT();
+  const api = useProviderApi();
   const [lines, setLines] = useState<ProviderLogLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +88,7 @@ function RuntimeLogs({ uid }: { uid: string }) {
     let active = true;
     setLoading(true);
     setError(null);
-    getVercelRuntimeLogs(uid)
+    api.getRuntimeLogs(uid)
       .then((next) => {
         if (active) setLines(next);
       })
@@ -96,7 +103,7 @@ function RuntimeLogs({ uid }: { uid: string }) {
     };
   }, [uid]);
 
-  if (loading) return <Loading fill label={t("vercel.logs.loading")} />;
+  if (loading) return <Loading fill label={t("provider.logs.loading")} />;
   if (error) {
     return (
       <p className="break-words p-4 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -108,7 +115,7 @@ function RuntimeLogs({ uid }: { uid: string }) {
   // the account's plan does not serve runtime logs — so the copy says both
   // rather than claiming the deployment was silent.
   if (lines.length === 0) {
-    return <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.logs.runtimeEmpty")}</p>;
+    return <p className="p-4 text-[12px] text-muted-foreground">{t("provider.logs.runtimeEmpty")}</p>;
   }
 
   return (

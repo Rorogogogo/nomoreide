@@ -10,7 +10,7 @@ import {
   ExternalIcon,
   UnverifiedIcon,
   VerifiedIcon,
-} from "./vercel-icons";
+} from "./provider-icons";
 import { PanelEmpty } from "./panel-empty";
 
 /**
@@ -44,7 +44,7 @@ export function DomainsPanel({
     );
   }
   if (domains.length === 0) {
-    return <PanelEmpty icon={<DomainsIcon />}>{t("vercel.domains.empty")}</PanelEmpty>;
+    return <PanelEmpty icon={<DomainsIcon />}>{t("provider.domains.empty")}</PanelEmpty>;
   }
 
   // Unverified first: they are the ones with an outstanding action.
@@ -67,7 +67,7 @@ function DomainRow({ domain }: { domain: ProviderDomain }) {
 
   async function copy(value: string) {
     await navigator.clipboard.writeText(value);
-    toasts.success(t("vercel.domains.copied"));
+    toasts.success(t("provider.domains.copied"));
   }
 
   return (
@@ -84,7 +84,7 @@ function DomainRow({ domain }: { domain: ProviderDomain }) {
 
         {domain.redirect ? (
           <span className="shrink-0 truncate rounded border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-            {t("vercel.domains.redirectsTo", { target: domain.redirect })}
+            {t("provider.domains.redirectsTo", { target: domain.redirect })}
           </span>
         ) : null}
         {domain.gitBranch ? (
@@ -96,7 +96,7 @@ function DomainRow({ domain }: { domain: ProviderDomain }) {
         <Button
           onClick={() => openExternal(`https://${domain.name}`)}
           size="icon-sm"
-          title={t("vercel.visit")}
+          title={t("provider.visit")}
           type="button"
           variant="ghost"
         >
@@ -106,7 +106,7 @@ function DomainRow({ domain }: { domain: ProviderDomain }) {
 
       {!domain.verified && domain.verification.length > 0 ? (
         <div className="space-y-1 rounded border border-amber-500/30 bg-amber-500/5 p-2">
-          <p className="text-[11px] text-muted-foreground">{t("vercel.domains.addRecords")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("provider.domains.addRecords")}</p>
           {domain.verification.map((record) => (
             <div
               className="flex items-center gap-2 font-mono text-[10px]"
@@ -118,7 +118,7 @@ function DomainRow({ domain }: { domain: ProviderDomain }) {
               <Button
                 onClick={() => void copy(record.value)}
                 size="icon-sm"
-                title={t("vercel.domains.copyRecord")}
+                title={t("provider.domains.copyRecord")}
                 type="button"
                 variant="ghost"
               >

@@ -7,7 +7,7 @@ import {
   PendingIcon,
   SpinnerIcon,
   VerifiedIcon,
-} from "./vercel-icons";
+} from "./provider-icons";
 
 /**
  * One definition of how a deployment state looks, so the list row, the detail
@@ -18,34 +18,34 @@ const STATES: Record<
   { labelKey: TranslationKey; className: string; dotClassName: string; spin?: boolean }
 > = {
   ready: {
-    labelKey: "vercel.state.ready",
+    labelKey: "provider.state.ready",
     className: "text-emerald-500",
     dotClassName: "bg-emerald-500",
   },
   building: {
-    labelKey: "vercel.state.building",
+    labelKey: "provider.state.building",
     className: "text-amber-500",
     dotClassName: "bg-amber-500",
     spin: true,
   },
   queued: {
-    labelKey: "vercel.state.queued",
+    labelKey: "provider.state.queued",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
-  error: { labelKey: "vercel.state.error", className: "text-red-500", dotClassName: "bg-red-500" },
+  error: { labelKey: "provider.state.error", className: "text-red-500", dotClassName: "bg-red-500" },
   canceled: {
-    labelKey: "vercel.state.canceled",
+    labelKey: "provider.state.canceled",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
   blocked: {
-    labelKey: "vercel.state.blocked",
+    labelKey: "provider.state.blocked",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
   deleted: {
-    labelKey: "vercel.state.deleted",
+    labelKey: "provider.state.deleted",
     className: "text-muted-foreground",
     dotClassName: "bg-muted-foreground/50",
   },
@@ -59,7 +59,7 @@ const STATES: Record<
  * neutral state, which is always a true statement.
  */
 const RAW_LABELS: Record<string, TranslationKey> = {
-  INITIALIZING: "vercel.state.initializing",
+  INITIALIZING: "provider.state.initializing",
 };
 
 const specFor = (state: ProviderDeploymentState) => STATES[state] ?? STATES.queued;

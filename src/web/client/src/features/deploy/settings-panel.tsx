@@ -1,7 +1,7 @@
 import type { ProviderProject } from "@/lib/api";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
-import { SettingsIcon } from "./vercel-icons";
+import { SettingsIcon } from "./provider-icons";
 import { PanelEmpty } from "./panel-empty";
 
 /**
@@ -45,7 +45,7 @@ export function SettingsPanel({
     );
   }
   if (!project) {
-    return <PanelEmpty icon={<SettingsIcon />}>{t("vercel.settings.empty")}</PanelEmpty>;
+    return <PanelEmpty icon={<SettingsIcon />}>{t("provider.settings.empty")}</PanelEmpty>;
   }
 
   // Settings arrive as a provider-declared list rather than known fields, so
@@ -53,15 +53,15 @@ export function SettingsPanel({
   // The labels are the provider's own words; only the framework and repository
   // rows below are ours, because they are not build settings.
   const rows: { label: string; value: string | null | undefined; mono?: boolean }[] = [
-    { label: t("vercel.settings.framework"), value: project.framework },
+    { label: t("provider.settings.framework"), value: project.framework },
     ...project.settings.map((setting) => ({
       label: setting.label,
       value: setting.value,
       mono: MONO_SETTINGS.has(setting.key),
     })),
-    { label: t("vercel.settings.productionBranch"), value: project.link?.productionBranch },
+    { label: t("provider.settings.productionBranch"), value: project.link?.productionBranch },
     {
-      label: t("vercel.settings.repository"),
+      label: t("provider.settings.repository"),
       value:
         project.link?.org && project.link?.repo
           ? `${project.link.org}/${project.link.repo}`
@@ -102,7 +102,7 @@ function SettingRow({
             : "min-w-0 flex-1 text-[11px] italic text-muted-foreground"
         }
       >
-        {value || t("vercel.settings.default")}
+        {value || t("provider.settings.default")}
       </dd>
     </div>
   );

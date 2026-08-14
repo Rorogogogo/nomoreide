@@ -43,6 +43,7 @@ export const VERCEL_MANIFEST: DeployProviderManifest = {
   name: "Vercel",
   kind: "deploy",
   scopeLabel: "Team",
+  authSources: ["cli", "stored", "oauth"],
   capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
   actions: [...VERCEL_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],

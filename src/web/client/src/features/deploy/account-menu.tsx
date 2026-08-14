@@ -1,13 +1,11 @@
-import {
-  disconnectVercel,
-} from "./provider-client";
+import { useProviderApi } from "./provider-client";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { useT } from "@/lib/i18n";
-import { TeamIcon, UnlinkIcon } from "./vercel-icons";
-import { refreshVercelStatus, useVercelStatus } from "./hooks/use-vercel-status";
+import { TeamIcon, UnlinkIcon } from "./provider-icons";
+import { useProviderStatus } from "./hooks/use-provider-status";
 
 /**
- * Which Vercel account the dashboard is signed in as, and how to leave it.
+ * Which provider account the dashboard is signed in as, and how to leave it.
  *
  * Reconnecting and disconnecting used to live only on the connection-failure
  * screen, which meant a working connection was a one-way door: signing in as
@@ -15,13 +13,14 @@ import { refreshVercelStatus, useVercelStatus } from "./hooks/use-vercel-status"
  * breaking the current one first to make the recovery UI appear. This is the
  * same two actions, reachable while everything is fine.
  *
- * Distinct from `TeamSwitcher`: that moves between teams *inside* one account,
+ * Distinct from `ScopeSwitcher`: that moves between teams *inside* one account,
  * which is a lens on the current view. This changes whose account it is, so it
  * sits behind a menu rather than being one click away.
  */
-export function VercelAccountMenu({ onSwitchAccount }: { onSwitchAccount: () => void }) {
+export function ProviderAccountMenu({ onSwitchAccount }: { onSwitchAccount: () => void }) {
   const t = useT();
-  const { info } = useVercelStatus();
+  const api = useProviderApi();
+  const { info, refresh } = useProviderStatus();
   const username = info?.user?.username;
 
   return (
@@ -29,7 +28,7 @@ export function VercelAccountMenu({ onSwitchAccount }: { onSwitchAccount: () => 
       {username ? (
         <span
           className="max-w-[9rem] truncate text-[11px] text-muted-foreground"
-          title={t("vercel.connectedAs", { name: username })}
+          title={t("provider.connectedAs", { name: username })}
         >
           {username}
         </span>
@@ -41,19 +40,19 @@ export function VercelAccountMenu({ onSwitchAccount }: { onSwitchAccount: () => 
         className="opacity-100"
         items={[
           {
-            label: t("vercel.switchAccount"),
+            label: t("provider.switchAccount"),
             icon: <TeamIcon className="size-3.5" />,
             onSelect: onSwitchAccount,
           },
           {
-            label: t("vercel.disconnect"),
+            label: t("provider.disconnect"),
             icon: <UnlinkIcon className="size-3.5" />,
             onSelect: () => {
-              void disconnectVercel().then(refreshVercelStatus);
+              void api.disconnect().then(refresh);
             },
           },
         ]}
-        label={t("vercel.accountMenu")}
+        label={t("provider.accountMenu")}
       />
     </span>
   );

@@ -16,7 +16,7 @@ export const shellPaths = new Set([
   "/docker",
   "/git",
   "/github",
-  "/vercel",
+  "/deploy",
   "/workflows",
   "/agent",
   "/agent-env",

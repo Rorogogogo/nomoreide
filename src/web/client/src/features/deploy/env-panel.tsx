@@ -2,12 +2,7 @@ import { useState } from "react";
 import {
   type ProviderEnvVar,
 } from "@/lib/api";
-import {
-  createVercelEnv,
-  deleteVercelEnv,
-  getVercelEnvValue,
-  updateVercelEnv,
-} from "./provider-client";
+import { useProviderApi } from "./provider-client";
 import { Button } from "@/components/ui/button";
 import { ComposerDialog } from "@/features/services/service-form/composer-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -24,7 +19,7 @@ import {
   PlusIcon,
   RevealIcon,
   TrashIcon,
-} from "./vercel-icons";
+} from "./provider-icons";
 import { PanelEmpty } from "./panel-empty";
 
 /** The order Vercel itself lists environments in, rather than alphabetical. */
@@ -35,9 +30,9 @@ const TARGET_ORDER = ["production", "preview", "development"];
  * user-chosen names, which are not ours to translate, so those render verbatim.
  */
 const TARGET_LABEL = {
-  production: "vercel.env.target.production",
-  preview: "vercel.env.target.preview",
-  development: "vercel.env.target.development",
+  production: "provider.env.target.production",
+  preview: "provider.env.target.preview",
+  development: "provider.env.target.development",
 } as const;
 
 /** What `EnvVarDialog` is editing; absent means it is creating a new one. */
@@ -95,12 +90,12 @@ export function EnvPanel({
           action={
             <Button onClick={() => onDialogChange("add")} size="sm" type="button" variant="outline">
               <PlusIcon />
-              {t("vercel.env.add")}
+              {t("provider.env.add")}
             </Button>
           }
           icon={<EnvIcon />}
         >
-          {t("vercel.env.empty")}
+          {t("provider.env.empty")}
         </PanelEmpty>
       ) : (
         <div className="divide-y divide-border">
@@ -129,6 +124,7 @@ export function EnvPanel({
 
 function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => void }) {
   const t = useT();
+  const api = useProviderApi();
   const toasts = useToasts();
   const [value, setValue] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
@@ -150,7 +146,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
     }
     setRevealing(true);
     try {
-      setValue(await getVercelEnvValue(variable.id));
+      setValue(await api.getEnvValue(variable.id));
     } catch (caught) {
       toasts.error(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -159,17 +155,17 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
   }
 
   async function copy() {
-    const text = value ?? (await getVercelEnvValue(variable.id).catch(() => null));
+    const text = value ?? (await api.getEnvValue(variable.id).catch(() => null));
     if (text === null) return;
     await navigator.clipboard.writeText(text);
-    toasts.success(t("vercel.env.copied", { key: variable.key }));
+    toasts.success(t("provider.env.copied", { key: variable.key }));
   }
 
   async function confirmDelete() {
     setDeleting(true);
     try {
-      await deleteVercelEnv(variable.id);
-      toasts.success(t("vercel.env.deleted", { key: variable.key }));
+      await api.deleteEnv(variable.id);
+      toasts.success(t("provider.env.deleted", { key: variable.key }));
       setConfirmingDelete(false);
     } catch (caught) {
       toasts.error(caught instanceof Error ? caught.message : String(caught));
@@ -212,7 +208,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
         ) : null}
         {variable.type === "system" ? (
           <span className="rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
-            {t("vercel.env.system")}
+            {t("provider.env.system")}
           </span>
         ) : null}
       </span>
@@ -223,7 +219,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
             loading={revealing}
             onClick={() => void reveal()}
             size="icon-sm"
-            title={value === null ? t("vercel.env.reveal") : t("vercel.env.hide")}
+            title={value === null ? t("provider.env.reveal") : t("provider.env.hide")}
             type="button"
             variant="ghost"
           >
@@ -234,7 +230,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
           <Button
             onClick={() => void copy()}
             size="icon-sm"
-            title={t("vercel.env.copy")}
+            title={t("provider.env.copy")}
             type="button"
             variant="ghost"
           >
@@ -242,7 +238,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
           </Button>
         ) : null}
         {editable ? (
-          <Button onClick={onEdit} size="icon-sm" title={t("vercel.env.edit")} type="button" variant="ghost">
+          <Button onClick={onEdit} size="icon-sm" title={t("provider.env.edit")} type="button" variant="ghost">
             <EditIcon />
           </Button>
         ) : null}
@@ -250,7 +246,7 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
           <Button
             onClick={() => setConfirmingDelete(true)}
             size="icon-sm"
-            title={t("vercel.env.delete")}
+            title={t("provider.env.delete")}
             type="button"
             variant="ghost"
           >
@@ -261,19 +257,19 @@ function EnvRow({ variable, onEdit }: { variable: ProviderEnvVar; onEdit: () => 
 
       {value !== null ? (
         <code className="w-full break-all rounded border border-border/60 bg-muted/40 px-2 py-1 font-mono text-[11px] leading-relaxed">
-          {value || t("vercel.env.emptyValue")}
+          {value || t("provider.env.emptyValue")}
         </code>
       ) : null}
 
       {confirmingDelete ? (
         <ConfirmDialog
-          confirmLabel={t("vercel.env.delete")}
+          confirmLabel={t("provider.env.delete")}
           icon={<TrashIcon />}
           loading={deleting}
-          message={t("vercel.env.deleteConfirm", { key: variable.key })}
+          message={t("provider.env.deleteConfirm", { key: variable.key })}
           onCancel={() => setConfirmingDelete(false)}
           onConfirm={() => void confirmDelete()}
-          title={t("vercel.env.deleteTitle")}
+          title={t("provider.env.deleteTitle")}
           tone="danger"
         />
       ) : null}
@@ -297,6 +293,7 @@ function EnvVarDialog({
   onSaved: () => void;
 }) {
   const t = useT();
+  const api = useProviderApi();
   const toasts = useToasts();
   const isEditing = Boolean(target);
   const [key, setKey] = useState(target?.key ?? "");
@@ -317,28 +314,28 @@ function EnvVarDialog({
 
   async function save() {
     if (!key.trim()) {
-      toasts.error(t("vercel.env.errKeyRequired"));
+      toasts.error(t("provider.env.errKeyRequired"));
       return;
     }
     if (targets.size === 0) {
-      toasts.error(t("vercel.env.errTargetRequired"));
+      toasts.error(t("provider.env.errTargetRequired"));
       return;
     }
     if (!isEditing && !value) {
-      toasts.error(t("vercel.env.errValueRequired"));
+      toasts.error(t("provider.env.errValueRequired"));
       return;
     }
     setSaving(true);
     try {
       if (isEditing && target) {
-        await updateVercelEnv(target.id, {
+        await api.updateEnv(target.id, {
           environments: Array.from(targets),
           ...(value ? { value } : {}),
         });
-        toasts.success(t("vercel.env.updated", { key: key.trim() }));
+        toasts.success(t("provider.env.updated", { key: key.trim() }));
       } else {
-        await createVercelEnv({ key: key.trim(), value, environments: Array.from(targets) });
-        toasts.success(t("vercel.env.created", { key: key.trim() }));
+        await api.createEnv({ key: key.trim(), value, environments: Array.from(targets) });
+        toasts.success(t("provider.env.created", { key: key.trim() }));
       }
       onSaved();
       onClose();
@@ -354,35 +351,35 @@ function EnvVarDialog({
       icon={<EnvIcon />}
       onClose={onClose}
       size="md"
-      title={isEditing ? t("vercel.env.editTitle") : t("vercel.env.addTitle")}
+      title={isEditing ? t("provider.env.editTitle") : t("provider.env.addTitle")}
     >
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1.5" htmlFor="vercel-env-key">
-          <span className="text-xs font-medium text-muted-foreground">{t("vercel.env.key")}</span>
+        <label className="flex flex-col gap-1.5" htmlFor="provider-env-key">
+          <span className="text-xs font-medium text-muted-foreground">{t("provider.env.key")}</span>
           <Input
             className="font-mono text-xs"
             disabled={isEditing}
-            id="vercel-env-key"
+            id="provider-env-key"
             onChange={(event) => setKey(event.target.value)}
             placeholder="API_KEY"
             value={key}
           />
         </label>
 
-        <label className="flex flex-col gap-1.5" htmlFor="vercel-env-value">
-          <span className="text-xs font-medium text-muted-foreground">{t("vercel.env.value")}</span>
+        <label className="flex flex-col gap-1.5" htmlFor="provider-env-value">
+          <span className="text-xs font-medium text-muted-foreground">{t("provider.env.value")}</span>
           <Input
             className="font-mono text-xs"
-            id="vercel-env-value"
+            id="provider-env-value"
             onChange={(event) => setValue(event.target.value)}
-            placeholder={isEditing ? t("vercel.env.valueKeep") : "••••••••"}
+            placeholder={isEditing ? t("provider.env.valueKeep") : "••••••••"}
             type="password"
             value={value}
           />
         </label>
 
         <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">{t("vercel.env.targets")}</span>
+          <span className="text-xs font-medium text-muted-foreground">{t("provider.env.targets")}</span>
           <div className="flex flex-wrap gap-1.5">
             {TARGET_ORDER.map((name) => (
               <Button

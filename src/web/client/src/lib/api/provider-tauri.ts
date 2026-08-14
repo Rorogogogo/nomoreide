@@ -53,6 +53,7 @@ const VERCEL_MANIFEST: ProviderManifest = {
   name: "Vercel",
   kind: "deploy",
   scopeLabel: "Team",
+  authSources: ["cli", "stored", "oauth"],
   capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
   actions: ["redeploy", "cancel", "promote", "rollback"],
   productionAffecting: ["promote", "rollback"],

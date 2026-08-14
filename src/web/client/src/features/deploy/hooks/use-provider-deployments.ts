@@ -3,9 +3,7 @@ import {
   type ProviderDeployment,
   type ProviderProject,
 } from "@/lib/api";
-import {
-  listVercelDeployments,
-} from "../provider-client";
+import { useProviderApi } from "../provider-client";
 
 export type DeploymentFilter = "all" | "production" | "preview";
 
@@ -20,7 +18,8 @@ const POLL_MS = 8_000;
  * no requests at all, and a running build updates without the user reaching
  * for Refresh — which is the whole point of watching a deploy from here.
  */
-export function useVercelDeployments(filter: DeploymentFilter, enabled = true) {
+export function useProviderDeployments(filter: DeploymentFilter, enabled = true) {
+  const api = useProviderApi();
   const [deployments, setDeployments] = useState<ProviderDeployment[]>([]);
   const [project, setProject] = useState<ProviderProject | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +32,7 @@ export function useVercelDeployments(filter: DeploymentFilter, enabled = true) {
       const id = ++generation.current;
       if (showSpinner) setLoading(true);
       try {
-        const res = await listVercelDeployments({
+        const res = await api.listDeployments({
           target: filter === "all" ? undefined : filter,
         });
         if (id !== generation.current) return;
@@ -47,7 +46,7 @@ export function useVercelDeployments(filter: DeploymentFilter, enabled = true) {
         if (id === generation.current) setLoading(false);
       }
     },
-    [filter, enabled],
+    [api, filter, enabled],
   );
 
   useEffect(() => {

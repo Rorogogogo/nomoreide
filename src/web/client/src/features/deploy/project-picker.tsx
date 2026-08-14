@@ -2,18 +2,15 @@ import { useEffect, useState } from "react";
 import {
   type ProviderProject,
 } from "@/lib/api";
-import {
-  listVercelProjects,
-  setVercelProject,
-} from "./provider-client";
-import { LinkIcon } from "./vercel-icons";
+import { useProviderApi, useProviderManifest } from "./provider-client";
+import { LinkIcon } from "./provider-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
-import { TeamSwitcher } from "./team-switcher";
-import { VercelLogo } from "./vercel-logo";
+import { ScopeSwitcher } from "./scope-switcher";
+import { ProviderLogo } from "./provider-logo";
 
 /**
  * Shown when Vercel is connected but no project resolves for this repository.
@@ -30,6 +27,8 @@ export function ProjectPicker({
   onLinked: () => void;
 }) {
   const t = useT();
+  const api = useProviderApi();
+  const name = useProviderManifest()?.name ?? "";
   const [projects, setProjects] = useState<ProviderProject[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,7 +38,7 @@ export function ProjectPicker({
   useEffect(() => {
     let active = true;
     setLoading(true);
-    void listVercelProjects()
+    void api.listProjects()
       .then((res) => {
         if (active) setProjects(res.projects);
       })
@@ -58,7 +57,7 @@ export function ProjectPicker({
     setLinking(projectId);
     setError(null);
     try {
-      await setVercelProject(projectId);
+      await api.setProject(projectId);
       onLinked();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -75,25 +74,25 @@ export function ProjectPicker({
   return (
     <div className="mx-auto flex h-full w-full max-w-lg flex-col gap-3 p-6">
       <div className="flex items-start gap-2">
-        <VercelLogo className="mt-0.5 size-4" />
+        <ProviderLogo className="mt-0.5 size-4" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">{t("vercel.link.title")}</h2>
+          <h2 className="text-sm font-semibold">{t("provider.link.title", { name })}</h2>
           <p className="text-[12px] text-muted-foreground">
             {repositoryName
-              ? t("vercel.link.descFor").replace("{repo}", repositoryName)
-              : t("vercel.link.desc")}
+              ? t("provider.link.descFor", { name, repo: repositoryName })
+              : t("provider.link.desc", { name })}
           </p>
         </div>
         {/* An empty list here is far more often the wrong scope than an empty
             account, so the switcher belongs next to the list, not in settings. */}
-        <TeamSwitcher />
+        <ScopeSwitcher />
       </div>
 
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       <Input
         onChange={(event) => setSearch(event.target.value)}
-        placeholder={t("vercel.link.search")}
+        placeholder={t("provider.link.search")}
         value={search}
       />
 
@@ -101,7 +100,7 @@ export function ProjectPicker({
         {loading ? (
           <Loading fill label={t("common.loading")} />
         ) : visible.length === 0 ? (
-          <p className="p-4 text-[12px] text-muted-foreground">{t("vercel.link.empty")}</p>
+          <p className="p-4 text-[12px] text-muted-foreground">{t("provider.link.empty", { name })}</p>
         ) : (
           <ul className="divide-y divide-border">
             {visible.map((project) => (
@@ -120,7 +119,7 @@ export function ProjectPicker({
                   variant="outline"
                 >
                   <LinkIcon />
-                  {t("vercel.link.action")}
+                  {t("provider.link.action")}
                 </Button>
               </li>
             ))}

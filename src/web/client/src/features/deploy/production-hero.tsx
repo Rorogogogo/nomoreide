@@ -5,13 +5,13 @@ import { useT } from "@/lib/i18n";
 import { openExternal } from "@/lib/tauri";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { DeploymentStateBadge } from "./deployment-state-badge";
-import { DomainsIcon, EnvIcon, ExternalIcon, SettingsIcon } from "./vercel-icons";
+import { DomainsIcon, EnvIcon, ExternalIcon, SettingsIcon } from "./provider-icons";
 
 /** Domains not scoped to a preview branch — what's actually serving production. */
 const MAX_DOMAIN_CHIPS = 2;
 
 /** Which of the hero's chips has its detail expanded below it, if any. */
-export type VercelHeroSection = "env" | "domains" | "settings";
+export type HeroSection = "env" | "domains" | "settings";
 
 /**
  * What's live right now, pinned above the deployment history.
@@ -35,14 +35,20 @@ export function ProductionHero({
   buildLabel,
   activeSection,
   onToggleSection,
+  showDomains = true,
+  showEnv = true,
 }: {
   deployment: ProviderDeployment | null;
   loading: boolean;
   domains: ProviderDomain[];
   envCount: number;
   buildLabel: string | null;
-  activeSection: VercelHeroSection | null;
-  onToggleSection: (section: VercelHeroSection) => void;
+  activeSection: HeroSection | null;
+  onToggleSection: (section: HeroSection) => void;
+  /** False when the provider's manifest does not declare the `domains` capability. */
+  showDomains?: boolean;
+  /** False when the provider's manifest does not declare the `env` capability. */
+  showEnv?: boolean;
 }) {
   const t = useT();
 
@@ -56,7 +62,7 @@ export function ProductionHero({
   if (!deployment) return null;
 
   const liveDomains = domains.filter((domain) => !domain.gitBranch);
-  const shownDomains = liveDomains.slice(0, MAX_DOMAIN_CHIPS);
+  const shownDomains = showDomains ? liveDomains.slice(0, MAX_DOMAIN_CHIPS) : [];
   const moreDomains = domains.length - shownDomains.length;
 
   return (
@@ -64,7 +70,7 @@ export function ProductionHero({
       <div className="flex flex-wrap items-center gap-2">
         <DeploymentStateBadge rawState={deployment.rawState} state={deployment.state} />
         <span className="text-[11px] font-medium text-muted-foreground">
-          {t("vercel.hero.production")}
+          {t("provider.hero.production")}
         </span>
         <span className="text-[11px] text-muted-foreground">
           {formatRelativeTime(new Date(deployment.createdAt).toISOString())}
@@ -78,7 +84,7 @@ export function ProductionHero({
             variant="outline"
           >
             <ExternalIcon />
-            {t("vercel.visit")}
+            {t("provider.visit")}
           </Button>
         ) : null}
       </div>
@@ -106,29 +112,32 @@ export function ProductionHero({
             {domain.name}
           </Button>
         ))}
-        {moreDomains > 0 ? (
+        {showDomains && moreDomains > 0 ? (
           <SummaryChip
             active={activeSection === "domains"}
             icon={<DomainsIcon className="size-3.5" />}
-            label={t("vercel.hero.domainsMore", { count: moreDomains })}
+            label={t("provider.hero.domainsMore", { count: moreDomains })}
             onClick={() => onToggleSection("domains")}
           />
         ) : null}
-        <SummaryChip
-          active={activeSection === "env"}
-          icon={<EnvIcon className="size-3.5" />}
-          label={t(envCount === 1 ? "vercel.summary.envCountOne" : "vercel.summary.envCountMany", {
-            count: envCount,
-          })}
-          onClick={() => onToggleSection("env")}
-        />
+        {showEnv ? (
+          <SummaryChip
+            active={activeSection === "env"}
+            icon={<EnvIcon className="size-3.5" />}
+            label={t(
+              envCount === 1 ? "provider.summary.envCountOne" : "provider.summary.envCountMany",
+              { count: envCount },
+            )}
+            onClick={() => onToggleSection("env")}
+          />
+        ) : null}
         <SummaryChip
           active={activeSection === "settings"}
           icon={<SettingsIcon className="size-3.5" />}
           label={
             buildLabel
-              ? t("vercel.summary.build", { value: buildLabel })
-              : t("vercel.summary.buildDefault")
+              ? t("provider.summary.build", { value: buildLabel })
+              : t("provider.summary.buildDefault")
           }
           onClick={() => onToggleSection("settings")}
         />

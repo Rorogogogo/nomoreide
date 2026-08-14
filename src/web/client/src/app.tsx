@@ -47,7 +47,7 @@ import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
-import { VercelView } from "@/features/vercel/vercel-view";
+import { DeployView } from "@/features/deploy/deploy-view";
 import { ProjectOverviewTable } from "@/features/overview/project-overview-table";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
@@ -93,7 +93,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   docker: "/docker",
   git: "/git",
   github: "/github",
-  vercel: "/vercel",
+  deploy: "/deploy",
   workflows: "/workflows",
   errors: "/errors",
   database: "/database",
@@ -112,7 +112,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
-  vercel: "nav.vercel",
+  deploy: "nav.deploy",
   workflows: "nav.workflows",
   errors: "nav.errors",
   database: "nav.database",
@@ -520,9 +520,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
    * clicking a card selects that project and drops the scope, which lands the
    * user back on the same page, now pointed at what they picked.
    */
-  const repoScopedPage = page === "git" || page === "github" || page === "vercel";
+  const repoScopedPage = page === "git" || page === "github" || page === "deploy";
+  /**
+   * Page id → overview domain. Not a cast: the deploy page is no longer named
+   * after a provider, but `project-overview.ts` still keys its column set on
+   * `vercel` (tax #4 in the provider-registry plan — making that generic means
+   * deciding which provider each project uses, a UX question). Casting `page`
+   * here would silently ask the server for `/api/overview/deploy`.
+   */
   const overviewDomain: OverviewDomain | null =
-    repoScopedPage && scopeAll ? (page as OverviewDomain) : null;
+    repoScopedPage && scopeAll ? (page === "deploy" ? "vercel" : page) : null;
   const effectiveProject =
     repoScopedPage && !scopeAll ? data?.git.selectedRepository ?? null : activeProject;
 
@@ -823,7 +830,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
-            {!overviewDomain && page === "vercel" ? <VercelView key={repoScopeKey} /> : null}
+            {!overviewDomain && page === "deploy" ? <DeployView key={repoScopeKey} /> : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView

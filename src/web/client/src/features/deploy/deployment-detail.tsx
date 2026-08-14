@@ -4,11 +4,7 @@ import {
   type ProviderDeploymentDetail,
   type ProviderLogLine,
 } from "@/lib/api";
-import {
-  getVercelDeployment,
-  getVercelDeploymentLogs,
-  runVercelDeploymentAction,
-} from "./provider-client";
+import { useProviderApi } from "./provider-client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,7 +19,7 @@ import {
   PromoteIcon,
   RefreshIcon,
   RollbackIcon,
-} from "./vercel-icons";
+} from "./provider-icons";
 import { DeploymentStateBadge } from "./deployment-state-badge";
 
 /**
@@ -52,6 +48,7 @@ export function DeploymentDetail({
   onChanged: () => void;
 }) {
   const t = useT();
+  const api = useProviderApi();
   const toasts = useToasts();
   const [detail, setDetail] = useState<ProviderDeploymentDetail | null>(null);
   const [logs, setLogs] = useState<ProviderLogLine[]>([]);
@@ -72,8 +69,8 @@ export function DeploymentDetail({
       if (showSpinner) setLoading(true);
       try {
         const [nextDetail, nextLogs] = await Promise.all([
-          getVercelDeployment(uid),
-          getVercelDeploymentLogs(uid).catch(() => [] as ProviderLogLine[]),
+          api.getDeployment(uid),
+          api.getDeploymentLogs(uid).catch(() => [] as ProviderLogLine[]),
         ]);
         if (!active) return;
         setDetail(nextDetail);
@@ -98,7 +95,7 @@ export function DeploymentDetail({
     if (!live) return;
     let active = true;
     const timer = setInterval(() => {
-      void Promise.all([getVercelDeployment(uid), getVercelDeploymentLogs(uid)])
+      void Promise.all([api.getDeployment(uid), api.getDeploymentLogs(uid)])
         .then(([nextDetail, nextLogs]) => {
           if (!active) return;
           setDetail(nextDetail);
@@ -117,11 +114,11 @@ export function DeploymentDetail({
   async function run(action: DeploymentAction) {
     setPending(action);
     try {
-      const res = await runVercelDeploymentAction(uid, action);
+      const res = await api.runDeploymentAction(uid, action);
       toasts.success(
         action === "redeploy" && res.deployment?.id
-          ? t("vercel.action.redeployStarted")
-          : t(`vercel.action.${action}Done`),
+          ? t("provider.action.redeployStarted")
+          : t(`provider.action.${action}Done`),
       );
       onChanged();
     } catch (caught) {
@@ -147,7 +144,7 @@ export function DeploymentDetail({
           {isProduction ? (
             <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
               <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-              {t("vercel.target.production")}
+              {t("provider.target.production")}
             </span>
           ) : null}
           <span className="ml-auto flex flex-wrap gap-1.5">
@@ -159,7 +156,7 @@ export function DeploymentDetail({
                 variant="outline"
               >
                 <ExternalIcon />
-                {t("vercel.visit")}
+                {t("provider.visit")}
               </Button>
             ) : null}
             {canCancel ? (
@@ -171,7 +168,7 @@ export function DeploymentDetail({
                 variant="outline"
               >
                 <CancelIcon />
-                {t("vercel.action.cancel")}
+                {t("provider.action.cancel")}
               </Button>
             ) : (
               <Button
@@ -182,7 +179,7 @@ export function DeploymentDetail({
                 variant="outline"
               >
                 <RefreshIcon />
-                {t("vercel.action.redeploy")}
+                {t("provider.action.redeploy")}
               </Button>
             )}
             {current.state === "ready" && !current.isCurrentProduction ? (
@@ -194,7 +191,7 @@ export function DeploymentDetail({
                 variant="default"
               >
                 <PromoteIcon />
-                {t("vercel.action.promote")}
+                {t("provider.action.promote")}
               </Button>
             ) : null}
             {current.state === "ready" && isProduction && !current.isCurrentProduction ? (
@@ -206,7 +203,7 @@ export function DeploymentDetail({
                 variant="outline"
               >
                 <RollbackIcon />
-                {t("vercel.action.rollback")}
+                {t("provider.action.rollback")}
               </Button>
             ) : null}
           </span>
@@ -234,18 +231,18 @@ export function DeploymentDetail({
 
       {confirming ? (
         <ConfirmDialog
-          confirmLabel={t(`vercel.action.${confirming}`)}
+          confirmLabel={t(`provider.action.${confirming}`)}
           icon={confirming === "promote" ? <PromoteIcon /> : <RollbackIcon />}
           loading={pending === confirming}
           message={t(
-            confirming === "promote" ? "vercel.confirm.promote" : "vercel.confirm.rollback",
+            confirming === "promote" ? "provider.confirm.promote" : "provider.confirm.rollback",
           )}
           onCancel={() => setConfirming(null)}
           onConfirm={() => void run(confirming)}
           title={t(
             confirming === "promote"
-              ? "vercel.confirm.promoteTitle"
-              : "vercel.confirm.rollbackTitle",
+              ? "provider.confirm.promoteTitle"
+              : "provider.confirm.rollbackTitle",
           )}
           tone={confirming === "promote" ? "success" : "danger"}
         />

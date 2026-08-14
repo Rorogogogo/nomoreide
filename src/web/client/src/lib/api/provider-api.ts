@@ -34,6 +34,8 @@ export interface ProviderManifest {
   kind: "deploy";
   /** What this provider calls a scope — "Team" for Vercel, "Account" for Cloudflare. */
   scopeLabel: string;
+  /** Which connect paths the setup screen may offer. Cloudflare has no `oauth`. */
+  authSources: ("cli" | "stored" | "oauth")[];
   capabilities: DeployCapability[];
   actions: string[];
   /** The subset of `actions` the UI confirms before running. */
