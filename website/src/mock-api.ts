@@ -1798,6 +1798,55 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, providers: [vercelManifest] });
   }
 
+  // --- Extensions -------------------------------------------------------
+  //
+  // The Extensions page reads this on mount, so it needs a handler: the
+  // fallback would hand the view `undefined` and the map over it would
+  // white-screen the embedded app. Cloudflare and Vultr appear here even though
+  // the demo ships no data for them — the point of the page is the inventory,
+  // and a one-row inventory does not show what it is for.
+
+  if (path === "/api/extensions") {
+    return json({
+      ok: true,
+      extensions: [
+        {
+          id: "vercel",
+          name: "Vercel",
+          kind: "deploy",
+          source: "built-in",
+          capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
+          actions: ["redeploy", "cancel", "promote", "rollback"],
+          productionAffecting: ["promote", "rollback"],
+          hosts: ["api.vercel.com"],
+          page: "deploy",
+        },
+        {
+          id: "cloudflare",
+          name: "Cloudflare",
+          kind: "deploy",
+          source: "built-in",
+          capabilities: ["projects", "deployments", "buildLogs", "env", "domains"],
+          actions: ["redeploy", "rollback"],
+          productionAffecting: ["rollback"],
+          hosts: ["api.cloudflare.com"],
+          page: "deploy",
+        },
+        {
+          id: "vultr",
+          name: "Vultr",
+          kind: "host",
+          source: "built-in",
+          capabilities: [],
+          actions: ["start", "halt", "reboot"],
+          productionAffecting: ["halt", "reboot"],
+          hosts: ["api.vultr.com"],
+          page: "servers",
+        },
+      ],
+    });
+  }
+
   const provider = path.match(/^\/api\/providers\/([^/]+)(\/.*)$/);
   if (provider) {
     const rest = provider[2];

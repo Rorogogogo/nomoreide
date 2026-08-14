@@ -10,6 +10,7 @@ import { databaseRoutes } from "./database-routes.js";
 import { contextLibraryRoutes } from "./context-library-routes.js";
 import { dockerRoutes } from "./docker-routes.js";
 import { errorRoutes } from "./errors-routes.js";
+import { extensionsRoutes } from "./extensions-routes.js";
 import { gitRoutes } from "./git-routes.js";
 import { githubRoutes } from "./github-routes.js";
 import { hostRoutes } from "./host-routes.js";
@@ -49,6 +50,7 @@ export const routes: Route[] = [
   ...contextLibraryRoutes,
   ...dockerRoutes,
   ...errorRoutes,
+  ...extensionsRoutes,
   ...githubRoutes,
   ...gitRoutes,
   ...logSourceRoutes,

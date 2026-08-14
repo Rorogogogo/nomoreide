@@ -48,6 +48,7 @@ import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
 import { DeployView } from "@/features/deploy/deploy-view";
+import { ExtensionsView } from "@/features/extensions/extensions-view";
 import { ProjectOverviewTable } from "@/features/overview/project-overview-table";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
@@ -101,6 +102,7 @@ export const PAGE_PATHS: Record<Page, string> = {
   agent: "/agent",
   "agent-env": "/agent-env",
   context: "/context",
+  extensions: "/extensions",
   settings: "/settings",
 };
 
@@ -120,6 +122,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   agent: "pageTitle.agent",
   "agent-env": "pageTitle.agentEnv",
   context: "pageTitle.context",
+  extensions: "pageTitle.extensions",
   settings: "nav.settings",
 };
 
@@ -831,6 +834,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             ) : null}
             {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
             {!overviewDomain && page === "deploy" ? <DeployView key={repoScopeKey} /> : null}
+            {page === "extensions" ? <ExtensionsView /> : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView

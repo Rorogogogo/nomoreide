@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   Activity,
+  Blocks,
   Bot,
   Container,
   Brain,
@@ -29,6 +30,7 @@ export type AppPage =
   | "agent"
   | "agent-env"
   | "context"
+  | "extensions"
   | "errors"
   | "database"
   | "terminal"
@@ -76,6 +78,16 @@ export const APP_NAV_SECTIONS: Array<{
       { page: "agent", labelKey: "nav.agentConsole", icon: <Bot /> },
       { page: "context", labelKey: "nav.context", icon: <Brain /> },
       { page: "agent-env", labelKey: "nav.agentEnv", icon: <Puzzle /> },
+    ],
+  },
+  // Its own section rather than a row under another, because it groups by
+  // provenance where every other section groups by kind — and that difference
+  // is the point: extensions are *managed* here, while their features stay
+  // under the kind they belong to (Deploy, Servers). See §12 of the plan.
+  {
+    labelKey: "nav.section.extensions",
+    items: [
+      { page: "extensions", labelKey: "nav.extensionsInstalled", icon: <Blocks /> },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 # Provider registry — design
 
-**Status:** steps 1–7 of §8 decided. Both contracts have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Step 7 is **decided in §11: `apiVersion: 1` is not frozen and providers stay in-tree** — the three-implementation bar measured contract churn, which is genuinely settled, but a freeze is a promise about a manifest schema, a loader and a sandbox, none of which exist yet. §11 holds the gate for re-opening it; the next unit of work is the generic view (tax #1).
+**Status:** steps 1–7 of §8 decided. Both contracts have implementations: `DeployProvider` has Vercel and Cloudflare (§8.5), `HostProvider` has Vultr (§8.6). Step 7 is **decided in §11: `apiVersion: 1` is not frozen and providers stay in-tree** — the three-implementation bar measured contract churn, which is genuinely settled, but a freeze is a promise about a manifest schema, a loader and a sandbox, and only the sandbox now exists. Of §11's four gate items, **1 (the generic view) and 3 (the egress sandbox) have landed**; 2 (manifest strings) and 4 (live-token passes) are open. §12 holds the plugin/marketplace direction the work now serves, and its stage 2 — Extensions as a manager — has landed.
 **Goal:** make provider #2 (Cloudflare) and #3 (Vultr) cost ~a third of what provider #1 (Vercel) cost, and leave a seam that can later become a downloadable-plugin contract.
 
 ## The problem, measured
@@ -406,3 +406,53 @@ Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is 
 - **What is still outside the boundary**, and would need to move before anything third-party loads: `node:fs` (a provider's hooks read a link file), and the OAuth leg, which resolves its endpoints from the auth spec rather than through `api.hosts`.
 
 Provider #4 (DigitalOcean — one line plus a directory) is deliberately *not* on that list. It would add a fourth implementation while touching none of the four gates, which is the precise sense in which "three implementations" was the wrong bar to freeze on.
+
+---
+
+## 12. Plugins and a marketplace
+
+**The proposal.** Don't think "deploy" — think **plugins**. Someone downloads a plugin from a marketplace and it appears in the app. Not only deploy plugins; anything integrable. Manage them from a left-hand **Extensions** section with second-layer nav.
+
+The direction is right and most of it is closer than it looks. What follows is where it is cheap, where it is expensive, and the one place the current architecture says no.
+
+### The distribution half already exists
+
+`src/core/agent-profiles/registry-client.ts` is a working client for the hosted registry at `api.nomoreide.com`: `listPublicProfiles` / `createProfile` / `createProfileVersion` / `uploadPackage` / `publishProfileVersion` / `getInstallDescriptor` / `registerGithubProfile`. It already carries the pieces a plugin store needs and nothing profile-specific in its shape — `slug`, `version`, `manifest_json`, a download URL and a `checksum_sha256`.
+
+So **plugins are a second artifact type in the existing store, not a second store.** That is the single largest saving available here, and it is why "build a marketplace" is not the work item people assume.
+
+### Nav groups by kind, not by install source
+
+The instinct to file everything under "Extensions" should be resisted, and this branch is the evidence.
+
+- Cloudflare cost **one line** in `registry.ts` plus its own directory — because it was an instance of a kind the host already renders. It correctly appears under **Deploy**, in the same component tree as Vercel, reached by the in-view switcher.
+- Vultr cost roughly six edits — because it introduced a *kind* (`HostProvider`). And Vultr correctly gets **no tab at all**: `toSshTarget` merges its instances into the SSH server list the user already has, with the existing probe, metrics and terminal working against them.
+
+Vultr is the important case. Filing it under "Extensions" because of how it arrived would have thrown away the entire payoff of §7 — the user does not want a Vultr page, they want their machines in their machine list. **A user looks for a thing by what it is. How it got installed is provenance, not taxonomy.**
+
+So Extensions is where plugins are **managed**, not where their features live. Installing a deploy plugin adds an entry to the Deploy switcher; installing a host plugin adds rows to Servers. Extensions answers "what do I have, what may it do, and how do I remove it."
+
+Renaming the Deploy nav label is one i18n key (`nav.deploy`) if it is wanted; the argument here is only about grouping.
+
+### The blocker: novel UI
+
+"Download a plugin → it appears in the navbar with its own UI" is runtime-loading third-party React, which §10 rules out with the reasoning still standing: the dashboard is a Vite-built SPA served from `dist/`, so external React needs either an install-time rebuild (Backstage) or a module loader with externalized React and a versioned UI SDK (Grafana). Both are large, and the second permanently couples the plugin API to React's internals.
+
+Today's plugins ship **no UI at all** — they are declarative data plus a server adapter, which is exactly why one component tree renders both Vercel and Cloudflare.
+
+**The scaling law, stated plainly: a marketplace works for as long as plugins are instances of kinds the host already renders. It breaks the moment one wants novel UI.** Every stage below is an application of that sentence.
+
+### Order
+
+1. **Sandbox.** ✅ Landed (`providers/egress.ts`, §11 gate item 3). The only thing standing between downloaded code and a daemon holding GitHub tokens, `db-write` access and process-spawn. `node:fs` and the OAuth leg still sit outside it.
+2. **Extensions as a manager.** Installed list → what each plugin is, what it may do, what it may reach, how to remove it. **Needs zero third-party React**, which is what makes it the right second step: it is the whole UI surface of stages 3 and 4 as well, built while the only inputs are trusted in-tree providers.
+3. **Open the marketplace to declarative plugins of existing kinds.** Requires the manifest to become *data* (it is still code — four function-valued fields on `RegisteredDeployProvider`), a loader, and the `apiVersion` freeze §11 declined. This is where a third party first ships something.
+4. **Novel-UI plugins.** Much later, much bigger, and only when a concrete plugin cannot be expressed declaratively — the same trigger §10 already sets.
+
+### Stage 2 in detail — what it is and is not
+
+`GET /api/extensions` flattens both registries into one neutral row per installed plugin: id, name, kind, source (`built-in` today), plus what the manifest declares — capabilities and actions for a deploy plugin, actions for a host plugin, and **the egress hosts** for both.
+
+That last field is the point of doing this now rather than after stage 3. `api.hosts` currently has exactly one consumer, `createProviderFetch`, which enforces it invisibly. Putting it on screen makes it a **disclosure**: "this plugin may reach `api.cloudflare.com`" is the sentence a user needs before installing anything, and building the surface while every answer is verifiable in-tree is how it gets to be trustworthy by the time an answer isn't. This is the same argument §11 made for landing the generic view before freezing: a declared field with no reader is a promise no one is keeping.
+
+**Not in stage 2:** no install, no remove, no browse. Every installed plugin is built-in and none can be uninstalled, so those controls would be decoration. The page states that plainly rather than showing disabled buttons.

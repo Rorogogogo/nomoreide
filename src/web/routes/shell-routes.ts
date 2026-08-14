@@ -21,6 +21,7 @@ export const shellPaths = new Set([
   "/agent",
   "/agent-env",
   "/context",
+  "/extensions",
   "/errors",
   "/database",
   "/terminal",
