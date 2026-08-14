@@ -22,6 +22,8 @@
  * separate object resolved separately and never exposed as an MCP tool.
  */
 
+import type { ProviderApiSpec } from "./egress.js";
+
 /** Signed-in account. ← `VercelViewer` */
 export interface ProviderAccount {
   id: string;
@@ -313,4 +315,12 @@ export interface DeployProviderManifest {
   actions: string[];
   /** The subset of `actions` that changes what production serves; the UI confirms these first. */
   productionAffecting: string[];
+  /**
+   * The egress allowlist — every host this provider may reach.
+   *
+   * Enforced, not documented: the provider's registry entry mints its client
+   * with `createProviderFetch(manifest)`, and a request to any other host throws
+   * before it is sent. See `providers/egress.ts`.
+   */
+  api: ProviderApiSpec;
 }

@@ -11,6 +11,7 @@ import {
 } from "./cloudflare-provider.js";
 import { resolveProviderCredential, type ProviderCredential } from "./providers/credentials.js";
 import type { ProviderProject } from "./providers/deploy-provider.js";
+import { createProviderFetch } from "./providers/egress.js";
 import {
   adoptSoleScope,
   resolveProviderProject,
@@ -43,6 +44,14 @@ import type { NoMoreIdeConfig } from "./types.js";
  * either: `account()` and `listScopes()` answer without one, which is what lets
  * the dashboard show the account switcher rather than a dead end.
  */
+/**
+ * The scoped `fetch` every Cloudflare client here is built with, minted once
+ * from the manifest's `api.hosts`. This is the only file that mints it, which
+ * is what makes the allowlist a boundary rather than a suggestion — a manager
+ * built anywhere else gets global `fetch` and is a test, not a client.
+ */
+const cloudflareFetch = createProviderFetch(CLOUDFLARE_MANIFEST);
+
 async function cloudflareContext(
   configStore: ConfigStore,
   gitCwd: string,
@@ -50,7 +59,7 @@ async function cloudflareContext(
   const config = await configStore.load();
   const credential = await resolveProviderCredential(CLOUDFLARE_AUTH, config, process.env);
   const accountId = credential.scopeId ?? (await adoptDefaultAccount(configStore, credential));
-  const manager = new CloudflareManager(credential.token, accountId);
+  const manager = new CloudflareManager(credential.token, accountId, undefined, cloudflareFetch);
   const project = await resolveProject(config, manager, gitCwd);
   return {
     // The project is resolved first and handed to the provider: Cloudflare has
@@ -77,10 +86,12 @@ function adoptDefaultAccount(
     source: credential.source,
     cliSelectsScope: false,
     listScopes: () =>
-      new CloudflareManager(credential.token).listAccounts().then((accounts) =>
-        // Cloudflare accounts have no slug; the id addresses one.
-        accounts.map((account) => ({ id: account.id, slug: account.id })),
-      ),
+      new CloudflareManager(credential.token, undefined, undefined, cloudflareFetch)
+        .listAccounts()
+        .then((accounts) =>
+          // Cloudflare accounts have no slug; the id addresses one.
+          accounts.map((account) => ({ id: account.id, slug: account.id })),
+        ),
     persist: (scope) =>
       configStore.setConnectionScope(CLOUDFLARE_PROVIDER_ID, scope).then(() => undefined),
   });
@@ -95,7 +106,7 @@ async function cloudflareActions(configStore: ConfigStore) {
     throw new Error("Choose a Cloudflare account before changing one of its projects.");
   }
   return createCloudflareDeployActions(
-    new CloudflareActions({ token: credential.token }, accountId),
+    new CloudflareActions({ token: credential.token, fetch: cloudflareFetch }, accountId),
   );
 }
 

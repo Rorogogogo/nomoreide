@@ -116,6 +116,7 @@ describe("host provider routes", () => {
         kind: "host",
         actions: ["start", "halt", "reboot"],
         productionAffecting: ["halt", "reboot"],
+        api: { hosts: ["api.vultr.com"] },
       },
     ]);
     // Two contracts, two registries: a host provider must never show up where

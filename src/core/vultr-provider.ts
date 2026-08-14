@@ -46,6 +46,10 @@ export const VULTR_MANIFEST: HostProviderManifest = {
   kind: "host",
   actions: [...VULTR_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],
+  // The API only. An adopted instance is reached over SSH by `ssh-servers.ts`,
+  // which is the host's own transport and never goes through this fetch — so no
+  // instance address belongs here.
+  api: { hosts: ["api.vultr.com"] },
 };
 
 /**

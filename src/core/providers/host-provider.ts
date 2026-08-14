@@ -1,5 +1,6 @@
 import type { SshServerDefinition } from "../types.js";
 import type { ProviderAccount } from "./deploy-provider.js";
+import type { ProviderApiSpec } from "./egress.js";
 
 /**
  * The contract an infrastructure host implements — Vultr today, DigitalOcean
@@ -150,4 +151,10 @@ export interface HostProviderManifest {
   actions: string[];
   /** The subset of `actions` that interrupts a running machine; the UI confirms these first. */
   productionAffecting: string[];
+  /**
+   * The egress allowlist — every host this provider may reach. Identical in
+   * meaning and enforcement to a deploy provider's, and one of the few fields
+   * the two contracts share, because the daemon it runs inside is the same one.
+   */
+  api: ProviderApiSpec;
 }

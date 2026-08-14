@@ -273,7 +273,9 @@ The Vercel implementation *shrinks* in the process, because 553 lines of routes 
 
 ### `api.hosts` is the security boundary
 
-A provider necessarily receives credentials, and it runs inside the daemon — the same process holding GitHub tokens, `db-write.ts` access, and process-spawn ability. So `createProvider(ctx)` must receive a **host-supplied `ctx.fetch`** scoped to `api.hosts` and its own `connections[id]` entry, never raw `node:fs` / global `fetch`. In the in-tree phase this is a convention; it is what would be *enforced* before anything third-party is ever loaded.
+A provider necessarily receives credentials, and it runs inside the daemon — the same process holding GitHub tokens, `db-write.ts` access, and process-spawn ability. So `createProvider(ctx)` must receive a **host-supplied `ctx.fetch`** scoped to `api.hosts` and its own `connections[id]` entry, never raw `node:fs` / global `fetch`.
+
+*The `fetch` half landed as `providers/egress.ts` — gate item 3 of §11, where the details are. The `node:fs` and credential halves are still convention.*
 
 ---
 
@@ -380,7 +382,7 @@ So the interfaces would survive being frozen. That is not what freezing costs.
 
 2. **Half the manifest is write-only.** All three providers declare `capabilities`, `productionAffecting` and `scopeLabel`; **nothing reads any of them.** The only manifest field with a consumer is `actions`, validated at the two action routes. `capabilities` was §6's central claim — "what lets one generic React view render every provider" — but the view is still `features/vercel/`, Vercel-bound (tax #1), so a provider declaring `capabilities: ["env"]` buys exactly nothing. Freezing v1 tells an external author their declarations are honoured, while three of six fields are inert. That is the shortest path to needing a v2.
 
-3. **The security boundary exists only in prose.** §6 calls `api.hosts` "the security boundary" and requires a host-supplied `ctx.fetch`. Neither appears in `src/`; all three managers call global `fetch` directly. In-tree that is fine — the code is reviewed and the egress is auditable. For downloadable code it is the *entire* barrier between a third party and a daemon holding GitHub tokens, `db-write.ts` access and process-spawn ability. This gate is independent of contract stability, and it is the one that actually blocks third-party loading.
+3. **The security boundary exists only in prose.** §6 calls `api.hosts` "the security boundary" and requires a host-supplied `ctx.fetch`. Neither appears in `src/`; all three managers call global `fetch` directly. In-tree that is fine — the code is reviewed and the egress is auditable. For downloadable code it is the *entire* barrier between a third party and a daemon holding GitHub tokens, `db-write.ts` access and process-spawn ability. This gate is independent of contract stability, and it is the one that actually blocks third-party loading. *(Since resolved for `fetch` — see the gate below. `node:fs` is not.)*
 
 4. **§9's live-API risk is still open.** Cloudflare and Vultr have met stubbed `fetch` only. The behaviours a spec does not state — Cloudflare's PATCH-merge env semantics, whether a Vultr power action's 204 precedes the reported state change — are exactly the kind that force an adapter shape change, and a freeze would put that change on the far side of a compatibility promise.
 
@@ -388,9 +390,19 @@ So the interfaces would survive being frozen. That is not what freezing costs.
 
 Re-open the question when all four hold, in this order, because each is cheap only after the one before it:
 
-1. **The generic view lands** (tax #1), giving `capabilities` and `scopeLabel` a real consumer. This is the next unit of work and earns its keep independently: Cloudflare is reachable over HTTP and MCP today but has no dashboard tab.
+1. ~~**The generic view lands**~~ (tax #1), giving `capabilities` and `scopeLabel` a real consumer. **Landed.** `features/vercel/` became `features/deploy/`, one nav entry with an in-view provider switcher, and the manifest gained `authSources` — the gap §8.5 predicted, since Cloudflare serves no OIDC discovery and a sign-in button there could only fail.
 2. **Manifest strings move out of `en.ts`/`zh.ts`** (tax #2), with the locale-parity test §9 asks for — the change that makes the declarative half genuinely declarative.
-3. **`ctx.fetch` replaces global `fetch`** in all three managers, enforced by `api.hosts`, with a test that a provider cannot reach an unlisted host. Worth doing in-tree regardless, since it makes provider egress auditable.
+3. ~~**`ctx.fetch` replaces global `fetch`**~~ in all three managers, enforced by `api.hosts`. **Landed**, as `providers/egress.ts`. Notes below.
 4. **One live-token pass each** against Cloudflare and Vultr, retiring §9's last open risk.
+
+Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one.
+
+#### What landing item 3 settled
+
+- **The allowlist is checked against the final URL, not the base URL.** All three `xRequest` helpers accept an absolute path (`path.startsWith("http")`) and skip their base URL entirely. That escape exists for pagination cursors, and it is precisely what downloaded provider code would use. Checking the composed URL is what makes it not an escape.
+- **Redirects are followed by hand, one allowlist check per hop.** The default `redirect: "follow"` would let an open redirect on an allowlisted vendor host carry an `Authorization` header anywhere. This is the one place the boundary costs something at runtime; a live pass against Vercel confirms `redirect: "manual"` changes nothing for a JSON API that does not redirect.
+- **No wildcard hosts, and that is a decision, not an omission.** Every vendor here has a customer-controlled subdomain space (`*.vercel.app`, `*.pages.dev`), so a `*.vendor.com` form reads as a convenience while admitting hosts the vendor does not control.
+- **The scoped `fetch` is minted only in the three `*-context.ts` files.** A manager built anywhere else gets global `fetch` — which keeps every existing `vi.stubGlobal("fetch")` test working, and means "did this client come from the registry?" and "is it sandboxed?" are the same question.
+- **What is still outside the boundary**, and would need to move before anything third-party loads: `node:fs` (a provider's hooks read a link file), and the OAuth leg, which resolves its endpoints from the auth spec rather than through `api.hosts`.
 
 Provider #4 (DigitalOcean — one line plus a directory) is deliberately *not* on that list. It would add a fourth implementation while touching none of the four gates, which is the precise sense in which "three implementations" was the wrong bar to freeze on.

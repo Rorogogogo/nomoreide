@@ -16,6 +16,8 @@
  *    here takes the project name.
  */
 
+import type { ProviderFetch } from "./providers/egress.js";
+
 /** Cloudflare wraps every response; `result` is the payload. */
 interface CloudflareEnvelope<T> {
   success?: boolean;
@@ -150,6 +152,8 @@ export class CloudflareManager {
     private readonly token: string,
     private readonly accountId?: string,
     private readonly baseUrl = "https://api.cloudflare.com/client/v4",
+    /** The provider's scoped `fetch`; global `fetch` when built outside the registry. */
+    private readonly fetchImpl?: ProviderFetch,
   ) {}
 
   /**
@@ -343,13 +347,23 @@ export class CloudflareManager {
   }
 
   private request<T>(path: string, opts?: { method?: string; body?: unknown }): Promise<T> {
-    return cloudflareRequest<T>({ token: this.token, baseUrl: this.baseUrl }, path, opts);
+    return cloudflareRequest<T>(
+      { token: this.token, baseUrl: this.baseUrl, fetch: this.fetchImpl },
+      path,
+      opts,
+    );
   }
 }
 
 export interface CloudflareRequestAuth {
   token: string;
   baseUrl?: string;
+  /**
+   * The provider's scoped `fetch` (see `providers/egress.ts`). Absent means
+   * global `fetch` — the case for a manager built directly in a test. Production
+   * clients come from `cloudflare-context.ts`, which always supplies one.
+   */
+  fetch?: ProviderFetch;
 }
 
 /**
@@ -376,7 +390,7 @@ export async function cloudflareRequest<T>(
     init.body = JSON.stringify(opts.body);
   }
 
-  const response = await fetch(url, init);
+  const response = await (auth.fetch ?? fetch)(url, init);
   const body = (await response.json().catch(() => ({}))) as CloudflareEnvelope<T>;
   // Cloudflare can answer 200 with `success: false`, so the envelope decides,
   // not the status line.

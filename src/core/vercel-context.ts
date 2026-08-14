@@ -20,6 +20,7 @@ import {
 } from "./vercel-provider.js";
 import { VercelManager, type VercelProject } from "./vercel-manager.js";
 import type { ProviderProject } from "./providers/deploy-provider.js";
+import { createProviderFetch } from "./providers/egress.js";
 import type { NoMoreIdeConfig } from "./types.js";
 
 /**
@@ -29,6 +30,14 @@ import type { NoMoreIdeConfig } from "./types.js";
  * The registry imports this; this must not import the registry, or the two
  * would cycle.
  */
+
+/**
+ * The scoped `fetch` every Vercel client here is built with, minted once from
+ * the manifest's `api.hosts`. This is the only file that mints it, which is
+ * what makes the allowlist a boundary rather than a suggestion — a manager
+ * built anywhere else gets global `fetch` and is a test, not a client.
+ */
+const vercelFetch = createProviderFetch(VERCEL_MANIFEST);
 
 /** Persists a rotated token pair, which every credential resolution may produce. */
 function persistTokens(configStore: ConfigStore) {
@@ -59,7 +68,10 @@ async function vercelContext(
   const identity = credential.source === "oauth" ? ("oidc" as const) : ("user" as const);
   const teamId =
     credential.scopeId ?? (await adoptDefaultTeam(configStore, credential, identity));
-  const manager = new VercelManager(credential.token, teamId, undefined, { identity });
+  const manager = new VercelManager(credential.token, teamId, undefined, {
+    identity,
+    fetch: vercelFetch,
+  });
   return {
     provider: createVercelDeployProvider(manager),
     credential: { ...credential, scopeId: teamId },
@@ -76,7 +88,10 @@ function adoptDefaultTeam(
   return adoptSoleScope({
     source: credential.source,
     listScopes: () =>
-      new VercelManager(credential.token, undefined, undefined, { identity }).listTeams(),
+      new VercelManager(credential.token, undefined, undefined, {
+        identity,
+        fetch: vercelFetch,
+      }).listTeams(),
     persist: (scope) =>
       configStore.setConnectionScope(VERCEL_PROVIDER_ID, scope).then(() => undefined),
   });
@@ -87,7 +102,11 @@ async function vercelActions(configStore: ConfigStore) {
   const config = await configStore.load();
   const credential = await resolveVercelCredential(config, process.env, persistTokens(configStore));
   return createVercelDeployActions(
-    new VercelActions({ token: credential.token, teamId: credential.scopeId }),
+    new VercelActions({
+      token: credential.token,
+      teamId: credential.scopeId,
+      fetch: vercelFetch,
+    }),
   );
 }
 

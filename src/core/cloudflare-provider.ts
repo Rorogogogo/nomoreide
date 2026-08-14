@@ -65,6 +65,10 @@ export const CLOUDFLARE_MANIFEST: DeployProviderManifest = {
   capabilities: ["projects", "deployments", "buildLogs", "env", "domains"],
   actions: [...CLOUDFLARE_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],
+  // `dash.cloudflare.com` is deliberately absent: the manager builds dashboard
+  // and deployment URLs as strings for the UI to link to, and never fetches
+  // them. An allowlist covers what is requested, not what is displayed.
+  api: { hosts: ["api.cloudflare.com"] },
 };
 
 /**

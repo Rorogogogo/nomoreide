@@ -47,6 +47,10 @@ export const VERCEL_MANIFEST: DeployProviderManifest = {
   capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
   actions: [...VERCEL_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],
+  // One host: the REST API and the OIDC userinfo endpoint a browser sign-in
+  // uses are both on it. Notably *not* `vercel.com` — that is where the
+  // dashboard links point, and a link is not a request.
+  api: { hosts: ["api.vercel.com"] },
 };
 
 export const VERCEL_HOOKS: DeployProviderHooks = {

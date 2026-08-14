@@ -1,5 +1,6 @@
 import type { ConfigStore } from "./config-store.js";
 import { resolveProviderCredential } from "./providers/credentials.js";
+import { createProviderFetch } from "./providers/egress.js";
 import type { HostContext, RegisteredHostProvider } from "./providers/registry.js";
 import { VultrActions } from "./vultr-actions.js";
 import { VULTR_AUTH } from "./vultr-auth.js";
@@ -32,11 +33,19 @@ import {
  * the smallest a provider has been so far.
  */
 
+/**
+ * The scoped `fetch` every Vultr client here is built with, minted once from
+ * the manifest's `api.hosts`. This is the only file that mints it, which is
+ * what makes the allowlist a boundary rather than a suggestion — a manager
+ * built anywhere else gets global `fetch` and is a test, not a client.
+ */
+const vultrFetch = createProviderFetch(VULTR_MANIFEST);
+
 async function vultrContext(configStore: ConfigStore): Promise<HostContext> {
   const config = await configStore.load();
   const credential = await resolveProviderCredential(VULTR_AUTH, config, process.env);
   return {
-    provider: createVultrHostProvider(new VultrManager(credential.token)),
+    provider: createVultrHostProvider(new VultrManager(credential.token, undefined, vultrFetch)),
     credential,
   };
 }
@@ -45,7 +54,9 @@ async function vultrContext(configStore: ConfigStore): Promise<HostContext> {
 async function vultrActions(configStore: ConfigStore) {
   const config = await configStore.load();
   const credential = await resolveProviderCredential(VULTR_AUTH, config, process.env);
-  return createVultrHostActions(new VultrActions({ token: credential.token }));
+  return createVultrHostActions(
+    new VultrActions({ token: credential.token, fetch: vultrFetch }),
+  );
 }
 
 export const vultrHostProvider: RegisteredHostProvider = {

@@ -12,6 +12,8 @@
  * docs describe.
  */
 
+import type { ProviderFetch } from "./providers/egress.js";
+
 /** Vultr's `status` — the account-level lifecycle of the machine. */
 export type VultrInstanceStatus = "active" | "pending" | "suspended" | "resizing";
 
@@ -72,6 +74,8 @@ export class VultrManager {
   constructor(
     private readonly token: string,
     private readonly baseUrl = "https://api.vultr.com/v2",
+    /** The provider's scoped `fetch`; global `fetch` when built outside the registry. */
+    private readonly fetchImpl?: ProviderFetch,
   ) {}
 
   /**
@@ -123,13 +127,23 @@ export class VultrManager {
   }
 
   private request<T>(path: string, opts?: { method?: string; body?: unknown }): Promise<T> {
-    return vultrRequest<T>({ token: this.token, baseUrl: this.baseUrl }, path, opts);
+    return vultrRequest<T>(
+      { token: this.token, baseUrl: this.baseUrl, fetch: this.fetchImpl },
+      path,
+      opts,
+    );
   }
 }
 
 export interface VultrRequestAuth {
   token: string;
   baseUrl?: string;
+  /**
+   * The provider's scoped `fetch` (see `providers/egress.ts`). Absent means
+   * global `fetch` — the case for a manager built directly in a test. Production
+   * clients come from `vultr-context.ts`, which always supplies one.
+   */
+  fetch?: ProviderFetch;
 }
 
 /**
@@ -154,7 +168,7 @@ export async function vultrRequest<T>(
     init.body = JSON.stringify(opts.body);
   }
 
-  const response = await fetch(url, init);
+  const response = await (auth.fetch ?? fetch)(url, init);
   // Power actions answer 204 with no body, so the body is only read when there
   // is one to read.
   const text = await response.text().catch(() => "");
