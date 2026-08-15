@@ -584,7 +584,11 @@ A second, smaller wrinkle: permissions are per-resource. The Pages token used fo
 
 ### Ordering
 
-After the current branch ships. This is a new kind plus a credential migration plus §12's second-layer nav, and the branch it would land on is already 19 commits and gated on a live pass. Nothing here changes the `DeployProvider` contract, so none of it is blocked by the `apiVersion` freeze §11 declined.
+**Confirmed by the owner, 2026-08-15:** land the current branch, settle the credential-keying question above, *then* build the kind. The sequencing is agreed; **which of the two credential options wins is not** — that is still open, and it is the thing to answer first.
+
+After the current branch ships. This is a new kind plus a credential migration plus §12's second-layer nav, and the branch it would land on is already 22 commits and gated on a live pass. Nothing here changes the `DeployProvider` contract, so none of it is blocked by the `apiVersion` freeze §11 declined.
+
+The temptation this ordering exists to refuse: reaching zones or buckets sooner by widening `DeployProvider` instead. That would undo §2's neutralization — the property that let the contract absorb three providers with its signatures unchanged — in exchange for a shortcut to two resources that do not fit it.
 
 ### The narrower point, worth recording separately
 
