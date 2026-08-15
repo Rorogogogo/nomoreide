@@ -250,6 +250,21 @@ describe("CloudflareManager reads", () => {
     expect(calls.map((call) => call.url.pathname)).toContain("/client/v4/user/tokens/verify");
   });
 
+  test("identity prefers the email over Cloudflare's opaque `username`", async () => {
+    // Shape observed from a live /user: `username` is a 32-char hex id, not a
+    // display name, so preferring it put a hex blob in the account menu.
+    stubFetch(() => ({
+      id: "ded4db6ed0e8ed03723054ce4b76ce26",
+      email: "person@example.com",
+      username: "1a327cd4f19abadb65e30645819ca118",
+    }));
+
+    expect(await manager().viewer()).toMatchObject({
+      email: "person@example.com",
+      username: "person@example.com",
+    });
+  });
+
   test("env vars flatten across environments, and a secret's value never reads back", async () => {
     stubFetch(() => ({
       id: "uuid",

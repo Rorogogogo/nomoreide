@@ -167,7 +167,10 @@ export class CloudflareManager {
   async viewer(): Promise<CloudflareUser> {
     try {
       const user = await this.request<CloudflareUser & { email?: string }>("/user");
-      return { id: user.id, email: user.email ?? null, username: user.username ?? user.email };
+      // Cloudflare's `username` is an opaque 32-char hex id, not a display
+      // name, so the email is the only human-readable identity `/user` carries.
+      // Preferring `username` here put a hex blob in the account menu.
+      return { id: user.id, email: user.email ?? null, username: user.email ?? user.username };
     } catch (error) {
       if (!(error instanceof CloudflareApiError) || error.status >= 500) throw error;
       return this.tokenViewer(error);
@@ -338,10 +341,18 @@ export class CloudflareManager {
    * The account every Pages path needs. Throwing here rather than sending a
    * request with `undefined` in the URL is what turns "no account chosen" into
    * a sentence the scope switcher answers.
+   *
+   * The message names the empty-picker case too: `/accounts` answers `success`
+   * with an empty list for a token carrying no Account Resources, so "choose an
+   * account" on its own sends the reader looking for a choice that isn't there.
    */
   private account(): string {
     if (!this.accountId) {
-      throw new Error("Choose a Cloudflare account before reading its Pages projects.");
+      throw new Error(
+        "Choose a Cloudflare account before reading its Pages projects. " +
+          "If the account list is empty, this API token has no account access — " +
+          "recreate it with Account Resources including your account.",
+      );
     }
     return this.accountId;
   }
