@@ -324,6 +324,19 @@ export interface DeployProviderManifest {
    */
   authSources: ("cli" | "stored" | "oauth")[];
   capabilities: DeployCapability[];
+  /**
+   * Whether a scope must be chosen before anything can be read at all.
+   *
+   * Cloudflare addresses every Pages URL as `/accounts/<id>/…`, so without an
+   * account id there is no request to make; Vercel's personal scope is a real
+   * resting state, so "no scope" is normal there. The switcher needs the
+   * difference because a scope list can come back empty for a perfectly good
+   * token — enumerating Cloudflare accounts needs `Account Settings: Read`,
+   * which a Pages token has no reason to carry — and the two providers want
+   * opposite things in that case: Vercel, nothing; Cloudflare, a way to enter
+   * the id by hand rather than a dead end.
+   */
+  requiresScope?: boolean;
   /** Action names accepted by {@link DeployProviderActions.run}. */
   actions: string[];
   /** The subset of `actions` that changes what production serves; the UI confirms these first. */

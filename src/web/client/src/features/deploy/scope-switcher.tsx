@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useProviderApi, useScopeLabel } from "./provider-client";
 import { TeamIcon } from "./provider-icons";
-import { useT } from "@/lib/i18n";
+import { useLanguage, useT } from "@/lib/i18n";
 import { useProviderStatus } from "./hooks/use-provider-status";
 
 /**
@@ -25,27 +25,45 @@ import { useProviderStatus } from "./hooks/use-provider-status";
 export function ScopeSwitcher() {
   const t = useT();
   const api = useProviderApi();
+  const [language] = useLanguage();
   const scopeLabel = useScopeLabel();
   const { info, refresh } = useProviderStatus();
   const [busy, setBusy] = useState(false);
   const scopes = info?.scopes ?? [];
 
-  // Nothing to switch between: one team is already the adopted default, and
-  // zero means this account has no team scope to choose.
-  if (scopes.length < 2) return null;
-
   async function choose(scopeId: string) {
     setBusy(true);
     try {
       const scope = scopes.find((entry) => entry.id === scopeId);
+      // An id that is not in the list is a typed one, not the personal scope —
+      // only the select's empty option means "clear it".
       await api.setScope(
-        scope ? { scopeId: scope.id, scopeSlug: scope.slug } : { scopeId: undefined },
+        scope ? { scopeId: scope.id, scopeSlug: scope.slug } : { scopeId: scopeId || undefined },
       );
       refresh();
     } finally {
       setBusy(false);
     }
   }
+
+  // A provider that cannot read anything unscoped, with nothing to offer:
+  // the id has to be typed in, or the dashboard is a dead end. Reached with a
+  // Cloudflare token that can use an account but not enumerate accounts.
+  if (scopes.length < 2 && info?.provider?.requiresScope) {
+    // `useScopeLabel` reads the manifest from `/api/providers`, which this row
+    // must not depend on: the status response that carries `requiresScope`
+    // carries `scope.label` too, so taking the word from anywhere else means a
+    // slower (or failed) second request renders a generic "Scope" instead of
+    // the provider's own noun.
+    const strings = info.provider.strings;
+    const label =
+      scopeLabel ?? strings?.[language]?.["scope.label"] ?? strings?.en?.["scope.label"];
+    return <ScopeEntry busy={busy} label={label} onSubmit={choose} value={info.scopeId} />;
+  }
+
+  // Nothing to switch between: one team is already the adopted default, and
+  // zero means this account has no team scope to choose.
+  if (scopes.length < 2) return null;
 
   return (
     <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -65,5 +83,64 @@ export function ScopeSwitcher() {
         ))}
       </select>
     </label>
+  );
+}
+
+/**
+ * The scope typed in by hand, for a provider that needs one and cannot list
+ * any. A form in the same header slot as the switcher rather than a dialog:
+ * it answers the same question, so it should cost no more than typing and
+ * Enter.
+ *
+ * The label is the provider's own word — `scope.label` from its manifest — so
+ * Cloudflare reads "Cloudflare account ID" and no provider name is hard-coded
+ * here. Both strings take `{name}`, which must be passed: an unsupplied
+ * parameter renders the brace literally (see `test/i18n-interpolation.test.ts`).
+ */
+function ScopeEntry({
+  busy,
+  label,
+  onSubmit,
+  value,
+}: {
+  busy: boolean;
+  label?: string | null;
+  onSubmit: (scopeId: string) => Promise<void>;
+  value?: string;
+}) {
+  const t = useT();
+  const [draft, setDraft] = useState(value ?? "");
+  const name = label ?? t("provider.scope.label");
+  const dirty = draft.trim() !== "" && draft.trim() !== (value ?? "");
+
+  return (
+    <form
+      className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (dirty) void onSubmit(draft.trim());
+      }}
+    >
+      <TeamIcon aria-hidden className="size-3.5" />
+      <input
+        aria-label={t("provider.scope.id", { name })}
+        className="w-[13rem] rounded border border-border bg-transparent px-1.5 py-0.5 font-mono text-[11px] outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+        disabled={busy}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder={t("provider.scope.id", { name })}
+        spellCheck={false}
+        title={t("provider.scope.idHint", { name })}
+        value={draft}
+      />
+      {dirty ? (
+        <button
+          className="rounded border border-border px-1.5 py-0.5 text-[11px] hover:bg-accent disabled:opacity-60"
+          disabled={busy}
+          type="submit"
+        >
+          {t("provider.scope.set")}
+        </button>
+      ) : null}
+    </form>
   );
 }

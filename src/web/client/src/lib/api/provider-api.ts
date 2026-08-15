@@ -60,6 +60,13 @@ export interface ProviderManifest {
   /** Which connect paths the setup screen may offer. Cloudflare has no `oauth`. */
   authSources: ("cli" | "stored" | "oauth")[];
   capabilities: DeployCapability[];
+  /**
+   * Whether nothing can be read until a scope is chosen. True for Cloudflare,
+   * whose every Pages path is `/accounts/<id>/…`; false for Vercel, where the
+   * personal scope is a usable default. The switcher offers manual entry when
+   * this is set and the scope list came back empty.
+   */
+  requiresScope?: boolean;
   actions: string[];
   /** The subset of `actions` the UI confirms before running. */
   productionAffecting: string[];

@@ -2622,6 +2622,9 @@ export const en = {
   // manifest that omits it, and "Personal account" is the host's name for the
   // *absence* of a scope, which is the same idea everywhere.
   "provider.scope.label": "Scope",
+  "provider.scope.id": "{name} ID",
+  "provider.scope.set": "Set",
+  "provider.scope.idHint": "This token cannot list them — paste the ID from your {name} dashboard URL.",
   "provider.team.personal": "Personal account",
   "provider.link.action": "Link",
   "overview.empty": "No projects are registered yet.",

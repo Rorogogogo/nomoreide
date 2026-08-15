@@ -30,6 +30,28 @@ describe("deploy provider manifests", () => {
     expect(withOAuth).toEqual(["vercel"]);
   });
 
+  test("a provider that requires a scope names what it calls one", () => {
+    // The manual-entry row appears only for `requiresScope`, and labels itself
+    // from `scope.label` in the same response. Declaring one without the other
+    // renders a bare "Scope" box with no clue what to paste into it.
+    for (const { manifest } of deployProviders) {
+      if (!manifest.requiresScope) continue;
+      for (const [locale, strings] of Object.entries(manifest.strings)) {
+        expect(strings["scope.label"], `${manifest.id} has no ${locale} scope.label`).toBeTruthy();
+      }
+    }
+  });
+
+  test("only Cloudflare cannot be read without a scope", () => {
+    // Vercel's personal scope is a usable resting state; every Cloudflare Pages
+    // path is `/accounts/<id>/…`, so it has nothing to read until one is set.
+    const scoped = deployProviders
+      .filter((provider) => provider.manifest.requiresScope)
+      .map((provider) => provider.manifest.id);
+
+    expect(scoped).toEqual(["cloudflare"]);
+  });
+
   test("every declared action is distinct and productionAffecting is a subset", () => {
     for (const { manifest } of deployProviders) {
       expect(new Set(manifest.actions).size, `${manifest.id} repeats an action`).toBe(

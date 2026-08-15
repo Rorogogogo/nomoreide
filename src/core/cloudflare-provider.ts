@@ -86,6 +86,10 @@ export const CLOUDFLARE_MANIFEST: DeployProviderManifest = {
   // No `runtimeLogs`: Pages serves runtime output over a websocket tail, not a
   // REST read, so the tab is hidden rather than shown and made to error.
   capabilities: ["projects", "deployments", "buildLogs", "env", "domains"],
+  // Every Pages path is `/accounts/<id>/…`, and `/accounts` returns an empty
+  // list rather than an error for a token without `Account Settings: Read` —
+  // so a working Pages token can land here with nothing to pick from.
+  requiresScope: true,
   actions: [...CLOUDFLARE_ACTIONS],
   productionAffecting: [...PRODUCTION_AFFECTING_ACTIONS],
   // `dash.cloudflare.com` is deliberately absent: the manager builds dashboard
