@@ -10,7 +10,9 @@ import { prefixRoute, type Route } from "./context.js";
  * on direct load or refresh. `test/shell-paths.test.ts` asserts the parity.
  */
 export const shellPaths = new Set([
+  // "/" is Home; Services has its own path since the Home page took the root.
   "/",
+  "/services",
   "/activity",
   "/servers",
   "/docker",

@@ -7,6 +7,7 @@ import {
   Brain,
   Database,
   GitBranch,
+  House,
   Inbox,
   Network,
   Puzzle,
@@ -18,6 +19,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import { GitHubLogo } from "@/features/github/github-logo";
 
 export type AppPage =
+  | "home"
   | "services"
   | "activity"
   | "servers"
@@ -56,6 +58,13 @@ export const APP_NAV_SECTIONS: Array<{
   {
     labelKey: "nav.section.run",
     items: [
+      /*
+        Home leads the first section rather than standing outside the sections.
+        A one-item section of its own would render a "HOME ─────" rule above a
+        row named Home, and hoisting it out would mean a special case in the
+        nav's render loop — which is the thing that loop exists not to have.
+      */
+      { page: "home", labelKey: "nav.home", icon: <House /> },
       { page: "services", labelKey: "nav.services", icon: <Server /> },
       { page: "activity", labelKey: "nav.activity", icon: <Activity /> },
       { page: "servers", labelKey: "nav.servers", icon: <Network /> },
