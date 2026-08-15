@@ -27,6 +27,7 @@ export const activityWidget: WidgetDefinition = {
   icon: <Activity />,
   span: 6,
   scope: "global",
+  source: "dashboard",
   page: "activity",
   render: ({ data }) => <ActivitySummary data={data} />,
 };
@@ -53,16 +54,8 @@ function ActivitySummary({ data }: WidgetRenderProps) {
   return (
     <>
       <WidgetStats>
-        <WidgetStat
-          label={t("home.activity.errors")}
-          tone={errors > 0 ? "bad" : "idle"}
-          value={errors}
-        />
-        <WidgetStat
-          label={t("home.activity.warnings")}
-          tone={warnings > 0 ? "warn" : "idle"}
-          value={warnings}
-        />
+        <WidgetStat label={t("home.activity.errors")} tone="bad" value={errors} />
+        <WidgetStat label={t("home.activity.warnings")} tone="warn" value={warnings} />
         <WidgetStat label={t("home.activity.events")} value={events.length} />
       </WidgetStats>
       <WidgetRows>

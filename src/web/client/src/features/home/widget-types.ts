@@ -47,6 +47,19 @@ export interface WidgetDefinition {
    */
   scope: "global" | "repo";
   /**
+   * Where the widget's data comes from.
+   *
+   * `dashboard` widgets read the payload the shell already polls and cost
+   * nothing. `fetch` widgets own their request — the feature that declares the
+   * widget also owns the hook that loads it, which is why Home needs no
+   * fetching machinery and stays feature-agnostic.
+   *
+   * It is declared rather than inferred because stage 2 lets a user add
+   * widgets, and "this one costs a request" is the fact a picker has to be
+   * able to show before they add ten of them.
+   */
+  source: "dashboard" | "fetch";
+  /**
    * The page this widget summarises. The whole card opens it — a widget is a
    * summary, and the page is the real thing.
    */

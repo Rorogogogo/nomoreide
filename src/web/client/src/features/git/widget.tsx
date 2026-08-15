@@ -30,6 +30,7 @@ export const repositoryWidget: WidgetDefinition = {
   icon: <GitBranch />,
   span: 6,
   scope: "repo",
+  source: "dashboard",
   page: "git",
   render: ({ data }) => <RepositorySummary data={data} />,
 };
@@ -52,29 +53,19 @@ function RepositorySummary({ data }: WidgetRenderProps) {
       <WidgetStats>
         <WidgetStat
           label={t("home.repository.changedLabel")}
-          tone={status.files.length > 0 ? "warn" : "ok"}
+          tone="warn"
           value={status.files.length}
         />
-        <WidgetStat label={t("home.repository.staged")} value={staged} />
-        <WidgetStat
-          label={t("home.repository.ahead")}
-          tone={status.ahead > 0 ? "warn" : "idle"}
-          value={status.ahead}
-        />
-        <WidgetStat
-          label={t("home.repository.behind")}
-          tone={status.behind > 0 ? "warn" : "idle"}
-          value={status.behind}
-        />
+        <WidgetStat label={t("home.repository.staged")} tone="ok" value={staged} />
+        <WidgetStat label={t("home.repository.ahead")} tone="warn" value={status.ahead} />
+        <WidgetStat label={t("home.repository.behind")} tone="warn" value={status.behind} />
       </WidgetStats>
       <WidgetRow
         meta={selectedRepository?.name}
         name={status.branch}
         trailing={status.upstream ?? t("home.repository.noUpstream")}
       />
-      {status.files.length === 0 ? (
-        <WidgetNote>{t("home.repository.clean")}</WidgetNote>
-      ) : (
+      {status.files.length === 0 ? null : (
         <WidgetRows>
           {status.files.slice(0, FILE_CAP).map((file) => (
             <WidgetRow

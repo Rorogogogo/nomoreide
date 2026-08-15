@@ -1,4 +1,5 @@
 import { activityWidget } from "@/features/activity/widget";
+import { agentWidget } from "@/features/agent/widget";
 import { repositoryWidget } from "@/features/git/widget";
 import { outputWidget } from "@/features/services/output-widget";
 import { healthWidget, portsWidget, servicesWidget } from "@/features/services/widgets";
@@ -13,13 +14,16 @@ import type { WidgetDefinition } from "./widget-types";
  * line to this list. If this file ever grows a conditional, the contract in
  * `widget-types.ts` is missing a field.
  *
- * Order is the default layout for stage 1: three figures across the top, then
- * the two things you read rather than count, then output full width.
+ * Order is the default layout, and every row packs to exactly 12: the three
+ * service counters across the top, then Agent beside the repository — an
+ * AI-native workbench that reports only processes and ports is describing half
+ * of itself — then the two things you read rather than count.
  */
 export const WIDGETS: WidgetDefinition[] = [
   servicesWidget,
   healthWidget,
   portsWidget,
+  agentWidget,
   repositoryWidget,
   activityWidget,
   outputWidget,

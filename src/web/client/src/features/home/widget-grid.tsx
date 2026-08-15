@@ -43,6 +43,22 @@ const TEXT_TONE: Record<WidgetTone, string> = {
   idle: "text-foreground",
 };
 
+/**
+ * The same hues, faded, for a counter sitting at zero.
+ *
+ * Tone is a property of *what the counter means*, never of its current value —
+ * the "failing" slot stays red whether it reads 2 or 0. That is what lets the
+ * labels come off: colour and position carry the meaning instead of a word
+ * under every number. Fading the zeros keeps a quiet page quiet, so the one
+ * number that isn't zero is the one you see.
+ */
+const DIM_TONE: Record<WidgetTone, string> = {
+  ok: "text-emerald-500/35",
+  warn: "text-amber-500/35",
+  bad: "text-red-500/35",
+  idle: "text-muted-foreground/50",
+};
+
 const DOT_TONE: Record<WidgetTone, string> = {
   ok: "bg-emerald-500",
   warn: "bg-amber-500",
@@ -123,28 +139,57 @@ export function WidgetPanel({
  * read against its neighbours, so three 13px figures beat one large one.
  */
 export function WidgetStats({ children }: { children: ReactNode }) {
-  return <span className="flex flex-wrap divide-x divide-border">{children}</span>;
+  return (
+    <span className="flex flex-wrap items-center divide-x divide-border">{children}</span>
+  );
 }
 
+/** What a counter shows before it has an answer — never a zero. */
+const PENDING = "—";
+
+/**
+ * A counter. `label` is still required and still translated — it just isn't
+ * *drawn*: it becomes the accessible name and the hover title.
+ *
+ * Six widgets with three labelled counters each put eighteen uppercase words on
+ * a page whose whole job is to be glanced at, and the words were the same every
+ * refresh while the numbers were the part that changed. Dropping them costs a
+ * first-run guess and buys a page you can read without reading.
+ *
+ * `pending` exists because a widget that fetches its own data has a state the
+ * dashboard-backed ones don't: not asked yet. Rendering `0` there is not a
+ * placeholder, it is a wrong answer stated in the same typeface as a right one —
+ * "0 MCP servers connected" is alarming and, while the request is in flight,
+ * untrue. A dash says nothing, which is what the widget knows.
+ */
 export function WidgetStat({
   label,
+  pending = false,
   tone = "idle",
   value,
 }: {
   label: string;
+  pending?: boolean;
   tone?: WidgetTone;
   value: ReactNode;
 }) {
+  const dim = pending || value === 0;
   return (
-    <span className="flex flex-col gap-1 px-3 first:pl-0">
-      <span
-        className={cn("text-[13px] font-semibold leading-none tabular-nums", TEXT_TONE[tone])}
-      >
-        {value}
-      </span>
-      <span className="text-[10px] uppercase leading-none tracking-wide text-muted-foreground">
-        {label}
-      </span>
+    <span
+      className={cn(
+        "px-2.5 text-[13px] font-semibold leading-none tabular-nums first:pl-0",
+        dim ? DIM_TONE[tone] : TEXT_TONE[tone],
+      )}
+      title={label}
+    >
+      {pending ? PENDING : value}
+      {/*
+        The label survives for anyone not reading by colour: `sr-only` keeps it
+        out of the layout while a screen reader still hears "3, running".
+        `aria-label` on a bare span would be dropped — a span carries no role to
+        hang it on.
+      */}
+      <span className="sr-only"> {label}</span>
     </span>
   );
 }
@@ -177,8 +222,16 @@ export function WidgetRow({
       {tone ? <WidgetDot tone={tone} /> : null}
       <span className="max-w-[50%] shrink-0 truncate font-mono text-foreground">{name}</span>
       {meta ? <span className="min-w-0 flex-1 truncate text-muted-foreground">{meta}</span> : null}
+      {/*
+        Truncatable, not `shrink-0`. A trailing cell is usually a timestamp and
+        was pinned at its natural width for that reason — until the repository
+        row put a full upstream ref in it and
+        `origin/xwangrobert/ror-105-rebuild-homes-widgets-…` ran straight off
+        the panel and out of the viewport. This is the exact blow-out
+        `DESIGN.md` warns about for long branch names.
+      */}
       {trailing ? (
-        <span className="ml-auto shrink-0 pl-1 text-[10px] tabular-nums text-muted-foreground/70">
+        <span className="ml-auto min-w-0 max-w-[50%] truncate pl-1 text-[10px] tabular-nums text-muted-foreground/70">
           {trailing}
         </span>
       ) : null}

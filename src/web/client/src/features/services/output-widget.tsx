@@ -27,8 +27,9 @@ export const outputWidget: WidgetDefinition = {
   id: "output",
   titleKey: "home.widget.output",
   icon: <Terminal />,
-  span: 12,
+  span: 6,
   scope: "global",
+  source: "dashboard",
   page: "services",
   render: ({ data }) => <OutputSummary data={data} />,
 };
@@ -37,9 +38,8 @@ function OutputSummary({ data }: WidgetRenderProps) {
   const t = useT();
   const lines = data.logs.slice(-LINE_CAP);
 
-  if (lines.length === 0) {
-    return <WidgetNote>{t("home.output.none")}</WidgetNote>;
-  }
+  // A dash rather than a sentence: the panel title already says what is absent.
+  if (lines.length === 0) return <WidgetNote>—</WidgetNote>;
 
   const errors = data.logs.filter((line) => line.stream === "stderr").length;
 
@@ -48,11 +48,7 @@ function OutputSummary({ data }: WidgetRenderProps) {
       <WidgetStats>
         <WidgetStat label={t("home.output.source")} value={lines[0].service} />
         <WidgetStat label={t("home.output.lines")} value={data.logs.length} />
-        <WidgetStat
-          label={t("home.output.stderr")}
-          tone={errors > 0 ? "bad" : "idle"}
-          value={errors}
-        />
+        <WidgetStat label={t("home.output.stderr")} tone="bad" value={errors} />
       </WidgetStats>
       <span className="flex flex-col gap-0.5 overflow-hidden font-mono text-[10px] leading-relaxed">
         {lines.map((line) => (

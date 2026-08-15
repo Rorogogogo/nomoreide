@@ -141,6 +141,50 @@ The generalisation, for stage 2: **a widget's job is to name, not to count.** A
 picker that lets a user add more panels is only worth building if each panel
 already earns its space, and a panel that shows a single figure does not.
 
+### 7.3 The third pass: too much text, and the first widget that fetches
+
+Two more corrections, both from looking at the built page rather than the plan.
+
+- **The labels came off.** Six widgets with three or four labelled counters each
+  put eighteen uppercase words on a page whose entire job is to be glanced at,
+  and those words were identical on every refresh while the numbers were the
+  part that changed. `WidgetStat` now draws the figure alone; the label survives
+  as `title=` and an `sr-only` span. That only works because **tone is a
+  property of the slot, never of the value** — the "failing" counter is red at 0
+  as well as at 3, and zeros are dimmed so the one number that isn't zero is the
+  one you see. A `tone={x > 0 ? "bad" : "idle"}` anywhere on this page would
+  make an all-clear strip colourless and take the meaning with it.
+- **Home had nothing to say about the agent half of the product.** A dashboard
+  for an AI-native workbench that reports only processes, ports and files is
+  describing the old half of itself. The Agent widget reports MCP connectivity
+  and recent tool calls, and it lists only the servers that are *not* simply
+  working — the count above already says the rest are fine, and four arbitrary
+  healthy names plus "+10 more" is the exact filler this pass was removing.
+
+**What the first fetch-backed widget cost, which stage 2 needs to know.** Agent
+owns its own request (the `source` discriminant on the contract), and getting it
+wrong froze the whole page:
+
+- **A fetching widget has a state the others don't: not asked yet.** Rendering
+  `0` there is not a placeholder, it is a wrong answer in the same typeface as a
+  right one — "0 MCP servers connected" is alarming *and* untrue while the
+  request is in flight. `WidgetStat` grew `pending`, which draws a dash.
+- **Poll interval is a load-bearing number, not a default.** `mcp-status` is not
+  a read: it shells out to `claude mcp list`, which cold-starts every configured
+  server to health-check it — about six seconds here — and `core/mcp-auth.ts`
+  caches for only 15s, so *any* interval slower than that pays the full cost
+  every time. At the 20s this widget was written with, Home held an open
+  connection to the daemon about a third of the time it was on screen. Chrome
+  allows **six per host**, the dashboard already spends several on its event
+  streams, and once that pool is exhausted every request from the page hangs
+  indefinitely — the page stops updating and the widget sits on zeros forever.
+  It is now 5 minutes, and the agent name (a 87KB `/api/agent` response read for
+  one field) is resolved once per mount instead of once per poll.
+- **The general rule for stage 2:** the picker cannot let a user add fetch-backed
+  widgets without a budget. Six sockets is the whole allowance for the origin,
+  and the streams the shell already holds are most of it. A widget that polls
+  something expensive is not just slow — it takes the page down with it.
+
 **Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
 
 **Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.

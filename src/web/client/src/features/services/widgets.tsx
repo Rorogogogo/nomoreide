@@ -36,6 +36,7 @@ export const servicesWidget: WidgetDefinition = {
   icon: <Server />,
   span: 4,
   scope: "global",
+  source: "dashboard",
   page: "services",
   render: ({ data }) => <ServicesSummary data={data} />,
 };
@@ -69,21 +70,11 @@ function ServicesSummary({ data }: WidgetRenderProps) {
   return (
     <>
       <WidgetStats>
-        <WidgetStat
-          label={t("home.services.running")}
-          tone={live.length > 0 ? "ok" : "idle"}
-          value={live.length}
-        />
-        <WidgetStat
-          label={t("home.services.exitedLabel")}
-          tone={exited.length > 0 ? "bad" : "idle"}
-          value={exited.length}
-        />
+        <WidgetStat label={t("home.services.running")} tone="ok" value={live.length} />
+        <WidgetStat label={t("home.services.exitedLabel")} tone="bad" value={exited.length} />
         <WidgetStat label={t("home.services.stopped")} value={stopped} />
       </WidgetStats>
-      {rows.length === 0 ? (
-        <WidgetNote>{t("home.services.allStopped")}</WidgetNote>
-      ) : (
+      {rows.length === 0 ? null : (
         <WidgetRows>
           {rows.slice(0, ROW_CAP).map((service) => (
             <WidgetRow
@@ -125,6 +116,7 @@ export const healthWidget: WidgetDefinition = {
   icon: <HeartPulse />,
   span: 4,
   scope: "global",
+  source: "dashboard",
   page: "services",
   render: ({ data }) => <HealthSummary data={data} />,
 };
@@ -157,16 +149,8 @@ function HealthSummary({ data }: WidgetRenderProps) {
   return (
     <>
       <WidgetStats>
-        <WidgetStat
-          label={t("home.health.failing")}
-          tone={failing.length > 0 ? "bad" : "idle"}
-          value={failing.length}
-        />
-        <WidgetStat
-          label={t("home.health.healthy")}
-          tone={healthy.length > 0 ? "ok" : "idle"}
-          value={healthy.length}
-        />
+        <WidgetStat label={t("home.health.failing")} tone="bad" value={failing.length} />
+        <WidgetStat label={t("home.health.healthy")} tone="ok" value={healthy.length} />
         <WidgetStat label={t("home.health.unknown")} value={unknown.length} />
       </WidgetStats>
       {/*
@@ -175,9 +159,7 @@ function HealthSummary({ data }: WidgetRenderProps) {
         which reads as broken rather than as "nothing known yet" — and "19
         unprobed" is itself the useful fact in that state.
       */}
-      {rows.length === 0 ? (
-        <WidgetNote>{t("home.health.none")}</WidgetNote>
-      ) : (
+      {rows.length === 0 ? null : (
         <WidgetRows>
           {rows.slice(0, ROW_CAP).map((entry) => (
             <WidgetRow
@@ -218,6 +200,7 @@ export const portsWidget: WidgetDefinition = {
   icon: <Globe />,
   span: 4,
   scope: "global",
+  source: "dashboard",
   page: "services",
   render: ({ data }) => <PortsSummary data={data} />,
 };
@@ -230,30 +213,16 @@ function PortsSummary({ data }: WidgetRenderProps) {
   const occupied = data.ports.filter((port) => port.state === "occupied");
   const managed = data.ports.filter((port) => port.state === "managed");
 
-  if (data.ports.length === 0) {
-    return <WidgetNote>{t("home.ports.none")}</WidgetNote>;
-  }
-
   const rows = [...occupied, ...managed];
 
   return (
     <>
       <WidgetStats>
-        <WidgetStat
-          label={t("home.ports.conflicts")}
-          tone={occupied.length > 0 ? "bad" : "idle"}
-          value={occupied.length}
-        />
-        <WidgetStat
-          label={t("home.ports.managed")}
-          tone={managed.length > 0 ? "ok" : "idle"}
-          value={managed.length}
-        />
+        <WidgetStat label={t("home.ports.conflicts")} tone="bad" value={occupied.length} />
+        <WidgetStat label={t("home.ports.managed")} tone="ok" value={managed.length} />
         <WidgetStat label={t("home.ports.watched")} value={data.ports.length} />
       </WidgetStats>
-      {rows.length === 0 ? (
-        <WidgetNote>{t("home.ports.clear")}</WidgetNote>
-      ) : (
+      {rows.length === 0 ? null : (
         <WidgetRows>
           {rows.slice(0, ROW_CAP).map((port) => (
             <WidgetRow
