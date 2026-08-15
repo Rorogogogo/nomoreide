@@ -166,7 +166,7 @@ export function ProviderSetup({
                 variant="outline"
               >
                 <CliIcon />
-                {t("provider.setup.useCli")}
+                {t("provider.setup.useCli", { name })}
               </Button>
             ) : null}
             <Button
@@ -190,7 +190,7 @@ export function ProviderSetup({
             <Input
               autoComplete="off"
               onChange={(event) => setToken(event.target.value)}
-              placeholder={t("provider.setup.tokenPlaceholder")}
+              placeholder={t("provider.setup.tokenPlaceholder", { name })}
               type="password"
               value={token}
             />
@@ -204,7 +204,7 @@ export function ProviderSetup({
                 type="button"
                 variant="ghost"
               >
-                {t("provider.setup.createToken")}
+                {t("provider.setup.createToken", { name })}
               </Button>
             ) : null}
             <Button onClick={() => setMode("choose")} size="sm" type="button" variant="ghost">
