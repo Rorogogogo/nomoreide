@@ -13,7 +13,7 @@ function readStoredTheme(): Theme {
     const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
     const stored = raw ? (JSON.parse(raw) as { theme?: unknown; version?: unknown }) : null;
     if (
-      (stored?.version === 1 || stored?.version === 2) &&
+      (stored?.version === 1 || stored?.version === 2 || stored?.version === 3) &&
       (stored.theme === "light" || stored.theme === "dark" || stored.theme === "system")
     ) return stored.theme;
   } catch {

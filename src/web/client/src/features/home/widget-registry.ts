@@ -17,14 +17,18 @@ import type { WidgetDefinition } from "./widget-types";
  * line to this list. If this file ever grows a conditional, the contract in
  * `widget-types.ts` is missing a field.
  *
- * Order is the default layout, and every row packs to exactly 12: the three
- * service counters across the top; then Agent beside the repository — an
- * AI-native workbench that reports only processes and ports is describing half
- * of itself; then the conversations you can pick back up, full width because
- * they are the only prose on the page and because a 6 here would leave the
- * page's first ragged row; then what you can undo and what you can overwrite,
- * which are the two questions worth answering *before* you start work rather
- * than after; then the two things you read rather than count.
+ * Order and width here are the **default** layout — the example a fresh install
+ * starts from, and what Reset returns to. Once someone customises Home, their
+ * saved list wins and this order is only consulted for widgets they add back
+ * (`home-layout.ts`).
+ *
+ * The default reads: the three service counters across the top; then Agent
+ * beside the repository — an AI-native workbench that reports only processes
+ * and ports is describing half of itself; then the conversations you can pick
+ * back up beside the restore points you can fall back to; then what you can
+ * overwrite and what has been happening; then the last thing a service said.
+ * The final row is half empty and that is fine — a layout anyone can edit will
+ * have ragged rows constantly, which is why each panel draws its own hairlines.
  */
 export const WIDGETS: WidgetDefinition[] = [
   servicesWidget,

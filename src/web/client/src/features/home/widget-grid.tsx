@@ -84,13 +84,51 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
 }
 
 /**
- * One widget's cell: an uppercase rule-style header, then whatever it knows.
+ * The cell itself — hairlines and padding, with the width the layout resolved.
+ *
+ * Exported because the edit surface (`home-edit.tsx`) draws the same cell as a
+ * `<div>`: a panel that carries per-widget controls cannot also *be* a button.
+ */
+export function panelClassName(span: WidgetSpan): string {
+  return cn(
+    "group/widget flex flex-col gap-2 border-b border-border px-3 py-2.5 text-left md:border-r",
+    SPAN_CLASS[span],
+  );
+}
+
+/** The uppercase rule-style header, with whatever the panel puts at its end. */
+export function WidgetPanelHeader({
+  icon,
+  title,
+  trailing,
+}: {
+  icon: ReactNode;
+  title: string;
+  trailing?: ReactNode;
+}) {
+  return (
+    <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <span aria-hidden className="[&_svg]:size-3">
+        {icon}
+      </span>
+      {title}
+      {trailing}
+    </span>
+  );
+}
+
+/**
+ * One widget's cell: header, then whatever the widget knows.
  *
  * The whole panel is a single `<button>`, which is why a widget may not contain
  * a control of its own — nested interactive elements inside a button are
  * invalid and unreachable by keyboard. That constraint is deliberate rather
  * than unfortunate: a widget with its own buttons has become a second,
  * drifting implementation of the page it summarises.
+ *
+ * It is also why edit mode renders `WidgetEditPanel` instead of this: the
+ * remove and resize controls have to live *outside* a button, so the element
+ * changes rather than growing children it cannot legally hold.
  */
 export function WidgetPanel({
   children,
@@ -111,23 +149,23 @@ export function WidgetPanel({
     <button
       aria-label={openLabel}
       className={cn(
-        "group/widget flex cursor-pointer flex-col gap-2 border-b border-border px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:border-r",
-        SPAN_CLASS[span],
+        panelClassName(span),
+        "cursor-pointer transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
       )}
       onClick={onOpen}
       title={openLabel}
       type="button"
     >
-      <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        <span aria-hidden className="[&_svg]:size-3">
-          {icon}
-        </span>
-        {title}
-        <ArrowUpRight
-          aria-hidden
-          className="ml-auto size-3 text-muted-foreground/40 transition-colors group-hover/widget:text-foreground"
-        />
-      </span>
+      <WidgetPanelHeader
+        icon={icon}
+        title={title}
+        trailing={
+          <ArrowUpRight
+            aria-hidden
+            className="ml-auto size-3 text-muted-foreground/40 transition-colors group-hover/widget:text-foreground"
+          />
+        }
+      />
       {children}
     </button>
   );

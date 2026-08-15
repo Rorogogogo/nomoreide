@@ -8,8 +8,25 @@ import {
 
 export const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
 
+/**
+ * How wide a widget asks to be, in columns of Home's 12-column grid.
+ *
+ * Mirrors `WidgetSpan` in `features/home/widget-types.ts` deliberately rather
+ * than importing it: this file is the storage schema and must be able to reject
+ * a stored `7` without pulling a React feature module into the preference
+ * loader that runs before the app mounts.
+ */
+const HOME_SPANS = [4, 6, 12] as const;
+
+export interface HomeLayout {
+  /** Widget ids, in the order they are drawn. Ids the registry no longer knows are dropped on read. */
+  widgets: string[];
+  /** Per-widget width override, keyed by widget id. A widget with no entry keeps the one it declares. */
+  spans: Record<string, number>;
+}
+
 export interface UiPreferences {
-  version: 2;
+  version: 3;
   theme: "light" | "dark" | "system";
   language: Language;
   density: "comfortable" | "compact";
@@ -32,6 +49,17 @@ export interface UiPreferences {
   accent: AccentChoice;
   /** Per-project accent overrides, keyed by repository path. */
   projectAccents: Record<string, AccentChoice>;
+  /**
+   * Home's layout — `null` until the user first customises it.
+   *
+   * `null` is not the same as an empty list, and the difference is the whole
+   * reason this is nullable. `null` means "I have never touched this", so Home
+   * follows the registry: a widget added in a later release simply appears. An
+   * empty array means "I removed everything", which is a choice to honour — the
+   * page then shows its empty state and the reset action rather than quietly
+   * putting the default back and looking broken.
+   */
+  home: HomeLayout | null;
 }
 
 function prefersReducedMotion(): boolean {
@@ -42,7 +70,7 @@ function prefersReducedMotion(): boolean {
 
 export function defaultUiPreferences(): UiPreferences {
   return {
-    version: 2,
+    version: 3,
     theme: "system",
     language: "en",
     density: "comfortable",
@@ -55,6 +83,7 @@ export function defaultUiPreferences(): UiPreferences {
     agentCompletionSound: false,
     accent: DEFAULT_ACCENT,
     projectAccents: {},
+    home: null,
   };
 }
 
@@ -66,6 +95,38 @@ function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
     if (path && isValidAccent(accent)) out[path] = accent;
   }
   return out;
+}
+
+/**
+ * Keep a stored Home layout only if it is well-formed; anything else reads as
+ * "never customised".
+ *
+ * Widget ids are checked for shape, not for existence — this file has no
+ * business knowing which widgets are registered, and `resolveHomeLayout` drops
+ * ids the registry no longer knows at render time (§8.5). Spans are checked
+ * against the closed set, because a stored `7` has no grid class and would
+ * silently render full-width.
+ */
+function sanitizeHomeLayout(value: unknown): HomeLayout | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as { widgets?: unknown; spans?: unknown };
+  if (!Array.isArray(input.widgets)) return null;
+
+  const seen = new Set<string>();
+  for (const id of input.widgets) {
+    // A duplicate id would mount the same widget twice under one React key.
+    if (typeof id === "string" && id && !seen.has(id)) seen.add(id);
+  }
+
+  const spans: Record<string, number> = {};
+  if (input.spans && typeof input.spans === "object" && !Array.isArray(input.spans)) {
+    for (const [id, span] of Object.entries(input.spans as Record<string, unknown>)) {
+      if (seen.has(id) && HOME_SPANS.includes(span as (typeof HOME_SPANS)[number])) {
+        spans[id] = span as number;
+      }
+    }
+  }
+  return { widgets: [...seen], spans };
 }
 
 function readLegacyPreferences(): Partial<UiPreferences> {
@@ -96,9 +157,10 @@ function safeGetItem(key: string): string | null {
 export function parseUiPreferences(value: unknown): UiPreferences | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  // Accept v1 (pre-accent) and v2; v1 is migrated by defaulting the new fields.
+  // Accept v1 (pre-accent), v2 (pre-Home-layout) and v3; older versions are
+  // migrated by defaulting the fields they predate.
   if (
-    (input.version !== 1 && input.version !== 2) ||
+    (input.version !== 1 && input.version !== 2 && input.version !== 3) ||
     !["light", "dark", "system"].includes(String(input.theme)) ||
     !["en", "zh"].includes(String(input.language)) ||
     !["comfortable", "compact"].includes(String(input.density)) ||
@@ -114,7 +176,7 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
   }
   return {
     ...(input as unknown as UiPreferences),
-    version: 2,
+    version: 3,
     agentDockPlacement:
       input.agentDockPlacement === "right" ? "right" : "bottom",
     agentCompletionSound: input.agentCompletionSound === true,
@@ -123,6 +185,7 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
     extensionsExpanded: input.extensionsExpanded !== false,
     accent: isValidAccent(input.accent) ? input.accent : DEFAULT_ACCENT,
     projectAccents: sanitizeProjectAccents(input.projectAccents),
+    home: sanitizeHomeLayout(input.home),
   };
 }
 

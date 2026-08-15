@@ -27,16 +27,18 @@ import { useHomeConversationSummary } from "./use-home-conversation-summary";
  * the right split anyway: a per-row resume button here would be a second,
  * drifting implementation of the rail that already does it properly.
  *
- * Full width because it is the one widget whose content is prose. Every other
- * panel holds counters and identifiers that fit in half a row; a conversation
- * title is a typed sentence, and the columns it does not need are the ones the
- * title uses.
+ * It shipped full-width, on the theory that prose wants the room, and that was
+ * wrong on a wide monitor: `core/agent-transcripts.ts` caps a title at 200
+ * characters, so past about 900px the row is title, a long gap, and a
+ * timestamp against the far edge. Half width fits the longest title there is.
+ * The width is only a default now — see `home-layout.ts` — but a default is
+ * what most people will keep.
  */
 export const conversationsWidget: WidgetDefinition = {
   id: "conversations",
   titleKey: "home.widget.conversations",
   icon: <MessagesSquare />,
-  span: 12,
+  span: 6,
   scope: "repo",
   source: "fetch",
   page: "agent",
@@ -47,7 +49,8 @@ export const conversationsWidget: WidgetDefinition = {
  * Five, not the four everything else shows.
  *
  * On the other panels the rows are a sample of a page you go to for the rest;
- * here the list *is* what was asked for, and a full-width band has the room.
+ * here the list *is* what was asked for, so it gets one more line than a
+ * sample would.
  */
 const ROW_CAP = 5;
 

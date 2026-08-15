@@ -262,9 +262,49 @@ has both, sourced and colour-correct, so the resume rows carry the real mark.
 That is what added `mark` to `WidgetRow` — a conversation is not healthy or
 failing, so the status dot had nothing to say about it.
 
-**Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
+**Stage 2 — add and remove. Built.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
 
-**Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.
+### 7.6 Stage 2, and the widths that triggered it
+
+Stage 1's kill criterion (§10) was "the honest reaction is *I still go straight
+to Services*". The actual reaction was the opposite and it arrived as a
+complaint about width: on a 3400px window the Conversations panel was mostly
+empty, because `core/agent-transcripts.ts` caps a title at 200 characters and no
+amount of column gets a 200-character sentence past about 900px. The fix for
+that one panel is a narrower default. The fix for the *class* of problem is that
+nobody's window is the window this was tuned on, which is stage 2.
+
+What it settled:
+
+- **The saved layout is nullable, and `null` is not `[]`.** `null` means "never
+  customised", so Home follows the registry and a widget shipped later simply
+  appears. `[]` means "I removed everything", which is a choice to honour rather
+  than silently overrule — the page shows its empty state and keeps the picker
+  and Reset in reach (§8.4). Reset writes `null`, not a copy of the default, so
+  a reset install starts tracking the registry again.
+- **The registry became a default rather than the layout.** It is still the only
+  place a widget is declared; `home-layout.ts` resolves a saved list against it
+  and drops ids it no longer knows, silently (§8.5).
+- **Arrows, not drag.** §6 already argued the persisted shape is a list, and a
+  list has exactly one move: one place earlier or later. Two chevrons are the
+  whole of it — no pointer capture, no drop targets, no separate keyboard path
+  bolted on afterwards for the same operation. Drag can come in stage 3 if
+  anyone misses it.
+- **Edit mode swaps the element, not the layout.** A panel is a `<button>`;
+  controls cannot nest inside one. So editing renders the same cell as a `<div>`
+  carrying the controls. The cost is that a `fetch` widget remounts once on each
+  toggle, which is the right thing to pay for a mode you are in for ten seconds.
+- **The controls are the column count, not S/M/L.** The grid is twelve columns
+  and the number is the entire fact; a size name would be a second vocabulary
+  for a thing that already had one.
+- **The strip at the foot of the page, not a toolbar at the head.** Home is
+  full-bleed by design and the rarest action on the page should not be the first
+  thing on it. The scope note was already down there.
+
+**Stage 3 — drag to reorder.** Only if the arrows prove to be the annoying half
+of stage 2. Resize landed here instead of in stage 3: the complaint that started
+this was a width, and shipping "you can remove it" as the answer to "it is the
+wrong shape" would have missed the point.
 
 **Not staged, deliberately:** widgets contributed by *downloaded* plugins. That is blocked by the same thing the Extensions market is blocked by — runtime-loading third-party React — and the widget registry should be shaped so it becomes possible, not built as though it already is.
 
@@ -277,6 +317,8 @@ I argued for ConfigStore before reading the store. The precedent is against me a
 Putting layout in ConfigStore would mean a Zod schema, a daemon round-trip on every toggle, and a preference that behaves unlike every other preference. The honest cost of `localStorage` is that layout doesn't follow you to another browser or into the Tauri app — which is already true of your theme, and nobody has asked for that to change.
 
 So: `version: 3`, add `home: { widgets: string[]; spans: Record<string, number> }`, and the existing migration hands v1/v2 installs the default layout.
+
+*As built:* `home` is `HomeLayout | null`, and v1/v2 installs migrate to `null` rather than to a stored copy of the default — see §7.6 for why the distinction is load-bearing. `lib/theme.ts` reads the same document before React mounts and had to learn `3` alongside `1` and `2`, or every customised install would have flashed the wrong theme on load.
 
 **8.2 `/` becomes Home; Services becomes `/services`.**
 
