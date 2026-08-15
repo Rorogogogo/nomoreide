@@ -20,6 +20,7 @@ export const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
  */
 const MIN_HOME_SPAN = 3;
 const MAX_HOME_SPAN = 12;
+const GRID_COLUMNS = MAX_HOME_SPAN;
 const MIN_HOME_HEIGHT = 2;
 const MAX_HOME_HEIGHT = 12;
 
@@ -28,9 +29,24 @@ function isInRange(value: unknown, min: number, max: number): boolean {
 }
 
 export interface HomeLayout {
-  /** Widget ids, in the order they are drawn. Ids the registry no longer knows are dropped on read. */
-  widgets: string[];
-  /** Per-widget width override, keyed by widget id. A widget with no entry keeps the one it declares. */
+  /**
+   * The rows of the page, each holding widget ids left to right.
+   *
+   * Rows are stored rather than derived, and that is the whole difference
+   * between v3 and v4. A flowing list wraps wherever the next widget stops
+   * fitting, which leaves the tail of a row empty whenever the leftover is
+   * narrower than the next widget wants — and a gap is not something anyone
+   * chooses. With rows named, a row's widths always add up to the grid, so
+   * there is nowhere for a gap to appear, and "put this one there" has a place
+   * to mean. Ids the registry no longer knows are dropped on read.
+   */
+  rows: string[][];
+  /**
+   * Per-widget width, in columns, keyed by widget id.
+   *
+   * Within a row these are shares that sum to the grid, kept that way by every
+   * edit and re-fitted on read if a stored layout disagrees.
+   */
   spans: Record<string, number>;
   /**
    * Per-widget height override, in row units of `HOME_ROW_PX`.
@@ -46,7 +62,7 @@ export interface HomeLayout {
 }
 
 export interface UiPreferences {
-  version: 3;
+  version: 4;
   theme: "light" | "dark" | "system";
   language: Language;
   density: "comfortable" | "compact";
@@ -90,7 +106,7 @@ function prefersReducedMotion(): boolean {
 
 export function defaultUiPreferences(): UiPreferences {
   return {
-    version: 3,
+    version: 4,
     theme: "system",
     language: "en",
     density: "comfortable",
@@ -129,33 +145,79 @@ function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
  */
 function sanitizeHomeLayout(value: unknown): HomeLayout | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const input = value as { widgets?: unknown; spans?: unknown; heights?: unknown };
-  if (!Array.isArray(input.widgets)) return null;
+  const input = value as { rows?: unknown; widgets?: unknown; spans?: unknown; heights?: unknown };
+  const spans = looseSizes(input.spans, MIN_HOME_SPAN, MAX_HOME_SPAN);
+  const stored = Array.isArray(input.rows)
+    ? input.rows
+    : // A v3 layout is one long list. Packing it into rows here rather than at
+      // render time is what makes the migration a one-off: the user's order and
+      // widths survive, and from the next edit on the rows are theirs.
+      Array.isArray(input.widgets)
+      ? packIntoRows(input.widgets, spans)
+      : null;
+  if (!stored) return null;
 
   const seen = new Set<string>();
-  for (const id of input.widgets) {
-    // A duplicate id would mount the same widget twice under one React key.
-    if (typeof id === "string" && id && !seen.has(id)) seen.add(id);
+  const rows: string[][] = [];
+  for (const row of stored) {
+    if (!Array.isArray(row)) continue;
+    const ids: string[] = [];
+    for (const id of row) {
+      // A duplicate id would mount the same widget twice under one React key.
+      if (typeof id === "string" && id && !seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+    if (ids.length) rows.push(ids);
   }
 
   return {
-    widgets: [...seen],
-    spans: sizeOverrides(input.spans, seen, MIN_HOME_SPAN, MAX_HOME_SPAN),
-    heights: sizeOverrides(input.heights, seen, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT),
+    rows,
+    spans: sizeOverrides(spans, seen),
+    heights: sizeOverrides(looseSizes(input.heights, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT), seen),
   };
 }
 
-/** A `id -> size` map with every entry that isn't a size of a shown widget dropped. */
-function sizeOverrides(
-  value: unknown,
-  shown: Set<string>,
-  min: number,
-  max: number,
-): Record<string, number> {
+/**
+ * Pack a v3 flat list into rows the way the old flow drew it.
+ *
+ * The greedy fill this repeats *is* what CSS grid was doing with the same
+ * widths, so the first render after the migration looks like the last one
+ * before it — minus the gap at the end of a short row, which `fitRow` closes on
+ * read and which is the reason rows exist now.
+ */
+function packIntoRows(widgets: unknown[], spans: Record<string, number>): string[][] {
+  const rows: string[][] = [];
+  let used = GRID_COLUMNS;
+  for (const id of widgets) {
+    if (typeof id !== "string" || !id) continue;
+    const want = spans[id] ?? MIN_HOME_SPAN;
+    if (used + want > GRID_COLUMNS) {
+      rows.push([]);
+      used = 0;
+    }
+    rows[rows.length - 1]?.push(id);
+    used += want;
+  }
+  return rows;
+}
+
+/** Every well-formed `id -> size` entry, before it is known which ids exist. */
+function looseSizes(value: unknown, min: number, max: number): Record<string, number> {
   const out: Record<string, number> = {};
   if (!value || typeof value !== "object" || Array.isArray(value)) return out;
   for (const [id, size] of Object.entries(value as Record<string, unknown>)) {
-    if (shown.has(id) && isInRange(size, min, max)) out[id] = size as number;
+    if (isInRange(size, min, max)) out[id] = size as number;
+  }
+  return out;
+}
+
+/** The same map with every entry for a widget the layout does not show dropped. */
+function sizeOverrides(sizes: Record<string, number>, shown: Set<string>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, size] of Object.entries(sizes)) {
+    if (shown.has(id)) out[id] = size;
   }
   return out;
 }
@@ -188,10 +250,11 @@ function safeGetItem(key: string): string | null {
 export function parseUiPreferences(value: unknown): UiPreferences | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  // Accept v1 (pre-accent), v2 (pre-Home-layout) and v3; older versions are
-  // migrated by defaulting the fields they predate.
+  // Accept v1 (pre-accent), v2 (pre-Home-layout), v3 (Home as a flat list)
+  // and v4; older versions are migrated by defaulting the fields they predate,
+  // and a v3 Home layout is packed into rows by `sanitizeHomeLayout`.
   if (
-    (input.version !== 1 && input.version !== 2 && input.version !== 3) ||
+    ![1, 2, 3, 4].includes(Number(input.version)) ||
     !["light", "dark", "system"].includes(String(input.theme)) ||
     !["en", "zh"].includes(String(input.language)) ||
     !["comfortable", "compact"].includes(String(input.density)) ||
@@ -207,7 +270,7 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
   }
   return {
     ...(input as unknown as UiPreferences),
-    version: 3,
+    version: 4,
     agentDockPlacement:
       input.agentDockPlacement === "right" ? "right" : "bottom",
     agentCompletionSound: input.agentCompletionSound === true,

@@ -143,7 +143,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "home.edit.moveEarlier": "将{name}前移",
   "home.edit.moveLater": "将{name}后移",
   "home.edit.size": "拖动{name}右下角调整大小，双击恢复为随内容自适应",
-  "home.edit.hint": "拖动面板右下角调整大小，下方可添加、移除与排序，改动即时保存。",
+  "home.edit.hint": "拖动面板可移动位置，拖动右下角可调整大小，下方可添加与移除，改动即时保存。",
   "nav.extensionsInstalled": "已安装",
   "nav.extensionsOverview": "总览",
   "pageTitle.extensions": "扩展",

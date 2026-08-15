@@ -93,13 +93,31 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
         against: one twelfth of *this* element is one column, whatever the
         window is doing. Reading it off the DOM keeps the measurement where the
         truth is and spares every panel a ref it would otherwise have to thread.
+        Every row is this wide, so one ruler serves the whole page.
       */}
-      <div
-        className="-mr-px grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12"
-        data-widget-grid=""
-      >
+      <div className="-mr-px" data-widget-grid="">
         {children}
       </div>
+    </div>
+  );
+}
+
+/**
+ * One row, and the reason there is no page-wide grid any more.
+ *
+ * A single grid flowed the panels and wrapped them wherever the next one
+ * stopped fitting, which is what put dead space at the end of a short row. A
+ * row is now its own 12-column grid holding widths that add up to 12, so the
+ * page cannot produce a gap it was not asked for — and a drop between two
+ * panels has an unambiguous place to be.
+ *
+ * Below `xl` the twelfths collapse: one panel per line, two side by side from
+ * `md`, which is all the width there is to divide down there.
+ */
+export function WidgetGridRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12" data-widget-row="">
+      {children}
     </div>
   );
 }

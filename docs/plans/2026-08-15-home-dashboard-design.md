@@ -103,6 +103,8 @@ What stays reliable under user control is a **12-column grid where widgets decla
 
 Drag-to-reorder is a reordering of a list, not free 2D placement. That keeps the persisted layout a `string[]` plus per-widget span overrides, which is a schema that can survive a widget being renamed or removed.
 
+**Amended by §7.9.** The list became `string[][]` — rows of ids — for a reason this section did not foresee: a packed list *cannot* guarantee a full row, so it leaves gaps at the end of short rows, and a gap is the one thing "it cannot be made ugly" was promising. Rows are still not free 2D placement: a widget belongs to a row and a position in it, there are no coordinates and no overlaps, and the schema still survives a widget being renamed or removed.
+
 ## 7. Stages
 
 **Stage 1 — a fixed Home. Built.** `/` is Home; Services is `/services`. Six widgets over the existing payload (§3). No persistence, no editing, no drag. This is the stage that has to justify the page; if a fixed Home isn't obviously better than landing on Services, stop here and delete it.
@@ -391,10 +393,55 @@ behaves anywhere else.
   content takes is a legitimate thing to mean, and a height that silently
   refused to shrink would be the resize that "does nothing" all over again.
 
-**Stage 3 — drag to reorder.** Only if the arrows prove to be the annoying half
-of stage 2. Resize landed early, in stage 2, because the complaint that started
-this was a width: shipping "you can remove it" as the answer to "it is the wrong
-shape" would have missed the point.
+### 7.9 The gap at the end of the row, and the drag that fixes both
+
+Two more findings from the same reviewer, one screenshot apart: *"when I shrink
+the left, the right moves left and then it's empty on the right — we never want
+empty"*, and *"can we drag a panel to a new place?"*. They look unrelated. They
+are the same finding: **the page was a flow, and a flow has no places in it.**
+
+A flow wraps wherever the next widget stops fitting. Shrink a panel and the
+leftover columns are only usable if the next widget happens to want that many or
+fewer — otherwise it wraps, and the leftover is dead space nobody chose. And in
+a flow there is nowhere to *drop* something: a widget's position is an index in
+a list, so the only honest gesture is "one place earlier", which is what the
+chevrons were.
+
+So rows became a stored thing: `HomeLayout.rows: string[][]`, `UiPreferences`
+v4, migrated from v3 by packing the flat list exactly the way the flow was
+drawing it.
+
+- **A row always fills the grid**, and that is an invariant rather than a
+  cleanup pass. `fitRow` restores it after anything that can disturb it —
+  resizing, removing, dropping, or the registry retiring a widget out from under
+  a saved layout — by handing columns to the row's narrowest panel and taking
+  them from its widest, so proportions survive: `[4, 4]` fills as `[6, 6]`, not
+  `[8, 4]`. A gap is now unrepresentable.
+- **A resize is a splitter.** Columns have to come from somewhere, and the row
+  is where: neighbours give up columns nearest-first, never below `MIN_SPAN`.
+  That also caps the drag — a panel in a row of two can reach nine columns, not
+  twelve — and the frame is computed through the same function that will do the
+  commit (`previewSpan`), so it cannot promise a width the row will refuse.
+- **A drop has a place to mean.** Between two panels in a row, or between rows
+  for a row of its own. The indicator is a line where the panel will land, drawn
+  over a page that has not moved — same rule as the resize frame, for the same
+  reason. Four panels is the most a row can hold and stay legible, so a fifth
+  drop is refused by not drawing an indicator rather than by undoing itself
+  afterwards.
+- **The chevrons stay.** They are the same operation from the keyboard, and they
+  now walk the page in reading order — off the end of a row they step into the
+  next one, because that is what "later" means once there are rows.
+
+**Stage 3 — drag to reorder.** Now shipped, as above. What is still deliberately
+absent is free 2D placement: no coordinates, no overlaps, no empty cells to drag
+into. A row of panels is the largest amount of layout freedom that cannot be
+made to look broken.
+
+**Stage 4 — nothing yet.** The kill criterion in §10 still applies: the next
+thing to build here is whatever the page turns out not to answer, not the next
+layout affordance. Resize landed early, back in stage 2, because the complaint
+that started it was a width — shipping "you can remove it" as the answer to "it
+is the wrong shape" would have missed the point.
 
 **Not staged, deliberately:** widgets contributed by *downloaded* plugins. That is blocked by the same thing the Extensions market is blocked by — runtime-loading third-party React — and the widget registry should be shaped so it becomes possible, not built as though it already is.
 
@@ -408,7 +455,9 @@ Putting layout in ConfigStore would mean a Zod schema, a daemon round-trip on ev
 
 So: `version: 3`, add `home: { widgets: string[]; spans: Record<string, number> }`, and the existing migration hands v1/v2 installs the default layout.
 
-Heights (§7.8) arrived later as `heights?: Record<string, number>` and pointedly **did not bump the version**: the field is optional and its absence is not a missing value but a real state — "no height at all, fit the content" — which is exactly what a v3 layout stored before it existed should mean. A version bump would have been a migration inventing an answer nobody gave, and every bump costs a matching `version === n` in `lib/theme.ts`, which reads this document pre-mount and flashes the wrong theme when it disagrees.
+Rows (§7.9) later made it **v4**: `home: { rows: string[][]; spans; heights }`, with v3's flat list packed into rows on read — one migration, in the parser, so the layout a user had is the layout they get back. That bump was unavoidable in a way the one below was not: the shape of the field changed, and no reading of a `string[]` gives you rows.
+
+Heights (§7.8) arrived earlier as `heights?: Record<string, number>` and pointedly **did not bump the version**: the field is optional and its absence is not a missing value but a real state — "no height at all, fit the content" — which is exactly what a v3 layout stored before it existed should mean. A version bump would have been a migration inventing an answer nobody gave — and, until v4, every bump also cost a matching `version === n` in `lib/theme.ts`, which reads this document pre-mount and flashed the wrong theme whenever someone forgot. That list is gone: the pre-mount read now accepts any version, because it reads one field that has meant the same thing since v1 and the real parser is what decides whether a document is usable.
 
 *As built:* `home` is `HomeLayout | null`, and v1/v2 installs migrate to `null` rather than to a stored copy of the default — see §7.6 for why the distinction is load-bearing. `lib/theme.ts` reads the same document before React mounts and had to learn `3` alongside `1` and `2`, or every customised install would have flashed the wrong theme on load.
 

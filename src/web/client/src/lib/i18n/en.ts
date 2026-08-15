@@ -357,7 +357,7 @@ export const en = {
   "home.edit.moveEarlier": "Move {name} earlier",
   "home.edit.moveLater": "Move {name} later",
   "home.edit.size": "Drag {name}'s corner to resize it, double-click to fit its content",
-  "home.edit.hint": "Drag a panel's bottom-right corner to resize. Add, remove and reorder below. Saved as you go.",
+  "home.edit.hint": "Drag a panel to move it, or its bottom-right corner to resize. Add and remove below. Saved as you go.",
   "nav.extensionsInstalled": "Installed",
   "nav.extensionsOverview": "Overview",
   "pageTitle.extensions": "Extensions",

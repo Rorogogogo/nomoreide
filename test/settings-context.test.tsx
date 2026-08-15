@@ -111,7 +111,7 @@ describe("UI preference migration", () => {
     const preferences = loadUiPreferences();
 
     expect(preferences).toMatchObject({
-      version: 3,
+      version: 4,
       theme: "light",
       language: "zh",
       density: "comfortable",
@@ -133,7 +133,7 @@ describe("UI preference migration", () => {
     window.localStorage.setItem("nomoreide:project-scope", "project");
 
     expect(loadUiPreferences()).toMatchObject({
-      version: 3,
+      version: 4,
       theme: "system",
       language: "zh",
       sidebarDocked: false,
@@ -177,7 +177,7 @@ describe("UI preference migration", () => {
       });
     try {
       expect(loadUiPreferences()).toMatchObject({
-        version: 3,
+        version: 4,
         theme: "system",
         language: "en",
         sidebarDocked: false,

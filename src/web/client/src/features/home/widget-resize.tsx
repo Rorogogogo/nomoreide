@@ -74,12 +74,22 @@ export function WidgetResizeGrip({
   height,
   onFrame,
   onSize,
+  resolveSpan,
   span,
   title,
 }: {
   height: number | null;
   onFrame: (frame: ResizeFrame | null) => void;
   onSize: (size: WidgetSize) => void;
+  /**
+   * The width the row would actually give, for a width the drag is asking for.
+   *
+   * Columns come out of the neighbours, and a row of two cannot give one panel
+   * eleven of them. Running the request through the same arithmetic the commit
+   * will use is what keeps the frame from promising a width that will not
+   * survive the drop.
+   */
+  resolveSpan: (span: WidgetSpan) => WidgetSpan;
   span: WidgetSpan;
   title: string;
 }) {
@@ -140,7 +150,7 @@ export function WidgetResizeGrip({
       return {
         left: start.left,
         top: start.top,
-        width: target.span * start.column,
+        width: resolveSpan(target.span) * start.column,
         height: target.rows * HOME_ROW_PX,
       };
     };

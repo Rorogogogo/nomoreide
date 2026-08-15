@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Plus, RotateCcw, X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { panelClassName, WidgetBody, WidgetPanelHeader } from "./widget-grid";
@@ -38,30 +38,46 @@ export function WidgetEditPanel({
   children,
   canMoveEarlier,
   canMoveLater,
+  dragging,
   height,
   icon,
   onFrame,
+  onGrab,
   onMove,
   onRemove,
   onSize,
+  resolveSpan,
   span,
   title,
 }: {
   children: ReactNode;
   canMoveEarlier: boolean;
   canMoveLater: boolean;
+  dragging: boolean;
   height: number | null;
   icon: ReactNode;
   onFrame: (frame: ResizeFrame | null) => void;
+  onGrab: (event: ReactPointerEvent<HTMLElement>) => void;
   onMove: (delta: -1 | 1) => void;
   onRemove: () => void;
   onSize: (size: WidgetSize) => void;
+  resolveSpan: (span: WidgetSpan) => WidgetSpan;
   span: WidgetSpan;
   title: string;
 }) {
   const t = useT();
   return (
-    <div className={cn(panelClassName(span), "bg-muted/10")}>
+    <div
+      className={cn(
+        panelClassName(span),
+        "cursor-grab bg-muted/10 transition-opacity",
+        // Dimmed, not hidden and not carried: the panel stays where it is so
+        // the page you are dropping onto is the page you were looking at.
+        dragging && "opacity-40",
+      )}
+      data-widget-cell=""
+      onPointerDown={onGrab}
+    >
       <WidgetBody height={height}>
         <WidgetPanelHeader
           icon={icon}
@@ -115,6 +131,7 @@ export function WidgetEditPanel({
           height={height}
           onFrame={onFrame}
           onSize={onSize}
+          resolveSpan={resolveSpan}
           span={span}
           title={title}
         />

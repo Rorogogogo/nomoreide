@@ -9,26 +9,28 @@ import {
   addWidget,
   hiddenWidgets,
   moveWidget,
+  nudgeWidget,
+  previewSpan,
   removeWidget,
   resolveHomeLayout,
   setWidgetSize,
 } from "./home-layout";
-import { WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
+import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
+import { WidgetGrid, WidgetGridRow, WidgetNote, WidgetPanel } from "./widget-grid";
 import { WidgetResizeFrame, type ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
 
 /**
  * Home — the page that answers "what is happening right now".
  *
- * Stage 2 of `docs/plans/2026-08-15-home-dashboard-design.md`: the registry is
- * now the *default* layout rather than the layout. What is shown, in what
- * order, at what width, is the user's, and it is remembered in `UiPreferences`
- * beside every other view preference.
+ * The registry is the *default* layout rather than the layout: what is shown,
+ * in which row, at what size, is the user's, and it is remembered in
+ * `UiPreferences` beside every other view preference.
  *
  * The page still knows nothing about any particular widget. It resolves a saved
- * layout against the registry (`home-layout.ts`), renders what comes back, and
- * hands edits straight back to preferences — there is no draft state, so a
- * change is saved the moment it is made and closing the tab mid-edit loses
+ * layout against the registry (`home-layout.ts`), renders the rows that come
+ * back, and hands edits straight back to preferences — there is no draft state,
+ * so a change is saved the moment it is made and closing the tab mid-edit loses
  * nothing.
  */
 export function HomeView({
@@ -54,18 +56,24 @@ export function HomeView({
   const [frame, setFrame] = useState<ResizeFrame | null>(null);
 
   const layout = ui.home;
-  const placed = resolveHomeLayout(WIDGETS, layout);
+  const rows = resolveHomeLayout(WIDGETS, layout);
   const hidden = hiddenWidgets(WIDGETS, layout);
   /*
     §8.4: removing the last widget must not strand the page. An empty Home
     stays in edit mode, so the picker and Reset are always within reach without
     anyone having to know that clearing `localStorage` is the way out.
   */
-  const editing = editRequested || placed.length === 0;
+  const editing = editRequested || rows.length === 0;
 
   const apply = (next: HomeLayout) => {
     updateUi({ home: next });
   };
+
+  const { grab, move } = useWidgetMove({
+    layout,
+    onDrop: (id, target) => apply(moveWidget(WIDGETS, layout, id, target)),
+    widgets: WIDGETS,
+  });
 
   /*
     Full-bleed, per `DESIGN.md` — the grid runs to the panel edges and the
@@ -74,41 +82,54 @@ export function HomeView({
   */
   return (
     <div className="h-full overflow-y-auto">
-      {placed.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="px-3 py-4 text-[12px] text-muted-foreground">{t("home.empty")}</p>
       ) : (
         <WidgetGrid>
-          {placed.map(({ height, span, widget }, index) =>
-            editing ? (
-              <WidgetEditPanel
-                canMoveEarlier={index > 0}
-                canMoveLater={index < placed.length - 1}
-                height={height}
-                icon={widget.icon}
-                key={widget.id}
-                onFrame={setFrame}
-                onMove={(delta) => apply(moveWidget(WIDGETS, layout, widget.id, delta))}
-                onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
-                onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
-                span={span}
-                title={t(widget.titleKey)}
-              >
-                {widget.render({ data })}
-              </WidgetEditPanel>
-            ) : (
-              <WidgetPanel
-                height={height}
-                icon={widget.icon}
-                key={widget.id}
-                onOpen={() => onOpen(widget.page)}
-                openLabel={t("home.open", { title: t(widget.titleKey) })}
-                span={span}
-                title={t(widget.titleKey)}
-              >
-                {widget.render({ data })}
-              </WidgetPanel>
-            ),
-          )}
+          {/*
+            Keyed by the row's leading widget rather than by all of them: an id
+            appears once on the page, so it is unique, and a resize or a drop
+            elsewhere in the row leaves the key alone instead of remounting
+            every panel in it — which for a `fetch` widget is a re-request.
+          */}
+          {rows.map((row, rowIndex) => (
+            <WidgetGridRow key={row.widgets[0]?.widget.id}>
+              {row.widgets.map(({ height, span, widget }, index) =>
+                editing ? (
+                  <WidgetEditPanel
+                    canMoveEarlier={rowIndex > 0 || index > 0}
+                    canMoveLater={rowIndex < rows.length - 1 || index < row.widgets.length - 1}
+                    dragging={move?.id === widget.id}
+                    height={height}
+                    icon={widget.icon}
+                    key={widget.id}
+                    onFrame={setFrame}
+                    onGrab={grab(widget.id, t(widget.titleKey))}
+                    onMove={(delta) => apply(nudgeWidget(WIDGETS, layout, widget.id, delta))}
+                    onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
+                    onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
+                    resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
+                    span={span}
+                    title={t(widget.titleKey)}
+                  >
+                    {widget.render({ data })}
+                  </WidgetEditPanel>
+                ) : (
+                  <WidgetPanel
+                    height={height}
+                    icon={widget.icon}
+                    key={widget.id}
+                    onOpen={() => onOpen(widget.page)}
+                    openLabel={t("home.open", { title: t(widget.titleKey) })}
+                    span={span}
+                    title={t(widget.titleKey)}
+                  >
+                    {widget.render({ data })}
+                  </WidgetPanel>
+                ),
+              )}
+            </WidgetGridRow>
+          ))}
         </WidgetGrid>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
@@ -133,6 +154,7 @@ export function HomeView({
         </span>
       </div>
       <WidgetResizeFrame frame={frame} />
+      <WidgetMoveOverlay move={move} />
     </div>
   );
 }
