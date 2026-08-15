@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
 import { GitHubLogo } from "@/features/github/github-logo";
-import { ProviderLogo } from "@/features/deploy/provider-logo";
 
 export type AppPage =
   | "services"
@@ -25,7 +24,6 @@ export type AppPage =
   | "docker"
   | "git"
   | "github"
-  | "deploy"
   | "workflows"
   | "agent"
   | "agent-env"
@@ -40,6 +38,15 @@ export interface AppNavigationItem {
   page: Exclude<AppPage, "settings">;
   labelKey: TranslationKey;
   icon: ReactNode;
+  /**
+   * Renders as a collapsible parent with a second layer beneath it.
+   *
+   * The children are *not* declared here because they are not static: they are
+   * whatever is installed, read from `/api/extensions` at runtime. A future
+   * downloaded plugin therefore appears in the nav without this file changing —
+   * the same property the route registry and the MCP aggregator have.
+   */
+  expandable?: boolean;
 }
 
 export const APP_NAV_SECTIONS: Array<{
@@ -62,9 +69,6 @@ export const APP_NAV_SECTIONS: Array<{
     items: [
       { page: "git", labelKey: "nav.git", icon: <GitBranch /> },
       { page: "github", labelKey: "nav.github", icon: <GitHubLogo /> },
-      // Repo-scoped like Git/GitHub — it follows the selected project, so it
-      // belongs beside them rather than under Run with the local services.
-      { page: "deploy", labelKey: "nav.deploy", icon: <ProviderLogo /> },
       { page: "workflows", labelKey: "nav.workflows", icon: <Workflow /> },
     ],
   },
@@ -80,14 +84,27 @@ export const APP_NAV_SECTIONS: Array<{
       { page: "agent-env", labelKey: "nav.agentEnv", icon: <Puzzle /> },
     ],
   },
-  // Its own section rather than a row under another, because it groups by
-  // provenance where every other section groups by kind — and that difference
-  // is the point: extensions are *managed* here, while their features stay
-  // under the kind they belong to (Deploy, Servers). See §12 of the plan.
+  /*
+    Its own section, and the only one with a second layer.
+
+    Every other section groups by *kind*; this one groups by provenance, and
+    that difference is now load-bearing rather than incidental: each installed
+    plugin owns a page here (owner's call, §12), so Vercel and Cloudflare are
+    two entries rather than one Deploy view with a switcher inside it.
+
+    What did *not* move is a plugin's data. Vultr's instances still merge into
+    Servers, because that list is mixed — SSH-discovered machines sit beside
+    the Vultr ones — and splitting it by vendor would undo §7's payoff.
+  */
   {
     labelKey: "nav.section.extensions",
     items: [
-      { page: "extensions", labelKey: "nav.extensionsInstalled", icon: <Blocks /> },
+      {
+        page: "extensions",
+        labelKey: "nav.extensionsInstalled",
+        icon: <Blocks />,
+        expandable: true,
+      },
     ],
   },
 ];

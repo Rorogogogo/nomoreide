@@ -21,8 +21,8 @@ export interface InstalledExtension {
   productionAffecting: string[];
   /** Every host this extension may reach — its manifest's declared egress allowlist. */
   hosts: string[];
-  /** Page id where this extension's features appear, or null when it has no page. */
-  page: string | null;
+  /** A page this extension's data *also* appears on, or null when it only has its own. */
+  mergesInto: string | null;
 }
 
 export async function fetchInstalledExtensions(): Promise<InstalledExtension[]> {

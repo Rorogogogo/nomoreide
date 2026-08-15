@@ -1853,7 +1853,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
           actions: ["redeploy", "cancel", "promote", "rollback"],
           productionAffecting: ["promote", "rollback"],
           hosts: ["api.vercel.com"],
-          page: "deploy",
+          mergesInto: null,
         },
         {
           id: "cloudflare",
@@ -1864,7 +1864,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
           actions: ["redeploy", "rollback"],
           productionAffecting: ["rollback"],
           hosts: ["api.cloudflare.com"],
-          page: "deploy",
+          mergesInto: null,
         },
         {
           id: "vultr",
@@ -1875,7 +1875,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
           actions: ["start", "halt", "reboot"],
           productionAffecting: ["halt", "reboot"],
           hosts: ["api.vultr.com"],
-          page: "servers",
+          mergesInto: "servers",
         },
       ],
     });

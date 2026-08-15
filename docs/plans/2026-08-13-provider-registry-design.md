@@ -543,7 +543,23 @@ Vultr is the case that costs something. A user with mixed infrastructure wants *
 
 > A plugin's **page** lives under Extensions. A plugin's **data** still merges wherever that kind of thing already lives.
 
-So Vultr gets an Extensions entry — what it is, what it may do, what it may reach, how to remove it — *and* its instances keep appearing in Servers. Cloudflare gets an Extensions entry and its Pages projects keep rendering in the deploy view. Nothing that works today stops working; the second layer adds an addressable home per plugin rather than relocating features.
+So Vultr gets an Extensions entry — what it is, what it may do, what it may reach, how to remove it — *and* its instances keep appearing in Servers.
+
+#### Amended and built, 2026-08-15 — Deploy is gone
+
+**Owner's call, on seeing it: "there should not be a deploy section, should be vercel and cloudflare separately."** The rule above said Cloudflare's projects "keep rendering in the deploy view", and that half is now wrong — there is no deploy view to render in. `nav.deploy` is deleted, `features/deploy/` is the *component* a deploy plugin's page renders, and `DeployView` takes its provider as a prop instead of owning a persisted selection and a row of tabs.
+
+What that bought, beyond the nav being what the owner wanted:
+
+- **One selected-provider fact instead of two.** The in-view switcher's `usePersistentState("deploy:provider")` and the nav were separate pieces of state that could disagree; now the URL is the selection. `/extensions/cloudflare` is addressable, bookmarkable and reloadable, which the switcher never was.
+- **The header stops lying.** With no project resolved the page said "Deploy"; it now says whose page it is.
+- **Tax #4 narrows.** `overviewDomain` no longer maps a provider-agnostic page id onto `vercel` by hand — the page *is* the provider. What remains is that `project-overview` still has columns for Vercel only, so Cloudflare under an all-projects scope gets no grid rather than a grid with someone else's name on it. That is a smaller and more honest residue than the cast it replaces.
+
+**The part of the rule that did not change, and was the thing worth protecting:** Vultr's instances still merge into Servers. Its page is a management page that says so and links there — deliberately not a second server list, which is the regression §12's original argument warned about. That list is genuinely mixed (SSH-discovered machines beside the Vultr ones), and splitting it by vendor would throw away §7's payoff.
+
+`InstalledExtension.page` — "where this plugin's features appear" — became `mergesInto`, which is the question that still has an answer now that every plugin has a page of its own. It is `null` for a deploy plugin and `"servers"` for a host one.
+
+**The one structural constraint this exposed.** `AppPage` is a closed union the client owns, and which plugins exist is data the server answers with, so a plugin cannot *be* a page id. The second layer is therefore `page: "extensions"` plus an id in state, with `/extensions/<id>` served by a path **prefix** rather than an entry in `shellPaths`. That prefix is what a downloaded plugin will need, and it is why the nav renders its children from `/api/extensions` rather than from any list in the nav file: a fourth provider appears in the sidebar without a client file naming it.
 
 The open question this leaves is what a plugin's page contains for a plugin whose data lives elsewhere. For Vultr that is a management page, not a duplicate server list — building a second list would be exactly the regression the original argument warned about.
 

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listProviders, type ProviderManifest, type ProviderProject } from "@/lib/api";
 import {
-  DEFAULT_PROVIDER_ID,
   ProviderSelectionProvider,
   useCapability,
   useProviderApi,
@@ -9,7 +8,6 @@ import {
   useProviderName,
 } from "./provider-client";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
@@ -69,94 +67,42 @@ function buildLabel(project: ProviderProject | null): string | null {
 }
 
 /**
- * The deploy page: a provider selection wrapped around one generic workspace.
+ * One deploy provider's page — the generic workspace, pointed at the provider
+ * the nav selected.
  *
- * Everything below this component is provider-agnostic — it reads the id from
+ * Everything below this component is provider-agnostic: it reads the id from
  * context (`provider-client.ts`) and the manifest for what the provider can do.
  * Vercel and Cloudflare render through the identical tree; the only thing that
  * differs is what `/api/providers/:id/*` answers.
  *
- * `key={selected}` on the workspace is load-bearing: switching providers must
- * drop every piece of local state under it — the selected deployment, the open
- * hero section, the loaded env list — rather than showing one provider's data
- * under another's name until each fetch resolves.
+ * **The provider is a prop rather than in-view state (§12, owner's call).**
+ * This used to own a persisted selection and a row of provider tabs, which is
+ * what made Vercel and Cloudflare share one page. The second-layer nav is now
+ * the selector, so the id arrives from above, the page is addressable by URL,
+ * and there is one selected-provider fact in the app rather than two that
+ * could disagree.
  */
-export function DeployView() {
+export function DeployView({ providerId }: { providerId: string }) {
   const [providers, setProviders] = useState<ProviderManifest[]>([]);
-  const [selected, setSelected] = usePersistentState<string>(
-    "deploy:provider",
-    DEFAULT_PROVIDER_ID,
-  );
 
   useEffect(() => {
     void listProviders()
       .then(setProviders)
       // A registry that cannot be read is not a reason to blank the page: the
-      // stored id still addresses a provider, and capability checks fall back
-      // to "assume supported" precisely so this stays usable.
+      // id still addresses a provider, and capability checks fall back to
+      // "assume supported" precisely so this stays usable.
       .catch(() => setProviders([]));
   }, []);
 
-  // A stored id for a provider that no longer exists would otherwise leave the
-  // page addressing nothing.
-  const known = providers.length === 0 || providers.some((entry) => entry.id === selected);
-  const providerId = known ? selected : (providers[0]?.id ?? DEFAULT_PROVIDER_ID);
   const manifest = providers.find((entry) => entry.id === providerId) ?? null;
-
   const selection = useMemo(() => ({ id: providerId, manifest }), [providerId, manifest]);
 
   return (
     <ProviderSelectionProvider value={selection}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-        {providers.length > 1 ? (
-          <ProviderSwitcher onSelect={setSelected} providers={providers} selected={providerId} />
-        ) : null}
-        <ProviderWorkspace key={providerId} />
+        <ProviderWorkspace />
       </div>
     </ProviderSelectionProvider>
-  );
-}
-
-/**
- * One row of provider tabs, shown only when there is more than one to choose
- * from — a single-provider install (everyone today) sees no new chrome.
- *
- * Lives in the shell rather than the connected header so that switching works
- * in every state: the whole point is to reach a provider you have *not*
- * connected yet, which is exactly when the connected header is not rendered.
- */
-function ProviderSwitcher({
-  onSelect,
-  providers,
-  selected,
-}: {
-  onSelect: (id: string) => void;
-  providers: ProviderManifest[];
-  selected: string;
-}) {
-  const t = useT();
-
-  return (
-    <nav
-      aria-label={t("provider.switcher.label")}
-      className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5"
-    >
-      {providers.map((provider) => (
-        <button
-          aria-current={provider.id === selected ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:size-3.5",
-            provider.id === selected && "bg-muted text-foreground",
-          )}
-          key={provider.id}
-          onClick={() => onSelect(provider.id)}
-          type="button"
-        >
-          <ProviderLogo providerId={provider.id} />
-          <span>{provider.name}</span>
-        </button>
-      ))}
-    </nav>
   );
 }
 
@@ -341,7 +287,9 @@ function ConnectedProject({ onSwitchAccount }: { onSwitchAccount: () => void }) 
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         <ProviderLogo className="size-3.5" providerId={providerId} />
         <span className="truncate text-[12px] font-medium">
-          {project?.name ?? t("nav.deploy")}
+          {/* The provider's name, not a generic "Deploy": this page is that
+              provider's, so an unresolved project should still say whose. */}
+          {project?.name ?? providerName}
         </span>
         {hasInFlight ? (
           <span className="text-[11px] text-amber-500">{t("provider.buildingNow")}</span>

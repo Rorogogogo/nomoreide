@@ -66,14 +66,15 @@ export interface InstalledExtension {
    */
   hosts: string[];
   /**
-   * Where this plugin's features actually appear in the app, as a page id.
+   * A page this plugin's data *also* appears on, as a page id, or `null`.
    *
-   * Present because the page's job is to send someone to the thing they
-   * installed. `null` for a plugin with no page of its own — Vultr, whose
-   * instances merge into the existing server list rather than getting a tab,
-   * which is the payoff §7 was written for.
+   * Every plugin now owns a page under Extensions (§12, owner's call), so this
+   * no longer answers "where do I find it" — it answers the second question,
+   * "what else does installing this change". Only Vultr has an answer today:
+   * its instances become rows in the SSH server list, which is §7's payoff and
+   * the one thing the two-layer nav deliberately did not relocate.
    */
-  page: string | null;
+  mergesInto: string | null;
 }
 
 /**
@@ -94,10 +95,9 @@ export function listInstalledExtensions(): InstalledExtension[] {
       actions: [...manifest.actions],
       productionAffecting: [...manifest.productionAffecting],
       hosts: [...manifest.api.hosts],
-      // Every deploy plugin renders through the one generic view, reached by
-      // its in-view switcher — which is why this is a constant and not a
-      // per-provider field.
-      page: "deploy",
+      // A deploy plugin's projects and deployments render on its own page, so
+      // there is nowhere else to send the reader.
+      mergesInto: null,
     })),
     ...hostProviders.map(({ manifest }) => ({
       id: manifest.id,
@@ -108,9 +108,11 @@ export function listInstalledExtensions(): InstalledExtension[] {
       actions: [...manifest.actions],
       productionAffecting: [...manifest.productionAffecting],
       hosts: [...manifest.api.hosts],
-      // Not null: a host plugin's instances become rows in the SSH server list,
-      // so "where did my plugin go" has a real answer even without a tab.
-      page: "servers",
+      // A host plugin has its own page like everything else, *and* its
+      // instances keep appearing in the SSH server list beside machines no
+      // plugin owns. Saying so is what stops the page reading as the only
+      // place Vultr exists.
+      mergesInto: "servers",
     })),
   ];
 }

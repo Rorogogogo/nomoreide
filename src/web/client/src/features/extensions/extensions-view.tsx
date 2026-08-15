@@ -1,5 +1,6 @@
 import { Globe, Puzzle, Server, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { InstalledExtension } from "@/lib/api/extensions";
 import { useT } from "@/lib/i18n";
 import { ProviderLogo } from "../deploy/provider-logo";
@@ -8,18 +9,19 @@ import { useInstalledExtensions } from "./use-installed-extensions";
 /**
  * Extensions — what is installed, what it may do, and what it may reach.
  *
- * Stage 2 of §12 of `docs/plans/2026-08-13-provider-registry-design.md`. This
- * section **manages** plugins; it does not host their features. A deploy
- * plugin's projects and deployments live under Deploy, a host plugin's machines
- * live in Servers, and each row says so — because the nav groups by what a
- * thing *is*, not by how it was installed, and a manager that hid where its
- * features went would undo that.
+ * Stage 2 of §12 of `docs/plans/2026-08-13-provider-registry-design.md`, now
+ * the index of the nav's second layer: every row opens that plugin's own page.
+ *
+ * It still **manages** rather than duplicates. What a row adds beyond the nav
+ * entry is the disclosure — what the plugin may do, what it may reach — and,
+ * for a plugin whose data also lands somewhere else, where that is. Vultr is
+ * the only such case today.
  *
  * No install, no remove, no browse: everything installed is built-in, so those
  * controls would be decoration. The footer states that outright rather than
  * showing three disabled buttons.
  */
-export function ExtensionsView() {
+export function ExtensionsView({ onOpen }: { onOpen?: (id: string) => void }) {
   const t = useT();
   const { extensions, loading, error } = useInstalledExtensions();
 
@@ -41,7 +43,11 @@ export function ExtensionsView() {
     <div className="flex flex-col gap-4 px-4 py-4">
       <div className="flex flex-col gap-3">
         {extensions.map((extension) => (
-          <ExtensionCard extension={extension} key={`${extension.kind}:${extension.id}`} />
+          <ExtensionCard
+            extension={extension}
+            key={`${extension.kind}:${extension.id}`}
+            onOpen={onOpen}
+          />
         ))}
       </div>
       <p className="max-w-2xl text-[11px] leading-relaxed text-muted-foreground">
@@ -51,9 +57,17 @@ export function ExtensionsView() {
   );
 }
 
-function ExtensionCard({ extension }: { extension: InstalledExtension }) {
+function ExtensionCard({
+  extension,
+  onOpen,
+}: {
+  extension: InstalledExtension;
+  onOpen?: (id: string) => void;
+}) {
   const t = useT();
-  const whereKey = extension.page === "servers" ? "extensions.where.servers" : null;
+  // Only a plugin whose data *also* appears elsewhere has anything to say here;
+  // for everything else its page is the whole answer.
+  const whereKey = extension.mergesInto === "servers" ? "extensions.where.servers" : null;
 
   return (
     <div className="rounded-lg border border-border/60 bg-card/40 p-3">
@@ -81,11 +95,20 @@ function ExtensionCard({ extension }: { extension: InstalledExtension }) {
             into the SSH server list, and without this sentence "I installed
             Vultr and nothing appeared" is the obvious wrong conclusion.
           */}
-          {whereKey ? (
-            <p className="text-[11px] text-muted-foreground">{t(whereKey)}</p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">{t("extensions.where.deploy")}</p>
-          )}
+          {whereKey ? <p className="text-[11px] text-muted-foreground">{t(whereKey)}</p> : null}
+
+          {onOpen ? (
+            <div>
+              <Button
+                onClick={() => onOpen(extension.id)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {t("extensions.open", { name: extension.name })}
+              </Button>
+            </div>
+          ) : null}
 
           {extension.capabilities.length > 0 ? (
             <DetailRow

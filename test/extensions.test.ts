@@ -39,22 +39,31 @@ describe("installed extensions", () => {
     }
   });
 
-  test("every extension declares where its features appear", () => {
-    for (const extension of listInstalledExtensions()) {
-      expect(extension.page, `${extension.id} points nowhere`).toBeTruthy();
-    }
-  });
-
   /**
-   * The §7 payoff, asserted so a later refactor cannot quietly give Vultr a tab
-   * of its own: a host plugin's machines belong in the server list the user
-   * already has.
+   * The §7 payoff, asserted so a later refactor cannot quietly split the server
+   * list by vendor. Every plugin owns a page now (§12's two-layer nav), but a
+   * host plugin's machines still belong in the one list the user already has,
+   * beside machines no plugin owns — `mergesInto` is what says so on screen.
    */
-  test("a host plugin points at the server list, not a page of its own", () => {
+  test("a host plugin still merges its machines into the server list", () => {
     const vultr = listInstalledExtensions().find((extension) => extension.id === "vultr");
 
     expect(vultr?.kind).toBe("host");
-    expect(vultr?.page).toBe("servers");
+    expect(vultr?.mergesInto).toBe("servers");
+  });
+
+  /**
+   * A deploy plugin's data has nowhere else to be: its projects and deployments
+   * render on its own page. Claiming otherwise would send the reader to a page
+   * that shows them nothing.
+   */
+  test("a deploy plugin merges into nothing", () => {
+    const deploys = listInstalledExtensions().filter((extension) => extension.kind === "deploy");
+
+    expect(deploys.length).toBeGreaterThan(1);
+    for (const extension of deploys) {
+      expect(extension.mergesInto, `${extension.id} points somewhere it has no rows`).toBeNull();
+    }
   });
 
   test("productionAffecting is a subset of the actions shown", () => {
