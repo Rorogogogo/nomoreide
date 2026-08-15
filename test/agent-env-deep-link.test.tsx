@@ -108,8 +108,8 @@ describe("registry deep link (?install=<slug>)", () => {
 
   test("opens Agent Environments even though the link lands on /", () => {
     expect(initialPage({ pathname: "/", search: "?install=review-stack" })).toBe("agent-env");
-    // Without the param "/" still means Services.
-    expect(initialPage({ pathname: "/", search: "" })).toBe("services");
+    // Without the param "/" means Home.
+    expect(initialPage({ pathname: "/", search: "" })).toBe("home");
     // A normal path is unaffected.
     expect(initialPage({ pathname: "/database", search: "" })).toBe("database");
     // An install param anywhere wins over the path.

@@ -39,6 +39,7 @@ import {
   useSettings,
 } from "@/features/settings/settings-context";
 import { ErrorInboxView } from "@/features/errors/error-inbox-view";
+import { HomeView } from "@/features/home/home-view";
 import { ServicesView } from "@/features/services/services-view";
 import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
@@ -94,7 +95,15 @@ type Page = AppPage;
 
 /** Client-side route per page. The server mirrors these in `shell-routes.ts`. */
 export const PAGE_PATHS: Record<Page, string> = {
-  services: "/",
+  /*
+    Home owns "/", and Services moved to a path of its own.
+    §8.2 of the Home design: a Home that is one more nav row is a page nobody
+    lands on, and it would make the sidebar longer without giving anything back.
+    `test/shell-paths.test.ts` asserts this map and `shellPaths` agree, so a
+    half-done move fails CI rather than 404ing on refresh.
+  */
+  home: "/",
+  services: "/services",
   activity: "/activity",
   servers: "/servers",
   docker: "/docker",
@@ -134,6 +143,7 @@ export function extensionIdFromPath(pathname: string): string | null {
 
 /** Header title translation key per page. */
 const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
+  home: "nav.home",
   services: "nav.services",
   activity: "nav.activity",
   servers: "nav.servers",
@@ -164,7 +174,8 @@ export function pageFromPath(pathname: string): Page {
   for (const [page, path] of PAGE_PATH_MATCHERS) {
     if (pathname === path) return page;
   }
-  return "services";
+  // "/" and anything unrecognised land on Home, which is what "/" now means.
+  return "home";
 }
 
 /**
@@ -183,8 +194,8 @@ export function installSlugFromSearch(search: string): string | null {
 
 /**
  * Page to open on first paint. A registry deep link lands on "/" — which would
- * otherwise route to Services — but means "go install this", so the install
- * param outranks the path.
+ * otherwise route to Home — but means "go install this", so the install param
+ * outranks the path.
  */
 export function initialPage(location: { pathname: string; search: string }): Page {
   if (installSlugFromSearch(location.search)) return "agent-env";
@@ -304,6 +315,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [pendingInstall, setPendingInstall] = useState<string | null>(() =>
     syncLocation ? installSlugFromSearch(window.location.search) : null,
   );
+  /*
+    The embedded demo still opens on Services, deliberately — it is mounted
+    with `syncLocation={false}` in the marketing hero, where the point is to
+    show the workbench managing real services. Changing what the site leads
+    with is a marketing decision, not a consequence of Home taking "/".
+  */
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? initialPage(window.location) : "services",
   );
@@ -891,6 +908,13 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
+            {scopedData && page === "home" ? (
+              <HomeView
+                data={scopedData}
+                onOpen={setPage}
+                scopeName={activeProject?.name ?? null}
+              />
+            ) : null}
             {scopedData && page === "services" ? (
               <ServicesView
                 data={scopedData}
