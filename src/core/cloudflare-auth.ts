@@ -102,15 +102,27 @@ async function readTomlFields(path: string): Promise<Record<string, string>> {
 /**
  * Cloudflare's half of the shared credential resolver.
  *
- * **No `oauth` block, and that is the finding, not an omission.** The shared
- * `providers/oauth.ts` needs an issuer that serves OIDC discovery *and* dynamic
- * client registration, because that is what lets NoMoreIDE mint its own client
- * against a loopback redirect. Cloudflare's authorization server offers
- * neither — its OAuth flow is reserved for pre-registered clients such as
- * Wrangler itself. So Cloudflare connects with an API token, or by inheriting
- * Wrangler's own login, and the `oauth` source is simply never available. The
- * three-source model survives contact with provider #2; only this provider's
- * subset of it is smaller.
+ * **No `oauth` block — because of how our flow works, not because Cloudflare
+ * has no OAuth.** The shared `providers/oauth.ts` mints its own client at
+ * runtime via dynamic client registration (RFC 7591), which is what lets
+ * NoMoreIDE ship no client id at all. Cloudflare has no registration endpoint,
+ * so `registerOAuthClient()` would throw before a browser ever opened.
+ *
+ * That is a narrower obstacle than it was. Since 2026-06-03 Cloudflare lets
+ * anyone register their own OAuth client, including a *public* one using
+ * authorization code + PKCE (S256) with no client secret — the shape a
+ * self-hosted app needs. Adopting it is therefore possible, but it is a change
+ * of model rather than a new provider entry: NoMoreIDE would ship a
+ * pre-registered client id, which `ProviderAuthSpec.oauth` currently has no way
+ * to express, and public visibility additionally requires a verified client
+ * domain and is irreversible once granted. Unverified: whether a loopback
+ * redirect URI is accepted for these clients, which our flow depends on.
+ *
+ * Until then Cloudflare connects with an API token or by inheriting Wrangler's
+ * own login. The three-source model survives contact with provider #2; only
+ * this provider's subset of it is smaller.
+ *
+ * @see docs/plans/2026-08-13-provider-registry-design.md §11
  */
 export const CLOUDFLARE_AUTH: ProviderAuthSpec = {
   id: CLOUDFLARE_PROVIDER_ID,

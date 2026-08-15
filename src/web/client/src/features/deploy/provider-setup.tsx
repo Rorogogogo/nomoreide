@@ -132,8 +132,8 @@ export function ProviderSetup({
         {mode === "choose" ? (
           <>
             {/* Only when the manifest says the provider has a browser sign-in.
-                Cloudflare's authorization server serves no OIDC discovery, so
-                offering this there would be a button that can only fail. */}
+                Cloudflare declares none — we have no client registered with it —
+                so offering this there would be a button that can only fail. */}
             {canOAuth ? (
               <>
                 <Button

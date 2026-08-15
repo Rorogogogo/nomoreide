@@ -314,10 +314,13 @@ export interface DeployProviderManifest {
    * How this provider can be connected.
    *
    * The generic setup screen cannot otherwise know whether to offer "sign in
-   * with browser": Vercel has all three sources, Cloudflare's authorization
-   * server serves neither OIDC discovery nor dynamic client registration, so
-   * offering it there is a button that can only fail. Kept in step with the
-   * `ProviderAuthSpec` by `test/provider-routes.test.ts`.
+   * with browser": Vercel has all three sources, while Cloudflare has no
+   * registration endpoint for `providers/oauth.ts` to mint a client against, so
+   * offering it there is a button that can only fail. This is a fact about each
+   * provider's *current* wiring rather than a permanent one — see
+   * `cloudflare-auth.ts` — which is exactly why it is declared per provider
+   * instead of inferred. Kept in step with the `ProviderAuthSpec` by
+   * `test/provider-routes.test.ts`.
    */
   authSources: ("cli" | "stored" | "oauth")[];
   capabilities: DeployCapability[];
