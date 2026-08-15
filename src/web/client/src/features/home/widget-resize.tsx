@@ -5,27 +5,31 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { clampHeight, clampSpan, GRID_COLUMNS, HOME_ROW_PX } from "./home-layout";
 import type { WidgetSpan } from "./widget-types";
 
 /**
- * Resizing a panel: two edges, a corner, and a frame that shows the answer
- * before it is committed.
+ * Resizing a panel: one corner, and a frame that shows the answer before it is
+ * committed.
  *
- * This is the second attempt. The first replaced three preset buttons labelled
- * `4 6 12` with a draggable right edge — right idea, wrong feel, for two
- * reasons the owner found in about ten seconds:
+ * This is the third attempt, and each one lost a control:
  *
- * 1. **The grid moved while you were aiming at it.** The old drag re-laid the
- *    whole page on every pointer move, so the panel under your cursor pushed
- *    its neighbours onto other rows, which changed what you were looking at
- *    mid-gesture. A drag has to leave the thing you are measuring where it is.
- *    So nothing reflows until you let go: what moves is a frame, exactly the
- *    way the agent dock's own splitter shows where it is going to land.
- * 2. **One axis is half a resize.** An edge you can only push sideways is a
- *    width control wearing a resize costume. The corner does both at once,
- *    which is what "resize" has meant in every window manager since 1984.
+ * 1. Three preset buttons labelled `4 6 12`, which the first person to see them
+ *    asked the meaning of. A width is not a number you should have to convert
+ *    from.
+ * 2. A draggable right edge — right idea, wrong feel. It re-laid the whole page
+ *    on every pointer move, so the panel under the cursor pushed its neighbours
+ *    onto other rows mid-gesture, and it was one axis, which is half a resize.
+ * 3. Edges *and* a corner, which was one grip too many: the corner already does
+ *    what both edges do, and three targets on every panel is a control surface
+ *    where there should be a page.
+ *
+ * What survives is the gesture every window manager has had since 1984, and the
+ * two properties the earlier passes were missing: **nothing reflows until you
+ * let go** (what moves is a frame, exactly the way the agent dock's splitter
+ * shows where it will land), and **only the axis you actually moved is
+ * written** — a drag straight sideways must not quietly pin a height, which is
+ * the one thing the corner could get wrong that two edges could not.
  */
 
 /** The rectangle the drag is currently asking for, in viewport coordinates. */
@@ -36,14 +40,11 @@ export interface ResizeFrame {
   height: number;
 }
 
-/** What a commit changes. An omitted axis is one the grip does not touch. */
+/** What a commit changes. An omitted axis is one the gesture did not move. */
 export interface WidgetSize {
   span?: WidgetSpan;
   height?: number | null;
 }
-
-/** Which way a grip is allowed to move. */
-type Axis = "x" | "y" | "both";
 
 /** Where the drag began: the ruler, the panel's corner, and its size then. */
 interface Origin {
@@ -56,25 +57,20 @@ interface Origin {
   rows: number;
 }
 
-const CURSOR: Record<Axis, string> = {
-  x: "col-resize",
-  y: "row-resize",
-  both: "nwse-resize",
-};
-
 /**
- * The grips themselves — hairlines, not handles.
+ * The grip: a corner mark, not a handle.
  *
- * Two pixels of grip and eight of target, so a panel can wear all three at once
- * without the page turning into a control surface. They live on the *cell*,
- * which is the stretched grid item, so a grip always sits on a rule you can
- * see: the panel's own bottom and right hairlines.
+ * It lives inside the panel's *body*, which is the box a height actually sizes,
+ * so the grip always sits on the corner you are about to move rather than on
+ * the bottom of a cell that stretched to fit a taller neighbour.
  *
- * The width grips are `xl`-only. Below that the 12-column grid collapses and a
- * width is a setting with no visible effect, but a height is plain pixels and
- * means the same thing at every size — so the bottom grip is always there.
+ * Unlike the width-only edge it replaced, it is not `xl`-only. Below that
+ * breakpoint the 12-column grid collapses and a width has nowhere to show
+ * itself, but a height is plain pixels and means the same thing at every window
+ * size — and a grip that vanished on a narrow window would be a resize you
+ * could lose by making the window smaller.
  */
-export function WidgetResizeGrips({
+export function WidgetResizeGrip({
   height,
   onFrame,
   onSize,
@@ -89,6 +85,7 @@ export function WidgetResizeGrips({
 }) {
   const t = useT();
   const release = useRef<(() => void) | null>(null);
+  const label = t("home.edit.size", { name: title });
 
   // A drag that ends outside the grip still has to end. Listening on the window
   // rather than relying on `setPointerCapture` means the release is caught
@@ -96,14 +93,13 @@ export function WidgetResizeGrips({
   // let us capture cannot strand the panel mid-resize.
   useEffect(() => () => release.current?.(), []);
 
-  /** The cell being resized: every grip is a direct child of it. */
-  const cellOf = (grip: HTMLElement) => grip.parentElement;
-
   const measure = (grip: HTMLElement): Origin | null => {
-    const cell = cellOf(grip);
+    // The grip's parent is the body — the box a height sizes, and the box whose
+    // left edge a width is measured from.
+    const body = grip.parentElement;
     const grid = grip.closest("[data-widget-grid]");
-    if (!cell || !grid) return null;
-    const rect = cell.getBoundingClientRect();
+    if (!body || !grid) return null;
+    const rect = body.getBoundingClientRect();
     return {
       // The grid is the ruler: one twelfth of it is one column, whatever the
       // window is doing. Read once, at pointer-down, so nothing that happens
@@ -121,51 +117,50 @@ export function WidgetResizeGrips({
     };
   };
 
-  const targetOf = (event: { clientX: number; clientY: number }, axis: Axis, start: Origin) => ({
-    span: axis === "y" ? start.span : clampSpan((event.clientX - start.left) / start.column),
-    rows: axis === "x" ? start.rows : clampHeight((event.clientY - start.top) / HOME_ROW_PX),
+  const targetOf = (event: { clientX: number; clientY: number }, start: Origin) => ({
+    span: clampSpan((event.clientX - start.left) / start.column),
+    rows: clampHeight((event.clientY - start.top) / HOME_ROW_PX),
   });
 
-  const frameFor = (axis: Axis, start: Origin, target: { span: WidgetSpan; rows: number }) => ({
-    left: start.left,
-    top: start.top,
-    // An axis the grip does not touch draws the panel as it actually is, not as
-    // the stored numbers describe it — a fit-to-content panel has no row count
-    // to draw, and a frame that disagreed with the panel under it would be
-    // reporting a resize nobody asked for.
-    width: axis === "y" ? start.width : target.span * start.column,
-    height: axis === "x" ? start.height : target.rows * HOME_ROW_PX,
-  });
-
-  const begin = (axis: Axis) => (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const begin = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = measure(event.currentTarget);
     if (!start) return;
     event.preventDefault();
 
-    // The frame is up before the first move: the gesture says what it will do
-    // from the moment it starts, and a press that turns out to be a misclick
-    // still showed you the panel it was about to change.
-    //
-    // Drawn at the panel's true rect rather than at the nearest snap, so
-    // grabbing an edge moves nothing. A panel fitting its content is rarely an
-    // exact number of row units, and a frame that jumped 8px on mousedown would
-    // read as the resize having already happened.
+    // The frame is up before the first move, drawn at the panel's true rect
+    // rather than at the nearest snap: the gesture says what it will do from
+    // the moment it starts, and a frame that jumped 8px on mousedown would read
+    // as the resize having already happened.
     onFrame({ left: start.left, top: start.top, width: start.width, height: start.height });
     const previousCursor = document.body.style.cursor;
-    document.body.style.cursor = CURSOR[axis];
+    document.body.style.cursor = "nwse-resize";
 
-    const move = (moved: PointerEvent) => onFrame(frameFor(axis, start, targetOf(moved, axis, start)));
+    const frameFor = (moved: { clientX: number; clientY: number }) => {
+      const target = targetOf(moved, start);
+      return {
+        left: start.left,
+        top: start.top,
+        width: target.span * start.column,
+        height: target.rows * HOME_ROW_PX,
+      };
+    };
+    const move = (moved: PointerEvent) => onFrame(frameFor(moved));
     const end = (ended: PointerEvent) => {
       release.current?.();
       release.current = null;
       onFrame(null);
-      const target = targetOf(ended, axis, start);
+      const target = targetOf(ended, start);
       // Writing preferences on every pointermove would put a `localStorage`
-      // write behind every frame of the drag; only the result is saved, and
-      // only the axes this grip actually moved.
+      // write behind every frame of the drag; only the result is saved.
+      //
+      // And only the axes that moved: a panel with no height is fitting its
+      // content, which is a state worth keeping. Compare against where the drag
+      // *started* — a straight-sideways drag lands on the height it began at
+      // and so writes nothing, leaving the panel free to grow with what it
+      // holds instead of frozen at whatever it happened to measure that day.
       const size: WidgetSize = {};
-      if (axis !== "y" && target.span !== start.span) size.span = target.span;
-      if (axis !== "x" && target.rows !== height) size.height = target.rows;
+      if (target.span !== start.span) size.span = target.span;
+      if (target.rows !== start.rows) size.height = target.rows;
       if (size.span !== undefined || size.height !== undefined) onSize(size);
     };
 
@@ -181,81 +176,45 @@ export function WidgetResizeGrips({
   };
 
   /**
-   * Arrow keys do the same job a step at a time. A resize that only answers to
-   * a mouse is a control half the users of this page cannot reach, and the
-   * steps are the same units the drag snaps to, so the two agree exactly.
+   * Arrow keys do the same job a step at a time, one axis per key. A resize
+   * that only answers to a mouse is a control half the users of this page
+   * cannot reach, and the steps are the units the drag snaps to, so the two
+   * agree exactly.
    */
-  const keys = (axis: Axis) => (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+  const keys = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     const horizontal = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
     const vertical = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
-    if (axis !== "y" && horizontal) {
+    if (horizontal) {
       event.preventDefault();
       onSize({ span: clampSpan(span + horizontal) });
       return;
     }
-    if (axis !== "x" && vertical) {
+    if (vertical) {
       event.preventDefault();
       const start = measure(event.currentTarget);
       if (start) onSize({ height: clampHeight(start.rows + vertical) });
     }
   };
 
-  /** Double-click gives a height back to the content, the way the dock does. */
-  const clearHeight = () => onSize({ height: null });
-
-  const width = t("home.edit.width", { name: title, span, total: GRID_COLUMNS });
-  const tall = t("home.edit.height", { name: title });
-  const size = t("home.edit.size", { name: title });
-
   return (
-    <>
-      <button
-        aria-label={width}
-        className={cn(GRIP, "inset-y-0 right-0 hidden w-2 cursor-col-resize xl:flex")}
-        onKeyDown={keys("x")}
-        onPointerDown={begin("x")}
-        title={width}
-        type="button"
-      >
-        <span aria-hidden className={cn(BAR, "h-5 w-0.5")} />
-      </button>
-      <button
-        aria-label={tall}
-        className={cn(GRIP, "inset-x-0 bottom-0 flex h-2 cursor-row-resize")}
-        onDoubleClick={clearHeight}
-        onKeyDown={keys("y")}
-        onPointerDown={begin("y")}
-        title={tall}
-        type="button"
-      >
-        <span aria-hidden className={cn(BAR, "h-0.5 w-5")} />
-      </button>
-      <button
-        aria-label={size}
-        /*
-          Last, and on top: the corner overlaps both edges, and the gesture
-          people reach for first has to win the two pixels they share.
-        */
-        className={cn(GRIP, "bottom-0 right-0 z-20 hidden size-3 cursor-nwse-resize xl:flex")}
-        onDoubleClick={clearHeight}
-        onKeyDown={keys("both")}
-        onPointerDown={begin("both")}
-        title={size}
-        type="button"
-      >
-        <span
-          aria-hidden
-          className="size-1.5 translate-x-px translate-y-px rounded-[1px] border-b border-r border-border transition-colors group-hover/widget:border-muted-foreground/60"
-        />
-      </button>
-    </>
+    <button
+      aria-label={label}
+      className="absolute bottom-0 right-0 z-10 flex size-3.5 cursor-nwse-resize touch-none items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+      /* Double-click gives a height back to the content, the way the dock's own
+         grip resets its width — the only way out of a height once one is set. */
+      onDoubleClick={() => onSize({ height: null })}
+      onKeyDown={keys}
+      onPointerDown={begin}
+      title={label}
+      type="button"
+    >
+      <span
+        aria-hidden
+        className="size-1.5 rounded-[1px] border-b border-r border-border transition-colors group-hover/widget:border-muted-foreground/60"
+      />
+    </button>
   );
 }
-
-const GRIP =
-  "absolute z-10 touch-none items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
-
-const BAR = "rounded-full bg-border transition-colors group-hover/widget:bg-muted-foreground/50";
 
 /**
  * The frame: where the panel will be when you let go.

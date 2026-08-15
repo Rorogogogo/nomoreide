@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { panelClassName, WidgetBody, WidgetPanelHeader } from "./widget-grid";
-import { WidgetResizeGrips, type ResizeFrame, type WidgetSize } from "./widget-resize";
+import { WidgetResizeGrip, type ResizeFrame, type WidgetSize } from "./widget-resize";
 import type { WidgetDefinition, WidgetSpan } from "./widget-types";
 
 /**
@@ -106,18 +106,19 @@ export function WidgetEditPanel({
           it, which is exactly the question the Conversations panel raised.
         */}
         <span className="opacity-70">{children}</span>
+        {/*
+          Inside the body, because the body is the box a height sizes: the grip
+          belongs on the corner you are about to move, not on the bottom of a
+          cell that stretched to fit a taller neighbour.
+        */}
+        <WidgetResizeGrip
+          height={height}
+          onFrame={onFrame}
+          onSize={onSize}
+          span={span}
+          title={title}
+        />
       </WidgetBody>
-      {/*
-        Outside the body, so the grips sit on the cell's own hairlines rather
-        than on the content box the height shrinks.
-      */}
-      <WidgetResizeGrips
-        height={height}
-        onFrame={onFrame}
-        onSize={onSize}
-        span={span}
-        title={title}
-      />
     </div>
   );
 }

@@ -105,28 +105,30 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
 }
 
 /**
- * The cell itself — hairlines and the width the layout resolved. No padding:
- * that moved inside, to `WidgetBody`, and the reason is the whole reason a
- * height works at all.
+ * The cell — the width the layout resolved, and the column rule. No padding and
+ * no bottom rule: both moved inside, to `WidgetBody`, and that split is what
+ * lets two panels in the same row be different heights.
  *
- * The cell stays a stretched grid item, so its bottom and right hairlines land
- * on the row's edges no matter how tall its neighbours are — the lattice can't
- * develop holes. The *body* is what a height sizes. A body shorter than its row
- * leaves space below it, inside the cell's own borders, which reads as a panel
- * with room to spare rather than as a missing rule.
+ * The cell is still a stretched grid item, so the **column** rules run the full
+ * height of the row however tall its neighbours are. What it no longer draws is
+ * the line under the panel, because that line is not a property of the row: a
+ * panel that is four units tall beside one that is eight has to *end* at four,
+ * or every height is really the row's height and the tallest widget decides for
+ * everyone.
  *
  * Exported because the edit surface (`home-edit.tsx`) draws the same cell as a
  * `<div>`: a panel that carries per-widget controls cannot also *be* a button.
  */
 export function panelClassName(span: WidgetSpan): string {
   return cn(
-    "group/widget relative flex flex-col border-b border-border text-left md:border-r",
+    "group/widget relative flex flex-col border-border text-left md:border-r",
     SPAN_CLASS[span],
   );
 }
 
 /**
- * The padded box a widget draws in, and the one a stored height applies to.
+ * The padded box a widget draws in: the one a stored height applies to, the one
+ * that draws the line under the panel, and the one the resize grip sits in.
  *
  * `null` is fit-to-content — what every panel did before heights existed and
  * still the default, because how tall a summary needs to be is a fact about
@@ -135,11 +137,17 @@ export function panelClassName(span: WidgetSpan): string {
  * asking for less room than the content takes is a legitimate thing to mean,
  * and a panel that silently ignored it would be the resize that "does nothing"
  * all over again.
+ *
+ * Below a short panel, the rest of the row is empty — bounded by the column
+ * rules on either side, with no line across it. That space belongs to the
+ * panel and reads as room to spare, which is the honest picture: the row is
+ * still as tall as its tallest member, and the only way it could not be is
+ * masonry.
  */
 export function WidgetBody({ children, height }: { children: ReactNode; height: number | null }) {
   return (
     <span
-      className="flex min-h-0 flex-col gap-2 overflow-hidden px-3 py-2.5"
+      className="relative flex min-h-0 flex-col gap-2 overflow-hidden border-b border-border px-3 py-2.5"
       style={height === null ? undefined : { height: height * HOME_ROW_PX }}
     >
       {children}

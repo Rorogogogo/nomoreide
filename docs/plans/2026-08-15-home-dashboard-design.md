@@ -350,10 +350,17 @@ behaves anywhere else.
   dragged to full width has to be allowed past that. It appears on pointer-down
   at the panel's *true* rect, not the nearest snap — a frame that jumped 8px
   before you moved would read as the resize having already happened.
-- **Two edges and a corner.** An edge you can only push sideways is a width
-  control wearing a resize costume. The corner sets both axes in **one write**;
-  committing them separately would leave a frame where the panel is its new
-  width at its old height, and two entries of history for one gesture.
+- **One corner, no edges.** The pass that added the corner kept both edges, and
+  the owner's next question was whether the width edge was still needed — it is
+  not. The corner does everything the edges did, and three targets on every
+  panel is a control surface where there should be a page. Losing them costs one
+  thing, which the corner has to buy back: an edge could only move one axis, so
+  it could not accidentally set the other. Hence **only the axis that actually
+  moved is written** — a drag straight sideways lands on the height it started
+  at and stores nothing, leaving the panel free to keep fitting its content.
+  Both axes in one gesture are still **one write**; committing them separately
+  would leave a frame where the panel is its new width at its old height, and
+  two entries of history for one gesture.
 - **Height is not a column, so it needs its own ruler.** Columns are a fraction
   of the window; rows cannot be, because Home scrolls and there is no page
   height to divide. A height is therefore a count of fixed 32px units
@@ -365,12 +372,23 @@ behaves anywhere else.
   height, a stored layout from before this pass keeps fitting its content, and
   double-clicking a height grip gives the panel back to its content the way the
   dock's grip does.
-- **A height sizes the body, not the cell.** The cell stays a stretched grid
-  item so its hairlines land on the row's edges however tall its neighbours are;
-  the padded box inside it is what a height sizes, and it clips. A panel
-  shrunk below its content leaves space *inside its own borders*, which reads as
-  room to spare rather than as a missing rule — and asking for less room than
-  the content takes is a legitimate thing to mean. A height that silently
+- **A height sizes the body, not the cell — so a height is one panel's, not the
+  row's.** The first cut drew the panel's bottom rule on the grid cell, which
+  stretches; a taller widget therefore dragged every panel beside it down, and
+  the owner's verdict was immediate: *make only itself change, so in a row the
+  sizes can differ*. He is right, and the fix is a split. The cell keeps
+  stretching and keeps the **column** rules, which must run the full height of
+  the row or the page loses its structure. The padded body inside it owns the
+  height, the clipping, the resize grip, and the **line under the panel** —
+  because that line is not a property of the row: a panel four units tall beside
+  one of eight has to end at four, or the tallest widget is deciding for
+  everyone.
+- **The space below a short panel is empty, and that is the honest picture.**
+  Bounded by the column rules, with no line across it. The row is still as tall
+  as its tallest member — the only way it could not be is masonry, which CSS
+  grid does not have anywhere it can be relied on, and which would cost more
+  than the whitespace does. Clipping stays: asking for less room than the
+  content takes is a legitimate thing to mean, and a height that silently
   refused to shrink would be the resize that "does nothing" all over again.
 
 **Stage 3 — drag to reorder.** Only if the arrows prove to be the annoying half
