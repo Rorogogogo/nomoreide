@@ -1,11 +1,7 @@
 import { activityWidget } from "@/features/activity/widget";
 import { repositoryWidget } from "@/features/git/widget";
-import {
-  healthWidget,
-  outputWidget,
-  portsWidget,
-  servicesWidget,
-} from "@/features/services/widgets";
+import { outputWidget } from "@/features/services/output-widget";
+import { healthWidget, portsWidget, servicesWidget } from "@/features/services/widgets";
 import type { WidgetDefinition } from "./widget-types";
 
 /**

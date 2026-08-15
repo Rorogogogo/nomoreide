@@ -113,6 +113,34 @@ Drag-to-reorder is a reordering of a list, not free 2D placement. That keeps the
 - **The embedded marketing demo still opens on Services.** It mounts with `syncLocation={false}`, so it never routed through `/`; what the site leads with is a marketing decision, not a consequence of this change.
 - **One bug the fixed layout found immediately, which is the argument for stage 1 in miniature.** Health counted `unknown` as "not failing", so nineteen *stopped* services with nothing probed rendered as **"All healthy"** — a confident lie, on the page meant to be glanced at. Unknowns are now excluded from the denominator and a card with nothing known says so. No unit test would have caught it; looking at the real page did, in about four seconds.
 
+### 7.2 The second pass: it was built as cards, and it was too thin
+
+Stage 1 shipped wrong on both of the axes it is judged on, and both were obvious
+on sight rather than in review.
+
+- **It broke the layout law.** Every widget was a `rounded-lg border bg-card`
+  tile — literally the "No" example in `DESIGN.md`, and the first item on its
+  own before-you-ship checklist. It also led with a `text-2xl` figure, in a
+  document that caps a normal view at 13px. Widgets are now grid cells divided
+  by hairlines, with the counters split by `divide-x` the way that file already
+  prescribes for counters. Nothing on Home draws a box.
+- **One big number is not a summary.** "3" over "of 22 registered" tells you
+  something is wrong but never *what*, so every panel still cost you a click —
+  which makes the widget a worse version of the nav row above it. Each widget
+  now leads with a strip of three or four counters and then **names things**:
+  which service exited and with what code, which port is held and by whom, which
+  files changed, which check is slow. Same payload, no new endpoints; the
+  information was always in `data` and the panel was just refusing to print it.
+- **Two things only real data showed.** Activity printed the service name twice
+  a row, because timeline titles are written for a page that has no service
+  column. And Health bailed to a bare sentence when nothing was probed, leaving
+  the one panel on the page with no numbers on it — when "19 unprobed" was the
+  useful fact. Both were invisible in an empty fixture and obvious in the app.
+
+The generalisation, for stage 2: **a widget's job is to name, not to count.** A
+picker that lets a user add more panels is only worth building if each panel
+already earns its space, and a panel that shows a single figure does not.
+
 **Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
 
 **Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.

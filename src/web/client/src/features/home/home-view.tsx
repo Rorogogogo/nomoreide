@@ -1,7 +1,7 @@
 import type { AppPage } from "@/components/app-navigation";
 import type { DashboardData } from "@/lib/api/services-api";
 import { useT } from "@/lib/i18n";
-import { WidgetCard, WidgetGrid } from "./widget-grid";
+import { WidgetGrid, WidgetPanel } from "./widget-grid";
 import { WIDGETS } from "./widget-registry";
 
 /**
@@ -24,11 +24,16 @@ export function HomeView({
 }) {
   const t = useT();
 
+  /*
+    Full-bleed, per `DESIGN.md` — the grid runs to the panel edges and the
+    hairlines between widgets are the only structure on the page. No outer
+    padding, because padding here would read as a margin around a card.
+  */
   return (
-    <div className="h-full overflow-y-auto px-4 py-4">
+    <div className="h-full overflow-y-auto">
       <WidgetGrid>
         {WIDGETS.map((widget) => (
-          <WidgetCard
+          <WidgetPanel
             icon={widget.icon}
             key={widget.id}
             onOpen={() => onOpen(widget.page)}
@@ -37,11 +42,11 @@ export function HomeView({
             title={t(widget.titleKey)}
           >
             {widget.render({ data })}
-          </WidgetCard>
+          </WidgetPanel>
         ))}
       </WidgetGrid>
       {scopeName ? (
-        <p className="pt-3 text-[11px] text-muted-foreground">
+        <p className="px-3 py-2 text-[11px] text-muted-foreground">
           {t("home.scopedTo", { name: scopeName })}
         </p>
       ) : null}
