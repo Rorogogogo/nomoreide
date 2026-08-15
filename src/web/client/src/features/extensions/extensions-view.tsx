@@ -1,4 +1,4 @@
-import { Globe, Puzzle, Server, ShieldCheck, Store } from "lucide-react";
+import { ArrowUpRight, Globe, Puzzle, Server, ShieldCheck, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { InstalledExtension } from "@/lib/api/extensions";
@@ -147,19 +147,6 @@ function ExtensionCard({
           */}
           {whereKey ? <p className="text-[11px] text-muted-foreground">{t(whereKey)}</p> : null}
 
-          {onOpen ? (
-            <div>
-              <Button
-                onClick={() => onOpen(extension.id)}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                {t("extensions.open", { name: extension.name })}
-              </Button>
-            </div>
-          ) : null}
-
           {extension.capabilities.length > 0 ? (
             <DetailRow
               icon={<Puzzle aria-hidden className="size-3" />}
@@ -196,6 +183,27 @@ function ExtensionCard({
             values={extension.hosts}
           />
         </div>
+
+        {/*
+          Open is a corner affordance, not a call to action. Every card on the
+          page has one and they all do the same thing, so a labelled button per
+          card repeated the plugin's name three times and gave a row of buttons
+          more weight than the disclosure they sit next to. The label survives
+          on the icon, for anyone who needs it.
+        */}
+        {onOpen ? (
+          <Button
+            aria-label={t("extensions.open", { name: extension.name })}
+            className="-mr-1 -mt-1 text-muted-foreground hover:text-foreground"
+            onClick={() => onOpen(extension.id)}
+            size="icon-sm"
+            title={t("extensions.open", { name: extension.name })}
+            type="button"
+            variant="ghost"
+          >
+            <ArrowUpRight aria-hidden />
+          </Button>
+        ) : null}
       </div>
     </div>
   );
