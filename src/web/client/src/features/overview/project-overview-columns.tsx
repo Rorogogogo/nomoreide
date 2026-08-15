@@ -9,8 +9,8 @@ import type {
 } from "@/lib/api";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import { DeploymentStateBadge } from "../vercel/deployment-state-badge";
-import { VercelLogo } from "../vercel/vercel-logo";
+import { DeploymentStateBadge } from "../deploy/deployment-state-badge";
+import { VercelMark } from "../deploy/provider-logo";
 import { GitHubLogo } from "../github/github-logo";
 
 /**
@@ -61,7 +61,7 @@ export const DOMAIN_HEADERS: Record<OverviewDomain, TranslationKey[]> = {
 export const DOMAIN_MARKS: Record<OverviewDomain, (props: { className?: string }) => ReactNode> = {
   git: GitBranch,
   github: GitHubLogo,
-  vercel: VercelLogo,
+  vercel: VercelMark,
 };
 
 /**

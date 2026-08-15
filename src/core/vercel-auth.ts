@@ -1,50 +1,26 @@
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
-  refreshVercelOAuthTokens,
-  VERCEL_TOKEN_REFRESH_SKEW_MS,
-  type VercelOAuthDeps,
-  type VercelOAuthTokens,
-} from "./vercel-oauth.js";
-import type { NoMoreIdeConfig, VercelConnection } from "./types.js";
+  providerCliStatus,
+  publicProviderConnection,
+  readJsonField,
+  resolveProviderCredential,
+  type ProviderAuthSpec,
+  type ProviderCliSession,
+  type ProviderCliStatus,
+  type ProviderCredential,
+  type ResolveCredentialOptions,
+} from "./providers/credentials.js";
+import { VERCEL_OAUTH } from "./vercel-oauth.js";
+import type { NoMoreIdeConfig, ProviderConnection } from "./types.js";
 
-/**
- * Where a Vercel token comes from.
- *
- * Mirrors the GitHub integration's "gh CLI account or pasted token" split: if
- * the user has already run `vercel login`, reuse that session rather than
- * asking them to mint a personal access token. CLI tokens are *never* copied
- * into NoMoreIDE's config — they are re-read from the CLI's own auth file at
- * use time, so `vercel logout` revokes our access too.
- */
-export interface ResolvedVercelCredential {
-  source: "cli" | "stored" | "oauth";
-  token: string;
-  /** Team scope; absent means the personal account. */
-  teamId?: string;
-  teamSlug?: string;
-}
+/** Provider id this integration stores its connection under. */
+export const VERCEL_PROVIDER_ID = "vercel";
 
-export interface ResolveVercelOptions {
-  /**
-   * Persists tokens produced by a refresh. Omitted by read-only callers (and
-   * tests), which then simply use the refreshed token without saving it.
-   */
-  onTokensRefreshed?: (tokens: VercelOAuthTokens) => Promise<void>;
-  oauthDeps?: VercelOAuthDeps;
-}
-
-export interface VercelCliSession {
-  token: string;
-  /** The CLI's currently selected scope, used as the default team. */
-  currentTeam?: string;
-}
-
-export interface VercelCliStatus {
-  available: boolean;
-  error?: string;
-}
+export type ResolvedVercelCredential = ProviderCredential;
+export type VercelCliSession = ProviderCliSession;
+export type VercelCliStatus = ProviderCliStatus;
+export type ResolveVercelOptions = ResolveCredentialOptions;
 
 /**
  * Candidate locations of the Vercel CLI's `auth.json`, newest convention
@@ -83,21 +59,41 @@ export async function readVercelCliSession(
   for (const dir of vercelCliDataDirs(env)) {
     const token = await readJsonField(join(dir, "auth.json"), "token");
     if (!token) continue;
-    const currentTeam = await readJsonField(join(dir, "config.json"), "currentTeam");
-    return { token, currentTeam: currentTeam || undefined };
+    const currentScope = await readJsonField(join(dir, "config.json"), "currentTeam");
+    return { token, currentScope: currentScope || undefined };
   }
   return null;
 }
 
-export async function vercelCliStatus(
+/**
+ * Vercel's half of the shared credential resolver: where the CLI keeps its
+ * login, and the six messages the UI shows when there is no usable token.
+ *
+ * The policy around all of it — three sources, CLI tokens re-read rather than
+ * copied, an explicit scope beating the CLI's own — is in
+ * `providers/credentials.ts` and is deliberately not restatable here.
+ */
+export const VERCEL_AUTH: ProviderAuthSpec = {
+  id: VERCEL_PROVIDER_ID,
+  name: "Vercel",
+  cliSession: readVercelCliSession,
+  oauth: VERCEL_OAUTH,
+  messages: {
+    cliMissing: "No Vercel CLI login found. Run `vercel login`, or paste a token instead.",
+    noStoredToken: "No Vercel token stored. Reconnect Vercel with a token.",
+    cliLoggedOut:
+      "The Vercel CLI is no longer logged in. Run `vercel login`, sign in to Vercel, or connect with a token.",
+    notConnected:
+      "Vercel is not connected. Sign in to Vercel, run `vercel login`, or add a Vercel token.",
+    signInExpired: "Your Vercel sign-in has expired. Sign in to Vercel again.",
+    refreshFailed: "Could not renew your Vercel sign-in ({error}). Sign in to Vercel again.",
+  },
+};
+
+export function vercelCliStatus(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<VercelCliStatus> {
-  const session = await readVercelCliSession(env);
-  if (session) return { available: true };
-  return {
-    available: false,
-    error: "No Vercel CLI login found. Run `vercel login`, or paste a token instead.",
-  };
+  return providerCliStatus(VERCEL_AUTH, env);
 }
 
 /**
@@ -106,92 +102,17 @@ export async function vercelCliStatus(
  * Throws with an actionable message rather than returning null: every caller
  * needs a token to do anything, and the message is what the UI shows.
  */
-export async function resolveVercelCredential(
+export function resolveVercelCredential(
   config: NoMoreIdeConfig,
   env: NodeJS.ProcessEnv = process.env,
   options: ResolveVercelOptions = {},
 ): Promise<ResolvedVercelCredential> {
-  const connection = config.vercel;
-  const scope = { teamId: connection?.teamId, teamSlug: connection?.teamSlug };
-
-  if (connection?.source === "oauth") {
-    return { source: "oauth", token: await oauthAccessToken(connection, options), ...scope };
-  }
-
-  if (connection?.source === "stored") {
-    if (!connection.token) {
-      throw new Error("No Vercel token stored. Reconnect Vercel with a token.");
-    }
-    return { source: "stored", token: connection.token, ...scope };
-  }
-
-  const session = await readVercelCliSession(env);
-  if (session) {
-    return {
-      source: "cli",
-      token: session.token,
-      // An explicitly chosen scope wins; otherwise inherit whatever scope the
-      // CLI is pointed at, so the dashboard opens on the same team `vercel` uses.
-      teamId: connection?.teamId ?? session.currentTeam,
-      teamSlug: connection?.teamSlug,
-    };
-  }
-
-  throw new Error(
-    connection?.source === "cli"
-      ? "The Vercel CLI is no longer logged in. Run `vercel login`, sign in to Vercel, or connect with a token."
-      : "Vercel is not connected. Sign in to Vercel, run `vercel login`, or add a Vercel token.",
-  );
-}
-
-/**
- * A valid access token for an `oauth` connection, refreshing it first when it
- * has expired (or is about to). The refreshed pair is handed back to
- * `onTokensRefreshed` so the rotated refresh token replaces the spent one.
- */
-async function oauthAccessToken(
-  connection: VercelConnection,
-  options: ResolveVercelOptions,
-): Promise<string> {
-  const expiresAt = connection.expiresAt ?? 0;
-  const stillFresh = connection.token && Date.now() + VERCEL_TOKEN_REFRESH_SKEW_MS < expiresAt;
-  if (stillFresh && connection.token) return connection.token;
-
-  if (!connection.refreshToken || !connection.clientId) {
-    throw new Error("Your Vercel sign-in has expired. Sign in to Vercel again.");
-  }
-
-  let tokens: VercelOAuthTokens;
-  try {
-    tokens = await refreshVercelOAuthTokens(
-      connection.clientId,
-      connection.refreshToken,
-      options.oauthDeps,
-    );
-  } catch (cause) {
-    throw new Error(
-      `Could not renew your Vercel sign-in (${cause instanceof Error ? cause.message : String(cause)}). Sign in to Vercel again.`,
-    );
-  }
-  await options.onTokensRefreshed?.(tokens);
-  return tokens.accessToken;
+  return resolveProviderCredential(VERCEL_AUTH, config, env, options);
 }
 
 /** The connection stripped of its secrets, safe to return over the API. */
 export function publicVercelConnection(
-  connection: VercelConnection | undefined,
-): Omit<VercelConnection, "token" | "refreshToken"> | undefined {
-  if (!connection) return undefined;
-  const { token: _token, refreshToken: _refreshToken, ...rest } = connection;
-  return rest;
-}
-
-async function readJsonField(path: string, field: string): Promise<string | undefined> {
-  try {
-    const parsed = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
-    const value = parsed[field];
-    return typeof value === "string" && value.trim() ? value.trim() : undefined;
-  } catch {
-    return undefined;
-  }
+  connection: ProviderConnection | undefined,
+): Omit<ProviderConnection, "token" | "refreshToken"> | undefined {
+  return publicProviderConnection(connection);
 }

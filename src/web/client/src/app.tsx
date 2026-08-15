@@ -47,7 +47,13 @@ import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
 import { GitHubHeaderIndicator } from "@/features/github/github-header-indicator";
 import { GlobalSearch } from "@/features/global-search/global-search";
-import { VercelView } from "@/features/vercel/vercel-view";
+import {
+  ExtensionIcon,
+  ExtensionPage,
+  UnknownExtensionPage,
+} from "@/features/extensions/extension-page";
+import { ExtensionsView } from "@/features/extensions/extensions-view";
+import { useInstalledExtensions } from "@/features/extensions/use-installed-extensions";
 import { ProjectOverviewTable } from "@/features/overview/project-overview-table";
 import { refreshGitHubToken } from "@/features/github/hooks/use-github-token";
 import { ProjectBreadcrumb } from "@/features/git/project-breadcrumb";
@@ -93,7 +99,6 @@ export const PAGE_PATHS: Record<Page, string> = {
   docker: "/docker",
   git: "/git",
   github: "/github",
-  vercel: "/vercel",
   workflows: "/workflows",
   errors: "/errors",
   database: "/database",
@@ -101,8 +106,30 @@ export const PAGE_PATHS: Record<Page, string> = {
   agent: "/agent",
   "agent-env": "/agent-env",
   context: "/context",
+  extensions: "/extensions",
   settings: "/settings",
 };
+
+/**
+ * One installed plugin's page, the nav's second layer.
+ *
+ * A child of `/extensions` rather than a page id of its own, because the set of
+ * plugins is *data* — `AppPage` is a closed union and a downloaded plugin
+ * cannot add a member to it. The id lives beside `page` in state instead, which
+ * is what keeps a fourth provider from needing an edit here.
+ */
+export const EXTENSION_PATH_PREFIX = "/extensions/";
+
+export function extensionPath(id: string): string {
+  return `${EXTENSION_PATH_PREFIX}${encodeURIComponent(id)}`;
+}
+
+/** The plugin a path addresses, or null when it is not an extension page. */
+export function extensionIdFromPath(pathname: string): string | null {
+  if (!pathname.startsWith(EXTENSION_PATH_PREFIX)) return null;
+  const id = decodeURIComponent(pathname.slice(EXTENSION_PATH_PREFIX.length)).trim();
+  return id || null;
+}
 
 /** Header title translation key per page. */
 const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
@@ -112,7 +139,6 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   docker: "nav.docker",
   git: "nav.git",
   github: "nav.github",
-  vercel: "nav.vercel",
   workflows: "nav.workflows",
   errors: "nav.errors",
   database: "nav.database",
@@ -120,6 +146,7 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   agent: "pageTitle.agent",
   "agent-env": "pageTitle.agentEnv",
   context: "pageTitle.context",
+  extensions: "pageTitle.extensions",
   settings: "nav.settings",
 };
 
@@ -129,6 +156,10 @@ const PAGE_PATH_MATCHERS = (Object.entries(PAGE_PATHS) as Array<[Page, string]>)
   .sort(([, a], [, b]) => b.length - a.length);
 
 export function pageFromPath(pathname: string): Page {
+  // `/extensions/<id>` is the extensions page with a plugin selected, so the
+  // prefix has to be checked before the exact matches — otherwise a deep link
+  // to a plugin silently lands on Services.
+  if (extensionIdFromPath(pathname)) return "extensions";
   for (const [page, path] of PAGE_PATH_MATCHERS) {
     if (pathname === path) return page;
   }
@@ -275,6 +306,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   const [page, setPage] = useState<Page>(() =>
     syncLocation ? initialPage(window.location) : "services",
   );
+  /**
+   * The plugin whose page is open, or null for the installed list.
+   *
+   * Kept beside `page` rather than inside it: `AppPage` is a closed union the
+   * client owns, while which plugins exist is data the server answers with.
+   */
+  const [extensionId, setExtensionId] = useState<string | null>(() =>
+    syncLocation ? extensionIdFromPath(window.location.pathname) : null,
+  );
+  const { extensions } = useInstalledExtensions();
   const [activityHost, setActivityHost] = useState("local");
   const [data, setData] = useState<DashboardData | null>(null);
   // Set when the dock's "Open" shortcut should jump to a service on the Services page.
@@ -306,6 +347,7 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
   } = useToasts();
   const { ui, updateUi, selectProject } = useSettings();
   const sidebarDocked = ui.sidebarDocked;
+  const extensionsExpanded = ui.extensionsExpanded;
   // Project scope: "All projects" (default) leaves the Run pages machine-wide;
   // picking a project filters them to services under that repo. Git/GitHub
   // always follow the daemon-selected repository.
@@ -481,11 +523,12 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
 
   useEffect(() => {
     if (!syncLocation) return;
-    const path = PAGE_PATHS[page];
+    const path =
+      page === "extensions" && extensionId ? extensionPath(extensionId) : PAGE_PATHS[page];
     if (window.location.pathname !== path) {
       window.history.pushState(null, "", path);
     }
-  }, [page, syncLocation]);
+  }, [page, extensionId, syncLocation]);
 
   const activeProject = (!scopeAll && data?.git.selectedRepository) || null;
   const scopedData = useMemo(
@@ -520,9 +563,28 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
    * clicking a card selects that project and drops the scope, which lands the
    * user back on the same page, now pointed at what they picked.
    */
-  const repoScopedPage = page === "git" || page === "github" || page === "vercel";
-  const overviewDomain: OverviewDomain | null =
-    repoScopedPage && scopeAll ? (page as OverviewDomain) : null;
+  /** The plugin the second-layer nav has open, resolved against what is installed. */
+  const activeExtension = extensionId
+    ? (extensions.find((entry) => entry.id === extensionId) ?? null)
+    : null;
+  /** A deploy plugin's page follows the selected repository, exactly as Deploy did. */
+  const onDeployExtension = page === "extensions" && activeExtension?.kind === "deploy";
+  const repoScopedPage = page === "git" || page === "github" || onDeployExtension;
+  /**
+   * Page → overview domain.
+   *
+   * The page now *is* named after a provider, which removes the old cast
+   * hazard — but `project-overview.ts` still keys its column set on `vercel`
+   * alone (tax #4 in the provider-registry plan: making it generic means
+   * deciding which provider each project uses, a UX question). So Cloudflare's
+   * page under an all-projects scope gets no grid rather than a Vercel grid
+   * with somebody else's name on it.
+   */
+  const overviewDomain: OverviewDomain | null = !scopeAll || !repoScopedPage
+    ? null
+    : onDeployExtension
+      ? (extensionId === "vercel" ? "vercel" : null)
+      : (page as OverviewDomain);
   const effectiveProject =
     repoScopedPage && !scopeAll ? data?.git.selectedRepository ?? null : activeProject;
 
@@ -620,15 +682,67 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 <NavSectionLabel docked={sidebarDocked} label={t(section.labelKey)} />
                 <div className="grid gap-0.5">
                   {section.items.map((item) => (
-                    <NavButton
-                      active={page === item.page}
-                      badge={item.page === "services" ? runningCount : undefined}
-                      docked={sidebarDocked}
-                      icon={item.icon}
-                      key={item.page}
-                      label={t(item.labelKey)}
-                      onClick={() => setPage(item.page)}
-                    />
+                    <div className="relative grid gap-0.5" key={item.page}>
+                      <NavButton
+                        active={page === item.page && !(item.expandable && extensionId)}
+                        badge={item.page === "services" ? runningCount : undefined}
+                        docked={sidebarDocked}
+                        icon={item.icon}
+                        label={t(item.labelKey)}
+                        onClick={() => {
+                          setPage(item.page);
+                          if (item.expandable) setExtensionId(null);
+                        }}
+                      />
+                      {/*
+                        A sibling of the row rather than a child of it: the row
+                        is already a <button>, and expanding is not navigating —
+                        otherwise there is no way to fold the list away without
+                        leaving the page you are on.
+                      */}
+                      {item.expandable ? (
+                        <button
+                          aria-expanded={extensionsExpanded}
+                          aria-label={t("nav.extensionsToggle")}
+                          className={cn(
+                            "absolute left-0.5 top-2.5 z-10 grid size-4 place-items-center rounded text-muted-foreground hover:text-foreground",
+                            // No room for it on the collapsed rail, which is
+                            // icons only.
+                            sidebarDocked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+                          )}
+                          onClick={() => updateUi({ extensionsExpanded: !extensionsExpanded })}
+                          type="button"
+                        >
+                          <ChevronRight
+                            className={cn(
+                              "size-3 transition-transform",
+                              extensionsExpanded && "rotate-90",
+                            )}
+                          />
+                        </button>
+                      ) : null}
+                      {/*
+                        The second layer. One row per installed plugin, from
+                        `/api/extensions` — so a plugin appears here without any
+                        nav file naming it.
+                      */}
+                      {item.expandable && extensionsExpanded
+                        ? extensions.map((extension) => (
+                            <NavButton
+                              active={page === "extensions" && extensionId === extension.id}
+                              child
+                              docked={sidebarDocked}
+                              icon={<ExtensionIcon extension={extension} />}
+                              key={extension.id}
+                              label={extension.name}
+                              onClick={() => {
+                                setPage("extensions");
+                                setExtensionId(extension.id);
+                              }}
+                            />
+                          ))
+                        : null}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -683,7 +797,10 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               ) : null}
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
               <h1 className="truncate px-1 text-sm font-semibold tracking-tight">
-                {t(PAGE_TITLE_KEY[page])}
+                {/* A plugin's page is titled after the plugin: "Extensions"
+                    names the section, and every second-layer page would
+                    otherwise share one title. */}
+                {activeExtension?.name ?? t(PAGE_TITLE_KEY[page])}
               </h1>
             </div>
             <div className="flex items-center gap-2">
@@ -823,7 +940,30 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
             {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
-            {!overviewDomain && page === "vercel" ? <VercelView key={repoScopeKey} /> : null}
+            {/*
+              Extensions is two destinations behind one page id: the installed
+              list, and one plugin's own page. `repoScopeKey` stays in the key
+              because a deploy plugin's page follows the selected repository,
+              exactly as the Deploy page did.
+            */}
+            {!overviewDomain && page === "extensions" && extensionId ? (
+              activeExtension ? (
+                <ExtensionPage
+                  extension={activeExtension}
+                  key={`${activeExtension.id}:${repoScopeKey}`}
+                  onOpenServers={() => setPage("servers")}
+                />
+              ) : extensions.length > 0 ? (
+                <UnknownExtensionPage id={extensionId} />
+              ) : null
+            ) : null}
+            {page === "extensions" && !extensionId ? (
+              <ExtensionsView
+                onOpen={(id) => {
+                  setExtensionId(id);
+                }}
+              />
+            ) : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
               <AgentView
@@ -920,6 +1060,7 @@ function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) 
 function NavButton({
   active,
   badge,
+  child,
   docked,
   icon,
   label,
@@ -927,6 +1068,8 @@ function NavButton({
 }: {
   active: boolean;
   badge?: number;
+  /** A second-layer row: indented, so the hierarchy is visible at a glance. */
+  child?: boolean;
   docked: boolean;
   icon: ReactNode;
   label: string;
@@ -938,7 +1081,12 @@ function NavButton({
     <Button
       aria-label={label}
       title={label}
-      className={navButtonClassName(active, docked)}
+      className={cn(
+        navButtonClassName(active, docked),
+        // Indent only when the labels are visible. On the collapsed rail there
+        // is nothing but icons, and shifting them would break the icon column.
+        child && (docked ? "pl-7" : "group-hover/sidebar:pl-7"),
+      )}
       variant="ghost"
       onClick={onClick}
       type="button"

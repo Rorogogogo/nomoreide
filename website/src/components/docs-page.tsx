@@ -109,10 +109,10 @@ const databaseTools = [
 ];
 
 const vercelTools = [
-  "nomoreide_vercel_list_projects",
-  "nomoreide_vercel_list_deployments",
-  "nomoreide_vercel_get_deployment",
-  "nomoreide_vercel_deployment_logs",
+  "nomoreide_deploy_list_projects",
+  "nomoreide_deploy_list_deployments",
+  "nomoreide_deploy_get_deployment",
+  "nomoreide_deploy_logs",
 ];
 
 const agentEnvironmentTools = [

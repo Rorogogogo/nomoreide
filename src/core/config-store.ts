@@ -25,7 +25,7 @@ import type {
   GitHubIdentity,
   SshServerDefinition,
   ServiceDefinition,
-  VercelConnection,
+  ProviderConnection,
 } from "./types.js";
 import { workflowSchema, type Workflow } from "./workflows.js";
 import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers.js";
@@ -110,7 +110,8 @@ const gitRepositorySchema = z.object({
   path: z.string().min(1),
   activeWorktreePath: z.string().min(1).optional(),
   githubCredential: githubCredentialSchema.optional(),
-  vercelProjectId: z.string().min(1).optional(),
+  /** Pinned deploy-provider project per provider id; see `providerProjects`. */
+  providerProjects: z.record(z.string(), z.string().min(1)).optional(),
 });
 
 /** Upper bound on board-pinned repos, mirroring the web UI's 5-column cap. */
@@ -197,21 +198,36 @@ const githubIdentitySchema = z.object({
 });
 
 /**
- * The Vercel connection. A `cli` connection stores no token — it is re-read
- * from the Vercel CLI's auth file per request — so `token` is set only for
+ * A provider connection. A `cli` connection stores no token — it is re-read
+ * from the vendor CLI's auth file per request — so `token` is set only for
  * `stored` (the pasted token) and `oauth` (the current access token, alongside
  * the refresh token that renews it).
  */
-const vercelConnectionSchema = z.object({
+const providerConnectionSchema = z.object({
   source: z.enum(["cli", "stored", "oauth"]),
   token: z.string().min(1).optional(),
   refreshToken: z.string().min(1).optional(),
   expiresAt: z.number().int().positive().optional(),
   clientId: z.string().min(1).optional(),
-  teamId: z.string().min(1).optional(),
-  teamSlug: z.string().min(1).optional(),
+  scopeId: z.string().min(1).optional(),
+  scopeSlug: z.string().min(1).optional(),
   username: z.string().min(1).optional(),
 });
+
+/** Provider ids key `connections` and `providerProjects`; keep them file-safe. */
+const providerIdSchema = z.string().trim().min(1).max(64).regex(/^[a-z0-9][a-z0-9-]*$/, {
+  message: "a provider id must be lowercase alphanumeric or dashes",
+});
+
+/**
+ * Display name for a provider id in user-facing errors. ConfigStore has no
+ * access to provider manifests, so it title-cases the id — which is exactly
+ * right for `vercel`, `cloudflare`, and `vultr`. A provider whose name needs
+ * more than that should surface its own message at the route layer.
+ */
+function providerLabel(providerId: string): string {
+  return providerId.charAt(0).toUpperCase() + providerId.slice(1);
+}
 
 export const projectPreferencesSchema: z.ZodType<ProjectPreferences> = z
   .object({
@@ -258,7 +274,65 @@ export const DEFAULT_PROJECT_PREFERENCES: ProjectPreferences = Object.freeze({
   database: Object.freeze({ confirmWrites: true, resultLimit: 100 }),
 });
 
-const configSchema = z.object({
+/**
+ * Provider identity as it was stored before connections were keyed by provider.
+ * Both legacy shapes below are Vercel's, because it was the only provider.
+ */
+const LEGACY_PROVIDER_ID = "vercel";
+
+/**
+ * Lift the pre-registry Vercel fields into their provider-keyed homes:
+ *
+ *   config.vercel                       → config.connections.vercel
+ *   connection.teamId / .teamSlug       → .scopeId / .scopeSlug
+ *   repository.vercelProjectId          → repository.providerProjects.vercel
+ *
+ * Runs as a parse-time preprocess rather than a one-shot upgrade script so that
+ * a config written by an older build is readable on every load, not just the
+ * first one after upgrading. `configSchema` is non-strict, so the legacy keys
+ * are dropped on the next write with no further action.
+ *
+ * Existing provider-keyed values win: if both shapes are somehow present, the
+ * new one is authoritative and the legacy key is simply discarded.
+ */
+function migrateLegacyProviderFields(input: unknown): unknown {
+  if (!isRecord(input)) return input;
+  const config = { ...input };
+
+  const legacy = config[LEGACY_PROVIDER_ID];
+  if (isRecord(legacy)) {
+    const { teamId, teamSlug, ...rest } = legacy;
+    const existing = isRecord(config.connections) ? config.connections : {};
+    config.connections = {
+      [LEGACY_PROVIDER_ID]: {
+        ...rest,
+        ...(teamId === undefined ? {} : { scopeId: teamId }),
+        ...(teamSlug === undefined ? {} : { scopeSlug: teamSlug }),
+      },
+      ...existing,
+    };
+  }
+
+  if (Array.isArray(config.gitRepositories)) {
+    config.gitRepositories = config.gitRepositories.map((entry) => {
+      if (!isRecord(entry) || entry.vercelProjectId === undefined) return entry;
+      const { vercelProjectId, ...rest } = entry;
+      const existing = isRecord(entry.providerProjects) ? entry.providerProjects : {};
+      return {
+        ...rest,
+        providerProjects: { [LEGACY_PROVIDER_ID]: vercelProjectId, ...existing },
+      };
+    });
+  }
+
+  return config;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const configShape = z.object({
   version: z.literal(1),
   services: z.array(serviceSchema),
   bundles: z.array(bundleSchema),
@@ -275,8 +349,11 @@ const configSchema = z.object({
   sshServers: z.array(sshServerSchema).default([]),
   githubTokens: z.array(githubTokenSchema).default([]),
   githubIdentities: z.array(githubIdentitySchema).default([]),
-  /** How the Vercel integration authenticates; absent = not connected. */
-  vercel: vercelConnectionSchema.optional(),
+  /**
+   * How each provider authenticates, keyed by provider id. A missing entry
+   * means that provider is not connected.
+   */
+  connections: z.record(providerIdSchema, providerConnectionSchema).default({}),
   workflows: z.array(workflowSchema).default([]),
   /** Event→workflow bindings that auto-fire workflows (IDEAS #16). */
   workflowTriggers: z.array(workflowTriggerSchema).default([]),
@@ -301,6 +378,8 @@ const configSchema = z.object({
   preferences: projectPreferencesSchema.optional(),
 });
 
+const configSchema = z.preprocess(migrateLegacyProviderFields, configShape);
+
 const defaultConfig: NoMoreIdeConfig = {
   version: 1,
   services: [],
@@ -311,6 +390,7 @@ const defaultConfig: NoMoreIdeConfig = {
   sshServers: [],
   githubTokens: [],
   githubIdentities: [],
+  connections: {},
   workflows: [],
   workflowTriggers: [],
 };
@@ -528,8 +608,8 @@ export class ConfigStore {
       if (!parsedRepository.githubCredential && existing?.githubCredential) {
         parsedRepository.githubCredential = existing.githubCredential;
       }
-      if (!parsedRepository.vercelProjectId && existing?.vercelProjectId) {
-        parsedRepository.vercelProjectId = existing.vercelProjectId;
+      if (!parsedRepository.providerProjects && existing?.providerProjects) {
+        parsedRepository.providerProjects = existing.providerProjects;
       }
       config.gitRepositories = [
         ...config.gitRepositories.filter(
@@ -802,75 +882,86 @@ export class ConfigStore {
   }
 
   /**
-   * Save how Vercel is connected. A `cli` connection deliberately drops any
-   * token it was handed: the CLI's auth file stays the single source, so
+   * Save how a provider is connected. A `cli` connection deliberately drops any
+   * token it was handed: the vendor CLI's auth file stays the single source, so
    * `vercel logout` also revokes us instead of leaving a stale copy behind.
    */
-  async setVercelConnection(
-    connection: VercelConnection,
+  async setConnection(
+    providerId: string,
+    connection: ProviderConnection,
   ): Promise<NoMoreIdeConfig> {
-    const parsed = vercelConnectionSchema.parse(connection);
+    const id = providerIdSchema.parse(providerId);
+    const parsed = providerConnectionSchema.parse(connection);
     if (parsed.source === "cli") {
       delete parsed.token;
     } else if (!parsed.token) {
-      throw new ConfigValidationError("a Vercel token is required");
+      throw new ConfigValidationError(`a ${providerLabel(id)} token is required`);
     }
     if (parsed.source === "oauth" && !parsed.clientId) {
-      throw new ConfigValidationError("a Vercel OAuth connection needs its client id");
+      throw new ConfigValidationError(
+        `a ${providerLabel(id)} OAuth connection needs its client id`,
+      );
     }
     return this.mutateConfig((config) => {
-      config.vercel = parsed;
+      config.connections[id] = parsed;
     });
   }
 
   /**
    * Persist the tokens a refresh returned. Separate from
-   * {@link setVercelConnection} because it runs mid-request on an already
-   * connected account, and must not disturb the team scope or cached username.
+   * {@link setConnection} because it runs mid-request on an already connected
+   * account, and must not disturb the scope or cached username.
    */
-  async updateVercelTokens(tokens: {
-    token: string;
-    refreshToken?: string;
-    expiresAt: number;
-  }): Promise<NoMoreIdeConfig> {
+  async updateConnectionTokens(
+    providerId: string,
+    tokens: { token: string; refreshToken?: string; expiresAt: number },
+  ): Promise<NoMoreIdeConfig> {
+    const id = providerIdSchema.parse(providerId);
     return this.mutateConfig((config) => {
-      if (config.vercel?.source !== "oauth") return;
-      config.vercel = {
-        ...config.vercel,
+      const connection = config.connections[id];
+      if (connection?.source !== "oauth") return;
+      config.connections[id] = {
+        ...connection,
         token: tokens.token,
-        // Vercel rotates refresh tokens; keep the previous one only if this
+        // Providers rotate refresh tokens; keep the previous one only if this
         // response omitted a replacement, or the connection becomes unrenewable.
-        refreshToken: tokens.refreshToken ?? config.vercel.refreshToken,
+        refreshToken: tokens.refreshToken ?? connection.refreshToken,
         expiresAt: tokens.expiresAt,
       };
     });
   }
 
-  /** Re-scope an existing connection to a team without re-entering the token. */
-  async setVercelScope(
-    scope: { teamId?: string; teamSlug?: string },
+  /** Re-scope an existing connection without re-entering the token. */
+  async setConnectionScope(
+    providerId: string,
+    scope: { scopeId?: string; scopeSlug?: string },
   ): Promise<NoMoreIdeConfig> {
+    const id = providerIdSchema.parse(providerId);
     return this.mutateConfig((config) => {
-      if (!config.vercel) throw new Error("Vercel is not connected.");
-      config.vercel = {
-        ...config.vercel,
-        teamId: scope.teamId?.trim() || undefined,
-        teamSlug: scope.teamSlug?.trim() || undefined,
+      const connection = config.connections[id];
+      if (!connection) throw new Error(`${providerLabel(id)} is not connected.`);
+      config.connections[id] = {
+        ...connection,
+        scopeId: scope.scopeId?.trim() || undefined,
+        scopeSlug: scope.scopeSlug?.trim() || undefined,
       };
     });
   }
 
-  async removeVercelConnection(): Promise<NoMoreIdeConfig> {
+  async removeConnection(providerId: string): Promise<NoMoreIdeConfig> {
+    const id = providerIdSchema.parse(providerId);
     return this.mutateConfig((config) => {
-      delete config.vercel;
+      delete config.connections[id];
     });
   }
 
-  /** Pin which Vercel project a registered repository deploys. */
-  async setVercelProject(
+  /** Pin which provider project a registered repository deploys. */
+  async setProviderProject(
+    providerId: string,
     repositoryName: string,
     projectId: string | undefined,
   ): Promise<NoMoreIdeConfig> {
+    const id = providerIdSchema.parse(providerId);
     return this.mutateConfig((config) => {
       const repository = config.gitRepositories.find(
         (item) => item.name === repositoryName.trim(),
@@ -878,9 +969,14 @@ export class ConfigStore {
       if (!repository) {
         throw new Error(`Git repository "${repositoryName}" is not registered.`);
       }
-      const id = projectId?.trim();
-      if (id) repository.vercelProjectId = id;
-      else delete repository.vercelProjectId;
+      const pinned = projectId?.trim();
+      const projects = { ...repository.providerProjects };
+      if (pinned) projects[id] = pinned;
+      else delete projects[id];
+      // Drop the key entirely when nothing is pinned, so an untouched repo
+      // serializes exactly as it did before providers were introduced.
+      if (Object.keys(projects).length > 0) repository.providerProjects = projects;
+      else delete repository.providerProjects;
     });
   }
 

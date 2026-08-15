@@ -7,9 +7,22 @@ export interface SshServerDefinition {
   environment?: string;
 }
 
+/** Which host-provider instance backs an SSH host, when one does. */
+export interface HostInstanceRef {
+  providerId: string;
+  providerName: string;
+  instanceId: string;
+  state: "running" | "stopped" | "provisioning" | "error" | "unknown";
+  /** The vendor's own word for the state — `running`, `installing`, `suspended`. */
+  rawState: string;
+  region?: string;
+}
+
 export interface SshServerSummary extends SshServerDefinition {
   discovered: boolean;
   saved: boolean;
+  /** Absent for hand-registered and ~/.ssh/config hosts. */
+  instance?: HostInstanceRef;
 }
 
 export interface SshServerProbe {

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { HostInstanceRef, HostSshTarget } from "./providers/host-provider.js";
 import type { SshServerDefinition } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -17,6 +18,12 @@ const SSH_OPTIONS = [
 export interface SshServerSummary extends SshServerDefinition {
   discovered: boolean;
   saved: boolean;
+  /**
+   * Set when a host provider adopted this machine — see
+   * `providers/host-bridge.ts`. Absent for hand-registered and
+   * `~/.ssh/config` hosts, which is every host that existed before providers.
+   */
+  instance?: HostInstanceRef;
 }
 
 export interface SshServerProbe {
@@ -85,20 +92,36 @@ export async function discoverSshHosts(
   return parseSshConfigHosts(contents);
 }
 
+/**
+ * One row per host, whether it came from the user, from `~/.ssh/config`, or
+ * from a host provider.
+ *
+ * Merged on the host string, so a provider instance the user has *also* saved
+ * metadata for is one row, not two, and their name and environment win — the
+ * provider supplies a starting point, not an override.
+ */
 export function mergeSshServers(
   saved: SshServerDefinition[],
   discoveredHosts: string[],
+  hostTargets: HostSshTarget[] = [],
 ): SshServerSummary[] {
   const savedByHost = new Map(saved.map((server) => [server.host, server]));
-  const hosts = new Set([...discoveredHosts, ...savedByHost.keys()]);
+  const targetByHost = new Map(hostTargets.map((target) => [target.host, target]));
+  const hosts = new Set([...discoveredHosts, ...savedByHost.keys(), ...targetByHost.keys()]);
   return [...hosts]
     .sort((a, b) => a.localeCompare(b))
-    .map((host) => ({
-      host,
-      ...savedByHost.get(host),
-      discovered: discoveredHosts.includes(host),
-      saved: savedByHost.has(host),
-    }));
+    .map((host) => {
+      const savedServer = savedByHost.get(host);
+      const target = targetByHost.get(host);
+      return {
+        host,
+        name: savedServer?.name ?? target?.name,
+        environment: savedServer?.environment ?? target?.environment,
+        instance: target?.instance,
+        discovered: discoveredHosts.includes(host),
+        saved: savedByHost.has(host),
+      };
+    });
 }
 
 export async function probeSshServer(host: string): Promise<SshServerProbe> {

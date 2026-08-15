@@ -207,6 +207,12 @@ export function ServersView({
                         {[
                           server.discovered ? t("servers.sourceSshConfig") : null,
                           server.saved ? t("servers.sourceSaved") : null,
+                          server.instance
+                            ? t("servers.sourceProvider", {
+                                provider: server.instance.providerName,
+                                state: server.instance.rawState,
+                              })
+                            : null,
                         ].filter(Boolean).join(" · ")}
                       </div>
                     </td>

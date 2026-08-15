@@ -16,6 +16,14 @@ export interface UiPreferences {
   codeFontSize: number;
   reducedMotion: boolean;
   sidebarDocked: boolean;
+  /**
+   * Whether the Extensions nav row shows its second layer.
+   *
+   * Defaults open, and defaults open for existing installs too: the plugins
+   * *are* the destinations now that Deploy is not a row of its own, so a
+   * collapsed default would hide every provider behind a disclosure triangle.
+   */
+  extensionsExpanded: boolean;
   agentDockPlacement: "bottom" | "right";
   projectScope: "all" | "project";
   /** Play a short local chime when an agent task exits. */
@@ -41,6 +49,7 @@ export function defaultUiPreferences(): UiPreferences {
     codeFontSize: 12,
     reducedMotion: prefersReducedMotion(),
     sidebarDocked: false,
+    extensionsExpanded: true,
     agentDockPlacement: "bottom",
     projectScope: "all",
     agentCompletionSound: false,
@@ -109,6 +118,9 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
     agentDockPlacement:
       input.agentDockPlacement === "right" ? "right" : "bottom",
     agentCompletionSound: input.agentCompletionSound === true,
+    // Absent in preferences stored before the second-layer nav existed, and
+    // `undefined` there must read as open rather than as collapsed.
+    extensionsExpanded: input.extensionsExpanded !== false,
     accent: isValidAccent(input.accent) ? input.accent : DEFAULT_ACCENT,
     projectAccents: sanitizeProjectAccents(input.projectAccents),
   };

@@ -10,8 +10,10 @@ import { databaseRoutes } from "./database-routes.js";
 import { contextLibraryRoutes } from "./context-library-routes.js";
 import { dockerRoutes } from "./docker-routes.js";
 import { errorRoutes } from "./errors-routes.js";
+import { extensionsRoutes } from "./extensions-routes.js";
 import { gitRoutes } from "./git-routes.js";
 import { githubRoutes } from "./github-routes.js";
+import { hostRoutes } from "./host-routes.js";
 import { logSourceRoutes } from "./log-sources-routes.js";
 import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
@@ -23,7 +25,7 @@ import { shellRoutes } from "./shell-routes.js";
 import { snapshotRoutes } from "./snapshot-routes.js";
 import { skillsRoutes } from "./skills-routes.js";
 import { terminalRoutes } from "./terminal-routes.js";
-import { vercelRoutes } from "./vercel-routes.js";
+import { providerRoutes } from "./provider-routes.js";
 import { workflowRoutes } from "./workflow-routes.js";
 import { workflowTriggerRoutes } from "./workflow-trigger-routes.js";
 
@@ -48,6 +50,7 @@ export const routes: Route[] = [
   ...contextLibraryRoutes,
   ...dockerRoutes,
   ...errorRoutes,
+  ...extensionsRoutes,
   ...githubRoutes,
   ...gitRoutes,
   ...logSourceRoutes,
@@ -62,7 +65,8 @@ export const routes: Route[] = [
   ...skillsRoutes,
   ...snapshotRoutes,
   ...terminalRoutes,
-  ...vercelRoutes,
+  ...providerRoutes,
+  ...hostRoutes,
   ...shellRoutes,
 ];
 

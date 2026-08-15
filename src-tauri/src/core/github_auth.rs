@@ -238,7 +238,8 @@ mod tests {
             github_credential: Some(GithubCredentialSelection::Stored {
                 host: "enterprise.example".into(),
             }),
-            vercel_project_id: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
         });
         let error = resolve(&config, Some("app"), "github.com")
             .await

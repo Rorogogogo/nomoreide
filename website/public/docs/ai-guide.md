@@ -139,9 +139,9 @@ When GitHub is connected:
 
 ## Vercel Workflow
 
-1. Use `nomoreide_vercel_list_projects` to discover the visible team projects.
-2. Use `nomoreide_vercel_list_deployments` and `nomoreide_vercel_get_deployment` to inspect state before drawing conclusions.
-3. Use `nomoreide_vercel_deployment_logs` for build failures.
+1. Use `nomoreide_deploy_list_projects` to discover the visible team projects.
+2. Use `nomoreide_deploy_list_deployments` and `nomoreide_deploy_get_deployment` to inspect state before drawing conclusions.
+3. Use `nomoreide_deploy_logs` for build failures.
 4. Treat Vercel MCP access as read-only. Redeploy, cancel, promote, and rollback are human dashboard actions.
 
 ## Agent Environment and Profile Workflow
@@ -263,10 +263,10 @@ nomoreide_github_list_workflow_runs
 Vercel tools:
 
 ```text
-nomoreide_vercel_list_projects
-nomoreide_vercel_list_deployments
-nomoreide_vercel_get_deployment
-nomoreide_vercel_deployment_logs
+nomoreide_deploy_list_projects
+nomoreide_deploy_list_deployments
+nomoreide_deploy_get_deployment
+nomoreide_deploy_logs
 ```
 
 Documentation and UI tools:

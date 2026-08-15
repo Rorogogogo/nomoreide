@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::process::Command;
 
-use super::config::{Config, ConfigStore};
+use super::config::{Config, ConfigStore, LEGACY_PROVIDER_ID};
 use super::vercel_actions::VercelActions;
 use super::vercel_auth::{resolve, ResolvedCredential};
 use super::vercel_manager::{repo_url, Identity, VercelManager};
@@ -95,7 +95,10 @@ async fn adopt_default_team(
     let team = teams.first()?;
     let id = team.get("id").and_then(Value::as_str)?.to_string();
     let slug = team.get("slug").and_then(Value::as_str).map(str::to_string);
-    store.set_vercel_scope(Some(id.clone()), slug).await.ok()?;
+    store
+        .set_connection_scope(LEGACY_PROVIDER_ID, Some(id.clone()), slug)
+        .await
+        .ok()?;
     Some(id)
 }
 
@@ -121,7 +124,11 @@ async fn resolve_project(config: &Config, manager: &VercelManager, git_cwd: &str
             let path = repo.active_worktree_path.as_ref().unwrap_or(&repo.path);
             path == &top_level || repo.path == top_level
         })
-        .and_then(|repo| repo.vercel_project_id.clone());
+        .and_then(|repo| {
+            repo.provider_projects
+                .as_ref()
+                .and_then(|projects| projects.get(LEGACY_PROVIDER_ID).cloned())
+        });
     if let Some(pinned) = pinned {
         if let Ok(project) = manager.get_project(&pinned).await {
             return Some(project);
@@ -211,7 +218,8 @@ mod tests {
             path: path.into(),
             active_worktree_path: worktree.map(str::to_string),
             github_credential: None,
-            vercel_project_id: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
         }
     }
 

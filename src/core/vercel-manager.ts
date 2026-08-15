@@ -7,6 +7,8 @@
  * so an agent holding these tools can observe a deploy but never ship one.
  */
 
+import type { ProviderFetch } from "./providers/egress.js";
+
 export type VercelDeploymentState =
   | "BUILDING"
   | "ERROR"
@@ -175,6 +177,12 @@ export interface VercelManagerOptions {
    * OAuth browser sign-in answers on.
    */
   identity?: "user" | "oidc";
+  /**
+   * The provider's scoped `fetch` (see `providers/egress.ts`). Absent means
+   * global `fetch` — the case for a manager built directly in a test. Production
+   * clients come from `vercel-context.ts`, which always supplies one.
+   */
+  fetch?: ProviderFetch;
 }
 
 export class VercelManager {
@@ -201,9 +209,10 @@ export class VercelManager {
   }
 
   private async oidcViewer(): Promise<VercelViewer> {
-    const response = await fetch(`${this.baseUrl}/login/oauth/userinfo`, {
-      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json" },
-    });
+    const response = await (this.options.fetch ?? fetch)(
+      `${this.baseUrl}/login/oauth/userinfo`,
+      { headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json" } },
+    );
     if (!response.ok) {
       throw new VercelApiError(
         `Vercel rejected the sign-in (HTTP ${response.status}).`,
@@ -369,7 +378,7 @@ export class VercelManager {
     opts?: { method?: string; body?: unknown; accept?: string },
   ): Promise<T> {
     return vercelRequest<T>(
-      { token: this.token, teamId: this.teamId, baseUrl: this.baseUrl },
+      { token: this.token, teamId: this.teamId, baseUrl: this.baseUrl, fetch: this.options.fetch },
       path,
       opts,
     );
@@ -380,6 +389,12 @@ export interface VercelRequestAuth {
   token: string;
   teamId?: string;
   baseUrl?: string;
+  /**
+   * The provider's scoped `fetch` (see `providers/egress.ts`). Absent means
+   * global `fetch` — the case for a manager built directly in a test. Production
+   * clients come from `vercel-context.ts`, which always supplies one.
+   */
+  fetch?: ProviderFetch;
 }
 
 /**
@@ -408,7 +423,7 @@ export async function vercelRequest<T>(
     init.body = JSON.stringify(opts.body);
   }
 
-  const response = await fetch(url, init);
+  const response = await (auth.fetch ?? fetch)(url, init);
   if (!response.ok) {
     throw new VercelApiError(await readApiError(response, path), response.status, path);
   }

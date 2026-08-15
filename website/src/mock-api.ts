@@ -22,13 +22,13 @@ import type {
   RowSample,
   ServiceStatus,
   TableRef,
-  VercelBuildLogLine,
-  VercelDeployment,
-  VercelDeploymentDetail,
-  VercelDomain,
-  VercelEnvVar,
-  VercelProject,
-  VercelRuntimeLogLine,
+  ProviderDeployment,
+  ProviderDeploymentDetail,
+  ProviderDomain,
+  ProviderEnvVar,
+  ProviderLogLine,
+  ProviderManifest,
+  ProviderProject,
   Workflow,
 } from "@/lib/api";
 
@@ -598,7 +598,7 @@ function overviewProjects(domain: string): ProjectOverviewEntry[] {
       vercel: {
         projectId: `prj_${project.name}`,
         projectName: project.name,
-        state: (["READY", "READY", "ERROR"] as const)[index],
+        state: (["ready", "ready", "error"] as const)[index],
         url: `${project.name}.vercel.app`,
         createdAt: Date.now() - 1000 * 60 * (index === 0 ? 47 : 610),
       },
@@ -606,49 +606,96 @@ function overviewProjects(domain: string): ProjectOverviewEntry[] {
   });
 }
 
-const vercelProject: VercelProject = {
+const vercelProject: ProviderProject = {
   id: "prj_acme_web",
   name: "acme-web",
   framework: "nextjs",
   updatedAt: Date.now() - 1000 * 60 * 32,
   link: { type: "github", org: "acme", repo: "web", productionBranch: "main" },
-  // Null is the honest demo value for most of these: Vercel uses the
+  // Null is the honest demo value for most of these: the provider uses the
   // framework's own default unless the project overrides it.
-  buildCommand: null,
-  devCommand: null,
-  installCommand: "npm ci",
-  outputDirectory: null,
-  rootDirectory: null,
-  nodeVersion: "22.x",
-  serverlessFunctionRegion: "iad1",
+  settings: [
+    { key: "buildCommand", label: "Build command", value: null },
+    { key: "devCommand", label: "Dev command", value: null },
+    { key: "installCommand", label: "Install command", value: "npm ci" },
+    { key: "outputDirectory", label: "Output directory", value: null },
+    { key: "rootDirectory", label: "Root directory", value: null },
+    { key: "nodeVersion", label: "Node version", value: "22.x" },
+    { key: "serverlessFunctionRegion", label: "Function region", value: "iad1" },
+  ],
 };
 
-const vercelEnv: VercelEnvVar[] = [
+const vercelManifest: ProviderManifest = {
+  id: "vercel",
+  name: "Vercel",
+  kind: "deploy",
+  // The demo renders real action buttons off this, so the labels have to be
+  // here — the dashboard reads them from the manifest, not from `i18n/en.ts`.
+  strings: {
+    en: {
+      "scope.label": "Vercel scope",
+      "action.redeploy": "Redeploy",
+      "action.redeploy.done": "Redeploy started.",
+      "action.cancel": "Cancel build",
+      "action.cancel.done": "Build canceled.",
+      "action.promote": "Promote",
+      "action.promote.done": "Promoted to production.",
+      "action.promote.confirmTitle": "Promote to production?",
+      "action.promote.confirm": "Production traffic switches to this deployment immediately.",
+      "action.rollback": "Roll back",
+      "action.rollback.done": "Rolled back production.",
+      "action.rollback.confirmTitle": "Roll production back?",
+      "action.rollback.confirm":
+        "Production traffic switches back to this older deployment immediately.",
+    },
+    zh: {
+      "scope.label": "Vercel 范围",
+      "action.redeploy": "重新部署",
+      "action.redeploy.done": "已开始重新部署。",
+      "action.cancel": "取消构建",
+      "action.cancel.done": "已取消构建。",
+      "action.promote": "提升至生产",
+      "action.promote.done": "已提升至生产环境。",
+      "action.promote.confirmTitle": "提升至生产环境？",
+      "action.promote.confirm": "生产流量将立即切换到该部署。",
+      "action.rollback": "回滚",
+      "action.rollback.done": "已回滚生产环境。",
+      "action.rollback.confirmTitle": "回滚生产环境？",
+      "action.rollback.confirm": "生产流量将立即切回这个较旧的部署。",
+    },
+  },
+  authSources: ["cli", "stored", "oauth"],
+  capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
+  actions: ["redeploy", "cancel", "promote", "rollback"],
+  productionAffecting: ["promote", "rollback"],
+};
+
+const vercelEnv: ProviderEnvVar[] = [
   {
     id: "env_database_url",
     key: "DATABASE_URL",
-    target: ["production", "preview"],
+    environments: ["production", "preview"],
     type: "encrypted",
     updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 9,
   },
   {
     id: "env_stripe",
     key: "STRIPE_SECRET_KEY",
-    target: ["production"],
+    environments: ["production"],
     type: "encrypted",
     updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 31,
   },
   {
     id: "env_flag",
     key: "NEXT_PUBLIC_FEATURE_CHECKOUT",
-    target: ["production", "preview", "development"],
+    environments: ["production", "preview", "development"],
     type: "plain",
     updatedAt: Date.now() - 1000 * 60 * 60 * 6,
   },
   {
     id: "env_preview_api",
     key: "API_BASE_URL",
-    target: ["preview"],
+    environments: ["preview"],
     type: "encrypted",
     gitBranch: "feat/website-real-ui-demo",
     updatedAt: Date.now() - 1000 * 60 * 90,
@@ -656,12 +703,12 @@ const vercelEnv: VercelEnvVar[] = [
   {
     id: "env_vercel_url",
     key: "VERCEL_URL",
-    target: ["production", "preview", "development"],
+    environments: ["production", "preview", "development"],
     type: "system",
   },
 ];
 
-const vercelDomains: VercelDomain[] = [
+const vercelDomains: ProviderDomain[] = [
   {
     name: "acme-web.vercel.app",
     apexName: "vercel.app",
@@ -702,45 +749,43 @@ const vercelDomains: VercelDomain[] = [
   },
 ];
 
-const vercelRuntimeLogs: VercelRuntimeLogLine[] = [
+const vercelRuntimeLogs: ProviderLogLine[] = [
   {
     id: "rt_1",
     createdAt: Date.now() - 1000 * 60 * 12,
     level: "info",
-    message: "Checkout session created",
+    kind: "runtime",
+    text: "Checkout session created",
     source: "lambda",
-    statusCode: 200,
-    requestMethod: "POST",
-    requestPath: "/api/checkout",
+    request: { statusCode: 200, method: "POST", path: "/api/checkout" },
   },
   {
     id: "rt_2",
     createdAt: Date.now() - 1000 * 60 * 8,
     level: "warning",
-    message: "Upstream inventory lookup took 2841ms",
+    kind: "runtime",
+    text: "Upstream inventory lookup took 2841ms",
     source: "lambda",
-    statusCode: 200,
-    requestMethod: "GET",
-    requestPath: "/api/products",
+    request: { statusCode: 200, method: "GET", path: "/api/products" },
   },
   {
     id: "rt_3",
     createdAt: Date.now() - 1000 * 60 * 3,
     level: "error",
-    message: "TypeError: Cannot read properties of undefined (reading 'total')",
+    kind: "runtime",
+    text: "TypeError: Cannot read properties of undefined (reading 'total')",
     source: "lambda",
-    statusCode: 500,
-    requestMethod: "GET",
-    requestPath: "/api/cart",
+    request: { statusCode: 500, method: "GET", path: "/api/cart" },
   },
 ];
 
-const vercelDeployments: VercelDeployment[] = [
+const vercelDeployments: ProviderDeployment[] = [
   {
-    uid: "dpl_9f3ka2",
+    id: "dpl_9f3ka2",
     name: "acme-web",
     url: "acme-web-9f3ka2.vercel.app",
-    state: "BUILDING",
+    state: "building",
+    rawState: "BUILDING",
     target: null,
     createdAt: Date.now() - 1000 * 60 * 2,
     creator: { username: "octocat" },
@@ -752,10 +797,11 @@ const vercelDeployments: VercelDeployment[] = [
     },
   },
   {
-    uid: "dpl_7b1mz8",
+    id: "dpl_7b1mz8",
     name: "acme-web",
     url: "acme-web.vercel.app",
-    state: "READY",
+    state: "ready",
+    rawState: "READY",
     target: "production",
     createdAt: Date.now() - 1000 * 60 * 47,
     readyAt: Date.now() - 1000 * 60 * 44,
@@ -769,10 +815,11 @@ const vercelDeployments: VercelDeployment[] = [
     },
   },
   {
-    uid: "dpl_5x0qw4",
+    id: "dpl_5x0qw4",
     name: "acme-web",
     url: "acme-web-5x0qw4.vercel.app",
-    state: "ERROR",
+    state: "error",
+    rawState: "ERROR",
     target: null,
     createdAt: Date.now() - 1000 * 60 * 96,
     creator: { username: "hubot" },
@@ -785,7 +832,7 @@ const vercelDeployments: VercelDeployment[] = [
   },
 ];
 
-const vercelBuildLogs: VercelBuildLogLine[] = [
+const vercelBuildLogs: ProviderLogLine[] = [
   "Running build in Washington, D.C., USA (East) – iad1",
   "Cloning github.com/acme/web (Branch: main, Commit: 9a72f5c)",
   "Restored build cache from previous deployment",
@@ -799,7 +846,8 @@ const vercelBuildLogs: VercelBuildLogLine[] = [
 ].map((textLine, index) => ({
   id: `evt_${index}`,
   createdAt: Date.now() - 1000 * (60 * 47 - index * 4),
-  type: "stdout",
+  kind: "build" as const,
+  level: "stdout",
   text: textLine,
 }));
 
@@ -1774,71 +1822,136 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
     return json({ ok: true, projects: overviewProjects(projectOverview[1]) });
   }
 
-  if (path === "/api/vercel/status") {
+  // --- Deploy providers -------------------------------------------------
+  //
+  // One handler set for every provider, matching `/api/providers/:id/*`. The
+  // demo only ships Vercel data, so the id is captured and ignored rather than
+  // switched on — a second provider would add data here, not routes.
+
+  if (path === "/api/providers") {
+    return json({ ok: true, providers: [vercelManifest] });
+  }
+
+  // --- Extensions -------------------------------------------------------
+  //
+  // The Extensions page reads this on mount, so it needs a handler: the
+  // fallback would hand the view `undefined` and the map over it would
+  // white-screen the embedded app. Cloudflare and Vultr appear here even though
+  // the demo ships no data for them — the point of the page is the inventory,
+  // and a one-row inventory does not show what it is for.
+
+  if (path === "/api/extensions") {
     return json({
       ok: true,
-      status: "connected",
-      connection: { source: "cli", username: "octocat" },
-      cliAvailable: true,
-      user: { username: "octocat" },
-      teams: [{ id: "team_acme", slug: "acme", name: "Acme" }],
-      project: vercelProject,
-      repositoryName: "acme-web",
+      extensions: [
+        {
+          id: "vercel",
+          name: "Vercel",
+          kind: "deploy",
+          source: "built-in",
+          capabilities: ["projects", "deployments", "buildLogs", "runtimeLogs", "env", "domains"],
+          actions: ["redeploy", "cancel", "promote", "rollback"],
+          productionAffecting: ["promote", "rollback"],
+          hosts: ["api.vercel.com"],
+          mergesInto: null,
+        },
+        {
+          id: "cloudflare",
+          name: "Cloudflare",
+          kind: "deploy",
+          source: "built-in",
+          capabilities: ["projects", "deployments", "buildLogs", "env", "domains"],
+          actions: ["redeploy", "rollback"],
+          productionAffecting: ["rollback"],
+          hosts: ["api.cloudflare.com"],
+          mergesInto: null,
+        },
+        {
+          id: "vultr",
+          name: "Vultr",
+          kind: "host",
+          source: "built-in",
+          capabilities: [],
+          actions: ["start", "halt", "reboot"],
+          productionAffecting: ["halt", "reboot"],
+          hosts: ["api.vultr.com"],
+          mergesInto: "servers",
+        },
+      ],
     });
   }
-  if (path === "/api/vercel/projects") {
-    return json({ ok: true, projects: [vercelProject], linkedProjectId: vercelProject.id });
-  }
-  if (path === "/api/vercel/project") {
-    return json({ ok: true, project: vercelProject });
-  }
-  if (path === "/api/vercel/env") {
-    return json({ ok: true, env: vercelEnv });
-  }
-  // Reveal is a POST, so it never fires on mount — but leaving it to the
-  // fallback would hand the demo `undefined` the moment anyone clicks the eye.
-  const vercelEnvReveal = path.match(/^\/api\/vercel\/env\/([^/]+)\/reveal$/);
-  if (vercelEnvReveal) {
-    return json({ ok: true, value: `demo-value-for-${vercelEnvReveal[1]}` });
-  }
-  if (path === "/api/vercel/domains") {
-    return json({ ok: true, domains: vercelDomains });
-  }
-  // The demo is always signed in, so a sign-in never starts here — but the
-  // setup screen polls this the moment anyone clicks the button.
-  if (path === "/api/vercel/oauth/status") {
-    return json({ ok: true, phase: "idle" });
-  }
-  if (path === "/api/vercel/deployments") {
-    const target = url.searchParams.get("target");
-    const deployments =
-      target === "production"
-        ? vercelDeployments.filter((deployment) => deployment.target === "production")
-        : target === "preview"
-          ? vercelDeployments.filter((deployment) => deployment.target !== "production")
-          : vercelDeployments;
-    return json({ ok: true, project: vercelProject, deployments });
-  }
-  const vercelDeploymentLogs = path.match(/^\/api\/vercel\/deployments\/([^/]+)\/logs$/);
-  if (vercelDeploymentLogs) {
-    return json({ ok: true, logs: vercelBuildLogs });
-  }
-  if (path.match(/^\/api\/vercel\/deployments\/([^/]+)\/runtime-logs$/)) {
-    return json({ ok: true, logs: vercelRuntimeLogs });
-  }
-  const vercelDeployment = path.match(/^\/api\/vercel\/deployments\/([^/]+)$/);
-  if (vercelDeployment) {
-    const found =
-      vercelDeployments.find((deployment) => deployment.uid === vercelDeployment[1]) ??
-      vercelDeployments[0];
-    const detail: VercelDeploymentDetail = {
-      ...found,
-      aliases: found.target === "production" ? ["acme-web.vercel.app"] : [],
-      buildingAt: found.createdAt + 1000,
-      errorMessage:
-        found.state === "ERROR" ? "Build failed: `npm run build` exited with 1" : undefined,
-    };
-    return json({ ok: true, deployment: detail });
+
+  const provider = path.match(/^\/api\/providers\/([^/]+)(\/.*)$/);
+  if (provider) {
+    const rest = provider[2];
+
+    if (rest === "/status") {
+      return json({
+        ok: true,
+        status: "connected",
+        provider: vercelManifest,
+        connection: { source: "cli", username: "octocat" },
+        cliAvailable: true,
+        user: { username: "octocat" },
+        scopes: [{ id: "team_acme", slug: "acme", name: "Acme" }],
+        scopeId: "team_acme",
+        project: vercelProject,
+        repositoryName: "acme-web",
+      });
+    }
+    if (rest === "/projects") {
+      return json({ ok: true, projects: [vercelProject], linkedProjectId: vercelProject.id });
+    }
+    if (rest === "/project") {
+      return json({ ok: true, project: vercelProject });
+    }
+    if (rest === "/env") {
+      return json({ ok: true, env: vercelEnv });
+    }
+    // Reveal is a POST, so it never fires on mount — but leaving it to the
+    // fallback would hand the demo `undefined` the moment anyone clicks the eye.
+    const envReveal = rest.match(/^\/env\/([^/]+)\/reveal$/);
+    if (envReveal) {
+      return json({ ok: true, value: `demo-value-for-${envReveal[1]}` });
+    }
+    if (rest === "/domains") {
+      return json({ ok: true, domains: vercelDomains });
+    }
+    // The demo is always signed in, so a sign-in never starts here — but the
+    // setup screen polls this the moment anyone clicks the button.
+    if (rest === "/oauth/status") {
+      return json({ ok: true, phase: "idle" });
+    }
+    if (rest === "/deployments") {
+      const target = url.searchParams.get("target");
+      const deployments =
+        target === "production"
+          ? vercelDeployments.filter((deployment) => deployment.target === "production")
+          : target === "preview"
+            ? vercelDeployments.filter((deployment) => deployment.target !== "production")
+            : vercelDeployments;
+      return json({ ok: true, project: vercelProject, deployments });
+    }
+    if (rest.match(/^\/deployments\/([^/]+)\/logs$/)) {
+      return json({ ok: true, logs: vercelBuildLogs });
+    }
+    if (rest.match(/^\/deployments\/([^/]+)\/runtime-logs$/)) {
+      return json({ ok: true, logs: vercelRuntimeLogs });
+    }
+    const deploymentDetail = rest.match(/^\/deployments\/([^/]+)$/);
+    if (deploymentDetail) {
+      const found =
+        vercelDeployments.find((deployment) => deployment.id === deploymentDetail[1]) ??
+        vercelDeployments[0];
+      const detail: ProviderDeploymentDetail = {
+        ...found,
+        aliases: found.target === "production" ? ["acme-web.vercel.app"] : [],
+        buildingAt: found.createdAt + 1000,
+        errorMessage:
+          found.state === "error" ? "Build failed: `npm run build` exited with 1" : undefined,
+      };
+      return json({ ok: true, deployment: detail });
+    }
   }
 
   if (path === "/api/agent") return json({ ok: true, agent: agentInfo() });

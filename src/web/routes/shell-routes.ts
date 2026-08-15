@@ -16,23 +16,43 @@ export const shellPaths = new Set([
   "/docker",
   "/git",
   "/github",
-  "/vercel",
   "/workflows",
   "/agent",
   "/agent-env",
   "/context",
+  "/extensions",
   "/errors",
   "/database",
   "/terminal",
   "/settings",
 ]);
 
+/**
+ * Path prefixes that also serve the shell, for pages whose last segment is
+ * *data* rather than a route the client knows in advance.
+ *
+ * `/extensions/<id>` is the only one: which plugins exist comes from the
+ * registry, so an exact-match set could not list them without this file
+ * learning their names — exactly what the two-layer nav was built not to need.
+ */
+export const shellPathPrefixes = ["/extensions/"];
+
+/** Whether a path should serve the SPA shell. */
+export function servesShell(pathname: string): boolean {
+  if (shellPaths.has(pathname)) return true;
+  return shellPathPrefixes.some(
+    // A bare prefix with nothing after it is not a page; `/extensions` already
+    // is one, and `/extensions/` should not quietly render as the same thing.
+    (prefix) => pathname.startsWith(prefix) && pathname.length > prefix.length,
+  );
+}
+
 /** Static assets and the SPA shell. Registered last so /api/* wins first. */
 export const shellRoutes: Route[] = [
   {
     match(method, url) {
       if (method !== "HEAD") return null;
-      return shellPaths.has(url.pathname) ? {} : null;
+      return servesShell(url.pathname) ? {} : null;
     },
     handle({ response }) {
       sendHead(response, "text/html; charset=utf-8");
@@ -47,7 +67,7 @@ export const shellRoutes: Route[] = [
   {
     match(method, url) {
       if (method !== "GET") return null;
-      return shellPaths.has(url.pathname) ? {} : null;
+      return servesShell(url.pathname) ? {} : null;
     },
     async handle({ response }) {
       sendHtml(response, await readWebAppShell());

@@ -213,6 +213,7 @@ describe("ConfigStore", () => {
       workflows: [],
       githubIdentities: [],
       workflowTriggers: [],
+      connections: {},
     });
   });
 
@@ -662,6 +663,167 @@ describe("ConfigStore", () => {
     const config = await store.load();
     expect(store.getGithubToken(config, "github.com")).toBeUndefined();
     expect(store.getGithubToken(config, "github.enterprise.com")).toBe("ghp_enterprise");
+  });
+});
+
+/**
+ * Configs written before connections were keyed by provider id must keep
+ * working — a user upgrading NoMoreIDE should not have to reconnect Vercel or
+ * re-pin their project.
+ */
+describe("legacy provider config migration", () => {
+  /** A config.json exactly as a pre-registry build would have written it. */
+  async function writeLegacyConfig(extra: Record<string, unknown> = {}): Promise<void> {
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        version: 1,
+        services: [],
+        bundles: [],
+        gitRepositories: [],
+        databases: [],
+        logSources: [],
+        sshServers: [],
+        githubTokens: [],
+        githubIdentities: [],
+        workflows: [],
+        workflowTriggers: [],
+        ...extra,
+      }),
+    );
+  }
+
+  test("lifts a legacy vercel connection into connections.vercel", async () => {
+    await writeLegacyConfig({
+      vercel: { source: "stored", token: "pat_legacy", username: "acme" },
+    });
+
+    const config = await new ConfigStore(configPath).load();
+
+    expect(config.connections.vercel).toEqual({
+      source: "stored",
+      token: "pat_legacy",
+      username: "acme",
+    });
+  });
+
+  test("renames the legacy team scope to the neutral scope fields", async () => {
+    await writeLegacyConfig({
+      vercel: { source: "cli", teamId: "team_abc", teamSlug: "acme" },
+    });
+
+    const config = await new ConfigStore(configPath).load();
+
+    expect(config.connections.vercel).toMatchObject({
+      source: "cli",
+      scopeId: "team_abc",
+      scopeSlug: "acme",
+    });
+    expect(config.connections.vercel).not.toHaveProperty("teamId");
+  });
+
+  test("lifts a repository's pinned vercel project into providerProjects", async () => {
+    await writeLegacyConfig({
+      gitRepositories: [
+        { name: "web", path: "/tmp/web", vercelProjectId: "prj_legacy" },
+        { name: "api", path: "/tmp/api" },
+      ],
+    });
+
+    const config = await new ConfigStore(configPath).load();
+
+    expect(config.gitRepositories[0].providerProjects).toEqual({ vercel: "prj_legacy" });
+    // A repo that never pinned one stays absent rather than gaining an empty map.
+    expect(config.gitRepositories[1].providerProjects).toBeUndefined();
+  });
+
+  test("drops the legacy keys on the next write", async () => {
+    await writeLegacyConfig({
+      vercel: { source: "stored", token: "pat_legacy", teamId: "team_abc" },
+      gitRepositories: [{ name: "web", path: "/tmp/web", vercelProjectId: "prj_legacy" }],
+    });
+    const store = new ConfigStore(configPath);
+
+    await store.save(await store.load());
+
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw).not.toHaveProperty("vercel");
+    expect(raw.gitRepositories[0]).not.toHaveProperty("vercelProjectId");
+    expect(raw.connections.vercel.scopeId).toBe("team_abc");
+    expect(raw.gitRepositories[0].providerProjects).toEqual({ vercel: "prj_legacy" });
+  });
+
+  test("a provider-keyed value wins when both shapes are present", async () => {
+    await writeLegacyConfig({
+      vercel: { source: "stored", token: "pat_legacy" },
+      connections: { vercel: { source: "stored", token: "pat_current" } },
+    });
+
+    const config = await new ConfigStore(configPath).load();
+
+    expect(config.connections.vercel?.token).toBe("pat_current");
+  });
+
+  test("a config with no legacy keys is untouched", async () => {
+    await writeLegacyConfig();
+
+    const config = await new ConfigStore(configPath).load();
+
+    expect(config.connections).toEqual({});
+  });
+});
+
+describe("provider connections", () => {
+  test("keeps providers independent of one another", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setConnection("vercel", { source: "stored", token: "pat_vercel" });
+    await store.setConnection("cloudflare", { source: "stored", token: "pat_cf" });
+    await store.removeConnection("vercel");
+
+    const config = await store.load();
+    expect(config.connections.vercel).toBeUndefined();
+    expect(config.connections.cloudflare?.token).toBe("pat_cf");
+  });
+
+  test("a cli connection never stores a token copy", async () => {
+    const store = new ConfigStore(configPath);
+
+    await store.setConnection("vercel", { source: "cli", token: "should-be-dropped" });
+
+    expect((await store.load()).connections.vercel?.token).toBeUndefined();
+  });
+
+  test("rejects a provider id that is not filename-safe", async () => {
+    const store = new ConfigStore(configPath);
+
+    await expect(
+      store.setConnection("../escape", { source: "stored", token: "t" }),
+    ).rejects.toThrow();
+  });
+
+  test("unpinning the last provider project removes the key entirely", async () => {
+    const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("web");
+    await store.registerGitRepository({ name: "web", path: repoPath });
+
+    await store.setProviderProject("vercel", "web", "prj_1");
+    await store.setProviderProject("vercel", "web", undefined);
+
+    const config = await store.load();
+    expect(config.gitRepositories[0].providerProjects).toBeUndefined();
+  });
+
+  test("re-registering a repository preserves its pinned provider projects", async () => {
+    const store = new ConfigStore(configPath);
+    const repoPath = await makeGitRepository("web");
+    await store.registerGitRepository({ name: "web", path: repoPath });
+    await store.setProviderProject("vercel", "web", "prj_1");
+
+    await store.registerGitRepository({ name: "web", path: repoPath });
+
+    const config = await store.load();
+    expect(config.gitRepositories[0].providerProjects).toEqual({ vercel: "prj_1" });
   });
 });
 

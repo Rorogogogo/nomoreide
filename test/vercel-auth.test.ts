@@ -8,7 +8,7 @@ import {
   resolveVercelCredential,
 } from "../src/core/vercel-auth.js";
 import { resetVercelOAuthDiscoveryCache } from "../src/core/vercel-oauth.js";
-import type { NoMoreIdeConfig } from "../src/core/types.js";
+import type { NoMoreIdeConfig, ProviderConnection } from "../src/core/types.js";
 
 let tempDir: string;
 /** Points the CLI-auth lookup at a fixture instead of the real machine. */
@@ -41,7 +41,7 @@ describe("Vercel CLI session discovery", () => {
 
     await expect(readVercelCliSession(env)).resolves.toEqual({
       token: "cli-token",
-      currentTeam: "team_acme",
+      currentScope: "team_acme",
     });
   });
 
@@ -57,13 +57,13 @@ describe("Vercel CLI session discovery", () => {
 
 describe("Vercel credential resolution", () => {
   test("a stored connection uses its own token", async () => {
-    const config = makeConfig({ source: "stored", token: "pat-token", teamId: "team_x" });
+    const config = makeConfig({ source: "stored", token: "pat-token", scopeId: "team_x" });
 
     await expect(resolveVercelCredential(config, env)).resolves.toEqual({
       source: "stored",
       token: "pat-token",
-      teamId: "team_x",
-      teamSlug: undefined,
+      scopeId: "team_x",
+      scopeSlug: undefined,
     });
   });
 
@@ -77,17 +77,17 @@ describe("Vercel credential resolution", () => {
       token: "fresh-cli-token",
       // Inherited from the CLI's own scope, so the dashboard opens on the same
       // team `vercel` is pointed at.
-      teamId: "team_acme",
-      teamSlug: undefined,
+      scopeId: "team_acme",
+      scopeSlug: undefined,
     });
   });
 
   test("an explicitly chosen team wins over the CLI's current scope", async () => {
     await writeCliSession("cli-token", "team_cli");
-    const config = makeConfig({ source: "cli", teamId: "team_chosen" });
+    const config = makeConfig({ source: "cli", scopeId: "team_chosen" });
 
     await expect(resolveVercelCredential(config, env)).resolves.toMatchObject({
-      teamId: "team_chosen",
+      scopeId: "team_chosen",
     });
   });
 
@@ -114,7 +114,7 @@ describe("Vercel credential resolution", () => {
 });
 
 describe("OAuth credential resolution", () => {
-  const oauthConfig = (overrides: Partial<NonNullable<NoMoreIdeConfig["vercel"]>> = {}) =>
+  const oauthConfig = (overrides: Partial<ProviderConnection> = {}) =>
     makeConfig({
       source: "oauth",
       token: "at_current",
@@ -185,8 +185,8 @@ describe("OAuth credential resolution", () => {
 describe("publicVercelConnection", () => {
   test("never returns the stored token", () => {
     expect(
-      publicVercelConnection({ source: "stored", token: "secret", teamId: "team_x" }),
-    ).toEqual({ source: "stored", teamId: "team_x" });
+      publicVercelConnection({ source: "stored", token: "secret", scopeId: "team_x" }),
+    ).toEqual({ source: "stored", scopeId: "team_x" });
   });
 
   test("passes undefined through for a disconnected config", () => {
@@ -194,7 +194,7 @@ describe("publicVercelConnection", () => {
   });
 });
 
-function makeConfig(vercel?: NoMoreIdeConfig["vercel"]): NoMoreIdeConfig {
+function makeConfig(vercel?: ProviderConnection): NoMoreIdeConfig {
   return {
     version: 1,
     services: [],
@@ -206,6 +206,6 @@ function makeConfig(vercel?: NoMoreIdeConfig["vercel"]): NoMoreIdeConfig {
     githubIdentities: [],
     workflows: [],
     workflowTriggers: [],
-    vercel,
+    connections: vercel ? { vercel } : {},
   };
 }
