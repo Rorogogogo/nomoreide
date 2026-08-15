@@ -220,6 +220,48 @@ Two things the widgets themselves settled:
   left on the table. The panel leads with that count, puts unlocked connections
   first, and names the rest dimmed underneath.
 
+### 7.5 Conversations, and the two things the owner asked for
+
+The ask was *"AI section — can we have a logo for what we have, and a short list
+of history conversations that can resume?"* Two requests, and they got different
+answers.
+
+**The list, yes.** `/api/terminal/transcripts` is 90ms and 8.7KB for this
+repository — the §7.4 test again, since it reads the providers' own session
+files and spawns nothing. The panel leads with how many conversations were
+touched today against how many can be resumed at all, then names the newest
+five.
+
+Three things it settled:
+
+- **The widget advertises; the page resumes.** A panel is a single `<button>`,
+  so a per-row resume control is not merely awkward, it is invalid markup and
+  unreachable by keyboard. Rather than work around that, the widget takes it as
+  the boundary: the rail on the Agent page already resumes properly, and a
+  second implementation on Home would drift from it.
+- **`scope=all` was tempting and wrong.** It answers with every project on the
+  machine — 200 conversations and 72KB here, against 20 and 8.7KB scoped — and
+  the panel draws five rows either way. That is §7.3's 87KB-for-one-field
+  mistake wearing a different hat. It is also the worse answer: what you were
+  doing *in this repository* is what you are about to pick up.
+- **Full width, for the only prose on the page.** Every other panel holds
+  counters and identifiers that fit in half a row. A conversation title is a
+  typed sentence — real ones here run to the 200-character cap — so the columns
+  it does not need are the ones the title spends. It keeps the packing honest
+  too: a seventh 6-span would have left the page's first ragged row.
+
+**The logos, mostly no.** `features/deploy/provider-logo.tsx` already sets the
+policy: a lucide glyph unless the mark is unmistakable at 14px, because a
+half-remembered logo redrawn from memory looks worse than an honest generic one.
+The fourteen MCP servers on the Agent widget are Gmail, Canva, Notion,
+Cloudflare and friends, and hand-rolling fourteen third-party brand SVGs is the
+exact thing that rule exists to prevent — those marks belong in the extension
+manifest, once it carries assets. Claude and Codex are the exception the rule
+allows for, and they are already in the tree: `features/agent/agent-logos.tsx`
+has both, sourced and colour-correct, so the resume rows carry the real mark.
+That is what added `mark` to `WidgetRow` — a conversation is not healthy or
+failing, so the status dot had nothing to say about it.
+
 **Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
 
 **Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.

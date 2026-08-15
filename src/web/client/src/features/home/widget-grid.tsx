@@ -205,23 +205,58 @@ export function WidgetRows({ children }: { children: ReactNode }) {
  * `name` is monospaced because at this size it is always a machine identifier —
  * a service, a port, a path. `meta` is prose and stays sans; wrap anything
  * machine-readable inside it in `WidgetId`.
+ *
+ * Both leading cells are optional, and between them they cover the two kinds of
+ * row this page has:
+ *
+ * - `tone` draws the status dot, and `mark` replaces it with a glyph for rows
+ *   whose leading fact is *what made this* rather than *how it is doing* — a
+ *   conversation is not healthy or failing, it is Claude's or Codex's. A row
+ *   passing `mark` should put the same word in an `sr-only` span inside it;
+ *   colour is not a label.
+ * - Omitting `name` is for a row whose subject is prose. A conversation's
+ *   identifier is a uuid nobody reads, so the title takes the whole width
+ *   instead of being squeezed into `meta` beside seven meaningless characters.
  */
 export function WidgetRow({
+  mark,
   meta,
   name,
   tone,
   trailing,
 }: {
+  mark?: ReactNode;
   meta?: ReactNode;
-  name: ReactNode;
+  name?: ReactNode;
   tone?: WidgetTone;
   trailing?: ReactNode;
 }) {
   return (
     <span className="flex min-w-0 items-center gap-2 text-[11px] leading-tight">
-      {tone ? <WidgetDot tone={tone} /> : null}
-      <span className="max-w-[50%] shrink-0 truncate font-mono text-foreground">{name}</span>
-      {meta ? <span className="min-w-0 flex-1 truncate text-muted-foreground">{meta}</span> : null}
+      {mark ? (
+        <span className="flex shrink-0 items-center [&_svg]:size-3">{mark}</span>
+      ) : tone ? (
+        <WidgetDot tone={tone} />
+      ) : null}
+      {name ? (
+        <span className="max-w-[50%] shrink-0 truncate font-mono text-foreground">{name}</span>
+      ) : null}
+      {/*
+        Muted only when it is the *second* text cell. The row's leading text is
+        its subject and reads at full strength; `meta` is normally the sentence
+        about the identifier beside it, but on a `name`-less row it is the
+        subject itself and a whole row of muted text would demote it.
+      */}
+      {meta ? (
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate",
+            name ? "text-muted-foreground" : "text-foreground",
+          )}
+        >
+          {meta}
+        </span>
+      ) : null}
       {/*
         Truncatable, not `shrink-0`. A trailing cell is usually a timestamp and
         was pinned at its natural width for that reason — until the repository

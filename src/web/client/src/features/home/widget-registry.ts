@@ -1,4 +1,5 @@
 import { activityWidget } from "@/features/activity/widget";
+import { conversationsWidget } from "@/features/agent/conversations-widget";
 import { agentWidget } from "@/features/agent/widget";
 import { databasesWidget } from "@/features/database/widget";
 import { repositoryWidget } from "@/features/git/widget";
@@ -19,9 +20,11 @@ import type { WidgetDefinition } from "./widget-types";
  * Order is the default layout, and every row packs to exactly 12: the three
  * service counters across the top; then Agent beside the repository — an
  * AI-native workbench that reports only processes and ports is describing half
- * of itself; then what you can undo and what you can overwrite, which are the
- * two questions worth answering *before* you start work rather than after; then
- * the two things you read rather than count.
+ * of itself; then the conversations you can pick back up, full width because
+ * they are the only prose on the page and because a 6 here would leave the
+ * page's first ragged row; then what you can undo and what you can overwrite,
+ * which are the two questions worth answering *before* you start work rather
+ * than after; then the two things you read rather than count.
  */
 export const WIDGETS: WidgetDefinition[] = [
   servicesWidget,
@@ -29,6 +32,7 @@ export const WIDGETS: WidgetDefinition[] = [
   portsWidget,
   agentWidget,
   repositoryWidget,
+  conversationsWidget,
   snapshotsWidget,
   databasesWidget,
   activityWidget,
