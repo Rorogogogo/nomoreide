@@ -397,6 +397,16 @@ Re-open the question when all four hold, in this order, because each is cheap on
 
 Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one. Only item 4 — the live-token passes — is now open.
 
+#### Item 4 in progress — what the Cloudflare half has found
+
+A first live Cloudflare API token (2026-08-15) reached auth, identity and project listing. It has not yet reached deployments, build logs, env or domains, because the account has **no Pages project** to read them from. Three defects so far, none of which any test, typecheck or code read could have caught:
+
+- **Every Pages list call had never once succeeded.** Pages caps `per_page` at **10** and rejects anything larger as a whole-request error (`8000024`) rather than truncating; the manager asked for 50 by default and up to 100. `listProjects` and `findProjectByRepo` therefore failed against every real token. The cap is undocumented — the OpenAPI schema types `per_page` as an unbounded integer and only hints at it through `example: 10`. Fixed by paging, since 10 rows cannot answer "find the project for this repo". A stub cannot catch this class of bug at all: it answers whatever it is asked for.
+- **`/accounts` returns `success` with an empty list for a token that can use the account.** Enumerating accounts needs `Account Settings: Read`, which a Pages-scoped token has no reason to carry, while `/accounts/<id>/pages/projects` works fine. The scope picker hid itself below two entries, so a correct token reached an empty picker, no way to enter an id, and nothing readable. Fixed with `requiresScope` on the manifest and a manual-entry row — see §12's note that a declared field needs a reader. **The general rule this establishes: for Cloudflare, an empty list may mean "not permitted" rather than "none exist", and any adapter must say so.** `/zones` behaves identically.
+- **Cloudflare's `/user.username` is an opaque 32-char hex id, not a display name.** The account menu rendered `1a327cd4…` where Vercel shows a name; the email is the only human-readable identity `/user` carries.
+
+The second of those is the one worth generalizing: it is a *permissions* shape, not a Cloudflare quirk, and §13's domain and storage adapters will meet it again.
+
 #### What landing item 3 settled
 
 - **The allowlist is checked against the final URL, not the base URL.** All three `xRequest` helpers accept an absolute path (`path.startsWith("http")`) and skip their base URL entirely. That escape exists for pagination cursors, and it is precisely what downloaded provider code would use. Checking the composed URL is what makes it not an escape.
@@ -446,7 +456,24 @@ So adopting Cloudflare sign-in is **a change of auth model, not a new provider e
 
 That last row matters beyond this provider. Cloudflare supports the device authorization grant (RFC 8628) — the `gh auth login` shape, where the user is shown a code and types it into a browser, and **no redirect URI is involved at all**. Loopback turning out to work means we do not need it here, but it is the answer for any future provider that refuses loopback, and it is a third flow `ProviderAuthSpec` does not model.
 
-**Still open:** the scope vocabulary. A client created with every scope the dashboard offered accepts only `offline_access` at `oauth2/auth`; `account:read`, `user:read`, `pages:read`, `pages:write` and even `openid` are all rejected with "not allowed to request scope". The discovery document lists only `offline_access`, `offline` and `openid` under `scopes_supported`, so the API scope names are not published there. `GET /oauth/scopes` enumerates them but requires an authenticated call — which is the same credential gate item 4 is waiting on.
+#### The scope vocabulary — answered 2026-08-15
+
+Previously open: a client created with every scope the dashboard offered accepted only `offline_access` at `oauth2/auth`, and `account:read`, `user:read`, `pages:read`, `pages:write` and even `openid` were all rejected with "not allowed to request scope". The discovery document lists only `offline_access`, `offline` and `openid` under `scopes_supported`, so the API scope names are not published there.
+
+`GET /oauth/scopes`, called with a token carrying `OAuth Clients: Read`, **returns 383 scopes**. The names could not have been guessed, and two things explain every earlier rejection:
+
+- **The Pages scopes are singular.** `page.read` ("Pages Read") and `page.write` ("Pages Write") — not `pages:read`, and not `pages.read` either. A separate `pages.metadata_read` exists. Colon-delimited forms are rejected outright; Wrangler's `account:read` style is a legacy first-party form that does not apply to self-managed clients.
+- **`openid` being refused is correct.** Protocol scopes are managed by the client's `grant_types`/`response_types`, and this client was registered for `code`, not `id_token`. `offline_access` is accepted for the same reason.
+
+So the scope set a Cloudflare sign-in would request:
+
+```
+page.read page.write user-details.read account-settings.read offline_access
+```
+
+`account-settings.read` earns its place for a reason found the same day: without it `GET /accounts` returns `success` with an **empty list** rather than an error, so a token that can use an account cannot enumerate it. An OAuth flow that omits it would reproduce the empty-scope-picker dead end that §11's gate found in the stored-token path.
+
+**Probe technique, since a broken one produced false positives.** Request a single scope at `oauth2/auth` with curl: `303` carrying `invalid_scope` means rejected, `302` to `dash.cloudflare.com/login` means accepted. A deliberately fake scope must return `303`, which is what confirms the test discriminates rather than always passing.
 
 **The reason this sits in §11 rather than §12.** §11 declined to freeze `apiVersion: 1` on the grounds that three implementations proved the contracts, not the ecosystem around them, and that the freeze would put the next forced change on the far side of a compatibility promise. Ten weeks later a provider's auth model changed in a way that needs a new shape in `ProviderAuthSpec` — a v2 within weeks of a v1, had one existed. The gate held for a reason that was not hypothetical.
 
@@ -466,18 +493,28 @@ The direction is right and most of it is closer than it looks. What follows is w
 
 So **plugins are a second artifact type in the existing store, not a second store.** That is the single largest saving available here, and it is why "build a marketplace" is not the work item people assume.
 
-### Nav groups by kind, not by install source
+### Nav: Extensions is layer 1, plugins are layer 2 — decided
 
-The instinct to file everything under "Extensions" should be resisted, and this branch is the evidence.
+**Decision (owner's call, 2026-08-15).** The left-hand nav gets two layers. Layer 1 is **Extensions** (or Plugins). Layer 2 is the installed plugins themselves — Cloudflare, Vercel, Vultr, and the domain/storage kinds of §13. The framing is that everything integrable is a plugin, downloaded only when needed, so the place you go to reach an integration is the place integrations live.
 
-- Cloudflare cost **one line** in `registry.ts` plus its own directory — because it was an instance of a kind the host already renders. It correctly appears under **Deploy**, in the same component tree as Vercel, reached by the in-view switcher.
-- Vultr cost roughly six edits — because it introduced a *kind* (`HostProvider`). And Vultr correctly gets **no tab at all**: `toSshTarget` merges its instances into the SSH server list the user already has, with the existing probe, metrics and terminal working against them.
+This section previously argued the opposite. That argument is kept below, because the cost it names is real and should be paid deliberately rather than discovered later.
 
-Vultr is the important case. Filing it under "Extensions" because of how it arrived would have thrown away the entire payoff of §7 — the user does not want a Vultr page, they want their machines in their machine list. **A user looks for a thing by what it is. How it got installed is provenance, not taxonomy.**
+**The argument against, and what it costs.** This branch is evidence that grouping by *kind* is cheap and grouping by *install source* is not free:
 
-So Extensions is where plugins are **managed**, not where their features live. Installing a deploy plugin adds an entry to the Deploy switcher; installing a host plugin adds rows to Servers. Extensions answers "what do I have, what may it do, and how do I remove it."
+- Cloudflare cost **one line** in `registry.ts` plus its own directory — because it was an instance of a kind the host already renders, appearing under Deploy in the same component tree as Vercel, reached by the in-view switcher.
+- Vultr cost roughly six edits — because it introduced a *kind* (`HostProvider`). And Vultr deliberately got **no tab at all**: `toSshTarget` merges its instances into the SSH server list the user already has, with the existing probe, metrics and terminal working against them.
 
-Renaming the Deploy nav label is one i18n key (`nav.deploy`) if it is wanted; the argument here is only about grouping.
+Vultr is the case that costs something. A user with mixed infrastructure wants *one* machine list, not their Vultr boxes in a Vultr page and everything else in Servers. Splitting them by vendor would throw away the payoff of §7.
+
+**How both hold.** Second-layer nav gives each plugin a page; it does not require that the page be the only way to reach its data. The rule that survives:
+
+> A plugin's **page** lives under Extensions. A plugin's **data** still merges wherever that kind of thing already lives.
+
+So Vultr gets an Extensions entry — what it is, what it may do, what it may reach, how to remove it — *and* its instances keep appearing in Servers. Cloudflare gets an Extensions entry and its Pages projects keep rendering in the deploy view. Nothing that works today stops working; the second layer adds an addressable home per plugin rather than relocating features.
+
+The open question this leaves is what a plugin's page contains for a plugin whose data lives elsewhere. For Vultr that is a management page, not a duplicate server list — building a second list would be exactly the regression the original argument warned about.
+
+Renaming the Deploy nav label is one i18n key (`nav.deploy`) if it is wanted.
 
 ### The blocker: novel UI
 
@@ -501,3 +538,37 @@ Today's plugins ship **no UI at all** — they are declarative data plus a serve
 That last field is the point of doing this now rather than after stage 3. `api.hosts` currently has exactly one consumer, `createProviderFetch`, which enforces it invisibly. Putting it on screen makes it a **disclosure**: "this plugin may reach `api.cloudflare.com`" is the sentence a user needs before installing anything, and building the surface while every answer is verifiable in-tree is how it gets to be trustworthy by the time an answer isn't. This is the same argument §11 made for landing the generic view before freezing: a declared field with no reader is a promise no one is keeping.
 
 **Not in stage 2:** no install, no remove, no browse. Every installed plugin is built-in and none can be uninstalled, so those controls would be decoration. The page states that plainly rather than showing disabled buttons.
+
+## 13. A third kind — resources that are neither a deploy nor a host
+
+Raised 2026-08-15, from a live account: it had four domains and R2 buckets and **zero Pages projects**, so the Cloudflare tab correctly showed nothing. "Cloudflare support" currently means Cloudflare *Pages*, and that is a much narrower claim than the vendor's name suggests.
+
+### Why this is a new kind rather than more capabilities
+
+A zone is not a deployment and a bucket is not an instance. Neither fits `DeployProvider` (projects → deployments → build logs → env → domains) or `HostProvider` (instances → start/halt/reboot). Widening either contract to cover them would undo §2's neutralization — the whole point of which was that the contract describes a shape, not a vendor.
+
+The registry already shows the cost of a new kind, twice: its own contract file, manifest type, registry array, and routes module. Vultr paid it for `HostProvider` in roughly six edits. This is a known, bounded price.
+
+Two candidates, and they are not equally urgent:
+
+- **Domains/DNS** — list zones, records, status. Reads are cheap and safe. Record *edits* are not: a bad one takes a site down, which puts them in a separate guarded module (`*-dns-actions.ts`), dashboard-only with no MCP tools, exactly as `vercel-actions.ts` and `db-write.ts` already do. This is the closer fit of the two.
+- **Object storage (R2)** — list buckets and objects. Structurally nearer `db-peek`/`db-write` than to a provider: safe listing, destructive writes behind a human-only unlock.
+
+### The blocker to decide first: credentials are keyed by provider id
+
+`config.connections[manifest.id]`. So a vendor appearing as three plugins means the user pastes the same API token three times, and revokes it three times. That is a bad enough experience to be worth settling **before** a second Cloudflare-shaped adapter exists, not after:
+
+1. **One provider spanning kinds** — a single `cloudflare` entry declaring several kinds. Keeps one connection; complicates every registry lookup, all of which currently assume one kind per id.
+2. **Credentials keyed by vendor** — connections move from provider id to a vendor id shared by that vendor's plugins. Keeps the registry simple; needs a config migration, and §2's note that the auth migration should be done "first, alone" applies again.
+
+(2) looks right — `cloudflare-auth.ts` is already shared by anything Cloudflare, so the credential is a vendor fact, not a plugin fact. Not decided.
+
+A second, smaller wrinkle: permissions are per-resource. The Pages token used for the §11 gate could not read zones or R2, and — like `/accounts` — Cloudflare answered `success` with an empty list rather than an error. Any of these adapters must treat "empty" as possibly meaning "not permitted" and say so, or users will read a permissions gap as an empty account. See §11.1.
+
+### Ordering
+
+After the current branch ships. This is a new kind plus a credential migration plus §12's second-layer nav, and the branch it would land on is already 19 commits and gated on a live pass. Nothing here changes the `DeployProvider` contract, so none of it is blocked by the `apiVersion` freeze §11 declined.
+
+### The narrower point, worth recording separately
+
+Cloudflare now publishes a [Pages → Workers migration guide](https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/) and states Workers has the broader feature set; static hosting has moved to Workers Static Assets, and Pages caps at 100 projects per account. **A Workers adapter is the more likely provider #4 than either kind above** — and unlike them it is an instance of an existing kind, so it costs one line in `registry.ts` plus a directory. Whether the deploy view should show Pages and Workers as one Cloudflare entry or two is the same question as the credential one above.
