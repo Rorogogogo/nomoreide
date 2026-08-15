@@ -185,6 +185,41 @@ wrong froze the whole page:
   and the streams the shell already holds are most of it. A widget that polls
   something expensive is not just slow — it takes the page down with it.
 
+### 7.4 Snapshots and Databases, and what "expensive" actually means
+
+The obvious reading of §7.3 — *fetch-backed widgets are dangerous* — is the
+wrong one, and Snapshots and Databases were added to make the right one
+explicit. Measured against a live daemon:
+
+| Endpoint | Time | What it does |
+| --- | --- | --- |
+| `/api/databases` | 2 ms | reads config, masks passwords |
+| `/api/snapshots` | 14 ms | one `git for-each-ref` |
+| `/api/agent/mcp-status` | 6 000 ms | spawns `claude mcp list`, which cold-starts every server |
+
+Three orders of magnitude. The hazard was never the fetch, it was the
+**subprocess**: the question to ask of a candidate widget is what its endpoint
+*does*, not whether it has one. Endpoints that read config or a git ref can poll
+on a normal cadence; endpoints that spawn a CLI, or cross the network, cannot.
+That rules out GitHub CI and deployments as widgets for now (0.5–1.5 s and rate
+limited), and it makes the cheapest widgets of all the ones that need no request
+at all — the shell already holds `useWorkflowTriggers()` as an app-wide context
+and an open error stream, and a widget over either costs nothing.
+
+Two things the widgets themselves settled:
+
+- **Snapshots earns its place by answering a question you have *before* you
+  work, not after:** is there a restore point, and how old is it. The counters
+  split "today" from "kept" for exactly that reason — 30 snapshots where the
+  newest is two days old is a different situation from 30 where the newest is
+  from this session, and a single total cannot tell them apart.
+- **Databases is a warning, not an inventory.** Registered connections are
+  config: they do not change, so they are not news, and a panel that counted
+  them would be the §7.2 failure again. `writeUnlocked` *is* news — every write
+  in `core/db-write.ts` is gated on it, so an unlocked connection is a loaded gun
+  left on the table. The panel leads with that count, puts unlocked connections
+  first, and names the rest dimmed underneath.
+
 **Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
 
 **Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.
