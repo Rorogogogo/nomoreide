@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   BookOpen,
   ChevronRight,
+  LayoutGrid,
   PanelLeft,
   PanelLeftClose,
   PanelLeftOpen,
@@ -675,57 +676,52 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               control for one piece of state. */}
           <nav className="mt-2 flex-1 content-start overflow-y-auto overflow-x-hidden">
             {APP_NAV_SECTIONS.map((section, index) => (
-              <div
-                className={cn(index > 0 && "mt-1.5 border-t border-border/60 pt-1")}
-                key={section.labelKey}
-              >
+              <div className={cn(index > 0 && "mt-1.5")} key={section.labelKey}>
                 <NavSectionLabel docked={sidebarDocked} label={t(section.labelKey)} />
                 <div className="grid gap-0.5">
                   {section.items.map((item) => (
                     <div className="relative grid gap-0.5" key={item.page}>
+                      {/*
+                        Extensions is a heading, not a destination: clicking it
+                        folds its plugins away rather than navigating anywhere.
+                        Owner's call — the row named a page nobody wanted, and
+                        the plugins underneath are the actual destinations.
+                      */}
                       <NavButton
-                        active={page === item.page && !(item.expandable && extensionId)}
+                        active={item.expandable ? false : page === item.page}
                         badge={item.page === "services" ? runningCount : undefined}
                         docked={sidebarDocked}
+                        expanded={item.expandable ? extensionsExpanded : undefined}
                         icon={item.icon}
                         label={t(item.labelKey)}
                         onClick={() => {
+                          if (item.expandable) {
+                            updateUi({ extensionsExpanded: !extensionsExpanded });
+                            return;
+                          }
                           setPage(item.page);
-                          if (item.expandable) setExtensionId(null);
                         }}
                       />
                       {/*
-                        A sibling of the row rather than a child of it: the row
-                        is already a <button>, and expanding is not navigating —
-                        otherwise there is no way to fold the list away without
-                        leaving the page you are on.
+                        The second layer. The section's own page first, then one
+                        row per installed plugin, from `/api/extensions` — so a
+                        plugin appears here without any nav file naming it.
+                        The overview needs its own row because the parent is a
+                        disclosure now and no longer navigates anywhere.
                       */}
-                      {item.expandable ? (
-                        <button
-                          aria-expanded={extensionsExpanded}
-                          aria-label={t("nav.extensionsToggle")}
-                          className={cn(
-                            "absolute left-0.5 top-2.5 z-10 grid size-4 place-items-center rounded text-muted-foreground hover:text-foreground",
-                            // No room for it on the collapsed rail, which is
-                            // icons only.
-                            sidebarDocked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
-                          )}
-                          onClick={() => updateUi({ extensionsExpanded: !extensionsExpanded })}
-                          type="button"
-                        >
-                          <ChevronRight
-                            className={cn(
-                              "size-3 transition-transform",
-                              extensionsExpanded && "rotate-90",
-                            )}
-                          />
-                        </button>
+                      {item.expandable && extensionsExpanded ? (
+                        <NavButton
+                          active={page === "extensions" && !extensionId}
+                          child
+                          docked={sidebarDocked}
+                          icon={<LayoutGrid />}
+                          label={t("nav.extensionsOverview")}
+                          onClick={() => {
+                            setPage("extensions");
+                            setExtensionId(null);
+                          }}
+                        />
                       ) : null}
-                      {/*
-                        The second layer. One row per installed plugin, from
-                        `/api/extensions` — so a plugin appears here without any
-                        nav file naming it.
-                      */}
                       {item.expandable && extensionsExpanded
                         ? extensions.map((extension) => (
                             <NavButton
@@ -941,10 +937,11 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             ) : null}
             {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
             {/*
-              Extensions is two destinations behind one page id: the installed
-              list, and one plugin's own page. `repoScopeKey` stays in the key
-              because a deploy plugin's page follows the selected repository,
-              exactly as the Deploy page did.
+              Extensions is two destinations behind one page id: the section's
+              own page at `/extensions`, and one plugin's page at
+              `/extensions/<id>`. `repoScopeKey` stays in the key because a
+              deploy plugin's page follows the selected repository, exactly as
+              the Deploy page did.
             */}
             {!overviewDomain && page === "extensions" && extensionId ? (
               activeExtension ? (
@@ -957,12 +954,8 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 <UnknownExtensionPage id={extensionId} />
               ) : null
             ) : null}
-            {page === "extensions" && !extensionId ? (
-              <ExtensionsView
-                onOpen={(id) => {
-                  setExtensionId(id);
-                }}
-              />
+            {!overviewDomain && page === "extensions" && !extensionId ? (
+              <ExtensionsView onOpen={(id) => setExtensionId(id)} />
             ) : null}
             {page === "workflows" ? <WorkflowPanel /> : null}
             {page === "agent" ? (
@@ -1043,16 +1036,24 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
 
 function NavSectionLabel({ docked, label }: { docked: boolean; label: string }) {
   // Fixed height so the collapsed rail doesn't shift when labels fade in.
+  //
+  // The separating rule shares this row instead of sitting on the section
+  // above it — one row per heading rather than two, which is the whole point
+  // of the change. The label collapses to zero width on the rail, so the rule
+  // spans the full width there and still reads as the group separator it was.
   return (
     <div className="flex h-4 items-center overflow-hidden px-3">
       <span
         className={cn(
-          "whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-opacity duration-150",
-          docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+          "overflow-hidden whitespace-pre text-[10px] font-semibold uppercase tracking-widest text-muted-foreground transition-all duration-150",
+          docked
+            ? "max-w-40 pr-2 opacity-100"
+            : "max-w-0 pr-0 opacity-0 group-hover/sidebar:max-w-40 group-hover/sidebar:pr-2 group-hover/sidebar:opacity-100",
         )}
       >
         {label}
       </span>
+      <span aria-hidden className="h-px flex-1 bg-border/60" />
     </div>
   );
 }
@@ -1062,6 +1063,7 @@ function NavButton({
   badge,
   child,
   docked,
+  expanded,
   icon,
   label,
   onClick,
@@ -1071,6 +1073,12 @@ function NavButton({
   /** A second-layer row: indented, so the hierarchy is visible at a glance. */
   child?: boolean;
   docked: boolean;
+  /**
+   * Set only on a row that discloses children instead of navigating. The row
+   * itself is the control, so the chevron is an indicator rather than a second
+   * focusable button sitting on top of the first.
+   */
+  expanded?: boolean;
   icon: ReactNode;
   label: string;
   onClick: () => void;
@@ -1079,6 +1087,7 @@ function NavButton({
   const showBadge = badge !== undefined && badge > 0;
   return (
     <Button
+      aria-expanded={expanded}
       aria-label={label}
       title={label}
       className={cn(
@@ -1112,6 +1121,19 @@ function NavButton({
           {badge}
         </Badge>
       ) : null}
+      {expanded === undefined ? null : (
+        <ChevronRight
+          aria-hidden
+          className={cn(
+            // The trailing edge, centred on the row — this is inside the row,
+            // so it centres on the row and not on the expanded group below it.
+            "absolute right-2 top-1/2 size-3 -translate-y-1/2 transition-transform",
+            expanded && "rotate-90",
+            // Nothing but icons fits on the collapsed rail.
+            docked ? "opacity-100" : "opacity-0 group-hover/sidebar:opacity-100",
+          )}
+        />
+      )}
     </Button>
   );
 }

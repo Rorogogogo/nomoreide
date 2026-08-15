@@ -381,11 +381,7 @@ body {
   min-width: 320px;
   height: 100vh;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px),
-    linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
-    hsl(var(--background));
-  background-size: 40px 40px;
+  background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family:
     ui-sans-serif,
