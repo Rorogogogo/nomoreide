@@ -250,6 +250,38 @@ describe("CloudflareManager reads", () => {
     expect(calls.map((call) => call.url.pathname)).toContain("/client/v4/user/tokens/verify");
   });
 
+  test("Pages list reads never ask for more than 10 per page", async () => {
+    // Pages rejects `per_page` above 10 outright (8000024), failing the whole
+    // request rather than truncating. Asking for 50 broke every list call.
+    const { calls } = stubFetch(() => []);
+
+    await manager().listProjects();
+    await manager().listDeployments({ projectName: "web", limit: 100 });
+
+    for (const call of calls) {
+      expect(Number(call.url.searchParams.get("per_page"))).toBeLessThanOrEqual(10);
+    }
+  });
+
+  test("a list longer than one page is walked, not truncated", async () => {
+    // The cap is 10, so anything that needs more than 10 — "find the project
+    // for this repo" above all — is only correct if it pages.
+    const project = (name: string) => ({ id: name, name, created_on: "2024-01-01T00:00:00Z" });
+    const { calls } = stubFetch((url) => {
+      const page = Number(url.searchParams.get("page"));
+      if (page === 1) return Array.from({ length: 10 }, (_, i) => project(`p${i}`));
+      if (page === 2) return [project("p10"), project("p11")];
+      return [];
+    });
+
+    const projects = await manager().listProjects();
+
+    expect(projects).toHaveLength(12);
+    expect(projects.at(-1)?.name).toBe("p11");
+    // Stops on the short page rather than walking to the guard.
+    expect(calls.map((call) => call.url.searchParams.get("page"))).toEqual(["1", "2"]);
+  });
+
   test("identity prefers the email over Cloudflare's opaque `username`", async () => {
     // Shape observed from a live /user: `username` is a 32-char hex id, not a
     // display name, so preferring it put a hex blob in the account menu.

@@ -117,6 +117,19 @@ export interface CloudflareDomain {
   errorMessage?: string;
 }
 
+/**
+ * The largest `per_page` the Pages list endpoints accept. Established by
+ * probing a live account: 10 succeeds, 11 and up are rejected. Not in the
+ * OpenAPI schema, which types `per_page` as an unbounded integer.
+ */
+const PAGES_MAX_PER_PAGE = 10;
+
+/** How far `pages()` will walk before giving up, so a caller cannot page forever. */
+const MAX_PAGES = 10;
+
+/** Default ceiling for an unbounded list read — ten pages' worth. */
+const MAX_PAGED_RESULTS = PAGES_MAX_PER_PAGE * MAX_PAGES;
+
 export class CloudflareApiError extends Error {
   constructor(
     message: string,
@@ -216,9 +229,9 @@ export class CloudflareManager {
   async listProjects(
     opts: { search?: string; repoUrl?: string; limit?: number } = {},
   ): Promise<CloudflareProject[]> {
-    const perPage = Math.min(Math.max(opts.limit ?? 50, 1), 100);
-    const raw = await this.request<RawProject[]>(
-      `/accounts/${this.account()}/pages/projects?per_page=${perPage}`,
+    const raw = await this.pages<RawProject>(
+      `/accounts/${this.account()}/pages/projects`,
+      opts.limit ?? MAX_PAGED_RESULTS,
     );
     let projects = raw.map(normalizeProject);
     if (opts.search) {
@@ -250,10 +263,10 @@ export class CloudflareManager {
     env?: "production" | "preview";
     limit?: number;
   }): Promise<CloudflareDeployment[]> {
-    const params = new URLSearchParams({ per_page: String(Math.min(opts.limit ?? 20, 100)) });
-    if (opts.env) params.set("env", opts.env);
-    const raw = await this.request<RawDeployment[]>(
-      `${this.projectPath(opts.projectName)}/deployments?${params}`,
+    const raw = await this.pages<RawDeployment>(
+      `${this.projectPath(opts.projectName)}/deployments`,
+      opts.limit ?? 20,
+      opts.env ? { env: opts.env } : undefined,
     );
     return raw.map(normalizeDeployment);
   }
@@ -331,6 +344,39 @@ export class CloudflareManager {
   inspectorUrl(projectName: string, deploymentId: string): string | undefined {
     if (!this.accountId) return undefined;
     return `https://dash.cloudflare.com/${this.accountId}/pages/view/${encodeURIComponent(projectName)}/${encodeURIComponent(deploymentId)}`;
+  }
+
+  /**
+   * A Pages list endpoint, read a page at a time until `limit` is reached.
+   *
+   * Pages caps `per_page` at 10 and rejects anything larger outright with
+   * `8000024 Invalid list options provided` — a whole-request failure, not a
+   * silent truncation. The cap is undocumented: the OpenAPI schema types
+   * `per_page` as a plain integer and only hints at it through `example: 10`.
+   * Asking for the old 20–100 therefore failed every single call.
+   *
+   * Paging is what keeps the callers whole, since a 10-item page cannot answer
+   * "find the project for this repo" on its own.
+   */
+  private async pages<T>(
+    path: string,
+    limit: number,
+    query?: Record<string, string>,
+  ): Promise<T[]> {
+    const wanted = Math.max(limit, 1);
+    const results: T[] = [];
+    for (let page = 1; results.length < wanted && page <= MAX_PAGES; page++) {
+      const params = new URLSearchParams({
+        ...query,
+        per_page: String(PAGES_MAX_PER_PAGE),
+        page: String(page),
+      });
+      const batch = await this.request<T[]>(`${path}?${params}`);
+      results.push(...batch);
+      // A short page is the last page; Pages sends no total to check against.
+      if (batch.length < PAGES_MAX_PER_PAGE) break;
+    }
+    return results.slice(0, wanted);
   }
 
   private projectPath(projectName: string): string {
