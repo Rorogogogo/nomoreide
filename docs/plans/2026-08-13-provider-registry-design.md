@@ -393,11 +393,11 @@ Re-open the question when all four hold, in this order, because each is cheap on
 1. ~~**The generic view lands**~~ (tax #1), giving `capabilities` and `scopeLabel` a real consumer. **Landed.** `features/vercel/` became `features/deploy/`, one nav entry with an in-view provider switcher, and the manifest gained `authSources` — the gap §8.5 predicted, since we have no client registered with Cloudflare and a sign-in button there could only fail.
 2. ~~**Manifest strings move out of `en.ts`/`zh.ts`**~~ (tax #2), with the locale-parity test §9 asks for. **Landed**, as `providers/strings.ts` + `test/provider-strings.test.ts`. Notes below.
 3. ~~**`ctx.fetch` replaces global `fetch`**~~ in all three managers, enforced by `api.hosts`. **Landed**, as `providers/egress.ts`. Notes below.
-4. **One live-token pass each** against Cloudflare and Vultr, retiring §9's last open risk. **Cloudflare: done.** Vultr: open.
+4. ~~**One live-token pass each** against Cloudflare and Vultr~~, retiring §9's last open risk. **Done, both** (2026-08-15), with two exceptions named below: Vultr's `halt`/`reboot` state transitions, and Cloudflare's populated scope picker.
 
-Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one. Only item 4 — the live-token passes — is now open.
+Items 1 and 3 landed out of order on purpose: 3 does not depend on 2, and it is the only gate item that is a *security* boundary rather than a tidiness one. **All four gate items have now been met**, which re-opens the freeze question §11 declined — on its own terms, and not in this branch.
 
-#### Item 4 — the Cloudflare half is complete; Vultr is open
+#### Item 4 — both halves complete
 
 **The Cloudflare pass is done (2026-08-15).** Every capability the manifest declares has now been exercised against a real account, plus both write actions and the whole env write path. What unblocked the second half: the account had no Pages project, so one was created — `nomoreide`, direct-upload, the marketing site's `website/dist` pushed to `nomoreide.pages.dev`. Direct upload rather than a Git connection deliberately, so nothing hooks into the GitHub repo and no build fires on push. **No custom domain was attached: `nomoreide.com` serves from Vercel, and pointing it at Pages would have repointed production.**
 
@@ -423,6 +423,22 @@ The fourth is the more uncomfortable one, because it is **the third instance on 
 - **"Retry build" is offered where Cloudflare always refuses it.** Retrying a direct-upload deployment returns `You cannot retry a Direct Upload deployment. Retries are only possible for builds.` Our surfacing is fine — the vendor's sentence reaches the user intact — but the button should not have been there. This is exactly the residue item 2 named: the provider declares *which actions exist*, and nothing says *which deployments they apply to*. A per-deployment applicability vocabulary is stage 3 work, not a patch; the raw deployment already carries the `deployment_trigger.type` (`ad_hoc` vs `github:push`) such a rule would key on.
 - **`findProjectByRepo` is still unverified against a repo-linked project**, because a direct-upload project has no source to match. It is `listProjects` plus a client-side filter, and `listProjects` is now verified live.
 - **The scope picker's populated path is still unverified.** The connection stays on `source: "stored"`, whose token lacks `account-settings.read`, so `/accounts` remains an authorised empty list and the `requiresScope` manual-entry row is what renders. Wrangler's session *does* carry `account:read`, so switching the connection to `cli` would prove the picker populates — but that would overwrite the stored token, which cannot be re-pasted from a classifier-blocked config file. Not worth the trade for a path whose failure mode is already understood.
+
+##### The Vultr half — no defects, and why that is not a compliment to us
+
+A live Vultr API key (2026-08-15) against an account with one running instance. **Nothing was wrong.** `/account` resolved an identity, `listInstances` and `getInstance` returned a correctly normalized instance, an unknown id produced a clean not-found, the manifest refused an action it does not declare (`destroy`) with a 404 naming the provider, and — the §12 claim that mattered — **the instance merged into the existing Servers list** as `root@<ip>` beside the SSH-discovered hosts, rather than owning a page. `start` on an already-running instance returned `{ ok: true }` through the whole route → actions → 204 path, twice, idempotently.
+
+The contrast with Cloudflare's four defects is not evidence that this adapter was written more carefully. It is evidence that **Vultr's API is a plain cursor-paginated REST surface with no undocumented caps, no permission-shaped empty lists, and no opaque identity fields** — three of Cloudflare's four defects were vendor quirks that no amount of care would have anticipated from a spec. The adapter that meets a well-behaved vendor gets a clean pass for free.
+
+**One assumption did get checked, and it is the one that broke Cloudflare.** `vultr-manager.ts` sends `per_page=500` behind the comment "Vultr caps `per_page` at 500" — an unverified vendor claim of exactly the shape that made every Cloudflare list call fail. Probed live: Vultr returns `200` for 500, 501 and 1000 alike. So the assumption is safe, but the more useful finding is the asymmetry:
+
+> **An over-large page size is a whole-request failure on Cloudflare (`8000024`) and a silent non-event on Vultr.** The same adapter mistake is fatal on one vendor and invisible on the other, so a page-size assumption has to be verified *per vendor* — it is not a property of REST APIs that a caller can reason about once.
+
+What the Vultr half did **not** reach:
+
+- **`halt` and `reboot`, by choice.** They are `productionAffecting` and the only instance on the account is a real running machine. §9's precise question — whether Vultr's `204` precedes the reported state change — therefore **remains open**, and `start` cannot answer it because nothing transitions. It is a narrow question about action feedback timing, not about whether the contract fits.
+- **Cursor pagination**, since one instance is one page. This is the residual Cloudflare-shaped risk on this adapter: the paging loop is stub-tested only.
+- A smaller inconsistency worth naming: an unknown instance surfaces Vultr's own lowercase `instance not found`, where Cloudflare's equivalent path composes our own sentence (`No variable named "X" on this project.`). Both are honest; only one is written to be read by a person.
 
 #### What landing item 3 settled
 
