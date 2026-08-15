@@ -1,4 +1,4 @@
-import { Globe, Puzzle, Server, ShieldCheck } from "lucide-react";
+import { Globe, Puzzle, Server, ShieldCheck, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { InstalledExtension } from "@/lib/api/extensions";
@@ -7,19 +7,19 @@ import { ProviderLogo } from "../deploy/provider-logo";
 import { useInstalledExtensions } from "./use-installed-extensions";
 
 /**
- * Extensions — what is installed, what it may do, and what it may reach.
+ * Extensions — the section's own page, above the per-plugin pages.
  *
- * Stage 2 of §12 of `docs/plans/2026-08-13-provider-registry-design.md`, now
- * the index of the nav's second layer: every row opens that plugin's own page.
+ * Stage 2 of §12 of `docs/plans/2026-08-13-provider-registry-design.md`. It
+ * **manages** rather than duplicates: what a card adds beyond the nav entry is
+ * the disclosure — what the plugin may do, what it may reach — and, for a
+ * plugin whose data also lands somewhere else, where that is. Vultr is the only
+ * such case today.
  *
- * It still **manages** rather than duplicates. What a row adds beyond the nav
- * entry is the disclosure — what the plugin may do, what it may reach — and,
- * for a plugin whose data also lands somewhere else, where that is. Vultr is
- * the only such case today.
- *
- * No install, no remove, no browse: everything installed is built-in, so those
- * controls would be decoration. The footer states that outright rather than
- * showing three disabled buttons.
+ * Downloaded and Market are stacked sections rather than tabs: with one real
+ * section and one empty one, a tab strip would hide the page's only content
+ * behind a control. Market is empty on purpose — everything installed ships
+ * inside the binary, so a populated store would be invented, next to a panel
+ * whose whole value is that it tells the truth about network access.
  */
 export function ExtensionsView({ onOpen }: { onOpen?: (id: string) => void }) {
   const t = useT();
@@ -40,18 +40,68 @@ export function ExtensionsView({ onOpen }: { onOpen?: (id: string) => void }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4">
-      <div className="flex flex-col gap-3">
-        {extensions.map((extension) => (
-          <ExtensionCard
-            extension={extension}
-            key={`${extension.kind}:${extension.id}`}
-            onOpen={onOpen}
-          />
-        ))}
-      </div>
-      <p className="max-w-2xl text-[11px] leading-relaxed text-muted-foreground">
-        {t("extensions.builtInOnly")}
+    <div className="flex flex-col gap-5 px-4 py-4">
+      <section className="flex flex-col gap-3">
+        <SectionHeading
+          label={t("extensions.section.downloaded", { count: String(extensions.length) })}
+        />
+        {/*
+          Several per row: a card is a short disclosure, not a document, and one
+          per line left most of the width empty. It stays readable down to a
+          single column on a narrow window.
+        */}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {extensions.map((extension) => (
+            <ExtensionCard
+              extension={extension}
+              key={`${extension.kind}:${extension.id}`}
+              onOpen={onOpen}
+            />
+          ))}
+        </div>
+        <p className="max-w-3xl text-[11px] leading-relaxed text-muted-foreground">
+          {t("extensions.builtInOnly")}
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeading label={t("extensions.section.market")} />
+        <MarketPanel />
+      </section>
+    </div>
+  );
+}
+
+/** A section title with its rule on the same line, as the sidebar's are. */
+function SectionHeading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </h2>
+      <span aria-hidden className="h-px flex-1 bg-border/60" />
+    </div>
+  );
+}
+
+/**
+ * An empty shelf, labelled.
+ *
+ * Deliberately not a grid of placeholder cards: the blocker is real (§12 —
+ * runtime-loading third-party React), and the distribution half genuinely does
+ * exist already, so the honest thing is to name both rather than mock a store
+ * that cannot install anything.
+ */
+function MarketPanel() {
+  const t = useT();
+  return (
+    <div className="flex max-w-3xl flex-col items-start gap-2 rounded-lg border border-dashed border-border/60 bg-card/20 p-6">
+      <span className="flex items-center gap-2 text-[13px] font-medium">
+        <Store aria-hidden className="size-4 text-muted-foreground" />
+        {t("extensions.market.title")}
+      </span>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        {t("extensions.market.body")}
       </p>
     </div>
   );
