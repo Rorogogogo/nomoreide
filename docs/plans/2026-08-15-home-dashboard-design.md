@@ -333,6 +333,46 @@ is not discoverability alone:
 - **Arrow keys still resize.** A drag handle that answers only to a mouse is a
   setting some users of this page simply do not have.
 
+### 7.8 The drag was half a resize, and it moved the page while you aimed
+
+The dragged edge shipped and the owner's verdict was *"the result is not good"*,
+with two specifics: it should **drag with a frame, the way the agent dock's
+splitter does**, and it resizes **one axis when it should do both at once**.
+Both are about the same thing — the gesture did not behave the way a resize
+behaves anywhere else.
+
+- **Nothing reflows until you let go.** The old drag re-laid the grid on every
+  pointer move, so widening a panel pushed its neighbours onto other rows and
+  changed the page you were looking at *while you were aiming at it*. What moves
+  now is a dashed frame over an untouched page (`WidgetResizeFrame`), which is
+  what the dock's splitter does and what every window manager does. It is drawn
+  `fixed`, because the grid clips its own overflow and a frame for a panel
+  dragged to full width has to be allowed past that. It appears on pointer-down
+  at the panel's *true* rect, not the nearest snap — a frame that jumped 8px
+  before you moved would read as the resize having already happened.
+- **Two edges and a corner.** An edge you can only push sideways is a width
+  control wearing a resize costume. The corner sets both axes in **one write**;
+  committing them separately would leave a frame where the panel is its new
+  width at its old height, and two entries of history for one gesture.
+- **Height is not a column, so it needs its own ruler.** Columns are a fraction
+  of the window; rows cannot be, because Home scrolls and there is no page
+  height to divide. A height is therefore a count of fixed 32px units
+  (`HOME_ROW_PX`), which is what makes two panels dragged to "4" actually line
+  up.
+- **`null` height is fit-to-content, and stays the default.** How tall a summary
+  needs to be is a fact about what it is currently summarising, not a decision
+  anyone should have to make up front — so a widget declares a width and *not* a
+  height, a stored layout from before this pass keeps fitting its content, and
+  double-clicking a height grip gives the panel back to its content the way the
+  dock's grip does.
+- **A height sizes the body, not the cell.** The cell stays a stretched grid
+  item so its hairlines land on the row's edges however tall its neighbours are;
+  the padded box inside it is what a height sizes, and it clips. A panel
+  shrunk below its content leaves space *inside its own borders*, which reads as
+  room to spare rather than as a missing rule — and asking for less room than
+  the content takes is a legitimate thing to mean. A height that silently
+  refused to shrink would be the resize that "does nothing" all over again.
+
 **Stage 3 — drag to reorder.** Only if the arrows prove to be the annoying half
 of stage 2. Resize landed early, in stage 2, because the complaint that started
 this was a width: shipping "you can remove it" as the answer to "it is the wrong
@@ -349,6 +389,8 @@ I argued for ConfigStore before reading the store. The precedent is against me a
 Putting layout in ConfigStore would mean a Zod schema, a daemon round-trip on every toggle, and a preference that behaves unlike every other preference. The honest cost of `localStorage` is that layout doesn't follow you to another browser or into the Tauri app — which is already true of your theme, and nobody has asked for that to change.
 
 So: `version: 3`, add `home: { widgets: string[]; spans: Record<string, number> }`, and the existing migration hands v1/v2 installs the default layout.
+
+Heights (§7.8) arrived later as `heights?: Record<string, number>` and pointedly **did not bump the version**: the field is optional and its absence is not a missing value but a real state — "no height at all, fit the content" — which is exactly what a v3 layout stored before it existed should mean. A version bump would have been a migration inventing an answer nobody gave, and every bump costs a matching `version === n` in `lib/theme.ts`, which reads this document pre-mount and flashes the wrong theme when it disagrees.
 
 *As built:* `home` is `HomeLayout | null`, and v1/v2 installs migrate to `null` rather than to a stored copy of the default — see §7.6 for why the distinction is load-bearing. `lib/theme.ts` reads the same document before React mounts and had to learn `3` alongside `1` and `2`, or every customised install would have flashed the wrong theme on load.
 

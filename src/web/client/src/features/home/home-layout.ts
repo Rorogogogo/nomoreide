@@ -16,9 +16,24 @@ import type { WidgetDefinition, WidgetSpan } from "./widget-types";
 export const GRID_COLUMNS = 12;
 export const MIN_SPAN = 3;
 
+/**
+ * The vertical ruler.
+ *
+ * Columns are a fraction of the window and so need no unit; rows cannot be —
+ * there is no page height to divide, because Home scrolls. So a height is a
+ * count of fixed 32px units, which is what makes two panels dragged to "4"
+ * actually line up. Four units is roughly what a stat strip over three rows
+ * comes to, which is the shape most widgets have.
+ */
+export const HOME_ROW_PX = 32;
+export const MIN_HEIGHT = 2;
+export const MAX_HEIGHT = 12;
+
 export interface PlacedWidget {
   widget: WidgetDefinition;
   span: WidgetSpan;
+  /** Row units, or `null` for a panel that is as tall as what it holds. */
+  height: number | null;
 }
 
 function isSpan(value: unknown): value is WidgetSpan {
@@ -30,11 +45,29 @@ function isSpan(value: unknown): value is WidgetSpan {
   );
 }
 
+function isHeight(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= MIN_HEIGHT &&
+    value <= MAX_HEIGHT
+  );
+}
+
 /** Any column count a drag can produce, pulled back into the legal range. */
 export function clampSpan(columns: number): WidgetSpan {
-  const rounded = Math.round(columns);
-  if (!Number.isFinite(rounded)) return MIN_SPAN;
-  return Math.min(GRID_COLUMNS, Math.max(MIN_SPAN, rounded)) as WidgetSpan;
+  return clamp(columns, MIN_SPAN, GRID_COLUMNS) as WidgetSpan;
+}
+
+/** The same, vertically. */
+export function clampHeight(rows: number): number {
+  return clamp(rows, MIN_HEIGHT, MAX_HEIGHT);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  const rounded = Math.round(value);
+  if (!Number.isFinite(rounded)) return min;
+  return Math.min(max, Math.max(min, rounded));
 }
 
 /**
@@ -49,6 +82,9 @@ export function defaultHomeLayout(widgets: WidgetDefinition[]): HomeLayout {
   return {
     widgets: widgets.map((widget) => widget.id),
     spans: Object.fromEntries(widgets.map((widget) => [widget.id, widget.span])),
+    // No heights: a widget declares a width because a width is a layout
+    // decision, but how tall it is is a fact about what it currently holds.
+    heights: {},
   };
 }
 
@@ -64,14 +100,19 @@ export function resolveHomeLayout(
   widgets: WidgetDefinition[],
   layout: HomeLayout | null,
 ): PlacedWidget[] {
-  if (!layout) return widgets.map((widget) => ({ widget, span: widget.span }));
+  if (!layout) return widgets.map((widget) => ({ widget, span: widget.span, height: null }));
   const byId = new Map(widgets.map((widget) => [widget.id, widget]));
   const placed: PlacedWidget[] = [];
   for (const id of layout.widgets) {
     const widget = byId.get(id);
     if (!widget) continue;
     const span = layout.spans[id];
-    placed.push({ widget, span: isSpan(span) ? span : widget.span });
+    const height = layout.heights?.[id];
+    placed.push({
+      widget,
+      span: isSpan(span) ? span : widget.span,
+      height: isHeight(height) ? height : null,
+    });
   }
   return placed;
 }
@@ -95,7 +136,9 @@ export function hiddenWidgets(
  * arithmetic, and what makes "I removed everything" storable at all.
  */
 function materialize(widgets: WidgetDefinition[], layout: HomeLayout | null): HomeLayout {
-  return layout ? { widgets: [...layout.widgets], spans: { ...layout.spans } } : defaultHomeLayout(widgets);
+  return layout
+    ? { widgets: [...layout.widgets], spans: { ...layout.spans }, heights: { ...layout.heights } }
+    : defaultHomeLayout(widgets);
 }
 
 export function addWidget(
@@ -143,13 +186,39 @@ export function moveWidget(
   return next;
 }
 
+/**
+ * Commit a drag: a width, a height, or — from the corner grip — both.
+ *
+ * Both in one call rather than two setters chained, because each call is a
+ * separate write to preferences and a corner drag that landed as two writes
+ * would be two entries of layout history for one gesture, with a frame in
+ * between where the panel is its new width at its old height.
+ *
+ * A `null` height is the erasure, not a zero: it drops the override and hands
+ * the panel back to its content.
+ */
+export function setWidgetSize(
+  widgets: WidgetDefinition[],
+  layout: HomeLayout | null,
+  id: string,
+  size: { span?: WidgetSpan; height?: number | null },
+): HomeLayout {
+  const next = materialize(widgets, layout);
+  if (size.span !== undefined) next.spans = { ...next.spans, [id]: size.span };
+  if (size.height !== undefined) {
+    const heights = { ...next.heights };
+    if (size.height === null) delete heights[id];
+    else heights[id] = clampHeight(size.height);
+    next.heights = heights;
+  }
+  return next;
+}
+
 export function setWidgetSpan(
   widgets: WidgetDefinition[],
   layout: HomeLayout | null,
   id: string,
   span: WidgetSpan,
 ): HomeLayout {
-  const next = materialize(widgets, layout);
-  next.spans = { ...next.spans, [id]: span };
-  return next;
+  return setWidgetSize(widgets, layout, id, { span });
 }

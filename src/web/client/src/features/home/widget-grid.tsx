@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { HOME_ROW_PX } from "./home-layout";
 import type { WidgetSpan } from "./widget-types";
 
 /**
@@ -104,15 +105,45 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
 }
 
 /**
- * The cell itself — hairlines and padding, with the width the layout resolved.
+ * The cell itself — hairlines and the width the layout resolved. No padding:
+ * that moved inside, to `WidgetBody`, and the reason is the whole reason a
+ * height works at all.
+ *
+ * The cell stays a stretched grid item, so its bottom and right hairlines land
+ * on the row's edges no matter how tall its neighbours are — the lattice can't
+ * develop holes. The *body* is what a height sizes. A body shorter than its row
+ * leaves space below it, inside the cell's own borders, which reads as a panel
+ * with room to spare rather than as a missing rule.
  *
  * Exported because the edit surface (`home-edit.tsx`) draws the same cell as a
  * `<div>`: a panel that carries per-widget controls cannot also *be* a button.
  */
 export function panelClassName(span: WidgetSpan): string {
   return cn(
-    "group/widget relative flex flex-col gap-2 border-b border-border px-3 py-2.5 text-left md:border-r",
+    "group/widget relative flex flex-col border-b border-border text-left md:border-r",
     SPAN_CLASS[span],
+  );
+}
+
+/**
+ * The padded box a widget draws in, and the one a stored height applies to.
+ *
+ * `null` is fit-to-content — what every panel did before heights existed and
+ * still the default, because how tall a summary needs to be is a fact about
+ * what it is currently summarising, not a layout decision anyone should have to
+ * make up front. A number is the user's answer, in row units, and it clips:
+ * asking for less room than the content takes is a legitimate thing to mean,
+ * and a panel that silently ignored it would be the resize that "does nothing"
+ * all over again.
+ */
+export function WidgetBody({ children, height }: { children: ReactNode; height: number | null }) {
+  return (
+    <span
+      className="flex min-h-0 flex-col gap-2 overflow-hidden px-3 py-2.5"
+      style={height === null ? undefined : { height: height * HOME_ROW_PX }}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -152,6 +183,7 @@ export function WidgetPanelHeader({
  */
 export function WidgetPanel({
   children,
+  height,
   icon,
   onOpen,
   openLabel,
@@ -159,6 +191,7 @@ export function WidgetPanel({
   title,
 }: {
   children: ReactNode;
+  height: number | null;
   icon: ReactNode;
   onOpen: () => void;
   openLabel: string;
@@ -176,17 +209,19 @@ export function WidgetPanel({
       title={openLabel}
       type="button"
     >
-      <WidgetPanelHeader
-        icon={icon}
-        title={title}
-        trailing={
-          <ArrowUpRight
-            aria-hidden
-            className="ml-auto size-3 text-muted-foreground/40 transition-colors group-hover/widget:text-foreground"
-          />
-        }
-      />
-      {children}
+      <WidgetBody height={height}>
+        <WidgetPanelHeader
+          icon={icon}
+          title={title}
+          trailing={
+            <ArrowUpRight
+              aria-hidden
+              className="ml-auto size-3 text-muted-foreground/40 transition-colors group-hover/widget:text-foreground"
+            />
+          }
+        />
+        {children}
+      </WidgetBody>
     </button>
   );
 }

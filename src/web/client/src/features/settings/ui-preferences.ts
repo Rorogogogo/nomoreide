@@ -9,24 +9,22 @@ import {
 export const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
 
 /**
- * How wide a widget asks to be, in columns of Home's 12-column grid.
+ * How large a widget asks to be: columns of Home's 12-column grid, and row
+ * units of its vertical one.
  *
  * The bounds are restated here rather than imported deliberately: this file is
  * the storage schema and must be able to reject a stored `40` without pulling a
  * React feature module into the preference loader that runs before the app
- * mounts. `features/home/home-layout.ts` holds the same two numbers for the
- * drag to clamp against.
+ * mounts. `features/home/home-layout.ts` holds the same numbers for the drag to
+ * clamp against.
  */
 const MIN_HOME_SPAN = 3;
 const MAX_HOME_SPAN = 12;
+const MIN_HOME_HEIGHT = 2;
+const MAX_HOME_HEIGHT = 12;
 
-function isHomeSpan(value: unknown): boolean {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= MIN_HOME_SPAN &&
-    value <= MAX_HOME_SPAN
-  );
+function isInRange(value: unknown, min: number, max: number): boolean {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 }
 
 export interface HomeLayout {
@@ -34,6 +32,17 @@ export interface HomeLayout {
   widgets: string[];
   /** Per-widget width override, keyed by widget id. A widget with no entry keeps the one it declares. */
   spans: Record<string, number>;
+  /**
+   * Per-widget height override, in row units of `HOME_ROW_PX`.
+   *
+   * Optional, and absent means something different from every other override
+   * here: not "use the declared one" but "no height at all" — the panel is as
+   * tall as what it holds, which is how Home behaved before heights existed and
+   * is still the right default for a summary. Only a widget someone has dragged
+   * vertically gets an entry, so a stored layout from before this field simply
+   * keeps fitting its content.
+   */
+  heights?: Record<string, number>;
 }
 
 export interface UiPreferences {
@@ -114,13 +123,13 @@ function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
  *
  * Widget ids are checked for shape, not for existence — this file has no
  * business knowing which widgets are registered, and `resolveHomeLayout` drops
- * ids the registry no longer knows at render time (§8.5). Spans are checked
- * against the grid's bounds, because a stored `40` has no column class and
- * would silently render full-width.
+ * ids the registry no longer knows at render time (§8.5). Sizes are checked
+ * against the grid's bounds, because a stored span of `40` has no column class
+ * and would silently render full-width.
  */
 function sanitizeHomeLayout(value: unknown): HomeLayout | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const input = value as { widgets?: unknown; spans?: unknown };
+  const input = value as { widgets?: unknown; spans?: unknown; heights?: unknown };
   if (!Array.isArray(input.widgets)) return null;
 
   const seen = new Set<string>();
@@ -129,13 +138,26 @@ function sanitizeHomeLayout(value: unknown): HomeLayout | null {
     if (typeof id === "string" && id && !seen.has(id)) seen.add(id);
   }
 
-  const spans: Record<string, number> = {};
-  if (input.spans && typeof input.spans === "object" && !Array.isArray(input.spans)) {
-    for (const [id, span] of Object.entries(input.spans as Record<string, unknown>)) {
-      if (seen.has(id) && isHomeSpan(span)) spans[id] = span as number;
-    }
+  return {
+    widgets: [...seen],
+    spans: sizeOverrides(input.spans, seen, MIN_HOME_SPAN, MAX_HOME_SPAN),
+    heights: sizeOverrides(input.heights, seen, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT),
+  };
+}
+
+/** A `id -> size` map with every entry that isn't a size of a shown widget dropped. */
+function sizeOverrides(
+  value: unknown,
+  shown: Set<string>,
+  min: number,
+  max: number,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const [id, size] of Object.entries(value as Record<string, unknown>)) {
+    if (shown.has(id) && isInRange(size, min, max)) out[id] = size as number;
   }
-  return { widgets: [...seen], spans };
+  return out;
 }
 
 function readLegacyPreferences(): Partial<UiPreferences> {

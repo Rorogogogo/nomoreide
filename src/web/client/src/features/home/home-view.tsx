@@ -11,11 +11,11 @@ import {
   moveWidget,
   removeWidget,
   resolveHomeLayout,
-  setWidgetSpan,
+  setWidgetSize,
 } from "./home-layout";
 import { WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
+import { WidgetResizeFrame, type ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
-import type { WidgetSpan } from "./widget-types";
 
 /**
  * Home — the page that answers "what is happening right now".
@@ -44,11 +44,14 @@ export function HomeView({
   const { ui, updateUi } = useSettings();
   const [editRequested, setEditRequested] = useState(false);
   /*
-    The width under the cursor mid-drag, which is not yet anyone's preference.
-    Keeping it here rather than in the panel is what lets the drag repaint the
-    grid at frame rate while `localStorage` is written once, on release.
+    The size under the cursor mid-drag, which is not yet anyone's preference —
+    and, deliberately, not yet anyone's layout either. The page holds still
+    while a frame moves over it, so the panel you are sizing does not reflow
+    away from your cursor mid-gesture and `localStorage` is written once, on
+    release. It lives here rather than in the panel because the frame has to be
+    drawn outside the grid, which clips its own overflow.
   */
-  const [preview, setPreview] = useState<{ id: string; span: WidgetSpan } | null>(null);
+  const [frame, setFrame] = useState<ResizeFrame | null>(null);
 
   const layout = ui.home;
   const placed = resolveHomeLayout(WIDGETS, layout);
@@ -75,26 +78,26 @@ export function HomeView({
         <p className="px-3 py-4 text-[12px] text-muted-foreground">{t("home.empty")}</p>
       ) : (
         <WidgetGrid>
-          {placed.map(({ span, widget }, index) =>
+          {placed.map(({ height, span, widget }, index) =>
             editing ? (
               <WidgetEditPanel
                 canMoveEarlier={index > 0}
                 canMoveLater={index < placed.length - 1}
+                height={height}
                 icon={widget.icon}
                 key={widget.id}
+                onFrame={setFrame}
                 onMove={(delta) => apply(moveWidget(WIDGETS, layout, widget.id, delta))}
-                onPreviewSpan={(next) =>
-                  setPreview(next === null ? null : { id: widget.id, span: next })
-                }
                 onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
-                onSpan={(next) => apply(setWidgetSpan(WIDGETS, layout, widget.id, next))}
-                span={preview?.id === widget.id ? preview.span : span}
+                onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
+                span={span}
                 title={t(widget.titleKey)}
               >
                 {widget.render({ data })}
               </WidgetEditPanel>
             ) : (
               <WidgetPanel
+                height={height}
                 icon={widget.icon}
                 key={widget.id}
                 onOpen={() => onOpen(widget.page)}
@@ -129,6 +132,7 @@ export function HomeView({
           />
         </span>
       </div>
+      <WidgetResizeFrame frame={frame} />
     </div>
   );
 }

@@ -3,13 +3,17 @@
 import { describe, expect, test } from "vitest";
 import {
   addWidget,
+  clampHeight,
   clampSpan,
   defaultHomeLayout,
+  MAX_HEIGHT,
+  MIN_HEIGHT,
   MIN_SPAN,
   hiddenWidgets,
   moveWidget,
   removeWidget,
   resolveHomeLayout,
+  setWidgetSize,
   setWidgetSpan,
 } from "../src/web/client/src/features/home/home-layout";
 import { WIDGETS } from "../src/web/client/src/features/home/widget-registry";
@@ -79,6 +83,36 @@ describe("resolving a saved layout", () => {
     expect(clampSpan(Number.NaN)).toBe(MIN_SPAN);
   });
 
+  test("a widget nobody has resized vertically fits its content", () => {
+    expect(resolveHomeLayout(REGISTRY, null).map(({ height }) => height)).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    // A layout from before heights existed carries no `heights` at all, and
+    // that has to read as "fit your content" rather than throw on the lookup.
+    expect(resolveHomeLayout(REGISTRY, { widgets: ["a"], spans: {} })[0]?.height).toBeNull();
+  });
+
+  test("a height outside the ruler falls back to fitting the content", () => {
+    for (const height of [0, 1, 13, 4.5]) {
+      expect(
+        resolveHomeLayout(REGISTRY, { widgets: ["b"], spans: {}, heights: { b: height } })[0]
+          ?.height,
+      ).toBeNull();
+    }
+    expect(
+      resolveHomeLayout(REGISTRY, { widgets: ["b"], spans: {}, heights: { b: 5 } })[0]?.height,
+    ).toBe(5);
+  });
+
+  test("a vertical drag is clamped the same way a horizontal one is", () => {
+    expect(clampHeight(4.4)).toBe(4);
+    expect(clampHeight(0.1)).toBe(MIN_HEIGHT);
+    expect(clampHeight(99)).toBe(MAX_HEIGHT);
+    expect(clampHeight(Number.NaN)).toBe(MIN_HEIGHT);
+  });
+
   test("the real registry has unique ids, since a duplicate would share a React key", () => {
     expect(new Set(WIDGETS.map((w) => w.id)).size).toBe(WIDGETS.length);
   });
@@ -119,6 +153,32 @@ describe("editing a layout", () => {
     expect(moveWidget(REGISTRY, layout, "c", 1).widgets).toEqual(["a", "b", "c"]);
   });
 
+  test("a corner drag stores both axes in one write", () => {
+    // One gesture is one edit: committing the axes separately would leave a
+    // frame where the panel is its new width at its old height.
+    const next = setWidgetSize(REGISTRY, null, "b", { span: 8, height: 5 });
+    expect(next.spans.b).toBe(8);
+    expect(next.heights?.b).toBe(5);
+    expect(resolveHomeLayout(REGISTRY, next)[1]).toMatchObject({ span: 8, height: 5 });
+  });
+
+  test("an edge drag leaves the axis it does not touch alone", () => {
+    const both = setWidgetSize(REGISTRY, null, "b", { span: 8, height: 5 });
+    expect(setWidgetSize(REGISTRY, both, "b", { span: 3 }).heights?.b).toBe(5);
+    expect(setWidgetSize(REGISTRY, both, "b", { height: 9 }).spans.b).toBe(8);
+  });
+
+  test("a null height is the escape hatch, not a zero", () => {
+    const sized = setWidgetSize(REGISTRY, null, "b", { height: 5 });
+    const cleared = setWidgetSize(REGISTRY, sized, "b", { height: null });
+    expect(cleared.heights).not.toHaveProperty("b");
+    expect(resolveHomeLayout(REGISTRY, cleared)[1]?.height).toBeNull();
+  });
+
+  test("a height out of range is clamped on the way in, never stored raw", () => {
+    expect(setWidgetSize(REGISTRY, null, "b", { height: 99 }).heights?.b).toBe(MAX_HEIGHT);
+  });
+
   test("hidden widgets are what a picker offers, and nothing is hidden by default", () => {
     expect(hiddenWidgets(REGISTRY, null)).toEqual([]);
     expect(hiddenWidgets(REGISTRY, { widgets: ["b"], spans: {} }).map((w) => w.id)).toEqual([
@@ -151,18 +211,28 @@ describe("the stored shape", () => {
     expect(parseUiPreferences({ ...base, home: [] })?.home).toBeNull();
   });
 
-  test("duplicate ids and impossible widths are dropped on read", () => {
+  test("duplicate ids and impossible sizes are dropped on read", () => {
     const parsed = parseUiPreferences({
       ...base,
-      home: { widgets: ["a", "a", 7, "", "b"], spans: { a: 6, b: 40, gone: 4 } },
+      home: {
+        widgets: ["a", "a", 7, "", "b"],
+        spans: { a: 6, b: 40, gone: 4 },
+        heights: { a: 5, b: 99, gone: 3 },
+      },
     });
-    expect(parsed?.home).toEqual({ widgets: ["a", "b"], spans: { a: 6 } });
+    expect(parsed?.home).toEqual({ widgets: ["a", "b"], spans: { a: 6 }, heights: { a: 5 } });
+  });
+
+  test("a layout stored before heights existed reads as heights nobody has set", () => {
+    const parsed = parseUiPreferences({ ...base, home: { widgets: ["a"], spans: { a: 6 } } });
+    expect(parsed?.home).toEqual({ widgets: ["a"], spans: { a: 6 }, heights: {} });
   });
 
   test("an empty list survives a round trip, because it is a choice", () => {
     expect(parseUiPreferences({ ...base, home: { widgets: [], spans: {} } })?.home).toEqual({
       widgets: [],
       spans: {},
+      heights: {},
     });
   });
 });
