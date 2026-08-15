@@ -427,7 +427,26 @@ So adopting Cloudflare sign-in is **a change of auth model, not a new provider e
 - **A pre-registered client id would ship in the binary.** Not a secret — a public PKCE client id is designed to be public, and Wrangler ships one — but `ProviderAuthSpec.oauth` has no way to express "use this id" as an alternative to "register one." That is a real change to a shared contract.
 - **NoMoreIDE becomes a named publisher.** Public visibility requires a name, a logo, a client URL on a domain we control, and DNS TXT verification of it (polled up to two days). `nomoreide.com` already exists.
 - **The public flip is irreversible.** Cloudflare's docs are explicit that visibility cannot be returned to private.
-- **Unverified, and it decides everything:** whether a loopback redirect URI (`http://127.0.0.1:<port>`) is accepted for these clients. The docs show only an `https://` example, and the "allow localhost / allow loopback" toggles that turn up in search belong to Cloudflare One Access Managed OAuth — a different product, for protecting your own apps. Our entire flow is loopback. Settle it with a **private** client (free, account-scoped, reversible) before any of the public work.
+- **Loopback redirect URIs are accepted. Verified against a live private client, not read from docs.** This was the one question that decided whether any of it was worth pursuing, since our entire flow is loopback and the docs show only an `https://` example. Probing `oauth2/auth` with `redirect_uri=http://127.0.0.1:4317/api/providers/cloudflare/oauth/callback` returned `303` with `Location:` pointing **at that URI**, carrying an unrelated `invalid_scope` error. That is the proof: an authorization server must not redirect to an unvalidated `redirect_uri`, so reaching the error-in-redirect stage means the URI itself passed validation. The daemon's fixed port helps — the registered URI is an exact match, with none of the wildcard-port trouble that usually makes providers refuse loopback.
+
+#### What the discovery document actually says
+
+`https://dash.cloudflare.com/.well-known/openid-configuration` resolves, which retires the "serves no OIDC discovery" half of the original claim conclusively — it was wrong when written, not merely stale. What it advertises:
+
+| Field | Value | Consequence |
+| --- | --- | --- |
+| `authorization_endpoint` | `dash.cloudflare.com/oauth2/auth` | — |
+| `token_endpoint` | `dash.cloudflare.com/oauth2/token` | — |
+| `revocation_endpoint` | `dash.cloudflare.com/oauth2/revoke` | Disconnect could revoke upstream, not just drop the local token |
+| `registration_endpoint` | **absent** | The surviving obstacle; `registerOAuthClient()` has nothing to call |
+| `code_challenge_methods_supported` | `plain`, `S256` | Our S256 challenge is supported as sent |
+| `token_endpoint_auth_methods_supported` | includes `none` | Public client, no secret — confirmed at the protocol level |
+| `grant_types_supported` | includes `authorization_code`, `refresh_token` | Both grants we register |
+| `device_authorization_endpoint` | `dash.cloudflare.com/oauth2/device/auth` | **A redirect-free fallback** |
+
+That last row matters beyond this provider. Cloudflare supports the device authorization grant (RFC 8628) — the `gh auth login` shape, where the user is shown a code and types it into a browser, and **no redirect URI is involved at all**. Loopback turning out to work means we do not need it here, but it is the answer for any future provider that refuses loopback, and it is a third flow `ProviderAuthSpec` does not model.
+
+**Still open:** the scope vocabulary. A client created with every scope the dashboard offered accepts only `offline_access` at `oauth2/auth`; `account:read`, `user:read`, `pages:read`, `pages:write` and even `openid` are all rejected with "not allowed to request scope". The discovery document lists only `offline_access`, `offline` and `openid` under `scopes_supported`, so the API scope names are not published there. `GET /oauth/scopes` enumerates them but requires an authenticated call — which is the same credential gate item 4 is waiting on.
 
 **The reason this sits in §11 rather than §12.** §11 declined to freeze `apiVersion: 1` on the grounds that three implementations proved the contracts, not the ecosystem around them, and that the freeze would put the next forced change on the far side of a compatibility promise. Ten weeks later a provider's auth model changed in a way that needs a new shape in `ProviderAuthSpec` — a v2 within weeks of a v1, had one existed. The gate held for a reason that was not hypothetical.
 

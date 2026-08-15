@@ -108,15 +108,22 @@ async function readTomlFields(path: string): Promise<Record<string, string>> {
  * NoMoreIDE ship no client id at all. Cloudflare has no registration endpoint,
  * so `registerOAuthClient()` would throw before a browser ever opened.
  *
- * That is a narrower obstacle than it was. Since 2026-06-03 Cloudflare lets
- * anyone register their own OAuth client, including a *public* one using
- * authorization code + PKCE (S256) with no client secret — the shape a
- * self-hosted app needs. Adopting it is therefore possible, but it is a change
- * of model rather than a new provider entry: NoMoreIDE would ship a
- * pre-registered client id, which `ProviderAuthSpec.oauth` currently has no way
- * to express, and public visibility additionally requires a verified client
- * domain and is irreversible once granted. Unverified: whether a loopback
- * redirect URI is accepted for these clients, which our flow depends on.
+ * That is a narrower obstacle than it was, and narrower than this comment used
+ * to claim: Cloudflare *does* serve OIDC discovery, at
+ * `dash.cloudflare.com/.well-known/openid-configuration`. It advertises PKCE
+ * (S256), `none` for token endpoint auth, and both the `authorization_code` and
+ * `refresh_token` grants — but no `registration_endpoint`. Since 2026-06-03 you
+ * register the client yourself instead, and a *public* client needs no secret.
+ *
+ * Adopting it is therefore a change of model rather than a new provider entry:
+ * NoMoreIDE would ship a pre-registered client id, which `ProviderAuthSpec`
+ * has no way to express, and public visibility additionally requires a verified
+ * client domain and is irreversible once granted.
+ *
+ * Loopback redirect URIs are accepted — verified against a live client, and the
+ * thing that would otherwise have ruled this out. Cloudflare also exposes a
+ * device authorization endpoint, so a provider that ever *does* refuse loopback
+ * has a redirect-free path available.
  *
  * Until then Cloudflare connects with an API token or by inheriting Wrangler's
  * own login. The three-source model survives contact with provider #2; only
