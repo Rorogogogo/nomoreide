@@ -55,6 +55,12 @@ export interface CloudflareProject {
   updatedAt?: number;
   source?: CloudflareSource;
   /**
+   * The `<project>.pages.dev` host Cloudflare assigns. The address the site
+   * actually serves from until a custom domain exists, and absent from the
+   * project's `/domains` list — see {@link CloudflareManager.listDomains}.
+   */
+  subdomain?: string | null;
+  /**
    * Build settings. Null means "not set", which Cloudflare renders as its own
    * default — distinct from the field being absent, though in practice the list
    * and single-project endpoints return the same shape, unlike Vercel's.
@@ -335,9 +341,28 @@ export class CloudflareManager {
     return variable.value ?? "";
   }
 
+  /**
+   * The project's domains, including the `*.pages.dev` host Cloudflare assigns.
+   *
+   * `/domains` lists **custom** domains only, so a project that is serving
+   * perfectly well reads as having none — while Vercel's equivalent endpoint
+   * includes the vendor-assigned `*.vercel.app`. Both render through the same
+   * generic view, so the asymmetry showed up on a live account as "no domains"
+   * beside a site anyone could load. The subdomain goes last, the way Vercel
+   * orders its own, so a custom domain still leads.
+   *
+   * A failed project read degrades to the custom domains alone: the panel is
+   * still correct, just missing the assigned host.
+   */
   async listDomains(projectName: string): Promise<CloudflareDomain[]> {
-    const raw = await this.request<RawDomain[]>(`${this.projectPath(projectName)}/domains`);
-    return raw.map(normalizeDomain);
+    const [raw, project] = await Promise.all([
+      this.request<RawDomain[]>(`${this.projectPath(projectName)}/domains`),
+      this.getProject(projectName).catch(() => undefined),
+    ]);
+    const domains = raw.map(normalizeDomain);
+    const subdomain = project?.subdomain;
+    if (!subdomain || domains.some((domain) => domain.name === subdomain)) return domains;
+    return [...domains, { name: subdomain, status: "active", createdAt: project?.createdAt }];
   }
 
   /** The dashboard page for a deployment, which Cloudflare does not return. */
@@ -571,6 +596,7 @@ function normalizeProject(project: RawProject): CloudflareProject {
     productionBranch: project.production_branch ?? null,
     createdAt: epochMs(project.created_on),
     updatedAt: epochMs(project.latest_deployment?.modified_on) ?? epochMs(project.created_on),
+    subdomain: project.subdomain ?? null,
     source: project.source?.type
       ? {
           type: project.source.type,

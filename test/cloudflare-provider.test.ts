@@ -433,6 +433,50 @@ describe("domains", () => {
       verification: [],
     });
   });
+
+  /**
+   * A live pass found a serving project reporting no domains at all: Cloudflare
+   * lists custom domains only, while Vercel's equivalent includes the assigned
+   * `*.vercel.app`. Same generic view, two different answers.
+   */
+  test("the assigned `pages.dev` host is listed, after any custom domain", async () => {
+    stubFetch((url) =>
+      url.pathname.endsWith("/domains")
+        ? [{ name: "example.com", status: "active" }]
+        : { id: "p1", name: "web", subdomain: "web.pages.dev" },
+    );
+
+    const domains = await new CloudflareManager("cf-token", "acct_1").listDomains("web");
+
+    expect(domains.map((domain) => domain.name)).toEqual(["example.com", "web.pages.dev"]);
+    expect(domains[1].status).toBe("active");
+  });
+
+  test("a project Cloudflare will not return costs the custom domains nothing", async () => {
+    stubFetch((url) => {
+      if (url.pathname.endsWith("/domains")) return [{ name: "example.com", status: "active" }];
+      return new Response(
+        JSON.stringify({ success: false, errors: [{ code: 8000007, message: "nope" }] }),
+        { status: 404, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const domains = await new CloudflareManager("cf-token", "acct_1").listDomains("web");
+
+    expect(domains.map((domain) => domain.name)).toEqual(["example.com"]);
+  });
+
+  test("a custom domain that is already the assigned host is not listed twice", async () => {
+    stubFetch((url) =>
+      url.pathname.endsWith("/domains")
+        ? [{ name: "web.pages.dev", status: "active" }]
+        : { id: "p1", name: "web", subdomain: "web.pages.dev" },
+    );
+
+    const domains = await new CloudflareManager("cf-token", "acct_1").listDomains("web");
+
+    expect(domains.map((domain) => domain.name)).toEqual(["web.pages.dev"]);
+  });
 });
 
 describe("the write-capable half", () => {
