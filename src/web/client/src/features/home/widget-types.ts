@@ -24,8 +24,12 @@ import type { TranslationKey } from "@/lib/i18n";
  * A closed union rather than a number because the span has to become a literal
  * Tailwind class — see `SPAN_CLASS` in `widget-grid.tsx`. Anything the union
  * doesn't list has no class to map to and would silently render full-width.
+ *
+ * It starts at 3 rather than 1: a quarter row is the narrowest a stat strip and
+ * a row list stay legible in, and a width nobody would keep is not a width
+ * worth letting them drag to.
  */
-export type WidgetSpan = 4 | 6 | 12;
+export type WidgetSpan = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface WidgetRenderProps {
   data: DashboardData;

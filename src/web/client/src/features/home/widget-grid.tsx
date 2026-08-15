@@ -25,11 +25,20 @@ import type { WidgetSpan } from "./widget-types";
  *
  * Two breakpoints: one column on a narrow window, two on `md`, and only at
  * `xl` does the 12-column grid mean anything — below that there isn't enough
- * width for a 4-span panel to hold a stat strip and a row list.
+ * width for a 4-span panel to hold a stat strip and a row list. Anything wider
+ * than half takes both `md` columns, which is the closest a two-column grid
+ * gets to "wide".
  */
 const SPAN_CLASS: Record<WidgetSpan, string> = {
+  3: "md:col-span-1 xl:col-span-3",
   4: "md:col-span-1 xl:col-span-4",
+  5: "md:col-span-1 xl:col-span-5",
   6: "md:col-span-1 xl:col-span-6",
+  7: "md:col-span-2 xl:col-span-7",
+  8: "md:col-span-2 xl:col-span-8",
+  9: "md:col-span-2 xl:col-span-9",
+  10: "md:col-span-2 xl:col-span-10",
+  11: "md:col-span-2 xl:col-span-11",
   12: "md:col-span-2 xl:col-span-12",
 };
 
@@ -78,7 +87,18 @@ const DOT_TONE: Record<WidgetTone, string> = {
 export function WidgetGrid({ children }: { children: ReactNode }) {
   return (
     <div className="overflow-hidden">
-      <div className="-mr-px grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12">{children}</div>
+      {/*
+        `data-widget-grid` is how a resize drag finds the ruler it is measuring
+        against: one twelfth of *this* element is one column, whatever the
+        window is doing. Reading it off the DOM keeps the measurement where the
+        truth is and spares every panel a ref it would otherwise have to thread.
+      */}
+      <div
+        className="-mr-px grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12"
+        data-widget-grid=""
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -91,7 +111,7 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
  */
 export function panelClassName(span: WidgetSpan): string {
   return cn(
-    "group/widget flex flex-col gap-2 border-b border-border px-3 py-2.5 text-left md:border-r",
+    "group/widget relative flex flex-col gap-2 border-b border-border px-3 py-2.5 text-left md:border-r",
     SPAN_CLASS[span],
   );
 }

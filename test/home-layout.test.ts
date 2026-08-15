@@ -3,7 +3,9 @@
 import { describe, expect, test } from "vitest";
 import {
   addWidget,
+  clampSpan,
   defaultHomeLayout,
+  MIN_SPAN,
   hiddenWidgets,
   moveWidget,
   removeWidget,
@@ -62,11 +64,19 @@ describe("resolving a saved layout", () => {
   });
 
   test("a width outside the grid falls back to the widget's own", () => {
-    const placed = resolveHomeLayout(REGISTRY, {
-      widgets: ["b"],
-      spans: { b: 7 as unknown as number },
-    });
-    expect(placed[0]?.span).toBe(6);
+    for (const span of [0, 2, 13, 6.5]) {
+      expect(resolveHomeLayout(REGISTRY, { widgets: ["b"], spans: { b: span } })[0]?.span).toBe(6);
+    }
+    // Any column count between the minimum and the grid is a width a drag can
+    // land on, so 7 is as legitimate as the 4/6/12 the registry declares.
+    expect(resolveHomeLayout(REGISTRY, { widgets: ["b"], spans: { b: 7 } })[0]?.span).toBe(7);
+  });
+
+  test("a drag is clamped to the grid rather than snapped to presets", () => {
+    expect(clampSpan(7.4)).toBe(7);
+    expect(clampSpan(0.2)).toBe(MIN_SPAN);
+    expect(clampSpan(99)).toBe(12);
+    expect(clampSpan(Number.NaN)).toBe(MIN_SPAN);
   });
 
   test("the real registry has unique ids, since a duplicate would share a React key", () => {
@@ -144,7 +154,7 @@ describe("the stored shape", () => {
   test("duplicate ids and impossible widths are dropped on read", () => {
     const parsed = parseUiPreferences({
       ...base,
-      home: { widgets: ["a", "a", 7, "", "b"], spans: { a: 6, b: 7, gone: 4 } },
+      home: { widgets: ["a", "a", 7, "", "b"], spans: { a: 6, b: 40, gone: 4 } },
     });
     expect(parsed?.home).toEqual({ widgets: ["a", "b"], spans: { a: 6 } });
   });

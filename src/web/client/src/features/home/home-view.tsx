@@ -15,6 +15,7 @@ import {
 } from "./home-layout";
 import { WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
 import { WIDGETS } from "./widget-registry";
+import type { WidgetSpan } from "./widget-types";
 
 /**
  * Home — the page that answers "what is happening right now".
@@ -42,6 +43,12 @@ export function HomeView({
   const t = useT();
   const { ui, updateUi } = useSettings();
   const [editRequested, setEditRequested] = useState(false);
+  /*
+    The width under the cursor mid-drag, which is not yet anyone's preference.
+    Keeping it here rather than in the panel is what lets the drag repaint the
+    grid at frame rate while `localStorage` is written once, on release.
+  */
+  const [preview, setPreview] = useState<{ id: string; span: WidgetSpan } | null>(null);
 
   const layout = ui.home;
   const placed = resolveHomeLayout(WIDGETS, layout);
@@ -76,9 +83,12 @@ export function HomeView({
                 icon={widget.icon}
                 key={widget.id}
                 onMove={(delta) => apply(moveWidget(WIDGETS, layout, widget.id, delta))}
+                onPreviewSpan={(next) =>
+                  setPreview(next === null ? null : { id: widget.id, span: next })
+                }
                 onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
                 onSpan={(next) => apply(setWidgetSpan(WIDGETS, layout, widget.id, next))}
-                span={span}
+                span={preview?.id === widget.id ? preview.span : span}
                 title={t(widget.titleKey)}
               >
                 {widget.render({ data })}

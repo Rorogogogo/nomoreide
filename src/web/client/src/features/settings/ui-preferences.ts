@@ -11,12 +11,23 @@ export const UI_PREFERENCES_KEY = "nomoreide:ui-preferences";
 /**
  * How wide a widget asks to be, in columns of Home's 12-column grid.
  *
- * Mirrors `WidgetSpan` in `features/home/widget-types.ts` deliberately rather
- * than importing it: this file is the storage schema and must be able to reject
- * a stored `7` without pulling a React feature module into the preference
- * loader that runs before the app mounts.
+ * The bounds are restated here rather than imported deliberately: this file is
+ * the storage schema and must be able to reject a stored `40` without pulling a
+ * React feature module into the preference loader that runs before the app
+ * mounts. `features/home/home-layout.ts` holds the same two numbers for the
+ * drag to clamp against.
  */
-const HOME_SPANS = [4, 6, 12] as const;
+const MIN_HOME_SPAN = 3;
+const MAX_HOME_SPAN = 12;
+
+function isHomeSpan(value: unknown): boolean {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= MIN_HOME_SPAN &&
+    value <= MAX_HOME_SPAN
+  );
+}
 
 export interface HomeLayout {
   /** Widget ids, in the order they are drawn. Ids the registry no longer knows are dropped on read. */
@@ -104,8 +115,8 @@ function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
  * Widget ids are checked for shape, not for existence — this file has no
  * business knowing which widgets are registered, and `resolveHomeLayout` drops
  * ids the registry no longer knows at render time (§8.5). Spans are checked
- * against the closed set, because a stored `7` has no grid class and would
- * silently render full-width.
+ * against the grid's bounds, because a stored `40` has no column class and
+ * would silently render full-width.
  */
 function sanitizeHomeLayout(value: unknown): HomeLayout | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -121,9 +132,7 @@ function sanitizeHomeLayout(value: unknown): HomeLayout | null {
   const spans: Record<string, number> = {};
   if (input.spans && typeof input.spans === "object" && !Array.isArray(input.spans)) {
     for (const [id, span] of Object.entries(input.spans as Record<string, unknown>)) {
-      if (seen.has(id) && HOME_SPANS.includes(span as (typeof HOME_SPANS)[number])) {
-        spans[id] = span as number;
-      }
+      if (seen.has(id) && isHomeSpan(span)) spans[id] = span as number;
     }
   }
   return { widgets: [...seen], spans };

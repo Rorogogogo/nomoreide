@@ -12,8 +12,9 @@ import type { WidgetDefinition, WidgetSpan } from "./widget-types";
  * only which of the registry's widgets are shown and how wide.
  */
 
-/** The widths a user can pick, narrowest first. Mirrors the `WidgetSpan` union. */
-export const WIDGET_SPANS: readonly WidgetSpan[] = [4, 6, 12];
+/** The grid a width is measured in, and the narrowest panel worth having. */
+export const GRID_COLUMNS = 12;
+export const MIN_SPAN = 3;
 
 export interface PlacedWidget {
   widget: WidgetDefinition;
@@ -21,7 +22,19 @@ export interface PlacedWidget {
 }
 
 function isSpan(value: unknown): value is WidgetSpan {
-  return WIDGET_SPANS.includes(value as WidgetSpan);
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= MIN_SPAN &&
+    value <= GRID_COLUMNS
+  );
+}
+
+/** Any column count a drag can produce, pulled back into the legal range. */
+export function clampSpan(columns: number): WidgetSpan {
+  const rounded = Math.round(columns);
+  if (!Number.isFinite(rounded)) return MIN_SPAN;
+  return Math.min(GRID_COLUMNS, Math.max(MIN_SPAN, rounded)) as WidgetSpan;
 }
 
 /**

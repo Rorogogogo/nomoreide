@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, Plus, RotateCcw, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { WIDGET_SPANS } from "./home-layout";
+import { clampSpan, GRID_COLUMNS } from "./home-layout";
 import { panelClassName, WidgetPanelHeader } from "./widget-grid";
 import type { WidgetDefinition, WidgetSpan } from "./widget-types";
 
@@ -24,6 +24,115 @@ const CONTROL =
   "flex cursor-pointer items-center rounded-sm p-0.5 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-30 [&_svg]:size-3";
 
 /**
+ * The panel's right edge, draggable.
+ *
+ * This replaced three preset buttons labelled `4 6 12`, which failed the only
+ * test that matters: the first person to see them asked what they meant. A
+ * width is not a number you should have to convert from — it is the edge of the
+ * thing, and the way to say "this wide" is to put the edge there. Twelve
+ * columns are still what gets stored; they are now the drag's snap, not a
+ * vocabulary anyone has to learn.
+ *
+ * The grid is the ruler: one twelfth of `[data-widget-grid]` is one column,
+ * measured at pointer-down so a mid-drag reflow cannot move the origin
+ * underneath the cursor. Arrow keys do the same job a column at a time, because
+ * a drag handle that only answers to a mouse is a control half the users of
+ * this page cannot reach.
+ */
+/** Where the drag started: the grid's column width and the panel's left edge. */
+interface Drag {
+  column: number;
+  left: number;
+  span: WidgetSpan;
+}
+
+/** Which column the cursor is over, measured from where the drag began. */
+function spanAt(clientX: number, start: Drag): WidgetSpan {
+  return clampSpan((clientX - start.left) / start.column);
+}
+
+function WidgetResizeHandle({
+  onCommit,
+  onPreview,
+  span,
+  title,
+}: {
+  onCommit: (span: WidgetSpan) => void;
+  onPreview: (span: WidgetSpan | null) => void;
+  span: WidgetSpan;
+  title: string;
+}) {
+  const t = useT();
+  const release = useRef<(() => void) | null>(null);
+  const label = t("home.edit.width", { name: title, span, total: GRID_COLUMNS });
+
+  // A drag that ends outside the handle still has to end. Listening on the
+  // window rather than relying on `setPointerCapture` means the release is
+  // caught wherever the cursor happens to be, and a pointer id the browser
+  // will not let us capture cannot strand the panel mid-resize.
+  useEffect(() => () => release.current?.(), []);
+
+  const begin = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const panel = event.currentTarget.parentElement;
+    const grid = event.currentTarget.closest("[data-widget-grid]");
+    if (!panel || !grid) return;
+    event.preventDefault();
+
+    const start: Drag = {
+      column: grid.getBoundingClientRect().width / GRID_COLUMNS,
+      left: panel.getBoundingClientRect().left,
+      span,
+    };
+    const move = (moved: PointerEvent) => onPreview(spanAt(moved.clientX, start));
+    const end = (ended: PointerEvent) => {
+      release.current?.();
+      release.current = null;
+      onPreview(null);
+      // Writing preferences on every pointermove would put a `localStorage`
+      // write behind every frame of the drag; the preview carries the live
+      // width and only the result is saved.
+      const next = spanAt(ended.clientX, start);
+      if (next !== start.span) onCommit(next);
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    release.current = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  };
+
+  return (
+    <button
+      aria-label={label}
+      /*
+        Hidden below `xl`, where the 12-column grid does not apply and a width
+        would be a setting with no visible effect. Two pixels of grip, eight of
+        target: the bar is quiet enough to sit on every panel at once.
+      */
+      className="absolute inset-y-0 right-0 z-10 hidden w-2 cursor-col-resize items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring xl:flex"
+      onKeyDown={(event) => {
+        const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+        if (!delta) return;
+        event.preventDefault();
+        onCommit(clampSpan(span + delta));
+      }}
+      onPointerDown={begin}
+      title={label}
+      type="button"
+    >
+      <span
+        aria-hidden
+        className="h-5 w-0.5 rounded-full bg-border transition-colors group-hover/widget:bg-muted-foreground/50"
+      />
+    </button>
+  );
+}
+
+/**
  * A widget's cell while the layout is being edited: the same cell, drawn as a
  * `<div>` so it can legally hold the controls a `<button>` could not.
  *
@@ -38,6 +147,7 @@ export function WidgetEditPanel({
   canMoveLater,
   icon,
   onMove,
+  onPreviewSpan,
   onRemove,
   onSpan,
   span,
@@ -48,6 +158,7 @@ export function WidgetEditPanel({
   canMoveLater: boolean;
   icon: ReactNode;
   onMove: (delta: -1 | 1) => void;
+  onPreviewSpan: (span: WidgetSpan | null) => void;
   onRemove: () => void;
   onSpan: (span: WidgetSpan) => void;
   span: WidgetSpan;
@@ -61,29 +172,9 @@ export function WidgetEditPanel({
         title={title}
         trailing={
           <span className="ml-auto flex items-center gap-0.5">
-            {/*
-              The column count itself, not S/M/L. Home's grid is twelve columns
-              wide and the number is the whole truth about a width — a "medium"
-              that means 6 is a second name for a thing that already had one.
-            */}
-            {WIDGET_SPANS.map((option) => (
-              <button
-                className={cn(
-                  CONTROL,
-                  "px-1 tabular-nums",
-                  option === span && "bg-muted text-foreground",
-                )}
-                key={option}
-                onClick={() => onSpan(option)}
-                title={t("home.edit.width", { span: option })}
-                type="button"
-              >
-                {option}
-              </button>
-            ))}
             <button
               aria-label={t("home.edit.moveEarlier", { name: title })}
-              className={cn(CONTROL, "ml-1")}
+              className={CONTROL}
               disabled={!canMoveEarlier}
               onClick={() => onMove(-1)}
               title={t("home.edit.moveEarlier", { name: title })}
@@ -119,6 +210,12 @@ export function WidgetEditPanel({
         it, which is exactly the question the Conversations panel raised.
       */}
       <span className="opacity-70">{children}</span>
+      <WidgetResizeHandle
+        onCommit={onSpan}
+        onPreview={onPreviewSpan}
+        span={span}
+        title={title}
+      />
     </div>
   );
 }

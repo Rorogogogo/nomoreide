@@ -296,15 +296,47 @@ What it settled:
   toggle, which is the right thing to pay for a mode you are in for ten seconds.
 - **The controls are the column count, not S/M/L.** The grid is twelve columns
   and the number is the entire fact; a size name would be a second vocabulary
-  for a thing that already had one.
+  for a thing that already had one. **This was wrong, and it lasted one
+  conversation** — see §7.7.
 - **The strip at the foot of the page, not a toolbar at the head.** Home is
   full-bleed by design and the rarest action on the page should not be the first
   thing on it. The scope note was already down there.
 
+### 7.7 `4 6 12` lasted exactly one reader
+
+The first thing the owner said on seeing the size control was *"what does 4, 6,
+12 mean"*, and the second was *"can it be more flexible — resize by dragging the
+edge with the cursor"*. Both are the same verdict on the argument above: a
+number is only "the entire fact" to someone who already knows the grid is
+twelve columns wide, and a control that has to be explained has failed before
+anyone has read the explanation.
+
+So the three buttons became **the panel's right edge, draggable**. What it fixed
+is not discoverability alone:
+
+- **A width is a place, not a quantity.** Setting one by picking from a legend
+  means converting "about this wide" into a number and back. Dragging the edge
+  skips both conversions — the control *is* the thing being set, and the answer
+  is visible while you are still deciding it.
+- **Presets were a false economy.** Three buttons existed because `WidgetSpan`
+  was `4 | 6 | 12`, which was itself only ever an artefact of Tailwind needing
+  literal class names. Writing out all ten literals costs ten lines and buys
+  every width between a quarter row and the whole one, which is what makes a
+  drag feel continuous rather than magnetic.
+- **The grid is the ruler.** One twelfth of `[data-widget-grid]`, measured at
+  pointer-down so a mid-drag reflow cannot move the origin under the cursor.
+- **Drags end where they like.** The listeners live on the window, not behind
+  `setPointerCapture` — a capture the browser refuses would otherwise strand a
+  panel mid-resize with no way to release it. (Verified the hard way: the
+  browser-automation harness in this session could not synthesise drags at all,
+  which is exactly the class of environment that breaks a capture-only handler.)
+- **Arrow keys still resize.** A drag handle that answers only to a mouse is a
+  setting some users of this page simply do not have.
+
 **Stage 3 — drag to reorder.** Only if the arrows prove to be the annoying half
-of stage 2. Resize landed here instead of in stage 3: the complaint that started
-this was a width, and shipping "you can remove it" as the answer to "it is the
-wrong shape" would have missed the point.
+of stage 2. Resize landed early, in stage 2, because the complaint that started
+this was a width: shipping "you can remove it" as the answer to "it is the wrong
+shape" would have missed the point.
 
 **Not staged, deliberately:** widgets contributed by *downloaded* plugins. That is blocked by the same thing the Extensions market is blocked by — runtime-loading third-party React — and the widget registry should be shaped so it becomes possible, not built as though it already is.
 
