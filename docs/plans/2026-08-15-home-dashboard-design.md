@@ -886,6 +886,49 @@ plus one and shown no change at all. It also keeps the "only the axis you moved"
 rule intact for free — a straight-sideways drag now lands on the row it started
 on, so it still writes no height.
 
+### 7.19 A tail with no axis cannot say when
+
+The owner's question: could Logs and Health be a full-width graph, "so we can
+see the log and also know where". The answer is that a tail is missing exactly
+one thing, and it is the axis. Forty lines of a service mid-burst can span four
+seconds; the panel shows them all and cannot say whether that was now or an hour
+ago, or whether anything happened in between.
+
+The data for the graph half already existed, which is why it went first.
+`MetricsStore` samples CPU and RSS every 3s and keeps 600 of them — half an hour
+per service — and `/api/services/:name/metrics` already served it to the service
+detail page. So Logs grew two panes above its lines, and became a `fetch` widget
+in the process: `source` is the fact a picker has to be able to show, and a
+widget that fetches at all should say so.
+
+**One service, the one whose tab is selected.** The graph and the lines beneath
+it are then the same subject, and the panel costs one request no matter how many
+services are registered — the trap `use-home-agent-summary.ts` documents.
+
+Three things the drawing had to get right, each of which was wrong first:
+
+- **Two panes, not one plot.** CPU is a percentage and memory is megabytes, and
+  a second y-axis is the standard way to make two unrelated quantities appear to
+  cross. Stacked on a shared x-range they stay comparable in the only way that
+  matters here, which is *in time*.
+- **The baseline decides the mark.** CPU starts at nothing, so it is filled.
+  Memory never goes near zero — a zero-based pane rendered it as a solid blue
+  block with a wobble on top — so its pane holds the band the series actually
+  moved in and drops the fill, because an area whose floor is 380MB claims an
+  area that is not there.
+- **A pane scaled to its own peak must print that peak.** Without it, 0.1% and
+  90% draw the same mountains. With it, scaling to the peak is what lets a
+  service idling at a fraction of a percent have a visible shape at all.
+
+The x mapping is by timestamp, never by sample index: a busy machine misses
+samples, and an index axis would quietly close those gaps and put a spike at the
+wrong time — the one error a panel built to answer "when" cannot make.
+
+What is still missing is the other half of the owner's sentence. The lines are
+under the graph but not yet *on* it: the strip of log volume that shares the axis
+needs counts per bucket computed from the 500-line ring in `LogStore` and carried
+on the dashboard payload, which is a server change and a daemon restart.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**

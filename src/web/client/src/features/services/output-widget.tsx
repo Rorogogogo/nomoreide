@@ -12,6 +12,8 @@ import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget
 import type { LogEntry } from "@/lib/api/services-api";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { OutputGraph } from "./output-graph";
+import { useHomeServiceMetrics } from "./use-home-service-metrics";
 
 /**
  * Logs — the tail of each service's stdout, one tab per service.
@@ -46,7 +48,13 @@ export const outputWidget: WidgetDefinition = {
   icon: <Terminal />,
   span: 6,
   scope: "global",
-  source: "dashboard",
+  /*
+    Still the payload's lines, but now also its own request for the graph above
+    them (`use-home-service-metrics.ts`) — and `source` says which fact a picker
+    has to be able to show, so a widget that fetches at all declares `fetch`.
+    One request, for the tab you are looking at, whatever the payload holds.
+  */
+  source: "fetch",
   page: "services",
   render: ({ data, height }) => <OutputSummary data={data} height={height} />,
 };
@@ -56,13 +64,18 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
   const streams = groupByService(data.logs);
   const [picked, setPicked] = useState<string | null>(null);
 
-  // A dash rather than a sentence: the panel title already says what is absent.
-  if (streams.length === 0) return <WidgetNote>—</WidgetNote>;
-
   /* The pick is reconciled rather than stored back: a service can stop and drop
      out of the payload between polls, and a tab pointing at nothing should fall
      back to the liveliest stream instead of blanking the panel. */
-  const active = streams.find((stream) => stream.service === picked) ?? streams[0];
+  const active = streams.find((stream) => stream.service === picked) ?? streams[0] ?? null;
+  /* Resolved before the empty check, because the empty check is a `return` and
+     a hook cannot live behind one. The graph follows the tab: one service's
+     series, for the service whose lines are underneath it. */
+  const samples = useHomeServiceMetrics(active?.service ?? null);
+
+  // A dash rather than a sentence: the panel title already says what is absent.
+  if (!active) return <WidgetNote>—</WidgetNote>;
+
   const errors = active.lines.filter((line) => line.stream === "stderr").length;
 
   return (
@@ -85,6 +98,12 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
         <WidgetStat label={t("home.output.lines")} value={active.lines.length} />
         <WidgetStat label={t("home.output.stderr")} tone="bad" value={errors} />
       </WidgetStats>
+      {/*
+        Between the counters and the lines, because that is the order the
+        question is asked in: how much output, what shape was the last half
+        hour, and then — at the moment the shape points at — what did it say.
+      */}
+      <OutputGraph samples={samples} />
       {/*
         `shrink-0`, and pointedly no `overflow-hidden`: the panel scrolls its own
         content now (`WidgetScroll`), and a list that hides its own overflow
