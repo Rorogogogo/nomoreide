@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils";
  * machine output and gets the terminal treatment, not the row treatment.
  *
  * The payload carries **one** service's tail — `logs` in `buildDashboardPayload`
- * reads the first registered service — so the panel names whose output this is
- * rather than implying it is the whole system's.
+ * picks whichever service spoke most recently — so the panel names whose output
+ * this is rather than implying it is the whole system's. It used to read the
+ * first *registered* service, which on any machine with a few services
+ * registered meant a permanently empty panel; see `mostRecentServiceLogs`.
  */
 
 /** Six lines is a glance. More is the Services page's log pane. */

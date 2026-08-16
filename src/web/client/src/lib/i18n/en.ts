@@ -292,7 +292,7 @@ export const en = {
   "home.widget.ports": "Ports",
   "home.widget.repository": "Repository",
   "home.widget.activity": "Activity",
-  "home.widget.output": "Output",
+  "home.widget.output": "Logs",
   "home.widget.agent": "Agent",
   "home.widget.snapshots": "Snapshots",
   "home.widget.databases": "Databases",

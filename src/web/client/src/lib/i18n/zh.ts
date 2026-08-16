@@ -78,7 +78,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "home.widget.ports": "端口",
   "home.widget.repository": "仓库",
   "home.widget.activity": "活动",
-  "home.widget.output": "输出",
+  "home.widget.output": "日志",
   "home.widget.agent": "智能体",
   "home.widget.snapshots": "快照",
   "home.widget.databases": "数据库",

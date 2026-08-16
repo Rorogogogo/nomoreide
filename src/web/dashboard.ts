@@ -10,11 +10,18 @@ import type { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
 import type {
+  LogEntry,
   NoMoreIdeConfig,
   ServiceHealth,
   ServiceStatus,
   TimelineEvent,
 } from "../core/types.js";
+
+/**
+ * How much of each service's tail the dashboard carries. One number because
+ * health and the Output panel read the same buffer — see `readServiceLogs`.
+ */
+const LOG_TAIL = 80;
 
 export async function buildDashboardPayload(options: {
   configStore: ConfigStore;
@@ -24,7 +31,6 @@ export async function buildDashboardPayload(options: {
   timelineStore: TimelineStore;
 }) {
   let config = await options.configStore.load();
-  const firstService = config.services[0]?.name;
   let selectedGitRepository = getSelectedGitRepository(config);
 
   // If the user has no Git projects registered yet, auto-adopt the process cwd
@@ -55,11 +61,12 @@ export async function buildDashboardPayload(options: {
     buildPortOverview(config, runtime.services),
   ]);
   const timeline = options.timelineStore.read(120);
+  const serviceLogs = readServiceLogs(config, options.logStore);
   const health = buildHealthOverview({
     config,
-    logStore: options.logStore,
     ports,
     runtimeServices: runtime.services,
+    serviceLogs,
     timeline,
   });
 
@@ -71,7 +78,7 @@ export async function buildDashboardPayload(options: {
     ports,
     health,
     timeline,
-    logs: firstService ? options.logStore.read(firstService, 80) : [],
+    logs: mostRecentServiceLogs(serviceLogs),
     git: {
       cwd: gitCwd,
       selectedRepository: selectedGitRepository ?? null,
@@ -95,11 +102,54 @@ interface PortOverview {
   urls: string[];
 }
 
+/**
+ * Every registered service's tail, read once.
+ *
+ * Health wants it per service and the Output panel wants the liveliest one, so
+ * reading the ring buffer twice would only be a way for the two to disagree
+ * about the same in-memory array.
+ */
+function readServiceLogs(
+  config: NoMoreIdeConfig,
+  logStore: LogStore,
+): Map<string, LogEntry[]> {
+  return new Map(
+    config.services.map((service) => [service.name, logStore.read(service.name, LOG_TAIL)]),
+  );
+}
+
+/**
+ * Whichever service spoke most recently.
+ *
+ * The panel promises "the last thing a service said", and `services[0]` is not
+ * that — registration order is arbitrary. On a machine with nineteen services
+ * registered and two running it was a one-in-nineteen guess, and it lost:
+ * the panel sat empty on a never-started service while two others were talking.
+ *
+ * Recency needs no tie-break and follows what is actually running for free,
+ * since a stopped service stops adding lines. Timestamps are compared as
+ * strings because `LogStore` writes them all as `toISOString()` — same length,
+ * same UTC offset, so lexical order is chronological order.
+ */
+export function mostRecentServiceLogs(serviceLogs: Map<string, LogEntry[]>): LogEntry[] {
+  let latest: LogEntry[] = [];
+  let latestAt = "";
+  for (const lines of serviceLogs.values()) {
+    const last = lines.at(-1);
+    if (!last) continue;
+    if (last.timestamp > latestAt) {
+      latestAt = last.timestamp;
+      latest = lines;
+    }
+  }
+  return latest;
+}
+
 function buildHealthOverview(options: {
   config: NoMoreIdeConfig;
-  logStore: LogStore;
   ports: PortOverview[];
   runtimeServices: Record<string, ServiceStatus>;
+  serviceLogs: Map<string, LogEntry[]>;
   timeline: TimelineEvent[];
 }): Record<string, ServiceHealth> {
   return Object.fromEntries(
@@ -109,7 +159,7 @@ function buildHealthOverview(options: {
         service,
         status: options.runtimeServices[service.name],
         ports: options.ports.filter((port) => port.services.includes(service.name)),
-        logs: options.logStore.read(service.name, 80),
+        logs: options.serviceLogs.get(service.name) ?? [],
         timeline: options.timeline.filter((event) => event.service === service.name),
       }),
     ]),
