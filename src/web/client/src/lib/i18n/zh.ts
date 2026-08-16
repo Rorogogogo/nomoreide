@@ -121,6 +121,17 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "home.agent.degraded": "需要处理的 MCP 服务",
   "home.agent.calls": "近期工具调用",
   "home.agent.failedCalls": "失败的工具调用",
+  // Skills/MCP/Plugins/Hooks stay in English here, matching `agentEnv.*` and
+  // `dock.hooks` — these are the product's own nouns, untranslated elsewhere.
+  "home.agent.tabSkills": "Skills",
+  "home.agent.tabMcp": "MCP",
+  "home.agent.tabPlugins": "Plugins",
+  "home.agent.tabHooks": "Hooks",
+  "home.agent.total": "总计",
+  "home.agent.user": "用户",
+  "home.agent.project": "项目",
+  "home.agent.enabled": "已启用",
+  "home.agent.disabled": "已禁用",
   "home.agent.stateFailed": "连接失败",
   "home.agent.stateNeedsAuth": "需要授权",
   "home.agent.stateNoAuth": "无需授权",

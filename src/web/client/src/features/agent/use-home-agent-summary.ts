@@ -3,7 +3,11 @@ import {
   getAgentInfo,
   getMcpAuthStatuses,
   getRecentToolCalls,
+  type AgentHook,
+  type AgentMcpServer,
   type AgentName,
+  type AgentPlugin,
+  type AgentSkill,
   type McpAuthStatus,
 } from "@/lib/api";
 
@@ -26,6 +30,21 @@ export interface HomeAgentSummary {
   calls: number;
   failedCalls: number;
   /**
+   * What the agent is *configured with*, as opposed to how it is currently
+   * faring — the same four groups the Agent page's tools tab shows, from the
+   * same `/api/agent` call.
+   *
+   * These come back with the agent name and are then left alone. Skills,
+   * plugins, hooks and server definitions change when someone edits a config
+   * file, not on a timer, and re-fetching tens of kilobytes every poll to watch
+   * for that would cost far more than it could ever catch. Live state is the
+   * job of `servers`, which is polled.
+   */
+  skills: AgentSkill[];
+  mcpServers: AgentMcpServer[];
+  plugins: AgentPlugin[];
+  hooks: AgentHook[];
+  /**
    * Whether a request has come back yet.
    *
    * Zero and "not asked yet" are different facts and the widget draws them
@@ -43,6 +62,10 @@ const EMPTY: HomeAgentSummary = {
   degraded: 0,
   calls: 0,
   failedCalls: 0,
+  skills: [],
+  mcpServers: [],
+  plugins: [],
+  hooks: [],
   loaded: false,
 };
 
@@ -79,6 +102,17 @@ export function useHomeAgentSummary(pollMs = POLL_MS): HomeAgentSummary {
     page people leave open.
   */
   const agentRef = useRef<AgentName | null>(null);
+  /*
+    And the configured tools from that same answer, kept rather than discarded.
+
+    The call was already being made to learn the name; the profile rides along
+    with it for free. Holding it here means the tabs cost no request of their
+    own and no second trip when the poll comes round.
+  */
+  const toolsRef = useRef<Pick<
+    HomeAgentSummary,
+    "hooks" | "mcpServers" | "plugins" | "skills"
+  > | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -95,7 +129,17 @@ export function useHomeAgentSummary(pollMs = POLL_MS): HomeAgentSummary {
       const agent: AgentName = info?.detected.name === "codex" ? "codex" : "claude-code";
       // Only remember a real answer: caching the fallback would make one failed
       // call permanent for the life of the tab.
-      if (info) agentRef.current = agent;
+      if (info) {
+        agentRef.current = agent;
+        /* The detected agent's own profile, not the union of both — `AgentInfo`
+           extends `AgentProfile` with exactly that at the top level. */
+        toolsRef.current = {
+          skills: info.skills,
+          mcpServers: info.mcpServers,
+          plugins: info.plugins,
+          hooks: info.hooks,
+        };
+      }
       return agent;
     };
 
@@ -111,6 +155,10 @@ export function useHomeAgentSummary(pollMs = POLL_MS): HomeAgentSummary {
 
       setSummary({
         servers,
+        skills: toolsRef.current?.skills ?? [],
+        mcpServers: toolsRef.current?.mcpServers ?? [],
+        plugins: toolsRef.current?.plugins ?? [],
+        hooks: toolsRef.current?.hooks ?? [],
         connected: servers.filter((server) => server.state === "connected").length,
         // `needs-auth` and `failed` are both "you have to go do something";
         // `no-auth` and `unknown` are neither working nor broken.
