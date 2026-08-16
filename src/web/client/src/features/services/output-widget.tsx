@@ -19,10 +19,9 @@ import { cn } from "@/lib/utils";
  * one services widget that is neither counters nor rows: log text is verbatim
  * machine output and gets the terminal treatment, not the row treatment.
  *
- * It is also the one widget that declares `interactive`. A machine running two
- * services has two log streams, and no static panel can say which one you want
- * to read — that choice is the widget. See `interactive` in `widget-types.ts`
- * for why every other widget still may not hold a control.
+ * A machine running two services has two log streams, and no static panel can
+ * say which one you want to read — that choice is the widget's to offer, which
+ * is why it holds tabs.
  *
  * The payload carries every service's tail interleaved (`mergeServiceLogs` in
  * `web/dashboard.ts`), so switching tabs costs no request. It used to carry one
@@ -41,7 +40,6 @@ export const outputWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "services",
-  interactive: true,
   render: ({ data }) => <OutputSummary data={data} />,
 };
 

@@ -21,11 +21,11 @@ import { useHomeConversationSummary } from "./use-home-conversation-summary";
  * workbench to do and, until now, Home said nothing about it — you had to open
  * the Agent page and reveal the history rail to find out what was there.
  *
- * **The widget advertises; the page resumes.** A widget panel is a single
- * `<button>` (see `WidgetPanel`), so it cannot carry a resume control per row —
- * nested interactive elements are invalid and unreachable by keyboard. That is
- * the right split anyway: a per-row resume button here would be a second,
- * drifting implementation of the rail that already does it properly.
+ * **The widget advertises; the page resumes.** A panel may hold controls now
+ * that it is no longer one big `<button>` (see `WidgetPanel`), so this is a
+ * choice rather than a constraint: a per-row resume button here would be a
+ * second, drifting implementation of the rail that already does it properly.
+ * The controls a widget should hold are the ones that pick what it shows.
  *
  * It shipped full-width, on the theory that prose wants the room, and that was
  * wrong on a wide monitor: `core/agent-transcripts.ts` caps a title at 200

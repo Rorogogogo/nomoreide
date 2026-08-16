@@ -212,15 +212,22 @@ export function WidgetPanelHeader({
 /**
  * One widget's cell: header, then whatever the widget knows.
  *
- * The whole panel is a single `<button>`, which is why a widget may not contain
- * a control of its own — nested interactive elements inside a button are
- * invalid and unreachable by keyboard. That constraint is deliberate rather
- * than unfortunate: a widget with its own buttons has become a second,
- * drifting implementation of the page it summarises.
+ * The cell is a `<div>` and only the header arrow navigates. It used to be one
+ * big `<button>`, so a click anywhere left the page — which made the panel
+ * hostile to read: selecting a log line, or reaching for anything inside it,
+ * threw you onto another page. A summary you cannot touch without leaving is
+ * not a summary.
  *
- * It is also why edit mode renders `WidgetEditPanel` instead of this: the
- * remove and resize controls have to live *outside* a button, so the element
- * changes rather than growing children it cannot legally hold.
+ * That also lifts the rule this constraint used to impose. A widget may now
+ * hold controls of its own, because there is no enclosing button for them to be
+ * illegally nested inside. What has *not* changed is the reason behind the old
+ * rule: a widget that grows a whole second interface has started becoming a
+ * drifting copy of the page it summarises. Controls that pick *what the summary
+ * shows* — Logs' tab per service — are the intended kind; controls that act on
+ * the world belong on the page the arrow opens.
+ *
+ * Edit mode still renders `WidgetEditPanel` instead of this, because its remove
+ * and resize controls belong to Home rather than to the widget.
  */
 export function WidgetPanel({
   children,
@@ -242,72 +249,10 @@ export function WidgetPanel({
   title: string;
 }) {
   return (
-    <button
-      aria-label={openLabel}
-      className={cn(
-        panelClassName(),
-        "cursor-pointer transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-      )}
+    <div
+      className={panelClassName()}
       /* The id, not an empty marker: the masonry measures every cell it finds
          here and needs to know which widget each measurement belongs to. */
-      data-widget-cell={id}
-      onClick={onOpen}
-      style={panelStyle(place)}
-      title={openLabel}
-      type="button"
-    >
-      <WidgetBody height={height}>
-        <WidgetPanelHeader
-          icon={icon}
-          title={title}
-          trailing={
-            <ArrowUpRight
-              aria-hidden
-              className="ml-auto size-3 text-muted-foreground/40 transition-colors group-hover/widget:text-foreground"
-            />
-          }
-        />
-        {children}
-      </WidgetBody>
-    </button>
-  );
-}
-
-/**
- * The same cell for a widget that declares `interactive` — a `<div>`, so the
- * widget may hold controls of its own.
- *
- * The trade is deliberate and narrow: the body no longer opens the page, so the
- * header arrow becomes the real button and carries the label the whole panel
- * used to carry. Everything else — the class, the measured `data-widget-cell`,
- * the placement — is identical, because the masonry must not be able to tell
- * the two apart.
- *
- * `WidgetPanel` remains the default and its no-controls rule still holds. See
- * `interactive` in `widget-types.ts` for when a widget has earned this.
- */
-export function WidgetOpenPanel({
-  children,
-  height,
-  icon,
-  id,
-  onOpen,
-  openLabel,
-  place,
-  title,
-}: {
-  children: ReactNode;
-  height: number | null;
-  icon: ReactNode;
-  id: string;
-  onOpen: () => void;
-  openLabel: string;
-  place: PanelPlacement | undefined;
-  title: string;
-}) {
-  return (
-    <div
-      className={cn(panelClassName(), "transition-colors")}
       data-widget-cell={id}
       style={panelStyle(place)}
     >
@@ -318,7 +263,7 @@ export function WidgetOpenPanel({
           trailing={
             <button
               aria-label={openLabel}
-              className="ml-auto rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="ml-auto rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/widget:text-muted-foreground"
               onClick={onOpen}
               title={openLabel}
               type="button"
