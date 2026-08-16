@@ -24,18 +24,20 @@ const items: ContextItem[] = [
 ];
 
 describe("Context graph layout", () => {
-  test("places entity kinds in stable columns and keeps their backing items", () => {
+  test("places entities in a stable geometric constellation and keeps their backing items", () => {
     const graph: ContextGraph = {
       nodes: items.map((item) => ({ ref: item.ref, title: item.title, kind: item.kind, pinned: false })),
-      edges: [],
+      edges: [{ from: items[1]!.ref, to: items[0]!.ref, type: "belongs-to" }],
       truncated: false,
     };
 
     const nodes = layoutContextNodes(graph, items);
+    const repeated = layoutContextNodes(graph, items);
 
     expect(nodes).toHaveLength(2);
     expect(nodes[0]?.data.item).toBe(items[0]);
-    expect(nodes[1]?.position.x).toBeGreaterThan(nodes[0]?.position.x ?? 0);
+    expect(nodes.map((node) => node.position)).toEqual(repeated.map((node) => node.position));
+    expect(nodes[1]?.position).not.toEqual(nodes[0]?.position);
     expect(new Set(nodes.map((node) => node.id)).size).toBe(nodes.length);
   });
 

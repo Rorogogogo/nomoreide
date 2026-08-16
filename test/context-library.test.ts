@@ -107,9 +107,11 @@ describe("ContextLibrary", () => {
     const repositoryPath = join(tempDir, "project");
     await mkdir(join(repositoryPath, "docs"), { recursive: true });
     await mkdir(join(repositoryPath, "node_modules", "ignored"), { recursive: true });
+    await mkdir(join(repositoryPath, ".brainctl", "backups"), { recursive: true });
     await writeFile(join(repositoryPath, "README.md"), "# Project\n\nStart with `npm run dev`.", "utf8");
     await writeFile(join(repositoryPath, "docs", "architecture.mdx"), "# Architecture\n\nAPI and worker.", "utf8");
     await writeFile(join(repositoryPath, "node_modules", "ignored", "README.md"), "dependency docs", "utf8");
+    await writeFile(join(repositoryPath, ".brainctl", "backups", "README.md"), "generated backup docs", "utf8");
     const config = await configStore.load();
     config.gitRepositories = [{ name: "project", path: repositoryPath }];
     await configStore.save(config);
@@ -119,7 +121,7 @@ describe("ContextLibrary", () => {
       "docs/architecture.mdx",
       "README.md",
     ]);
-    expect(snapshot.items.some((item) => item.path?.includes("node_modules"))).toBe(false);
+    expect(snapshot.items.some((item) => item.path?.includes("node_modules") || item.path?.includes(".brainctl"))).toBe(false);
 
     const readme = snapshot.items.find((item) => item.title === "README.md");
     const preview = await library.preview({ refs: [readme!.ref], includePinned: false }, repositoryPath);
@@ -142,6 +144,37 @@ describe("ContextLibrary", () => {
       to: { kind: "project", id: repositoryPath },
       type: "belongs-to",
     });
+  });
+
+  test("keeps pinned and structural graph anchors ahead of files when truncated", async () => {
+    const repositoryPath = join(tempDir, "large-project");
+    await mkdir(repositoryPath, { recursive: true });
+    await Promise.all(
+      Array.from({ length: 260 }, (_, index) =>
+        writeFile(
+          join(repositoryPath, `document-${String(index).padStart(3, "0")}.md`),
+          `# Document ${index}`,
+          "utf8",
+        ),
+      ),
+    );
+    const pinned = await library.createNote({
+      title: "Pinned guidance",
+      body: "Keep this visible.",
+      projectPaths: [repositoryPath],
+    });
+    await library.setPinned([pinned.ref]);
+    const config = await configStore.load();
+    config.gitRepositories = [{ name: "large-project", path: repositoryPath }];
+    await configStore.save(config);
+
+    const graph = await library.graph({ projectPath: repositoryPath });
+
+    expect(graph.truncated).toBe(true);
+    expect(graph.nodes).toHaveLength(250);
+    expect(graph.nodes[0]?.ref).toEqual(pinned.ref);
+    expect(graph.nodes[1]?.ref).toEqual({ kind: "project", id: repositoryPath });
+    expect(graph.edges.filter((edge) => edge.type === "belongs-to")).toHaveLength(249);
   });
 
   test("validates note size and title boundaries", async () => {
