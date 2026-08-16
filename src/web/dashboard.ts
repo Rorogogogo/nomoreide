@@ -10,11 +10,25 @@ import type { ProcessManager } from "../core/process-manager.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
 import type {
+  LogEntry,
   NoMoreIdeConfig,
   ServiceHealth,
   ServiceStatus,
   TimelineEvent,
 } from "../core/types.js";
+
+/** How much of each service's tail health reasons over. */
+const LOG_TAIL = 80;
+
+/**
+ * How much of each service's tail rides along in the payload.
+ *
+ * Shorter than what health reads, because this one is multiplied by every
+ * service that has ever logged and goes over the wire on every poll. Forty
+ * lines is more than the Logs panel shows and more than the agent context
+ * quotes, so nothing downstream is short of material.
+ */
+const PAYLOAD_TAIL = 40;
 
 export async function buildDashboardPayload(options: {
   configStore: ConfigStore;
@@ -24,7 +38,6 @@ export async function buildDashboardPayload(options: {
   timelineStore: TimelineStore;
 }) {
   let config = await options.configStore.load();
-  const firstService = config.services[0]?.name;
   let selectedGitRepository = getSelectedGitRepository(config);
 
   // If the user has no Git projects registered yet, auto-adopt the process cwd
@@ -55,11 +68,12 @@ export async function buildDashboardPayload(options: {
     buildPortOverview(config, runtime.services),
   ]);
   const timeline = options.timelineStore.read(120);
+  const serviceLogs = readServiceLogs(config, options.logStore);
   const health = buildHealthOverview({
     config,
-    logStore: options.logStore,
     ports,
     runtimeServices: runtime.services,
+    serviceLogs,
     timeline,
   });
 
@@ -71,7 +85,7 @@ export async function buildDashboardPayload(options: {
     ports,
     health,
     timeline,
-    logs: firstService ? options.logStore.read(firstService, 80) : [],
+    logs: mergeServiceLogs(serviceLogs),
     git: {
       cwd: gitCwd,
       selectedRepository: selectedGitRepository ?? null,
@@ -95,11 +109,51 @@ interface PortOverview {
   urls: string[];
 }
 
+/**
+ * Every registered service's tail, read once.
+ *
+ * Health wants it per service and the Output panel wants the liveliest one, so
+ * reading the ring buffer twice would only be a way for the two to disagree
+ * about the same in-memory array.
+ */
+function readServiceLogs(
+  config: NoMoreIdeConfig,
+  logStore: LogStore,
+): Map<string, LogEntry[]> {
+  return new Map(
+    config.services.map((service) => [service.name, logStore.read(service.name, LOG_TAIL)]),
+  );
+}
+
+/**
+ * Every service's tail, in one chronological list.
+ *
+ * This field used to carry a single service — `config.services[0]`, which is
+ * registration order and therefore arbitrary. It meant the Logs panel could
+ * only ever show one service, and *which* one came down to a race: two services
+ * started 200ms apart, and the later one hid the other completely.
+ *
+ * Carrying all of them lets the panel offer a tab per service and lets the
+ * agent context quote whichever service is being asked about, without either
+ * needing a request of its own. Consumers that want one service filter by
+ * `entry.service` — `project-scope.ts` already did.
+ *
+ * Timestamps are compared as strings because `LogStore` writes them all with
+ * `toISOString()` — same width, same UTC offset, so lexical order is
+ * chronological order. The sort is stable, so a service's own lines keep their
+ * relative order even when a burst shares a millisecond.
+ */
+export function mergeServiceLogs(serviceLogs: Map<string, LogEntry[]>): LogEntry[] {
+  return [...serviceLogs.values()]
+    .flatMap((lines) => lines.slice(-PAYLOAD_TAIL))
+    .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
+}
+
 function buildHealthOverview(options: {
   config: NoMoreIdeConfig;
-  logStore: LogStore;
   ports: PortOverview[];
   runtimeServices: Record<string, ServiceStatus>;
+  serviceLogs: Map<string, LogEntry[]>;
   timeline: TimelineEvent[];
 }): Record<string, ServiceHealth> {
   return Object.fromEntries(
@@ -109,7 +163,7 @@ function buildHealthOverview(options: {
         service,
         status: options.runtimeServices[service.name],
         ports: options.ports.filter((port) => port.services.includes(service.name)),
-        logs: options.logStore.read(service.name, 80),
+        logs: options.serviceLogs.get(service.name) ?? [],
         timeline: options.timeline.filter((event) => event.service === service.name),
       }),
     ]),

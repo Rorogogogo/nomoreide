@@ -86,12 +86,15 @@ export interface WidgetDefinition {
 }
 ```
 
-Two changes the build made to this sketch, both recorded rather than quietly absorbed:
+Three changes the build made to this sketch, all recorded rather than quietly absorbed:
 
 - **`page: AppPage`, not `href: string`.** A closed union is checked; a string is not, and every widget's destination is a page the client already knows.
 - **No `source` discriminant yet.** Stage 1's six widgets all read the dashboard payload, so a union with one inhabited variant would be decoration. It arrives with the first `fetch` widget in stage 2, which is when it starts distinguishing anything.
+- **"The whole card opens it" did not survive** (§7.11). The panel is a `<div>` and the header's arrow is the only thing that navigates. The field is unchanged — a widget still declares the page it summarises — but what reads it is one button, not the card.
 
 **The hard rule, and the one most likely to be broken later: a widget is a read-only summary with at most one action.** Everything else is a click through to the real page. A widget that grows a second control has become a second implementation of its page, and the two will drift — this is the failure mode that kills dashboards, and it always arrives one reasonable-seeming button at a time.
+
+*Amended by §7.11, and sharpened rather than loosened.* Counting controls turned out to be the wrong test: tabs are several controls that add no capability at all. The line that actually holds is **what the control acts on**. A control that picks *which slice of the summary you are looking at* — a tab — belongs in a widget: it changes the view and nothing else, and there is no second implementation to drift from. A control that acts on the world — start, stop, delete, deploy — belongs on the page the arrow opens. That is the rule the original was reaching for; "at most one action" was a proxy for it that broke the first time a widget had two things worth summarising.
 
 Practically that means a widget stays inside the ~300-line file budget without effort. If one doesn't, it is doing too much.
 
@@ -103,6 +106,10 @@ What stays reliable under user control is a **12-column grid where widgets decla
 
 Drag-to-reorder is a reordering of a list, not free 2D placement. That keeps the persisted layout a `string[]` plus per-widget span overrides, which is a schema that can survive a widget being renamed or removed.
 
+**Amended by §7.9.** The list became `string[][]` — rows of ids — for a reason this section did not foresee: a packed list *cannot* guarantee a full row, so it leaves gaps at the end of short rows, and a gap is the one thing "it cannot be made ugly" was promising. Rows are still not free 2D placement: a widget belongs to a row and a position in it, there are no coordinates and no overlaps, and the schema still survives a widget being renamed or removed.
+
+**Amended again by §7.10.** "Fixed row heights per widget size class" is gone twice over: a height is per-widget and optional, and rows no longer have a height at all. The grid itself is gone with them — a grid row is as tall as its tallest cell, which is the vertical version of exactly the gap §7.9 closed horizontally, and the only way out of it is to place every panel by hand. The schema did not change: `rows`, `spans`, `heights`, still v4.
+
 ## 7. Stages
 
 **Stage 1 — a fixed Home. Built.** `/` is Home; Services is `/services`. Six widgets over the existing payload (§3). No persistence, no editing, no drag. This is the stage that has to justify the page; if a fixed Home isn't obviously better than landing on Services, stop here and delete it.
@@ -113,11 +120,923 @@ Drag-to-reorder is a reordering of a list, not free 2D placement. That keeps the
 - **The embedded marketing demo still opens on Services.** It mounts with `syncLocation={false}`, so it never routed through `/`; what the site leads with is a marketing decision, not a consequence of this change.
 - **One bug the fixed layout found immediately, which is the argument for stage 1 in miniature.** Health counted `unknown` as "not failing", so nineteen *stopped* services with nothing probed rendered as **"All healthy"** — a confident lie, on the page meant to be glanced at. Unknowns are now excluded from the denominator and a card with nothing known says so. No unit test would have caught it; looking at the real page did, in about four seconds.
 
-**Stage 2 — add and remove.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
+### 7.2 The second pass: it was built as cards, and it was too thin
 
-**Stage 3 — reorder and resize.** Drag to reorder; a size control per widget bounded by `span.min`. Only if stage 2 shows people actually want it — a picker that lets you drop what you don't read may well be the whole of the demand.
+Stage 1 shipped wrong on both of the axes it is judged on, and both were obvious
+on sight rather than in review.
+
+- **It broke the layout law.** Every widget was a `rounded-lg border bg-card`
+  tile — literally the "No" example in `DESIGN.md`, and the first item on its
+  own before-you-ship checklist. It also led with a `text-2xl` figure, in a
+  document that caps a normal view at 13px. Widgets are now grid cells divided
+  by hairlines, with the counters split by `divide-x` the way that file already
+  prescribes for counters. Nothing on Home draws a box.
+- **One big number is not a summary.** "3" over "of 22 registered" tells you
+  something is wrong but never *what*, so every panel still cost you a click —
+  which makes the widget a worse version of the nav row above it. Each widget
+  now leads with a strip of three or four counters and then **names things**:
+  which service exited and with what code, which port is held and by whom, which
+  files changed, which check is slow. Same payload, no new endpoints; the
+  information was always in `data` and the panel was just refusing to print it.
+- **Two things only real data showed.** Activity printed the service name twice
+  a row, because timeline titles are written for a page that has no service
+  column. And Health bailed to a bare sentence when nothing was probed, leaving
+  the one panel on the page with no numbers on it — when "19 unprobed" was the
+  useful fact. Both were invisible in an empty fixture and obvious in the app.
+
+The generalisation, for stage 2: **a widget's job is to name, not to count.** A
+picker that lets a user add more panels is only worth building if each panel
+already earns its space, and a panel that shows a single figure does not.
+
+### 7.3 The third pass: too much text, and the first widget that fetches
+
+Two more corrections, both from looking at the built page rather than the plan.
+
+- **The labels came off.** Six widgets with three or four labelled counters each
+  put eighteen uppercase words on a page whose entire job is to be glanced at,
+  and those words were identical on every refresh while the numbers were the
+  part that changed. `WidgetStat` now draws the figure alone; the label survives
+  as `title=` and an `sr-only` span. That only works because **tone is a
+  property of the slot, never of the value** — the "failing" counter is red at 0
+  as well as at 3, and zeros are dimmed so the one number that isn't zero is the
+  one you see. A `tone={x > 0 ? "bad" : "idle"}` anywhere on this page would
+  make an all-clear strip colourless and take the meaning with it.
+- **Home had nothing to say about the agent half of the product.** A dashboard
+  for an AI-native workbench that reports only processes, ports and files is
+  describing the old half of itself. The Agent widget reports MCP connectivity
+  and recent tool calls, and it lists only the servers that are *not* simply
+  working — the count above already says the rest are fine, and four arbitrary
+  healthy names plus "+10 more" is the exact filler this pass was removing.
+
+**What the first fetch-backed widget cost, which stage 2 needs to know.** Agent
+owns its own request (the `source` discriminant on the contract), and getting it
+wrong froze the whole page:
+
+- **A fetching widget has a state the others don't: not asked yet.** Rendering
+  `0` there is not a placeholder, it is a wrong answer in the same typeface as a
+  right one — "0 MCP servers connected" is alarming *and* untrue while the
+  request is in flight. `WidgetStat` grew `pending`, which draws a dash.
+- **Poll interval is a load-bearing number, not a default.** `mcp-status` is not
+  a read: it shells out to `claude mcp list`, which cold-starts every configured
+  server to health-check it — about six seconds here — and `core/mcp-auth.ts`
+  caches for only 15s, so *any* interval slower than that pays the full cost
+  every time. At the 20s this widget was written with, Home held an open
+  connection to the daemon about a third of the time it was on screen. Chrome
+  allows **six per host**, the dashboard already spends several on its event
+  streams, and once that pool is exhausted every request from the page hangs
+  indefinitely — the page stops updating and the widget sits on zeros forever.
+  It is now 5 minutes, and the agent name (a 87KB `/api/agent` response read for
+  one field) is resolved once per mount instead of once per poll.
+- **The general rule for stage 2:** the picker cannot let a user add fetch-backed
+  widgets without a budget. Six sockets is the whole allowance for the origin,
+  and the streams the shell already holds are most of it. A widget that polls
+  something expensive is not just slow — it takes the page down with it.
+
+### 7.4 Snapshots and Databases, and what "expensive" actually means
+
+The obvious reading of §7.3 — *fetch-backed widgets are dangerous* — is the
+wrong one, and Snapshots and Databases were added to make the right one
+explicit. Measured against a live daemon:
+
+| Endpoint | Time | What it does |
+| --- | --- | --- |
+| `/api/databases` | 2 ms | reads config, masks passwords |
+| `/api/snapshots` | 14 ms | one `git for-each-ref` |
+| `/api/agent/mcp-status` | 6 000 ms | spawns `claude mcp list`, which cold-starts every server |
+
+Three orders of magnitude. The hazard was never the fetch, it was the
+**subprocess**: the question to ask of a candidate widget is what its endpoint
+*does*, not whether it has one. Endpoints that read config or a git ref can poll
+on a normal cadence; endpoints that spawn a CLI, or cross the network, cannot.
+That rules out GitHub CI and deployments as widgets for now (0.5–1.5 s and rate
+limited), and it makes the cheapest widgets of all the ones that need no request
+at all — the shell already holds `useWorkflowTriggers()` as an app-wide context
+and an open error stream, and a widget over either costs nothing.
+
+Two things the widgets themselves settled:
+
+- **Snapshots earns its place by answering a question you have *before* you
+  work, not after:** is there a restore point, and how old is it. The counters
+  split "today" from "kept" for exactly that reason — 30 snapshots where the
+  newest is two days old is a different situation from 30 where the newest is
+  from this session, and a single total cannot tell them apart.
+- **Databases is a warning, not an inventory.** Registered connections are
+  config: they do not change, so they are not news, and a panel that counted
+  them would be the §7.2 failure again. `writeUnlocked` *is* news — every write
+  in `core/db-write.ts` is gated on it, so an unlocked connection is a loaded gun
+  left on the table. The panel leads with that count, puts unlocked connections
+  first, and names the rest dimmed underneath.
+
+### 7.5 Conversations, and the two things the owner asked for
+
+The ask was *"AI section — can we have a logo for what we have, and a short list
+of history conversations that can resume?"* Two requests, and they got different
+answers.
+
+**The list, yes.** `/api/terminal/transcripts` is 90ms and 8.7KB for this
+repository — the §7.4 test again, since it reads the providers' own session
+files and spawns nothing. The panel leads with how many conversations were
+touched today against how many can be resumed at all, then names the newest
+five.
+
+Three things it settled:
+
+- **The widget advertises; the page resumes.** A panel is a single `<button>`,
+  so a per-row resume control is not merely awkward, it is invalid markup and
+  unreachable by keyboard. Rather than work around that, the widget takes it as
+  the boundary: the rail on the Agent page already resumes properly, and a
+  second implementation on Home would drift from it.
+- **`scope=all` was tempting and wrong.** It answers with every project on the
+  machine — 200 conversations and 72KB here, against 20 and 8.7KB scoped — and
+  the panel draws five rows either way. That is §7.3's 87KB-for-one-field
+  mistake wearing a different hat. It is also the worse answer: what you were
+  doing *in this repository* is what you are about to pick up.
+- **Full width, for the only prose on the page.** Every other panel holds
+  counters and identifiers that fit in half a row. A conversation title is a
+  typed sentence — real ones here run to the 200-character cap — so the columns
+  it does not need are the ones the title spends. It keeps the packing honest
+  too: a seventh 6-span would have left the page's first ragged row.
+
+**The logos, mostly no.** `features/deploy/provider-logo.tsx` already sets the
+policy: a lucide glyph unless the mark is unmistakable at 14px, because a
+half-remembered logo redrawn from memory looks worse than an honest generic one.
+The fourteen MCP servers on the Agent widget are Gmail, Canva, Notion,
+Cloudflare and friends, and hand-rolling fourteen third-party brand SVGs is the
+exact thing that rule exists to prevent — those marks belong in the extension
+manifest, once it carries assets. Claude and Codex are the exception the rule
+allows for, and they are already in the tree: `features/agent/agent-logos.tsx`
+has both, sourced and colour-correct, so the resume rows carry the real mark.
+That is what added `mark` to `WidgetRow` — a conversation is not healthy or
+failing, so the status dot had nothing to say about it.
+
+**Stage 2 — add and remove. Built.** An edit mode with a widget picker, and layout persisted (§8). Adding fetch-backed widgets — errors, CI, deployments, agent tasks — is part of this stage, since "add as many as you want" is only meaningful once there are more widgets than fit.
+
+### 7.6 Stage 2, and the widths that triggered it
+
+Stage 1's kill criterion (§10) was "the honest reaction is *I still go straight
+to Services*". The actual reaction was the opposite and it arrived as a
+complaint about width: on a 3400px window the Conversations panel was mostly
+empty, because `core/agent-transcripts.ts` caps a title at 200 characters and no
+amount of column gets a 200-character sentence past about 900px. The fix for
+that one panel is a narrower default. The fix for the *class* of problem is that
+nobody's window is the window this was tuned on, which is stage 2.
+
+What it settled:
+
+- **The saved layout is nullable, and `null` is not `[]`.** `null` means "never
+  customised", so Home follows the registry and a widget shipped later simply
+  appears. `[]` means "I removed everything", which is a choice to honour rather
+  than silently overrule — the page shows its empty state and keeps the picker
+  and Reset in reach (§8.4). Reset writes `null`, not a copy of the default, so
+  a reset install starts tracking the registry again.
+- **The registry became a default rather than the layout.** It is still the only
+  place a widget is declared; `home-layout.ts` resolves a saved list against it
+  and drops ids it no longer knows, silently (§8.5).
+- **Arrows, not drag.** §6 already argued the persisted shape is a list, and a
+  list has exactly one move: one place earlier or later. Two chevrons are the
+  whole of it — no pointer capture, no drop targets, no separate keyboard path
+  bolted on afterwards for the same operation. Drag can come in stage 3 if
+  anyone misses it.
+- **Edit mode swaps the element, not the layout.** A panel is a `<button>`;
+  controls cannot nest inside one. So editing renders the same cell as a `<div>`
+  carrying the controls. The cost is that a `fetch` widget remounts once on each
+  toggle, which is the right thing to pay for a mode you are in for ten seconds.
+- **The controls are the column count, not S/M/L.** The grid is twelve columns
+  and the number is the entire fact; a size name would be a second vocabulary
+  for a thing that already had one. **This was wrong, and it lasted one
+  conversation** — see §7.7.
+- **The strip at the foot of the page, not a toolbar at the head.** Home is
+  full-bleed by design and the rarest action on the page should not be the first
+  thing on it. The scope note was already down there.
+
+### 7.7 `4 6 12` lasted exactly one reader
+
+The first thing the owner said on seeing the size control was *"what does 4, 6,
+12 mean"*, and the second was *"can it be more flexible — resize by dragging the
+edge with the cursor"*. Both are the same verdict on the argument above: a
+number is only "the entire fact" to someone who already knows the grid is
+twelve columns wide, and a control that has to be explained has failed before
+anyone has read the explanation.
+
+So the three buttons became **the panel's right edge, draggable**. What it fixed
+is not discoverability alone:
+
+- **A width is a place, not a quantity.** Setting one by picking from a legend
+  means converting "about this wide" into a number and back. Dragging the edge
+  skips both conversions — the control *is* the thing being set, and the answer
+  is visible while you are still deciding it.
+- **Presets were a false economy.** Three buttons existed because `WidgetSpan`
+  was `4 | 6 | 12`, which was itself only ever an artefact of Tailwind needing
+  literal class names. Writing out all ten literals costs ten lines and buys
+  every width between a quarter row and the whole one, which is what makes a
+  drag feel continuous rather than magnetic.
+- **The grid is the ruler.** One twelfth of `[data-widget-grid]`, measured at
+  pointer-down so a mid-drag reflow cannot move the origin under the cursor.
+- **Drags end where they like.** The listeners live on the window, not behind
+  `setPointerCapture` — a capture the browser refuses would otherwise strand a
+  panel mid-resize with no way to release it. (Verified the hard way: the
+  browser-automation harness in this session could not synthesise drags at all,
+  which is exactly the class of environment that breaks a capture-only handler.)
+- **Arrow keys still resize.** A drag handle that answers only to a mouse is a
+  setting some users of this page simply do not have.
+
+### 7.8 The drag was half a resize, and it moved the page while you aimed
+
+The dragged edge shipped and the owner's verdict was *"the result is not good"*,
+with two specifics: it should **drag with a frame, the way the agent dock's
+splitter does**, and it resizes **one axis when it should do both at once**.
+Both are about the same thing — the gesture did not behave the way a resize
+behaves anywhere else.
+
+- **Nothing reflows until you let go.** The old drag re-laid the grid on every
+  pointer move, so widening a panel pushed its neighbours onto other rows and
+  changed the page you were looking at *while you were aiming at it*. What moves
+  now is a dashed frame over an untouched page (`WidgetResizeFrame`), which is
+  what the dock's splitter does and what every window manager does. It is drawn
+  `fixed`, because the grid clips its own overflow and a frame for a panel
+  dragged to full width has to be allowed past that. It appears on pointer-down
+  at the panel's *true* rect, not the nearest snap — a frame that jumped 8px
+  before you moved would read as the resize having already happened.
+- **One corner, no edges.** The pass that added the corner kept both edges, and
+  the owner's next question was whether the width edge was still needed — it is
+  not. The corner does everything the edges did, and three targets on every
+  panel is a control surface where there should be a page. Losing them costs one
+  thing, which the corner has to buy back: an edge could only move one axis, so
+  it could not accidentally set the other. Hence **only the axis that actually
+  moved is written** — a drag straight sideways lands on the height it started
+  at and stores nothing, leaving the panel free to keep fitting its content.
+  Both axes in one gesture are still **one write**; committing them separately
+  would leave a frame where the panel is its new width at its old height, and
+  two entries of history for one gesture.
+- **Height is not a column, so it needs its own ruler.** Columns are a fraction
+  of the window; rows cannot be, because Home scrolls and there is no page
+  height to divide. A height is therefore a count of fixed 32px units
+  (`HOME_ROW_PX`), which is what makes two panels dragged to "4" actually line
+  up.
+- **`null` height is fit-to-content, and stays the default.** How tall a summary
+  needs to be is a fact about what it is currently summarising, not a decision
+  anyone should have to make up front — so a widget declares a width and *not* a
+  height, a stored layout from before this pass keeps fitting its content, and
+  double-clicking a height grip gives the panel back to its content the way the
+  dock's grip does.
+- **A height sizes the body, not the cell — so a height is one panel's, not the
+  row's.** The first cut drew the panel's bottom rule on the grid cell, which
+  stretches; a taller widget therefore dragged every panel beside it down, and
+  the owner's verdict was immediate: *make only itself change, so in a row the
+  sizes can differ*. He is right, and the fix is a split. The cell keeps
+  stretching and keeps the **column** rules, which must run the full height of
+  the row or the page loses its structure. The padded body inside it owns the
+  height, the clipping, the resize grip, and the **line under the panel** —
+  because that line is not a property of the row: a panel four units tall beside
+  one of eight has to end at four, or the tallest widget is deciding for
+  everyone.
+- **The space below a short panel is empty, and that is the honest picture.**
+  Bounded by the column rules, with no line across it. The row is still as tall
+  as its tallest member — the only way it could not be is masonry, which CSS
+  grid does not have anywhere it can be relied on, and which would cost more
+  than the whitespace does. Clipping stays: asking for less room than the
+  content takes is a legitimate thing to mean, and a height that silently
+  refused to shrink would be the resize that "does nothing" all over again.
+
+### 7.9 The gap at the end of the row, and the drag that fixes both
+
+Two more findings from the same reviewer, one screenshot apart: *"when I shrink
+the left, the right moves left and then it's empty on the right — we never want
+empty"*, and *"can we drag a panel to a new place?"*. They look unrelated. They
+are the same finding: **the page was a flow, and a flow has no places in it.**
+
+A flow wraps wherever the next widget stops fitting. Shrink a panel and the
+leftover columns are only usable if the next widget happens to want that many or
+fewer — otherwise it wraps, and the leftover is dead space nobody chose. And in
+a flow there is nowhere to *drop* something: a widget's position is an index in
+a list, so the only honest gesture is "one place earlier", which is what the
+chevrons were.
+
+So rows became a stored thing: `HomeLayout.rows: string[][]`, `UiPreferences`
+v4, migrated from v3 by packing the flat list exactly the way the flow was
+drawing it.
+
+- **A row always fills the grid**, and that is an invariant rather than a
+  cleanup pass. `fitRow` restores it after anything that can disturb it —
+  resizing, removing, dropping, or the registry retiring a widget out from under
+  a saved layout — by handing columns to the row's narrowest panel and taking
+  them from its widest, so proportions survive: `[4, 4]` fills as `[6, 6]`, not
+  `[8, 4]`. A gap is now unrepresentable.
+- **A resize is a splitter.** Columns have to come from somewhere, and the row
+  is where: neighbours give up columns nearest-first, never below `MIN_SPAN`.
+  That also caps the drag — a panel in a row of two can reach nine columns, not
+  twelve — and the frame is computed through the same function that will do the
+  commit (`previewSpan`), so it cannot promise a width the row will refuse.
+- **A drop has a place to mean.** Between two panels in a row, or between rows
+  for a row of its own. The indicator is a line where the panel will land, drawn
+  over a page that has not moved — same rule as the resize frame, for the same
+  reason. Four panels is the most a row can hold and stay legible, so a fifth
+  drop is refused by not drawing an indicator rather than by undoing itself
+  afterwards.
+- **The chevrons stay.** They are the same operation from the keyboard, and they
+  now walk the page in reading order — off the end of a row they step into the
+  next one, because that is what "later" means once there are rows.
+
+**Stage 3 — drag to reorder.** Now shipped, as above. What is still deliberately
+absent is free 2D placement: no coordinates, no overlaps, no empty cells to drag
+into. A row of panels is the largest amount of layout freedom that cannot be
+made to look broken.
+
+**Stage 4 — nothing yet.** The kill criterion in §10 still applies: the next
+thing to build here is whatever the page turns out not to answer, not the next
+layout affordance. Resize landed early, back in stage 2, because the complaint
+that started it was a width — shipping "you can remove it" as the answer to "it
+is the wrong shape" would have missed the point.
 
 **Not staged, deliberately:** widgets contributed by *downloaded* plugins. That is blocked by the same thing the Extensions market is blocked by — runtime-loading third-party React — and the widget registry should be shaped so it becomes possible, not built as though it already is.
+
+### 7.10 The gap moved from the end of the row to the bottom of it
+
+§7.9 made a gap unrepresentable *horizontally*: a row always fills twelve
+columns. It left the vertical one untouched, and the owner found it in the next
+screenshot. **A grid row is as tall as its tallest cell**, so a short panel
+beside a tall one held empty space open underneath itself for the height of its
+neighbour, and the next row started below the tallest member rather than below
+the short one.
+
+That is not a bug in the layout, it is what a row *is*, and it is why closing it
+meant leaving CSS grid. The owner was told the cost before any of this was
+written — masonry cannot be expressed in grid, so every panel is absolutely
+positioned and the layout is computed in JS — and asked for it anyway.
+
+**The rows survive; only `y` moved.** A row still authors reading order,
+left-to-right position and width, still fills the grid, and is still what a drop
+and a splitter resize operate on. Everything §7.9 guarantees is guaranteed the
+same way. What a row no longer decides is how far down its panels start.
+
+- **The placement rule is a skyline** (`home-pack.ts`). Each panel, in reading
+  order, drops until it lands on the lowest thing already occupying any column
+  it covers. A wide panel is therefore held up by whichever narrow neighbour ran
+  longest, and can never overlap anything — panels are disjoint by construction,
+  not by luck.
+- **Only `top` is measured.** `left` and `width` are percentages of the grid
+  derived from the column count alone, so a window resize stays pixel-exact
+  without remeasuring and the horizontal layout is never wrong between passes.
+- **A panel with no stored height is still as tall as what it holds**, which is
+  the default and the reason this needs measuring at all: only the DOM knows that
+  number. Measurement runs in `useLayoutEffect`, so the settling pass exists but
+  is never painted, and a signature guard makes termination a guarantee rather
+  than an argument — placing a panel changes where it is, never how tall it is.
+- **Rows stopped being elements**, so the move drag had to change with them
+  (`home-move.tsx`). Row bands now overlap — a row's members can end at very
+  different depths — so "which row is the cursor in" no longer has one answer.
+  The drag hit-tests *panels*, which never overlap, and asks whichever one it
+  lands on which row it belongs to. That also aims better: "the left half of this
+  one" is what a person dropping a panel beside another one means.
+
+**The line became a frame.** §7.9 drew the drop as a line between two panels,
+which answers "where in the order" — and where in the order is not what anyone
+is deciding. They are deciding what the page will look like, and masonry pulled
+those two questions apart: a drop re-shares the target row's columns *and* drops
+the panel wherever the skyline puts it, so one position in the order can mean
+very different rectangles. Dragging a full-width panel into a row of two makes it
+a third as wide, and the line said nothing about that.
+
+So the drag draws the rectangle instead, in the same dashed frame the resize
+gesture uses — the two make the same promise and should not look like two kinds
+of answer. It is not an approximation: `previewPlacement` runs the real
+`moveWidget` against a copy of the layout and packs the result, which is the
+bargain `previewSpan` already made for the resize frame. That is only affordable
+because §7.10 made placement a pure function; under CSS grid there was nothing
+to ask but the browser, and only after committing. One approximation survives,
+in the height — a fit-to-content panel landing in a narrower slot will wrap more
+than the frame showed, and re-measuring it at a width it does not have yet would
+mean rendering it twice per pointermove.
+
+**What this costs, stated plainly.** The dead space did not vanish, it moved: a
+page whose columns run to different depths is ragged at the bottom, and that
+raggedness is the feature — it is the same slack, collected in one place instead
+of scattered under every short panel. And the model and the picture can now
+disagree about order: a panel in row 3 may sit visibly higher than one in row 2,
+because it rose into a gap. Reading order still governs the chevrons, the drop
+indices and the packing; it is simply no longer a top-to-bottom scan of the page.
+
+**Still not free 2D placement.** No coordinates, no overlaps, no empty cells to
+drag into — the amendment §7.9 made to §6 stands. A panel belongs to a row and a
+position in it; the only thing computed is how far it falls.
+
+### 7.11 A panel that showed the wrong service, and ate the click when asked to show both
+
+"We should have a small section for logs, right." He already had one. It was
+broken three ways, and each fix uncovered the next.
+
+**One: the field named one service, and the domain has many.** `logs` in the
+dashboard payload was the tail of `config.services[0]` — the *first registered*
+service. He has 19 registered and the first has never been started, so the panel
+drew a bare em dash while two services were talking. The tempting reading is
+that the index was wrong. It wasn't: no index is right. A singular field over a
+plural domain has to invent a rule for which one it means, and every such rule
+is wrong for somebody.
+
+**Two: which is why "the one that spoke most recently" also failed.** It is a
+better rule and it lasted one screenshot. His two services boot 200ms apart, so
+recency was a coin toss between them, and the loser vanished. *"We have 2 things
+running."*
+
+So `logs` went plural: every service's tail, interleaved, oldest first. Three
+details worth keeping:
+
+- **The sort is on the ISO strings.** `LogStore` writes every timestamp with
+  `toISOString()` — same width, same UTC offset — so lexical order *is*
+  chronological order, and no parse is needed to merge two streams. The sort is
+  stable, so lines sharing a millisecond keep their order within a service.
+- **The cap is per service, applied before the merge** (`PAYLOAD_TAIL = 40`). A
+  global cap would have reintroduced the original bug wearing a disguise: one
+  chatty service would push a quiet one off the end, and the quiet one is
+  exactly the one whose four boot lines you are looking for.
+- **Health and the payload read the ring buffer once** (`readServiceLogs`) and
+  slice it differently — 80 lines for the health probe, 40 over the wire.
+
+Two consumers were already asking the right question and being handed the wrong
+answer. `project-scope.ts` filtered by `entry.service` and `ai-context.ts` asked
+per service; both found their match and looked correct, because a filter over a
+single-service list returns *something* for exactly one service and silently
+nothing for the rest. Neither file changed. Both are now right. **That is the
+tell worth remembering: a singular field in a plural domain does not fail
+loudly, it fails at a distance, in whoever filters it.**
+
+**Three: the tabs he asked for could not be clicked.** He did not want the
+streams interleaved on screen — he wanted a tab per service. But the panel was
+one enormous `<button>`, so a tab inside it was a button inside a button:
+invalid, and every tab click navigated to Services instead of switching stream.
+
+The first fix added an `interactive` flag to the widget definition and a second
+`WidgetOpenPanel` variant for widgets that needed to be touchable. Then the
+owner said he had never wanted the whole card to navigate in the first place —
+which deleted the flag one commit after it arrived. **`interactive` is not to be
+reintroduced.** It parameterised a question that turned out to have one answer
+for every widget on the page.
+
+There is one `WidgetPanel`, it is a `<div>`, and the header's arrow is the only
+thing that navigates. That stands on its own even without tabs: a card-sized
+click target wrapped around live content is a trap, because every row, count and
+timestamp in it looks clickable and does the same single thing — and selecting a
+log line threw you onto another page.
+
+**The tabs are `aria-pressed` buttons, deliberately not `role="tab"`.** A real
+tablist owes arrow-key navigation, a roving tabindex and a matching tabpanel. A
+half-built one announces all of that and then strands the reader; toggle buttons
+promise exactly what is there.
+
+**Agent got four tabs and no new request.** Skills / MCP / Plugins / Hooks.
+`use-home-agent-summary.ts` was already fetching `/api/agent` once — tens of
+kilobytes describing the whole agent — to read the detected agent's name and
+discard the rest; it keeps that profile in a ref now. The call stays unrepeated,
+because the dashboard's polling already runs near Chrome's six-connections-
+per-origin limit and a widget that re-fetched on every tab click would spend
+that budget on data it already had. MCP leads the four because it is the only
+one that can be *broken* — a skill is present or absent, a server is connected,
+degraded or failed — and Skills/Plugins/Hooks share one `Inventory` component so
+three lists of names cannot drift into three designs.
+
+### 7.12 The mode existed because the panel was a button, and the button was already gone
+
+The owner asked for two things in one line: let a panel scroll its own content,
+and stop making him enter a mode to arrange the page — keep the resize corner
+visible always, and put a drag handle near it.
+
+**The mode was a workaround that outlived its problem.** Customize did not exist
+because arranging a page is dangerous or rare. It existed because §7.11's panel
+was a `<button>` and a `<button>` may not contain one, so the controls had to
+live in a *different component* that was swapped in for the duration. Once the
+panel became a `<div>`, the mode was a door standing on its own in a field.
+Three things were wrong with keeping it:
+
+1. **Nobody finds it.** The single control revealing the entire feature sat in a
+   footer strip, below a full page of widgets.
+2. **It cost a re-request.** Swapping the element remounted every widget's
+   subtree, so entering and leaving the mode each made a `fetch` widget fetch
+   again — paid to satisfy a constraint that no longer existed.
+3. **It was a lie about state.** In one mode the handles were absent; in the
+   other, half the page's meaning was dimmed behind them.
+
+So the handles are on the panel, always, dimmed to the arrow's weight until the
+panel is hovered — which keeps the resting page exactly as quiet as it was, and
+means the page is arranged where it is read. `WidgetPanel` gained two slots,
+`controls` and `corner`, and still knows nothing about what goes in them: a
+widget author reading `widget-grid.tsx` should not find layout editing in it.
+
+**The drag moved from the cell to a handle, and had to.** The old gesture
+grabbed the whole cell and guessed — it ignored any press that landed on a
+button, on the theory that a control inside a draggable panel is still a
+control. A panel that is *always* draggable cannot guess, because the thing
+under the cursor is now usually a log line someone is selecting or a tab they
+are pressing. So there is a grip, and the guess is gone with it.
+
+**The chevrons folded into that grip rather than disappearing.** Two arrow
+buttons were the keyboard's version of reordering and the only version some
+people have; deleting them for a tidier header would have traded an
+accessibility floor for tidiness. The grip takes ArrowLeft/ArrowRight and does
+what they did, so one control says "move this" in both idioms — the same bargain
+the resize grip already struck, where the arrow-key steps are the units the drag
+snaps to.
+
+**What the height means changed, and only the second half of it.** A stored
+height clipped: past the boundary, content was simply gone. Sizing a panel is a
+statement about the page — how much room this gets — and the panel was reading
+it as a statement about the content — how much of this you may see. Those come
+apart the moment anything is taller than its box, so the content scrolls now
+(`WidgetScroll`), inside the same box, with the header and the resize grip
+staying put as siblings of the scroller rather than passengers in it. The packer
+is unaffected: the box is the height it always was.
+
+That change had a second half in the widgets. **A widget that hides its own
+overflow silently defeats the panel's scroll** — Logs' line list did, as a flex
+item with `overflow-hidden`, which let it shrink to whatever room was left and
+swallow the remaining lines. It looked identical to clipping because it *was*
+clipping, one level down. It now keeps its full height and lets the panel
+scroll. Only one widget had the pattern; any new one that reaches for
+`overflow-hidden` on a list is making the same mistake.
+
+**What this costs.** Every panel now carries three header controls and a corner
+grip where there were none, which is more marks on a page whose argument is that
+it is scannable — the fade is what pays for that, and it is a real trade rather
+than a free win. Remove is one dim click from happening by accident, mitigated
+only by the picker in the footer that puts the widget straight back. And a
+scrolled panel scrolls its tabs away with everything else, so a short Logs panel
+hides its own stream picker until you scroll up; pinning them would mean
+teaching the widget vocabulary the difference between content and content that
+stays, which is not worth it for one widget.
+
+**§8.4 collapsed rather than being solved.** The empty-page problem — remove
+every widget and the page has no way back — was answered by keeping an empty
+Home in edit mode. There is no edit mode, and the picker and Reset are in the
+footer at all times, so the recovery is wherever it always was and the special
+case is gone.
+
+### 7.13 One panel saying what another already said, and six saying less than they had
+
+Three reactions to the same screenshot, and the third is the one with a rule in
+it.
+
+**Ports was Services backwards.** It listed `:5174 → nomoreide-website`;
+Services lists `nomoreide-website → :5174`. Two panels, one fact, and the owner
+saw it immediately. It is gone. The only thing it held alone was a port taken by
+a process we did not spawn — the one state where nothing is wrong with a service
+and it still cannot start, and which cannot be a Services row on its own because
+a blocked service has no runtime entry to be one. That moved into Services as a
+red row above the rest, so the duplicate left and the signal did not.
+
+Removing it needed no migration: `resolveHomeLayout` keeps only ids it can still
+find, so a saved layout naming `ports` simply stops mentioning it (§8.5, doing
+the job it was written for). A stale `heights.ports` stays in the document,
+harmlessly, until that panel is added back — which it never will be.
+
+**Repository is called Git.** The widget id stays `repository`, exactly as Logs
+kept `output`: the id is what a saved layout stores, and a rename that changed
+it would drop the panel from every customised Home. Only the title moved.
+
+**The row caps were lying, and the fix is a rule.** Every widget prints a
+capped list — six log lines, four MCP servers, five changed files — and prints
+"+34 more" under it. That cap was correct when a panel clipped, because the
+overflow was unreachable anyway. Once panels scrolled (§7.12) it became a
+refusal: the panel could show more, the user had *dragged it taller to see
+more*, and the widget still printed six lines and a promise that the rest
+existed somewhere.
+
+So the cap became conditional, and `WidgetRenderProps` gained `height` to make
+it possible:
+
+- **Unsized panel — cap it.** Fit-to-content means the widget decides how tall
+  the page is, and an uncapped list would run Home off the screen. A default
+  install is unchanged.
+- **Sized panel — show everything and scroll.** Dragging a height onto a panel
+  is the clearest statement anyone makes on this page: *this is the one I want
+  to look at.*
+
+`rowCap(height, cap)` in `widget-grid.tsx` is the whole rule, written once,
+because seven widgets each reaching for the same conditional is seven chances to
+write it differently. Agent shares one budget across its four tabs, so switching
+tabs cannot resize the panel under the cursor; Services spends the budget on
+conflicts first, since those must never be the rows that fall off the end.
+
+**The ceiling that remains is the payload, not the widget.** Logs shows every
+line it *has*, which is 40 per service (`PAYLOAD_TAIL`) — recent output, not the
+file. The dashboard payload is polled every 5s by every open tab, so raising
+that number multiplies a request that is already the page's most frequent one.
+The whole file is the Services page's log pane, and that is the right place for
+it.
+
+### 7.14 Seven pixels apart is not a decision anyone made
+
+The owner sent a crop of two panels ending a few pixels apart and asked the only
+question worth asking about it: *when it is nearly aligned, why not align it?*
+
+He is right, and the reason it happened is §7.10's own rule read too literally.
+Masonry drops each panel independently and lets columns end at different depths,
+and that raggedness is the whole point — a short panel must not hold a hole open
+under itself. But raggedness is worth having only when it can be *read* as a
+decision. Two columns ending 100px apart is one. Two ending 7px apart is the
+arithmetic showing through: a dragged height is a whole number of `HOME_ROW_PX`
+rows, a fitted one is however tall its text came out, and the two agree only by
+luck.
+
+So near-misses are levelled and everything else is left alone. `HOME_SNAP_PX` is
+12 — well under half a row, so it can never quietly absorb a row the user asked
+for, and a panel one line of text short of its neighbour (~16px) stays short,
+because that is a real difference in what it holds.
+
+**The shorter panel grows; nothing moves.** It grows to a line its neighbour had
+already set, so the page below is unchanged and the sliver of dead space closes
+at the same time. A panel is only allowed to grow while it still owns every
+column it covers — that is exactly the condition that says nothing has been
+placed underneath it yet, and without it a panel could grow straight through the
+one now sitting there.
+
+**The rule that matters is the pairwise one.** The first attempt levelled only
+when a panel *landed* across columns that were ending unevenly, which is a real
+case and fixes nothing you can see: in the owner's own layout, Snapshots ended
+1px below Logs and the panel underneath covered only Logs' columns, so nothing
+was ever drawn across the pair. Two panels side by side is the misalignment
+people actually look at, and it has to be levelled when the second one lands, not
+when something later happens to span them. The landing rule stayed anyway,
+together with a flush against the page's own bottom edge: pairwise levelling does
+not propagate along a row by itself, and those two are what straighten the rest.
+
+**What this cost was a clean split between the slot and the content.** A levelled
+panel is taller than what is inside it, so the packed height had to go somewhere
+that is not the widget's own box: the cell now carries the height and both
+hairlines, and `WidgetBody` is what gets measured (`data-widget-body`). Measuring
+the cell would be reading our own answer back in as a question.
+
+That is not a theoretical worry. Getting it wrong blanked the page: the cell is a
+flex column, so a body that may shrink was squeezed by the one pixel the cell's
+bottom rule takes, measured a pixel shorter, packed a pixel shorter, forever —
+React error #185, an empty `#root`, and a page that looks exactly like a stale
+bundle. `shrink-0` on the body is what makes the measurement a fact about the
+content instead of an echo of the last answer.
+
+### 7.15 Three quarters was as wide as a drag could go
+
+"When I go all the way right it will still not showing full" — and he was right,
+though not about the preview. The frame was telling the truth; the truth was the
+row rule.
+
+A row shares twelve columns and no panel goes below `MIN_SPAN`, so a panel
+sharing with one neighbour stops at nine columns. Drag to the right edge of the
+page and the frame stops three quarters across while the cursor keeps going,
+which reads as a stuck control rather than as a rule — and full width, a state
+the model has and every full-width row is in, was unreachable by any gesture.
+
+**So the whole grid is a different request, not a bigger one.** Asking for twelve
+takes the row and drops the neighbours into a row of their own, in the order they
+were already in. Everything below twelve still obeys the cap, so `MIN_SPAN` keeps
+meaning what it says. The pointer reaches it by running out of page — the cursor
+at the grid's right edge asks for everything — and the keyboard reaches it the
+same way, one `ArrowRight` past the width that stops changing anything.
+
+That last condition has to be a real widening, or a panel whose right edge is
+already the page's would read a twitch as a demand for everything. Which leaves
+one honest limitation: **a panel at the end of its row cannot be widened by
+dragging at all.** Its corner is already at the edge of the page and its new
+columns would come from its left, so the gesture has nowhere to go; the keyboard
+is the way, and that is the geometry of a right-hand grip rather than a bug in
+it.
+
+**And the frame had to learn where the panel lands, not just how wide.** A panel
+taking columns from its left-hand neighbour grows leftwards, and one asking for
+the grid starts again at the first column — a frame anchored to the panel's
+current left edge draws both on the wrong side. `previewSpan` is gone and
+`previewResize` (`home-pack.ts`) answers with a rectangle: same bargain as the
+drop preview, one more coordinate.
+
+### 7.16 A hole with a lid on it
+
+The same screenshot, one row down: Conversations floating with no box around it.
+Its top edge is the bottom edge of whatever is above it, and above it was 175px
+of nothing — Git and Snapshots had ended, Agent ran on, and the full-width panel
+below had to clear Agent.
+
+That hole is the one thing §7.10's rule cannot reach. A column's leftover space
+is only worth keeping because the *next* panel in that column rises into it —
+that is the entire argument for packing this way. When the next panel spans the
+column, nothing can ever rise into it: the space is sealed above by what is
+already there and below by what just arrived. It is not raggedness, it is a page
+that failed to finish.
+
+So sealed space goes back to the panels above it, however big — the same
+`levelTo` the near-miss rule uses, with the tolerance lifted. The page's own
+bottom edge deliberately keeps the tolerance: nothing encloses the space below
+the last row, so a panel stretched a hundred pixels into it would be a box mostly
+full of nothing for no reason.
+
+One wrinkle worth naming: a filled panel's resize grip stays on its *content*
+box, which is what a height sizes, so the grip can sit above the panel's own
+bottom line. Moving it to the slot's corner would make the gesture size a box the
+neighbours partly decide, and shrinking inside a sealed band would then look like
+a resize that does nothing — the failure mode §7.7 exists to remember. (§7.18
+moved it anyway, and explains why that objection does not survive contact.)
+
+### 7.17 Two edges are only a frame if the neighbours cooperate
+
+Next screenshot, two complaints, one cause. Activity had no left edge below
+Databases' bottom line; the seam under Git and Snapshots read as absent. Every
+panel drew a bottom rule and a right rule and nothing else, which is a complete
+frame only when something above it is exactly as wide and something to its left
+is exactly as tall. Under rows that was nearly always true. Under masonry it is
+nearly always false: panels beside each other end at different depths on purpose,
+so the neighbour that was drawing your left edge stops drawing it partway down,
+and the panel you sit under stops drawing your top edge partway across.
+
+So a panel draws all four of its own edges. That is the only rule that survives
+whatever lands next to it, and it has a second virtue — every seam is now drawn
+from both sides, so it cannot go missing because one side rendered oddly.
+
+The doubling that would normally follow is avoided by overlap, not by working out
+who owes whom a line. Each cell is placed one pixel up and one pixel left of its
+slot and given one more pixel of each dimension, so its top and left rules land
+*on* the bottom and right rules of what it abuts — one pixel, painted twice, the
+same colour. The outermost rules fall in the pixel the grid already clips, which
+is the full-bleed edge the page has always had, and `-mr-px` keeps doing that job
+on the right.
+
+The pixel is spent entirely on borders: the body inside still starts where the
+slot starts and is still exactly the size it was. That is what keeps it invisible
+to everything else — the masonry and both drags measure `data-widget-body`, never
+the cell, so nothing that reads geometry can tell this changed.
+
+### 7.18 A corner mark with no corner under it
+
+With the frames complete, the next screenshot was Snapshots: the grip sitting
+halfway down the panel, in space, with no line beneath it. §7.16 had said moving
+it to the slot's corner would make shrinking inside a sealed band look like a
+resize that does nothing. That objection is wrong, and it was wrong when I wrote
+it: the grip's *position* was never what protected against it. Drag the body's
+corner up inside a sealed band and the stored height shrinks, the packer
+re-inflates the cell, and nothing visible happens either. The failure belongs to
+the packing — the panel below spans the column and cannot rise into what you
+freed — and the grip's placement changes only where you stand while hitting it.
+
+So the grip is the cell's. It marks the corner the reader can see, which is the
+one with rules around it, and the rules are now the thing that says where a panel
+ends.
+
+The drag start moved with it, and that part is an improvement rather than a
+consequence. The origin height is what is *on screen* — content top to slot
+bottom — not the stored height, which on a stretched panel is shorter than what
+you are holding. Grab the corner, pull down one row, and the panel is one row
+taller than it looked: the stretch is adopted instead of thrown away, where
+before the same gesture would have jumped the panel back to its stored height
+plus one and shown no change at all. It also keeps the "only the axis you moved"
+rule intact for free — a straight-sideways drag now lands on the row it started
+on, so it still writes no height.
+
+### 7.19 A tail with no axis cannot say when
+
+The owner's question: could Logs and Health be a full-width graph, "so we can
+see the log and also know where". The answer is that a tail is missing exactly
+one thing, and it is the axis. Forty lines of a service mid-burst can span four
+seconds; the panel shows them all and cannot say whether that was now or an hour
+ago, or whether anything happened in between.
+
+The data for the graph half already existed, which is why it went first.
+`MetricsStore` samples CPU and RSS every 3s and keeps 600 of them — half an hour
+per service — and `/api/services/:name/metrics` already served it to the service
+detail page. So Logs grew two panes above its lines, and became a `fetch` widget
+in the process: `source` is the fact a picker has to be able to show, and a
+widget that fetches at all should say so.
+
+**One service, the one whose tab is selected.** The graph and the lines beneath
+it are then the same subject, and the panel costs one request no matter how many
+services are registered — the trap `use-home-agent-summary.ts` documents.
+
+Three things the drawing had to get right, each of which was wrong first:
+
+- **Two panes, not one plot.** CPU is a percentage and memory is megabytes, and
+  a second y-axis is the standard way to make two unrelated quantities appear to
+  cross. Stacked on a shared x-range they stay comparable in the only way that
+  matters here, which is *in time*.
+- **The baseline decides the mark.** CPU starts at nothing, so it is filled.
+  Memory never goes near zero — a zero-based pane rendered it as a solid blue
+  block with a wobble on top — so its pane holds the band the series actually
+  moved in and drops the fill, because an area whose floor is 380MB claims an
+  area that is not there.
+- **A pane scaled to its own peak must print that peak.** Without it, 0.1% and
+  90% draw the same mountains. With it, scaling to the peak is what lets a
+  service idling at a fraction of a percent have a visible shape at all.
+
+The x mapping is by timestamp, never by sample index: a busy machine misses
+samples, and an index axis would quietly close those gaps and put a spike at the
+wrong time — the one error a panel built to answer "when" cannot make.
+
+What is still missing is the other half of the owner's sentence — §7.20.
+
+### 7.20 The pipe a line came down says nothing about the line
+
+The graph answered *when*, but not whether the service had anything to say about
+it. A process can burn a core in silence and it can sit at 2% while pouring stack
+traces, so the third pane counts the output itself: a stacked bar per slice, red
+for errors, amber for warnings, neutral for the rest, sitting between the metric
+panes and the lines it is a count of.
+
+**Counted in the daemon, because the browser has nothing to count.** Home's
+payload carries 40 lines per service (`PAYLOAD_TAIL`) — a few seconds of a
+service mid-burst. The 500-line ring is in `LogStore`, so `core/log-volume.ts`
+buckets it there and returns sixty triples of small integers. Those ride on the
+metrics response the panel already polls rather than on a second endpoint: two
+requests could answer from ring buffers a poll apart, and a landing page that
+opens a connection per panel is how the six-per-host budget goes.
+
+**The range comes from the samples, never from the lines.** Two charts stacked
+with different x-ranges is a worse lie than no chart — the spike would sit above
+a moment it did not happen at. Lines outside the range are dropped rather than
+clamped, so a service that logged 400 lines at boot and has been quiet since
+reads as quiet instead of growing an invented spike in the first bucket.
+
+Three things this got wrong first, all three caught by looking at it rather than
+by reasoning about it:
+
+- **stderr is not a severity.** The first cut counted stderr as an error, on the
+  grounds that the panel's own `STDERR` stat and its red log lines already do.
+  Ten seconds against a real service ended the argument: of jobjourney-frontend's
+  ten stderr lines, *none* were errors — `[TypeScript] Found 0 errors.`, a
+  Browserslist freshness notice, and six Tailwind lines beginning with the
+  literal word `warn`. The rule painted "found 0 errors" red and stole the amber
+  band from the exact case amber is for. A red that fires on every dev server is
+  a red nobody looks at. `classifyLogSeverity` decides, and it is the same
+  function the timeline uses, so a line that raised an event and a line that
+  painted the strip red are the same line. Nothing is lost: a service that dies
+  on stderr dies saying panic, fatal, Traceback, uncaught, EADDRINUSE or error.
+  That the `STDERR` counter beside it may read 10 while the errors band reads 0
+  is not a contradiction — each names what it counts.
+- **Gaps come out of the scale, not out of the box.** Segments scaled to the full
+  strip height and then separated by 2px are taller than the strip by exactly the
+  gaps inside them, and `justify-end` pushes the overflow up over the caption.
+  Seen live on a bucket that was half neutral and half warnings. The data is
+  scaled into `PLOT_PX`, which reserves two gaps for *every* bucket — reserving
+  only the ones a bucket needs would give two bars of the same total different
+  heights.
+- **Presence must outrank magnitude at the bottom of the scale.** One error
+  beside a 200-line burst is half a percent of 28px, which paints nothing, and
+  "no errors" must not render like "an error you cannot see". Non-zero bands have
+  a 2px floor; the printed peak is what keeps the scale recoverable.
+
+Errors sit at the bottom of the stack so their baseline never moves — the amber
+and red slivers then read as a row you can scan along, which is the whole use.
+The hues `#dc2626` / `#c98500` clear all six checks of the `dataviz` validator on
+both of this app's surfaces, including CVD separation from each other; the amber
+does sit close to the CPU pane's green under protanopia, which identity never
+rests on, because every swatch is beside its own written label in a different
+pane.
+
+### 7.21 A graph that scrolls away is a graph you cannot check against
+
+Three panes and a tail arrived in the same panel, and the panel scrolls as one
+box (§7.9). So the moment the tail was worth following, the axis explaining it
+left the top of the panel — you scroll to the newest line and the shape that told
+you *which* line to read is gone. The fix is two halves of the same idea: the
+part of the panel that is **about** the lines stays put, and the lines follow
+their own end.
+
+**Pinned: the tabs, the counters and the graph.** All three answer questions
+about the output rather than being output — whose it is, how much of it, what
+shape the last half hour had — so they belong to the panel, not to the scroll.
+`WidgetSticky` is the general form of that in `widget-scroll.tsx`, and the box
+itself is now handed down by context so a widget can address the thing it is
+scrolling inside without reaching up through the DOM for it.
+
+**Conditional, because a pin is only a kindness while the pinned thing fits.** A
+`position: sticky` block taller than its box is stuck at the top with nowhere to
+scroll, and its own bottom — here, the newest pane on it — becomes unreachable.
+Sized short enough the panel drops the pin and goes back to scrolling everything,
+which is strictly better than pinning something you cannot see the end of. The
+threshold reserves two lines of reading room (`fitsSticky`), because a header that
+leaves room for exactly one line has not left room for anything.
+
+**Following the tail is conditional too, and on the reader.** A panel that jumps
+to the newest line unconditionally is unusable the moment a service is chatty:
+scroll up to the stack trace, and the next poll drags you back down. New output
+only moves the box when the box was already showing its end (`isPinned`), with a
+line and a half of slack — sub-pixel layout means a box scrolled fully down
+routinely reports a fraction short, and an exact test reads that as "the reader
+has scrolled away" and quietly stops following forever.
+
+Two things this got wrong first:
+
+- **The trigger is geometry, not a new line.** The first cut re-scrolled when a
+  key built from the last log line changed, which is subtly short: the end of the
+  content also moves when the *box* is resized, because a panel given a height
+  stops capping its tail at six lines and renders all forty at once. No key
+  describing the last line notices that — the last line is the same one. Sized
+  live, the panel duly rendered forty lines and sat at the top of them. The scroll
+  is now re-checked every render, since being at the end is a fact about geometry
+  and setting an already-scrolled box to its end is a no-op.
+- **A `ResizeObserver` is a backstop, not the mechanism.** Both the fit guard and
+  the follow originally waited on observer callbacks, which are delivered with the
+  frame — so they never arrive at all in a tab that is not rendering, and arrive
+  a frame late everywhere else. Resizing a panel *is* a render (the height is a
+  prop), so both now measure in a layout effect and keep the observer only for the
+  size changes no render announces: the window, a font, a tab row wrapping.
+
+Worth knowing when reading the panel: none of this engages until the panel has a
+height. At fit-to-content it shows six lines and there is nothing to scroll, so
+nothing to pin and no end to follow — the behaviour appears the moment someone
+drags the corner, which is also the moment they asked for more lines than fit.
 
 ## 8. Decisions needed before stage 1
 
@@ -129,6 +1048,12 @@ Putting layout in ConfigStore would mean a Zod schema, a daemon round-trip on ev
 
 So: `version: 3`, add `home: { widgets: string[]; spans: Record<string, number> }`, and the existing migration hands v1/v2 installs the default layout.
 
+Rows (§7.9) later made it **v4**: `home: { rows: string[][]; spans; heights }`, with v3's flat list packed into rows on read — one migration, in the parser, so the layout a user had is the layout they get back. That bump was unavoidable in a way the one below was not: the shape of the field changed, and no reading of a `string[]` gives you rows.
+
+Heights (§7.8) arrived earlier as `heights?: Record<string, number>` and pointedly **did not bump the version**: the field is optional and its absence is not a missing value but a real state — "no height at all, fit the content" — which is exactly what a v3 layout stored before it existed should mean. A version bump would have been a migration inventing an answer nobody gave — and, until v4, every bump also cost a matching `version === n` in `lib/theme.ts`, which reads this document pre-mount and flashed the wrong theme whenever someone forgot. That list is gone: the pre-mount read now accepts any version, because it reads one field that has meant the same thing since v1 and the real parser is what decides whether a document is usable.
+
+*As built:* `home` is `HomeLayout | null`, and v1/v2 installs migrate to `null` rather than to a stored copy of the default — see §7.6 for why the distinction is load-bearing. `lib/theme.ts` reads the same document before React mounts and had to learn `3` alongside `1` and `2`, or every customised install would have flashed the wrong theme on load.
+
 **8.2 `/` becomes Home; Services becomes `/services`.**
 
 Contained and test-guarded: `PAGE_PATHS` in `app.tsx`, `shellPaths` in `shell-routes.ts`, and `test/shell-paths.test.ts` already asserts parity between them, so getting it half-done fails CI rather than 404ing on refresh.
@@ -138,6 +1063,8 @@ Worth being explicit that this is **not optional**. A Home page that is a 15th n
 **8.3 Scope.** Home is global. Repo-scoped widgets follow the existing repo picker and say which repo they are showing; under `projectScope: "all"` they render their grid form (§4).
 
 **8.4 Empty state.** Stage 2 lets a user remove every widget. The page then needs to be recoverable without clearing `localStorage` — a "reset to default layout" action in the edit mode, not just an empty canvas.
+
+*As built:* there is no edit mode to put it in (§7.12). Reset and the picker sit in the footer strip permanently, so the empty page is recoverable by the same control as the full one and this stopped being a special case rather than getting a special answer.
 
 **8.5 Unknown widget ids.** A saved layout naming a widget that no longer exists must be dropped silently on read, not rendered as an error. This is the same problem the extension registry has with a stored provider id, and it should fail the same quiet way.
 

@@ -21,14 +21,42 @@ import type { TranslationKey } from "@/lib/i18n";
 /**
  * How many of the grid's 12 columns a widget asks for on a wide window.
  *
- * A closed union rather than a number because the span has to become a literal
- * Tailwind class — see `SPAN_CLASS` in `widget-grid.tsx`. Anything the union
- * doesn't list has no class to map to and would silently render full-width.
+ * A closed union rather than a plain number so the two ends of a resize cannot
+ * disagree: everything that produces a width goes through `clampSpan`, and
+ * anything outside the union is a type error where it is written rather than a
+ * panel that lays out somewhere unexpected. It began as a closed union because a
+ * span had to become a literal Tailwind class; the span is now arithmetic in
+ * `home-pack.ts`, and the union earns its keep as the domain's own bounds.
+ *
+ * It starts at 3 rather than 1: a quarter row is the narrowest a stat strip and
+ * a row list stay legible in, and a width nobody would keep is not a width
+ * worth letting them drag to.
  */
-export type WidgetSpan = 4 | 6 | 12;
+export type WidgetSpan = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface WidgetRenderProps {
   data: DashboardData;
+  /**
+   * The height the user gave this panel, in row units, or `null` for
+   * fit-to-content — and the answer to "how much of my list should I show".
+   *
+   * Every widget caps its list, because a summary that printed forty log lines
+   * or twenty-one skills would be a page, not a summary. That cap used to be
+   * unconditional, which made it a lie the moment panels started scrolling
+   * (`WidgetScroll`): the panel could show more, the user had made room for
+   * more, and the widget still printed six lines and "+34 more".
+   *
+   * So the cap is now the *unsized* behaviour only. A panel fitting its content
+   * keeps its short list, because it decides the page's height and an
+   * uncapped one would run the page off the screen. A panel someone dragged a
+   * height onto shows everything and scrolls, because that drag is exactly the
+   * instruction "I want to see this one".
+   *
+   * Use it via `rowCap` in `widget-grid.tsx` rather than reading it directly —
+   * seven widgets reaching for the same conditional is seven chances to write
+   * it differently.
+   */
+  height: number | null;
 }
 
 export interface WidgetDefinition {
@@ -47,7 +75,20 @@ export interface WidgetDefinition {
    */
   scope: "global" | "repo";
   /**
-   * The page this widget summarises. The whole card opens it — a widget is a
+   * Where the widget's data comes from.
+   *
+   * `dashboard` widgets read the payload the shell already polls and cost
+   * nothing. `fetch` widgets own their request — the feature that declares the
+   * widget also owns the hook that loads it, which is why Home needs no
+   * fetching machinery and stays feature-agnostic.
+   *
+   * It is declared rather than inferred because stage 2 lets a user add
+   * widgets, and "this one costs a request" is the fact a picker has to be
+   * able to show before they add ten of them.
+   */
+  source: "dashboard" | "fetch";
+  /**
+   * The page this widget summarises. The header arrow opens it — a widget is a
    * summary, and the page is the real thing.
    */
   page: AppPage;

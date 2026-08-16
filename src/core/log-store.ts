@@ -102,7 +102,16 @@ function isReadinessLine(text: string): boolean {
   return /\b(ready|listening|local:|server started)\b/i.test(text);
 }
 
-function classifyLogSeverity(text: string): "warning" | "error" | null {
+/**
+ * What a line's *text* says about itself, or `null` for ordinary output.
+ *
+ * Exported because the timeline is no longer the only reader: `log-volume.ts`
+ * buckets the same verdict over time so the Logs panel can colour a spike. Both
+ * must agree — a line that raised a timeline event and a line that painted the
+ * strip red should be the same line, which is only guaranteed while there is one
+ * classifier rather than two that drifted.
+ */
+export function classifyLogSeverity(text: string): "warning" | "error" | null {
   if (/\b(panic|fatal|traceback|uncaught|unhandled|EADDRINUSE|ECONNREFUSED|segmentation fault)\b/i.test(text)) {
     return "error";
   }

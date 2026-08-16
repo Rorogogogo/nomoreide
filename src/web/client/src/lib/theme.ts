@@ -12,8 +12,14 @@ function readStoredTheme(): Theme {
   try {
     const raw = window.localStorage.getItem(UI_PREFERENCES_KEY);
     const stored = raw ? (JSON.parse(raw) as { theme?: unknown; version?: unknown }) : null;
+    // Any version, deliberately. This runs before the app mounts to keep the
+    // first paint from flashing the wrong theme, and it reads one field that
+    // has meant the same thing since v1 — so listing the versions it knows
+    // only creates a way for the next schema bump to break the theme, which it
+    // has already done once. The parser in `ui-preferences.ts` is what decides
+    // whether a stored document is usable; this only needs a string.
     if (
-      (stored?.version === 1 || stored?.version === 2) &&
+      typeof stored?.version === "number" &&
       (stored.theme === "light" || stored.theme === "dark" || stored.theme === "system")
     ) return stored.theme;
   } catch {
