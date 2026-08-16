@@ -132,6 +132,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "home.agent.project": "项目",
   "home.agent.enabled": "已启用",
   "home.agent.disabled": "已禁用",
+  "home.agent.stateConnected": "已连接",
   "home.agent.stateFailed": "连接失败",
   "home.agent.stateNeedsAuth": "需要授权",
   "home.agent.stateNoAuth": "无需授权",

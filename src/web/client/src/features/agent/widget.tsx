@@ -77,6 +77,9 @@ function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
   /* One budget for all four tabs: they share a panel, so a tab that listed
      more than its neighbours would resize the page on every click. */
   const cap = rowCap(height, ROW_CAP);
+  /* Not `Number.isFinite(cap)` read back out: whether the user asked for room
+     is the question, and the cap is one of two things derived from it. */
+  const sized = height !== null;
 
   /* MCP leads because it is the only one that can be *broken* — the others are
      inventories, and an inventory has no bad state to land on. */
@@ -89,7 +92,7 @@ function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
           </WidgetTab>
         ))}
       </WidgetTabs>
-      {tab === "mcp" ? <McpTab cap={cap} summary={summary} /> : null}
+      {tab === "mcp" ? <McpTab cap={cap} sized={sized} summary={summary} /> : null}
       {tab === "skills" ? <SkillsTab cap={cap} summary={summary} /> : null}
       {tab === "plugins" ? <PluginsTab cap={cap} summary={summary} /> : null}
       {tab === "hooks" ? <HooksTab cap={cap} summary={summary} /> : null}
@@ -97,22 +100,42 @@ function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
   );
 }
 
-function McpTab({ cap, summary }: { cap: number; summary: HomeAgentSummary }) {
+function McpTab({
+  cap,
+  sized,
+  summary,
+}: {
+  cap: number;
+  sized: boolean;
+  summary: HomeAgentSummary;
+}) {
   const t = useT();
   const { calls, connected, degraded, failedCalls, loaded, servers } = summary;
 
   /*
-    Only the servers that are not simply working, worst first.
+    Worst first, always — and the working ones after them, but only once the
+    panel has been given room.
 
-    Listing the connected ones filled the panel with names that carry no
-    information — the "12" above already said they are fine, and four arbitrary
-    healthy servers plus "+10 more" is exactly the text this page is trying to
-    stop printing. When everything is connected the list is empty and the tab
-    is four numbers, which is the correct amount of page for "nothing is wrong".
+    While the panel is fitting its content, listing the connected servers fills
+    it with names that carry no information: the count above already said they
+    are fine, and four arbitrary healthy names plus "+10 more" is exactly the
+    text this page exists to stop printing. When everything is connected the
+    list is empty and the tab is four numbers, which is the right amount of page
+    for "nothing is wrong".
+
+    A height changes what the space is *for*. Dragging a panel taller is asking
+    to see the whole inventory rather than the headline — it is what the other
+    three tabs already do, and what this file promises above `ROW_CAP` — and the
+    version that kept filtering answered "9 connected" with a panel that listed
+    four failures and then went blank, which reads as the rest being missing
+    rather than as the rest being fine. The ordering carries the same priority
+    either way, so nothing moves when the panel grows: the problems stay at the
+    top and the healthy names extend below them.
   */
-  const rows = servers
-    .filter((server) => server.state !== "connected")
-    .sort((a, b) => rank(a.state) - rank(b.state) || a.name.localeCompare(b.name));
+  const ordered = [...servers].sort(
+    (a, b) => rank(a.state) - rank(b.state) || a.name.localeCompare(b.name),
+  );
+  const rows = sized ? ordered : ordered.filter((server) => server.state !== "connected");
 
   return (
     <>
@@ -294,5 +317,10 @@ function stateLabel(state: McpAuthState, t: ReturnType<typeof useT>): string {
   if (state === "failed") return t("home.agent.stateFailed");
   if (state === "needs-auth") return t("home.agent.stateNeedsAuth");
   if (state === "no-auth") return t("home.agent.stateNoAuth");
+  /* Written out rather than left to the green dot alone. A row whose only
+     statement of health is its colour says nothing to a reader who cannot
+     separate it from the amber one beside it — and every other row in this tab
+     names its state in words. */
+  if (state === "connected") return t("home.agent.stateConnected");
   return t("home.agent.stateUnknown");
 }

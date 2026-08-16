@@ -344,6 +344,7 @@ export const en = {
   "home.agent.project": "Project",
   "home.agent.enabled": "Enabled",
   "home.agent.disabled": "Disabled",
+  "home.agent.stateConnected": "connected",
   "home.agent.stateFailed": "failed",
   "home.agent.stateNeedsAuth": "needs auth",
   "home.agent.stateNoAuth": "no auth",
