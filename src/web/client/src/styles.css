@@ -109,6 +109,16 @@
   width: 156px;
 }
 
+.context-flow .react-flow__edge-path {
+  shape-rendering: geometricPrecision;
+  vector-effect: non-scaling-stroke;
+}
+
+.context-flow .react-flow__node:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 4px;
+}
+
 .context-flow-panel {
   margin: 8px;
   padding: 5px 7px;

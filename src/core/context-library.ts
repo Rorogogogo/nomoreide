@@ -52,6 +52,7 @@ const MAX_GRAPH_NODES = 250;
 const IGNORED_DIRS = new Set([".git", ".obsidian", ".trash", INTERNAL_DIR]);
 const PROJECT_IGNORED_DIRS = new Set([
   ...IGNORED_DIRS,
+  ".brainctl",
   ".next",
   ".turbo",
   ".vercel",
@@ -231,7 +232,13 @@ export class ContextLibrary {
   async graph(options: { q?: string; projectPath?: string; kinds?: ContextKind[] } = {}): Promise<ContextGraph> {
     const snapshot = await this.list(options);
     const notes = uniqueNotes(await this.scanNotes()).notes;
-    const visible = snapshot.items.slice(0, MAX_GRAPH_NODES);
+    const visible = [...snapshot.items]
+      .sort((left, right) => {
+        if (left.pinned !== right.pinned) return left.pinned ? -1 : 1;
+        const priority = graphKindPriority(left.kind) - graphKindPriority(right.kind);
+        return priority || left.title.localeCompare(right.title);
+      })
+      .slice(0, MAX_GRAPH_NODES);
     const nodes = visible.map<ContextGraphNode>((item) => ({
       ref: item.ref,
       title: item.title,
@@ -506,6 +513,10 @@ export class ContextLibrary {
 
 function refKey(ref: ContextRef): string {
   return `${ref.kind}:${ref.id}`;
+}
+
+function graphKindPriority(kind: ContextKind): number {
+  return { project: 0, service: 1, note: 2, incident: 3, session: 4, file: 5 }[kind];
 }
 
 function isContextRef(value: unknown): value is ContextRef {
