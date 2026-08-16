@@ -77,7 +77,16 @@ function OutputSummary({ data }: WidgetRenderProps) {
         <WidgetStat label={t("home.output.lines")} value={active.lines.length} />
         <WidgetStat label={t("home.output.stderr")} tone="bad" value={errors} />
       </WidgetStats>
-      <span className="flex flex-col gap-0.5 overflow-hidden font-mono text-[10px] leading-relaxed">
+      {/*
+        `shrink-0`, and pointedly no `overflow-hidden`: the panel scrolls its own
+        content now (`WidgetScroll`), and a list that hides its own overflow
+        would quietly defeat that. It clipped here because the body used to clip
+        — as a flex item with hidden overflow it was free to shrink to whatever
+        room was left and swallow the rest of the lines, which is exactly the
+        behaviour the scroll replaced. Keeping its full height is what gives the
+        panel something to scroll.
+      */}
+      <span className="flex shrink-0 flex-col gap-0.5 font-mono text-[10px] leading-relaxed">
         {active.lines.slice(-LINE_CAP).map((line) => (
           <span
             className="flex min-w-0 items-baseline gap-2"

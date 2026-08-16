@@ -179,9 +179,17 @@ export function useWidgetMove({
 
   const grab =
     (id: string, title: string) => (event: ReactPointerEvent<HTMLElement>) => {
-      // The panel's own controls win the press: a remove button inside a
-      // draggable panel is still a remove button.
-      if ((event.target as HTMLElement).closest("button")) return;
+      /*
+        No "is this press on one of the panel's own controls" check any more,
+        and it would now reject every drag there is: this hangs off the grip
+        button in the panel's header, not off the whole cell.
+
+        That is the point of the handle. The cell used to be draggable in bulk,
+        which is why it had to guess whether a press was a drag or a click on
+        something inside it — and a panel that is always arrangeable cannot
+        guess, because now the thing under the cursor is usually a log line
+        someone is trying to select or a tab they are trying to press.
+      */
       if (event.button !== 0) return;
       const origin = { x: event.clientX, y: event.clientY };
       let started = false;

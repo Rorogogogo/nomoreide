@@ -86,12 +86,15 @@ export interface WidgetDefinition {
 }
 ```
 
-Two changes the build made to this sketch, both recorded rather than quietly absorbed:
+Three changes the build made to this sketch, all recorded rather than quietly absorbed:
 
 - **`page: AppPage`, not `href: string`.** A closed union is checked; a string is not, and every widget's destination is a page the client already knows.
 - **No `source` discriminant yet.** Stage 1's six widgets all read the dashboard payload, so a union with one inhabited variant would be decoration. It arrives with the first `fetch` widget in stage 2, which is when it starts distinguishing anything.
+- **"The whole card opens it" did not survive** (§7.11). The panel is a `<div>` and the header's arrow is the only thing that navigates. The field is unchanged — a widget still declares the page it summarises — but what reads it is one button, not the card.
 
 **The hard rule, and the one most likely to be broken later: a widget is a read-only summary with at most one action.** Everything else is a click through to the real page. A widget that grows a second control has become a second implementation of its page, and the two will drift — this is the failure mode that kills dashboards, and it always arrives one reasonable-seeming button at a time.
+
+*Amended by §7.11, and sharpened rather than loosened.* Counting controls turned out to be the wrong test: tabs are several controls that add no capability at all. The line that actually holds is **what the control acts on**. A control that picks *which slice of the summary you are looking at* — a tab — belongs in a widget: it changes the view and nothing else, and there is no second implementation to drift from. A control that acts on the world — start, stop, delete, deploy — belongs on the page the arrow opens. That is the rule the original was reaching for; "at most one action" was a proxy for it that broke the first time a widget had two things worth summarising.
 
 Practically that means a widget stays inside the ~300-line file budget without effort. If one doesn't, it is doing too much.
 
@@ -517,6 +520,155 @@ indices and the packing; it is simply no longer a top-to-bottom scan of the page
 drag into — the amendment §7.9 made to §6 stands. A panel belongs to a row and a
 position in it; the only thing computed is how far it falls.
 
+### 7.11 A panel that showed the wrong service, and ate the click when asked to show both
+
+"We should have a small section for logs, right." He already had one. It was
+broken three ways, and each fix uncovered the next.
+
+**One: the field named one service, and the domain has many.** `logs` in the
+dashboard payload was the tail of `config.services[0]` — the *first registered*
+service. He has 19 registered and the first has never been started, so the panel
+drew a bare em dash while two services were talking. The tempting reading is
+that the index was wrong. It wasn't: no index is right. A singular field over a
+plural domain has to invent a rule for which one it means, and every such rule
+is wrong for somebody.
+
+**Two: which is why "the one that spoke most recently" also failed.** It is a
+better rule and it lasted one screenshot. His two services boot 200ms apart, so
+recency was a coin toss between them, and the loser vanished. *"We have 2 things
+running."*
+
+So `logs` went plural: every service's tail, interleaved, oldest first. Three
+details worth keeping:
+
+- **The sort is on the ISO strings.** `LogStore` writes every timestamp with
+  `toISOString()` — same width, same UTC offset — so lexical order *is*
+  chronological order, and no parse is needed to merge two streams. The sort is
+  stable, so lines sharing a millisecond keep their order within a service.
+- **The cap is per service, applied before the merge** (`PAYLOAD_TAIL = 40`). A
+  global cap would have reintroduced the original bug wearing a disguise: one
+  chatty service would push a quiet one off the end, and the quiet one is
+  exactly the one whose four boot lines you are looking for.
+- **Health and the payload read the ring buffer once** (`readServiceLogs`) and
+  slice it differently — 80 lines for the health probe, 40 over the wire.
+
+Two consumers were already asking the right question and being handed the wrong
+answer. `project-scope.ts` filtered by `entry.service` and `ai-context.ts` asked
+per service; both found their match and looked correct, because a filter over a
+single-service list returns *something* for exactly one service and silently
+nothing for the rest. Neither file changed. Both are now right. **That is the
+tell worth remembering: a singular field in a plural domain does not fail
+loudly, it fails at a distance, in whoever filters it.**
+
+**Three: the tabs he asked for could not be clicked.** He did not want the
+streams interleaved on screen — he wanted a tab per service. But the panel was
+one enormous `<button>`, so a tab inside it was a button inside a button:
+invalid, and every tab click navigated to Services instead of switching stream.
+
+The first fix added an `interactive` flag to the widget definition and a second
+`WidgetOpenPanel` variant for widgets that needed to be touchable. Then the
+owner said he had never wanted the whole card to navigate in the first place —
+which deleted the flag one commit after it arrived. **`interactive` is not to be
+reintroduced.** It parameterised a question that turned out to have one answer
+for every widget on the page.
+
+There is one `WidgetPanel`, it is a `<div>`, and the header's arrow is the only
+thing that navigates. That stands on its own even without tabs: a card-sized
+click target wrapped around live content is a trap, because every row, count and
+timestamp in it looks clickable and does the same single thing — and selecting a
+log line threw you onto another page.
+
+**The tabs are `aria-pressed` buttons, deliberately not `role="tab"`.** A real
+tablist owes arrow-key navigation, a roving tabindex and a matching tabpanel. A
+half-built one announces all of that and then strands the reader; toggle buttons
+promise exactly what is there.
+
+**Agent got four tabs and no new request.** Skills / MCP / Plugins / Hooks.
+`use-home-agent-summary.ts` was already fetching `/api/agent` once — tens of
+kilobytes describing the whole agent — to read the detected agent's name and
+discard the rest; it keeps that profile in a ref now. The call stays unrepeated,
+because the dashboard's polling already runs near Chrome's six-connections-
+per-origin limit and a widget that re-fetched on every tab click would spend
+that budget on data it already had. MCP leads the four because it is the only
+one that can be *broken* — a skill is present or absent, a server is connected,
+degraded or failed — and Skills/Plugins/Hooks share one `Inventory` component so
+three lists of names cannot drift into three designs.
+
+### 7.12 The mode existed because the panel was a button, and the button was already gone
+
+The owner asked for two things in one line: let a panel scroll its own content,
+and stop making him enter a mode to arrange the page — keep the resize corner
+visible always, and put a drag handle near it.
+
+**The mode was a workaround that outlived its problem.** Customize did not exist
+because arranging a page is dangerous or rare. It existed because §7.11's panel
+was a `<button>` and a `<button>` may not contain one, so the controls had to
+live in a *different component* that was swapped in for the duration. Once the
+panel became a `<div>`, the mode was a door standing on its own in a field.
+Three things were wrong with keeping it:
+
+1. **Nobody finds it.** The single control revealing the entire feature sat in a
+   footer strip, below a full page of widgets.
+2. **It cost a re-request.** Swapping the element remounted every widget's
+   subtree, so entering and leaving the mode each made a `fetch` widget fetch
+   again — paid to satisfy a constraint that no longer existed.
+3. **It was a lie about state.** In one mode the handles were absent; in the
+   other, half the page's meaning was dimmed behind them.
+
+So the handles are on the panel, always, dimmed to the arrow's weight until the
+panel is hovered — which keeps the resting page exactly as quiet as it was, and
+means the page is arranged where it is read. `WidgetPanel` gained two slots,
+`controls` and `corner`, and still knows nothing about what goes in them: a
+widget author reading `widget-grid.tsx` should not find layout editing in it.
+
+**The drag moved from the cell to a handle, and had to.** The old gesture
+grabbed the whole cell and guessed — it ignored any press that landed on a
+button, on the theory that a control inside a draggable panel is still a
+control. A panel that is *always* draggable cannot guess, because the thing
+under the cursor is now usually a log line someone is selecting or a tab they
+are pressing. So there is a grip, and the guess is gone with it.
+
+**The chevrons folded into that grip rather than disappearing.** Two arrow
+buttons were the keyboard's version of reordering and the only version some
+people have; deleting them for a tidier header would have traded an
+accessibility floor for tidiness. The grip takes ArrowLeft/ArrowRight and does
+what they did, so one control says "move this" in both idioms — the same bargain
+the resize grip already struck, where the arrow-key steps are the units the drag
+snaps to.
+
+**What the height means changed, and only the second half of it.** A stored
+height clipped: past the boundary, content was simply gone. Sizing a panel is a
+statement about the page — how much room this gets — and the panel was reading
+it as a statement about the content — how much of this you may see. Those come
+apart the moment anything is taller than its box, so the content scrolls now
+(`WidgetScroll`), inside the same box, with the header and the resize grip
+staying put as siblings of the scroller rather than passengers in it. The packer
+is unaffected: the box is the height it always was.
+
+That change had a second half in the widgets. **A widget that hides its own
+overflow silently defeats the panel's scroll** — Logs' line list did, as a flex
+item with `overflow-hidden`, which let it shrink to whatever room was left and
+swallow the remaining lines. It looked identical to clipping because it *was*
+clipping, one level down. It now keeps its full height and lets the panel
+scroll. Only one widget had the pattern; any new one that reaches for
+`overflow-hidden` on a list is making the same mistake.
+
+**What this costs.** Every panel now carries three header controls and a corner
+grip where there were none, which is more marks on a page whose argument is that
+it is scannable — the fade is what pays for that, and it is a real trade rather
+than a free win. Remove is one dim click from happening by accident, mitigated
+only by the picker in the footer that puts the widget straight back. And a
+scrolled panel scrolls its tabs away with everything else, so a short Logs panel
+hides its own stream picker until you scroll up; pinning them would mean
+teaching the widget vocabulary the difference between content and content that
+stays, which is not worth it for one widget.
+
+**§8.4 collapsed rather than being solved.** The empty-page problem — remove
+every widget and the page has no way back — was answered by keeping an empty
+Home in edit mode. There is no edit mode, and the picker and Reset are in the
+footer at all times, so the recovery is wherever it always was and the special
+case is gone.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**
@@ -542,6 +694,8 @@ Worth being explicit that this is **not optional**. A Home page that is a 15th n
 **8.3 Scope.** Home is global. Repo-scoped widgets follow the existing repo picker and say which repo they are showing; under `projectScope: "all"` they render their grid form (§4).
 
 **8.4 Empty state.** Stage 2 lets a user remove every widget. The page then needs to be recoverable without clearing `localStorage` — a "reset to default layout" action in the edit mode, not just an empty canvas.
+
+*As built:* there is no edit mode to put it in (§7.12). Reset and the picker sit in the footer strip permanently, so the empty page is recoverable by the same control as the full one and this stopped being a special case rather than getting a special answer.
 
 **8.5 Unknown widget ids.** A saved layout naming a widget that no longer exists must be dropped silently on read, not rendered as an error. This is the same problem the extension registry has with a stored provider id, and it should fail the same quiet way.
 

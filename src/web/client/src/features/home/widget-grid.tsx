@@ -166,10 +166,17 @@ export function WidgetDragFrame({
  * `null` is fit-to-content — what every panel did before heights existed and
  * still the default, because how tall a summary needs to be is a fact about
  * what it is currently summarising, not a layout decision anyone should have to
- * make up front. A number is the user's answer, in row units, and it clips:
- * asking for less room than the content takes is a legitimate thing to mean,
- * and a panel that silently ignored it would be the resize that "does nothing"
- * all over again.
+ * make up front. A number is the user's answer, in row units, and it is
+ * enforced: asking for less room than the content takes is a legitimate thing
+ * to mean, and a panel that silently ignored it would be the resize that "does
+ * nothing" all over again.
+ *
+ * What that used to mean was *clipping*, and it no longer does — the content
+ * scrolls inside (`WidgetScroll`). The height still decides the box exactly as
+ * before, which is all the packer and the page care about; what changed is that
+ * the rest of the content is now reachable instead of destroyed. The
+ * `overflow-hidden` here stays regardless: it is what keeps the body a clean
+ * rectangle for the hairline under it, not a scroll policy.
  *
  * Whatever this box comes out as is what the packer stacks the page against, so
  * a panel ending early no longer leaves a hole: the next panel over rises into
@@ -210,6 +217,37 @@ export function WidgetPanelHeader({
 }
 
 /**
+ * The widget's own content, in a box that scrolls rather than clips.
+ *
+ * A height is an answer to "how much room does this get on my page", and the
+ * panel used to read it as "how much of this may I see" — anything past the
+ * stored height was cut off with nothing to say it was there. Those are
+ * different questions, and only the first one is what anyone means when they
+ * drag a corner: a Logs panel sized to eight rows is a decision about the page,
+ * not an instruction to throw away the ninth line.
+ *
+ * So the scroll lives here, on the content, rather than on `WidgetBody`. The
+ * header stays put while the content moves under it — a scrolled panel whose
+ * title had left the top of it would be a panel you cannot identify — and the
+ * resize grip, a sibling rather than a child, stays pinned to the corner it
+ * sizes instead of scrolling out of reach.
+ *
+ * `min-h-0` is what makes it work at all: a flex child's default `min-height:
+ * auto` refuses to shrink below its content, so without it the body would grow
+ * past the height it was given and the overflow would never happen. `flex-1`
+ * has nothing to distribute when the panel is fitting its content, which is why
+ * an unsized panel is unaffected by any of this.
+ */
+export function WidgetScroll({ children }: { children: ReactNode }) {
+  /* `gap-2` moves down with the content: these used to be `WidgetBody`'s own
+     children and spaced by its gap, and a wrapper that did not carry it would
+     close up every widget on the page. */
+  return (
+    <span className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">{children}</span>
+  );
+}
+
+/**
  * One widget's cell: header, then whatever the widget knows.
  *
  * The cell is a `<div>` and only the header arrow navigates. It used to be one
@@ -226,34 +264,63 @@ export function WidgetPanelHeader({
  * shows* — Logs' tab per service — are the intended kind; controls that act on
  * the world belong on the page the arrow opens.
  *
- * Edit mode still renders `WidgetEditPanel` instead of this, because its remove
- * and resize controls belong to Home rather than to the widget.
+ * **There is one panel, and it is always the editable one.** Home used to have
+ * a mode: a Customize button swapped every cell for a second component that
+ * carried the handles. That mode is gone (`home-edit.tsx`), so `controls` and
+ * `corner` are slots this fills every time it renders. It still knows nothing
+ * about what goes in them — arranging the page belongs to Home, and a widget
+ * author reading this file should not find layout editing in it.
  */
 export function WidgetPanel({
   children,
+  controls,
+  corner,
+  dragging,
   height,
   icon,
   id,
+  index,
   onOpen,
   openLabel,
   place,
+  row,
   title,
 }: {
   children: ReactNode;
+  /** Home's per-panel controls, beside the arrow. */
+  controls?: ReactNode;
+  /** Home's resize grip, pinned to the body's corner. */
+  corner?: ReactNode;
+  dragging?: boolean;
   height: number | null;
   icon: ReactNode;
   id: string;
+  /** Position within `row` — the drag's DOM contract, see below. */
+  index: number;
   onOpen: () => void;
   openLabel: string;
   place: PanelPlacement | undefined;
+  row: number;
   title: string;
 }) {
   return (
     <div
-      className={panelClassName()}
-      /* The id, not an empty marker: the masonry measures every cell it finds
-         here and needs to know which widget each measurement belongs to. */
+      className={cn(
+        panelClassName(),
+        // Dimmed, not hidden and not carried: the panel stays where it is so
+        // the page you are dropping onto is the page you were looking at.
+        dragging && "opacity-40 transition-opacity",
+      )}
+      /*
+        The whole DOM contract the move drag reads (`home-move.tsx`). The id is
+        also what the masonry keys each measurement by. Rows are not elements —
+        masonry lets a row's panels end at different depths, so row bands
+        overlap — which is why each panel carries the row it belongs to and the
+        drag hit-tests panels instead.
+      */
       data-widget-cell={id}
+      data-widget-index={index}
+      data-widget-row={row}
       style={panelStyle(place)}
     >
       <WidgetBody height={height}>
@@ -261,18 +328,22 @@ export function WidgetPanel({
           icon={icon}
           title={title}
           trailing={
-            <button
-              aria-label={openLabel}
-              className="ml-auto rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/widget:text-muted-foreground"
-              onClick={onOpen}
-              title={openLabel}
-              type="button"
-            >
-              <ArrowUpRight aria-hidden className="size-3" />
-            </button>
+            <span className="ml-auto flex items-center gap-0.5">
+              {controls}
+              <button
+                aria-label={openLabel}
+                className="rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/widget:text-muted-foreground"
+                onClick={onOpen}
+                title={openLabel}
+                type="button"
+              >
+                <ArrowUpRight aria-hidden className="size-3" />
+              </button>
+            </span>
           }
         />
-        {children}
+        <WidgetScroll>{children}</WidgetScroll>
+        {corner}
       </WidgetBody>
     </div>
   );

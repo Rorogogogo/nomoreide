@@ -4,7 +4,7 @@ import { useSettings } from "@/features/settings/settings-context";
 import type { HomeLayout } from "@/features/settings/ui-preferences";
 import type { DashboardData } from "@/lib/api/services-api";
 import { useT } from "@/lib/i18n";
-import { HomeEditControls, WidgetEditPanel } from "./home-edit";
+import { HomeEditControls, WidgetControls } from "./home-edit";
 import {
   addWidget,
   hiddenWidgets,
@@ -17,8 +17,8 @@ import {
 } from "./home-layout";
 import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
-import { WidgetDragFrame, WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
-import type { ResizeFrame } from "./widget-resize";
+import { WidgetDragFrame, WidgetGrid, WidgetPanel } from "./widget-grid";
+import { WidgetResizeGrip, type ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
 
 /**
@@ -33,6 +33,13 @@ import { WIDGETS } from "./widget-registry";
  * back, and hands edits straight back to preferences — there is no draft state,
  * so a change is saved the moment it is made and closing the tab mid-edit loses
  * nothing.
+ *
+ * There is also no edit *mode* (`home-edit.tsx`): every panel carries its own
+ * handles, so this renders one kind of panel and holds no state but the drag
+ * frame. That collapsed the empty-page problem §8.4 raised, rather than solving
+ * it — the picker and Reset are in the footer at all times, so removing the last
+ * widget leaves the way back exactly where it always was instead of stranding a
+ * page whose only recovery was clearing `localStorage`.
  */
 export function HomeView({
   data,
@@ -45,7 +52,6 @@ export function HomeView({
 }) {
   const t = useT();
   const { ui, updateUi } = useSettings();
-  const [editRequested, setEditRequested] = useState(false);
   /*
     The size under the cursor mid-drag, which is not yet anyone's preference —
     and, deliberately, not yet anyone's layout either. The page holds still
@@ -65,12 +71,6 @@ export function HomeView({
     hole open under itself for the height of the tallest thing beside it.
   */
   const { boxes, grid, height: gridHeight } = useHomeMasonry(rows);
-  /*
-    §8.4: removing the last widget must not strand the page. An empty Home
-    stays in edit mode, so the picker and Reset are always within reach without
-    anyone having to know that clearing `localStorage` is the way out.
-  */
-  const editing = editRequested || rows.length === 0;
 
   const apply = (next: HomeLayout) => {
     updateUi({ home: next });
@@ -101,61 +101,50 @@ export function HomeView({
             neighbour, and for a `fetch` widget a remount is a re-request.
           */}
           {rows.flatMap((row, rowIndex) =>
-            row.widgets.map(({ height, span, widget }, index) =>
-              editing ? (
-                <WidgetEditPanel
-                  canMoveEarlier={rowIndex > 0 || index > 0}
-                  canMoveLater={rowIndex < rows.length - 1 || index < row.widgets.length - 1}
-                  dragging={move?.id === widget.id}
-                  height={height}
-                  icon={widget.icon}
-                  id={widget.id}
-                  index={index}
-                  key={widget.id}
-                  onFrame={setFrame}
-                  onGrab={grab(widget.id, t(widget.titleKey))}
-                  onMove={(delta) => apply(nudgeWidget(WIDGETS, layout, widget.id, delta))}
-                  onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
-                  onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
-                  place={boxes.get(widget.id)}
-                  resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
-                  row={rowIndex}
-                  span={span}
-                  title={t(widget.titleKey)}
-                >
-                  {widget.render({ data })}
-                </WidgetEditPanel>
-              ) : (
-                <WidgetPanel
-                  height={height}
-                  icon={widget.icon}
-                  id={widget.id}
-                  key={widget.id}
-                  onOpen={() => onOpen(widget.page)}
-                  openLabel={t("home.open", { title: t(widget.titleKey) })}
-                  place={boxes.get(widget.id)}
-                  title={t(widget.titleKey)}
-                >
-                  {widget.render({ data })}
-                </WidgetPanel>
-              ),
-            ),
+            row.widgets.map(({ height, span, widget }, index) => (
+              <WidgetPanel
+                controls={
+                  <WidgetControls
+                    onGrab={grab(widget.id, t(widget.titleKey))}
+                    onNudge={(delta) => apply(nudgeWidget(WIDGETS, layout, widget.id, delta))}
+                    onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
+                    title={t(widget.titleKey)}
+                  />
+                }
+                corner={
+                  <WidgetResizeGrip
+                    height={height}
+                    onFrame={setFrame}
+                    onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
+                    resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
+                    span={span}
+                    title={t(widget.titleKey)}
+                  />
+                }
+                dragging={move?.id === widget.id}
+                height={height}
+                icon={widget.icon}
+                id={widget.id}
+                index={index}
+                key={widget.id}
+                onOpen={() => onOpen(widget.page)}
+                openLabel={t("home.open", { title: t(widget.titleKey) })}
+                place={boxes.get(widget.id)}
+                row={rowIndex}
+                title={t(widget.titleKey)}
+              >
+                {widget.render({ data })}
+              </WidgetPanel>
+            )),
           )}
         </WidgetGrid>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
-        {editing ? (
-          <WidgetNote>{t("home.edit.hint")}</WidgetNote>
-        ) : scopeName ? (
-          <span>{t("home.scopedTo", { name: scopeName })}</span>
-        ) : null}
+        {scopeName ? <span>{t("home.scopedTo", { name: scopeName })}</span> : null}
         <span className="ml-auto">
           <HomeEditControls
-            editing={editing}
             hidden={hidden}
             onAdd={(id) => apply(addWidget(WIDGETS, layout, id))}
-            onEdit={() => setEditRequested(true)}
-            onFinish={() => setEditRequested(false)}
             onReset={() => {
               // Back to the registry, not to a stored copy of it: `null` means
               // "never customised", so a widget shipped later shows up again.

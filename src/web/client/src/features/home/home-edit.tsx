@@ -1,11 +1,8 @@
-import { ChevronLeft, ChevronRight, Plus, RotateCcw, X } from "lucide-react";
-import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { GripVertical, Plus, RotateCcw, X } from "lucide-react";
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import type { PanelPlacement } from "./home-pack";
-import { panelClassName, panelStyle, WidgetBody, WidgetPanelHeader } from "./widget-grid";
-import { WidgetResizeGrip, type ResizeFrame, type WidgetSize } from "./widget-resize";
-import type { WidgetDefinition, WidgetSpan } from "./widget-types";
+import type { WidgetDefinition } from "./widget-types";
 
 /**
  * Home's edit surface — stage 2 of
@@ -13,219 +10,165 @@ import type { WidgetDefinition, WidgetSpan } from "./widget-types";
  *
  * It lives beside the grid rather than inside it because the two have opposite
  * jobs: `widget-grid.tsx` is the vocabulary a widget author writes in, and
- * nothing here is available to a widget. A widget still cannot own a control —
- * these controls belong to the *page*, and they exist only while editing.
+ * nothing here is available to a widget. These controls belong to the *page*.
  *
- * Nothing here is a dialog, and only one thing is a drag. Reordering is a
- * permutation of a flowing list, so two arrows say everything a drag surface
- * would and work from the keyboard for free; a size is a rectangle, so it is
- * dragged (`widget-resize.tsx`) because a rectangle is not a number anyone
- * should have to type.
+ * **What changed: there is no longer a mode.** Arranging Home used to be
+ * somewhere you went — a Customize button in the footer swapped every cell for
+ * a second panel component that carried the handles, and a Done button swapped
+ * them back. Three things were wrong with that, and the third is what settled
+ * it:
+ *
+ * 1. Nobody found it. The one control that revealed the whole feature sat in a
+ *    footer strip, under the fold of a full page of widgets.
+ * 2. Swapping the element remounted every widget's subtree, so entering and
+ *    leaving the mode each cost a `fetch` widget a re-request — a price paid
+ *    for a mode that existed only to make controls legal.
+ * 3. The mode was never the reason the controls were hidden. It stood in for a
+ *    layout constraint: the panel was a `<button>`, so it could not legally
+ *    contain one. That constraint is gone, and a mode invented to work around
+ *    it had nothing left to justify it.
+ *
+ * So the handles are simply on the panel, all the time, dimmed until the panel
+ * is hovered — the same treatment the arrow already had. The page is arranged
+ * where it is read, and there is no state in which a control lies about what it
+ * will do.
+ *
+ * Only one thing here is a drag. A size is a rectangle, so it is dragged
+ * (`widget-resize.tsx`); a position is a place on the page, so it is dragged
+ * too (`home-move.tsx`) — but both answer to arrow keys from their handle,
+ * because a page arrangeable only by mouse is arrangeable by only some people.
  */
 
 const CONTROL =
   "flex cursor-pointer items-center rounded-sm p-0.5 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default disabled:opacity-30 [&_svg]:size-3";
 
 /**
- * A widget's cell while the layout is being edited: the same cell, drawn as a
- * `<div>` so it can legally hold the controls a `<button>` could not.
+ * Quiet until you are looking at the panel.
  *
- * Swapping the element remounts the widget's own subtree, so a `fetch`-source
- * widget re-requests once on entering and once on leaving edit mode. That is
- * the honest price of the constraint and a fair one — editing is a thing you do
- * for ten seconds, not a mode you sit in.
+ * Every panel carries these now, so at rest they are three more marks on a page
+ * whose whole argument is that it is scannable. Fading them to the arrow's
+ * weight keeps the resting page exactly as quiet as it was before the mode went
+ * away, and hovering a panel is already how you find out it is interactive.
+ * Focus is unaffected — a keyboard user tabbing here gets the ring and the full
+ * contrast, because for them "hover" never arrives.
  */
-export function WidgetEditPanel({
-  children,
-  canMoveEarlier,
-  canMoveLater,
-  dragging,
-  height,
-  icon,
-  id,
-  index,
-  onFrame,
+const DIMMED = "text-muted-foreground/40 group-hover/widget:text-muted-foreground";
+
+/**
+ * The per-panel handles: move it, or take it off the page.
+ *
+ * Deliberately *not* a widget-facing component — it is passed into
+ * `WidgetPanel`'s `controls` slot by Home, which is the only thing that knows a
+ * layout exists.
+ *
+ * The resize grip is not here because it is not in the header: it belongs on
+ * the corner it sizes, which is the body's, and it goes in the `corner` slot.
+ */
+export function WidgetControls({
   onGrab,
-  onMove,
+  onNudge,
   onRemove,
-  onSize,
-  place,
-  resolveSpan,
-  row,
-  span,
   title,
 }: {
-  children: ReactNode;
-  canMoveEarlier: boolean;
-  canMoveLater: boolean;
-  dragging: boolean;
-  height: number | null;
-  icon: ReactNode;
-  id: string;
-  /** Position within `row`, for a drop that means "beside this one". */
-  index: number;
-  onFrame: (frame: ResizeFrame | null) => void;
   onGrab: (event: ReactPointerEvent<HTMLElement>) => void;
-  onMove: (delta: -1 | 1) => void;
+  onNudge: (delta: -1 | 1) => void;
   onRemove: () => void;
-  onSize: (size: WidgetSize) => void;
-  place: PanelPlacement | undefined;
-  resolveSpan: (span: WidgetSpan) => WidgetSpan;
-  /** Which stored row this panel belongs to — see the note on the attributes. */
-  row: number;
-  span: WidgetSpan;
   title: string;
 }) {
   const t = useT();
+  const drag = t("home.edit.drag", { name: title });
+
+  /*
+    The arrows that used to be two more buttons in this header.
+
+    A drag says *there* in a way "one place earlier" cannot, so it is the
+    gesture the handle is shaped for — but it is also a gesture with no keyboard
+    equivalent, and losing reordering entirely is not an acceptable price for a
+    tidier header. Folding the steps into the handle keeps both: the thing you
+    grab is the thing you focus, and one control now says "move this" in either
+    idiom instead of three controls splitting the job.
+  */
+  const keys = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const delta = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+    if (!delta) return;
+    event.preventDefault();
+    onNudge(delta);
+  };
+
   return (
-    <div
-      className={cn(
-        panelClassName(),
-        "cursor-grab bg-muted/10 transition-opacity",
-        // Dimmed, not hidden and not carried: the panel stays where it is so
-        // the page you are dropping onto is the page you were looking at.
-        dragging && "opacity-40",
-      )}
-      /*
-        The whole DOM contract the move drag reads (`home-move.tsx`). Rows are
-        no longer elements — masonry means a row's panels can end at different
-        depths and are not a contiguous band of the page — so each panel carries
-        the row it belongs to instead. The drag finds the panel under the cursor
-        and asks *it* which row it is in, which is unambiguous in a way hit-
-        testing overlapping row bands would not be.
-      */
-      data-widget-cell={id}
-      data-widget-index={index}
-      data-widget-row={row}
-      onPointerDown={onGrab}
-      style={panelStyle(place)}
-    >
-      <WidgetBody height={height}>
-        <WidgetPanelHeader
-          icon={icon}
-          title={title}
-          trailing={
-            <span className="ml-auto flex items-center gap-0.5">
-              <button
-                aria-label={t("home.edit.moveEarlier", { name: title })}
-                className={CONTROL}
-                disabled={!canMoveEarlier}
-                onClick={() => onMove(-1)}
-                title={t("home.edit.moveEarlier", { name: title })}
-                type="button"
-              >
-                <ChevronLeft aria-hidden />
-              </button>
-              <button
-                aria-label={t("home.edit.moveLater", { name: title })}
-                className={CONTROL}
-                disabled={!canMoveLater}
-                onClick={() => onMove(1)}
-                title={t("home.edit.moveLater", { name: title })}
-                type="button"
-              >
-                <ChevronRight aria-hidden />
-              </button>
-              <button
-                aria-label={t("home.edit.remove", { name: title })}
-                className={cn(CONTROL, "hover:text-red-500")}
-                onClick={onRemove}
-                title={t("home.edit.remove", { name: title })}
-                type="button"
-              >
-                <X aria-hidden />
-              </button>
-            </span>
-          }
-        />
-        {/*
-          Still showing what it shows. Arranging a page of placeholders is
-          arranging the wrong page — you pick a size by looking at what sits in
-          it, which is exactly the question the Conversations panel raised.
-        */}
-        <span className="opacity-70">{children}</span>
-        {/*
-          Inside the body, because the body is the box a height sizes: the grip
-          belongs on the corner you are about to move, not on the bottom of a
-          cell that stretched to fit a taller neighbour.
-        */}
-        <WidgetResizeGrip
-          height={height}
-          onFrame={onFrame}
-          onSize={onSize}
-          resolveSpan={resolveSpan}
-          span={span}
-          title={title}
-        />
-      </WidgetBody>
-    </div>
+    <>
+      <button
+        aria-label={drag}
+        /* `touch-none` so a drag on a touchpad or tablet is a drag and not the
+           page scrolling underneath it, matching the resize grip. */
+        className={cn(CONTROL, DIMMED, "cursor-grab touch-none")}
+        onKeyDown={keys}
+        onPointerDown={onGrab}
+        title={drag}
+        type="button"
+      >
+        <GripVertical aria-hidden />
+      </button>
+      <button
+        aria-label={t("home.edit.remove", { name: title })}
+        className={cn(CONTROL, DIMMED, "hover:text-red-500")}
+        onClick={onRemove}
+        title={t("home.edit.remove", { name: title })}
+        type="button"
+      >
+        <X aria-hidden />
+      </button>
+    </>
   );
 }
 
 /**
- * The footer strip: the page's own controls, kept off the top of the page.
+ * The footer strip: the two controls that are about the page rather than about
+ * any one panel — what is missing from it, and starting over.
  *
  * Home is full-bleed by design (`DESIGN.md`) and a toolbar above the grid would
  * be the first thing you read every visit, to serve the rarest thing you do.
  * The strip is already there for the scope note.
+ *
+ * It no longer gates anything: with the mode gone there is no Customize to
+ * press and no Done to remember, so what is left is a picker that shows only
+ * when something is off the page, and Reset. Nothing is announced when every
+ * widget is shown — an empty picker needs no sentence explaining that it is
+ * empty.
  */
 export function HomeEditControls({
-  editing,
   hidden,
   onAdd,
-  onEdit,
-  onFinish,
   onReset,
 }: {
-  editing: boolean;
   hidden: WidgetDefinition[];
   onAdd: (id: string) => void;
-  onEdit: () => void;
-  onFinish: () => void;
   onReset: () => void;
 }) {
   const t = useT();
 
-  if (!editing) {
-    return (
-      <button className={cn(CONTROL, "px-1.5 py-0.5 text-[11px]")} onClick={onEdit} type="button">
-        {t("home.edit.customize")}
-      </button>
-    );
-  }
-
   return (
     <span className="flex flex-wrap items-center justify-end gap-1">
-      {hidden.length === 0 ? (
-        <span className="pr-1 text-[11px] text-muted-foreground/70">{t("home.edit.allShown")}</span>
-      ) : (
-        hidden.map((widget) => (
-          <button
-            className={cn(CONTROL, "gap-1 px-1.5 py-0.5 text-[11px]")}
-            key={widget.id}
-            onClick={() => onAdd(widget.id)}
-            title={t("home.edit.add", { name: t(widget.titleKey) })}
-            type="button"
-          >
-            <Plus aria-hidden />
-            {t(widget.titleKey)}
-          </button>
-        ))
-      )}
+      {hidden.map((widget) => (
+        <button
+          className={cn(CONTROL, "gap-1 px-1.5 py-0.5 text-[11px]")}
+          key={widget.id}
+          onClick={() => onAdd(widget.id)}
+          title={t("home.edit.add", { name: t(widget.titleKey) })}
+          type="button"
+        >
+          <Plus aria-hidden />
+          {t(widget.titleKey)}
+        </button>
+      ))}
       <button
         className={cn(CONTROL, "gap-1 px-1.5 py-0.5 text-[11px]")}
         onClick={onReset}
+        title={t("home.edit.reset")}
         type="button"
       >
         <RotateCcw aria-hidden />
         {t("home.edit.reset")}
-      </button>
-      <button
-        className={cn(CONTROL, "px-1.5 py-0.5 text-[11px] text-foreground")}
-        onClick={onFinish}
-        type="button"
-      >
-        {t("home.edit.done")}
       </button>
     </span>
   );
