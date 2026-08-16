@@ -71,5 +71,22 @@ export interface WidgetDefinition {
    * summary, and the page is the real thing.
    */
   page: AppPage;
+  /**
+   * Whether this widget holds controls of its own.
+   *
+   * Normally it must not: `WidgetPanel` is a single `<button>`, so a control
+   * inside it would be invalid HTML and unreachable by keyboard, and a widget
+   * that grows its own buttons has started becoming a second, drifting copy of
+   * the page it summarises. That rule stands for every widget that can state
+   * its summary in one view.
+   *
+   * The exception is a widget whose summary is genuinely plural — Logs has one
+   * stream per running service, and picking between them is not something a
+   * static panel can express. Declaring this swaps the element for a `<div>`
+   * whose header arrow is the button instead, exactly as edit mode already
+   * swaps in `WidgetEditPanel`. The cost is that the card body no longer opens
+   * the page, which is why this is opt-in per widget rather than the default.
+   */
+  interactive?: true;
   render(props: WidgetRenderProps): ReactNode;
 }

@@ -7,72 +7,102 @@ import { LogStore } from "../src/core/log-store.js";
 import { ProcessManager } from "../src/core/process-manager.js";
 import { TimelineStore } from "../src/core/timeline-store.js";
 import type { LogEntry } from "../src/core/types.js";
-import { buildDashboardPayload, mostRecentServiceLogs } from "../src/web/dashboard.js";
+import { buildDashboardPayload, mergeServiceLogs } from "../src/web/dashboard.js";
 
 /**
- * The Output panel's source rule.
+ * The Logs panel's source.
  *
  * It used to be `config.services[0]`, which is registration order — arbitrary,
  * and on a real machine (nineteen services registered, two running) it pinned
- * the panel to a service that had never started while two others were talking.
- * These cover the rule that replaced it: whoever spoke last wins.
+ * the panel to a service that had never started. Fixing that to "whoever spoke
+ * last" then hid the *other* running service, because two of them booted 200ms
+ * apart. The payload now carries every service, and the panel tabs between them.
  */
 
 function line(service: string, timestamp: string, text = "x"): LogEntry {
   return { service, stream: "stdout", text, timestamp };
 }
 
-describe("mostRecentServiceLogs", () => {
-  test("picks the service whose last line is newest, not the first registered", () => {
+describe("mergeServiceLogs", () => {
+  test("carries every service, not just one", () => {
     const logs = new Map([
-      ["registered-first", [line("registered-first", "2026-08-16T10:00:00.000Z")]],
-      ["spoke-last", [line("spoke-last", "2026-08-16T12:00:00.000Z")]],
+      ["alpha", [line("alpha", "2026-08-16T10:00:00.000Z")]],
+      ["beta", [line("beta", "2026-08-16T12:00:00.000Z")]],
     ]);
 
-    expect(mostRecentServiceLogs(logs).map((entry) => entry.service)).toEqual(["spoke-last"]);
+    expect(new Set(mergeServiceLogs(logs).map((entry) => entry.service))).toEqual(
+      new Set(["alpha", "beta"]),
+    );
   });
 
-  test("skips services with empty buffers rather than picking one", () => {
+  test("interleaves chronologically so a reader can follow the sequence", () => {
+    const logs = new Map([
+      [
+        "alpha",
+        [
+          line("alpha", "2026-08-16T10:00:00.000Z", "a1"),
+          line("alpha", "2026-08-16T10:00:02.000Z", "a2"),
+        ],
+      ],
+      ["beta", [line("beta", "2026-08-16T10:00:01.000Z", "b1")]],
+    ]);
+
+    expect(mergeServiceLogs(logs).map((entry) => entry.text)).toEqual(["a1", "b1", "a2"]);
+  });
+
+  test("keeps a service's own lines in order when a burst shares a millisecond", () => {
+    const at = "2026-08-16T10:00:00.000Z";
+    const logs = new Map([
+      ["alpha", [line("alpha", at, "first"), line("alpha", at, "second"), line("alpha", at, "third")]],
+    ]);
+
+    expect(mergeServiceLogs(logs).map((entry) => entry.text)).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+  });
+
+  test("does not let a silent service contribute anything", () => {
     const logs = new Map([
       ["never-started", []],
       ["running", [line("running", "2026-08-16T09:00:00.000Z")]],
     ]);
 
-    expect(mostRecentServiceLogs(logs).map((entry) => entry.service)).toEqual(["running"]);
+    expect(mergeServiceLogs(logs).map((entry) => entry.service)).toEqual(["running"]);
   });
 
-  test("returns the whole tail of the winner, in order", () => {
+  test("caps each service's contribution so one chatty service cannot crowd out another", () => {
+    const chatty = Array.from({ length: 200 }, (_, index) =>
+      line("chatty", `2026-08-16T10:${String(index % 60).padStart(2, "0")}:00.000Z`),
+    );
     const logs = new Map([
-      ["quiet", [line("quiet", "2026-08-16T08:00:00.000Z")]],
-      [
-        "loud",
-        [
-          line("loud", "2026-08-16T11:00:00.000Z", "first"),
-          line("loud", "2026-08-16T11:00:01.000Z", "second"),
-        ],
-      ],
+      ["chatty", chatty],
+      ["quiet", [line("quiet", "2026-08-16T09:00:00.000Z")]],
     ]);
 
-    expect(mostRecentServiceLogs(logs).map((entry) => entry.text)).toEqual(["first", "second"]);
+    const merged = mergeServiceLogs(logs);
+    expect(merged.filter((entry) => entry.service === "chatty")).toHaveLength(40);
+    expect(merged.filter((entry) => entry.service === "quiet")).toHaveLength(1);
   });
 
   test("is empty when nothing has logged, so the panel shows its empty state", () => {
-    expect(mostRecentServiceLogs(new Map([["a", []], ["b", []]]))).toEqual([]);
+    expect(mergeServiceLogs(new Map([["a", []], ["b", []]]))).toEqual([]);
   });
 
   test("is empty when no services are registered at all", () => {
-    expect(mostRecentServiceLogs(new Map())).toEqual([]);
+    expect(mergeServiceLogs(new Map())).toEqual([]);
   });
 
-  test("compares timestamps chronologically across a date boundary", () => {
+  test("orders across a date boundary chronologically", () => {
     // Lexical string comparison is only safe because LogStore writes every
     // timestamp with toISOString() — same width, same UTC offset.
     const logs = new Map([
-      ["yesterday", [line("yesterday", "2026-08-15T23:59:59.000Z")]],
       ["today", [line("today", "2026-08-16T00:00:00.000Z")]],
+      ["yesterday", [line("yesterday", "2026-08-15T23:59:59.000Z")]],
     ]);
 
-    expect(mostRecentServiceLogs(logs).map((entry) => entry.service)).toEqual(["today"]);
+    expect(mergeServiceLogs(logs).map((entry) => entry.service)).toEqual(["yesterday", "today"]);
   });
 });
 
@@ -116,8 +146,8 @@ describe("buildDashboardPayload logs", () => {
     });
   }
 
-  test("carries the talking service's tail, not the silent first-registered one", async () => {
-    // Registration order is the trap: `quiet` is services[0] and never speaks.
+  test("carries a talking service even when the first-registered one is silent", async () => {
+    // Registration order is the original trap: `quiet` is services[0].
     await configStore.registerService({ name: "quiet", command: "true", cwd: tempDir });
     await configStore.registerService({ name: "chatty", command: "true", cwd: tempDir });
     await logStore.append("chatty", "stdout", "listening on :5174");
@@ -125,18 +155,30 @@ describe("buildDashboardPayload logs", () => {
     const payload = await build();
 
     expect(payload.logs.map((entry) => entry.text)).toEqual(["listening on :5174"]);
-    expect(payload.logs.every((entry) => entry.service === "chatty")).toBe(true);
   });
 
-  test("follows whichever service spoke last as output arrives", async () => {
+  test("carries both services when both are running", async () => {
+    await configStore.registerService({ name: "web", command: "true", cwd: tempDir });
+    await configStore.registerService({ name: "api", command: "true", cwd: tempDir });
+    await logStore.append("web", "stdout", "web up");
+    await logStore.append("api", "stdout", "api up");
+
+    const payload = await build();
+
+    expect(new Set(payload.logs.map((entry) => entry.service))).toEqual(new Set(["web", "api"]));
+  });
+
+  test("keeps a service visible after another one speaks later", async () => {
     await configStore.registerService({ name: "alpha", command: "true", cwd: tempDir });
     await configStore.registerService({ name: "beta", command: "true", cwd: tempDir });
 
     await logStore.append("alpha", "stdout", "alpha up");
-    expect((await build()).logs.at(-1)?.service).toBe("alpha");
-
     await logStore.append("beta", "stderr", "beta crashed");
-    expect((await build()).logs.at(-1)?.service).toBe("beta");
+
+    const payload = await build();
+
+    // The bug this replaced: beta speaking last made alpha disappear entirely.
+    expect(payload.logs.map((entry) => entry.service)).toEqual(["alpha", "beta"]);
   });
 
   test("is empty when no service has logged yet", async () => {

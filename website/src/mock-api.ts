@@ -2681,7 +2681,12 @@ function dashboard(): DashboardData {
         detail: "Mock git status loaded from website data.",
       },
     ],
-    logs: logs("api"),
+    /* Both services, interleaved — the real payload carries every service's
+       tail so the Logs widget can offer a tab per service. One service here
+       would demo a tabless panel. */
+    logs: [...logs("api"), ...logs("worker")].sort((a, b) =>
+      a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0,
+    ),
     git: {
       cwd: "/Users/demo/projects/acme",
       selectedRepository: { name: "acme", path: "/Users/demo/projects/acme" },
@@ -2700,11 +2705,13 @@ function logs(service: string): LogEntry[] {
     "GET /api/dashboard 200 22ms",
     "using placeholder DATABASE_URL for website mock",
     "git diff loaded from static mock",
-  ].map((textValue, index) => ({
+  ].map((textValue, index, all) => ({
     service,
     stream: index === 2 ? "stderr" : "stdout",
     text: `[${service}] ${textValue}`,
-    timestamp: new Date(Date.now() - index * 9000).toISOString(),
+    /* Oldest first, like the real ring buffer — a panel that reads the tail of
+       this array should get the newest lines, not the first four. */
+    timestamp: new Date(Date.now() - (all.length - 1 - index) * 9000).toISOString(),
   }));
 }
 

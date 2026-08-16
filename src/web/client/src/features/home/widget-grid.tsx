@@ -274,6 +274,108 @@ export function WidgetPanel({
 }
 
 /**
+ * The same cell for a widget that declares `interactive` — a `<div>`, so the
+ * widget may hold controls of its own.
+ *
+ * The trade is deliberate and narrow: the body no longer opens the page, so the
+ * header arrow becomes the real button and carries the label the whole panel
+ * used to carry. Everything else — the class, the measured `data-widget-cell`,
+ * the placement — is identical, because the masonry must not be able to tell
+ * the two apart.
+ *
+ * `WidgetPanel` remains the default and its no-controls rule still holds. See
+ * `interactive` in `widget-types.ts` for when a widget has earned this.
+ */
+export function WidgetOpenPanel({
+  children,
+  height,
+  icon,
+  id,
+  onOpen,
+  openLabel,
+  place,
+  title,
+}: {
+  children: ReactNode;
+  height: number | null;
+  icon: ReactNode;
+  id: string;
+  onOpen: () => void;
+  openLabel: string;
+  place: PanelPlacement | undefined;
+  title: string;
+}) {
+  return (
+    <div
+      className={cn(panelClassName(), "transition-colors")}
+      data-widget-cell={id}
+      style={panelStyle(place)}
+    >
+      <WidgetBody height={height}>
+        <WidgetPanelHeader
+          icon={icon}
+          title={title}
+          trailing={
+            <button
+              aria-label={openLabel}
+              className="ml-auto rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={onOpen}
+              title={openLabel}
+              type="button"
+            >
+              <ArrowUpRight aria-hidden className="size-3" />
+            </button>
+          }
+        />
+        {children}
+      </WidgetBody>
+    </div>
+  );
+}
+
+/**
+ * A row of choices along a hairline — `DESIGN.md`'s "lines, not boxes", so the
+ * selected one is marked by the rule thickening under it rather than by a
+ * filled pill.
+ *
+ * These are toggle buttons rather than `role="tab"`: real tabs owe the reader
+ * arrow-key navigation and a roving tabindex, and a half-built tablist reads
+ * worse to a screen reader than honest buttons do. `aria-pressed` says exactly
+ * what is true — one of these is currently chosen.
+ */
+export function WidgetTabs({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex flex-wrap items-center gap-3 border-b border-border">{children}</span>
+  );
+}
+
+export function WidgetTab({
+  active,
+  children,
+  onSelect,
+}: {
+  active: boolean;
+  children: ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={active}
+      className={cn(
+        "-mb-px border-b pb-1 font-mono text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active
+          ? "border-foreground text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+      onClick={onSelect}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
  * The counters a widget leads with, split by hairlines rather than tiled —
  * `DESIGN.md` again, and the reason nothing here is 24px: a dashboard number is
  * read against its neighbours, so three 13px figures beat one large one.

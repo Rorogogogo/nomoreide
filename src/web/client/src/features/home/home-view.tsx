@@ -17,7 +17,13 @@ import {
 } from "./home-layout";
 import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
-import { WidgetDragFrame, WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
+import {
+  WidgetDragFrame,
+  WidgetGrid,
+  WidgetNote,
+  WidgetOpenPanel,
+  WidgetPanel,
+} from "./widget-grid";
 import type { ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
 
@@ -101,8 +107,11 @@ export function HomeView({
             neighbour, and for a `fetch` widget a remount is a re-request.
           */}
           {rows.flatMap((row, rowIndex) =>
-            row.widgets.map(({ height, span, widget }, index) =>
-              editing ? (
+            row.widgets.map(({ height, span, widget }, index) => {
+              /* Same props either way — the only difference is which element the
+                 cell is, which is the widget's own declaration to make. */
+              const Panel = widget.interactive ? WidgetOpenPanel : WidgetPanel;
+              return editing ? (
                 <WidgetEditPanel
                   canMoveEarlier={rowIndex > 0 || index > 0}
                   canMoveLater={rowIndex < rows.length - 1 || index < row.widgets.length - 1}
@@ -126,7 +135,7 @@ export function HomeView({
                   {widget.render({ data })}
                 </WidgetEditPanel>
               ) : (
-                <WidgetPanel
+                <Panel
                   height={height}
                   icon={widget.icon}
                   id={widget.id}
@@ -137,9 +146,9 @@ export function HomeView({
                   title={t(widget.titleKey)}
                 >
                   {widget.render({ data })}
-                </WidgetPanel>
-              ),
-            ),
+                </Panel>
+              );
+            }),
           )}
         </WidgetGrid>
       )}

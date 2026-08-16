@@ -17,11 +17,18 @@ import type {
   TimelineEvent,
 } from "../core/types.js";
 
-/**
- * How much of each service's tail the dashboard carries. One number because
- * health and the Output panel read the same buffer — see `readServiceLogs`.
- */
+/** How much of each service's tail health reasons over. */
 const LOG_TAIL = 80;
+
+/**
+ * How much of each service's tail rides along in the payload.
+ *
+ * Shorter than what health reads, because this one is multiplied by every
+ * service that has ever logged and goes over the wire on every poll. Forty
+ * lines is more than the Logs panel shows and more than the agent context
+ * quotes, so nothing downstream is short of material.
+ */
+const PAYLOAD_TAIL = 40;
 
 export async function buildDashboardPayload(options: {
   configStore: ConfigStore;
@@ -78,7 +85,7 @@ export async function buildDashboardPayload(options: {
     ports,
     health,
     timeline,
-    logs: mostRecentServiceLogs(serviceLogs),
+    logs: mergeServiceLogs(serviceLogs),
     git: {
       cwd: gitCwd,
       selectedRepository: selectedGitRepository ?? null,
@@ -119,30 +126,27 @@ function readServiceLogs(
 }
 
 /**
- * Whichever service spoke most recently.
+ * Every service's tail, in one chronological list.
  *
- * The panel promises "the last thing a service said", and `services[0]` is not
- * that — registration order is arbitrary. On a machine with nineteen services
- * registered and two running it was a one-in-nineteen guess, and it lost:
- * the panel sat empty on a never-started service while two others were talking.
+ * This field used to carry a single service — `config.services[0]`, which is
+ * registration order and therefore arbitrary. It meant the Logs panel could
+ * only ever show one service, and *which* one came down to a race: two services
+ * started 200ms apart, and the later one hid the other completely.
  *
- * Recency needs no tie-break and follows what is actually running for free,
- * since a stopped service stops adding lines. Timestamps are compared as
- * strings because `LogStore` writes them all as `toISOString()` — same length,
- * same UTC offset, so lexical order is chronological order.
+ * Carrying all of them lets the panel offer a tab per service and lets the
+ * agent context quote whichever service is being asked about, without either
+ * needing a request of its own. Consumers that want one service filter by
+ * `entry.service` — `project-scope.ts` already did.
+ *
+ * Timestamps are compared as strings because `LogStore` writes them all with
+ * `toISOString()` — same width, same UTC offset, so lexical order is
+ * chronological order. The sort is stable, so a service's own lines keep their
+ * relative order even when a burst shares a millisecond.
  */
-export function mostRecentServiceLogs(serviceLogs: Map<string, LogEntry[]>): LogEntry[] {
-  let latest: LogEntry[] = [];
-  let latestAt = "";
-  for (const lines of serviceLogs.values()) {
-    const last = lines.at(-1);
-    if (!last) continue;
-    if (last.timestamp > latestAt) {
-      latestAt = last.timestamp;
-      latest = lines;
-    }
-  }
-  return latest;
+export function mergeServiceLogs(serviceLogs: Map<string, LogEntry[]>): LogEntry[] {
+  return [...serviceLogs.values()]
+    .flatMap((lines) => lines.slice(-PAYLOAD_TAIL))
+    .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
 }
 
 function buildHealthOverview(options: {
