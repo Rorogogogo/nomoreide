@@ -57,13 +57,16 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
     if (!container) return;
     const width = container.getBoundingClientRect().width;
     const measured: Record<string, number> = {};
-    for (const cell of container.querySelectorAll<HTMLElement>("[data-widget-cell]")) {
-      const id = cell.dataset.widgetCell;
+    // The body, not the cell. The cell wears the packed height — including the
+    // pixels a panel was stretched by to come level with its neighbour — so
+    // measuring it would be reading our own answer back in as a question.
+    for (const body of container.querySelectorAll<HTMLElement>("[data-widget-body]")) {
+      const id = body.dataset.widgetBody;
       // `offsetHeight` rather than the rect: it is a whole number, and a
       // fractional height read back through the skyline is how a measure-place
       // loop starts oscillating between two positions a hundredth of a pixel
       // apart. A rounded pixel of overlap is invisible; a loop is not.
-      if (id) measured[id] = cell.offsetHeight;
+      if (id) measured[id] = body.offsetHeight;
     }
 
     const next = packHome(latest.current, measured, gridColumns(width));
@@ -96,8 +99,8 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
     if (!container || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(container);
-    for (const cell of container.querySelectorAll<HTMLElement>("[data-widget-cell]")) {
-      observer.observe(cell);
+    for (const body of container.querySelectorAll<HTMLElement>("[data-widget-body]")) {
+      observer.observe(body);
     }
     return () => observer.disconnect();
   }, [measure, watched]);

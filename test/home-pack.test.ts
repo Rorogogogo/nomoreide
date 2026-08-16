@@ -177,14 +177,90 @@ describe("packHome", () => {
     expect(packHome([], {}, 12)).toEqual({ placements: [], height: 0 });
   });
 
+  /**
+   * The other half of the raggedness rule.
+   *
+   * Masonry lets columns end at different depths on purpose, but a few pixels
+   * apart is not a difference anyone chose — it is a dragged height in row units
+   * failing to agree with a fitted one in text. Those are levelled; anything
+   * further apart is left exactly where the skyline put it.
+   */
+  describe("levelling a near-miss", () => {
+    const heights = (rows: PlacedRow[], measured: Record<string, number>, columns = 12) => {
+      const out: Record<string, number> = {};
+      for (const place of packHome(rows, measured, columns).placements) out[place.id] = place.height;
+      return out;
+    };
+
+    test("levels two panels side by side, with nothing arriving below them", () => {
+      // The case this came from. `b` ends one pixel above `a`, and the panel
+      // under `a` covers only `a`'s columns — so nothing is ever drawn across
+      // the pair. If levelling waited for something to span them, the two edges
+      // would stay one pixel apart for as long as the page existed.
+      const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 6))];
+      expect(heights(rows, { a: 256, b: 257, c: 192 })).toEqual({ a: 257, b: 257, c: 192 });
+      // And `c` starts on the line `a` now ends at, not the one it used to.
+      expect(tops(rows, { a: 256, b: 257, c: 192 })).toEqual({ a: 0, b: 0, c: 257 });
+    });
+
+    test("grows the panel that ends just short of the line beside it", () => {
+      const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 12))];
+      // `b` is 7px short of `a`, and `c` is about to draw one straight edge
+      // across both. It ends where `a` does, and `c` still starts where it would
+      // have — levelling only ever fills the sliver, it never pushes anything
+      // down.
+      expect(heights(rows, { a: 200, b: 193, c: 50 })).toEqual({ a: 200, b: 200, c: 50 });
+      expect(tops(rows, { a: 200, b: 193, c: 50 })).toEqual({ a: 0, b: 0, c: 200 });
+    });
+
+    test("leaves a difference big enough to have been meant", () => {
+      const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 12))];
+      expect(heights(rows, { a: 200, b: 160, c: 50 })).toEqual({ a: 200, b: 160, c: 50 });
+    });
+
+    test("levels the page's own bottom edge, with nothing below to do it", () => {
+      // The last line on the page is a line too: two panels ending 7px apart
+      // above the footer read exactly as badly as two ending 7px apart above a
+      // third.
+      const rows = [row(panel("a", 6), panel("b", 6))];
+      const packed = packHome(rows, { a: 200, b: 193 }, 12);
+      expect(packed.height).toBe(200);
+      expect(packed.placements.map((place) => place.height)).toEqual([200, 200]);
+    });
+
+    test("never grows a panel that something has already been placed under", () => {
+      // `b` sits under half of `a`, so the 8px `a` is short of the page's bottom
+      // edge cannot be given to it — `a` would grow straight through `b`. The
+      // sliver stays, which is the right answer: it is the only one that is not
+      // an overlap.
+      const rows = [row(panel("a", 12)), row(panel("b", 6))];
+      expect(heights(rows, { a: 100, b: 8 })).toEqual({ a: 100, b: 8 });
+      expect(packHome(rows, { a: 100, b: 8 }, 12).height).toBe(108);
+    });
+
+    test("levels a fitted panel onto a dragged one, which is where this comes from", () => {
+      // A height is stored in whole `HOME_ROW_PX` rows; content is however tall
+      // it came out. Two panels meant to end together, off by five pixels.
+      const rows = [row(panel("a", 6, 4), panel("b", 6)), row(panel("c", 12))];
+      const measured = { b: 4 * HOME_ROW_PX - 5, c: 30 };
+      expect(heights(rows, measured)).toEqual({
+        a: 4 * HOME_ROW_PX,
+        b: 4 * HOME_ROW_PX,
+        c: 30,
+      });
+    });
+  });
+
   describe("below the wide breakpoint", () => {
     test("puts two panels per line and wraps within the row", () => {
       const rows = [row(panel("a", 3), panel("b", 3), panel("c", 3), panel("d", 3))];
-      expect(boxes(rows, { a: 10, b: 20, c: 10, d: 10 }, 2)).toEqual({
-        a: [0, 1, 2, 0, 10],
-        b: [1, 1, 2, 0, 20],
-        c: [0, 1, 2, 10, 10],
-        d: [1, 1, 2, 20, 10],
+      // Heights far enough apart that none of this is levelling (`HOME_SNAP_PX`)
+      // — the question here is only which line each panel wraps onto.
+      expect(boxes(rows, { a: 100, b: 200, c: 100, d: 100 }, 2)).toEqual({
+        a: [0, 1, 2, 0, 100],
+        b: [1, 1, 2, 0, 200],
+        c: [0, 1, 2, 100, 100],
+        d: [1, 1, 2, 200, 100],
       });
     });
 

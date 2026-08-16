@@ -115,12 +115,16 @@ function targetAt(x: number, y: number): DropTarget | null {
  * Nothing reflows during a drag, so these are the heights for its whole
  * duration — and reading `offsetHeight` on every pointermove would force layout
  * a hundred times across a gesture to learn the same numbers each time.
+ *
+ * The bodies, for the same reason the masonry measures them: a cell is as tall
+ * as the packer made it, and feeding that back in would preview a page packed
+ * from its own output rather than from what the panels contain.
  */
 function measureHeights(): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const cell of document.querySelectorAll<HTMLElement>("[data-widget-cell]")) {
-    const id = cell.dataset.widgetCell;
-    if (id) out[id] = cell.offsetHeight;
+  for (const body of document.querySelectorAll<HTMLElement>("[data-widget-body]")) {
+    const id = body.dataset.widgetBody;
+    if (id) out[id] = body.offsetHeight;
   }
   return out;
 }

@@ -101,32 +101,41 @@ export function WidgetGrid({
  * no longer knows its own width in CSS — that arrives as a percentage from the
  * packer — and what it buys is that its height is nobody's business but its own.
  *
- * It still carries no padding and no bottom rule: both live in `WidgetBody`, and
- * that split is what lets a panel end where its content does. The right-hand
- * rule stays on the cell and stops at the panel's bottom edge, which is the
- * honest line now — there is no row for it to run the height of, and a rule
- * continuing past the panel would point at a neighbour that has already risen
- * past it.
+ * It still carries no padding — that lives in `WidgetBody`, and that split is
+ * what lets a panel end where its content does. Both *rules* are the cell's,
+ * because both draw the edges of the rectangle the packer chose rather than the
+ * edges of what happens to be inside it. That distinction is the whole reason
+ * the cell has a height at all: the packer may end a panel a few pixels below
+ * its content to bring it level with the one beside it (`home-pack.ts`), and the
+ * lines that show it have to follow the slot, not the body.
  *
- * Exported because the edit surface (`home-edit.tsx`) draws the same cell as a
- * `<div>`: a panel that carries per-widget controls cannot also *be* a button.
+ * Which also keeps the measuring honest. The body is measured, the cell is
+ * placed, and because the body sizes itself the stretch can never be read back
+ * as content — a panel that grew to meet its neighbour does not then measure
+ * taller and grow again.
  */
 export function panelClassName(): string {
-  return "group/widget absolute flex flex-col border-border text-left md:border-r";
+  return "group/widget absolute flex flex-col border-b border-border text-left md:border-r";
 }
 
 /**
  * The rectangle itself, as inline style.
  *
  * `undefined` is the state before the first measurement — one pass in which the
- * panels are stacked at the top at full width, never painted because the
- * measuring runs in `useLayoutEffect` (see `home-masonry.ts`). Giving them a
- * real position there rather than hiding them is what lets that pass measure
- * something useful instead of measuring a hidden element.
+ * panels are stacked at the top at full width and *at no height at all*, so what
+ * that pass measures is the body sizing itself. Giving them a real position
+ * there rather than hiding them is what lets it measure something useful instead
+ * of measuring a hidden element.
+ *
+ * The height is the one thing here the packer can change without the content
+ * changing: it is what the body measured, plus whatever levelling it onto a
+ * neighbour's line cost. Applying it to the cell — never to the body — is what
+ * makes that a property of the slot instead of a lie about the content.
  */
 export function panelStyle(place: PanelPlacement | undefined): CSSProperties {
   if (!place) return { left: 0, top: 0, width: "100%" };
   return {
+    height: place.height,
     left: `${(place.column / place.lanes) * 100}%`,
     top: place.top,
     width: `${(place.span / place.lanes) * 100}%`,
@@ -162,7 +171,8 @@ export function WidgetDragFrame({
 
 /**
  * The padded box a widget draws in: the one a stored height applies to, the one
- * that draws the line under the panel, and the one the resize grip sits in.
+ * the resize grip sits in, and — because it sizes itself and nothing sizes it —
+ * the one the masonry measures.
  *
  * `null` is fit-to-content — what every panel did before heights existed and
  * still the default, because how tall a summary needs to be is a fact about
@@ -177,18 +187,39 @@ export function WidgetDragFrame({
  * before, which is all the packer and the page care about; what changed is that
  * the rest of the content is now reachable instead of destroyed. The
  * `overflow-hidden` here stays regardless: it is what keeps the body a clean
- * rectangle for the hairline under it, not a scroll policy.
+ * rectangle inside the cell's rules, not a scroll policy.
  *
  * Whatever this box comes out as is what the packer stacks the page against, so
  * a panel ending early no longer leaves a hole: the next panel over rises into
  * it. That is the one thing rows could not do and the reason they no longer
  * decide where a panel starts — the height a summary needs is a fact about what
  * it is summarising, and now nothing else is forced to share it.
+ *
+ * `data-widget-body` is that fact, addressable: it is what gets measured, here
+ * and in the drag (`home-move.tsx`). The *cell* is deliberately not, because the
+ * cell carries the packer's answer and measuring an answer to recompute it is a
+ * loop.
+ *
+ * `shrink-0` is what keeps it from being one anyway, and it is not decoration.
+ * The cell is a flex column with the packed height on it, so by default this box
+ * would be *squeezed* to fit — and the cell's own bottom rule takes a pixel of
+ * that height, so each pass would measure one pixel less than the last and pack
+ * one pixel shorter, forever. Refusing to shrink is what makes the measurement a
+ * fact about the content rather than an echo of the last answer.
  */
-export function WidgetBody({ children, height }: { children: ReactNode; height: number | null }) {
+export function WidgetBody({
+  children,
+  height,
+  id,
+}: {
+  children: ReactNode;
+  height: number | null;
+  id: string;
+}) {
   return (
     <span
-      className="relative flex min-h-0 flex-col gap-2 overflow-hidden border-b border-border px-3 py-2.5"
+      className="relative flex min-h-0 shrink-0 flex-col gap-2 overflow-hidden px-3 py-2.5"
+      data-widget-body={id}
       style={height === null ? undefined : { height: height * HOME_ROW_PX }}
     >
       {children}
@@ -324,7 +355,7 @@ export function WidgetPanel({
       data-widget-row={row}
       style={panelStyle(place)}
     >
-      <WidgetBody height={height}>
+      <WidgetBody height={height} id={id}>
         <WidgetPanelHeader
           icon={icon}
           title={title}

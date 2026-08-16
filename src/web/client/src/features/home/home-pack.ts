@@ -32,6 +32,12 @@ import type { WidgetDefinition } from "./widget-types";
  * Bottom edges therefore stop lining up — that raggedness is the feature, and it
  * is why this cannot be expressed as rows.
  *
+ * Raggedness worth having is raggedness you can *read* as a decision. Two panels
+ * ending seven pixels apart is not one: it is the arithmetic showing through, and
+ * it reads as a page that failed to line up rather than as one whose columns are
+ * genuinely different lengths. So a near-miss is levelled (`HOME_SNAP_PX`) and
+ * everything else is left exactly where the skyline put it.
+ *
  * Everything here is pure — `(rows, measured heights, column count)` in,
  * rectangles out — so the packing is tested without mounting React, exactly as
  * `home-layout.ts` is. The DOM measuring that feeds it lives in
@@ -48,6 +54,24 @@ import type { WidgetDefinition } from "./widget-types";
  */
 export const HOME_WIDE_WIDTH = 1280;
 export const HOME_MID_WIDTH = 768;
+
+/**
+ * How far a panel will be stretched to meet the line beside it.
+ *
+ * A gap this small is never something anyone chose. Heights arrive from two
+ * different worlds — a dragged one is a whole number of `HOME_ROW_PX` rows, a
+ * fitted one is however tall its text came out — and the two agree only by luck,
+ * so panels that were meant to end together end a few pixels apart. Levelling
+ * that is the whole of this: the *shorter* panel grows to the line, which closes
+ * the sliver of dead space at the same time, and nothing below moves because the
+ * line it grows to is one its neighbour had already set.
+ *
+ * Well under half a row, deliberately. A dragged height can only differ from
+ * another dragged height by a whole row, so this can never quietly absorb a row
+ * the user asked for — and a panel one line of text short of its neighbour
+ * (~16px) stays short, because that is a real difference in what it holds.
+ */
+export const HOME_SNAP_PX = 12;
 
 /**
  * One panel's rectangle: a share of the width, and real pixels down the page.
@@ -124,6 +148,10 @@ export function packHome(
 ): PackedHome {
   const lanes = Math.max(1, Math.floor(columns));
   const skyline = new Array<number>(lanes).fill(0);
+  // Which panel each column's current depth belongs to — the one that would have
+  // to grow for that column to reach further down. A column nothing has been
+  // placed in yet belongs to nobody and is never stretched to meet anything.
+  const owners = new Array<PanelPlacement | null>(lanes).fill(null);
   const placements: PanelPlacement[] = [];
 
   for (const row of rows) {
@@ -147,16 +175,111 @@ export function packHome(
       for (let lane = cursor; lane < cursor + span; lane += 1) {
         top = Math.max(top, skyline[lane] ?? 0);
       }
+      // A panel arriving is what makes a near-miss visible: it draws one straight
+      // edge across columns that were ending a few pixels apart. Level them to it
+      // before taking the space, so the line it starts on is the line they end on.
+      levelTo(skyline, owners, cursor, cursor + span, top);
+
+      const place: PanelPlacement = { id, column: cursor, span, lanes, top, height };
       for (let lane = cursor; lane < cursor + span; lane += 1) {
         skyline[lane] = top + height;
+        owners[lane] = place;
       }
+      // And now that it has a bottom edge of its own, against the panel beside
+      // it. This is the one that matters most: two panels side by side ending a
+      // few pixels apart is the misalignment you actually see, and nothing has
+      // to arrive underneath them for it to be visible.
+      levelBeside(skyline, owners, place);
 
-      placements.push({ id, column: cursor, span, lanes, top, height });
+      placements.push(place);
       cursor += span;
     }
   }
 
-  return { placements, height: Math.max(0, ...skyline) };
+  // And the page's own bottom edge is the last such line: whatever ends nearly
+  // level with the deepest column ends level with it. Read the height first —
+  // levelling only raises columns *to* it, so it cannot change.
+  const height = Math.max(0, ...skyline);
+  levelTo(skyline, owners, 0, lanes, height);
+
+  return { placements, height };
+}
+
+/**
+ * Level a panel and the one immediately beside it, whichever is the shorter.
+ *
+ * Only the flanking columns — the panel one place to the left and one to the
+ * right — because those are the two edges anyone is actually comparing. A pair
+ * levelled here stays levelled for whatever lands on them next, which is how one
+ * pairwise rule ends up straightening a whole line.
+ */
+function levelBeside(
+  skyline: number[],
+  owners: (PanelPlacement | null)[],
+  place: PanelPlacement,
+): void {
+  for (const lane of [place.column - 1, place.column + place.span]) {
+    const beside = owners[lane];
+    if (!beside) continue;
+    const depth = skyline[lane] ?? 0;
+    // Whichever of the two stops higher is the one that grows. `raiseTo` decides
+    // which that is: it does nothing for a panel already at or past the line.
+    raiseTo(skyline, owners, place, depth);
+    raiseTo(skyline, owners, beside, place.top + place.height);
+  }
+}
+
+/**
+ * Stretch whatever ends just above `line` down onto it.
+ *
+ * Only *just* above: a column further than `HOME_SNAP_PX` short is a column that
+ * genuinely ran out earlier, which is the raggedness masonry exists to allow.
+ */
+function levelTo(
+  skyline: number[],
+  owners: (PanelPlacement | null)[],
+  from: number,
+  to: number,
+  line: number,
+): void {
+  for (let lane = from; lane < to; lane += 1) {
+    const place = owners[lane];
+    if (place) raiseTo(skyline, owners, place, line);
+  }
+}
+
+/**
+ * The whole of the stretch: one panel, one line, and the two reasons not to.
+ *
+ * A panel already level with the line, or past it, has nothing to do — which is
+ * what lets a caller offer both sides of a pair to this and let it pick. Growing
+ * is safe precisely when the panel still owns every column it covers: that is
+ * what says nothing has been placed underneath it yet. A panel that has had one
+ * of its columns built over cannot grow into the panel now sitting there, so it
+ * stays as it is and the sliver stays with it.
+ */
+function raiseTo(
+  skyline: number[],
+  owners: (PanelPlacement | null)[],
+  place: PanelPlacement,
+  line: number,
+): void {
+  const gap = line - (place.top + place.height);
+  if (gap <= 0 || gap > HOME_SNAP_PX) return;
+  if (!ownsSpan(owners, place)) return;
+  place.height += gap;
+  // Every column it covers, not just the one that asked: the panel got taller,
+  // and a column left at the old depth would let the next panel overlap it.
+  for (let lane = place.column; lane < place.column + place.span; lane += 1) {
+    skyline[lane] = line;
+  }
+}
+
+function ownsSpan(owners: (PanelPlacement | null)[], place: PanelPlacement): boolean {
+  for (let lane = place.column; lane < place.column + place.span; lane += 1) {
+    if (owners[lane] !== place) return false;
+  }
+  return true;
 }
 
 /**

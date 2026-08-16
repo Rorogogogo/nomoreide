@@ -722,6 +722,55 @@ that number multiplies a request that is already the page's most frequent one.
 The whole file is the Services page's log pane, and that is the right place for
 it.
 
+### 7.14 Seven pixels apart is not a decision anyone made
+
+The owner sent a crop of two panels ending a few pixels apart and asked the only
+question worth asking about it: *when it is nearly aligned, why not align it?*
+
+He is right, and the reason it happened is §7.10's own rule read too literally.
+Masonry drops each panel independently and lets columns end at different depths,
+and that raggedness is the whole point — a short panel must not hold a hole open
+under itself. But raggedness is worth having only when it can be *read* as a
+decision. Two columns ending 100px apart is one. Two ending 7px apart is the
+arithmetic showing through: a dragged height is a whole number of `HOME_ROW_PX`
+rows, a fitted one is however tall its text came out, and the two agree only by
+luck.
+
+So near-misses are levelled and everything else is left alone. `HOME_SNAP_PX` is
+12 — well under half a row, so it can never quietly absorb a row the user asked
+for, and a panel one line of text short of its neighbour (~16px) stays short,
+because that is a real difference in what it holds.
+
+**The shorter panel grows; nothing moves.** It grows to a line its neighbour had
+already set, so the page below is unchanged and the sliver of dead space closes
+at the same time. A panel is only allowed to grow while it still owns every
+column it covers — that is exactly the condition that says nothing has been
+placed underneath it yet, and without it a panel could grow straight through the
+one now sitting there.
+
+**The rule that matters is the pairwise one.** The first attempt levelled only
+when a panel *landed* across columns that were ending unevenly, which is a real
+case and fixes nothing you can see: in the owner's own layout, Snapshots ended
+1px below Logs and the panel underneath covered only Logs' columns, so nothing
+was ever drawn across the pair. Two panels side by side is the misalignment
+people actually look at, and it has to be levelled when the second one lands, not
+when something later happens to span them. The landing rule stayed anyway,
+together with a flush against the page's own bottom edge: pairwise levelling does
+not propagate along a row by itself, and those two are what straighten the rest.
+
+**What this cost was a clean split between the slot and the content.** A levelled
+panel is taller than what is inside it, so the packed height had to go somewhere
+that is not the widget's own box: the cell now carries the height and both
+hairlines, and `WidgetBody` is what gets measured (`data-widget-body`). Measuring
+the cell would be reading our own answer back in as a question.
+
+That is not a theoretical worry. Getting it wrong blanked the page: the cell is a
+flex column, so a body that may shrink was squeezed by the one pixel the cell's
+bottom rule takes, measured a pixel shorter, packed a pixel shorter, forever —
+React error #185, an empty `#root`, and a page that looks exactly like a stale
+bundle. `shrink-0` on the body is what makes the measurement a fact about the
+content instead of an echo of the last answer.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**
