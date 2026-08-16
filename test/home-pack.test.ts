@@ -3,6 +3,7 @@ import { HOME_ROW_PX, type PlacedRow, type PlacedWidget } from "../src/web/clien
 import {
   gridColumns,
   packHome,
+  previewResize,
   previewPlacement,
   spanFor,
   HOME_MID_WIDTH,
@@ -214,8 +215,28 @@ describe("packHome", () => {
     });
 
     test("leaves a difference big enough to have been meant", () => {
+      // Nothing below to seal the space, so the shorter column simply ends
+      // earlier — which is the whole point of packing this way.
+      const rows = [row(panel("a", 6), panel("b", 6))];
+      expect(heights(rows, { a: 200, b: 160 })).toEqual({ a: 200, b: 160 });
+    });
+
+    test("gives away the space a panel below has sealed off, however big", () => {
+      // `c` covers both columns, so nothing can ever be placed in the 40px under
+      // `b` — it is a hole with a lid on it, not a column that ended early, and
+      // it takes the top edge off `c` for as long as it is there.
       const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 12))];
-      expect(heights(rows, { a: 200, b: 160, c: 50 })).toEqual({ a: 200, b: 160, c: 50 });
+      expect(heights(rows, { a: 200, b: 160, c: 50 })).toEqual({ a: 200, b: 200, c: 50 });
+    });
+
+    test("still lets a panel rise into a column that stays open", () => {
+      // The sealing rule must not swallow the reason masonry exists. `d` covers
+      // only `b`'s columns, so `b` keeps the depth its own content gave it and
+      // `d` starts there — 140px above where a row would have put it.
+      const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 6), panel("d", 6))];
+      const measured = { a: 200, b: 60, c: 30, d: 90 };
+      expect(heights(rows, measured)).toEqual({ a: 200, b: 60, c: 30, d: 90 });
+      expect(tops(rows, measured)).toEqual({ a: 0, b: 0, c: 200, d: 60 });
     });
 
     test("levels the page's own bottom edge, with nothing below to do it", () => {
@@ -301,6 +322,46 @@ describe("packHome", () => {
  * wide because that is what the row re-shares, not because the preview
  * approximated it.
  */
+/**
+ * And what the *resize* draws before you let go.
+ *
+ * A width was enough while a panel could only grow rightwards. It stopped being
+ * enough when it could grow the other way — taking columns from the neighbour on
+ * its left, or asking for the whole grid and starting again at the first column
+ * — because then the frame's left edge is part of the answer.
+ */
+describe("previewResize", () => {
+  const REGISTRY = [panel("a", 4).widget, panel("b", 4).widget, panel("c", 4).widget];
+  const LAYOUT: HomeLayout = {
+    rows: [["a", "b", "c"]],
+    spans: { a: 4, b: 4, c: 4 },
+    heights: {},
+  };
+
+  test("keeps the left edge when the columns come from the right", () => {
+    expect(previewResize(REGISTRY, LAYOUT, "a", 6, 12)).toMatchObject({ column: 0, span: 6 });
+  });
+
+  test("moves the left edge when the panel is the one at the end of the row", () => {
+    // `c` ends at the grid's right edge already, so the only place its new
+    // columns can come from is the panel on its left — it grows leftwards, and a
+    // frame drawn from where it is now would show the growth on the wrong side.
+    expect(previewResize(REGISTRY, LAYOUT, "c", 6, 12)).toMatchObject({ column: 6, span: 6 });
+  });
+
+  test("starts at the first column for a panel asking for the whole grid", () => {
+    expect(previewResize(REGISTRY, LAYOUT, "c", 12, 12)).toMatchObject({ column: 0, span: 12 });
+  });
+
+  test("answers in the columns the window actually has", () => {
+    expect(previewResize(REGISTRY, LAYOUT, "a", 6, 1)).toMatchObject({ column: 0, span: 1, lanes: 1 });
+  });
+
+  test("has nothing to promise for a widget the layout does not show", () => {
+    expect(previewResize(REGISTRY, LAYOUT, "missing", 6, 12)).toBeNull();
+  });
+});
+
 describe("previewPlacement", () => {
   const REGISTRY = [
     panel("a", 4).widget,

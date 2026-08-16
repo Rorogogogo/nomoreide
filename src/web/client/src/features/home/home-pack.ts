@@ -4,10 +4,11 @@ import {
   HOME_ROW_PX,
   moveWidget,
   resolveHomeLayout,
+  setWidgetSize,
   type DropTarget,
   type PlacedRow,
 } from "./home-layout";
-import type { WidgetDefinition } from "./widget-types";
+import type { WidgetDefinition, WidgetSpan } from "./widget-types";
 
 /**
  * Where every panel actually sits — the arithmetic CSS grid was doing until it
@@ -37,6 +38,14 @@ import type { WidgetDefinition } from "./widget-types";
  * it reads as a page that failed to line up rather than as one whose columns are
  * genuinely different lengths. So a near-miss is levelled (`HOME_SNAP_PX`) and
  * everything else is left exactly where the skyline put it.
+ *
+ * With one exception, and it is the same argument taken to its end. A column's
+ * leftover space is only worth keeping because the *next* panel in that column
+ * rises into it — that is the entire reason this file exists. When the next
+ * panel spans the column instead, nothing can ever rise into it: the space is
+ * sealed above by what is already there and below by what just arrived, and a
+ * hole is what a page looks like when it has failed to finish. That space is
+ * given back to the panels above it, however big it is.
  *
  * Everything here is pure — `(rows, measured heights, column count)` in,
  * rectangles out — so the packing is tested without mounting React, exactly as
@@ -175,10 +184,13 @@ export function packHome(
       for (let lane = cursor; lane < cursor + span; lane += 1) {
         top = Math.max(top, skyline[lane] ?? 0);
       }
-      // A panel arriving is what makes a near-miss visible: it draws one straight
-      // edge across columns that were ending a few pixels apart. Level them to it
-      // before taking the space, so the line it starts on is the line they end on.
-      levelTo(skyline, owners, cursor, cursor + span, top);
+      // A panel arriving closes the columns it covers: nothing can be placed in
+      // them above it ever again, so whatever space is left between them and its
+      // top edge is dead. It goes to the panels that are already there — no
+      // tolerance, because this is not a near-miss, it is a hole with a lid on
+      // it. A hole is what the eye reads as a page that failed to finish, and it
+      // takes the top edge off whatever is drawn underneath it.
+      levelTo(skyline, owners, cursor, cursor + span, top, Number.POSITIVE_INFINITY);
 
       const place: PanelPlacement = { id, column: cursor, span, lanes, top, height };
       for (let lane = cursor; lane < cursor + span; lane += 1) {
@@ -196,11 +208,13 @@ export function packHome(
     }
   }
 
-  // And the page's own bottom edge is the last such line: whatever ends nearly
-  // level with the deepest column ends level with it. Read the height first —
+  // And the page's own bottom edge is the last such line — but only for a
+  // near-miss. Nothing is enclosing the space below the last row: it is where
+  // the page stops, not a hole, and a panel stretched a hundred pixels into it
+  // would be a box mostly full of nothing for no reason. Read the height first —
   // levelling only raises columns *to* it, so it cannot change.
   const height = Math.max(0, ...skyline);
-  levelTo(skyline, owners, 0, lanes, height);
+  levelTo(skyline, owners, 0, lanes, height, HOME_SNAP_PX);
 
   return { placements, height };
 }
@@ -224,16 +238,18 @@ function levelBeside(
     const depth = skyline[lane] ?? 0;
     // Whichever of the two stops higher is the one that grows. `raiseTo` decides
     // which that is: it does nothing for a panel already at or past the line.
-    raiseTo(skyline, owners, place, depth);
-    raiseTo(skyline, owners, beside, place.top + place.height);
+    raiseTo(skyline, owners, place, depth, HOME_SNAP_PX);
+    raiseTo(skyline, owners, beside, place.top + place.height, HOME_SNAP_PX);
   }
 }
 
 /**
- * Stretch whatever ends just above `line` down onto it.
+ * Stretch whatever ends above `line` down onto it, as far as `limit` allows.
  *
- * Only *just* above: a column further than `HOME_SNAP_PX` short is a column that
- * genuinely ran out earlier, which is the raggedness masonry exists to allow.
+ * `HOME_SNAP_PX` is the near-miss: a column further short than that ran out
+ * early on purpose, which is the raggedness masonry exists to allow. No limit is
+ * for space that has been closed off from above — there, a column ending early
+ * is not a difference anyone can see the point of, it is a hole.
  */
 function levelTo(
   skyline: number[],
@@ -241,10 +257,11 @@ function levelTo(
   from: number,
   to: number,
   line: number,
+  limit: number,
 ): void {
   for (let lane = from; lane < to; lane += 1) {
     const place = owners[lane];
-    if (place) raiseTo(skyline, owners, place, line);
+    if (place) raiseTo(skyline, owners, place, line, limit);
   }
 }
 
@@ -263,9 +280,10 @@ function raiseTo(
   owners: (PanelPlacement | null)[],
   place: PanelPlacement,
   line: number,
+  limit: number,
 ): void {
   const gap = line - (place.top + place.height);
-  if (gap <= 0 || gap > HOME_SNAP_PX) return;
+  if (gap <= 0 || gap > limit) return;
   if (!ownsSpan(owners, place)) return;
   place.height += gap;
   // Every column it covers, not just the one that asked: the panel got taller,
@@ -289,7 +307,7 @@ function ownsSpan(owners: (PanelPlacement | null)[], place: PanelPlacement): boo
  * It runs the *actual* move against a copy of the layout and packs the result,
  * so what the drag draws and what the release produces are the same arithmetic
  * rather than two implementations that agree until they don't. This is the same
- * bargain `previewSpan` makes for the resize frame, and it is only affordable
+ * bargain `previewResize` makes for the resize frame, and it is only affordable
  * here because masonry turned placement into a pure function — under CSS grid
  * there was nothing to ask but the browser, and only after committing.
  *
@@ -299,6 +317,32 @@ function ownsSpan(owners: (PanelPlacement | null)[], place: PanelPlacement): boo
  * which is what the gesture is actually about — re-measuring a panel at a width
  * it does not have yet would mean rendering it twice on every pointermove.
  */
+/**
+ * Where a panel would sit if it were the width the drag is asking for.
+ *
+ * A width is not only a width: the columns come out of the neighbours, and which
+ * neighbour gives them up decides whether the panel grows to the right or the
+ * left. A panel at the end of its row grows *leftwards* — its right edge is
+ * already the page's — and one asking for the whole grid starts at the first
+ * column wherever it used to be. A frame drawn from the panel's current left
+ * edge would be wrong in both cases, and wrong at the one moment it is being
+ * read.
+ *
+ * Heights are nobody's business here, so none are passed: what column a panel
+ * lands in is decided by spans and reading order alone.
+ */
+export function previewResize(
+  widgets: WidgetDefinition[],
+  layout: HomeLayout | null,
+  id: string,
+  span: WidgetSpan,
+  columns: number,
+): Pick<PanelPlacement, "column" | "span" | "lanes"> | null {
+  const sized = setWidgetSize(widgets, layout, id, { span });
+  const packed = packHome(resolveHomeLayout(widgets, sized), {}, columns);
+  return packed.placements.find((place) => place.id === id) ?? null;
+}
+
 export function previewPlacement(
   widgets: WidgetDefinition[],
   layout: HomeLayout | null,

@@ -396,9 +396,18 @@ export function setWidgetSize(
  *
  * The columns have to come from somewhere and the row is where — this is the
  * splitter the agent dock has, generalised to a row of panels. Neighbours give
- * up columns nearest-first and never below `MIN_SPAN`, which is also what caps
- * how wide the drag can get: a panel in a row of two can reach nine columns,
- * and the tenth would have to come out of a neighbour that has nothing left.
+ * up columns nearest-first and never below `MIN_SPAN`.
+ *
+ * Which used to be the end of it, and made the whole grid unreachable: a panel
+ * sharing with one neighbour stopped at nine columns, so a drag to the right
+ * edge of the page came back three quarters wide and every further pixel did
+ * nothing. The cap is the right answer for every width *except* the one that
+ * says the neighbours should not be in this row at all. So asking for all twelve
+ * is now a different request, not a bigger one: the panel takes the row and its
+ * neighbours drop to a row of their own, in the order they were already in.
+ *
+ * That keeps `MIN_SPAN` meaning what it says — no panel is ever squeezed below a
+ * quarter of the grid — while leaving full width somewhere a pointer can reach.
  */
 function resize(layout: HomeLayout, id: string, span: WidgetSpan): void {
   const at = locate(layout, id);
@@ -408,6 +417,13 @@ function resize(layout: HomeLayout, id: string, span: WidgetSpan): void {
   // A row of one is the whole grid; there is no boundary to move.
   if (!others.length) {
     layout.spans[id] = GRID_COLUMNS;
+    return;
+  }
+  if (span >= GRID_COLUMNS) {
+    layout.rows[at.row] = [id];
+    layout.rows.splice(at.row + 1, 0, others);
+    layout.spans[id] = GRID_COLUMNS;
+    fitRow(others, layout.spans);
     return;
   }
   layout.spans[id] = Math.min(span, GRID_COLUMNS - MIN_SPAN * others.length);
@@ -428,19 +444,11 @@ function resize(layout: HomeLayout, id: string, span: WidgetSpan): void {
   fitRow(row, layout.spans);
 }
 
-/**
- * The width a panel would actually get, so the drag's frame can promise it.
- *
- * A frame that showed a width the row cannot give is a frame that lies at the
- * one moment the user is reading it. Asking the same function that will do the
- * work keeps the two in step by construction.
+/*
+ * The frame's promise used to be a width, `previewSpan`, resolved here. It is
+ * `previewResize` in `home-pack.ts` now and returns a whole rectangle: once a
+ * panel could grow leftwards — taking columns from the neighbour on its left, or
+ * asking for the grid and moving to the first column — a width no longer said
+ * where the panel would be. Same bargain, one more coordinate, and only one
+ * function answering the question.
  */
-export function previewSpan(
-  widgets: WidgetDefinition[],
-  layout: HomeLayout | null,
-  id: string,
-  span: WidgetSpan,
-): WidgetSpan {
-  const next = setWidgetSize(widgets, layout, id, { span });
-  return (next.spans[id] ?? span) as WidgetSpan;
-}

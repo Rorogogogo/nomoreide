@@ -32,6 +32,16 @@ import type { WidgetSpan } from "./widget-types";
  * the one thing the corner could get wrong that two edges could not.
  */
 
+/**
+ * How close to the grid's right edge counts as being at it.
+ *
+ * The grid pulls itself a pixel wider than its container to hide the rightmost
+ * hairline (`WidgetGrid`), so its right edge sits one pixel past anywhere a
+ * cursor can actually be. Two pixels of slack costs nothing and is the
+ * difference between "drag to the edge" working and never firing.
+ */
+const EDGE = 2;
+
 /** The rectangle the drag is currently asking for, in viewport coordinates. */
 export interface ResizeFrame {
   left: number;
@@ -49,12 +59,23 @@ export interface WidgetSize {
 /** Where the drag began: the ruler, the panel's corner, and its size then. */
 interface Origin {
   column: number;
+  /** The grid's own left edge — where a column index is measured from. */
+  gridLeft: number;
+  /** And its right edge: as far right as a cursor can be asked to go. */
+  gridRight: number;
   left: number;
   top: number;
   width: number;
   height: number;
   span: WidgetSpan;
   rows: number;
+}
+
+/** The rectangle a width resolves to, in columns of the grid it is drawn on. */
+export interface WidgetBox {
+  column: number;
+  span: number;
+  lanes: number;
 }
 
 /**
@@ -74,7 +95,7 @@ export function WidgetResizeGrip({
   height,
   onFrame,
   onSize,
-  resolveSpan,
+  resolveBox,
   span,
   title,
 }: {
@@ -82,14 +103,16 @@ export function WidgetResizeGrip({
   onFrame: (frame: ResizeFrame | null) => void;
   onSize: (size: WidgetSize) => void;
   /**
-   * The width the row would actually give, for a width the drag is asking for.
+   * The rectangle the row would actually give, for a width the drag is asking
+   * for.
    *
    * Columns come out of the neighbours, and a row of two cannot give one panel
    * eleven of them. Running the request through the same arithmetic the commit
-   * will use is what keeps the frame from promising a width that will not
-   * survive the drop.
+   * will use is what keeps the frame from promising something that will not
+   * survive the drop — the *position* as much as the width, because which
+   * neighbour gives up its columns decides which way the panel grows.
    */
-  resolveSpan: (span: WidgetSpan) => WidgetSpan;
+  resolveBox: (span: WidgetSpan) => WidgetBox;
   span: WidgetSpan;
   title: string;
 }) {
@@ -110,11 +133,14 @@ export function WidgetResizeGrip({
     const grid = grip.closest("[data-widget-grid]");
     if (!body || !grid) return null;
     const rect = body.getBoundingClientRect();
+    const ruler = grid.getBoundingClientRect();
     return {
       // The grid is the ruler: one twelfth of it is one column, whatever the
       // window is doing. Read once, at pointer-down, so nothing that happens
       // during the drag can move the origin underneath the cursor.
-      column: grid.getBoundingClientRect().width / GRID_COLUMNS,
+      column: ruler.width / GRID_COLUMNS,
+      gridLeft: ruler.left,
+      gridRight: ruler.right,
       left: rect.left,
       top: rect.top,
       width: rect.width,
@@ -127,10 +153,28 @@ export function WidgetResizeGrip({
     };
   };
 
-  const targetOf = (event: { clientX: number; clientY: number }, start: Origin) => ({
-    span: clampSpan((event.clientX - start.left) / start.column),
-    rows: clampHeight((event.clientY - start.top) / HOME_ROW_PX),
-  });
+  const targetOf = (event: { clientX: number; clientY: number }, start: Origin) => {
+    const asked = (event.clientX - start.left) / start.column;
+    return {
+      // Dragged off the end of the page: ask for the whole grid.
+      //
+      // Without this the widest a shared row can offer is nine columns, and the
+      // last inches of the gesture do nothing at all — the frame stops three
+      // quarters across while the cursor keeps going, which reads as a stuck
+      // control rather than as a rule. `resize` turns the request into a row of
+      // its own (`home-layout.ts`), so what the frame promises is real.
+      //
+      // It has to be an actual widening to count. A panel whose right edge is
+      // already the page's begins the drag at the edge, and a twitch there must
+      // not be read as a demand for everything. `EDGE` is for the grid's own
+      // `-mr-px`, which puts its right edge one pixel past anything pointable.
+      span:
+        event.clientX >= start.gridRight - EDGE && asked > start.span
+          ? GRID_COLUMNS
+          : clampSpan(asked),
+      rows: clampHeight((event.clientY - start.top) / HOME_ROW_PX),
+    };
+  };
 
   const begin = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const start = measure(event.currentTarget);
@@ -147,10 +191,16 @@ export function WidgetResizeGrip({
 
     const frameFor = (moved: { clientX: number; clientY: number }) => {
       const target = targetOf(moved, start);
+      const box = resolveBox(target.span);
+      const width = start.column * GRID_COLUMNS;
       return {
-        left: start.left,
+        // Placed against the grid rather than against where the panel is now: a
+        // panel taking columns from its left-hand neighbour keeps its right edge
+        // and moves its left one, and a frame anchored to the old left edge
+        // would draw the growth on the wrong side.
+        left: start.gridLeft + (box.column / box.lanes) * width,
         top: start.top,
-        width: resolveSpan(target.span) * start.column,
+        width: (box.span / box.lanes) * width,
         height: target.rows * HOME_ROW_PX,
       };
     };
@@ -196,7 +246,13 @@ export function WidgetResizeGrip({
     const vertical = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
     if (horizontal) {
       event.preventDefault();
-      onSize({ span: clampSpan(span + horizontal) });
+      const next = clampSpan(span + horizontal);
+      // A step that changes nothing, still going right, is the keyboard at the
+      // same wall the pointer hits at the edge of the page — and it means the
+      // same thing there: take the row. Without this the widest a key can reach
+      // is nine columns, and full width would be a mouse-only state.
+      const stuck = horizontal > 0 && resolveBox(next).span === span;
+      onSize({ span: stuck ? GRID_COLUMNS : next });
       return;
     }
     if (vertical) {

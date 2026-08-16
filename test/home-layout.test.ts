@@ -15,7 +15,6 @@ import {
   hiddenWidgets,
   moveWidget,
   nudgeWidget,
-  previewSpan,
   removeWidget,
   resolveHomeLayout,
   setWidgetSize,
@@ -190,18 +189,37 @@ describe("resizing", () => {
   });
 
   test("a neighbour is never squeezed below the narrowest legible panel", () => {
-    const layout = setWidgetSize(REGISTRY, null, "a", { span: 12 });
+    const layout = setWidgetSize(REGISTRY, null, "a", { span: 11 });
     expect(shape(layout)[0]).toEqual([
       ["a", 9],
       ["b", 3],
     ]);
-    // And the frame says so before the drop, rather than promising 12.
-    expect(previewSpan(REGISTRY, null, "a", 12)).toBe(9);
+  });
+
+  test("asking for the whole grid takes the row and drops the neighbours below", () => {
+    // The one width the cap cannot express, and the reason it needed to be a
+    // different request rather than a bigger one: nine columns was as wide as a
+    // shared row could go, so full width was a state no drag could reach.
+    const layout = setWidgetSize(REGISTRY, null, "a", { span: GRID_COLUMNS });
+    expect(shape(layout)).toEqual([[["a", 12]], [["b", 12]], [["c", 12]]]);
+    for (const total of sums(layout)) expect(total).toBe(GRID_COLUMNS);
+  });
+
+  test("the neighbours keep their order, and re-share the row they land in", () => {
+    const three = { rows: [["a", "b", "c"]], spans: { a: 4, b: 4, c: 4 }, heights: {} };
+    const layout = setWidgetSize(REGISTRY, three, "b", { span: GRID_COLUMNS });
+    expect(shape(layout)).toEqual([
+      [["b", 12]],
+      [
+        ["a", 6],
+        ["c", 6],
+      ],
+    ]);
   });
 
   test("a panel alone in its row is the whole row, whatever it is dragged to", () => {
     const alone = { rows: [["b"]], spans: { b: 12 } };
-    expect(previewSpan(REGISTRY, alone, "b", 5)).toBe(GRID_COLUMNS);
+    expect(setWidgetSize(REGISTRY, alone, "b", { span: 5 }).spans.b).toBe(GRID_COLUMNS);
   });
 
   test("a corner drag stores both axes in one write", () => {

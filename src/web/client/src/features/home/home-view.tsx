@@ -7,19 +7,21 @@ import { useT } from "@/lib/i18n";
 import { HomeEditControls, WidgetControls } from "./home-edit";
 import {
   addWidget,
+  GRID_COLUMNS,
   hiddenWidgets,
   moveWidget,
   nudgeWidget,
-  previewSpan,
   removeWidget,
   resolveHomeLayout,
   setWidgetSize,
 } from "./home-layout";
 import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
+import { previewResize, type PanelPlacement } from "./home-pack";
 import { WidgetDragFrame, WidgetGrid, WidgetPanel } from "./widget-grid";
-import { WidgetResizeGrip, type ResizeFrame } from "./widget-resize";
+import { WidgetResizeGrip, type ResizeFrame, type WidgetBox } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
+import type { WidgetSpan } from "./widget-types";
 
 /**
  * Home — the page that answers "what is happening right now".
@@ -41,6 +43,31 @@ import { WIDGETS } from "./widget-registry";
  * widget leaves the way back exactly where it always was instead of stranding a
  * page whose only recovery was clearing `localStorage`.
  */
+/**
+ * The rectangle a width would land in, for the frame the resize draws.
+ *
+ * The lane count comes from where the panel is *now*, because that is what the
+ * grid is currently divided into — asking the packer for a preview in twelfths
+ * on a window showing two columns would draw a frame the page cannot honour.
+ * When there is nothing to preview against yet — the first pass, before anything
+ * has been measured — the panel's own row is the best answer available.
+ */
+function resizeBox(
+  layout: HomeLayout | null,
+  id: string,
+  span: WidgetSpan,
+  place: PanelPlacement | undefined,
+): WidgetBox {
+  const lanes = place?.lanes ?? GRID_COLUMNS;
+  return (
+    previewResize(WIDGETS, layout, id, span, lanes) ?? {
+      column: place?.column ?? 0,
+      span: place?.span ?? span,
+      lanes,
+    }
+  );
+}
+
 export function HomeView({
   data,
   onOpen,
@@ -116,7 +143,7 @@ export function HomeView({
                     height={height}
                     onFrame={setFrame}
                     onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
-                    resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
+                    resolveBox={(next) => resizeBox(layout, widget.id, next, boxes.get(widget.id))}
                     span={span}
                     title={t(widget.titleKey)}
                   />

@@ -771,6 +771,66 @@ React error #185, an empty `#root`, and a page that looks exactly like a stale
 bundle. `shrink-0` on the body is what makes the measurement a fact about the
 content instead of an echo of the last answer.
 
+### 7.15 Three quarters was as wide as a drag could go
+
+"When I go all the way right it will still not showing full" — and he was right,
+though not about the preview. The frame was telling the truth; the truth was the
+row rule.
+
+A row shares twelve columns and no panel goes below `MIN_SPAN`, so a panel
+sharing with one neighbour stops at nine columns. Drag to the right edge of the
+page and the frame stops three quarters across while the cursor keeps going,
+which reads as a stuck control rather than as a rule — and full width, a state
+the model has and every full-width row is in, was unreachable by any gesture.
+
+**So the whole grid is a different request, not a bigger one.** Asking for twelve
+takes the row and drops the neighbours into a row of their own, in the order they
+were already in. Everything below twelve still obeys the cap, so `MIN_SPAN` keeps
+meaning what it says. The pointer reaches it by running out of page — the cursor
+at the grid's right edge asks for everything — and the keyboard reaches it the
+same way, one `ArrowRight` past the width that stops changing anything.
+
+That last condition has to be a real widening, or a panel whose right edge is
+already the page's would read a twitch as a demand for everything. Which leaves
+one honest limitation: **a panel at the end of its row cannot be widened by
+dragging at all.** Its corner is already at the edge of the page and its new
+columns would come from its left, so the gesture has nowhere to go; the keyboard
+is the way, and that is the geometry of a right-hand grip rather than a bug in
+it.
+
+**And the frame had to learn where the panel lands, not just how wide.** A panel
+taking columns from its left-hand neighbour grows leftwards, and one asking for
+the grid starts again at the first column — a frame anchored to the panel's
+current left edge draws both on the wrong side. `previewSpan` is gone and
+`previewResize` (`home-pack.ts`) answers with a rectangle: same bargain as the
+drop preview, one more coordinate.
+
+### 7.16 A hole with a lid on it
+
+The same screenshot, one row down: Conversations floating with no box around it.
+Its top edge is the bottom edge of whatever is above it, and above it was 175px
+of nothing — Git and Snapshots had ended, Agent ran on, and the full-width panel
+below had to clear Agent.
+
+That hole is the one thing §7.10's rule cannot reach. A column's leftover space
+is only worth keeping because the *next* panel in that column rises into it —
+that is the entire argument for packing this way. When the next panel spans the
+column, nothing can ever rise into it: the space is sealed above by what is
+already there and below by what just arrived. It is not raggedness, it is a page
+that failed to finish.
+
+So sealed space goes back to the panels above it, however big — the same
+`levelTo` the near-miss rule uses, with the tolerance lifted. The page's own
+bottom edge deliberately keeps the tolerance: nothing encloses the space below
+the last row, so a panel stretched a hundred pixels into it would be a box mostly
+full of nothing for no reason.
+
+One wrinkle worth naming: a filled panel's resize grip stays on its *content*
+box, which is what a height sizes, so the grip can sit above the panel's own
+bottom line. Moving it to the slot's corner would make the gesture size a box the
+neighbours partly decide, and shrinking inside a sealed band would then look like
+a resize that does nothing — the failure mode §7.7 exists to remember.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**
