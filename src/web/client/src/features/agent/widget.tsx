@@ -1,6 +1,7 @@
 import { Bot } from "lucide-react";
 import { useState } from "react";
 import {
+  rowCap,
   WidgetMore,
   WidgetNote,
   WidgetRow,
@@ -11,7 +12,7 @@ import {
   WidgetTabs,
   type WidgetTone,
 } from "@/features/home/widget-grid";
-import type { WidgetDefinition } from "@/features/home/widget-types";
+import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import type { McpAuthState } from "@/lib/api";
 import { useT, type TranslationKey } from "@/lib/i18n";
 import { useHomeAgentSummary, type HomeAgentSummary } from "./use-home-agent-summary";
@@ -42,10 +43,14 @@ export const agentWidget: WidgetDefinition = {
   scope: "global",
   source: "fetch",
   page: "agent",
-  render: () => <AgentSummary />,
+  render: ({ height }) => <AgentSummary height={height} />,
 };
 
-/** Four rows names the problem; the rest is the Agent page. */
+/**
+ * Four rows names the problem; the rest is the Agent page — but only while the
+ * panel is fitting its content. Given a height it lists everything and scrolls,
+ * which is the whole reason to drag a panel taller (`WidgetRenderProps.height`).
+ */
 const ROW_CAP = 4;
 
 const STATE_TONE: Record<McpAuthState, WidgetTone> = {
@@ -65,10 +70,13 @@ const TABS: { id: TabId; labelKey: TranslationKey }[] = [
   { id: "hooks", labelKey: "home.agent.tabHooks" },
 ];
 
-function AgentSummary() {
+function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const t = useT();
   const summary = useHomeAgentSummary();
   const [tab, setTab] = useState<TabId>("mcp");
+  /* One budget for all four tabs: they share a panel, so a tab that listed
+     more than its neighbours would resize the page on every click. */
+  const cap = rowCap(height, ROW_CAP);
 
   /* MCP leads because it is the only one that can be *broken* — the others are
      inventories, and an inventory has no bad state to land on. */
@@ -81,15 +89,15 @@ function AgentSummary() {
           </WidgetTab>
         ))}
       </WidgetTabs>
-      {tab === "mcp" ? <McpTab summary={summary} /> : null}
-      {tab === "skills" ? <SkillsTab summary={summary} /> : null}
-      {tab === "plugins" ? <PluginsTab summary={summary} /> : null}
-      {tab === "hooks" ? <HooksTab summary={summary} /> : null}
+      {tab === "mcp" ? <McpTab cap={cap} summary={summary} /> : null}
+      {tab === "skills" ? <SkillsTab cap={cap} summary={summary} /> : null}
+      {tab === "plugins" ? <PluginsTab cap={cap} summary={summary} /> : null}
+      {tab === "hooks" ? <HooksTab cap={cap} summary={summary} /> : null}
     </>
   );
 }
 
-function McpTab({ summary }: { summary: HomeAgentSummary }) {
+function McpTab({ cap, summary }: { cap: number; summary: HomeAgentSummary }) {
   const t = useT();
   const { calls, connected, degraded, failedCalls, loaded, servers } = summary;
 
@@ -121,7 +129,7 @@ function McpTab({ summary }: { summary: HomeAgentSummary }) {
       </WidgetStats>
       {rows.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((server) => (
+          {rows.slice(0, cap).map((server) => (
             <WidgetRow
               key={server.name}
               meta={stateLabel(server.state, t)}
@@ -129,8 +137,8 @@ function McpTab({ summary }: { summary: HomeAgentSummary }) {
               tone={STATE_TONE[server.state]}
             />
           ))}
-          {rows.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: rows.length - ROW_CAP })}</WidgetMore>
+          {rows.length > cap ? (
+            <WidgetMore>{t("home.more", { count: rows.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}
@@ -138,12 +146,13 @@ function McpTab({ summary }: { summary: HomeAgentSummary }) {
   );
 }
 
-function SkillsTab({ summary }: { summary: HomeAgentSummary }) {
+function SkillsTab({ cap, summary }: { cap: number; summary: HomeAgentSummary }) {
   const t = useT();
   const { loaded, skills } = summary;
 
   return (
     <Inventory
+      cap={cap}
       empty={loaded && skills.length === 0}
       rows={skills.map((skill) => ({ key: skill.path, name: skill.name, meta: skill.scope }))}
       stats={
@@ -165,12 +174,13 @@ function SkillsTab({ summary }: { summary: HomeAgentSummary }) {
   );
 }
 
-function PluginsTab({ summary }: { summary: HomeAgentSummary }) {
+function PluginsTab({ cap, summary }: { cap: number; summary: HomeAgentSummary }) {
   const t = useT();
   const { loaded, plugins } = summary;
 
   return (
     <Inventory
+      cap={cap}
       empty={loaded && plugins.length === 0}
       rows={plugins.map((plugin) => ({
         key: `${plugin.scope}:${plugin.name}`,
@@ -198,13 +208,14 @@ function PluginsTab({ summary }: { summary: HomeAgentSummary }) {
   );
 }
 
-function HooksTab({ summary }: { summary: HomeAgentSummary }) {
+function HooksTab({ cap, summary }: { cap: number; summary: HomeAgentSummary }) {
   const t = useT();
   const { hooks, loaded } = summary;
   const disabled = hooks.filter((hook) => hook.status === "disabled");
 
   return (
     <Inventory
+      cap={cap}
       empty={loaded && hooks.length === 0}
       /* Disabled first: a hook you think is running and is not is the only
          surprise this list has to offer. */
@@ -242,10 +253,12 @@ function HooksTab({ summary }: { summary: HomeAgentSummary }) {
  * them gained a state.
  */
 function Inventory({
+  cap,
   empty,
   rows,
   stats,
 }: {
+  cap: number;
   empty: boolean;
   rows: { key: string; meta?: string; name: string; tone?: WidgetTone }[];
   stats: React.ReactNode;
@@ -258,11 +271,11 @@ function Inventory({
       {empty ? <WidgetNote>—</WidgetNote> : null}
       {rows.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((row) => (
+          {rows.slice(0, cap).map((row) => (
             <WidgetRow key={row.key} meta={row.meta} name={row.name} tone={row.tone} />
           ))}
-          {rows.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: rows.length - ROW_CAP })}</WidgetMore>
+          {rows.length > cap ? (
+            <WidgetMore>{t("home.more", { count: rows.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}

@@ -1,5 +1,6 @@
 import { Database } from "lucide-react";
 import {
+  rowCap,
   WidgetId,
   WidgetMore,
   WidgetRow,
@@ -7,7 +8,7 @@ import {
   WidgetStat,
   WidgetStats,
 } from "@/features/home/widget-grid";
-import type { WidgetDefinition } from "@/features/home/widget-types";
+import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import type { DatabaseConnection } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { useHomeDatabaseSummary } from "./use-home-database-summary";
@@ -34,15 +35,16 @@ export const databasesWidget: WidgetDefinition = {
   scope: "global",
   source: "fetch",
   page: "database",
-  render: () => <DatabaseSummary />,
+  render: ({ height }) => <DatabaseSummary height={height} />,
 };
 
 /** Four connections names the exposure; the rest is the Database page. */
 const ROW_CAP = 4;
 
-function DatabaseSummary() {
+function DatabaseSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const t = useT();
   const { connections, loaded, total, unlocked } = useHomeDatabaseSummary();
+  const cap = rowCap(height, ROW_CAP);
 
   // Unlocked first — the only ordering that matters here, since everything else
   // on this list is inert until someone unlocks it.
@@ -63,7 +65,7 @@ function DatabaseSummary() {
       </WidgetStats>
       {rows.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((connection) => (
+          {rows.slice(0, cap).map((connection) => (
             <WidgetRow
               key={connection.name}
               meta={meta(connection, t)}
@@ -71,8 +73,8 @@ function DatabaseSummary() {
               tone={connection.writeUnlocked ? "bad" : "idle"}
             />
           ))}
-          {rows.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: rows.length - ROW_CAP })}</WidgetMore>
+          {rows.length > cap ? (
+            <WidgetMore>{t("home.more", { count: rows.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}

@@ -1,6 +1,7 @@
-import { Globe, HeartPulse, Server } from "lucide-react";
+import { HeartPulse, Server } from "lucide-react";
 import type { ReactNode } from "react";
 import {
+  rowCap,
   WidgetId,
   WidgetMore,
   WidgetNote,
@@ -20,13 +21,19 @@ import { serviceUrl } from "./service-list";
 /**
  * The services domain's Home widgets.
  *
- * Three of them share a file because they share a source — every one is a read
- * of the dashboard payload the shell already polls, so none costs a request.
- * Splitting them across three files would spread one idea over three headers.
+ * Both share a file because they share a source — each is a read of the
+ * dashboard payload the shell already polls, so neither costs a request.
+ * Splitting them across two files would spread one idea over two headers.
  *
  * Each is a strip of counters over a short list of *names*. The counters answer
  * "is anything wrong"; the list answers "what", which is the question a bare
  * figure left you to open the page for.
+ *
+ * **There was a third.** Ports listed `:port → service`, which is Services'
+ * `service → :port` read backwards, so the page spent two panels saying one
+ * thing. The only fact it held alone was a port taken by a process we did not
+ * spawn — a service that cannot start and has no runtime entry to be a row —
+ * and that moved into Services rather than leaving with it.
  */
 
 /** Enough rows to name the problem, few enough that the panel stays a summary. */
@@ -40,10 +47,10 @@ export const servicesWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "services",
-  render: ({ data }) => <ServicesSummary data={data} />,
+  render: ({ data, height }) => <ServicesSummary data={data} height={height} />,
 };
 
-function ServicesSummary({ data }: WidgetRenderProps) {
+function ServicesSummary({ data, height }: WidgetRenderProps) {
   const t = useT();
   const registered = data.config.services.length;
   const statuses = Object.values(data.runtime.services);
@@ -58,6 +65,14 @@ function ServicesSummary({ data }: WidgetRenderProps) {
   );
   const exited = statuses.filter((service) => service.state === "exited");
   /*
+    A port held by something we did not spawn — the one fact this widget cannot
+    derive from its own statuses, because the blocked service has no runtime
+    entry to be a row. It used to be the Ports widget's reason for existing;
+    that widget was otherwise this one inverted, so the duplicate went and the
+    signal moved here rather than being lost with it.
+  */
+  const conflicts = data.ports.filter((port) => port.state === "occupied");
+  /*
     A service that has never been started has no runtime entry at all, so
     "stopped" is what is left over from the registered count rather than a
     state to filter for. Clamped because runtime can briefly hold an entry for
@@ -66,8 +81,13 @@ function ServicesSummary({ data }: WidgetRenderProps) {
   const stopped = Math.max(0, registered - live.length - exited.length);
 
   // Exits first: a service that fell over is the only thing here worth reading
-  // before the ones that are simply up.
+  // before the ones that are simply up. A blocked port outranks even that — it
+  // is the one state where nothing is wrong with a service *and* it still
+  // cannot start, so it must survive `ROW_CAP` on a busy page.
   const rows = [...exited, ...live];
+  // Conflicts are never dropped, so the budget the service rows share is what
+  // is left of the cap after them.
+  const cap = Math.max(0, rowCap(height, ROW_CAP) - conflicts.length);
 
   return (
     <>
@@ -76,9 +96,21 @@ function ServicesSummary({ data }: WidgetRenderProps) {
         <WidgetStat label={t("home.services.exitedLabel")} tone="bad" value={exited.length} />
         <WidgetStat label={t("home.services.stopped")} value={stopped} />
       </WidgetStats>
-      {rows.length === 0 ? null : (
+      {conflicts.length === 0 && rows.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((service) => (
+          {conflicts.map((port) => (
+            <WidgetRow
+              key={`port:${port.port}`}
+              meta={
+                port.services.length > 0
+                  ? t("home.services.portBlocks", { name: port.services.join(", ") })
+                  : t("home.ports.unknownHolder")
+              }
+              name={`:${port.port}`}
+              tone="bad"
+            />
+          ))}
+          {rows.slice(0, cap).map((service) => (
             <WidgetRow
               key={service.name}
               meta={serviceMeta(service, ports.get(service.name), t)}
@@ -87,9 +119,11 @@ function ServicesSummary({ data }: WidgetRenderProps) {
               trailing={serviceTrailing(service, ports.get(service.name), t)}
             />
           ))}
-          {rows.length > ROW_CAP ? (
+          {rows.length > cap ? (
             <WidgetMore>
-              {t("home.more", { count: String(rows.length - ROW_CAP) })}
+              {t("home.more", {
+                count: String(rows.length - cap),
+              })}
             </WidgetMore>
           ) : null}
         </WidgetRows>
@@ -149,10 +183,10 @@ export const healthWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "services",
-  render: ({ data }) => <HealthSummary data={data} />,
+  render: ({ data, height }) => <HealthSummary data={data} height={height} />,
 };
 
-function HealthSummary({ data }: WidgetRenderProps) {
+function HealthSummary({ data, height }: WidgetRenderProps) {
   const t = useT();
   const entries = Object.values(data.health);
   /*
@@ -168,6 +202,7 @@ function HealthSummary({ data }: WidgetRenderProps) {
   );
   const healthy = entries.filter((entry) => entry.status === "healthy");
   const unknown = entries.filter((entry) => entry.status === "unknown");
+  const cap = rowCap(height, ROW_CAP);
 
   if (entries.length === 0) {
     return <WidgetNote>{t("home.health.none")}</WidgetNote>;
@@ -192,7 +227,7 @@ function HealthSummary({ data }: WidgetRenderProps) {
       */}
       {rows.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((entry) => (
+          {rows.slice(0, cap).map((entry) => (
             <WidgetRow
               key={entry.service}
               meta={entry.summary}
@@ -201,8 +236,8 @@ function HealthSummary({ data }: WidgetRenderProps) {
               trailing={latencyLabel(entry)}
             />
           ))}
-          {rows.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: String(rows.length - ROW_CAP) })}</WidgetMore>
+          {rows.length > cap ? (
+            <WidgetMore>{t("home.more", { count: String(rows.length - cap) })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}
@@ -223,55 +258,4 @@ function latencyLabel(entry: ServiceHealth): string | undefined {
     .map((check) => check.latencyMs)
     .filter((ms): ms is number => typeof ms === "number");
   return latencies.length > 0 ? `${Math.max(...latencies)}ms` : undefined;
-}
-
-export const portsWidget: WidgetDefinition = {
-  id: "ports",
-  titleKey: "home.widget.ports",
-  icon: <Globe />,
-  span: 4,
-  scope: "global",
-  source: "dashboard",
-  page: "services",
-  render: ({ data }) => <PortsSummary data={data} />,
-};
-
-function PortsSummary({ data }: WidgetRenderProps) {
-  const t = useT();
-  // `occupied` is a port held by something we did not spawn — the only state
-  // that blocks a start. `managed` is our own service holding its port, which
-  // is the working case, and `available` is nothing at all.
-  const occupied = data.ports.filter((port) => port.state === "occupied");
-  const managed = data.ports.filter((port) => port.state === "managed");
-
-  const rows = [...occupied, ...managed];
-
-  return (
-    <>
-      <WidgetStats>
-        <WidgetStat label={t("home.ports.conflicts")} tone="bad" value={occupied.length} />
-        <WidgetStat label={t("home.ports.managed")} tone="ok" value={managed.length} />
-        <WidgetStat label={t("home.ports.watched")} value={data.ports.length} />
-      </WidgetStats>
-      {rows.length === 0 ? null : (
-        <WidgetRows>
-          {rows.slice(0, ROW_CAP).map((port) => (
-            <WidgetRow
-              key={port.port}
-              meta={
-                port.services.length > 0
-                  ? port.services.join(", ")
-                  : t("home.ports.unknownHolder")
-              }
-              name={`:${port.port}`}
-              tone={port.state === "occupied" ? "bad" : "ok"}
-            />
-          ))}
-          {rows.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: String(rows.length - ROW_CAP) })}</WidgetMore>
-          ) : null}
-        </WidgetRows>
-      )}
-    </>
-  );
 }

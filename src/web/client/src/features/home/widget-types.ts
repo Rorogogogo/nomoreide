@@ -36,6 +36,27 @@ export type WidgetSpan = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface WidgetRenderProps {
   data: DashboardData;
+  /**
+   * The height the user gave this panel, in row units, or `null` for
+   * fit-to-content — and the answer to "how much of my list should I show".
+   *
+   * Every widget caps its list, because a summary that printed forty log lines
+   * or twenty-one skills would be a page, not a summary. That cap used to be
+   * unconditional, which made it a lie the moment panels started scrolling
+   * (`WidgetScroll`): the panel could show more, the user had made room for
+   * more, and the widget still printed six lines and "+34 more".
+   *
+   * So the cap is now the *unsized* behaviour only. A panel fitting its content
+   * keeps its short list, because it decides the page's height and an
+   * uncapped one would run the page off the screen. A panel someone dragged a
+   * height onto shows everything and scrolls, because that drag is exactly the
+   * instruction "I want to see this one".
+   *
+   * Use it via `rowCap` in `widget-grid.tsx` rather than reading it directly —
+   * seven widgets reaching for the same conditional is seven chances to write
+   * it differently.
+   */
+  height: number | null;
 }
 
 export interface WidgetDefinition {

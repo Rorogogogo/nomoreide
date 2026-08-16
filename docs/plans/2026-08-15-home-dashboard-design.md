@@ -669,6 +669,59 @@ Home in edit mode. There is no edit mode, and the picker and Reset are in the
 footer at all times, so the recovery is wherever it always was and the special
 case is gone.
 
+### 7.13 One panel saying what another already said, and six saying less than they had
+
+Three reactions to the same screenshot, and the third is the one with a rule in
+it.
+
+**Ports was Services backwards.** It listed `:5174 → nomoreide-website`;
+Services lists `nomoreide-website → :5174`. Two panels, one fact, and the owner
+saw it immediately. It is gone. The only thing it held alone was a port taken by
+a process we did not spawn — the one state where nothing is wrong with a service
+and it still cannot start, and which cannot be a Services row on its own because
+a blocked service has no runtime entry to be one. That moved into Services as a
+red row above the rest, so the duplicate left and the signal did not.
+
+Removing it needed no migration: `resolveHomeLayout` keeps only ids it can still
+find, so a saved layout naming `ports` simply stops mentioning it (§8.5, doing
+the job it was written for). A stale `heights.ports` stays in the document,
+harmlessly, until that panel is added back — which it never will be.
+
+**Repository is called Git.** The widget id stays `repository`, exactly as Logs
+kept `output`: the id is what a saved layout stores, and a rename that changed
+it would drop the panel from every customised Home. Only the title moved.
+
+**The row caps were lying, and the fix is a rule.** Every widget prints a
+capped list — six log lines, four MCP servers, five changed files — and prints
+"+34 more" under it. That cap was correct when a panel clipped, because the
+overflow was unreachable anyway. Once panels scrolled (§7.12) it became a
+refusal: the panel could show more, the user had *dragged it taller to see
+more*, and the widget still printed six lines and a promise that the rest
+existed somewhere.
+
+So the cap became conditional, and `WidgetRenderProps` gained `height` to make
+it possible:
+
+- **Unsized panel — cap it.** Fit-to-content means the widget decides how tall
+  the page is, and an uncapped list would run Home off the screen. A default
+  install is unchanged.
+- **Sized panel — show everything and scroll.** Dragging a height onto a panel
+  is the clearest statement anyone makes on this page: *this is the one I want
+  to look at.*
+
+`rowCap(height, cap)` in `widget-grid.tsx` is the whole rule, written once,
+because seven widgets each reaching for the same conditional is seven chances to
+write it differently. Agent shares one budget across its four tabs, so switching
+tabs cannot resize the panel under the cursor; Services spends the budget on
+conflicts first, since those must never be the rows that fall off the end.
+
+**The ceiling that remains is the payload, not the widget.** Logs shows every
+line it *has*, which is 40 per service (`PAYLOAD_TAIL`) — recent output, not the
+file. The dashboard payload is polled every 5s by every open tab, so raising
+that number multiplies a request that is already the page's most frequent one.
+The whole file is the Services page's log pane, and that is the right place for
+it.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**

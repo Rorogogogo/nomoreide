@@ -1,12 +1,13 @@
 import { Activity } from "lucide-react";
 import {
+  rowCap,
+  type WidgetTone,
   WidgetMore,
   WidgetNote,
   WidgetRow,
   WidgetRows,
   WidgetStat,
   WidgetStats,
-  type WidgetTone,
 } from "@/features/home/widget-grid";
 import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import type { TimelineEvent } from "@/lib/api";
@@ -29,7 +30,7 @@ export const activityWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "activity",
-  render: ({ data }) => <ActivitySummary data={data} />,
+  render: ({ data, height }) => <ActivitySummary data={data} height={height} />,
 };
 
 const EVENT_CAP = 6;
@@ -40,9 +41,10 @@ const SEVERITY_TONE: Record<TimelineEvent["severity"], WidgetTone> = {
   error: "bad",
 };
 
-function ActivitySummary({ data }: WidgetRenderProps) {
+function ActivitySummary({ data, height }: WidgetRenderProps) {
   const t = useT();
   const events = data.timeline;
+  const cap = rowCap(height, EVENT_CAP);
 
   if (events.length === 0) {
     return <WidgetNote>{t("home.activity.none")}</WidgetNote>;
@@ -59,7 +61,7 @@ function ActivitySummary({ data }: WidgetRenderProps) {
         <WidgetStat label={t("home.activity.events")} value={events.length} />
       </WidgetStats>
       <WidgetRows>
-        {events.slice(0, EVENT_CAP).map((event) => (
+        {events.slice(0, cap).map((event) => (
           <WidgetRow
             key={event.id}
             /*
@@ -73,8 +75,8 @@ function ActivitySummary({ data }: WidgetRenderProps) {
             trailing={formatRelativeTime(event.timestamp)}
           />
         ))}
-        {events.length > EVENT_CAP ? (
-          <WidgetMore>{t("home.more", { count: events.length - EVENT_CAP })}</WidgetMore>
+        {events.length > cap ? (
+          <WidgetMore>{t("home.more", { count: events.length - cap })}</WidgetMore>
         ) : null}
       </WidgetRows>
     </>

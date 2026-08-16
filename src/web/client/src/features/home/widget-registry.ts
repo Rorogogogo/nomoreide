@@ -5,7 +5,7 @@ import { databasesWidget } from "@/features/database/widget";
 import { repositoryWidget } from "@/features/git/widget";
 import { snapshotsWidget } from "@/features/git/snapshots/widget";
 import { outputWidget } from "@/features/services/output-widget";
-import { healthWidget, portsWidget, servicesWidget } from "@/features/services/widgets";
+import { healthWidget, servicesWidget } from "@/features/services/widgets";
 import type { WidgetDefinition } from "./widget-types";
 
 /**
@@ -22,18 +22,21 @@ import type { WidgetDefinition } from "./widget-types";
  * saved list wins and this order is only consulted for widgets they add back
  * (`home-layout.ts`).
  *
- * The default reads: the three service counters across the top; then Agent
- * beside the repository — an AI-native workbench that reports only processes
- * and ports is describing half of itself; then the conversations you can pick
- * back up beside the restore points you can fall back to; then what you can
- * overwrite and what has been happening; then the last thing a service said.
- * The final row is half empty and that is fine — a layout anyone can edit will
- * have ragged rows constantly, which is why each panel draws its own hairlines.
+ * The default reads: the two service counters across the top; then Agent
+ * beside git — an AI-native workbench that reports only processes is
+ * describing half of itself; then the conversations you can pick back up
+ * beside the restore points you can fall back to; then what you can overwrite
+ * and what has been happening; then the last thing a service said. The final
+ * row is half empty and that is fine — a layout anyone can edit will have
+ * ragged rows constantly, which is why each panel draws its own hairlines.
+ *
+ * A widget removed from this list disappears from saved layouts too, silently,
+ * because `resolveHomeLayout` keeps only ids it can still find (§8.5). That is
+ * what retired Ports without anyone having to migrate a stored row.
  */
 export const WIDGETS: WidgetDefinition[] = [
   servicesWidget,
   healthWidget,
-  portsWidget,
   agentWidget,
   repositoryWidget,
   conversationsWidget,

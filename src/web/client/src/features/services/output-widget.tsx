@@ -1,6 +1,7 @@
 import { Terminal } from "lucide-react";
 import { useState } from "react";
 import {
+  rowCap,
   WidgetNote,
   WidgetStat,
   WidgetStats,
@@ -29,7 +30,14 @@ import { cn } from "@/lib/utils";
  * 200ms apart ended up with one of them invisible.
  */
 
-/** Six lines is a glance. More is the Services page's log pane. */
+/**
+ * Six lines is a glance, and a glance is all an unsized panel can afford.
+ *
+ * Give the panel a height and it shows every line the payload carries and
+ * scrolls — see `WidgetRenderProps.height`. The payload itself is the real
+ * ceiling: 40 lines per service (`PAYLOAD_TAIL`), which is "recent output",
+ * not the whole file. The whole file is the Services page's log pane.
+ */
 const LINE_CAP = 6;
 
 export const outputWidget: WidgetDefinition = {
@@ -40,10 +48,10 @@ export const outputWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "services",
-  render: ({ data }) => <OutputSummary data={data} />,
+  render: ({ data, height }) => <OutputSummary data={data} height={height} />,
 };
 
-function OutputSummary({ data }: WidgetRenderProps) {
+function OutputSummary({ data, height }: WidgetRenderProps) {
   const t = useT();
   const streams = groupByService(data.logs);
   const [picked, setPicked] = useState<string | null>(null);
@@ -87,7 +95,7 @@ function OutputSummary({ data }: WidgetRenderProps) {
         panel something to scroll.
       */}
       <span className="flex shrink-0 flex-col gap-0.5 font-mono text-[10px] leading-relaxed">
-        {active.lines.slice(-LINE_CAP).map((line) => (
+        {active.lines.slice(-rowCap(height, LINE_CAP)).map((line) => (
           <span
             className="flex min-w-0 items-baseline gap-2"
             key={`${line.timestamp}:${line.text}`}

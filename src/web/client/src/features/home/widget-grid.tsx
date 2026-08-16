@@ -533,6 +533,19 @@ export function WidgetRow({
   );
 }
 
+/**
+ * How many rows a widget should print: its own cap when the panel is fitting
+ * its content, everything when the user has given the panel a height.
+ *
+ * One function so the rule is written once. See `WidgetRenderProps.height` for
+ * why the cap is conditional at all; the short version is that a cap and a
+ * scrollbar contradict each other, and the height says which of the two the
+ * user asked for.
+ */
+export function rowCap(height: number | null, cap: number): number {
+  return height === null ? cap : Number.POSITIVE_INFINITY;
+}
+
 export function WidgetDot({ tone }: { tone: WidgetTone }) {
   return <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", DOT_TONE[tone])} />;
 }

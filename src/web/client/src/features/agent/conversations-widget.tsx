@@ -1,5 +1,6 @@
 import { MessagesSquare } from "lucide-react";
 import {
+  rowCap,
   WidgetMore,
   WidgetNote,
   WidgetRow,
@@ -7,7 +8,7 @@ import {
   WidgetStat,
   WidgetStats,
 } from "@/features/home/widget-grid";
-import type { WidgetDefinition } from "@/features/home/widget-types";
+import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
 import { ClaudeLogo, CodexLogo } from "./agent-logos";
@@ -42,7 +43,7 @@ export const conversationsWidget: WidgetDefinition = {
   scope: "repo",
   source: "fetch",
   page: "agent",
-  render: () => <ConversationSummary />,
+  render: ({ height }) => <ConversationSummary height={height} />,
 };
 
 /**
@@ -60,9 +61,10 @@ const PROVIDER_LABEL: Record<"claude" | "codex", string> = {
   codex: "Codex",
 };
 
-function ConversationSummary() {
+function ConversationSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const t = useT();
   const { conversations, loaded, today, total } = useHomeConversationSummary();
+  const cap = rowCap(height, ROW_CAP);
 
   return (
     <>
@@ -76,7 +78,7 @@ function ConversationSummary() {
         ) : null
       ) : (
         <WidgetRows>
-          {conversations.slice(0, ROW_CAP).map((conversation) => (
+          {conversations.slice(0, cap).map((conversation) => (
             <WidgetRow
               key={conversation.id}
               /*
@@ -104,8 +106,8 @@ function ConversationSummary() {
               trailing={formatRelativeTime(conversation.updatedAt)}
             />
           ))}
-          {conversations.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: conversations.length - ROW_CAP })}</WidgetMore>
+          {conversations.length > cap ? (
+            <WidgetMore>{t("home.more", { count: conversations.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}

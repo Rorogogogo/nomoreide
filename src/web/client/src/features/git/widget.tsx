@@ -1,5 +1,7 @@
 import { GitBranch } from "lucide-react";
 import {
+  rowCap,
+  type WidgetTone,
   WidgetId,
   WidgetMore,
   WidgetNote,
@@ -7,7 +9,6 @@ import {
   WidgetRows,
   WidgetStat,
   WidgetStats,
-  type WidgetTone,
 } from "@/features/home/widget-grid";
 import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import type { GitFileStatus } from "@/lib/api";
@@ -32,15 +33,16 @@ export const repositoryWidget: WidgetDefinition = {
   scope: "repo",
   source: "dashboard",
   page: "git",
-  render: ({ data }) => <RepositorySummary data={data} />,
+  render: ({ data, height }) => <RepositorySummary data={data} height={height} />,
 };
 
 /** Five paths names the change; more and the panel is the Git page. */
 const FILE_CAP = 5;
 
-function RepositorySummary({ data }: WidgetRenderProps) {
+function RepositorySummary({ data, height }: WidgetRenderProps) {
   const t = useT();
   const { selectedRepository, status } = data.git;
+  const cap = rowCap(height, FILE_CAP);
 
   if (!status) {
     return <WidgetNote>{data.git.error ?? t("home.repository.none")}</WidgetNote>;
@@ -67,7 +69,7 @@ function RepositorySummary({ data }: WidgetRenderProps) {
       />
       {status.files.length === 0 ? null : (
         <WidgetRows>
-          {status.files.slice(0, FILE_CAP).map((file) => (
+          {status.files.slice(0, cap).map((file) => (
             <WidgetRow
               key={file.path}
               meta={<WidgetId>{file.path}</WidgetId>}
@@ -75,9 +77,9 @@ function RepositorySummary({ data }: WidgetRenderProps) {
               tone={fileTone(file)}
             />
           ))}
-          {status.files.length > FILE_CAP ? (
+          {status.files.length > cap ? (
             <WidgetMore>
-              {t("home.more", { count: status.files.length - FILE_CAP })}
+              {t("home.more", { count: status.files.length - cap })}
             </WidgetMore>
           ) : null}
         </WidgetRows>

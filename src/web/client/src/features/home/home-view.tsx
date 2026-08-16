@@ -133,7 +133,7 @@ export function HomeView({
                 row={rowIndex}
                 title={t(widget.titleKey)}
               >
-                {widget.render({ data })}
+                {widget.render({ data, height })}
               </WidgetPanel>
             )),
           )}
