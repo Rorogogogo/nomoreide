@@ -1,5 +1,6 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ExternalLink } from "lucide-react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
+import { openExternal } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_PX } from "./home-layout";
 import type { PanelPlacement } from "./home-pack";
@@ -534,6 +535,42 @@ export function WidgetRow({
 
 export function WidgetDot({ tone }: { tone: WidgetTone }) {
   return <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", DOT_TONE[tone])} />;
+}
+
+/**
+ * Open the thing a row *names* — the running service itself, not the page that
+ * lists it.
+ *
+ * This is allowed in a widget for the same reason the header arrow is: it is a
+ * link, and a link changes nothing. The rule a widget lives under is about what
+ * a control *acts on* — start, stop and restart act on the world and stay on
+ * the page the arrow opens, while going somewhere is the one thing a summary
+ * has always been allowed to offer. What it saves is the whole reason the panel
+ * exists: seeing that a service is up and reaching it were two different
+ * places, so reading Home told you where to go and then made you go there to go
+ * somewhere else.
+ *
+ * Styled like the arrow, and quiet for the same reason — one of these per row
+ * is a lot of marks on a summary, so they come up with the panel under the
+ * cursor and stay out of the way of the names, which are what is being read.
+ *
+ * Only offer it for something actually reachable. A link to a service that is
+ * not running is a dead tab, which is worse than no link.
+ */
+export function WidgetOpenLink({ label, url }: { label: string; url: string }) {
+  return (
+    <button
+      aria-label={label}
+      className="shrink-0 rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover/widget:text-muted-foreground/80"
+      /* `openExternal`, not an `<a target="_blank">`: in the Tauri build a
+         plain link is swallowed by the webview, and this page ships in both. */
+      onClick={() => void openExternal(url)}
+      title={label}
+      type="button"
+    >
+      <ExternalLink aria-hidden className="size-3" />
+    </button>
+  );
 }
 
 /** A machine identifier appearing inside a `meta` cell. */

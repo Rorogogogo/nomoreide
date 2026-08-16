@@ -4,6 +4,7 @@ import {
   WidgetId,
   WidgetMore,
   WidgetNote,
+  WidgetOpenLink,
   WidgetRow,
   WidgetRows,
   WidgetStat,
@@ -14,6 +15,7 @@ import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget
 import type { ServiceHealth, ServiceStatus } from "@/lib/api";
 import { type Translate, useT } from "@/lib/i18n";
 import { formatUptime } from "@/lib/utils";
+import { serviceUrl } from "./service-list";
 
 /**
  * The services domain's Home widgets.
@@ -82,7 +84,7 @@ function ServicesSummary({ data }: WidgetRenderProps) {
               meta={serviceMeta(service, ports.get(service.name), t)}
               name={service.name}
               tone={serviceTone(service)}
-              trailing={service.state === "running" ? formatUptime(service.startedAt) : undefined}
+              trailing={serviceTrailing(service, ports.get(service.name), t)}
             />
           ))}
           {rows.length > ROW_CAP ? (
@@ -108,6 +110,35 @@ function serviceMeta(service: ServiceStatus, port: number | undefined, t: Transl
   }
   if (service.state === "starting") return t("home.services.starting");
   return port ? <WidgetId>:{port}</WidgetId> : t("home.services.up");
+}
+
+/**
+ * How long it has been up, and a way to actually go there.
+ *
+ * Only for `running`. A service that is starting has no URL worth handing over
+ * yet and an exited one has none at all, so both keep the plain uptime cell —
+ * offering a link that lands on a connection refused would be worse than
+ * offering nothing.
+ *
+ * The service's own reported URL wins over one built from the port: a service
+ * that announced `http://127.0.0.1:5175/` on stdout knows its path and scheme,
+ * and `serviceUrl` is the guess for when nothing was announced.
+ */
+function serviceTrailing(
+  service: ServiceStatus,
+  port: number | undefined,
+  t: Translate,
+): ReactNode {
+  if (service.state !== "running") return undefined;
+  const url = service.url ?? (port ? serviceUrl(port) : undefined);
+  const uptime = formatUptime(service.startedAt);
+  if (!url) return uptime;
+  return (
+    <span className="flex items-center justify-end gap-1.5">
+      {uptime}
+      <WidgetOpenLink label={t("services.openUrl", { url })} url={url} />
+    </span>
+  );
 }
 
 export const healthWidget: WidgetDefinition = {
