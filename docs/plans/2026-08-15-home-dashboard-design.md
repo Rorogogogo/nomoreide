@@ -831,6 +831,34 @@ bottom line. Moving it to the slot's corner would make the gesture size a box th
 neighbours partly decide, and shrinking inside a sealed band would then look like
 a resize that does nothing — the failure mode §7.7 exists to remember.
 
+### 7.17 Two edges are only a frame if the neighbours cooperate
+
+Next screenshot, two complaints, one cause. Activity had no left edge below
+Databases' bottom line; the seam under Git and Snapshots read as absent. Every
+panel drew a bottom rule and a right rule and nothing else, which is a complete
+frame only when something above it is exactly as wide and something to its left
+is exactly as tall. Under rows that was nearly always true. Under masonry it is
+nearly always false: panels beside each other end at different depths on purpose,
+so the neighbour that was drawing your left edge stops drawing it partway down,
+and the panel you sit under stops drawing your top edge partway across.
+
+So a panel draws all four of its own edges. That is the only rule that survives
+whatever lands next to it, and it has a second virtue — every seam is now drawn
+from both sides, so it cannot go missing because one side rendered oddly.
+
+The doubling that would normally follow is avoided by overlap, not by working out
+who owes whom a line. Each cell is placed one pixel up and one pixel left of its
+slot and given one more pixel of each dimension, so its top and left rules land
+*on* the bottom and right rules of what it abuts — one pixel, painted twice, the
+same colour. The outermost rules fall in the pixel the grid already clips, which
+is the full-bleed edge the page has always had, and `-mr-px` keeps doing that job
+on the right.
+
+The pixel is spent entirely on borders: the body inside still starts where the
+slot starts and is still exactly the size it was. That is what keeps it invisible
+to everything else — the masonry and both drags measure `data-widget-body`, never
+the cell, so nothing that reads geometry can tell this changed.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**

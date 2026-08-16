@@ -53,15 +53,20 @@ const DOT_TONE: Record<WidgetTone, string> = {
 /**
  * The grid: a positioned box of a computed height, holding placed panels.
  *
- * It draws no rules of its own — each panel draws its own bottom and right
- * hairline, which is now the only arrangement possible: with panels stacking
- * independently there is no row whose height a rule could span.
+ * It draws no rules of its own — each panel frames itself, which is now the only
+ * arrangement possible: with panels stacking independently there is no row whose
+ * height a rule could span, and no column whose neighbours are reliably its own
+ * height either.
  *
- * `-mr-px` inside `overflow-hidden` pushes the rightmost column's rule out of
- * view, so the grid ends flush with the panel edge instead of drawing a border
- * down the outside of a full-bleed page. Panels are placed in percentages of
- * *this* box, so a panel reaching the last column lands its border in that
- * hidden pixel exactly as a `col-span-12` cell used to.
+ * `overflow-hidden` is what makes that framing land as one line per seam and no
+ * line at all around the outside. `-mr-px` pushes the rightmost column's rule
+ * out of view, so the grid ends flush with the panel edge instead of drawing a
+ * border down the outside of a full-bleed page; the first row and the first
+ * column spend their own outer rules in the pixel this box clips, because every
+ * panel is placed a pixel up and a pixel left of its slot (`panelStyle`).
+ * Panels are placed in percentages of *this* box, so a panel reaching the last
+ * column lands its border in that hidden pixel exactly as a `col-span-12` cell
+ * used to.
  *
  * The height is given rather than grown into: every child is absolutely
  * positioned and so contributes nothing to it, and a container that collapsed to
@@ -102,12 +107,26 @@ export function WidgetGrid({
  * packer — and what it buys is that its height is nobody's business but its own.
  *
  * It still carries no padding — that lives in `WidgetBody`, and that split is
- * what lets a panel end where its content does. Both *rules* are the cell's,
- * because both draw the edges of the rectangle the packer chose rather than the
+ * what lets a panel end where its content does. All four *rules* are the cell's,
+ * because they draw the edges of the rectangle the packer chose rather than the
  * edges of what happens to be inside it. That distinction is the whole reason
  * the cell has a height at all: the packer may end a panel a few pixels below
  * its content to bring it level with the one beside it (`home-pack.ts`), and the
  * lines that show it have to follow the slot, not the body.
+ *
+ * All four, and not the two it used to draw. A bottom-and-right panel is only
+ * fully framed if something above it and something to its left happen to be
+ * exactly as tall and exactly as wide — and under masonry they routinely are
+ * not. A panel beside a shorter neighbour lost its left edge from that
+ * neighbour's bottom down; a wide panel under two short ones lost the run of its
+ * top edge between them. Drawing its own four edges is the only rule that holds
+ * whatever lands next to it.
+ *
+ * Doubling is avoided by overlap rather than by cleverness (`panelStyle`): each
+ * cell is placed a pixel up and a pixel left of its slot and given a pixel more
+ * of each dimension, so its top and left rules land *on* the bottom and right
+ * rules of whatever it abuts. Every seam is drawn twice into one pixel, and the
+ * page's own outside edges fall in the pixel the grid clips.
  *
  * Which also keeps the measuring honest. The body is measured, the cell is
  * placed, and because the body sizes itself the stretch can never be read back
@@ -115,7 +134,7 @@ export function WidgetGrid({
  * taller and grow again.
  */
 export function panelClassName(): string {
-  return "group/widget absolute flex flex-col border-b border-border text-left md:border-r";
+  return "group/widget absolute flex flex-col border-t border-b border-l border-border text-left md:border-r";
 }
 
 /**
@@ -131,14 +150,27 @@ export function panelClassName(): string {
  * changing: it is what the body measured, plus whatever levelling it onto a
  * neighbour's line cost. Applying it to the cell — never to the body — is what
  * makes that a property of the slot instead of a lie about the content.
+ *
+ * The pixel it is shifted by is what lets the cell draw all four of its rules
+ * without any seam coming out two pixels thick. Starting a pixel early in both
+ * axes and running a pixel longer puts the top and left rules exactly where the
+ * neighbour above and the neighbour to the left already put their bottom and
+ * right ones — the same pixel, painted twice, the same colour. A panel in the
+ * first row or the first column spends that pixel outside the grid, which hides
+ * it, and that is the full-bleed edge the page has always had.
+ *
+ * Nothing else in the feature has to know: the shift and the extra pixel are
+ * spent entirely on the borders, so the body inside still starts where the slot
+ * starts and is still exactly as big as it was — which matters because the drag
+ * and the masonry both measure the *body* (`data-widget-body`), never the cell.
  */
 export function panelStyle(place: PanelPlacement | undefined): CSSProperties {
-  if (!place) return { left: 0, top: 0, width: "100%" };
+  if (!place) return { left: -1, top: -1, width: "calc(100% + 1px)" };
   return {
-    height: place.height,
-    left: `${(place.column / place.lanes) * 100}%`,
-    top: place.top,
-    width: `${(place.span / place.lanes) * 100}%`,
+    height: place.height + 1,
+    left: `calc(${(place.column / place.lanes) * 100}% - 1px)`,
+    top: place.top - 1,
+    width: `calc(${(place.span / place.lanes) * 100}% + 1px)`,
   };
 }
 
