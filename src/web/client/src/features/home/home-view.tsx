@@ -140,7 +140,6 @@ export function HomeView({
                 }
                 corner={
                   <WidgetResizeGrip
-                    height={height}
                     onFrame={setFrame}
                     onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
                     resolveBox={(next) => resizeBox(layout, widget.id, next, boxes.get(widget.id))}

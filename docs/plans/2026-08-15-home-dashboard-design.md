@@ -829,7 +829,8 @@ One wrinkle worth naming: a filled panel's resize grip stays on its *content*
 box, which is what a height sizes, so the grip can sit above the panel's own
 bottom line. Moving it to the slot's corner would make the gesture size a box the
 neighbours partly decide, and shrinking inside a sealed band would then look like
-a resize that does nothing — the failure mode §7.7 exists to remember.
+a resize that does nothing — the failure mode §7.7 exists to remember. (§7.18
+moved it anyway, and explains why that objection does not survive contact.)
 
 ### 7.17 Two edges are only a frame if the neighbours cooperate
 
@@ -858,6 +859,32 @@ The pixel is spent entirely on borders: the body inside still starts where the
 slot starts and is still exactly the size it was. That is what keeps it invisible
 to everything else — the masonry and both drags measure `data-widget-body`, never
 the cell, so nothing that reads geometry can tell this changed.
+
+### 7.18 A corner mark with no corner under it
+
+With the frames complete, the next screenshot was Snapshots: the grip sitting
+halfway down the panel, in space, with no line beneath it. §7.16 had said moving
+it to the slot's corner would make shrinking inside a sealed band look like a
+resize that does nothing. That objection is wrong, and it was wrong when I wrote
+it: the grip's *position* was never what protected against it. Drag the body's
+corner up inside a sealed band and the stored height shrinks, the packer
+re-inflates the cell, and nothing visible happens either. The failure belongs to
+the packing — the panel below spans the column and cannot rise into what you
+freed — and the grip's placement changes only where you stand while hitting it.
+
+So the grip is the cell's. It marks the corner the reader can see, which is the
+one with rules around it, and the rules are now the thing that says where a panel
+ends.
+
+The drag start moved with it, and that part is an improvement rather than a
+consequence. The origin height is what is *on screen* — content top to slot
+bottom — not the stored height, which on a stretched panel is shorter than what
+you are holding. Grab the corner, pull down one row, and the panel is one row
+taller than it looked: the stretch is adopted instead of thrown away, where
+before the same gesture would have jumped the panel back to its stored height
+plus one and shown no change at all. It also keeps the "only the axis you moved"
+rule intact for free — a straight-sideways drag now lands on the row it started
+on, so it still writes no height.
 
 ## 8. Decisions needed before stage 1
 

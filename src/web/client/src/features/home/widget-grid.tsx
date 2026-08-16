@@ -202,9 +202,12 @@ export function WidgetDragFrame({
 }
 
 /**
- * The padded box a widget draws in: the one a stored height applies to, the one
- * the resize grip sits in, and — because it sizes itself and nothing sizes it —
- * the one the masonry measures.
+ * The padded box a widget draws in: the one a stored height applies to and —
+ * because it sizes itself and nothing sizes it — the one the masonry measures.
+ *
+ * It is no longer the box the resize grip sits in. The grip marks a corner, and
+ * the corner anyone can see is the cell's; this box ends wherever the content
+ * did, which on a stretched panel is nowhere in particular.
  *
  * `null` is fit-to-content — what every panel did before heights existed and
  * still the default, because how tall a summary needs to be is a fact about
@@ -293,7 +296,7 @@ export function WidgetPanelHeader({
  * So the scroll lives here, on the content, rather than on `WidgetBody`. The
  * header stays put while the content moves under it — a scrolled panel whose
  * title had left the top of it would be a panel you cannot identify — and the
- * resize grip, a sibling rather than a child, stays pinned to the corner it
+ * resize grip is outside the body entirely, so it stays pinned to the corner it
  * sizes instead of scrolling out of reach.
  *
  * `min-h-0` is what makes it work at all: a flex child's default `min-height:
@@ -353,7 +356,7 @@ export function WidgetPanel({
   children: ReactNode;
   /** Home's per-panel controls, beside the arrow. */
   controls?: ReactNode;
-  /** Home's resize grip, pinned to the body's corner. */
+  /** Home's resize grip, pinned to the corner of the slot the rules draw. */
   corner?: ReactNode;
   dragging?: boolean;
   height: number | null;
@@ -407,8 +410,15 @@ export function WidgetPanel({
           }
         />
         <WidgetScroll>{children}</WidgetScroll>
-        {corner}
       </WidgetBody>
+      {/*
+        The grip is the cell's, not the body's: it marks the corner of the
+        rectangle you can see, which is the one with the rules around it. Sitting
+        on the body it floated wherever the content happened to end — halfway
+        down a panel the packer had stretched, with no line beneath it to be the
+        corner *of*.
+      */}
+      {corner}
     </div>
   );
 }

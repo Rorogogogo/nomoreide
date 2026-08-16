@@ -81,9 +81,21 @@ export interface WidgetBox {
 /**
  * The grip: a corner mark, not a handle.
  *
- * It lives inside the panel's *body*, which is the box a height actually sizes,
- * so the grip always sits on the corner you are about to move rather than on
- * the bottom of a cell that stretched to fit a taller neighbour.
+ * It sits at the corner of the *cell* — the rectangle with the rules around it,
+ * the one the reader can see. It used to sit on the body, on the argument that
+ * the body is what a height sizes; what that produced was a mark floating in the
+ * middle of any panel the packer had stretched, with no line under it to be the
+ * corner of. A grip has to be on the thing it appears to move.
+ *
+ * Which is why the drag starts from the cell's bottom too, and not from a stored
+ * height that may be shorter than what is on screen. Grab a corner, move it a
+ * row, and the panel is a row taller than it looked — the stretch the packer
+ * added is adopted rather than discarded. What that costs is what it always
+ * cost: dragging *up* inside space the packer sealed (`home-pack.ts`) changes
+ * the stored height and nothing visible, because the panel below spans the
+ * column and cannot rise. That was equally true of the grip on the body; it is a
+ * property of the packing, and the only honest place to hit it is the corner
+ * that is actually there.
  *
  * Unlike the width-only edge it replaced, it is not `xl`-only. Below that
  * breakpoint the 12-column grid collapses and a width has nowhere to show
@@ -92,14 +104,12 @@ export interface WidgetBox {
  * could lose by making the window smaller.
  */
 export function WidgetResizeGrip({
-  height,
   onFrame,
   onSize,
   resolveBox,
   span,
   title,
 }: {
-  height: number | null;
   onFrame: (frame: ResizeFrame | null) => void;
   onSize: (size: WidgetSize) => void;
   /**
@@ -127,13 +137,19 @@ export function WidgetResizeGrip({
   useEffect(() => () => release.current?.(), []);
 
   const measure = (grip: HTMLElement): Origin | null => {
-    // The grip's parent is the body — the box a height sizes, and the box whose
-    // left edge a width is measured from.
-    const body = grip.parentElement;
+    // Two boxes, because they answer different questions. The body is where the
+    // panel begins — its top is where a height is measured from and its left is
+    // where a width is — and the cell is where the panel *ends*, which is where
+    // the grip is and so where the drag starts from.
+    const cell = grip.parentElement;
+    const body = cell?.querySelector("[data-widget-body]");
     const grid = grip.closest("[data-widget-grid]");
-    if (!body || !grid) return null;
+    if (!body || !cell || !grid) return null;
     const rect = body.getBoundingClientRect();
     const ruler = grid.getBoundingClientRect();
+    // What is on screen, top of the content to bottom of the slot — the stretch
+    // the packer may have added included, since that is the corner being held.
+    const shown = cell.getBoundingClientRect().bottom - rect.top;
     return {
       // The grid is the ruler: one twelfth of it is one column, whatever the
       // window is doing. Read once, at pointer-down, so nothing that happens
@@ -144,12 +160,14 @@ export function WidgetResizeGrip({
       left: rect.left,
       top: rect.top,
       width: rect.width,
-      height: rect.height,
+      height: shown,
       span,
-      // A panel with no stored height still has a real one on screen, and that
-      // is where a vertical drag has to start from — otherwise the first pixel
-      // of movement jumps the frame to some default the user never chose.
-      rows: height ?? clampHeight(rect.height / HOME_ROW_PX),
+      // Where a vertical drag starts from, and it is what is on screen rather
+      // than what is stored — otherwise the first pixel of movement jumps the
+      // frame to a height the panel is not currently drawn at. It is also what
+      // keeps a straight-sideways drag from writing a height: the row it lands
+      // on is the row it began at, so the axis nobody moved stays unwritten.
+      rows: clampHeight(shown / HOME_ROW_PX),
     };
   };
 
