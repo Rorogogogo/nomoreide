@@ -4,6 +4,7 @@ import { openExternal } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_PX } from "./home-layout";
 import type { PanelPlacement } from "./home-pack";
+import { WidgetScroll } from "./widget-scroll";
 
 /**
  * Home's presentation primitives.
@@ -280,37 +281,6 @@ export function WidgetPanelHeader({
       {title}
       {trailing}
     </span>
-  );
-}
-
-/**
- * The widget's own content, in a box that scrolls rather than clips.
- *
- * A height is an answer to "how much room does this get on my page", and the
- * panel used to read it as "how much of this may I see" — anything past the
- * stored height was cut off with nothing to say it was there. Those are
- * different questions, and only the first one is what anyone means when they
- * drag a corner: a Logs panel sized to eight rows is a decision about the page,
- * not an instruction to throw away the ninth line.
- *
- * So the scroll lives here, on the content, rather than on `WidgetBody`. The
- * header stays put while the content moves under it — a scrolled panel whose
- * title had left the top of it would be a panel you cannot identify — and the
- * resize grip is outside the body entirely, so it stays pinned to the corner it
- * sizes instead of scrolling out of reach.
- *
- * `min-h-0` is what makes it work at all: a flex child's default `min-height:
- * auto` refuses to shrink below its content, so without it the body would grow
- * past the height it was given and the overflow would never happen. `flex-1`
- * has nothing to distribute when the panel is fitting its content, which is why
- * an unsized panel is unaffected by any of this.
- */
-export function WidgetScroll({ children }: { children: ReactNode }) {
-  /* `gap-2` moves down with the content: these used to be `WidgetBody`'s own
-     children and spaced by its gap, and a wrapper that did not carry it would
-     close up every widget on the page. */
-  return (
-    <span className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">{children}</span>
   );
 }
 

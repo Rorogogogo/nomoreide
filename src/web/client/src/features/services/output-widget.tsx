@@ -8,6 +8,7 @@ import {
   WidgetTab,
   WidgetTabs,
 } from "@/features/home/widget-grid";
+import { useStickToBottom, WidgetSticky } from "@/features/home/widget-scroll";
 import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import type { LogEntry } from "@/lib/api/services-api";
 import { useT } from "@/lib/i18n";
@@ -72,6 +73,11 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
      a hook cannot live behind one. The graph follows the tab: one service's
      series, for the service whose lines are underneath it. */
   const metrics = useHomeServiceMetrics(active?.service ?? null);
+  /* Resolved before the empty check for the same reason the metrics are: a hook
+     cannot live behind a `return`. The panel follows its own end as output
+     arrives, and re-pins when the tab changes — a different service's tab is a
+     request for that service's newest lines. */
+  useStickToBottom(active?.service ?? "");
 
   // A dash rather than a sentence: the panel title already says what is absent.
   if (!active) return <WidgetNote>—</WidgetNote>;
@@ -80,30 +86,43 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
 
   return (
     <>
-      {streams.length > 1 ? (
-        <WidgetTabs>
-          {streams.map((stream) => (
-            <WidgetTab
-              active={stream.service === active.service}
-              key={stream.service}
-              onSelect={() => setPicked(stream.service)}
-            >
-              {stream.service}
-            </WidgetTab>
-          ))}
-        </WidgetTabs>
-      ) : null}
-      <WidgetStats>
-        <WidgetStat label={t("home.output.source")} value={active.service} />
-        <WidgetStat label={t("home.output.lines")} value={active.lines.length} />
-        <WidgetStat label={t("home.output.stderr")} tone="bad" value={errors} />
-      </WidgetStats>
       {/*
-        Between the counters and the lines, because that is the order the
-        question is asked in: how much output, what shape was the last half
-        hour, and then — at the moment the shape points at — what did it say.
+        Everything that is *about* the lines, pinned above them.
+
+        The lines move on their own now — the box follows its own end as output
+        arrives — and a graph that scrolled away with them would be gone at
+        precisely the moment it earns its place: something spikes, the panel
+        drags itself down to the newest line, and the shape that told you which
+        moment to read has left the top of the panel. The tab row goes with it
+        for the plainer reason that a panel scrolled off its own tabs is a panel
+        that no longer says whose output you are reading.
       */}
-      <OutputGraph samples={metrics.samples} volume={metrics.volume} />
+      <WidgetSticky>
+        {streams.length > 1 ? (
+          <WidgetTabs>
+            {streams.map((stream) => (
+              <WidgetTab
+                active={stream.service === active.service}
+                key={stream.service}
+                onSelect={() => setPicked(stream.service)}
+              >
+                {stream.service}
+              </WidgetTab>
+            ))}
+          </WidgetTabs>
+        ) : null}
+        <WidgetStats>
+          <WidgetStat label={t("home.output.source")} value={active.service} />
+          <WidgetStat label={t("home.output.lines")} value={active.lines.length} />
+          <WidgetStat label={t("home.output.stderr")} tone="bad" value={errors} />
+        </WidgetStats>
+        {/*
+          Between the counters and the lines, because that is the order the
+          question is asked in: how much output, what shape was the last half
+          hour, and then — at the moment the shape points at — what did it say.
+        */}
+        <OutputGraph samples={metrics.samples} volume={metrics.volume} />
+      </WidgetSticky>
       {/*
         `shrink-0`, and pointedly no `overflow-hidden`: the panel scrolls its own
         content now (`WidgetScroll`), and a list that hides its own overflow

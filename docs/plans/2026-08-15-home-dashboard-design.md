@@ -984,6 +984,60 @@ does sit close to the CPU pane's green under protanopia, which identity never
 rests on, because every swatch is beside its own written label in a different
 pane.
 
+### 7.21 A graph that scrolls away is a graph you cannot check against
+
+Three panes and a tail arrived in the same panel, and the panel scrolls as one
+box (§7.9). So the moment the tail was worth following, the axis explaining it
+left the top of the panel — you scroll to the newest line and the shape that told
+you *which* line to read is gone. The fix is two halves of the same idea: the
+part of the panel that is **about** the lines stays put, and the lines follow
+their own end.
+
+**Pinned: the tabs, the counters and the graph.** All three answer questions
+about the output rather than being output — whose it is, how much of it, what
+shape the last half hour had — so they belong to the panel, not to the scroll.
+`WidgetSticky` is the general form of that in `widget-scroll.tsx`, and the box
+itself is now handed down by context so a widget can address the thing it is
+scrolling inside without reaching up through the DOM for it.
+
+**Conditional, because a pin is only a kindness while the pinned thing fits.** A
+`position: sticky` block taller than its box is stuck at the top with nowhere to
+scroll, and its own bottom — here, the newest pane on it — becomes unreachable.
+Sized short enough the panel drops the pin and goes back to scrolling everything,
+which is strictly better than pinning something you cannot see the end of. The
+threshold reserves two lines of reading room (`fitsSticky`), because a header that
+leaves room for exactly one line has not left room for anything.
+
+**Following the tail is conditional too, and on the reader.** A panel that jumps
+to the newest line unconditionally is unusable the moment a service is chatty:
+scroll up to the stack trace, and the next poll drags you back down. New output
+only moves the box when the box was already showing its end (`isPinned`), with a
+line and a half of slack — sub-pixel layout means a box scrolled fully down
+routinely reports a fraction short, and an exact test reads that as "the reader
+has scrolled away" and quietly stops following forever.
+
+Two things this got wrong first:
+
+- **The trigger is geometry, not a new line.** The first cut re-scrolled when a
+  key built from the last log line changed, which is subtly short: the end of the
+  content also moves when the *box* is resized, because a panel given a height
+  stops capping its tail at six lines and renders all forty at once. No key
+  describing the last line notices that — the last line is the same one. Sized
+  live, the panel duly rendered forty lines and sat at the top of them. The scroll
+  is now re-checked every render, since being at the end is a fact about geometry
+  and setting an already-scrolled box to its end is a no-op.
+- **A `ResizeObserver` is a backstop, not the mechanism.** Both the fit guard and
+  the follow originally waited on observer callbacks, which are delivered with the
+  frame — so they never arrive at all in a tab that is not rendering, and arrive
+  a frame late everywhere else. Resizing a panel *is* a render (the height is a
+  prop), so both now measure in a layout effect and keep the observer only for the
+  size changes no render announces: the window, a font, a tab row wrapping.
+
+Worth knowing when reading the panel: none of this engages until the panel has a
+height. At fit-to-content it shows six lines and there is nothing to scroll, so
+nothing to pin and no end to follow — the behaviour appears the moment someone
+drags the corner, which is also the moment they asked for more lines than fit.
+
 ## 8. Decisions needed before stage 1
 
 **8.1 Where the layout lives — `UiPreferences` v3, not ConfigStore.**
