@@ -486,6 +486,25 @@ same way. What a row no longer decides is how far down its panels start.
   lands on which row it belongs to. That also aims better: "the left half of this
   one" is what a person dropping a panel beside another one means.
 
+**The line became a frame.** §7.9 drew the drop as a line between two panels,
+which answers "where in the order" — and where in the order is not what anyone
+is deciding. They are deciding what the page will look like, and masonry pulled
+those two questions apart: a drop re-shares the target row's columns *and* drops
+the panel wherever the skyline puts it, so one position in the order can mean
+very different rectangles. Dragging a full-width panel into a row of two makes it
+a third as wide, and the line said nothing about that.
+
+So the drag draws the rectangle instead, in the same dashed frame the resize
+gesture uses — the two make the same promise and should not look like two kinds
+of answer. It is not an approximation: `previewPlacement` runs the real
+`moveWidget` against a copy of the layout and packs the result, which is the
+bargain `previewSpan` already made for the resize frame. That is only affordable
+because §7.10 made placement a pure function; under CSS grid there was nothing
+to ask but the browser, and only after committing. One approximation survives,
+in the height — a fit-to-content panel landing in a narrower slot will wrap more
+than the frame showed, and re-measuring it at a width it does not have yet would
+mean rendering it twice per pointermove.
+
 **What this costs, stated plainly.** The dead space did not vanish, it moved: a
 page whose columns run to different depths is ragged at the bottom, and that
 raggedness is the feature — it is the same slack, collected in one place instead

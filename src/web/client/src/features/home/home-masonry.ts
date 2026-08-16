@@ -68,7 +68,7 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
 
     const next = packHome(latest.current, measured, gridColumns(width));
     const key = `${width}|${next.height}|${next.placements
-      .map((place) => `${place.id}:${place.left}:${place.width}:${place.top}`)
+      .map((place) => `${place.id}:${place.column}/${place.span}/${place.lanes}:${place.top}`)
       .join(",")}`;
     if (key === signature.current) return;
     signature.current = key;

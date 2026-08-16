@@ -3,10 +3,12 @@ import { HOME_ROW_PX, type PlacedRow, type PlacedWidget } from "../src/web/clien
 import {
   gridColumns,
   packHome,
+  previewPlacement,
   spanFor,
   HOME_MID_WIDTH,
   HOME_WIDE_WIDTH,
 } from "../src/web/client/src/features/home/home-pack";
+import type { HomeLayout } from "../src/web/client/src/features/settings/ui-preferences";
 import type { WidgetDefinition, WidgetSpan } from "../src/web/client/src/features/home/widget-types";
 
 /**
@@ -39,11 +41,11 @@ function row(...widgets: PlacedWidget[]): PlacedRow {
   return { widgets };
 }
 
-/** Placements as `id -> [left, width, top, height]`, which is what most asserts want. */
+/** Placements as `id -> [column, span, lanes, top, height]` — what most asserts want. */
 function boxes(rows: PlacedRow[], measured: Record<string, number>, columns: number) {
-  const out: Record<string, [string, string, number, number]> = {};
+  const out: Record<string, [number, number, number, number, number]> = {};
   for (const place of packHome(rows, measured, columns).placements) {
-    out[place.id] = [place.left, place.width, place.top, place.height];
+    out[place.id] = [place.column, place.span, place.lanes, place.top, place.height];
   }
   return out;
 }
@@ -91,7 +93,7 @@ describe("packHome", () => {
   test("puts a single row at the top and sizes the grid to it", () => {
     const packed = packHome([row(panel("a", 12))], { a: 90 }, 12);
     expect(packed.placements).toEqual([
-      { id: "a", left: "0%", width: "100%", top: 0, height: 90 },
+      { id: "a", column: 0, span: 12, lanes: 12, top: 0, height: 90 },
     ]);
     expect(packed.height).toBe(90);
   });
@@ -99,9 +101,9 @@ describe("packHome", () => {
   test("places a row left to right as shares of the grid", () => {
     const rows = [row(panel("a", 3), panel("b", 4), panel("c", 5))];
     expect(boxes(rows, { a: 50, b: 50, c: 50 }, 12)).toEqual({
-      a: ["0%", "25%", 0, 50],
-      b: ["25%", `${(4 / 12) * 100}%`, 0, 50],
-      c: [`${(7 / 12) * 100}%`, `${(5 / 12) * 100}%`, 0, 50],
+      a: [0, 3, 12, 0, 50],
+      b: [3, 4, 12, 0, 50],
+      c: [7, 5, 12, 0, 50],
     });
   });
 
@@ -179,10 +181,10 @@ describe("packHome", () => {
     test("puts two panels per line and wraps within the row", () => {
       const rows = [row(panel("a", 3), panel("b", 3), panel("c", 3), panel("d", 3))];
       expect(boxes(rows, { a: 10, b: 20, c: 10, d: 10 }, 2)).toEqual({
-        a: ["0%", "50%", 0, 10],
-        b: ["50%", "50%", 0, 20],
-        c: ["0%", "50%", 10, 10],
-        d: ["50%", "50%", 20, 10],
+        a: [0, 1, 2, 0, 10],
+        b: [1, 1, 2, 0, 20],
+        c: [0, 1, 2, 10, 10],
+        d: [1, 1, 2, 20, 10],
       });
     });
 
@@ -191,24 +193,82 @@ describe("packHome", () => {
       // was its own `grid-cols-2` before, and never merged with the next.
       const rows = [row(panel("a", 3)), row(panel("b", 3))];
       expect(boxes(rows, { a: 10, b: 10 }, 2)).toEqual({
-        a: ["0%", "50%", 0, 10],
-        b: ["0%", "50%", 10, 10],
+        a: [0, 1, 2, 0, 10],
+        b: [0, 1, 2, 10, 10],
       });
     });
 
     test("stacks everything in one column at the narrowest width", () => {
       const rows = [row(panel("a", 6), panel("b", 6)), row(panel("c", 12))];
       expect(boxes(rows, { a: 10, b: 20, c: 30 }, 1)).toEqual({
-        a: ["0%", "100%", 0, 10],
-        b: ["0%", "100%", 10, 20],
-        c: ["0%", "100%", 30, 30],
+        a: [0, 1, 1, 0, 10],
+        b: [0, 1, 1, 10, 20],
+        c: [0, 1, 1, 30, 30],
       });
     });
 
     test("never lets a panel be wider than the grid it is in", () => {
       const packed = packHome([row(panel("a", 12))], { a: 10 }, 1);
-      expect(packed.placements[0]?.width).toBe("100%");
-      expect(packed.placements[0]?.left).toBe("0%");
+      expect(packed.placements[0]?.column).toBe(0);
+      expect(packed.placements[0]?.span).toBe(1);
+      expect(packed.placements[0]?.lanes).toBe(1);
     });
+  });
+});
+
+/**
+ * What the drag draws before you let go.
+ *
+ * The frame is only worth anything if it is the drop's own answer rather than a
+ * second guess at it, so these check the rectangle against what the move
+ * actually does: a panel joining a row of two comes back a third of the grid
+ * wide because that is what the row re-shares, not because the preview
+ * approximated it.
+ */
+describe("previewPlacement", () => {
+  const REGISTRY = [
+    panel("a", 4).widget,
+    panel("b", 6).widget,
+    panel("c", 12).widget,
+  ];
+  const LAYOUT: HomeLayout = {
+    rows: [["a", "b"], ["c"]],
+    spans: { a: 6, b: 6, c: 12 },
+    heights: {},
+  };
+  const MEASURED = { a: 100, b: 60, c: 40 };
+
+  test("gives the width the row will re-share, not the one it had", () => {
+    // `c` is a full-width row of its own; joining `a` and `b` makes three
+    // panels, so all three become four columns and `c` lands in the last four.
+    expect(
+      previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 2, newRow: false }, MEASURED, 12),
+    ).toEqual({ id: "c", column: 8, span: 4, lanes: 12, top: 0, height: 40 });
+  });
+
+  test("gives a full-width rectangle at the top for a new leading row", () => {
+    expect(
+      previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 0, newRow: true }, MEASURED, 12),
+    ).toEqual({ id: "c", column: 0, span: 12, lanes: 12, top: 0, height: 40 });
+  });
+
+  test("puts a new trailing row below everything that will be left above it", () => {
+    // `a` leaves row 0, so `b` widens to the whole grid and the page above the
+    // new row is 60 + 40 tall. The frame has to know that, not where `a` is now.
+    expect(
+      previewPlacement(REGISTRY, LAYOUT, "a", { row: 2, index: 0, newRow: true }, MEASURED, 12),
+    ).toEqual({ id: "a", column: 0, span: 12, lanes: 12, top: 100, height: 100 });
+  });
+
+  test("previews against the narrow grid when that is what is on screen", () => {
+    expect(
+      previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 0, newRow: true }, MEASURED, 1),
+    ).toEqual({ id: "c", column: 0, span: 1, lanes: 1, top: 0, height: 40 });
+  });
+
+  test("has nothing to promise for a widget the layout does not show", () => {
+    expect(
+      previewPlacement(REGISTRY, LAYOUT, "missing", { row: 0, index: 0, newRow: false }, MEASURED, 12),
+    ).toBeNull();
   });
 });

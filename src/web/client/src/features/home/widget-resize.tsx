@@ -226,23 +226,9 @@ export function WidgetResizeGrip({
   );
 }
 
-/**
- * The frame: where the panel will be when you let go.
- *
- * Fixed rather than absolute so nothing that clips the grid can clip it — the
- * grid hides its own overflow to keep the rightmost hairline off the page edge,
- * and a frame for a panel dragged to full width has to be allowed past that.
- *
- * It is drawn as an outline over the untouched page, which is the whole point:
- * the layout you are comparing against is still the layout you had.
+/*
+ * The frame this drag draws lives in `widget-grid.tsx` as `WidgetDragFrame`.
+ * The drop gesture makes the same promise — *this is what you will get* — and
+ * two frames that looked slightly different would read as two different kinds
+ * of answer, so there is one component and both gestures use it.
  */
-export function WidgetResizeFrame({ frame }: { frame: ResizeFrame | null }) {
-  if (!frame) return null;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed z-50 border border-dashed border-primary/70 bg-primary/5"
-      style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}
-    />
-  );
-}

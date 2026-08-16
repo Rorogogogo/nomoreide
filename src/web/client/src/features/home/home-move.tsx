@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { HomeLayout } from "@/features/settings/ui-preferences";
 import { canDropAt, type DropTarget } from "./home-layout";
+import { gridColumns, previewPlacement } from "./home-pack";
+import { WidgetDragFrame } from "./widget-grid";
 import type { WidgetDefinition } from "./widget-types";
 
 /**
@@ -25,8 +27,8 @@ import type { WidgetDefinition } from "./widget-types";
  * overlap, and asks whichever one it lands on which row it belongs to.
  */
 
-/** A line drawn where the panel would land, in viewport coordinates. */
-export interface DropIndicator {
+/** The rectangle the panel would occupy, in viewport coordinates. */
+export interface DropPreview {
   left: number;
   top: number;
   width: number;
@@ -40,7 +42,7 @@ export interface MoveDrag {
   x: number;
   y: number;
   target: DropTarget | null;
-  indicator: DropIndicator | null;
+  preview: DropPreview | null;
 }
 
 /** How close to a panel's top or bottom counts as "a new row" rather than "join". */
@@ -77,13 +79,6 @@ function distanceTo(rect: DOMRect, x: number, y: number): number {
   return dx * dx + dy * dy;
 }
 
-/** A new row's line, drawn the full width of the grid at the panel's edge. */
-function across(y: number): DropIndicator | null {
-  const grid = document.querySelector("[data-widget-grid]")?.getBoundingClientRect();
-  if (!grid) return null;
-  return { left: grid.left, top: y - 1, width: grid.width, height: 2 };
-}
-
 /**
  * Where the cursor is asking for, read off the page.
  *
@@ -93,13 +88,8 @@ function across(y: number): DropIndicator | null {
  * panel the cursor is on. Comparing against one panel rather than scanning a
  * whole row is both simpler and better aimed — "left half of this one" is what
  * a person dropping a panel beside another one actually means.
- *
- * The line for a new row is drawn at the panel's own edge rather than at the
- * extent of every panel sharing its row. With masonry those are different places
- * — a row's members can end at very different depths — and the useful one is the
- * one under the cursor.
  */
-function targetAt(x: number, y: number): { target: DropTarget; indicator: DropIndicator | null } | null {
+function targetAt(x: number, y: number): DropTarget | null {
   const cells = cellsOnPage();
   const hit = cells.reduce<Cell | null>((best, cell) => {
     if (!best) return cell;
@@ -112,22 +102,54 @@ function targetAt(x: number, y: number): { target: DropTarget; indicator: DropIn
   // bottom would leave almost no middle to mean "join this row". Never more than
   // a third each way.
   const edge = Math.min(EDGE, rect.height / 3);
-  if (y - rect.top < edge) {
-    return { target: { row: hit.row, index: 0, newRow: true }, indicator: across(rect.top) };
-  }
-  if (rect.bottom - y < edge) {
-    return { target: { row: hit.row + 1, index: 0, newRow: true }, indicator: across(rect.bottom) };
-  }
+  if (y - rect.top < edge) return { row: hit.row, index: 0, newRow: true };
+  if (rect.bottom - y < edge) return { row: hit.row + 1, index: 0, newRow: true };
 
   const after = x >= rect.left + rect.width / 2;
+  return { row: hit.row, index: hit.index + (after ? 1 : 0), newRow: false };
+}
+
+/**
+ * Every panel's height, taken once.
+ *
+ * Nothing reflows during a drag, so these are the heights for its whole
+ * duration — and reading `offsetHeight` on every pointermove would force layout
+ * a hundred times across a gesture to learn the same numbers each time.
+ */
+function measureHeights(): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const cell of document.querySelectorAll<HTMLElement>("[data-widget-cell]")) {
+    const id = cell.dataset.widgetCell;
+    if (id) out[id] = cell.offsetHeight;
+  }
+  return out;
+}
+
+/**
+ * The rectangle the panel will actually occupy, in the viewport.
+ *
+ * `previewPlacement` runs the real move against a copy of the layout and packs
+ * the result, so this is not an approximation of the drop — it is the drop,
+ * asked in advance. The grid's own rect is re-read each time rather than cached
+ * with the heights, so scrolling mid-drag keeps the frame attached to the page
+ * instead of to the screen.
+ */
+function previewFor(
+  widgets: WidgetDefinition[],
+  layout: HomeLayout | null,
+  id: string,
+  target: DropTarget,
+  heights: Record<string, number>,
+): DropPreview | null {
+  const grid = document.querySelector("[data-widget-grid]")?.getBoundingClientRect();
+  if (!grid) return null;
+  const place = previewPlacement(widgets, layout, id, target, heights, gridColumns(grid.width));
+  if (!place) return null;
   return {
-    target: { row: hit.row, index: hit.index + (after ? 1 : 0), newRow: false },
-    indicator: {
-      left: (after ? rect.right : rect.left) - 1,
-      top: rect.top,
-      width: 2,
-      height: rect.height,
-    },
+    left: grid.left + (place.column / place.lanes) * grid.width,
+    top: grid.top + place.top,
+    width: (place.span / place.lanes) * grid.width,
+    height: place.height,
   };
 }
 
@@ -149,6 +171,7 @@ export function useWidgetMove({
 }) {
   const [move, setMove] = useState<MoveDrag | null>(null);
   const release = useRef<(() => void) | null>(null);
+  const heights = useRef<Record<string, number>>({});
 
   // Same reasoning as the resize grip: a drag that ends anywhere still has to
   // end, and an unmount mid-drag must not leave listeners on the window.
@@ -173,17 +196,20 @@ export function useWidgetMove({
         if (!started) {
           started = true;
           document.body.style.cursor = "grabbing";
+          heights.current = measureHeights();
         }
         const found = targetAt(moved.clientX, moved.clientY);
-        const target =
-          found && canDropAt(widgets, layout, id, found.target) ? found.target : null;
+        const target = found && canDropAt(widgets, layout, id, found) ? found : null;
         setMove({
           id,
           title,
           x: moved.clientX,
           y: moved.clientY,
           target,
-          indicator: target ? found?.indicator ?? null : null,
+          // No target, no frame: a drop the layout would refuse — a fifth panel
+          // in a row of four — says so by promising nothing, rather than by
+          // drawing a rectangle and then not producing it.
+          preview: target ? previewFor(widgets, layout, id, target, heights.current) : null,
         });
       };
       const end = (ended: PointerEvent) => {
@@ -192,7 +218,7 @@ export function useWidgetMove({
         setMove(null);
         if (!started) return;
         const found = targetAt(ended.clientX, ended.clientY);
-        if (found && canDropAt(widgets, layout, id, found.target)) onDrop(id, found.target);
+        if (found && canDropAt(widgets, layout, id, found)) onDrop(id, found);
       };
 
       window.addEventListener("pointermove", update);
@@ -210,30 +236,32 @@ export function useWidgetMove({
 }
 
 /**
- * What a move looks like while it is happening: a line where the panel will
- * land, and the panel's name under the cursor.
+ * What a move looks like while it is happening: the rectangle the panel will
+ * occupy, and the panel's name under the cursor.
  *
- * The name is there because the panel being carried does not move — dimming it
- * in place is enough to say which one is in the air, and dragging a full-size
- * copy of a live widget around the page would be a second, laggier rendering of
- * something already on screen.
+ * It was a line between two panels, which answered "where in the order" and
+ * nothing else — and where in the order is not what a person is deciding. They
+ * are deciding what the page will look like, and the two questions come apart
+ * here: a drop resizes the panel to its new row's share and moves it to
+ * wherever masonry drops it, so the same position in the order can mean very
+ * different rectangles. The frame answers the question actually being asked.
+ *
+ * It is drawn over the untouched page, which is the point: the layout you are
+ * comparing against is still the layout you have. So the frame will overlap
+ * panels that have not moved yet — the same thing the resize frame does when a
+ * panel grows, and honest in the same way, because that space is what this
+ * panel is about to take.
+ *
+ * The name stays under the cursor because the panel being carried does not
+ * move — dimming it in place is enough to say which one is in the air, and
+ * dragging a full-size copy of a live widget around the page would be a second,
+ * laggier rendering of something already on screen.
  */
 export function WidgetMoveOverlay({ move }: { move: MoveDrag | null }) {
   if (!move) return null;
   return (
     <>
-      {move.indicator ? (
-        <div
-          aria-hidden
-          className="pointer-events-none fixed z-50 rounded-full bg-primary"
-          style={{
-            left: move.indicator.left,
-            top: move.indicator.top,
-            width: move.indicator.width,
-            height: move.indicator.height,
-          }}
-        />
-      ) : null}
+      <WidgetDragFrame frame={move.preview} />
       <div
         aria-hidden
         className="pointer-events-none fixed z-50 translate-x-3 translate-y-3 rounded-sm border border-border bg-popover px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shadow-sm"

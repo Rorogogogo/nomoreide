@@ -1,4 +1,13 @@
-import { GRID_COLUMNS, HOME_ROW_PX, type PlacedRow } from "./home-layout";
+import type { HomeLayout } from "@/features/settings/ui-preferences";
+import {
+  GRID_COLUMNS,
+  HOME_ROW_PX,
+  moveWidget,
+  resolveHomeLayout,
+  type DropTarget,
+  type PlacedRow,
+} from "./home-layout";
+import type { WidgetDefinition } from "./widget-types";
 
 /**
  * Where every panel actually sits — the arithmetic CSS grid was doing until it
@@ -40,13 +49,22 @@ import { GRID_COLUMNS, HOME_ROW_PX, type PlacedRow } from "./home-layout";
 export const HOME_WIDE_WIDTH = 1280;
 export const HOME_MID_WIDTH = 768;
 
-/** One panel's rectangle: a share of the width, and real pixels down the page. */
+/**
+ * One panel's rectangle: a share of the width, and real pixels down the page.
+ *
+ * Horizontal in whole columns rather than in pixels or a formatted percentage.
+ * Rendering divides them (`panelStyle`) and the drop preview multiplies them
+ * back up against the grid's real width, and neither has to parse a CSS string
+ * or carry a rounding error the other does not.
+ */
 export interface PanelPlacement {
   id: string;
-  /** CSS `left`, as a percentage — exact at any container width, unlike px. */
-  left: string;
-  /** CSS `width`, likewise. */
-  width: string;
+  /** Leftmost column, 0-based. */
+  column: number;
+  /** Width, in columns. */
+  span: number;
+  /** How many columns there were to divide — the denominator for both. */
+  lanes: number;
   /** Pixels from the top of the grid. */
   top: number;
   /** Pixels tall: the stored height, or what the panel measured. */
@@ -133,12 +151,42 @@ export function packHome(
         skyline[lane] = top + height;
       }
 
-      placements.push({ id, left: percent(cursor, lanes), width: percent(span, lanes), top, height });
+      placements.push({ id, column: cursor, span, lanes, top, height });
       cursor += span;
     }
   }
 
   return { placements, height: Math.max(0, ...skyline) };
+}
+
+/**
+ * The rectangle a panel would occupy if it were dropped where it is being
+ * aimed — the drop's answer, before the drop.
+ *
+ * It runs the *actual* move against a copy of the layout and packs the result,
+ * so what the drag draws and what the release produces are the same arithmetic
+ * rather than two implementations that agree until they don't. This is the same
+ * bargain `previewSpan` makes for the resize frame, and it is only affordable
+ * here because masonry turned placement into a pure function — under CSS grid
+ * there was nothing to ask but the browser, and only after committing.
+ *
+ * One approximation, and it is in the height. `measured` is what the panels are
+ * *now*; a panel with no stored height that lands in a narrower slot will wrap
+ * more and end up taller than the frame promised. Position and width are exact,
+ * which is what the gesture is actually about — re-measuring a panel at a width
+ * it does not have yet would mean rendering it twice on every pointermove.
+ */
+export function previewPlacement(
+  widgets: WidgetDefinition[],
+  layout: HomeLayout | null,
+  id: string,
+  target: DropTarget,
+  measured: Record<string, number>,
+  columns: number,
+): PanelPlacement | null {
+  const moved = moveWidget(widgets, layout, id, target);
+  const packed = packHome(resolveHomeLayout(widgets, moved), measured, columns);
+  return packed.placements.find((place) => place.id === id) ?? null;
 }
 
 /**
@@ -151,8 +199,4 @@ export function packHome(
 function heightOf(stored: number | null, measured: number | undefined): number {
   if (measured !== undefined && measured > 0) return measured;
   return stored === null ? 0 : stored * HOME_ROW_PX;
-}
-
-function percent(units: number, lanes: number): string {
-  return `${(units / lanes) * 100}%`;
 }

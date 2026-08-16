@@ -125,7 +125,38 @@ export function panelClassName(): string {
  */
 export function panelStyle(place: PanelPlacement | undefined): CSSProperties {
   if (!place) return { left: 0, top: 0, width: "100%" };
-  return { left: place.left, top: place.top, width: place.width };
+  return {
+    left: `${(place.column / place.lanes) * 100}%`,
+    top: place.top,
+    width: `${(place.span / place.lanes) * 100}%`,
+  };
+}
+
+/**
+ * The dashed rectangle a drag draws over the untouched page: *this is what you
+ * will get*.
+ *
+ * One component for both gestures, because they are making the same promise —
+ * a resize says how big, a drop says where and how big, and two frames that
+ * looked slightly different would read as two different kinds of answer.
+ *
+ * Fixed rather than absolute so nothing that clips the grid can clip it: the
+ * grid hides its own overflow to keep the rightmost hairline off the page edge,
+ * and a frame for a panel at full width has to be allowed past that.
+ */
+export function WidgetDragFrame({
+  frame,
+}: {
+  frame: { left: number; top: number; width: number; height: number } | null;
+}) {
+  if (!frame) return null;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed z-50 border border-dashed border-primary/70 bg-primary/5"
+      style={{ left: frame.left, top: frame.top, width: frame.width, height: frame.height }}
+    />
+  );
 }
 
 /**

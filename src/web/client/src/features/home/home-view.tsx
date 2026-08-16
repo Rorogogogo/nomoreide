@@ -17,8 +17,8 @@ import {
 } from "./home-layout";
 import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
-import { WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
-import { WidgetResizeFrame, type ResizeFrame } from "./widget-resize";
+import { WidgetDragFrame, WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
+import type { ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
 
 /**
@@ -164,7 +164,7 @@ export function HomeView({
           />
         </span>
       </div>
-      <WidgetResizeFrame frame={frame} />
+      <WidgetDragFrame frame={frame} />
       <WidgetMoveOverlay move={move} />
     </div>
   );
