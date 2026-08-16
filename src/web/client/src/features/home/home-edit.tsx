@@ -2,7 +2,8 @@ import { ChevronLeft, ChevronRight, Plus, RotateCcw, X } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { panelClassName, WidgetBody, WidgetPanelHeader } from "./widget-grid";
+import type { PanelPlacement } from "./home-pack";
+import { panelClassName, panelStyle, WidgetBody, WidgetPanelHeader } from "./widget-grid";
 import { WidgetResizeGrip, type ResizeFrame, type WidgetSize } from "./widget-resize";
 import type { WidgetDefinition, WidgetSpan } from "./widget-types";
 
@@ -41,12 +42,16 @@ export function WidgetEditPanel({
   dragging,
   height,
   icon,
+  id,
+  index,
   onFrame,
   onGrab,
   onMove,
   onRemove,
   onSize,
+  place,
   resolveSpan,
+  row,
   span,
   title,
 }: {
@@ -56,12 +61,18 @@ export function WidgetEditPanel({
   dragging: boolean;
   height: number | null;
   icon: ReactNode;
+  id: string;
+  /** Position within `row`, for a drop that means "beside this one". */
+  index: number;
   onFrame: (frame: ResizeFrame | null) => void;
   onGrab: (event: ReactPointerEvent<HTMLElement>) => void;
   onMove: (delta: -1 | 1) => void;
   onRemove: () => void;
   onSize: (size: WidgetSize) => void;
+  place: PanelPlacement | undefined;
   resolveSpan: (span: WidgetSpan) => WidgetSpan;
+  /** Which stored row this panel belongs to — see the note on the attributes. */
+  row: number;
   span: WidgetSpan;
   title: string;
 }) {
@@ -69,14 +80,25 @@ export function WidgetEditPanel({
   return (
     <div
       className={cn(
-        panelClassName(span),
+        panelClassName(),
         "cursor-grab bg-muted/10 transition-opacity",
         // Dimmed, not hidden and not carried: the panel stays where it is so
         // the page you are dropping onto is the page you were looking at.
         dragging && "opacity-40",
       )}
-      data-widget-cell=""
+      /*
+        The whole DOM contract the move drag reads (`home-move.tsx`). Rows are
+        no longer elements — masonry means a row's panels can end at different
+        depths and are not a contiguous band of the page — so each panel carries
+        the row it belongs to instead. The drag finds the panel under the cursor
+        and asks *it* which row it is in, which is unambiguous in a way hit-
+        testing overlapping row bands would not be.
+      */
+      data-widget-cell={id}
+      data-widget-index={index}
+      data-widget-row={row}
       onPointerDown={onGrab}
+      style={panelStyle(place)}
     >
       <WidgetBody height={height}>
         <WidgetPanelHeader

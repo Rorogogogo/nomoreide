@@ -14,8 +14,15 @@ import type { WidgetDefinition } from "./widget-types";
  * Same rules as the resize drag next door, for the same reasons: nothing
  * reflows while you are aiming, what moves is an indicator drawn over the
  * untouched page, and the gesture is measured against the DOM rather than
- * against a model of it — the rows are on screen, so their geometry is the
+ * against a model of it — the panels are on screen, so their geometry is the
  * truth about where the cursor is.
+ *
+ * What changed with masonry is *what* it measures. A row used to be an element,
+ * and a drop was found by asking which row band the cursor was in. Rows are no
+ * longer drawn: their panels stack independently and a row's members can end at
+ * different depths, so row bands overlap and "which row is the cursor in" stops
+ * having one answer. The drag therefore hit-tests **panels**, which never
+ * overlap, and asks whichever one it lands on which row it belongs to.
  */
 
 /** A line drawn where the panel would land, in viewport coordinates. */
@@ -36,70 +43,91 @@ export interface MoveDrag {
   indicator: DropIndicator | null;
 }
 
-/** How close to a row's edge counts as "between the rows" rather than "in it". */
+/** How close to a panel's top or bottom counts as "a new row" rather than "join". */
 const EDGE = 16;
 /** A press has to travel this far to be a drag, so a click stays a click. */
 const THRESHOLD = 5;
 
-function rowsOnPage(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>("[data-widget-row]")];
+/** A placed panel, and the position in the stored layout it stands for. */
+interface Cell {
+  row: number;
+  index: number;
+  rect: DOMRect;
 }
 
-/** The line between two rows, drawn the full width of the grid. */
-function betweenRows(rows: HTMLElement[], at: number): DropIndicator | null {
+function cellsOnPage(): Cell[] {
+  return [...document.querySelectorAll<HTMLElement>("[data-widget-cell]")].map((cell) => ({
+    row: Number(cell.dataset.widgetRow ?? 0),
+    index: Number(cell.dataset.widgetIndex ?? 0),
+    rect: cell.getBoundingClientRect(),
+  }));
+}
+
+/**
+ * How far the cursor is from a panel — zero when it is inside one.
+ *
+ * Panels never overlap, so "the nearest panel" answers "which panel is the
+ * cursor in" as a special case and keeps working in the ragged space masonry
+ * leaves at the bottom of a short column, where the cursor is inside no panel at
+ * all and the old row-band search would have found nothing.
+ */
+function distanceTo(rect: DOMRect, x: number, y: number): number {
+  const dx = Math.max(rect.left - x, 0, x - rect.right);
+  const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+  return dx * dx + dy * dy;
+}
+
+/** A new row's line, drawn the full width of the grid at the panel's edge. */
+function across(y: number): DropIndicator | null {
   const grid = document.querySelector("[data-widget-grid]")?.getBoundingClientRect();
   if (!grid) return null;
-  const edge =
-    at === 0
-      ? (rows[0]?.getBoundingClientRect().top ?? grid.top)
-      : (rows[Math.min(at, rows.length) - 1]?.getBoundingClientRect().bottom ?? grid.bottom);
-  return { left: grid.left, top: edge - 1, width: grid.width, height: 2 };
+  return { left: grid.left, top: y - 1, width: grid.width, height: 2 };
 }
 
 /**
  * Where the cursor is asking for, read off the page.
  *
- * Vertically first: near a row's top or bottom edge means a new row, anywhere
- * else in the band means joining that row. Then horizontally, by comparing the
- * cursor against each panel's midpoint — the same rule every list-reorder in
- * the world uses, and the one that makes the indicator land where the eye
- * expects when the cursor is between two panels of different widths.
+ * Find the panel being pointed at, then read the gesture against *that panel's*
+ * box: near its top or bottom edge means a new row above or below the row it
+ * belongs to, and anywhere in between means joining that row on the side of the
+ * panel the cursor is on. Comparing against one panel rather than scanning a
+ * whole row is both simpler and better aimed — "left half of this one" is what
+ * a person dropping a panel beside another one actually means.
+ *
+ * The line for a new row is drawn at the panel's own edge rather than at the
+ * extent of every panel sharing its row. With masonry those are different places
+ * — a row's members can end at very different depths — and the useful one is the
+ * one under the cursor.
  */
 function targetAt(x: number, y: number): { target: DropTarget; indicator: DropIndicator | null } | null {
-  const rows = rowsOnPage();
-  if (!rows.length) return null;
+  const cells = cellsOnPage();
+  const hit = cells.reduce<Cell | null>((best, cell) => {
+    if (!best) return cell;
+    return distanceTo(cell.rect, x, y) < distanceTo(best.rect, x, y) ? cell : best;
+  }, null);
+  if (!hit) return null;
 
-  const bands = rows.map((row) => row.getBoundingClientRect());
-  const index = bands.findIndex((band) => y >= band.top && y <= band.bottom);
-  if (index < 0) {
-    // Above the page or below it — the two places a new row is obviously meant.
-    const at = y < (bands[0]?.top ?? 0) ? 0 : rows.length;
-    return { target: { row: at, index: 0, newRow: true }, indicator: betweenRows(rows, at) };
+  const rect = hit.rect;
+  // A panel can be as short as two row units, so a fixed 16px band top and
+  // bottom would leave almost no middle to mean "join this row". Never more than
+  // a third each way.
+  const edge = Math.min(EDGE, rect.height / 3);
+  if (y - rect.top < edge) {
+    return { target: { row: hit.row, index: 0, newRow: true }, indicator: across(rect.top) };
+  }
+  if (rect.bottom - y < edge) {
+    return { target: { row: hit.row + 1, index: 0, newRow: true }, indicator: across(rect.bottom) };
   }
 
-  const band = bands[index] as DOMRect;
-  if (y - band.top < EDGE) {
-    return { target: { row: index, index: 0, newRow: true }, indicator: betweenRows(rows, index) };
-  }
-  if (band.bottom - y < EDGE) {
-    const at = index + 1;
-    return { target: { row: at, index: 0, newRow: true }, indicator: betweenRows(rows, at) };
-  }
-
-  const cells = [...(rows[index]?.querySelectorAll<HTMLElement>("[data-widget-cell]") ?? [])];
-  const boxes = cells.map((cell) => cell.getBoundingClientRect());
-  let at = boxes.length;
-  for (const [cell, box] of boxes.entries()) {
-    if (x < box.left + box.width / 2) {
-      at = cell;
-      break;
-    }
-  }
-  const edge = at < boxes.length ? boxes[at]?.left : boxes.at(-1)?.right;
+  const after = x >= rect.left + rect.width / 2;
   return {
-    target: { row: index, index: at, newRow: false },
-    indicator:
-      edge === undefined ? null : { left: edge - 1, top: band.top, width: 2, height: band.height },
+    target: { row: hit.row, index: hit.index + (after ? 1 : 0), newRow: false },
+    indicator: {
+      left: (after ? rect.right : rect.left) - 1,
+      top: rect.top,
+      width: 2,
+      height: rect.height,
+    },
   };
 }
 

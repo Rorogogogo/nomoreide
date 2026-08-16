@@ -105,6 +105,8 @@ Drag-to-reorder is a reordering of a list, not free 2D placement. That keeps the
 
 **Amended by §7.9.** The list became `string[][]` — rows of ids — for a reason this section did not foresee: a packed list *cannot* guarantee a full row, so it leaves gaps at the end of short rows, and a gap is the one thing "it cannot be made ugly" was promising. Rows are still not free 2D placement: a widget belongs to a row and a position in it, there are no coordinates and no overlaps, and the schema still survives a widget being renamed or removed.
 
+**Amended again by §7.10.** "Fixed row heights per widget size class" is gone twice over: a height is per-widget and optional, and rows no longer have a height at all. The grid itself is gone with them — a grid row is as tall as its tallest cell, which is the vertical version of exactly the gap §7.9 closed horizontally, and the only way out of it is to place every panel by hand. The schema did not change: `rows`, `spans`, `heights`, still v4.
+
 ## 7. Stages
 
 **Stage 1 — a fixed Home. Built.** `/` is Home; Services is `/services`. Six widgets over the existing payload (§3). No persistence, no editing, no drag. This is the stage that has to justify the page; if a fixed Home isn't obviously better than landing on Services, stop here and delete it.
@@ -444,6 +446,57 @@ that started it was a width — shipping "you can remove it" as the answer to "i
 is the wrong shape" would have missed the point.
 
 **Not staged, deliberately:** widgets contributed by *downloaded* plugins. That is blocked by the same thing the Extensions market is blocked by — runtime-loading third-party React — and the widget registry should be shaped so it becomes possible, not built as though it already is.
+
+### 7.10 The gap moved from the end of the row to the bottom of it
+
+§7.9 made a gap unrepresentable *horizontally*: a row always fills twelve
+columns. It left the vertical one untouched, and the owner found it in the next
+screenshot. **A grid row is as tall as its tallest cell**, so a short panel
+beside a tall one held empty space open underneath itself for the height of its
+neighbour, and the next row started below the tallest member rather than below
+the short one.
+
+That is not a bug in the layout, it is what a row *is*, and it is why closing it
+meant leaving CSS grid. The owner was told the cost before any of this was
+written — masonry cannot be expressed in grid, so every panel is absolutely
+positioned and the layout is computed in JS — and asked for it anyway.
+
+**The rows survive; only `y` moved.** A row still authors reading order,
+left-to-right position and width, still fills the grid, and is still what a drop
+and a splitter resize operate on. Everything §7.9 guarantees is guaranteed the
+same way. What a row no longer decides is how far down its panels start.
+
+- **The placement rule is a skyline** (`home-pack.ts`). Each panel, in reading
+  order, drops until it lands on the lowest thing already occupying any column
+  it covers. A wide panel is therefore held up by whichever narrow neighbour ran
+  longest, and can never overlap anything — panels are disjoint by construction,
+  not by luck.
+- **Only `top` is measured.** `left` and `width` are percentages of the grid
+  derived from the column count alone, so a window resize stays pixel-exact
+  without remeasuring and the horizontal layout is never wrong between passes.
+- **A panel with no stored height is still as tall as what it holds**, which is
+  the default and the reason this needs measuring at all: only the DOM knows that
+  number. Measurement runs in `useLayoutEffect`, so the settling pass exists but
+  is never painted, and a signature guard makes termination a guarantee rather
+  than an argument — placing a panel changes where it is, never how tall it is.
+- **Rows stopped being elements**, so the move drag had to change with them
+  (`home-move.tsx`). Row bands now overlap — a row's members can end at very
+  different depths — so "which row is the cursor in" no longer has one answer.
+  The drag hit-tests *panels*, which never overlap, and asks whichever one it
+  lands on which row it belongs to. That also aims better: "the left half of this
+  one" is what a person dropping a panel beside another one means.
+
+**What this costs, stated plainly.** The dead space did not vanish, it moved: a
+page whose columns run to different depths is ragged at the bottom, and that
+raggedness is the feature — it is the same slack, collected in one place instead
+of scattered under every short panel. And the model and the picture can now
+disagree about order: a panel in row 3 may sit visibly higher than one in row 2,
+because it rose into a gap. Reading order still governs the chevrons, the drop
+indices and the packing; it is simply no longer a top-to-bottom scan of the page.
+
+**Still not free 2D placement.** No coordinates, no overlaps, no empty cells to
+drag into — the amendment §7.9 made to §6 stands. A panel belongs to a row and a
+position in it; the only thing computed is how far it falls.
 
 ## 8. Decisions needed before stage 1
 

@@ -15,8 +15,9 @@ import {
   resolveHomeLayout,
   setWidgetSize,
 } from "./home-layout";
+import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
-import { WidgetGrid, WidgetGridRow, WidgetNote, WidgetPanel } from "./widget-grid";
+import { WidgetGrid, WidgetNote, WidgetPanel } from "./widget-grid";
 import { WidgetResizeFrame, type ResizeFrame } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
 
@@ -59,6 +60,12 @@ export function HomeView({
   const rows = resolveHomeLayout(WIDGETS, layout);
   const hidden = hiddenWidgets(WIDGETS, layout);
   /*
+    Rows still say what is beside what; where each panel actually starts is
+    measured and packed (`home-pack.ts`), so a short panel no longer holds a
+    hole open under itself for the height of the tallest thing beside it.
+  */
+  const { boxes, grid, height: gridHeight } = useHomeMasonry(rows);
+  /*
     §8.4: removing the last widget must not strand the page. An empty Home
     stays in edit mode, so the picker and Reset are always within reach without
     anyone having to know that clearing `localStorage` is the way out.
@@ -85,51 +92,55 @@ export function HomeView({
       {rows.length === 0 ? (
         <p className="px-3 py-4 text-[12px] text-muted-foreground">{t("home.empty")}</p>
       ) : (
-        <WidgetGrid>
+        <WidgetGrid gridRef={grid} height={gridHeight}>
           {/*
-            Keyed by the row's leading widget rather than by all of them: an id
-            appears once on the page, so it is unique, and a resize or a drop
-            elsewhere in the row leaves the key alone instead of remounting
-            every panel in it — which for a `fetch` widget is a re-request.
+            One flat list of panels, because there is no longer a row element to
+            nest them in — each panel is placed against the grid itself. Keyed by
+            widget id, which appears once on the page: a resize or a drop
+            elsewhere leaves every other key alone instead of remounting a
+            neighbour, and for a `fetch` widget a remount is a re-request.
           */}
-          {rows.map((row, rowIndex) => (
-            <WidgetGridRow key={row.widgets[0]?.widget.id}>
-              {row.widgets.map(({ height, span, widget }, index) =>
-                editing ? (
-                  <WidgetEditPanel
-                    canMoveEarlier={rowIndex > 0 || index > 0}
-                    canMoveLater={rowIndex < rows.length - 1 || index < row.widgets.length - 1}
-                    dragging={move?.id === widget.id}
-                    height={height}
-                    icon={widget.icon}
-                    key={widget.id}
-                    onFrame={setFrame}
-                    onGrab={grab(widget.id, t(widget.titleKey))}
-                    onMove={(delta) => apply(nudgeWidget(WIDGETS, layout, widget.id, delta))}
-                    onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
-                    onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
-                    resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
-                    span={span}
-                    title={t(widget.titleKey)}
-                  >
-                    {widget.render({ data })}
-                  </WidgetEditPanel>
-                ) : (
-                  <WidgetPanel
-                    height={height}
-                    icon={widget.icon}
-                    key={widget.id}
-                    onOpen={() => onOpen(widget.page)}
-                    openLabel={t("home.open", { title: t(widget.titleKey) })}
-                    span={span}
-                    title={t(widget.titleKey)}
-                  >
-                    {widget.render({ data })}
-                  </WidgetPanel>
-                ),
-              )}
-            </WidgetGridRow>
-          ))}
+          {rows.flatMap((row, rowIndex) =>
+            row.widgets.map(({ height, span, widget }, index) =>
+              editing ? (
+                <WidgetEditPanel
+                  canMoveEarlier={rowIndex > 0 || index > 0}
+                  canMoveLater={rowIndex < rows.length - 1 || index < row.widgets.length - 1}
+                  dragging={move?.id === widget.id}
+                  height={height}
+                  icon={widget.icon}
+                  id={widget.id}
+                  index={index}
+                  key={widget.id}
+                  onFrame={setFrame}
+                  onGrab={grab(widget.id, t(widget.titleKey))}
+                  onMove={(delta) => apply(nudgeWidget(WIDGETS, layout, widget.id, delta))}
+                  onRemove={() => apply(removeWidget(WIDGETS, layout, widget.id))}
+                  onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
+                  place={boxes.get(widget.id)}
+                  resolveSpan={(next) => previewSpan(WIDGETS, layout, widget.id, next)}
+                  row={rowIndex}
+                  span={span}
+                  title={t(widget.titleKey)}
+                >
+                  {widget.render({ data })}
+                </WidgetEditPanel>
+              ) : (
+                <WidgetPanel
+                  height={height}
+                  icon={widget.icon}
+                  id={widget.id}
+                  key={widget.id}
+                  onOpen={() => onOpen(widget.page)}
+                  openLabel={t("home.open", { title: t(widget.titleKey) })}
+                  place={boxes.get(widget.id)}
+                  title={t(widget.titleKey)}
+                >
+                  {widget.render({ data })}
+                </WidgetPanel>
+              ),
+            ),
+          )}
         </WidgetGrid>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">

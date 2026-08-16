@@ -21,9 +21,12 @@ import type { TranslationKey } from "@/lib/i18n";
 /**
  * How many of the grid's 12 columns a widget asks for on a wide window.
  *
- * A closed union rather than a number because the span has to become a literal
- * Tailwind class — see `SPAN_CLASS` in `widget-grid.tsx`. Anything the union
- * doesn't list has no class to map to and would silently render full-width.
+ * A closed union rather than a plain number so the two ends of a resize cannot
+ * disagree: everything that produces a width goes through `clampSpan`, and
+ * anything outside the union is a type error where it is written rather than a
+ * panel that lays out somewhere unexpected. It began as a closed union because a
+ * span had to become a literal Tailwind class; the span is now arithmetic in
+ * `home-pack.ts`, and the union earns its keep as the domain's own bounds.
  *
  * It starts at 3 rather than 1: a quarter row is the narrowest a stat strip and
  * a row list stay legible in, and a width nobody would keep is not a width

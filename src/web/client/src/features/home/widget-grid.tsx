@@ -1,8 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_PX } from "./home-layout";
-import type { WidgetSpan } from "./widget-types";
+import type { PanelPlacement } from "./home-pack";
 
 /**
  * Home's presentation primitives.
@@ -15,33 +15,6 @@ import type { WidgetSpan } from "./widget-types";
  *
  * The look is `DESIGN.md`: **lines, not boxes.** Nothing here draws a card.
  */
-
-/**
- * Literal classes, not `xl:col-span-${span}`.
- *
- * Tailwind scans source text, so an interpolated class name is never generated
- * and the widget renders full-width. Keeping the map beside the closed
- * `WidgetSpan` union makes a new span a type error here rather than a layout
- * bug at runtime.
- *
- * Two breakpoints: one column on a narrow window, two on `md`, and only at
- * `xl` does the 12-column grid mean anything — below that there isn't enough
- * width for a 4-span panel to hold a stat strip and a row list. Anything wider
- * than half takes both `md` columns, which is the closest a two-column grid
- * gets to "wide".
- */
-const SPAN_CLASS: Record<WidgetSpan, string> = {
-  3: "md:col-span-1 xl:col-span-3",
-  4: "md:col-span-1 xl:col-span-4",
-  5: "md:col-span-1 xl:col-span-5",
-  6: "md:col-span-1 xl:col-span-6",
-  7: "md:col-span-2 xl:col-span-7",
-  8: "md:col-span-2 xl:col-span-8",
-  9: "md:col-span-2 xl:col-span-9",
-  10: "md:col-span-2 xl:col-span-10",
-  11: "md:col-span-2 xl:col-span-11",
-  12: "md:col-span-2 xl:col-span-12",
-};
 
 /** What a number or a row *means*, in the fixed vocabulary of `DESIGN.md`. */
 export type WidgetTone = "ok" | "warn" | "bad" | "idle";
@@ -77,15 +50,31 @@ const DOT_TONE: Record<WidgetTone, string> = {
 };
 
 /**
- * The grid itself draws no rules — each panel draws its own bottom and right
- * hairline, which is the only arrangement that survives a half-filled last row
- * (stage 2 lets a user remove widgets, so that row *will* happen).
+ * The grid: a positioned box of a computed height, holding placed panels.
+ *
+ * It draws no rules of its own — each panel draws its own bottom and right
+ * hairline, which is now the only arrangement possible: with panels stacking
+ * independently there is no row whose height a rule could span.
  *
  * `-mr-px` inside `overflow-hidden` pushes the rightmost column's rule out of
  * view, so the grid ends flush with the panel edge instead of drawing a border
- * down the outside of a full-bleed page.
+ * down the outside of a full-bleed page. Panels are placed in percentages of
+ * *this* box, so a panel reaching the last column lands its border in that
+ * hidden pixel exactly as a `col-span-12` cell used to.
+ *
+ * The height is given rather than grown into: every child is absolutely
+ * positioned and so contributes nothing to it, and a container that collapsed to
+ * zero would take the page's scrollbar with it.
  */
-export function WidgetGrid({ children }: { children: ReactNode }) {
+export function WidgetGrid({
+  children,
+  gridRef,
+  height,
+}: {
+  children: ReactNode;
+  gridRef: RefObject<HTMLDivElement | null>;
+  height: number;
+}) {
   return (
     <div className="overflow-hidden">
       {/*
@@ -93,9 +82,9 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
         against: one twelfth of *this* element is one column, whatever the
         window is doing. Reading it off the DOM keeps the measurement where the
         truth is and spares every panel a ref it would otherwise have to thread.
-        Every row is this wide, so one ruler serves the whole page.
+        It is also what the masonry measures itself inside.
       */}
-      <div className="-mr-px" data-widget-grid="">
+      <div className="relative -mr-px" data-widget-grid="" ref={gridRef} style={{ height }}>
         {children}
       </div>
     </div>
@@ -103,45 +92,40 @@ export function WidgetGrid({ children }: { children: ReactNode }) {
 }
 
 /**
- * One row, and the reason there is no page-wide grid any more.
+ * The cell — a rectangle the packer chose, and the column rule.
  *
- * A single grid flowed the panels and wrapped them wherever the next one
- * stopped fitting, which is what put dead space at the end of a short row. A
- * row is now its own 12-column grid holding widths that add up to 12, so the
- * page cannot produce a gap it was not asked for — and a drop between two
- * panels has an unambiguous place to be.
+ * It was a grid item stretched to its row; it is now absolutely positioned,
+ * because a grid row is as tall as its tallest cell and that is precisely the
+ * gap masonry exists to close (`home-pack.ts`). What it costs is that the cell
+ * no longer knows its own width in CSS — that arrives as a percentage from the
+ * packer — and what it buys is that its height is nobody's business but its own.
  *
- * Below `xl` the twelfths collapse: one panel per line, two side by side from
- * `md`, which is all the width there is to divide down there.
- */
-export function WidgetGridRow({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12" data-widget-row="">
-      {children}
-    </div>
-  );
-}
-
-/**
- * The cell — the width the layout resolved, and the column rule. No padding and
- * no bottom rule: both moved inside, to `WidgetBody`, and that split is what
- * lets two panels in the same row be different heights.
- *
- * The cell is still a stretched grid item, so the **column** rules run the full
- * height of the row however tall its neighbours are. What it no longer draws is
- * the line under the panel, because that line is not a property of the row: a
- * panel that is four units tall beside one that is eight has to *end* at four,
- * or every height is really the row's height and the tallest widget decides for
- * everyone.
+ * It still carries no padding and no bottom rule: both live in `WidgetBody`, and
+ * that split is what lets a panel end where its content does. The right-hand
+ * rule stays on the cell and stops at the panel's bottom edge, which is the
+ * honest line now — there is no row for it to run the height of, and a rule
+ * continuing past the panel would point at a neighbour that has already risen
+ * past it.
  *
  * Exported because the edit surface (`home-edit.tsx`) draws the same cell as a
  * `<div>`: a panel that carries per-widget controls cannot also *be* a button.
  */
-export function panelClassName(span: WidgetSpan): string {
-  return cn(
-    "group/widget relative flex flex-col border-border text-left md:border-r",
-    SPAN_CLASS[span],
-  );
+export function panelClassName(): string {
+  return "group/widget absolute flex flex-col border-border text-left md:border-r";
+}
+
+/**
+ * The rectangle itself, as inline style.
+ *
+ * `undefined` is the state before the first measurement — one pass in which the
+ * panels are stacked at the top at full width, never painted because the
+ * measuring runs in `useLayoutEffect` (see `home-masonry.ts`). Giving them a
+ * real position there rather than hiding them is what lets that pass measure
+ * something useful instead of measuring a hidden element.
+ */
+export function panelStyle(place: PanelPlacement | undefined): CSSProperties {
+  if (!place) return { left: 0, top: 0, width: "100%" };
+  return { left: place.left, top: place.top, width: place.width };
 }
 
 /**
@@ -156,11 +140,11 @@ export function panelClassName(span: WidgetSpan): string {
  * and a panel that silently ignored it would be the resize that "does nothing"
  * all over again.
  *
- * Below a short panel, the rest of the row is empty — bounded by the column
- * rules on either side, with no line across it. That space belongs to the
- * panel and reads as room to spare, which is the honest picture: the row is
- * still as tall as its tallest member, and the only way it could not be is
- * masonry.
+ * Whatever this box comes out as is what the packer stacks the page against, so
+ * a panel ending early no longer leaves a hole: the next panel over rises into
+ * it. That is the one thing rows could not do and the reason they no longer
+ * decide where a panel starts — the height a summary needs is a fact about what
+ * it is summarising, and now nothing else is forced to share it.
  */
 export function WidgetBody({ children, height }: { children: ReactNode; height: number | null }) {
   return (
@@ -211,27 +195,33 @@ export function WidgetPanel({
   children,
   height,
   icon,
+  id,
   onOpen,
   openLabel,
-  span,
+  place,
   title,
 }: {
   children: ReactNode;
   height: number | null;
   icon: ReactNode;
+  id: string;
   onOpen: () => void;
   openLabel: string;
-  span: WidgetSpan;
+  place: PanelPlacement | undefined;
   title: string;
 }) {
   return (
     <button
       aria-label={openLabel}
       className={cn(
-        panelClassName(span),
+        panelClassName(),
         "cursor-pointer transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
       )}
+      /* The id, not an empty marker: the masonry measures every cell it finds
+         here and needs to know which widget each measurement belongs to. */
+      data-widget-cell={id}
       onClick={onOpen}
+      style={panelStyle(place)}
       title={openLabel}
       type="button"
     >
