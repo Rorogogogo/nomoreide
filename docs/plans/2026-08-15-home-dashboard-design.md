@@ -924,10 +924,65 @@ The x mapping is by timestamp, never by sample index: a busy machine misses
 samples, and an index axis would quietly close those gaps and put a spike at the
 wrong time — the one error a panel built to answer "when" cannot make.
 
-What is still missing is the other half of the owner's sentence. The lines are
-under the graph but not yet *on* it: the strip of log volume that shares the axis
-needs counts per bucket computed from the 500-line ring in `LogStore` and carried
-on the dashboard payload, which is a server change and a daemon restart.
+What is still missing is the other half of the owner's sentence — §7.20.
+
+### 7.20 The pipe a line came down says nothing about the line
+
+The graph answered *when*, but not whether the service had anything to say about
+it. A process can burn a core in silence and it can sit at 2% while pouring stack
+traces, so the third pane counts the output itself: a stacked bar per slice, red
+for errors, amber for warnings, neutral for the rest, sitting between the metric
+panes and the lines it is a count of.
+
+**Counted in the daemon, because the browser has nothing to count.** Home's
+payload carries 40 lines per service (`PAYLOAD_TAIL`) — a few seconds of a
+service mid-burst. The 500-line ring is in `LogStore`, so `core/log-volume.ts`
+buckets it there and returns sixty triples of small integers. Those ride on the
+metrics response the panel already polls rather than on a second endpoint: two
+requests could answer from ring buffers a poll apart, and a landing page that
+opens a connection per panel is how the six-per-host budget goes.
+
+**The range comes from the samples, never from the lines.** Two charts stacked
+with different x-ranges is a worse lie than no chart — the spike would sit above
+a moment it did not happen at. Lines outside the range are dropped rather than
+clamped, so a service that logged 400 lines at boot and has been quiet since
+reads as quiet instead of growing an invented spike in the first bucket.
+
+Three things this got wrong first, all three caught by looking at it rather than
+by reasoning about it:
+
+- **stderr is not a severity.** The first cut counted stderr as an error, on the
+  grounds that the panel's own `STDERR` stat and its red log lines already do.
+  Ten seconds against a real service ended the argument: of jobjourney-frontend's
+  ten stderr lines, *none* were errors — `[TypeScript] Found 0 errors.`, a
+  Browserslist freshness notice, and six Tailwind lines beginning with the
+  literal word `warn`. The rule painted "found 0 errors" red and stole the amber
+  band from the exact case amber is for. A red that fires on every dev server is
+  a red nobody looks at. `classifyLogSeverity` decides, and it is the same
+  function the timeline uses, so a line that raised an event and a line that
+  painted the strip red are the same line. Nothing is lost: a service that dies
+  on stderr dies saying panic, fatal, Traceback, uncaught, EADDRINUSE or error.
+  That the `STDERR` counter beside it may read 10 while the errors band reads 0
+  is not a contradiction — each names what it counts.
+- **Gaps come out of the scale, not out of the box.** Segments scaled to the full
+  strip height and then separated by 2px are taller than the strip by exactly the
+  gaps inside them, and `justify-end` pushes the overflow up over the caption.
+  Seen live on a bucket that was half neutral and half warnings. The data is
+  scaled into `PLOT_PX`, which reserves two gaps for *every* bucket — reserving
+  only the ones a bucket needs would give two bars of the same total different
+  heights.
+- **Presence must outrank magnitude at the bottom of the scale.** One error
+  beside a 200-line burst is half a percent of 28px, which paints nothing, and
+  "no errors" must not render like "an error you cannot see". Non-zero bands have
+  a 2px floor; the printed peak is what keeps the scale recoverable.
+
+Errors sit at the bottom of the stack so their baseline never moves — the amber
+and red slivers then read as a row you can scan along, which is the whole use.
+The hues `#dc2626` / `#c98500` clear all six checks of the `dataviz` validator on
+both of this app's surfaces, including CVD separation from each other; the amber
+does sit close to the CPU pane's green under protanopia, which identity never
+rests on, because every swatch is beside its own written label in a different
+pane.
 
 ## 8. Decisions needed before stage 1
 

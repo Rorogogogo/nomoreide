@@ -71,7 +71,7 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
   /* Resolved before the empty check, because the empty check is a `return` and
      a hook cannot live behind one. The graph follows the tab: one service's
      series, for the service whose lines are underneath it. */
-  const samples = useHomeServiceMetrics(active?.service ?? null);
+  const metrics = useHomeServiceMetrics(active?.service ?? null);
 
   // A dash rather than a sentence: the panel title already says what is absent.
   if (!active) return <WidgetNote>—</WidgetNote>;
@@ -103,7 +103,7 @@ function OutputSummary({ data, height }: WidgetRenderProps) {
         question is asked in: how much output, what shape was the last half
         hour, and then — at the moment the shape points at — what did it say.
       */}
-      <OutputGraph samples={samples} />
+      <OutputGraph samples={metrics.samples} volume={metrics.volume} />
       {/*
         `shrink-0`, and pointedly no `overflow-hidden`: the panel scrolls its own
         content now (`WidgetScroll`), and a list that hides its own overflow

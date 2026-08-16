@@ -329,6 +329,8 @@ export const en = {
   "home.output.cpu": "CPU",
   "home.output.memory": "Memory",
   "home.output.peak": "Peak",
+  "home.output.warnings": "Warnings",
+  "home.output.errors": "Errors",
   "home.agent.connected": "MCP servers connected",
   "home.agent.degraded": "MCP servers needing attention",
   "home.agent.calls": "Recent tool calls",

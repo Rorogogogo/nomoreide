@@ -2744,7 +2744,37 @@ function metrics(service: string) {
         rss: profile.rssBase + profile.rssGrowth * phase + profile.rssGrowth * 0.15 * wave,
       };
     }),
+    logVolume: logVolume(service, count, sampleIntervalMs, seed),
   };
+}
+
+/**
+ * The log-volume strip under the CPU/memory panes, bucketed over the same range
+ * the samples above cover — which is what the real route does (`log-volume.ts`),
+ * counting the daemon's ring buffer. Demo data rather than a count of the four
+ * mock log lines, because four lines would draw an empty strip and the panel's
+ * point is the shape of a burst.
+ */
+function logVolume(service: string, count: number, sampleIntervalMs: number, seed: number) {
+  const buckets = 60;
+  const span = (count - 1) * sampleIntervalMs;
+  const first = Date.now() - span;
+  return Array.from({ length: buckets }, (_, index) => {
+    const phase = index / buckets;
+    // Deterministic, like the series above: a stable demo render across reloads.
+    const chatter = Math.max(0, Math.sin(phase * Math.PI * 6 + seed) * 7 + 5);
+    // One burst per service, at a different point in the window for each.
+    const burst = Math.exp(-(((phase - ((seed % 5) / 8 + 0.2)) * 9) ** 2)) * 24;
+    const info = Math.round(chatter + burst);
+    return {
+      t: first + (index * span) / buckets,
+      info,
+      /* Every service gets a few of each, including the one the panel opens on
+         — a demo whose error band never fires does not demonstrate the band. */
+      warning: burst > 6 && index % 3 === 0 ? Math.round(burst / 8) : 0,
+      error: burst > 16 && index % 5 === 0 ? 1 : 0,
+    };
+  });
 }
 
 function activityMetrics() {

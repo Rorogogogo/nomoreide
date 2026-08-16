@@ -115,6 +115,8 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "home.output.cpu": "CPU",
   "home.output.memory": "内存",
   "home.output.peak": "峰值",
+  "home.output.warnings": "警告",
+  "home.output.errors": "错误",
   "home.agent.connected": "已连接的 MCP 服务",
   "home.agent.degraded": "需要处理的 MCP 服务",
   "home.agent.calls": "近期工具调用",

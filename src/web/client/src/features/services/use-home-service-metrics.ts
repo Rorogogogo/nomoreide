@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { getServiceMetrics, type MetricSample } from "@/lib/api";
+import { getServiceMetrics, type LogVolumeBucket, type MetricSample } from "@/lib/api";
 
 /**
- * The CPU and memory a service has used lately, for the graph above its log.
+ * The CPU, memory, and output a service has produced lately, for the graph above
+ * its log.
  *
  * A `fetch`-source read (the contract in `features/home/widget-types.ts`), and a
  * cheap one: `/api/services/:name/metrics` is a copy of an in-memory ring buffer
@@ -27,18 +28,28 @@ import { getServiceMetrics, type MetricSample } from "@/lib/api";
 const POLL_MS = 5_000;
 
 /**
- * Just the samples. There is no `loaded` flag because nothing downstream would
- * do anything different with one: a series too short to have a direction draws
- * no graph, and "not fetched yet" and "this service has never run" are the same
- * panel — a log tail with nothing above it.
+ * What the graph draws: the series, and the log volume counted over its range.
+ *
+ * They arrive together and are returned together because they are one axis —
+ * see the route in `web/routes/metrics-routes.ts`. There is no `loaded` flag
+ * because nothing downstream would do anything different with one: a series too
+ * short to have a direction draws no graph, and "not fetched yet" and "this
+ * service has never run" are the same panel — a log tail with nothing above it.
  */
-const EMPTY: MetricSample[] = [];
+export interface HomeServiceMetrics {
+  samples: MetricSample[];
+  volume: LogVolumeBucket[];
+}
+
+/* A frozen shared value, so an empty poll does not hand React a new object every
+   five seconds and re-render the panel over nothing. */
+const EMPTY: HomeServiceMetrics = { samples: [], volume: [] };
 
 export function useHomeServiceMetrics(
   service: string | null,
   pollMs = POLL_MS,
-): MetricSample[] {
-  const [metrics, setMetrics] = useState<MetricSample[]>(EMPTY);
+): HomeServiceMetrics {
+  const [metrics, setMetrics] = useState<HomeServiceMetrics>(EMPTY);
 
   useEffect(() => {
     if (!service) {
@@ -57,7 +68,11 @@ export function useHomeServiceMetrics(
          a landing page. */
       const series = await getServiceMetrics(service).catch(() => null);
       if (!active) return;
-      setMetrics(series?.samples ?? EMPTY);
+      setMetrics(
+        series
+          ? { samples: series.samples, volume: series.logVolume ?? [] }
+          : EMPTY,
+      );
     };
 
     void load();

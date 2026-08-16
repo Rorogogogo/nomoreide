@@ -258,11 +258,26 @@ export interface MetricSample {
   rss: number;
 }
 
+/** One slice of the same window `samples` covers, counted by severity. */
+export interface LogVolumeBucket {
+  t: number;
+  info: number;
+  warning: number;
+  error: number;
+}
+
 export interface MetricsSeries {
   service: string;
   startedAt?: string;
   sampleIntervalMs: number;
   samples: MetricSample[];
+  /**
+   * Log lines bucketed over `samples`' range — the strip under the CPU and
+   * memory panes. Optional because it is the newer half of this response: a
+   * client talking to a daemon that predates it, and the website's mock before
+   * it grew a handler, both answer without one.
+   */
+  logVolume?: LogVolumeBucket[];
 }
 
 export type TestRunStatus = "running" | "passed" | "failed" | "error";

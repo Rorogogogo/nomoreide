@@ -166,6 +166,7 @@ export type {
   ConfigFileResponse,
   ConfigBrowseEntry,
   ConfigBrowseResult,
+  LogVolumeBucket,
   MetricSample,
   MetricsSeries,
   StaleConfigFile,

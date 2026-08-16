@@ -1,24 +1,27 @@
 import { useId, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { MetricSample } from "@/lib/api";
+import type { LogVolumeBucket, MetricSample } from "@/lib/api";
 import { useT } from "@/lib/i18n";
+import { OutputVolume } from "./output-volume";
 
 /**
- * The half hour behind the log lines, as two graphs sharing one time axis.
+ * The half hour behind the log lines, as three graphs sharing one time axis.
  *
  * A tail answers "what did it say"; it cannot answer "when did this start", and
  * forty lines of a service mid-burst can span four seconds. The graph is the
  * axis those lines are missing: a spike says *where* to look, and the lines are
  * directly beneath it.
  *
- * **Two panes, not one chart with two scales.** CPU is a percentage and memory
- * is megabytes, and a second y-axis is the standard way to make two unrelated
- * quantities look like they cross. Stacked on a shared x-range they stay
- * comparable in the only way that matters here — in time.
+ * **Separate panes, not one chart with several scales.** CPU is a percentage,
+ * memory is megabytes and output is a line count; a second y-axis is the
+ * standard way to make unrelated quantities look like they cross. Stacked on a
+ * shared x-range they stay comparable in the only way that matters here — in
+ * time. The third pane is `output-volume.tsx`, and it goes last because it is
+ * the one the log lines beneath are an expansion of.
  *
- * Each pane draws a single series, so identity is carried by its own caption
- * rather than by a legend, and the hues are checked against the surfaces in both
- * themes rather than picked: `#16a34a` and `#3b82f6` clear the lightness band,
- * the chroma floor, CVD separation and 3:1 contrast on light and dark.
+ * Each metric pane draws a single series, so identity is carried by its own
+ * caption rather than by a legend, and the hues are checked against the surfaces
+ * in both themes rather than picked: `#16a34a` and `#3b82f6` clear the lightness
+ * band, the chroma floor, CVD separation and 3:1 contrast on light and dark.
  *
  * The x mapping is by *timestamp*, not by sample index. The daemon samples on a
  * timer that a busy machine can miss, and an index-based axis would quietly
@@ -48,7 +51,13 @@ const MEMORY_COLOR = "#3b82f6";
 /** The plot's own coordinates. Stretched to any width; strokes stay 2px. */
 const VIEW = 1000;
 
-export function OutputGraph({ samples }: { samples: MetricSample[] }) {
+export function OutputGraph({
+  samples,
+  volume,
+}: {
+  samples: MetricSample[];
+  volume: LogVolumeBucket[];
+}) {
   const t = useT();
   const [at, setAt] = useState<number | null>(null);
 
@@ -114,6 +123,14 @@ export function OutputGraph({ samples }: { samples: MetricSample[] }) {
         pick={(sample) => sample.rss}
         samples={samples}
         span={span}
+      />
+      {/* Last of the three, and closest to the lines: the strip is a count of
+          the very text underneath it, so a spike and the lines it is made of are
+          within a few pixels of each other. */}
+      <OutputVolume
+        at={at === null ? null : shown.t}
+        buckets={volume}
+        cursor={at === null ? null : cursor}
       />
       <span className="flex justify-between font-mono text-[9px] text-muted-foreground/60">
         <span>{clock(first)}</span>
