@@ -19,6 +19,14 @@ import { createWebServer } from "../src/web/server.js";
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * `GitHubManager` reads `headers.get("etag")` off every successful response to
+ * decide whether the body can back a later conditional request, so a stub that
+ * omits headers is no longer a usable `Response`. These fixtures return no
+ * validator, which keeps them on the plain uncached path.
+ */
+const NO_ETAG_HEADERS = { get: () => null } as unknown as Headers;
+
 let tempDir: string;
 let server: Awaited<ReturnType<ReturnType<typeof createWebServer>["start"]>>;
 let portServers: net.Server[] = [];
@@ -596,6 +604,7 @@ describe("web server", () => {
           });
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({ login: "octocat" }),
           } as Response);
         }
@@ -642,6 +651,7 @@ describe("web server", () => {
           ok: false,
           status: 401,
           statusText: "Unauthorized",
+          headers: NO_ETAG_HEADERS,
           json: () => Promise.resolve({ message: "Bad credentials" }),
           } as Response);
         },
@@ -727,6 +737,7 @@ describe("web server", () => {
           }
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({ login: "octocat" }),
           } as Response);
         },
@@ -846,6 +857,7 @@ describe("web server", () => {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               full_name: "acme/nomoreide",
               html_url: "https://github.com/acme/nomoreide",
@@ -856,6 +868,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/compare/main...feature%2Fpr-assistant") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               ahead_by: 1,
               status: "ahead",
@@ -871,6 +884,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/commits/abc1234/check-runs?per_page=100") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               total_count: 1,
               check_runs: [
@@ -935,6 +949,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               number: 42,
               title: "Review cockpit",
@@ -955,6 +970,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42/files?per_page=100") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve([
               { filename: "src/review.ts", status: "modified", additions: 4, deletions: 1, changes: 5, patch: "@@", blob_url: "https://github.com/acme/nomoreide/blob/abc/src/review.ts" },
             ]),
@@ -963,6 +979,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/pulls/42/reviews?per_page=100") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve([
               { id: 9, state: "CHANGES_REQUESTED", body: "Needs tests", user: { login: "reviewer" }, submitted_at: "2026-06-11T01:00:00Z", html_url: "https://github.com/acme/nomoreide/pull/42#pullrequestreview-9" },
             ]),
@@ -971,6 +988,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/issues/42/comments?per_page=100") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve([
               { id: 7, body: "One note", user: { login: "commenter" }, created_at: "2026-06-11T02:00:00Z", html_url: "https://github.com/acme/nomoreide/pull/42#issuecomment-7" },
             ]),
@@ -979,6 +997,7 @@ describe("web server", () => {
         if (url === "https://api.github.com/repos/acme/nomoreide/commits/abc1234/check-runs?per_page=100") {
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               total_count: 1,
               check_runs: [
@@ -1039,6 +1058,7 @@ describe("web server", () => {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve({
               full_name: "acme/nomoreide",
               html_url: "https://github.com/acme/nomoreide",
@@ -1050,6 +1070,7 @@ describe("web server", () => {
           expect(init?.headers).toMatchObject({ Authorization: "Bearer token" });
           return Promise.resolve({
             ok: true,
+            headers: NO_ETAG_HEADERS,
             json: () => Promise.resolve([
               { name: "main", protected: true, commit: { sha: "abc1234" } },
               { name: "feature/work", protected: false, commit: { sha: "def5678" } },

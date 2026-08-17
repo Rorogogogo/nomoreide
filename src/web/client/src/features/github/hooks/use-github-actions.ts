@@ -5,6 +5,12 @@ import {
   type GitHubWorkflowJob,
   type GitHubWorkflowRun,
 } from "@/lib/api";
+import {
+  githubCacheKey,
+  readGitHubCache,
+  revalidateGitHubCache,
+  useGitHubScope,
+} from "../github-cache";
 
 // Mirrors the server's `per_page`; a full page back means there may be more.
 const PAGE_SIZE = 30;
@@ -52,10 +58,15 @@ function mergeRuns(
 }
 
 export function useGitHubActions(branch?: string) {
-  const [runs, setRuns] = useState<GitHubWorkflowRun[]>([]);
+  const scope = useGitHubScope();
+  const runsKey = githubCacheKey(scope, "runs", branch ?? "");
+  // Only used to seed the first render; `load` re-seeds when the branch changes.
+  const seedRuns = readGitHubCache<GitHubWorkflowRun[]>(runsKey);
+
+  const [runs, setRuns] = useState<GitHubWorkflowRun[]>(seedRuns ?? []);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
   const [jobs, setJobs] = useState<GitHubWorkflowJob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!seedRuns);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -65,17 +76,29 @@ export function useGitHubActions(branch?: string) {
 
   function load() {
     let active = true;
-    setLoading(true);
+    // Read the cache here rather than reusing `seedRuns`: the branch filter can
+    // change without a remount, and that has to swap in the other branch's cache.
+    const seeded = readGitHubCache<GitHubWorkflowRun[]>(runsKey);
     setError(null);
     setPage(1);
-    void listGitHubWorkflowRuns(branch, 1)
+    if (seeded) {
+      setRuns(seeded);
+      setHasMore(seeded.length === PAGE_SIZE);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    void revalidateGitHubCache(runsKey, () => listGitHubWorkflowRuns(branch, 1))
       .then((next) => {
         if (!active) return;
         setRuns(next);
         setHasMore(next.length === PAGE_SIZE);
       })
       .catch((caught) => {
-        if (active) setError(caught instanceof Error ? caught.message : String(caught));
+        // Cached runs stay on screen; only a cold miss is a hard error.
+        if (active && !seeded) {
+          setError(caught instanceof Error ? caught.message : String(caught));
+        }
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -102,7 +125,7 @@ export function useGitHubActions(branch?: string) {
   // toggling any spinner or resetting pagination. Drives both the header Refresh
   // and the live poll below, so the job/step detail keeps up with a running pipeline.
   const syncLatest = useCallback(() => {
-    void listGitHubWorkflowRuns(branch, 1)
+    void revalidateGitHubCache(runsKey, () => listGitHubWorkflowRuns(branch, 1))
       .then((next) =>
         setRuns((prev) => {
           const merged = mergeRuns(prev, next);
@@ -112,13 +135,14 @@ export function useGitHubActions(branch?: string) {
       )
       .catch(() => { /* transient; the next tick (or manual refresh) retries */ });
     if (selectedRunId) {
-      void listGitHubWorkflowRunJobs(selectedRunId)
+      const jobsKey = githubCacheKey(scope, "run-jobs", selectedRunId);
+      void revalidateGitHubCache(jobsKey, () => listGitHubWorkflowRunJobs(selectedRunId))
         .then((next) =>
           setJobs((prev) => (jobsSignature(prev) === jobsSignature(next) ? prev : next)),
         )
         .catch(() => { /* keep the last good jobs view */ });
     }
-  }, [branch, selectedRunId]);
+  }, [branch, runsKey, scope, selectedRunId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(load, [branch]);
@@ -137,16 +161,21 @@ export function useGitHubActions(branch?: string) {
     }
 
     let active = true;
-    setJobsLoading(true);
+    const jobsKey = githubCacheKey(scope, "run-jobs", selectedRunId);
+    const seeded = readGitHubCache<GitHubWorkflowJob[]>(jobsKey);
+    setJobs(seeded ?? []);
+    setJobsLoading(!seeded);
     setJobsError(null);
-    void listGitHubWorkflowRunJobs(selectedRunId)
+    void revalidateGitHubCache(jobsKey, () => listGitHubWorkflowRunJobs(selectedRunId))
       .then((next) => { if (active) setJobs(next); })
       .catch((caught) => {
-        if (active) setJobsError(caught instanceof Error ? caught.message : String(caught));
+        if (active && !seeded) {
+          setJobsError(caught instanceof Error ? caught.message : String(caught));
+        }
       })
       .finally(() => { if (active) setJobsLoading(false); });
     return () => { active = false; };
-  }, [selectedRunId]);
+  }, [scope, selectedRunId]);
 
   // Poll fast only while something is actually running, and only when the tab is
   // visible. It stops on its own once every run reaches a terminal state, so an

@@ -959,7 +959,9 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             {!overviewDomain && data && page === "git" ? (
               <GitReviewView data={data} onRefresh={() => void refresh({ silent: true })} />
             ) : null}
-            {!overviewDomain && page === "github" ? <GitHubView key={repoScopeKey} /> : null}
+            {!overviewDomain && page === "github" ? (
+              <GitHubView key={repoScopeKey} scope={repoScopeKey} />
+            ) : null}
             {/*
               Extensions is two destinations behind one page id: the section's
               own page at `/extensions`, and one plugin's page at
