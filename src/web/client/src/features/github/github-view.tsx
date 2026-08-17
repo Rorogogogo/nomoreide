@@ -12,6 +12,7 @@ import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { useT, type TranslationKey } from "@/lib/i18n";
+import { GitHubScopeContext } from "./github-cache";
 import { useGitHubToken } from "./hooks/use-github-token";
 import { useGitHubPRs } from "./hooks/use-github-prs";
 import { useGitHubIssues } from "./hooks/use-github-issues";
@@ -42,7 +43,18 @@ const TABS = [
 
 type GithubTab = (typeof TABS)[number]["id"];
 
-export function GitHubView() {
+export function GitHubView({ scope = "" }: { scope?: string }) {
+  // Every GitHub request resolves against the daemon's selected repository, and
+  // the cache backing these views outlives the remount a project switch causes.
+  // Publishing the scope here is what keeps those cache keys apart.
+  return (
+    <GitHubScopeContext.Provider value={scope}>
+      <GitHubViewContent />
+    </GitHubScopeContext.Provider>
+  );
+}
+
+function GitHubViewContent() {
   const t = useT();
   const token = useGitHubToken();
   /** A sign-in flow opened over a working connection: "Use a token with

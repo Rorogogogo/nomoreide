@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useT } from "@/lib/i18n";
 import { useRegisterRefresh } from "@/components/refresh-registry";
+import {
+  githubCacheKey,
+  readGitHubCache,
+  revalidateGitHubCache,
+  useGitHubScope,
+} from "./github-cache";
 
 export function BranchesView({
   onCountChange,
@@ -18,20 +24,27 @@ export function BranchesView({
   onViewRuns: (head: string) => void;
 }) {
   const t = useT();
-  const [payload, setPayload] = useState<GitHubBranchesPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const scope = useGitHubScope();
+  const branchesKey = githubCacheKey(scope, "branches");
+  const seed = readGitHubCache<GitHubBranchesPayload>(branchesKey);
+  const [payload, setPayload] = useState<GitHubBranchesPayload | null>(seed ?? null);
+  const [loading, setLoading] = useState(!seed);
   const [error, setError] = useState<string | null>(null);
 
   function refresh() {
     let active = true;
-    setLoading(true);
+    const seeded = readGitHubCache<GitHubBranchesPayload>(branchesKey);
     setError(null);
-    void listGitHubBranches()
+    setLoading(!seeded);
+    void revalidateGitHubCache(branchesKey, () => listGitHubBranches())
       .then((next) => {
         if (active) setPayload(next);
       })
       .catch((caught) => {
-        if (active) setError(caught instanceof Error ? caught.message : String(caught));
+        // Cached branches stay on screen; only a cold miss is a hard error.
+        if (active && !seeded) {
+          setError(caught instanceof Error ? caught.message : String(caught));
+        }
       })
       .finally(() => {
         if (active) setLoading(false);

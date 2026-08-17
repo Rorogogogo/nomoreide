@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export interface GitHubPR {
   number: number;
   title: string;
@@ -151,6 +153,54 @@ export interface GitHubCompareSummary {
   commits: GitHubCompareCommit[];
   files: GitHubCompareFile[];
 }
+
+/**
+ * Conditional-request cache for GET responses.
+ *
+ * `requireGitHubContext` builds a fresh `GitHubManager` per HTTP request, so
+ * this has to live at module scope — an instance field would be discarded
+ * before it could ever be reused. A replay is cloned on the way out, so a
+ * caller that mutates its result can never poison the next reader.
+ *
+ * The win is rate limit as much as latency: GitHub does not count a
+ * conditional request that comes back 304 against the primary limit, which is
+ * what makes the dashboard's background revalidation affordable.
+ */
+interface EtagEntry {
+  etag: string;
+  /** Parsed JSON, or the raw text for a diff request. */
+  body: unknown;
+}
+
+/** Bounded so a long-lived daemon browsing many repos cannot grow without end. */
+const ETAG_CACHE_LIMIT = 300;
+const etagCache = new Map<string, EtagEntry>();
+
+/**
+ * Keys carry a digest of the token, never the token itself, so switching
+ * credentials can never serve another account's cached body.
+ */
+function etagCacheKey(token: string, accept: string, url: string): string {
+  const fingerprint = createHash("sha256").update(token).digest("hex").slice(0, 16);
+  return `${fingerprint}:${accept}:${url}`;
+}
+
+/** Map iteration is insertion-ordered, so re-inserting on a hit keeps this LRU. */
+function rememberEtag(key: string, entry: EtagEntry): void {
+  etagCache.delete(key);
+  if (etagCache.size >= ETAG_CACHE_LIMIT) {
+    const oldest = etagCache.keys().next().value;
+    if (oldest !== undefined) etagCache.delete(oldest);
+  }
+  etagCache.set(key, entry);
+}
+
+/** Drop every stored validator. Exported for tests and credential changes. */
+export function clearGitHubEtagCache(): void {
+  etagCache.clear();
+}
+
+const DIFF_ACCEPT = "application/vnd.github.diff";
 
 export class GitHubApiError extends Error {
   constructor(
@@ -377,19 +427,23 @@ export class GitHubManager {
 
   private async request<T>(path: string, opts?: { method?: string; body?: unknown; accept?: string }): Promise<T> {
     const url = path.startsWith("http") ? path : `${this.baseUrl}${path}`;
+    const accept = opts?.accept ?? "application/vnd.github+json";
+    const method = opts?.method ?? "GET";
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
-      Accept: opts?.accept ?? "application/vnd.github+json",
+      Accept: accept,
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
-    const init: RequestInit = {
-      method: opts?.method ?? "GET",
-      headers,
-    };
+    // Only reads are revalidated — a write must always reach GitHub.
+    const cacheKey = method === "GET" ? etagCacheKey(this.token, accept, url) : null;
+    const cached = cacheKey ? etagCache.get(cacheKey) : undefined;
+    if (cached) headers["If-None-Match"] = cached.etag;
+
+    const init: RequestInit = { method, headers };
 
     if (opts?.body !== undefined) {
-      if (opts.accept === "application/vnd.github.diff") {
+      if (accept === DIFF_ACCEPT) {
         // diff requests don't send a body
       } else {
         headers["Content-Type"] = "application/json";
@@ -399,12 +453,21 @@ export class GitHubManager {
 
     const response = await fetch(url, init);
 
-    if (opts?.accept === "application/vnd.github.diff") {
+    // 304 is only reachable when we sent a validator, and carries no body of
+    // its own — the cached one is by definition still current.
+    if (cacheKey && cached && response.status === 304) {
+      rememberEtag(cacheKey, cached);
+      return structuredClone(cached.body) as T;
+    }
+
+    if (accept === DIFF_ACCEPT) {
       if (!response.ok) {
         const text = await response.text().catch(() => response.statusText);
         throw new GitHubApiError(text, response.status, path);
       }
-      return response.text() as unknown as T;
+      const diff = await response.text();
+      this.cacheValidator(cacheKey, response, diff);
+      return diff as unknown as T;
     }
 
     if (!response.ok) {
@@ -416,7 +479,20 @@ export class GitHubManager {
       throw new GitHubApiError(message, response.status, path);
     }
 
-    return response.json() as Promise<T>;
+    const body = await response.json() as T;
+    this.cacheValidator(cacheKey, response, body);
+    return body;
+  }
+
+  /**
+   * Store this response's body against its ETag, when GitHub issued one. The
+   * body is cloned on the way in as well as on the way out: the caller already
+   * holds the original and is free to mutate it.
+   */
+  private cacheValidator(cacheKey: string | null, response: Response, body: unknown): void {
+    if (!cacheKey) return;
+    const etag = response.headers.get("etag");
+    if (etag) rememberEtag(cacheKey, { etag, body: structuredClone(body) });
   }
 }
 
