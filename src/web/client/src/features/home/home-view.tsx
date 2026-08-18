@@ -5,6 +5,7 @@ import type { HomeLayout } from "@/features/settings/ui-preferences";
 import type { DashboardData } from "@/lib/api/services-api";
 import { useT } from "@/lib/i18n";
 import { HomeEditControls, WidgetControls } from "./home-edit";
+import { HOME_ROW_PX } from "./home-grid";
 import {
   addWidget,
   GRID_COLUMNS,
@@ -21,7 +22,6 @@ import { previewResize, type PanelPlacement } from "./home-pack";
 import { WidgetDragFrame, WidgetGrid, WidgetPanel } from "./widget-grid";
 import { WidgetResizeGrip, type ResizeFrame, type WidgetBox } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
-import type { WidgetSpan } from "./widget-types";
 
 /**
  * Home — the page that answers "what is happening right now".
@@ -55,14 +55,15 @@ import type { WidgetSpan } from "./widget-types";
 function resizeBox(
   layout: HomeLayout | null,
   id: string,
-  span: WidgetSpan,
+  w: number,
   place: PanelPlacement | undefined,
+  measuredRows: Record<string, number>,
 ): WidgetBox {
   const lanes = place?.lanes ?? GRID_COLUMNS;
   return (
-    previewResize(WIDGETS, layout, id, span, lanes) ?? {
+    previewResize(WIDGETS, layout, id, w, measuredRows, lanes) ?? {
       column: place?.column ?? 0,
-      span: place?.span ?? span,
+      span: place?.span ?? w,
       lanes,
     }
   );
@@ -90,14 +91,21 @@ export function HomeView({
   const [frame, setFrame] = useState<ResizeFrame | null>(null);
 
   const layout = ui.home;
-  const rows = resolveHomeLayout(WIDGETS, layout);
+  const placed = resolveHomeLayout(WIDGETS, layout);
   const hidden = hiddenWidgets(WIDGETS, layout);
   /*
-    Rows still say what is beside what; where each panel actually starts is
-    measured and packed (`home-pack.ts`), so a short panel no longer holds a
-    hole open under itself for the height of the tallest thing beside it.
+    The stored rectangles are intent; where each panel actually lands is packed
+    from them (`home-grid.ts`), so nothing overlaps and no gap is left standing
+    that something below it could rise into.
   */
-  const { boxes, grid, height: gridHeight } = useHomeMasonry(rows);
+  const { boxes, grid, height: gridHeight } = useHomeMasonry(placed);
+  /*
+    Heights for the resize preview, in rows, read off the boxes the last pass
+    produced. The frame has to be drawn against the same numbers the drop will
+    pack with, or it promises a rectangle the release does not produce.
+  */
+  const measuredRows: Record<string, number> = {};
+  for (const [id, box] of boxes) measuredRows[id] = Math.round(box.height / HOME_ROW_PX);
 
   const apply = (next: HomeLayout) => {
     updateUi({ home: next });
@@ -116,7 +124,7 @@ export function HomeView({
   */
   return (
     <div className="h-full overflow-y-auto">
-      {rows.length === 0 ? (
+      {placed.length === 0 ? (
         <p className="px-3 py-4 text-[12px] text-muted-foreground">{t("home.empty")}</p>
       ) : (
         <WidgetGrid gridRef={grid} height={gridHeight}>
@@ -127,8 +135,7 @@ export function HomeView({
             elsewhere leaves every other key alone instead of remounting a
             neighbour, and for a `fetch` widget a remount is a re-request.
           */}
-          {rows.flatMap((row, rowIndex) =>
-            row.widgets.map(({ height, span, widget }, index) => (
+          {placed.map(({ tile, widget }) => (
               <WidgetPanel
                 controls={
                   <WidgetControls
@@ -142,27 +149,26 @@ export function HomeView({
                   <WidgetResizeGrip
                     onFrame={setFrame}
                     onSize={(size) => apply(setWidgetSize(WIDGETS, layout, widget.id, size))}
-                    resolveBox={(next) => resizeBox(layout, widget.id, next, boxes.get(widget.id))}
-                    span={span}
+                    resolveBox={(next) =>
+                      resizeBox(layout, widget.id, next, boxes.get(widget.id), measuredRows)
+                    }
+                    span={tile.w}
                     title={t(widget.titleKey)}
                   />
                 }
                 dragging={move?.id === widget.id}
-                height={height}
+                height={tile.h}
                 icon={widget.icon}
                 id={widget.id}
-                index={index}
                 key={widget.id}
                 onOpen={() => onOpen(widget.page)}
                 openLabel={t("home.open", { title: t(widget.titleKey) })}
                 place={boxes.get(widget.id)}
-                row={rowIndex}
                 title={t(widget.titleKey)}
               >
-                {widget.render({ data, height })}
+                {widget.render({ data, height: tile.h })}
               </WidgetPanel>
-            )),
-          )}
+          ))}
         </WidgetGrid>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">

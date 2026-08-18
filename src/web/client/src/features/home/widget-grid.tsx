@@ -316,11 +316,9 @@ export function WidgetPanel({
   height,
   icon,
   id,
-  index,
   onOpen,
   openLabel,
   place,
-  row,
   title,
 }: {
   children: ReactNode;
@@ -332,12 +330,9 @@ export function WidgetPanel({
   height: number | null;
   icon: ReactNode;
   id: string;
-  /** Position within `row` — the drag's DOM contract, see below. */
-  index: number;
   onOpen: () => void;
   openLabel: string;
   place: PanelPlacement | undefined;
-  row: number;
   title: string;
 }) {
   return (
@@ -349,15 +344,12 @@ export function WidgetPanel({
         dragging && "opacity-40 transition-opacity",
       )}
       /*
-        The whole DOM contract the move drag reads (`home-move.tsx`). The id is
-        also what the masonry keys each measurement by. Rows are not elements —
-        masonry lets a row's panels end at different depths, so row bands
-        overlap — which is why each panel carries the row it belongs to and the
-        drag hit-tests panels instead.
+        The id the masonry keys each measurement by, and what the move drag
+        measures the grab offset against. There is no row or index to carry any
+        more: a panel is a rectangle on the grid, and the drag reads the grid
+        itself rather than hit-testing its neighbours.
       */
       data-widget-cell={id}
-      data-widget-index={index}
-      data-widget-row={row}
       style={panelStyle(place)}
     >
       <WidgetBody height={height} id={id}>

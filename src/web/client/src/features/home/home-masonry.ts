@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import type { PlacedRow } from "./home-layout";
+import { rowsForPx } from "./home-grid";
+import type { PlacedWidget } from "./home-layout";
 import { gridColumns, packHome, type PanelPlacement } from "./home-pack";
 
 /**
@@ -36,20 +37,20 @@ export interface HomeMasonry {
   height: number;
 }
 
-export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
+export function useHomeMasonry(placed: PlacedWidget[]): HomeMasonry {
   const grid = useRef<HTMLDivElement | null>(null);
   const [packed, setPacked] = useState<{ boxes: Map<string, PanelPlacement>; height: number }>(
     () => ({ boxes: new Map(), height: 0 }),
   );
 
   /*
-    The rows are recomputed from preferences on every render, so they are a new
-    array every time even when nothing about them changed. Reading them through a
+    The placements are recomputed from preferences on every render, so they are
+    a new array every time even when nothing about them changed. Reading them through a
     ref keeps `measure` stable, which is what lets the observer below be attached
     once for a set of widgets rather than torn down and rebuilt every frame.
   */
-  const latest = useRef(rows);
-  latest.current = rows;
+  const latest = useRef(placed);
+  latest.current = placed;
   const signature = useRef("");
 
   const measure = useCallback(() => {
@@ -66,7 +67,10 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
       // fractional height read back through the skyline is how a measure-place
       // loop starts oscillating between two positions a hundredth of a pixel
       // apart. A rounded pixel of overlap is invisible; a loop is not.
-      if (id) measured[id] = body.offsetHeight;
+      // In rows, not pixels: the grid's vertical unit is a row, and a height
+      // carried as pixels here would have to be re-quantised at every
+      // comparison. Rounded up by `rowsForPx`, so nothing is ever clipped.
+      if (id) measured[id] = rowsForPx(body.offsetHeight);
     }
 
     const next = packHome(latest.current, measured, gridColumns(width));
@@ -107,7 +111,7 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
     column count. Re-attached when the set of widgets changes, which is the only
     time the list of elements to watch is different.
   */
-  const watched = rows.flatMap((row) => row.widgets.map((placed) => placed.widget.id)).join(",");
+  const watched = placed.map((entry) => entry.widget.id).join(",");
   useEffect(() => {
     const container = grid.current;
     if (!container || typeof ResizeObserver === "undefined") return;
