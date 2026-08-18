@@ -1002,6 +1002,8 @@ export const en = {
 
   // Git — worktrees
   "git.worktrees.title": "Project worktrees",
+  "git.worktrees.activeHint":
+    "New agents and workspace terminals start in the active worktree. Existing sessions stay in their original worktree.",
   "git.worktrees.new": "New worktree",
   "git.worktrees.create": "Create",
   "git.worktrees.prune": "Prune stale worktree records",
@@ -1025,6 +1027,7 @@ export const en = {
   "git.worktrees.activate": "Activate",
   "git.worktrees.activated": "Activated worktree {branch}.",
   "git.worktrees.created": "Created worktree {branch}.",
+  "git.worktrees.createdAt": "Created {time}",
   "git.worktrees.removed": "Removed worktree {branch}.",
   "git.worktrees.pruned": "Pruned stale worktree records.",
   "git.worktrees.remove": "Remove worktree {branch}",

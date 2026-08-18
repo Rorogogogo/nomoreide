@@ -72,6 +72,7 @@ pub struct FileSizeRank {
 pub struct GitWorktree {
     pub path: String,
     pub head: String,
+    pub created_at: Option<u64>,
     pub branch: Option<String>,
     pub bare: bool,
     pub detached: bool,
@@ -219,9 +220,16 @@ impl GitManager {
                 .unwrap_or_default()
                 .is_empty()
             };
+            let created_at = tokio::fs::metadata(&path)
+                .await
+                .ok()
+                .and_then(|metadata| metadata.created().ok())
+                .and_then(|created| created.duration_since(std::time::UNIX_EPOCH).ok())
+                .and_then(|duration| u64::try_from(duration.as_millis()).ok());
             worktrees.push(GitWorktree {
                 path,
                 head: value("HEAD").unwrap_or_default(),
+                created_at,
                 branch,
                 bare: lines.contains(&"bare"),
                 detached: lines.contains(&"detached"),

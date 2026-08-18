@@ -25,7 +25,6 @@ export const shellPaths = new Set([
   "/extensions",
   "/errors",
   "/database",
-  "/terminal",
   "/settings",
 ]);
 

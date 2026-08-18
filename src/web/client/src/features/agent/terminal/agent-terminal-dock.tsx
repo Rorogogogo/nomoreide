@@ -512,6 +512,11 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
   // no sidebar at all, only the toolbar "+" that starts a new one.
   const railVisible = open && composing && historyRailOpen;
   const railProviderLabel = activeShell ? t("dock.shell") : focusedTask ? (focusedTask.provider === "codex" ? "Codex" : "Claude Code") : (provider?.label ?? "Agent");
+  const RailLogo = activeShell
+    ? SquareTerminal
+    : railProviderId === "codex"
+      ? CodexLogo
+      : ClaudeLogo;
   const collapsedTask = currentRailTask ?? latestRailTask;
   const collapsedShell = collapsedTask?.kind === "shell";
   const collapsedProviderId = collapsedTask?.provider ?? provider?.id;
@@ -1029,12 +1034,12 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
       title={sideDocked ? t("dock.resizeWidthAria") : undefined}
     />
     <div className="relative flex min-h-0 flex-1 flex-col">
-    <div className="relative flex h-9 shrink-0 items-stretch border-b border-border bg-muted/25" data-agent-dock-toolbar>
+    <div className="relative flex h-9 shrink-0 items-center border-b border-border bg-card/95" data-agent-dock-toolbar>
       {!fullScreen ? <button
         aria-label={t("dock.positionGrip")}
         className={cn(
-          "grid w-8 shrink-0 cursor-grab place-items-center border-r border-border text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing",
-          layoutSplit && "absolute inset-y-0 left-0 z-20 bg-muted/25",
+          "grid h-full w-8 shrink-0 cursor-grab place-items-center text-muted-foreground hover:bg-muted/45 hover:text-foreground active:cursor-grabbing",
+          layoutSplit && "absolute inset-y-0 left-0 z-20 bg-card/95",
         )}
         onClick={() => {
           if (suppressPositionClickRef.current) {
@@ -1047,6 +1052,19 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         title={placement === "right" ? t("dock.moveToBottom") : t("dock.moveToRight")}
         type="button"
       ><Grip className="size-3.5" /></button> : null}
+      {!layoutSplit ? <>
+        <button
+          aria-label={t("dock.openAgentProfile", { name: railProviderLabel })}
+          className="flex h-7 shrink-0 items-center gap-2 rounded-sm px-2 text-xs font-medium hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          onClick={() => navigate("agent")}
+          title={t("dock.openAgentProfile", { name: railProviderLabel })}
+          type="button"
+        >
+          <RailLogo aria-hidden="true" className="size-3.5 text-primary" />
+          <span>{railProviderLabel}</span>
+        </button>
+        <span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-border" />
+      </> : null}
       {layoutSplit ? (
         <div className="absolute inset-0 flex min-w-0 items-stretch">
           <div
@@ -1083,9 +1101,10 @@ export function AgentTerminalDock({ currentPage = "services", git, onGitRefresh,
         </>
       )}
       <div className={cn(
-        "flex shrink-0 items-center border-l border-border bg-muted/25 px-1",
+        "flex h-full shrink-0 items-center bg-card/95 px-1",
         layoutSplit && "absolute inset-y-0 right-0 z-20",
       )}>
+        <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
         {/* History belongs to the new-session surface, so this slot follows it:
             while composing it toggles the rail beside the composer, and once a
             session is open it becomes "+", which starts a new one rather than

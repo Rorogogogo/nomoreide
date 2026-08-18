@@ -22,47 +22,45 @@ const MIN_HOME_SPAN = 3;
 const MAX_HOME_SPAN = 12;
 const GRID_COLUMNS = MAX_HOME_SPAN;
 const MIN_HOME_HEIGHT = 2;
-const MAX_HOME_HEIGHT = 12;
+/** Matches `MAX_HEIGHT` in `home-grid.ts`: tall enough to clear a neighbour. */
+const MAX_HOME_HEIGHT = 24;
 
-function isInRange(value: unknown, min: number, max: number): boolean {
+function isInRange(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+/** Where one panel sits on the grid, and how big it is. */
+export interface HomeTileRecord {
+  /** Leftmost column, 0-based. */
+  x: number;
+  /** Top, in row units. */
+  y: number;
+  /** Width in columns. */
+  w: number;
+  /** Height in rows, or `null` for a panel as tall as what it holds. */
+  h: number | null;
 }
 
 export interface HomeLayout {
   /**
-   * The rows of the page, each holding widget ids left to right.
+   * Every panel on the page as a rectangle, keyed by widget id.
    *
-   * Rows are stored rather than derived, and that is the whole difference
-   * between v3 and v4. A flowing list wraps wherever the next widget stops
-   * fitting, which leaves the tail of a row empty whenever the leftover is
-   * narrower than the next widget wants — and a gap is not something anyone
-   * chooses. With rows named, a row's widths always add up to the grid, so
-   * there is nowhere for a gap to appear, and "put this one there" has a place
-   * to mean. Ids the registry no longer knows are dropped on read.
-   */
-  rows: string[][];
-  /**
-   * Per-widget width, in columns, keyed by widget id.
+   * Rectangles rather than rows, and that is the whole difference between v4
+   * and v5. Named rows fixed the gap a flowing list left at the end of a short
+   * row, but they also put a floor at every row boundary: the empty band beside
+   * a tall panel belonged to no row, so nothing could be dropped into it, and a
+   * panel could not be dragged down *through* a row to make the panels there
+   * move aside. Both are ordinary things to want and neither was expressible.
    *
-   * Within a row these are shares that sum to the grid, kept that way by every
-   * edit and re-fitted on read if a stored layout disagrees.
+   * The stored rectangles are intent, not the final answer — they may overlap,
+   * and `packTiles` resolves them into a page with no overlaps and no holes.
+   * Ids the registry no longer knows are dropped on read.
    */
-  spans: Record<string, number>;
-  /**
-   * Per-widget height override, in row units of `HOME_ROW_PX`.
-   *
-   * Optional, and absent means something different from every other override
-   * here: not "use the declared one" but "no height at all" — the panel is as
-   * tall as what it holds, which is how Home behaved before heights existed and
-   * is still the right default for a summary. Only a widget someone has dragged
-   * vertically gets an entry, so a stored layout from before this field simply
-   * keeps fitting its content.
-   */
-  heights?: Record<string, number>;
+  tiles: Record<string, HomeTileRecord>;
 }
 
 export interface UiPreferences {
-  version: 4;
+  version: 5;
   theme: "light" | "dark" | "system";
   language: Language;
   density: "comfortable" | "compact";
@@ -106,7 +104,7 @@ function prefersReducedMotion(): boolean {
 
 export function defaultUiPreferences(): UiPreferences {
   return {
-    version: 4,
+    version: 5,
     theme: "system",
     language: "en",
     density: "comfortable",
@@ -145,47 +143,93 @@ function sanitizeProjectAccents(value: unknown): Record<string, AccentChoice> {
  */
 function sanitizeHomeLayout(value: unknown): HomeLayout | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const input = value as { rows?: unknown; widgets?: unknown; spans?: unknown; heights?: unknown };
+  const input = value as {
+    tiles?: unknown;
+    rows?: unknown;
+    widgets?: unknown;
+    spans?: unknown;
+    heights?: unknown;
+  };
+  if (input.tiles && typeof input.tiles === "object" && !Array.isArray(input.tiles)) {
+    return { tiles: readTiles(input.tiles as Record<string, unknown>) };
+  }
   const spans = looseSizes(input.spans, MIN_HOME_SPAN, MAX_HOME_SPAN);
-  const stored = Array.isArray(input.rows)
+  const heights = looseSizes(input.heights, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT);
+  const rows = Array.isArray(input.rows)
     ? input.rows
-    : // A v3 layout is one long list. Packing it into rows here rather than at
-      // render time is what makes the migration a one-off: the user's order and
-      // widths survive, and from the next edit on the rows are theirs.
-      Array.isArray(input.widgets)
+    : Array.isArray(input.widgets)
       ? packIntoRows(input.widgets, spans)
       : null;
-  if (!stored) return null;
+  if (!rows) return null;
+  return { tiles: rowsToTiles(rows, spans, heights) };
+}
 
-  const seen = new Set<string>();
-  const rows: string[][] = [];
-  for (const row of stored) {
-    if (!Array.isArray(row)) continue;
-    const ids: string[] = [];
-    for (const id of row) {
-      // A duplicate id would mount the same widget twice under one React key.
-      if (typeof id === "string" && id && !seen.has(id)) {
-        seen.add(id);
-        ids.push(id);
-      }
-    }
-    if (ids.length) rows.push(ids);
+/** A stored v5 layout, with every coordinate checked against the grid. */
+function readTiles(input: Record<string, unknown>): Record<string, HomeTileRecord> {
+  const tiles: Record<string, HomeTileRecord> = {};
+  for (const [id, value] of Object.entries(input)) {
+    if (!id || !value || typeof value !== "object") continue;
+    const tile = value as Partial<HomeTileRecord>;
+    const w = isInRange(tile.w, MIN_HOME_SPAN, MAX_HOME_SPAN) ? tile.w : MIN_HOME_SPAN;
+    tiles[id] = {
+      w,
+      // Clamped rather than dropped: a rectangle hanging off the right edge is
+      // a layout worth keeping, just not there. `x + w` past the grid has no
+      // column class and would silently render full-width.
+      x: isInRange(tile.x, 0, GRID_COLUMNS - w) ? tile.x : 0,
+      y: isInRange(tile.y, 0, Number.MAX_SAFE_INTEGER) ? tile.y : 0,
+      h: isInRange(tile.h, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT) ? tile.h : null,
+    };
   }
-
-  return {
-    rows,
-    spans: sizeOverrides(spans, seen),
-    heights: sizeOverrides(looseSizes(input.heights, MIN_HOME_HEIGHT, MAX_HOME_HEIGHT), seen),
-  };
+  return tiles;
 }
 
 /**
- * Pack a v3 flat list into rows the way the old flow drew it.
+ * A v3/v4 layout, turned into rectangles that draw the page it drew.
+ *
+ * Rows become bands down the page in the order they were authored, and each
+ * row's widths become the `x` of the panels in it — so the first render after
+ * the migration is the last one before it. What the user gains on the next edit
+ * is that none of those coordinates are trapped in a row any more.
+ *
+ * The band a row occupies is its tallest stored height, or the floor for a row
+ * where nobody set one. Getting that slightly wrong costs nothing: the packer
+ * reads `y` for reading order and then flows everything from the top, so a band
+ * that was too generous closes itself on the first render.
+ */
+function rowsToTiles(
+  rows: unknown[],
+  spans: Record<string, number>,
+  heights: Record<string, number>,
+): Record<string, HomeTileRecord> {
+  const tiles: Record<string, HomeTileRecord> = {};
+  const seen = new Set<string>();
+  let y = 0;
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    let x = 0;
+    let band = MIN_HOME_HEIGHT;
+    for (const id of row) {
+      // A duplicate id would mount the same widget twice under one React key.
+      if (typeof id !== "string" || !id || seen.has(id)) continue;
+      seen.add(id);
+      const w = Math.min(spans[id] ?? MIN_HOME_SPAN, GRID_COLUMNS - Math.min(x, GRID_COLUMNS - 1));
+      const h = heights[id] ?? null;
+      tiles[id] = { x: Math.min(x, GRID_COLUMNS - w), y, w, h };
+      x += w;
+      band = Math.max(band, h ?? MIN_HOME_HEIGHT);
+    }
+    if (x > 0) y += band;
+  }
+  return tiles;
+}
+
+/**
+ * Pack a v3 flat list into the rows the old flow drew, so the v4 migration
+ * below has rows to turn into rectangles.
  *
  * The greedy fill this repeats *is* what CSS grid was doing with the same
- * widths, so the first render after the migration looks like the last one
- * before it — minus the gap at the end of a short row, which `fitRow` closes on
- * read and which is the reason rows exist now.
+ * widths, so a v3 layout arrives at v5 drawing the page it always drew.
  */
 function packIntoRows(widgets: unknown[], spans: Record<string, number>): string[][] {
   const rows: string[][] = [];
@@ -203,7 +247,6 @@ function packIntoRows(widgets: unknown[], spans: Record<string, number>): string
   return rows;
 }
 
-/** Every well-formed `id -> size` entry, before it is known which ids exist. */
 function looseSizes(value: unknown, min: number, max: number): Record<string, number> {
   const out: Record<string, number> = {};
   if (!value || typeof value !== "object" || Array.isArray(value)) return out;
@@ -213,14 +256,6 @@ function looseSizes(value: unknown, min: number, max: number): Record<string, nu
   return out;
 }
 
-/** The same map with every entry for a widget the layout does not show dropped. */
-function sizeOverrides(sizes: Record<string, number>, shown: Set<string>): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const [id, size] of Object.entries(sizes)) {
-    if (shown.has(id)) out[id] = size;
-  }
-  return out;
-}
 
 function readLegacyPreferences(): Partial<UiPreferences> {
   if (typeof window === "undefined") return {};
@@ -250,11 +285,12 @@ function safeGetItem(key: string): string | null {
 export function parseUiPreferences(value: unknown): UiPreferences | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
-  // Accept v1 (pre-accent), v2 (pre-Home-layout), v3 (Home as a flat list)
-  // and v4; older versions are migrated by defaulting the fields they predate,
-  // and a v3 Home layout is packed into rows by `sanitizeHomeLayout`.
+  // Accept v1 (pre-accent), v2 (pre-Home-layout), v3 (Home as a flat list),
+  // v4 (Home as named rows) and v5; older versions are migrated by defaulting
+  // the fields they predate, and a v3 or v4 Home layout is turned into
+  // rectangles by `sanitizeHomeLayout`.
   if (
-    ![1, 2, 3, 4].includes(Number(input.version)) ||
+    ![1, 2, 3, 4, 5].includes(Number(input.version)) ||
     !["light", "dark", "system"].includes(String(input.theme)) ||
     !["en", "zh"].includes(String(input.language)) ||
     !["comfortable", "compact"].includes(String(input.density)) ||
@@ -270,7 +306,7 @@ export function parseUiPreferences(value: unknown): UiPreferences | null {
   }
   return {
     ...(input as unknown as UiPreferences),
-    version: 4,
+    version: 5,
     agentDockPlacement:
       input.agentDockPlacement === "right" ? "right" : "bottom",
     agentCompletionSound: input.agentCompletionSound === true,

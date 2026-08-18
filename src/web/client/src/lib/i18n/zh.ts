@@ -938,6 +938,8 @@ export const zh: Partial<Record<TranslationKey, string>> = {
 
   // Git — worktrees
   "git.worktrees.title": "项目工作树",
+  "git.worktrees.activeHint":
+    "新智能体和工作区终端会从当前工作树启动。现有会话仍保留在原工作树中。",
   "git.worktrees.new": "新建工作树",
   "git.worktrees.create": "创建",
   "git.worktrees.prune": "清理过期的工作树记录",
@@ -961,6 +963,7 @@ export const zh: Partial<Record<TranslationKey, string>> = {
   "git.worktrees.activate": "切换",
   "git.worktrees.activated": "已切换到工作树 {branch}。",
   "git.worktrees.created": "已创建工作树 {branch}。",
+  "git.worktrees.createdAt": "创建于 {time}",
   "git.worktrees.removed": "已移除工作树 {branch}。",
   "git.worktrees.pruned": "已清理过期的工作树记录。",
   "git.worktrees.remove": "移除工作树 {branch}",

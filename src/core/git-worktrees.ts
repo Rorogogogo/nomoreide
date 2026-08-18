@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, realpath } from "node:fs/promises";
+import { mkdir, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -11,6 +11,7 @@ const UNSAFE_PATH_SEGMENT = /[^a-zA-Z0-9._-]+/g;
 export interface GitWorktree {
   path: string;
   head: string;
+  createdAt?: number;
   branch?: string;
   bare: boolean;
   detached: boolean;
@@ -83,6 +84,7 @@ export class GitWorktreeManager {
     return Promise.all(
       parsed.map(async (worktree, index) => ({
         ...worktree,
+        createdAt: await worktreeCreatedAt(worktree.path),
         primary: index === 0,
         dirty: worktree.bare ? false : await isDirty(worktree.path),
       })),
@@ -180,4 +182,13 @@ async function isDirty(path: string): Promise<boolean> {
 
 async function canonicalPath(path: string): Promise<string> {
   return realpath(path).catch(() => resolve(path));
+}
+
+async function worktreeCreatedAt(path: string): Promise<number | undefined> {
+  try {
+    const createdAt = (await stat(path)).birthtimeMs;
+    return Number.isFinite(createdAt) && createdAt > 0 ? createdAt : undefined;
+  } catch {
+    return undefined;
+  }
 }

@@ -120,6 +120,19 @@ object.
 The same applies horizontally: split counters with `divide-x divide-border`,
 not by making each one a tile.
 
+**Use inset hairlines inside toolbars.** A short separator such as
+`h-3 w-px bg-border` lightly groups related controls without making them look
+like separate panels. Use a full-height `border-l` or `border-r` only when the
+line represents a real structural boundary between regions.
+
+```tsx
+// Control grouping — quiet, optical separation
+<span aria-hidden="true" className="mx-1 h-3 w-px shrink-0 bg-border" />
+
+// Pane boundary — structural separation
+<section className="border-l border-border">…</section>
+```
+
 **Full-bleed by default.** Content runs to the panel edges. Don't center a
 `max-w-*` column inside a workbench panel — it strands the content on wide
 screens and reads as a marketing page.

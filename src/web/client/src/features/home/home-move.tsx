@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { HomeLayout } from "@/features/settings/ui-preferences";
-import { canDropAt, type DropTarget } from "./home-layout";
-import { gridColumns, previewPlacement } from "./home-pack";
+import { HOME_ROW_PX } from "./home-grid";
+import { clampX, type DropTarget } from "./home-layout";
+import { gridColumns, previewMove } from "./home-pack";
 import { WidgetDragFrame } from "./widget-grid";
 import type { WidgetDefinition } from "./widget-types";
 
@@ -45,68 +46,31 @@ export interface MoveDrag {
   preview: DropPreview | null;
 }
 
-/** How close to a panel's top or bottom counts as "a new row" rather than "join". */
-const EDGE = 16;
 /** A press has to travel this far to be a drag, so a click stays a click. */
 const THRESHOLD = 5;
 
-/** A placed panel, and the position in the stored layout it stands for. */
-interface Cell {
-  row: number;
-  index: number;
-  rect: DOMRect;
-}
-
-function cellsOnPage(): Cell[] {
-  return [...document.querySelectorAll<HTMLElement>("[data-widget-cell]")].map((cell) => ({
-    row: Number(cell.dataset.widgetRow ?? 0),
-    index: Number(cell.dataset.widgetIndex ?? 0),
-    rect: cell.getBoundingClientRect(),
-  }));
-}
-
 /**
- * How far the cursor is from a panel — zero when it is inside one.
+ * Where the cursor is asking for, read straight off the grid.
  *
- * Panels never overlap, so "the nearest panel" answers "which panel is the
- * cursor in" as a special case and keeps working in the ragged space masonry
- * leaves at the bottom of a short column, where the cursor is inside no panel at
- * all and the old row-band search would have found nothing.
- */
-function distanceTo(rect: DOMRect, x: number, y: number): number {
-  const dx = Math.max(rect.left - x, 0, x - rect.right);
-  const dy = Math.max(rect.top - y, 0, y - rect.bottom);
-  return dx * dx + dy * dy;
-}
-
-/**
- * Where the cursor is asking for, read off the page.
+ * The old version found the nearest *panel* and asked which side of it the
+ * cursor was on, because a drop had to name a slot in a row and only a panel
+ * could tell you which row that was. A drop is now a coordinate, so the grid
+ * itself answers: which column the cursor is over, and how many rows down the
+ * page it is. Every cell is a legal answer, including the empty ones — which is
+ * the whole point, since the space beside a tall panel used to belong to no row
+ * and so could not be named at all.
  *
- * Find the panel being pointed at, then read the gesture against *that panel's*
- * box: near its top or bottom edge means a new row above or below the row it
- * belongs to, and anywhere in between means joining that row on the side of the
- * panel the cursor is on. Comparing against one panel rather than scanning a
- * whole row is both simpler and better aimed — "left half of this one" is what
- * a person dropping a panel beside another one actually means.
+ * `grab` is where inside the panel it was picked up, so the rectangle lands
+ * under the cursor the way it was held rather than jumping its own top-left
+ * corner to the pointer.
  */
-function targetAt(x: number, y: number): DropTarget | null {
-  const cells = cellsOnPage();
-  const hit = cells.reduce<Cell | null>((best, cell) => {
-    if (!best) return cell;
-    return distanceTo(cell.rect, x, y) < distanceTo(best.rect, x, y) ? cell : best;
-  }, null);
-  if (!hit) return null;
-
-  const rect = hit.rect;
-  // A panel can be as short as two row units, so a fixed 16px band top and
-  // bottom would leave almost no middle to mean "join this row". Never more than
-  // a third each way.
-  const edge = Math.min(EDGE, rect.height / 3);
-  if (y - rect.top < edge) return { row: hit.row, index: 0, newRow: true };
-  if (rect.bottom - y < edge) return { row: hit.row + 1, index: 0, newRow: true };
-
-  const after = x >= rect.left + rect.width / 2;
-  return { row: hit.row, index: hit.index + (after ? 1 : 0), newRow: false };
+function targetAt(x: number, y: number, grab: { dx: number; dy: number }): DropTarget | null {
+  const grid = document.querySelector("[data-widget-grid]")?.getBoundingClientRect();
+  if (!grid || grid.width <= 0) return null;
+  const lanes = gridColumns(grid.width);
+  const column = Math.floor(((x - grab.dx - grid.left) / grid.width) * lanes);
+  const row = Math.round((y - grab.dy - grid.top) / HOME_ROW_PX);
+  return { x: clampX(column, 1, lanes), y: Math.max(0, row) };
 }
 
 /**
@@ -147,7 +111,7 @@ function previewFor(
 ): DropPreview | null {
   const grid = document.querySelector("[data-widget-grid]")?.getBoundingClientRect();
   if (!grid) return null;
-  const place = previewPlacement(widgets, layout, id, target, heights, gridColumns(grid.width));
+  const place = previewMove(widgets, layout, id, target, heights, gridColumns(grid.width));
   if (!place) return null;
   return {
     left: grid.left + (place.column / place.lanes) * grid.width,
@@ -196,6 +160,18 @@ export function useWidgetMove({
       */
       if (event.button !== 0) return;
       const origin = { x: event.clientX, y: event.clientY };
+      /*
+        Where inside its own rectangle the panel was picked up, measured once at
+        the press. Without it a panel grabbed by the header — which is the only
+        place it *can* be grabbed — would drop with its top-left corner at the
+        cursor, so every drop landed a panel-width to the right and a header
+        below where it was aimed.
+      */
+      const cell = event.currentTarget.closest("[data-widget-cell]")?.getBoundingClientRect();
+      const held = {
+        dx: cell ? origin.x - cell.left : 0,
+        dy: cell ? origin.y - cell.top : 0,
+      };
       let started = false;
 
       const update = (moved: PointerEvent) => {
@@ -210,17 +186,18 @@ export function useWidgetMove({
           document.body.style.cursor = "grabbing";
           heights.current = measureHeights();
         }
-        const found = targetAt(moved.clientX, moved.clientY);
-        const target = found && canDropAt(widgets, layout, id, found) ? found : null;
+        // Every cell is a legal drop now, so there is nothing left to refuse:
+        // a rectangle can start anywhere on the grid, and the packer decides
+        // what that means for the panels already there.
+        const target = targetAt(moved.clientX, moved.clientY, held);
         setMove({
           id,
           title,
           x: moved.clientX,
           y: moved.clientY,
           target,
-          // No target, no frame: a drop the layout would refuse — a fifth panel
-          // in a row of four — says so by promising nothing, rather than by
-          // drawing a rectangle and then not producing it.
+          // No target only means the grid has not been measured yet, and a
+          // frame promising a place we cannot compute would be a lie.
           preview: target ? previewFor(widgets, layout, id, target, heights.current) : null,
         });
       };
@@ -229,8 +206,8 @@ export function useWidgetMove({
         release.current = null;
         setMove(null);
         if (!started) return;
-        const found = targetAt(ended.clientX, ended.clientY);
-        if (found && canDropAt(widgets, layout, id, found)) onDrop(id, found);
+        const found = targetAt(ended.clientX, ended.clientY, held);
+        if (found) onDrop(id, found);
       };
 
       window.addEventListener("pointermove", update);

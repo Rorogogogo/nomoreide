@@ -25,6 +25,8 @@ export interface GitBranch {
 export interface GitWorktree {
   path: string;
   head: string;
+  /** Filesystem creation time of the worktree directory, in epoch milliseconds. */
+  createdAt?: number;
   branch?: string;
   bare: boolean;
   detached: boolean;

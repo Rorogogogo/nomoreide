@@ -5,8 +5,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useT } from "@/lib/i18n";
-import { clampHeight, clampSpan, GRID_COLUMNS, HOME_ROW_PX } from "./home-layout";
-import type { WidgetSpan } from "./widget-types";
+import { clampH, clampW, GRID_COLUMNS, HOME_ROW_PX } from "./home-layout";
 
 /**
  * Resizing a panel: one corner, and a frame that shows the answer before it is
@@ -52,8 +51,8 @@ export interface ResizeFrame {
 
 /** What a commit changes. An omitted axis is one the gesture did not move. */
 export interface WidgetSize {
-  span?: WidgetSpan;
-  height?: number | null;
+  w?: number;
+  h?: number | null;
 }
 
 /** Where the drag began: the ruler, the panel's corner, and its size then. */
@@ -67,7 +66,7 @@ interface Origin {
   top: number;
   width: number;
   height: number;
-  span: WidgetSpan;
+  span: number;
   rows: number;
 }
 
@@ -122,8 +121,8 @@ export function WidgetResizeGrip({
    * survive the drop — the *position* as much as the width, because which
    * neighbour gives up its columns decides which way the panel grows.
    */
-  resolveBox: (span: WidgetSpan) => WidgetBox;
-  span: WidgetSpan;
+  resolveBox: (span: number) => WidgetBox;
+  span: number;
   title: string;
 }) {
   const t = useT();
@@ -167,7 +166,7 @@ export function WidgetResizeGrip({
       // frame to a height the panel is not currently drawn at. It is also what
       // keeps a straight-sideways drag from writing a height: the row it lands
       // on is the row it began at, so the axis nobody moved stays unwritten.
-      rows: clampHeight(shown / HOME_ROW_PX),
+      rows: clampH(shown / HOME_ROW_PX),
     };
   };
 
@@ -189,8 +188,8 @@ export function WidgetResizeGrip({
       span:
         event.clientX >= start.gridRight - EDGE && asked > start.span
           ? GRID_COLUMNS
-          : clampSpan(asked),
-      rows: clampHeight((event.clientY - start.top) / HOME_ROW_PX),
+          : clampW(asked, GRID_COLUMNS),
+      rows: clampH((event.clientY - start.top) / HOME_ROW_PX),
     };
   };
 
@@ -237,9 +236,9 @@ export function WidgetResizeGrip({
       // and so writes nothing, leaving the panel free to grow with what it
       // holds instead of frozen at whatever it happened to measure that day.
       const size: WidgetSize = {};
-      if (target.span !== start.span) size.span = target.span;
-      if (target.rows !== start.rows) size.height = target.rows;
-      if (size.span !== undefined || size.height !== undefined) onSize(size);
+      if (target.span !== start.span) size.w = target.span;
+      if (target.rows !== start.rows) size.h = target.rows;
+      if (size.w !== undefined || size.h !== undefined) onSize(size);
     };
 
     window.addEventListener("pointermove", move);
@@ -264,19 +263,19 @@ export function WidgetResizeGrip({
     const vertical = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
     if (horizontal) {
       event.preventDefault();
-      const next = clampSpan(span + horizontal);
+      const next = clampW(span + horizontal, GRID_COLUMNS);
       // A step that changes nothing, still going right, is the keyboard at the
       // same wall the pointer hits at the edge of the page — and it means the
       // same thing there: take the row. Without this the widest a key can reach
       // is nine columns, and full width would be a mouse-only state.
       const stuck = horizontal > 0 && resolveBox(next).span === span;
-      onSize({ span: stuck ? GRID_COLUMNS : next });
+      onSize({ w: stuck ? GRID_COLUMNS : next });
       return;
     }
     if (vertical) {
       event.preventDefault();
       const start = measure(event.currentTarget);
-      if (start) onSize({ height: clampHeight(start.rows + vertical) });
+      if (start) onSize({ h: clampH(start.rows + vertical) });
     }
   };
 
@@ -286,7 +285,7 @@ export function WidgetResizeGrip({
       className="absolute bottom-0 right-0 z-10 flex size-3.5 cursor-nwse-resize touch-none items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
       /* Double-click gives a height back to the content, the way the dock's own
          grip resets its width — the only way out of a height once one is set. */
-      onDoubleClick={() => onSize({ height: null })}
+      onDoubleClick={() => onSize({ h: null })}
       onKeyDown={keys}
       onPointerDown={begin}
       title={label}

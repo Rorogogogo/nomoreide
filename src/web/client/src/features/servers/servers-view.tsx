@@ -236,9 +236,15 @@ export function ServersView({
                         <IconButton
                           label={t("servers.terminal")}
                           onClick={() => {
-                            void openSshTerminal(server.host).then(onOpenTerminal).catch((nextError) => {
-                              setError(nextError instanceof Error ? nextError.message : String(nextError));
-                            });
+                            void openSshTerminal(server.host)
+                              .then(onOpenTerminal)
+                              .catch((nextError) => {
+                                setError(
+                                  nextError instanceof Error
+                                    ? nextError.message
+                                    : String(nextError),
+                                );
+                              });
                           }}
                         >
                           <SquareTerminal aria-hidden="true" />
