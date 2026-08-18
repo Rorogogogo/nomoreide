@@ -73,6 +73,7 @@ describe("Git worktrees", () => {
       await realpath(join(managedRoot, "demo", "feature-worktrees")),
     );
     expect(created.primary).toBe(false);
+    expect(created.createdAt).toEqual(expect.any(Number));
     expect(await readFile(join(created.path, "README.md"), "utf8")).toBe("main\n");
 
     const worktrees = await manager.list();

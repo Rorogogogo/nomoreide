@@ -12,7 +12,6 @@ import {
   Network,
   Puzzle,
   Server,
-  SquareTerminal,
   Workflow,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n";
@@ -33,7 +32,6 @@ export type AppPage =
   | "extensions"
   | "errors"
   | "database"
-  | "terminal"
   | "settings";
 
 export interface AppNavigationItem {
@@ -70,7 +68,6 @@ export const APP_NAV_SECTIONS: Array<{
       { page: "servers", labelKey: "nav.servers", icon: <Network /> },
       { page: "docker", labelKey: "nav.docker", icon: <Container /> },
       { page: "errors", labelKey: "nav.errors", icon: <Inbox /> },
-      { page: "terminal", labelKey: "nav.terminal", icon: <SquareTerminal /> },
     ],
   },
   {

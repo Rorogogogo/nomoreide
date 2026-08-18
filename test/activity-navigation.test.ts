@@ -14,4 +14,8 @@ describe("activity navigation", () => {
     expect(pageFromPath("/")).toBe("home");
     expect(pageFromPath("/services")).toBe("services");
   });
+
+  test("does not expose the removed terminal page", () => {
+    expect(pageFromPath("/terminal")).toBe("home");
+  });
 });

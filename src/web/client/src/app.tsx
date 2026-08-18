@@ -27,7 +27,7 @@ import { HeaderRefreshButton, type RefreshPhase } from "@/components/header-refr
 import { AgentView } from "@/features/agent/agent-view";
 import { ContextView } from "@/features/context/context-view";
 import { AgentEnvView } from "@/features/agent-env/agent-env-view";
-import { AgentProvider } from "@/features/agent/chat/agent-context";
+import { AgentProvider, useAgentDock } from "@/features/agent/chat/agent-context";
 import { AiContextMenuProvider } from "@/features/agent/context-menu/ai-context-menu";
 import { WorkflowRunProvider } from "@/features/workflows/workflow-run-context";
 import { WorkflowTriggerProvider } from "@/features/workflows/workflow-trigger-context";
@@ -43,7 +43,6 @@ import { HomeView } from "@/features/home/home-view";
 import { ServicesView } from "@/features/services/services-view";
 import { DockerView } from "@/features/docker/docker-view";
 import { RunningStripe } from "@/features/services/running-stripe";
-import { TerminalView } from "@/features/terminal/terminal-view";
 import { GitReviewView } from "@/features/git/git-review-view";
 import { WorkflowPanel } from "@/features/workflows/workflow-panel";
 import { GitHubView } from "@/features/github/github-view";
@@ -112,7 +111,6 @@ export const PAGE_PATHS: Record<Page, string> = {
   workflows: "/workflows",
   errors: "/errors",
   database: "/database",
-  terminal: "/terminal",
   agent: "/agent",
   "agent-env": "/agent-env",
   context: "/context",
@@ -153,7 +151,6 @@ const PAGE_TITLE_KEY: Record<Page, TranslationKey> = {
   workflows: "nav.workflows",
   errors: "nav.errors",
   database: "nav.database",
-  terminal: "nav.terminal",
   agent: "pageTitle.agent",
   "agent-env": "pageTitle.agentEnv",
   context: "pageTitle.context",
@@ -937,12 +934,11 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
               />
             ) : null}
             {page === "servers" ? (
-              <ServersView
+              <ServersPage
                 onOpenActivity={(host) => {
                   setActivityHost(host);
                   setPage("activity");
                 }}
-                onOpenTerminal={() => setPage("terminal")}
               />
             ) : null}
             {page === "docker" ? <DockerView /> : null}
@@ -1018,7 +1014,6 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
                 onStageConsumed={() => setStagedSql(null)}
               />
             ) : null}
-            {page === "terminal" ? <TerminalView /> : null}
             {page === "settings" ? (
               <SettingsView
                 activeProject={data?.git.selectedRepository ?? null}
@@ -1057,6 +1052,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
     </RefreshRegistryProvider>
     </AiContextMenuProvider>
     </AgentProvider>
+  );
+}
+
+function ServersPage({ onOpenActivity }: { onOpenActivity: (host: string) => void }) {
+  const { setOpen } = useAgentDock();
+  return (
+    <ServersView
+      onOpenActivity={onOpenActivity}
+      onOpenTerminal={() => setOpen(true)}
+    />
   );
 }
 

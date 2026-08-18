@@ -24,7 +24,7 @@ import {
   type GitWorktree,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 export function WorktreesView({
   onRefresh,
@@ -192,6 +192,10 @@ export function WorktreesView({
         </div>
       </div>
 
+      <p className="shrink-0 border-b border-border/70 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+        {t("git.worktrees.activeHint")}
+      </p>
+
       {creating ? (
         <form
           className="grid shrink-0 items-start gap-2 border-b border-border bg-muted/15 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto]"
@@ -285,6 +289,7 @@ export function WorktreesView({
           <div className="divide-y divide-border">
             {worktrees.map((worktree) => {
               const active = worktree.path === activePath;
+              const createdAt = formatWorktreeCreatedAt(worktree.createdAt);
               const rowBusy =
                 busy === `activate:${worktree.path}` ||
                 busy === `remove:${worktree.path}`;
@@ -343,6 +348,11 @@ export function WorktreesView({
                     </span>
                     <span className="mt-1 block font-mono text-[9px] text-muted-foreground">
                       {worktree.head.slice(0, 12)}
+                      {createdAt ? (
+                        <span title={createdAt.exact}>
+                          {` · ${t("git.worktrees.createdAt", { time: createdAt.relative })}`}
+                        </span>
+                      ) : null}
                       {worktree.lockedReason ? ` · ${worktree.lockedReason}` : ""}
                       {worktree.prunableReason ? ` · ${worktree.prunableReason}` : ""}
                     </span>
@@ -394,6 +404,19 @@ export function WorktreesView({
       </div>
     </div>
   );
+}
+
+function formatWorktreeCreatedAt(createdAt?: number): {
+  exact: string;
+  relative: string;
+} | undefined {
+  if (!createdAt || !Number.isFinite(createdAt)) return undefined;
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return {
+    exact: date.toLocaleString(),
+    relative: formatRelativeTime(date.toISOString()),
+  };
 }
 
 function CheckOption({

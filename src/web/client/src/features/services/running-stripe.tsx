@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { Activity } from "lucide-react";
 import type { DashboardData, ServiceHealth, ServiceStatus } from "@/lib/api";
 import { cn, formatUptime } from "@/lib/utils";
@@ -32,29 +32,34 @@ export function RunningStripe({
   if (!entries.length) return null;
 
   return (
-    <div className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card/60 px-4 py-1.5 backdrop-blur">
+    <div className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-border bg-card/60 px-4 py-1 backdrop-blur">
       <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        <Activity className="size-3" />
+        <Activity aria-hidden="true" className="size-3" />
         {t("services.stripeRunning")}
       </span>
+      <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
       <div className="flex min-w-0 items-center gap-2">
-        {entries.map((entry) => (
-          <button
-            className="group flex shrink-0 items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-1 font-mono text-[11px] transition-colors hover:border-border hover:bg-muted"
-            key={entry.name}
-            onClick={() => onOpenService(entry.name)}
-            title={entry.url ? `${entry.name} — ${entry.url}` : entry.name}
-            type="button"
-          >
-            <span className={cn("size-2 shrink-0 rounded-full", dotClassName(entry.tone))} />
-            <span className="max-w-40 truncate font-medium text-foreground">{entry.name}</span>
-            {entry.port ? (
-              <span className="text-muted-foreground">:{entry.port}</span>
+        {entries.map((entry, index) => (
+          <Fragment key={entry.name}>
+            {index > 0 ? (
+              <span aria-hidden="true" className="h-3 w-px shrink-0 bg-border" />
             ) : null}
-            {entry.uptime ? (
-              <span className="text-muted-foreground/70">↑{entry.uptime}</span>
-            ) : null}
-          </button>
+            <button
+              className="group flex h-7 shrink-0 items-center gap-2 rounded-sm px-2 font-mono text-[11px] transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => onOpenService(entry.name)}
+              title={entry.url ? `${entry.name} — ${entry.url}` : entry.name}
+              type="button"
+            >
+              <span className={cn("size-2 shrink-0 rounded-full", dotClassName(entry.tone))} />
+              <span className="max-w-40 truncate font-medium text-foreground">{entry.name}</span>
+              {entry.port ? (
+                <span className="text-muted-foreground">:{entry.port}</span>
+              ) : null}
+              {entry.uptime ? (
+                <span className="text-muted-foreground/70">↑{entry.uptime}</span>
+              ) : null}
+            </button>
+          </Fragment>
         ))}
       </div>
     </div>

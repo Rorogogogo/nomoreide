@@ -331,11 +331,11 @@ export function DockStatusStrip({
     <span
       className={cn(
         "flex shrink-0 items-center gap-2",
-        variant === "dock" && "hidden border-l border-border px-2 lg:flex",
+        variant === "dock" && "hidden px-2 lg:flex",
         variant === "side" && "min-w-max px-2",
       )}
     >
-      {variant === "strip" ? <Divider /> : null}
+      {variant !== "side" ? <Divider /> : null}
       {items.map((item, index) => (
         <span
           className="flex items-center gap-2"

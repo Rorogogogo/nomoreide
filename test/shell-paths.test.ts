@@ -48,6 +48,7 @@ describe("SPA shell paths", () => {
 
   test("does not serve the shell for paths that route nowhere", () => {
     expect(servesShell("/nope")).toBe(false);
+    expect(servesShell("/terminal")).toBe(false);
     expect(servesShell("/api/health")).toBe(false);
   });
 });

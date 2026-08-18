@@ -425,8 +425,11 @@ describe("AgentTerminalDock", () => {
     const codexTab = host.querySelector("#agent-tab-codex-task")?.parentElement;
 
     expect(claudeTab?.dataset.providerAccent).toBe("claude");
+    expect(claudeTab?.className).toContain("h-7");
+    expect(claudeTab?.className).toContain("bg-foreground");
     expect(claudeTab?.className).toContain("before:bg-[#D97757]");
     expect(codexTab?.dataset.providerAccent).toBe("codex");
+    expect(codexTab?.className).toContain("hover:bg-muted/45");
     expect(codexTab?.className).toContain("before:bg-emerald-500");
     expect(codexTab?.querySelector(".fill-muted-foreground\\/50")).not.toBeNull();
   });

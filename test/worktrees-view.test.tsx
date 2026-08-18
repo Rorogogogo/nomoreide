@@ -134,6 +134,37 @@ describe("WorktreesView", () => {
 
     await act(async () => root.unmount());
   });
+
+  test("explains active-session behavior and shows worktree creation time", async () => {
+    getGitWorktrees.mockResolvedValue({
+      activePath: "/worktrees/feature-task",
+      worktrees: [{
+        path: "/worktrees/feature-task",
+        head: "abc123",
+        branch: "feature/task",
+        createdAt: Date.now() - 120_000,
+        bare: false,
+        detached: false,
+        locked: false,
+        prunable: false,
+        primary: false,
+        dirty: false,
+      }],
+    });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(<WorktreesView />);
+      await Promise.resolve();
+    });
+
+    expect(host.textContent).toContain("New agents and workspace terminals start in the active worktree");
+    expect(host.textContent).toContain("Created 2 minutes ago");
+
+    await act(async () => root.unmount());
+  });
 });
 
 function setInputValue(input: HTMLInputElement, value: string) {
