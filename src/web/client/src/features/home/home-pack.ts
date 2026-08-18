@@ -102,6 +102,17 @@ export interface PanelPlacement {
   top: number;
   /** Pixels tall: the stored height, or what the panel measured. */
   height: number;
+  /**
+   * The height is the user's, not a measurement — so nothing may stretch it.
+   *
+   * Levelling exists to close the gaps *between* panels nobody sized, where a
+   * few pixels of difference is noise rather than a decision. A dragged corner
+   * is the opposite: it is the one height on the page someone chose on purpose,
+   * and a rule that grew it back to match a taller neighbour made the drag look
+   * broken — the body dutifully became 64px while the slot it sits in stayed
+   * 257, so the panel on screen never changed and the gesture read as ignored.
+   */
+  fixed: boolean;
 }
 
 export interface PackedHome {
@@ -175,6 +186,7 @@ export function packHome(
       const span = Math.max(1, Math.min(spanFor(placed.span, lanes), lanes));
       if (cursor + span > lanes) cursor = 0;
       const id = placed.widget.id;
+      const fixed = placed.height !== null;
       const height = heightOf(placed.height, measured[id]);
 
       // The skyline: the panel rests on the lowest thing under *any* column it
@@ -192,7 +204,7 @@ export function packHome(
       // takes the top edge off whatever is drawn underneath it.
       levelTo(skyline, owners, cursor, cursor + span, top, Number.POSITIVE_INFINITY);
 
-      const place: PanelPlacement = { id, column: cursor, span, lanes, top, height };
+      const place: PanelPlacement = { id, column: cursor, span, lanes, top, height, fixed };
       for (let lane = cursor; lane < cursor + span; lane += 1) {
         skyline[lane] = top + height;
         owners[lane] = place;
@@ -282,6 +294,10 @@ function raiseTo(
   line: number,
   limit: number,
 ): void {
+  // A height someone dragged is an answer, not a measurement — see `fixed`.
+  // The panel still *holds up* whatever lands under it, because its columns are
+  // closed at its own bottom edge either way; what it will not do is grow.
+  if (place.fixed) return;
   const gap = line - (place.top + place.height);
   if (gap <= 0 || gap > limit) return;
   if (!ownsSpan(owners, place)) return;
@@ -362,6 +378,12 @@ export function previewPlacement(
  * A measurement beats a stored height, and zero is never a measurement — an
  * element that has not been laid out yet reports zero, and treating that as a
  * real height would stack the whole page on top of itself.
+ *
+ * The stored number is a *request*, and what a request got is a fact only the
+ * DOM has. Stacking against the request instead would overlap the panel below
+ * by whatever the two differ by — which is why `fixed` refuses the *stretch*
+ * rather than refusing the measurement: the height a panel was given is honoured
+ * by never growing it, not by disbelieving the box on screen.
  */
 function heightOf(stored: number | null, measured: number | undefined): number {
   if (measured !== undefined && measured > 0) return measured;

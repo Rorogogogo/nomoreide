@@ -70,8 +70,22 @@ export function useHomeMasonry(rows: PlacedRow[]): HomeMasonry {
     }
 
     const next = packHome(latest.current, measured, gridColumns(width));
+    /*
+      Every number that reaches the DOM, `height` emphatically included.
+
+      It was left out on the grounds that the page's own height covers it, and
+      that is true only when the panel that changed is the one deciding the
+      page. Resize a panel that is *not* — anything shorter than the tallest in
+      its row — and nothing else moves: same tops, same total, same key, so the
+      early return fired and the new size was never handed to the cells. The
+      panel then sat at its old size until something unrelated forced a repack,
+      which is why the resize looked like it needed a page refresh to take.
+    */
     const key = `${width}|${next.height}|${next.placements
-      .map((place) => `${place.id}:${place.column}/${place.span}/${place.lanes}:${place.top}`)
+      .map(
+        (place) =>
+          `${place.id}:${place.column}/${place.span}/${place.lanes}:${place.top}/${place.height}`,
+      )
       .join(",")}`;
     if (key === signature.current) return;
     signature.current = key;

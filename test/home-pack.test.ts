@@ -94,7 +94,7 @@ describe("packHome", () => {
   test("puts a single row at the top and sizes the grid to it", () => {
     const packed = packHome([row(panel("a", 12))], { a: 90 }, 12);
     expect(packed.placements).toEqual([
-      { id: "a", column: 0, span: 12, lanes: 12, top: 0, height: 90 },
+      { id: "a", column: 0, span: 12, lanes: 12, top: 0, height: 90, fixed: false },
     ]);
     expect(packed.height).toBe(90);
   });
@@ -380,13 +380,13 @@ describe("previewPlacement", () => {
     // panels, so all three become four columns and `c` lands in the last four.
     expect(
       previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 2, newRow: false }, MEASURED, 12),
-    ).toEqual({ id: "c", column: 8, span: 4, lanes: 12, top: 0, height: 40 });
+    ).toEqual({ id: "c", column: 8, span: 4, lanes: 12, top: 0, height: 40, fixed: false });
   });
 
   test("gives a full-width rectangle at the top for a new leading row", () => {
     expect(
       previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 0, newRow: true }, MEASURED, 12),
-    ).toEqual({ id: "c", column: 0, span: 12, lanes: 12, top: 0, height: 40 });
+    ).toEqual({ id: "c", column: 0, span: 12, lanes: 12, top: 0, height: 40, fixed: false });
   });
 
   test("puts a new trailing row below everything that will be left above it", () => {
@@ -394,18 +394,54 @@ describe("previewPlacement", () => {
     // new row is 60 + 40 tall. The frame has to know that, not where `a` is now.
     expect(
       previewPlacement(REGISTRY, LAYOUT, "a", { row: 2, index: 0, newRow: true }, MEASURED, 12),
-    ).toEqual({ id: "a", column: 0, span: 12, lanes: 12, top: 100, height: 100 });
+    ).toEqual({ id: "a", column: 0, span: 12, lanes: 12, top: 100, height: 100, fixed: false });
   });
 
   test("previews against the narrow grid when that is what is on screen", () => {
     expect(
       previewPlacement(REGISTRY, LAYOUT, "c", { row: 0, index: 0, newRow: true }, MEASURED, 1),
-    ).toEqual({ id: "c", column: 0, span: 1, lanes: 1, top: 0, height: 40 });
+    ).toEqual({ id: "c", column: 0, span: 1, lanes: 1, top: 0, height: 40, fixed: false });
   });
 
   test("has nothing to promise for a widget the layout does not show", () => {
     expect(
       previewPlacement(REGISTRY, LAYOUT, "missing", { row: 0, index: 0, newRow: false }, MEASURED, 12),
     ).toBeNull();
+  });
+});
+
+/**
+ * A dragged corner is the one height on the page somebody chose on purpose, and
+ * the levelling rules must leave it alone.
+ *
+ * This is the shape the bug was reported in: Logs sitting beside a taller panel
+ * with a full-width row underneath. Every panel in that row is stretched down
+ * onto the line the widest one closes off — which is right for panels nobody
+ * sized, and wrong for the one whose corner was just dragged. The stored height
+ * and the body both said 64px while the slot around them stayed 257, so the
+ * panel on screen never changed size and the gesture read as broken.
+ */
+describe("a height the user chose", () => {
+  test("is not stretched to match a taller panel beside it", () => {
+    const rows = [
+      row(panel("tall", 4, 8), panel("auto", 4), panel("short", 4, 2)),
+      row(panel("below", 12)),
+    ];
+    const packed = boxes(rows, { auto: 57, below: 151 }, 12);
+
+    // What the drag asked for, exactly — not the 256 of the panel beside it.
+    expect(packed.short[4]).toBe(2 * HOME_ROW_PX);
+    expect(packed.tall[4]).toBe(8 * HOME_ROW_PX);
+    // The unsized one is still levelled: that is the rule this is an exception to.
+    expect(packed.auto[4]).toBe(8 * HOME_ROW_PX);
+    // And the row underneath still clears the tallest of them.
+    expect(packed.below[3]).toBe(8 * HOME_ROW_PX);
+  });
+
+  test("still holds up whatever lands under it", () => {
+    // Being unstretchable must not make a panel weightless — a full-width row
+    // below has to clear it, or the two would overlap.
+    const rows = [row(panel("sized", 12, 5)), row(panel("under", 12))];
+    expect(tops(rows, { under: 40 }).under).toBe(5 * HOME_ROW_PX);
   });
 });
