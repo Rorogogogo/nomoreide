@@ -15,6 +15,8 @@ const api: ServicesApi = isTauri() ? tauriServicesApi : httpServicesApi;
 
 export const {
   getDashboard,
+  getServiceDefinition,
+  registerService,
   getServiceGraph,
   startService,
   stopService,

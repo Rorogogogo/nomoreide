@@ -2,6 +2,7 @@ import { activityWidget } from "@/features/activity/widget";
 import { conversationsWidget } from "@/features/agent/conversations-widget";
 import { agentWidget } from "@/features/agent/widget";
 import { databasesWidget } from "@/features/database/widget";
+import { dockerWidget } from "@/features/docker/widget";
 import { repositoryWidget } from "@/features/git/widget";
 import { snapshotsWidget } from "@/features/git/snapshots/widget";
 import { outputWidget } from "@/features/services/output-widget";
@@ -22,7 +23,7 @@ import type { WidgetDefinition } from "./widget-types";
  * saved list wins and this order is only consulted for widgets they add back
  * (`home-layout.ts`).
  *
- * The default reads: the two service counters across the top; then Agent
+ * The default reads: services, health, and Docker across the top; then Agent
  * beside git — an AI-native workbench that reports only processes is
  * describing half of itself; then the conversations you can pick back up
  * beside the restore points you can fall back to; then what you can overwrite
@@ -37,6 +38,7 @@ import type { WidgetDefinition } from "./widget-types";
 export const WIDGETS: WidgetDefinition[] = [
   servicesWidget,
   healthWidget,
+  dockerWidget,
   agentWidget,
   repositoryWidget,
   conversationsWidget,

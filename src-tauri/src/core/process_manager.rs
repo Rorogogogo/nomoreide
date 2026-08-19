@@ -173,15 +173,25 @@ impl ProcessManager {
             .as_deref()
             .ok_or_else(|| anyhow!("Local service missing cwd"))?;
 
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c")
-            .arg(command)
-            .current_dir(cwd)
+        let mut cmd = if let Some(args) = &def.args {
+            let mut direct = Command::new(command);
+            direct.args(args);
+            direct
+        } else {
+            let mut shell = Command::new("sh");
+            shell.arg("-c").arg(command);
+            shell
+        };
+        cmd.current_dir(cwd)
             .env("PATH", service_path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(false);
         configure_managed_process(&mut cmd);
+
+        for (key, value) in read_dotenv(cwd).await? {
+            cmd.env(key, value);
+        }
 
         if let Some(env) = &def.env {
             for (k, v) in env {
@@ -295,7 +305,24 @@ impl ProcessManager {
             .ok_or_else(|| anyhow!("SSH service missing command"))?;
         let cwd = def.cwd.as_deref().unwrap_or("~");
 
-        let remote_cmd = format!("cd {cwd} && {command}");
+        let env_prefix = match &def.env {
+            Some(env) if !env.is_empty() => {
+                let mut entries = env.iter().collect::<Vec<_>>();
+                entries.sort_by_key(|(key, _)| *key);
+                let assignments = entries
+                    .into_iter()
+                    .map(|(key, value)| {
+                        if !is_env_key(key) {
+                            return Err(anyhow!("Invalid environment variable name: {key}"));
+                        }
+                        Ok(format!("{key}={}", shell_escape(value)))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                format!("{} ", assignments.join(" "))
+            }
+            _ => String::new(),
+        };
+        let remote_cmd = format!("cd {} && {env_prefix}exec {command}", shell_escape(cwd));
         let mut cmd = Command::new("ssh");
         cmd.args([host, &remote_cmd])
             .env("PATH", service_path())
@@ -375,6 +402,56 @@ impl ProcessManager {
     }
 }
 
+async fn read_dotenv(cwd: &str) -> Result<HashMap<String, String>> {
+    let path = std::path::Path::new(cwd).join(".env");
+    let content = match tokio::fs::read_to_string(path).await {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(HashMap::new()),
+        Err(error) => return Err(error.into()),
+    };
+    Ok(parse_dotenv(&content))
+}
+
+fn parse_dotenv(content: &str) -> HashMap<String, String> {
+    content
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                return None;
+            }
+            let (key, raw_value) = line.split_once('=')?;
+            if !is_env_key(key) {
+                return None;
+            }
+            let value = if raw_value.len() >= 2
+                && ((raw_value.starts_with('"') && raw_value.ends_with('"'))
+                    || (raw_value.starts_with('\'') && raw_value.ends_with('\'')))
+            {
+                let inner = &raw_value[1..raw_value.len() - 1];
+                if raw_value.starts_with('"') {
+                    inner.replace("\\\"", "\"").replace("\\n", "\n")
+                } else {
+                    inner.to_string()
+                }
+            } else {
+                raw_value.to_string()
+            };
+            Some((key.to_string(), value))
+        })
+        .collect()
+}
+
+fn is_env_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    matches!(chars.next(), Some('_') | Some('a'..='z') | Some('A'..='Z'))
+        && chars.all(|ch| ch == '_' || ch == '.' || ch.is_ascii_alphanumeric())
+}
+
+fn shell_escape(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
 #[cfg(unix)]
 fn configure_managed_process(cmd: &mut Command) {
     cmd.process_group(0);
@@ -400,4 +477,32 @@ fn detect_url(line: &str, port: Option<u16>) -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dotenv_parser_matches_service_precedence_inputs() {
+        assert_eq!(
+            parse_dotenv(
+                "# comment\nPLAIN=value\nQUOTED=\"hello world\"\nSINGLE='kept literal'\nDOTTED.KEY=accepted\nBAD-NAME=nope\n"
+            ),
+            HashMap::from([
+                ("PLAIN".into(), "value".into()),
+                ("QUOTED".into(), "hello world".into()),
+                ("SINGLE".into(), "kept literal".into()),
+                ("DOTTED.KEY".into(), "accepted".into()),
+            ])
+        );
+    }
+
+    #[test]
+    fn shell_escape_protects_ssh_env_and_cwd_values() {
+        assert_eq!(shell_escape("app's value"), "'app'\\''s value'");
+        assert!(is_env_key("NODE_ENV"));
+        assert!(is_env_key("NODE.ENV"));
+        assert!(!is_env_key("NODE-ENV"));
+    }
 }

@@ -2,7 +2,10 @@ import {
   getDockerStatus,
   listDockerContainers,
   performDockerContainerAction,
+  readDockerContainerDirectory,
+  readDockerContainerFile,
   readDockerContainerLogs,
+  startDockerDesktop,
   type DockerContainerAction,
 } from "../../core/docker.js";
 import { inspectDockerContainer } from "../../core/docker-inspect.js";
@@ -45,11 +48,63 @@ export const dockerRoutes: Route[] = [
     sendJson(response, { ok: true, status: await getDockerStatus() });
   }),
 
+  route("POST", "/api/docker/start", async ({ response }) => {
+    try {
+      await startDockerDesktop();
+      sendJson(response, { ok: true }, 202);
+    } catch (error) {
+      sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+    }
+  }),
+
   dockerReadRoute("/api/docker/containers", "containers", listDockerContainers),
   dockerReadRoute("/api/docker/stats", "stats", listDockerStats),
   dockerReadRoute("/api/docker/images", "images", listDockerImages),
   dockerReadRoute("/api/docker/volumes", "volumes", listDockerVolumes),
   dockerReadRoute("/api/docker/networks", "networks", listDockerNetworks),
+
+  patternRoute(
+    /^\/api\/docker\/containers\/([^/]+)\/files$/,
+    ["id"],
+    async ({ request, response, params, url }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const directory = await readDockerContainerDirectory(
+          decodeURIComponent(params.id),
+          url.searchParams.get("path") || ".",
+          url.searchParams.get("hidden") === "1",
+        );
+        sendJson(response, { ok: true, directory });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/docker\/containers\/([^/]+)\/file$/,
+    ["id"],
+    async ({ request, response, params, url }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const path = url.searchParams.get("path");
+      if (!path) {
+        sendJson(response, { ok: false, error: "path is required" }, 400);
+        return;
+      }
+      try {
+        const file = await readDockerContainerFile(decodeURIComponent(params.id), path);
+        sendJson(response, { ok: true, file });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 500);
+      }
+    },
+  ),
 
   patternRoute(
     /^\/api\/docker\/containers\/([^/]+)\/inspect$/,

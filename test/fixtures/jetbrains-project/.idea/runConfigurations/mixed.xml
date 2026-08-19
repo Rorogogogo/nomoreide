@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="api-node" type="NodeJSConfigurationType" factoryName="Node.js">
+    <option name="working-dir" value="$PROJECT_DIR$/apps/api" />
+    <option name="path-to-js-file" value="$PROJECT_DIR$/apps/api/server.js" />
+    <option name="application-parameters" value="--port 3001 --label &quot;API server&quot;" />
+  </configuration>
+  <configuration default="false" name="mobile" type="AndroidRunConfigurationType" factoryName="Android App">
+    <module name="app" />
+  </configuration>
+</component>

@@ -4,6 +4,18 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { HostInstanceRef, HostSshTarget } from "./providers/host-provider.js";
+import {
+  assertReadOnlyPath,
+  FILE_PREVIEW_BYTES,
+  FILE_READ_TIMEOUT_MS,
+  parseReadOnlyDirectory,
+  parseReadOnlyFile,
+  READ_DIRECTORY_SCRIPT,
+  READ_FILE_SCRIPT,
+  type ReadOnlyFileContent,
+  type ReadOnlyFileEntry,
+  type ReadOnlyFileType,
+} from "./read-only-files.js";
 import type { SshServerDefinition } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -68,6 +80,19 @@ export interface RemoteHostMetrics {
   platform: string;
   current: RemoteHostMetricSample;
   processes: RemoteProcessMetric[];
+}
+
+export type RemoteFileType = ReadOnlyFileType;
+export type RemoteFileEntry = ReadOnlyFileEntry;
+
+export interface RemoteDirectoryListing {
+  host: string;
+  path: string;
+  entries: RemoteFileEntry[];
+}
+
+export interface RemoteFileContent extends ReadOnlyFileContent {
+  host: string;
 }
 
 /** Explicit, concrete aliases from ~/.ssh/config. Wildcard patterns are omitted. */
@@ -163,6 +188,57 @@ export async function readRemoteHostMetrics(host: string): Promise<RemoteHostMet
   return parseRemoteMetrics(host, stdout, Date.now());
 }
 
+/**
+ * List one Linux directory without parsing human-oriented `ls` output.
+ *
+ * GNU find emits NUL-delimited fields, so spaces, tabs, quotes, and newlines in
+ * filenames remain data rather than syntax. Paths are passed as one shell-
+ * escaped positional argument; the browser cannot append a command here.
+ */
+export async function readRemoteDirectory(
+  host: string,
+  path = ".",
+  includeHidden = false,
+): Promise<RemoteDirectoryListing> {
+  assertSafeSshHost(host);
+  assertReadOnlyPath(path);
+  const command = remoteShCommand(READ_DIRECTORY_SCRIPT, path);
+  const { stdout } = await execFileAsync("ssh", [...SSH_OPTIONS, host, command], {
+    encoding: "buffer",
+    timeout: FILE_READ_TIMEOUT_MS,
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  return parseRemoteDirectoryListing(host, stdout, includeHidden);
+}
+
+export async function readRemoteFile(host: string, path: string): Promise<RemoteFileContent> {
+  assertSafeSshHost(host);
+  assertReadOnlyPath(path, true);
+  const command = remoteShCommand(READ_FILE_SCRIPT, path);
+  const { stdout } = await execFileAsync("ssh", [...SSH_OPTIONS, host, command], {
+    encoding: "buffer",
+    timeout: FILE_READ_TIMEOUT_MS,
+    maxBuffer: FILE_PREVIEW_BYTES + 64 * 1024,
+  });
+  return parseRemoteFileContent(host, path, stdout);
+}
+
+export function parseRemoteDirectoryListing(
+  host: string,
+  output: Buffer,
+  includeHidden = false,
+): RemoteDirectoryListing {
+  return { host, ...parseReadOnlyDirectory(output, includeHidden) };
+}
+
+export function parseRemoteFileContent(
+  host: string,
+  path: string,
+  output: Buffer,
+): RemoteFileContent {
+  return { host, ...parseReadOnlyFile(path, output) };
+}
+
 export function parseRemoteMetrics(
   host: string,
   output: string,
@@ -237,6 +313,14 @@ function assertSafeSshHost(host: string): void {
   if (!/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/.test(host)) {
     throw new Error("SSH host must be a host name or ~/.ssh/config alias.");
   }
+}
+
+function shellEscape(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+function remoteShCommand(script: string, path: string): string {
+  return `LC_ALL=C sh -c ${shellEscape(script)} nomoreide ${shellEscape(path)}`;
 }
 
 function conciseSshError(error: unknown): string {

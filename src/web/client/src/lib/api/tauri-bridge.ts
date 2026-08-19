@@ -367,6 +367,10 @@ export async function tauri_registerService(service: unknown) {
   return tauriInvoke("register_service", { service });
 }
 
+export async function tauri_getServiceDefinition(name: string) {
+  return tauriInvoke("get_service_definition", { name });
+}
+
 export async function tauri_registerBundle(bundle: { name: string; services: string[] }) {
   return tauriInvoke("register_bundle", { bundle });
 }

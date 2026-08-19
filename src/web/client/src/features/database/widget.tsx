@@ -2,6 +2,7 @@ import { Database } from "lucide-react";
 import {
   rowCap,
   WidgetId,
+  WidgetLoading,
   WidgetMore,
   WidgetRow,
   WidgetRows,
@@ -46,6 +47,8 @@ function DatabaseSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const { connections, loaded, total, unlocked } = useHomeDatabaseSummary();
   const cap = rowCap(height, ROW_CAP);
 
+  if (!loaded) return <WidgetLoading label={t("common.loading")} />;
+
   // Unlocked first — the only ordering that matters here, since everything else
   // on this list is inert until someone unlocks it.
   const rows = [...connections].sort(
@@ -57,11 +60,10 @@ function DatabaseSummary({ height }: Pick<WidgetRenderProps, "height">) {
       <WidgetStats>
         <WidgetStat
           label={t("home.databases.unlocked")}
-          pending={!loaded}
           tone="bad"
           value={unlocked}
         />
-        <WidgetStat label={t("home.databases.registered")} pending={!loaded} value={total} />
+        <WidgetStat label={t("home.databases.registered")} value={total} />
       </WidgetStats>
       {rows.length === 0 ? null : (
         <WidgetRows>

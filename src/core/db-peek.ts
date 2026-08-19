@@ -378,12 +378,22 @@ export function maskConnectionUrl(engine: DatabaseEngine, url: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.password) parsed.password = "****";
+    for (const key of parsed.searchParams.keys()) {
+      if (isSensitiveConnectionParameter(key)) {
+        parsed.searchParams.set(key, "****");
+      }
+    }
     return parsed.toString();
   } catch {
     // Not a parseable URL — mask the middle defensively.
     if (url.length <= 8) return "****";
     return `${url.slice(0, 4)}****${url.slice(-4)}`;
   }
+}
+
+/** Query-string fields that must never survive import or public serialization. */
+export function isSensitiveConnectionParameter(key: string): boolean {
+  return /password|passwd|secret|token|api[_-]?key/i.test(key);
 }
 
 export function redactDatabaseError(

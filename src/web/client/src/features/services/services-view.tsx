@@ -3,9 +3,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  FileInput,
   GitBranch,
   Pencil,
-  Play,
   Plus,
   RotateCcw,
   ScrollText,
@@ -14,6 +14,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { OverflowMenu } from "@/components/ui/overflow-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useToasts } from "@/components/ui/toast";
@@ -26,8 +27,9 @@ import {
   type ServiceStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { openExternal } from "@/lib/tauri";
+import { isTauri, openExternal } from "@/lib/tauri";
 import { useT } from "@/lib/i18n";
+import { type BulkAction, ServiceBulkActions } from "./bulk-actions";
 import { DebugTimeline } from "./debug-timeline";
 import { DependencyGraph } from "./dependency-graph";
 import { EmptyState } from "./empty-state";
@@ -40,6 +42,7 @@ import { ServiceDetailPanel } from "./service-detail-panel";
 import { ComposerDialog, ServiceForm } from "./service-forms";
 import { unassignedServices } from "./project-scope";
 import { OnboardDialog } from "../onboard/onboard-dialog";
+import { JetBrainsImportDialog } from "./jetbrains-import-dialog";
 import { AgentMark } from "../agent/ai-spark";
 import { useAgentDock } from "../agent/chat/agent-context";
 import { AiContextTarget } from "../agent/context-menu/ai-context-menu";
@@ -72,14 +75,21 @@ export function ServicesView({
   const t = useT();
   const firstService = data.config.services[0]?.name ?? "";
   const [selectedService, setSelectedService] = useState<string>(firstService);
-  const [serviceComposer, setServiceComposer] = useState<boolean | "service" | null>(false);
+  const [serviceComposer, setServiceComposer] = useState<
+    { kind: "add" } | { kind: "edit"; serviceName: string } | null
+  >(null);
   const [onboardOpen, setOnboardOpen] = useState(false);
+  const [jetBrainsImportOpen, setJetBrainsImportOpen] = useState(false);
+  const supportsJetBrainsImport = !isTauri();
   const { sendToAgent, startOnboard } = useAgentDock();
   const [multiLogOpen, setMultiLogOpen] = useState(false);
   const [graphOpen, setGraphOpen] = useState(false);
-  const [bulkAction, setBulkAction] = useState<"start" | "stop" | "restart" | null>(null);
+  const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
+  /** Bulk run waiting on its confirmation, and the service waiting on its own. */
+  const [pendingBulk, setPendingBulk] = useState<BulkAction | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const previousStatesRef = useRef<Record<string, ServiceStatus["state"]>>({});
   const {
     error: showErrorToast,
@@ -97,6 +107,13 @@ export function ServicesView({
   const hasDependencies = useMemo(
     () => data.config.services.some((service) => (service.dependsOn?.length ?? 0) > 0),
     [data.config.services],
+  );
+  const runningCount = useMemo(
+    () =>
+      data.config.services.filter((service) =>
+        isServiceOn(data.runtime.services[service.name]?.state),
+      ).length,
+    [data.config.services, data.runtime.services],
   );
   const healthByService = data.health ?? {};
   const hasVisibleServices = data.config.services.length > 0;
@@ -125,36 +142,51 @@ export function ServicesView({
   );
   const selectedStatus = selectedService ? data.runtime.services[selectedService] : undefined;
   const selectedHealth = selectedService ? healthByService[selectedService] : undefined;
+  const editingServiceDef =
+    serviceComposer?.kind === "edit"
+      ? data.config.services.find((service) => service.name === serviceComposer.serviceName)
+      : undefined;
+  const composing = serviceComposer !== null;
 
-  async function deleteSelected() {
+  function deleteSelected() {
     if (!selectedServiceDef) return;
     if (isServiceOn(selectedStatus?.state)) {
       showErrorToast(t("services.toast.stopBeforeDelete", { name: selectedServiceDef.name }));
       return;
     }
-    if (!window.confirm(t("services.confirmDelete", { name: selectedServiceDef.name }))) {
-      return;
-    }
+    setPendingDelete(selectedServiceDef.name);
+  }
+
+  async function confirmDelete(name: string) {
+    setDeleting(true);
     try {
-      await deleteService(selectedServiceDef.name);
-      showSuccessToast(t("services.toast.deleted", { name: selectedServiceDef.name }));
+      await deleteService(name);
+      setPendingDelete(null);
+      showSuccessToast(t("services.toast.deleted", { name }));
       await onRefresh();
     } catch (caught) {
       showErrorToast(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setDeleting(false);
     }
   }
 
-  async function runBulkAction(action: "start" | "stop" | "restart") {
+  /**
+   * Stop and restart take the whole list down, so they ask first; start only
+   * ever brings things up, and asking before that is a click for nothing.
+   */
+  function requestBulkAction(action: BulkAction) {
     if (bulkAction) return;
-    if (
-      (action === "stop" || action === "restart") &&
-      !window.confirm(
-        t(action === "stop" ? "services.confirmStopAll" : "services.confirmRestartAll"),
-      )
-    ) {
+    if (action === "start") {
+      void runBulkAction(action);
       return;
     }
+    setPendingBulk(action);
+  }
 
+  async function runBulkAction(action: BulkAction) {
+    if (bulkAction) return;
+    setPendingBulk(null);
     setBulkAction(action);
     try {
       const graph = await getServiceGraph();
@@ -229,7 +261,7 @@ export function ServicesView({
 
   return (
     <>
-      {!hasServices && scopeName ? (
+      {!hasServices && scopeName && !composing ? (
         // A scoped project with no services isn't a first run — the machine
         // may run plenty elsewhere. Offer the way back out instead.
         <div className="flex h-full items-center justify-center bg-background p-8 text-center">
@@ -243,11 +275,14 @@ export function ServicesView({
             </p>
           </div>
         </div>
-      ) : !hasServices ? (
+      ) : !hasServices && !composing ? (
         <FirstRunGuide
           onOnboardRepo={() => setOnboardOpen(true)}
           onOnboardWithAi={startOnboard}
-          onCreateService={() => setServiceComposer("service")}
+          onCreateService={() => setServiceComposer({ kind: "add" })}
+          onImportJetBrains={
+            supportsJetBrainsImport ? () => setJetBrainsImportOpen(true) : undefined
+          }
           onCreateWithAi={() =>
             sendToAgent({
               prompt: SETUP_SERVICE_PROMPT,
@@ -260,7 +295,7 @@ export function ServicesView({
       <div
         className={cn(
           "grid h-full min-h-0 overflow-hidden bg-background",
-          railCollapsed
+          railCollapsed || composing
             ? "lg:grid-cols-[320px_minmax(0,1fr)]"
             : "lg:grid-cols-[320px_minmax(0,1fr)_340px]",
         )}
@@ -275,7 +310,13 @@ export function ServicesView({
                     {data.config.services.length}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex min-w-0 items-center gap-1">
+                  <ServiceBulkActions
+                    busy={bulkAction}
+                    onRun={requestBulkAction}
+                    runningCount={runningCount}
+                    total={data.config.services.length}
+                  />
                   <Button
                     aria-haspopup="dialog"
                     aria-label={t("services.graph")}
@@ -302,29 +343,13 @@ export function ServicesView({
                       <ScrollText aria-hidden="true" className="size-3.5" />
                     </Tooltip>
                   </Button>
-                  <OverflowMenu
-                    className="size-7 opacity-100"
-                    items={[
-                      {
-                        icon: <Play className="size-3.5 text-emerald-600" />,
-                        label: t("services.startAll"),
-                        onSelect: () => void runBulkAction("start"),
-                      },
-                      {
-                        icon: <RotateCcw className="size-3.5 text-amber-600" />,
-                        label: t("services.restartAll"),
-                        onSelect: () => void runBulkAction("restart"),
-                      },
-                      {
-                        icon: <Square className="size-3.5 text-destructive" />,
-                        label: t("services.stopAll"),
-                        onSelect: () => void runBulkAction("stop"),
-                      },
-                    ]}
-                    label={t("services.bulkActions")}
-                  />
                   <AddMenu
-                    onCreateService={() => setServiceComposer(true)}
+                    onImportJetBrains={
+                      supportsJetBrainsImport
+                        ? () => setJetBrainsImportOpen(true)
+                        : undefined
+                    }
+                    onCreateService={() => setServiceComposer({ kind: "add" })}
                     onOnboardRepo={() => setOnboardOpen(true)}
                     onOnboardWithAi={startOnboard}
                     onCreateWithAi={() =>
@@ -353,7 +378,7 @@ export function ServicesView({
                       key={service.name}
                       onClick={() => {
                         setSelectedService(service.name);
-                        setEditOpen(true);
+                        setServiceComposer({ kind: "edit", serviceName: service.name });
                       }}
                       size="sm"
                       variant="outline"
@@ -390,7 +415,52 @@ export function ServicesView({
         </div>
 
         <div className="min-h-0 min-w-0 overflow-hidden">
-          {selectedServiceDef ? (
+          {serviceComposer ? (
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card/75 px-3 py-2">
+                <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+                  {serviceComposer.kind === "edit" ? (
+                    <Pencil aria-hidden="true" className="size-3.5" />
+                  ) : (
+                    <Plus aria-hidden="true" className="size-3.5" />
+                  )}
+                </span>
+                <h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                  {serviceComposer.kind === "edit" && editingServiceDef
+                    ? t("services.editServiceTitle", { name: editingServiceDef.name })
+                    : t("services.addService")}
+                </h2>
+                <Button
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setServiceComposer(null)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {t("common.cancel")}
+                </Button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-hidden">
+                {serviceComposer.kind === "add" || editingServiceDef ? (
+                  <ServiceForm
+                    key={
+                      serviceComposer.kind === "edit"
+                        ? `edit:${serviceComposer.serviceName}`
+                        : "add"
+                    }
+                    cwd={data.cwd}
+                    initialService={editingServiceDef}
+                    availableServices={serviceNames}
+                    onRefresh={onRefresh}
+                    repositories={data.config.gitRepositories}
+                    onSaved={() => setServiceComposer(null)}
+                  />
+                ) : (
+                  <EmptyState label={t("services.selectPrompt")} />
+                )}
+              </div>
+            </div>
+          ) : selectedServiceDef ? (
             <div className="flex h-full min-h-0 flex-col">
               <AiContextTarget
                 target={{
@@ -449,7 +519,11 @@ export function ServicesView({
                         {
                           icon: <Pencil className="size-3.5" />,
                           label: t("services.editService"),
-                          onSelect: () => setEditOpen(true),
+                          onSelect: () =>
+                            setServiceComposer({
+                              kind: "edit",
+                              serviceName: selectedServiceDef.name,
+                            }),
                         },
                         ...(isServiceOn(selectedStatus?.state)
                           ? []
@@ -512,7 +586,7 @@ export function ServicesView({
           )}
         </div>
 
-        {!railCollapsed ? (
+        {!railCollapsed && !composing ? (
           <div className="min-h-0 overflow-auto border-l border-border">
             <PortsOverview ports={data.ports} />
             <DebugTimeline events={data.timeline ?? []} />
@@ -520,41 +594,19 @@ export function ServicesView({
         ) : null}
       </div>
       )}
-      {editOpen && selectedServiceDef ? (
-        <ComposerDialog
-          icon={<Pencil />}
-          onClose={() => setEditOpen(false)}
-          size="lg"
-          title={t("services.editServiceTitle", { name: selectedServiceDef.name })}
-        >
-          <ServiceForm
-            cwd={data.cwd}
-            initialService={selectedServiceDef}
-            availableServices={serviceNames}
-            onRefresh={onRefresh}
-            repositories={data.config.gitRepositories}
-            onSaved={() => setEditOpen(false)}
-          />
-        </ComposerDialog>
-      ) : null}
-      {serviceComposer ? (
-        <ComposerDialog
-          icon={<Plus />}
-          onClose={() => setServiceComposer(null)}
-          size="lg"
-          title={t("services.addService")}
-        >
-          <ServiceForm
-            cwd={data.cwd}
-            availableServices={serviceNames}
-            onRefresh={onRefresh}
-            onSaved={() => setServiceComposer(false)}
-            repositories={data.config.gitRepositories}
-          />
-        </ComposerDialog>
-      ) : null}
       {onboardOpen ? (
         <OnboardDialog onClose={() => setOnboardOpen(false)} onRefresh={onRefresh} />
+      ) : null}
+      {supportsJetBrainsImport && jetBrainsImportOpen ? (
+        <JetBrainsImportDialog
+          initialRoot={
+            data.git.selectedRepository?.activeWorktreePath ??
+            data.git.selectedRepository?.path ??
+            data.cwd
+          }
+          onClose={() => setJetBrainsImportOpen(false)}
+          onRefresh={onRefresh}
+        />
       ) : null}
       {multiLogOpen ? (
         <MultiLogView
@@ -581,17 +633,58 @@ export function ServicesView({
           />
         </ComposerDialog>
       ) : null}
+
+      {pendingBulk ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t(pendingBulk === "stop" ? "common.stop" : "common.restart")}
+          icon={
+            pendingBulk === "stop" ? (
+              <Square className="text-destructive" />
+            ) : (
+              <RotateCcw className="text-amber-600" />
+            )
+          }
+          message={t(
+            pendingBulk === "stop"
+              ? "services.confirmStopAllBody"
+              : "services.confirmRestartAllBody",
+          )}
+          onCancel={() => setPendingBulk(null)}
+          onConfirm={() => void runBulkAction(pendingBulk)}
+          title={t(
+            pendingBulk === "stop" ? "services.confirmStopAll" : "services.confirmRestartAll",
+          )}
+          tone={pendingBulk === "stop" ? "danger" : "default"}
+        />
+      ) : null}
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("common.delete")}
+          icon={<Trash2 className="text-destructive" />}
+          loading={deleting}
+          message={t("services.confirmDeleteBody")}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void confirmDelete(pendingDelete)}
+          title={t("services.confirmDeleteTitle", { name: pendingDelete })}
+          tone="danger"
+        />
+      ) : null}
     </>
   );
 }
 
 /** "+" button for service creation and repository onboarding. */
 function AddMenu({
+  onImportJetBrains,
   onCreateService,
   onCreateWithAi,
   onOnboardRepo,
   onOnboardWithAi,
 }: {
+  onImportJetBrains?: () => void;
   onCreateService: () => void;
   onCreateWithAi: () => void;
   onOnboardRepo: () => void;
@@ -657,6 +750,17 @@ function AddMenu({
                 AI
               </button>
             </div>
+            {onImportJetBrains ? (
+              <button
+                className="flex w-full items-center gap-2 whitespace-nowrap px-3 py-2 text-left text-sm hover:bg-muted/60 [&_svg]:size-4"
+                onClick={() => choose(onImportJetBrains)}
+                role="menuitem"
+                type="button"
+              >
+                <FileInput />
+                {t("services.jetbrains.menu")}
+              </button>
+            ) : null}
             {/* Add from GitHub: the structured wizard, plus an AI cut that hands
                 the repo straight to the agent dock (the AI-native path). */}
             <div className="group flex items-stretch">

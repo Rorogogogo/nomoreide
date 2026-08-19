@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/cvui-badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loading } from "@/components/ui/loading";
 import { useToasts } from "@/components/ui/toast";
 import { useAgentDock } from "../agent/chat/agent-context";
@@ -38,6 +39,8 @@ export function WorktreesView({
   const [activePath, setActivePath] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  /** Worktree waiting on its removal confirmation. */
+  const [pendingRemove, setPendingRemove] = useState<GitWorktree | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [branch, setBranch] = useState("");
@@ -127,7 +130,7 @@ export function WorktreesView({
 
   async function remove(worktree: GitWorktree) {
     const label = worktree.branch ?? worktree.path;
-    if (!window.confirm(t("git.worktrees.removeConfirm", { branch: label }))) return;
+    setPendingRemove(null);
     setBusy(`remove:${worktree.path}`);
     try {
       await removeGitWorktree(worktree.path);
@@ -376,7 +379,7 @@ export function WorktreesView({
                         })}
                         className="size-7"
                         disabled={!canRemove || busy !== null}
-                        onClick={() => void remove(worktree)}
+                        onClick={() => setPendingRemove(worktree)}
                         size="icon"
                         title={
                           canRemove
@@ -402,6 +405,20 @@ export function WorktreesView({
           </div>
         )}
       </div>
+      {pendingRemove ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("common.remove")}
+          icon={<Trash2 className="text-destructive" />}
+          message={t("git.worktrees.removeConfirm")}
+          onCancel={() => setPendingRemove(null)}
+          onConfirm={() => void remove(pendingRemove)}
+          title={t("git.worktrees.removeTitle", {
+            branch: pendingRemove.branch ?? pendingRemove.path,
+          })}
+          tone="danger"
+        />
+      ) : null}
     </div>
   );
 }

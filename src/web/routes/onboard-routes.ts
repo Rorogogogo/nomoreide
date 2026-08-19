@@ -9,6 +9,7 @@ import {
   scanRepo,
 } from "../../core/repo-onboard.js";
 import type { DatabaseConnection, ServiceDefinition } from "../../core/types.js";
+import { publicConfig } from "../../core/public-config.js";
 import { readJson, sendJson } from "../http-utils.js";
 import { errorMessage, route, type Route } from "./context.js";
 
@@ -95,7 +96,7 @@ export const onboardRoutes: Route[] = [
         await configStore.registerDatabase(database).catch(() => undefined);
       }
       const started = body.start === true ? await manager.startService(definition.name) : null;
-      sendJson(response, { ok: true, config, started });
+      sendJson(response, { ok: true, config: publicConfig(config), started });
     } catch (error) {
       sendJson(response, { ok: false, error: errorMessage(error) }, 422);
     }

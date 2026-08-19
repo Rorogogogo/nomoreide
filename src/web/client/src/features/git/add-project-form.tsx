@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from "react";
-import { Download, Folder, FolderPlus, Plus, Sparkles } from "lucide-react";
+import { Download, FolderPlus, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TabStrip } from "@/components/ui/tab-strip";
 import { useToasts } from "@/components/ui/toast";
 import {
   cloneGitRepository,
@@ -10,7 +11,6 @@ import {
   type DashboardData,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
 import { pathName } from "./path-utils";
 import { FolderPickerDialog } from "./repository-selector";
 
@@ -119,14 +119,14 @@ export function AddProjectForm({
     }
   }
 
-  const modes: ReadonlyArray<[AddMode, typeof Folder, string]> = [
-    ["path", Folder, t("git.repo.modeExisting")],
-    ["url", Download, t("git.repo.modeClone")],
-    ["new", Sparkles, t("git.repo.modeCreate")],
+  const modes: ReadonlyArray<{ id: AddMode; label: string }> = [
+    { id: "path", label: t("git.repo.modeExisting") },
+    { id: "url", label: t("git.repo.modeClone") },
+    { id: "new", label: t("git.repo.modeCreate") },
   ];
 
   return (
-    <div className="shrink-0 border-t border-border bg-muted/20 p-3">
+    <div className="shrink-0 border-t border-border px-3 py-2">
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
         {/* The three modes were indistinguishable while they were named after
             what they do ("Existing folder" / "Create new"). Naming them after
@@ -136,31 +136,20 @@ export function AddProjectForm({
           {t("git.repo.addSection")}
         </span>
         <span className="text-[11px] text-muted-foreground">{t("git.repo.addQuestion")}</span>
-        <div className="flex gap-1 text-[11px]">
-          {modes.map(([mode, Icon, label]) => (
-            <button
-              className={cn(
-                "flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
-                addMode === mode
-                  ? "bg-muted font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              key={mode}
-              onClick={() => {
-                setAddMode(mode);
-                setAddError(null);
-              }}
-              type="button"
-            >
-              <Icon className="size-3" />
-              {label}
-            </button>
-          ))}
-        </div>
+        <TabStrip
+          ariaLabel={t("git.repo.addQuestion")}
+          idPrefix="add-project-mode"
+          onSelect={(mode) => {
+            setAddMode(mode);
+            setAddError(null);
+          }}
+          tabs={modes}
+          value={addMode}
+        />
       </div>
 
       {addMode === "path" ? (
-        <form className="flex gap-1.5" onSubmit={addFromInput}>
+        <form className="flex gap-1.5" id="add-project-mode-panel-path" onSubmit={addFromInput} role="tabpanel">
           <Input
             aria-label={t("git.repo.pasteAbsPath")}
             className="h-7 flex-1 px-2 font-mono text-[11px]"
@@ -191,7 +180,7 @@ export function AddProjectForm({
           </Button>
         </form>
       ) : addMode === "new" ? (
-        <form className="flex gap-1.5" onSubmit={createNewProject}>
+        <form className="flex gap-1.5" id="add-project-mode-panel-new" onSubmit={createNewProject} role="tabpanel">
           <Input
             aria-label={t("git.repo.createName")}
             className="h-7 flex-1 px-2 font-mono text-[11px]"
@@ -228,7 +217,7 @@ export function AddProjectForm({
           </Button>
         </form>
       ) : (
-        <form className="flex gap-1.5" onSubmit={addFromUrl}>
+        <form className="flex gap-1.5" id="add-project-mode-panel-url" onSubmit={addFromUrl} role="tabpanel">
           <Input
             aria-label={t("git.repo.remoteUrl")}
             className="h-7 flex-1 px-2 font-mono text-[11px]"

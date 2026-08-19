@@ -1,0 +1,17 @@
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="project-postgres" uuid="11111111-1111-1111-1111-111111111111">
+      <driver-ref>postgresql</driver-ref>
+      <jdbc-url>jdbc:postgresql://app:embedded-secret@localhost:5432/project?sslmode=require&amp;password=query-secret&amp;access_token=token-secret</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="local-sqlite" uuid="22222222-2222-2222-2222-222222222222">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/data/app.sqlite</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="legacy-oracle" uuid="33333333-3333-3333-3333-333333333333">
+      <driver-ref>oracle</driver-ref>
+      <jdbc-url>jdbc:oracle:thin:@localhost:1521:xe</jdbc-url>
+    </data-source>
+  </component>
+</project>

@@ -15,6 +15,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToasts } from "@/components/ui/toast";
 import {
   gitCreateBranch,
@@ -64,6 +65,15 @@ export function BranchBreadcrumb({
     top: number;
   } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * The branch operation waiting on its confirmation. All three rewrite or
+   * discard history, so all three ask — one dialog switched by kind, rather
+   * than three that differ only in their wording.
+   */
+  const [pending, setPending] = useState<{
+    kind: "merge" | "rebase" | "delete";
+    branch: string;
+  } | null>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -195,7 +205,7 @@ export function BranchBreadcrumb({
 
   async function mergeBranch(name: string) {
     const target = currentBranch || t("git.branch.noBranch");
-    if (!window.confirm(t("git.branch.mergeConfirm", { source: name, target }))) return;
+    setPending(null);
     await runAction(`merge:${name}`, async () => {
       await gitMerge(name);
       return t("git.branch.mergedToast", { source: name, target });
@@ -204,7 +214,7 @@ export function BranchBreadcrumb({
 
   async function rebaseBranch(name: string) {
     const source = currentBranch || t("git.branch.noBranch");
-    if (!window.confirm(t("git.branch.rebaseConfirm", { source, target: name }))) return;
+    setPending(null);
     await runAction(`rebase:${name}`, async () => {
       await gitRebase(name);
       return t("git.branch.rebasedToast", { source, target: name });
@@ -219,7 +229,7 @@ export function BranchBreadcrumb({
   }
 
   async function deleteBranch(name: string) {
-    if (!window.confirm(t("git.branch.deleteConfirm", { branch: name }))) return;
+    setPending(null);
     await runAction(`delete:${name}`, async () => {
       await gitDeleteBranch(name);
       setActionMenu(null);
@@ -469,16 +479,80 @@ export function BranchBreadcrumb({
                 current={actionBranch.current || actionBranch.name === currentBranch}
                 currentBranch={currentBranch || t("git.branch.noBranch")}
                 onCreateFrom={createFromBranch}
-                onDelete={deleteBranch}
-                onMerge={mergeBranch}
-                onRebase={rebaseBranch}
+                onDelete={(name) => setPending({ kind: "delete", branch: name })}
+                onMerge={(name) => setPending({ kind: "merge", branch: name })}
+                onRebase={(name) => setPending({ kind: "rebase", branch: name })}
                 onSwitch={switchBranch}
               />
             </div>,
             document.body,
           )
         : null}
+      {pending ? (
+        <BranchConfirm
+          currentBranch={currentBranch || t("git.branch.noBranch")}
+          onCancel={() => setPending(null)}
+          onConfirm={() => {
+            if (pending.kind === "merge") void mergeBranch(pending.branch);
+            else if (pending.kind === "rebase") void rebaseBranch(pending.branch);
+            else void deleteBranch(pending.branch);
+          }}
+          pending={pending}
+        />
+      ) : null}
     </>
+  );
+}
+
+/** The three history-changing branch actions, asked for in the app's dialog. */
+function BranchConfirm({
+  currentBranch,
+  onCancel,
+  onConfirm,
+  pending,
+}: {
+  currentBranch: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  pending: { kind: "merge" | "rebase" | "delete"; branch: string };
+}) {
+  const t = useT();
+  const copy =
+    pending.kind === "merge"
+      ? {
+          title: t("git.branch.mergeTitle", { source: pending.branch, target: currentBranch }),
+          message: t("git.branch.mergeConfirm"),
+          confirm: t("git.branch.mergeAction"),
+          icon: <GitMerge />,
+          tone: "default" as const,
+        }
+      : pending.kind === "rebase"
+        ? {
+            title: t("git.branch.rebaseTitle", { source: currentBranch, target: pending.branch }),
+            message: t("git.branch.rebaseConfirm"),
+            confirm: t("git.branch.rebaseAction"),
+            icon: <GitCompareArrows />,
+            tone: "danger" as const,
+          }
+        : {
+            title: t("git.branch.deleteTitle", { branch: pending.branch }),
+            message: t("git.branch.deleteConfirm"),
+            confirm: t("common.delete"),
+            icon: <Trash2 className="text-destructive" />,
+            tone: "danger" as const,
+          };
+
+  return (
+    <ConfirmDialog
+      cancelLabel={t("common.cancel")}
+      confirmLabel={copy.confirm}
+      icon={copy.icon}
+      message={copy.message}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      title={copy.title}
+      tone={copy.tone}
+    />
   );
 }
 
@@ -562,9 +636,9 @@ function BranchActionMenu({
   current: boolean;
   currentBranch: string;
   onCreateFrom: (name: string) => void;
-  onDelete: (name: string) => Promise<void>;
-  onMerge: (name: string) => Promise<void>;
-  onRebase: (name: string) => Promise<void>;
+  onDelete: (name: string) => void;
+  onMerge: (name: string) => void;
+  onRebase: (name: string) => void;
   onSwitch: (name: string) => Promise<void>;
 }) {
   const t = useT();
@@ -595,7 +669,7 @@ function BranchActionMenu({
           source: <BranchName name={branch.name} />,
           target: <BranchName name={currentBranch} />,
         })}
-        onClick={() => void onMerge(branch.name)}
+        onClick={() => onMerge(branch.name)}
       />
       <BranchMenuAction
         disabled={unavailable || current}
@@ -604,7 +678,7 @@ function BranchActionMenu({
           source: <BranchName name={currentBranch} />,
           target: <BranchName name={branch.name} />,
         })}
-        onClick={() => void onRebase(branch.name)}
+        onClick={() => onRebase(branch.name)}
       />
       {!branch.remote ? (
         <>
@@ -614,7 +688,7 @@ function BranchActionMenu({
             disabled={unavailable || current}
             icon={<Trash2 />}
             label={t("git.branch.deleteLocal")}
-            onClick={() => void onDelete(branch.name)}
+            onClick={() => onDelete(branch.name)}
           />
         </>
       ) : null}

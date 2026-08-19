@@ -59,10 +59,6 @@ beforeEach(() => {
   mocks.gitPush.mockResolvedValue({ output: "", branch: "main", setUpstream: false });
   mocks.gitRebase.mockResolvedValue("");
   mocks.gitSwitchBranch.mockResolvedValue(undefined);
-  Object.defineProperty(window, "confirm", {
-    configurable: true,
-    value: vi.fn(() => true),
-  });
 });
 
 afterEach(() => {
@@ -71,6 +67,22 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
+
+/** The app's ConfirmDialog replaced `window.confirm`; it portals to the body. */
+function confirmDialog(): HTMLElement {
+  // The branch popover is a role="dialog" too; only the modal is the confirm.
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]');
+  if (!dialog) throw new Error("confirm dialog did not open");
+  return dialog;
+}
+
+function dialogButton(label: string): HTMLButtonElement {
+  const button = [...confirmDialog().querySelectorAll("button")].find(
+    (candidate) => candidate.textContent === label,
+  );
+  if (!button) throw new Error(`no "${label}" button in the confirm dialog`);
+  return button;
+}
 
 function renderBreadcrumb(options: { disabled?: boolean } = {}) {
   act(() => {
@@ -183,18 +195,19 @@ describe("BranchBreadcrumb", () => {
     const merge = findAction(menu, "Merge feature/header-switcher into main");
     const rebase = findAction(menu, "Rebase main onto feature/header-switcher");
 
+    // Neither action runs on the click alone — each asks in the app's dialog,
+    // and it is the dialog's own button that commits it.
     await act(async () => merge?.click());
-    await act(async () => rebase?.click());
+    expect(confirmDialog().textContent).toContain("Merge feature/header-switcher into main?");
+    expect(mocks.gitMerge).not.toHaveBeenCalled();
+    await act(async () => dialogButton("Merge").click());
 
-    expect(window.confirm).toHaveBeenCalledTimes(2);
-    expect(window.confirm).toHaveBeenNthCalledWith(
-      1,
-      "Merge feature/header-switcher into main? Conflicts will be aborted automatically.",
-    );
-    expect(window.confirm).toHaveBeenNthCalledWith(
-      2,
-      "Rebase main onto feature/header-switcher? This rewrites local commit history. Conflicts will be aborted automatically.",
-    );
+    await act(async () => rebase?.click());
+    expect(confirmDialog().textContent).toContain("Rebase main onto feature/header-switcher?");
+    expect(confirmDialog().textContent).toContain("rewrites local commit history");
+    await act(async () => dialogButton("Rebase").click());
+
+    expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull();
     expect(mocks.gitMerge).toHaveBeenCalledWith("feature/header-switcher");
     expect(mocks.gitRebase).toHaveBeenCalledWith("feature/header-switcher");
     expect(mocks.showSuccess).toHaveBeenCalledWith(
@@ -252,6 +265,10 @@ describe("BranchBreadcrumb", () => {
     const reopened = openMenu();
     act(() => findBranch(reopened, "feature/header-switcher")?.click());
     await act(async () => findAction(reopened, "Delete local branch")?.click());
+    expect(confirmDialog().textContent).toContain(
+      "Delete local branch feature/header-switcher?",
+    );
+    await act(async () => dialogButton("Delete").click());
 
     expect(mocks.gitDeleteBranch).toHaveBeenCalledWith("feature/header-switcher");
     expect(mocks.showSuccess).toHaveBeenCalledWith(

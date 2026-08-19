@@ -21,6 +21,31 @@ export const httpServicesApi: ServicesApi = {
     return requestJson<DashboardData>("/api/dashboard");
   },
 
+  async getServiceDefinition(name) {
+    const response = await requestJson<{ ok: true; service: import("./services-api.js").ServiceDefinition }>(
+      `/api/services/${encodeURIComponent(name)}/definition`,
+    );
+    return response.service;
+  },
+
+  async registerService(service) {
+    await postForm("/api/services", {
+      name: service.name,
+      kind: service.kind ?? "local",
+      command: service.command ?? "",
+      ...(service.args === undefined ? {} : { args: JSON.stringify(service.args) }),
+      cwd: service.cwd ?? "",
+      port: service.port === undefined ? "" : String(service.port),
+      description: service.description ?? "",
+      env: JSON.stringify(service.env ?? {}),
+      composeFile: service.composeFile ?? "",
+      composeService: service.composeService ?? "",
+      host: service.host ?? "",
+      dependsOn: (service.dependsOn ?? []).join(","),
+      projectPath: service.projectPath ?? "",
+    });
+  },
+
   async getServiceGraph() {
     const response = await requestJson<{ ok: true; graph: ServiceGraph }>(
       "/api/services/graph",

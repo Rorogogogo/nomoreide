@@ -68,6 +68,16 @@ describe("GitHub connection recovery UI", () => {
     expect(catalog).toContain("Use token instead");
     expect(viewSource).toContain("auth_error");
     expect(viewSource).toContain("connection_error");
+    expect(viewSource).toContain("github.technicalDetails");
+    expect(viewSource).toContain("<details");
+    expect(viewSource).toContain('className="h-7 px-2 text-[11px]"');
+  });
+
+  test("connection recovery uses the flat workbench empty-state treatment", () => {
+    expect(viewSource).toContain('aria-labelledby="github-connection-title"');
+    expect(viewSource).not.toContain(
+      'w-full max-w-lg space-y-4 rounded-md border border-border bg-card p-5',
+    );
   });
 
   test("run status marks distinguish running, skipped and failed", () => {

@@ -123,9 +123,11 @@ mod tests {
             name: name.to_string(),
             kind: "local".to_string(),
             command: Some("true".to_string()),
+            args: None,
             cwd: Some("/tmp".to_string()),
             port: None,
             description: None,
+            project_path: None,
             env: None,
             test: None,
             depends_on: if deps.is_empty() {

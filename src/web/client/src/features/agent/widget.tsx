@@ -2,6 +2,7 @@ import { Bot } from "lucide-react";
 import { useState } from "react";
 import {
   rowCap,
+  WidgetLoading,
   WidgetMore,
   WidgetNote,
   WidgetRow,
@@ -13,8 +14,10 @@ import {
   type WidgetTone,
 } from "@/features/home/widget-grid";
 import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
-import type { McpAuthState } from "@/lib/api";
+import type { AgentName, McpAuthState } from "@/lib/api";
 import { useT, type TranslationKey } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { ClaudeLogo, CodexLogo } from "./agent-logos";
 import { useHomeAgentSummary, type HomeAgentSummary } from "./use-home-agent-summary";
 
 /**
@@ -70,17 +73,19 @@ const TABS: { id: TabId; labelKey: TranslationKey }[] = [
   { id: "hooks", labelKey: "home.agent.tabHooks" },
 ];
 
+const AGENTS: Array<{ id: AgentName; label: string; mark: React.ReactNode }> = [
+  { id: "claude-code", label: "Claude", mark: <ClaudeLogo className="size-3" /> },
+  { id: "codex", label: "Codex", mark: <CodexLogo className="size-3" /> },
+];
+
 function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const t = useT();
-  const summary = useHomeAgentSummary();
+  const [agent, setAgent] = useState<AgentName>("claude-code");
+  const summary = useHomeAgentSummary(agent);
   const [tab, setTab] = useState<TabId>("mcp");
   /* One budget for all four tabs: they share a panel, so a tab that listed
      more than its neighbours would resize the page on every click. */
   const cap = rowCap(height, ROW_CAP);
-  /* Not `Number.isFinite(cap)` read back out: whether the user asked for room
-     is the question, and the cap is one of two things derived from it. */
-  const sized = height !== null;
-
   /* MCP leads because it is the only one that can be *broken* — the others are
      inventories, and an inventory has no bad state to land on. */
   return (
@@ -91,51 +96,57 @@ function AgentSummary({ height }: Pick<WidgetRenderProps, "height">) {
             {t(entry.labelKey)}
           </WidgetTab>
         ))}
+        <fieldset
+          aria-label={t("dock.providerAria")}
+          className="ml-auto flex shrink-0 items-center gap-0.5 border-0 p-0"
+        >
+          {AGENTS.map((entry) => (
+            <button
+              aria-pressed={entry.id === agent}
+              className={cn(
+                "flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                entry.id === agent
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              key={entry.id}
+              onClick={() => setAgent(entry.id)}
+              type="button"
+            >
+              {entry.mark}
+              {entry.label}
+            </button>
+          ))}
+        </fieldset>
       </WidgetTabs>
-      {tab === "mcp" ? <McpTab cap={cap} sized={sized} summary={summary} /> : null}
-      {tab === "skills" ? <SkillsTab cap={cap} summary={summary} /> : null}
-      {tab === "plugins" ? <PluginsTab cap={cap} summary={summary} /> : null}
-      {tab === "hooks" ? <HooksTab cap={cap} summary={summary} /> : null}
+      {!summary.loaded ? <WidgetLoading label={t("common.loading")} /> : null}
+      {summary.loaded && tab === "mcp" ? <McpTab cap={cap} summary={summary} /> : null}
+      {summary.loaded && tab === "skills" ? <SkillsTab cap={cap} summary={summary} /> : null}
+      {summary.loaded && tab === "plugins" ? <PluginsTab cap={cap} summary={summary} /> : null}
+      {summary.loaded && tab === "hooks" ? <HooksTab cap={cap} summary={summary} /> : null}
     </>
   );
 }
 
 function McpTab({
   cap,
-  sized,
   summary,
 }: {
   cap: number;
-  sized: boolean;
   summary: HomeAgentSummary;
 }) {
   const t = useT();
   const { calls, connected, degraded, failedCalls, loaded, servers } = summary;
 
   /*
-    Worst first, always — and the working ones after them, but only once the
-    panel has been given room.
-
-    While the panel is fitting its content, listing the connected servers fills
-    it with names that carry no information: the count above already said they
-    are fine, and four arbitrary healthy names plus "+10 more" is exactly the
-    text this page exists to stop printing. When everything is connected the
-    list is empty and the tab is four numbers, which is the right amount of page
-    for "nothing is wrong".
-
-    A height changes what the space is *for*. Dragging a panel taller is asking
-    to see the whole inventory rather than the headline — it is what the other
-    three tabs already do, and what this file promises above `ROW_CAP` — and the
-    version that kept filtering answered "9 connected" with a panel that listed
-    four failures and then went blank, which reads as the rest being missing
-    rather than as the rest being fine. The ordering carries the same priority
-    either way, so nothing moves when the panel grows: the problems stay at the
-    top and the healthy names extend below them.
+    Healthy first, then auth warnings, then failures and unknown states. MCP is
+    an inventory here as well as a warning surface: keeping the green entries
+    visible makes the first rows agree with the connected count above instead
+    of opening on amber whenever one server needs attention.
   */
   const ordered = [...servers].sort(
     (a, b) => rank(a.state) - rank(b.state) || a.name.localeCompare(b.name),
   );
-  const rows = sized ? ordered : ordered.filter((server) => server.state !== "connected");
 
   return (
     <>
@@ -150,9 +161,9 @@ function McpTab({
           value={failedCalls}
         />
       </WidgetStats>
-      {rows.length === 0 ? null : (
+      {ordered.length === 0 ? null : (
         <WidgetRows>
-          {rows.slice(0, cap).map((server) => (
+          {ordered.slice(0, cap).map((server) => (
             <WidgetRow
               key={server.name}
               meta={stateLabel(server.state, t)}
@@ -160,8 +171,8 @@ function McpTab({
               tone={STATE_TONE[server.state]}
             />
           ))}
-          {rows.length > cap ? (
-            <WidgetMore>{t("home.more", { count: rows.length - cap })}</WidgetMore>
+          {ordered.length > cap ? (
+            <WidgetMore>{t("home.more", { count: ordered.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}
@@ -307,9 +318,9 @@ function Inventory({
 }
 
 function rank(state: McpAuthState): number {
-  if (state === "failed") return 0;
+  if (state === "connected") return 0;
   if (state === "needs-auth") return 1;
-  if (state === "unknown" || state === "no-auth") return 2;
+  if (state === "failed") return 2;
   return 3;
 }
 

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Play, RotateCcw, ScrollText, Square } from "lucide-react";
+import { FolderOpen, Play, RotateCcw, ScrollText, Square } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -26,12 +26,14 @@ const STATE_BADGE_VARIANT: Record<string, "success" | "danger" | "warning" | "ou
 
 export function DockerContainerRow({
   container,
+  onBrowse,
   onRefresh,
   onSelect,
   selected,
   stats,
 }: {
   container: DockerContainerSummary;
+  onBrowse: (container: DockerContainerSummary) => void;
   onRefresh: () => Promise<void>;
   onSelect: (container: DockerContainerSummary) => void;
   selected: boolean;
@@ -40,6 +42,7 @@ export function DockerContainerRow({
   const t = useT();
   const [logsOpen, setLogsOpen] = useState(false);
   const running = container.state === "running" || container.state === "restarting";
+  const canBrowse = container.state === "running";
 
   return (
     <div
@@ -111,6 +114,21 @@ export function DockerContainerRow({
       </button>
 
       <div className="flex shrink-0 items-center gap-1">
+        <Tooltip
+          label={t(canBrowse ? "docker.files.browse" : "docker.files.requiresRunning")}
+        >
+          <Button
+            aria-label={t("docker.files.browse")}
+            className="size-7"
+            disabled={!canBrowse}
+            onClick={() => onBrowse(container)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <FolderOpen aria-hidden="true" />
+          </Button>
+        </Tooltip>
         <Tooltip label={t("docker.actions.logs")}>
           <Button
             aria-label={t("docker.actions.logs")}

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getAgentInfo,
   getMcpAuthStatuses,
   getRecentToolCalls,
   type AgentHook,
+  type AgentInfo,
   type AgentMcpServer,
   type AgentName,
   type AgentPlugin,
@@ -56,19 +57,6 @@ export interface HomeAgentSummary {
   loaded: boolean;
 }
 
-const EMPTY: HomeAgentSummary = {
-  servers: [],
-  connected: 0,
-  degraded: 0,
-  calls: 0,
-  failedCalls: 0,
-  skills: [],
-  mcpServers: [],
-  plugins: [],
-  hooks: [],
-  loaded: false,
-};
-
 /** Recent enough to mean "this session", small enough to stay a summary. */
 const CALL_WINDOW = 100;
 
@@ -90,85 +78,44 @@ const CALL_WINDOW = 100;
  */
 const POLL_MS = 300_000;
 
-export function useHomeAgentSummary(pollMs = POLL_MS): HomeAgentSummary {
-  const [summary, setSummary] = useState<HomeAgentSummary>(EMPTY);
-  /*
-    Which agent to ask, resolved once.
+export function useHomeAgentSummary(
+  agent: AgentName,
+  pollMs = POLL_MS,
+): HomeAgentSummary {
+  const [info, setInfo] = useState<AgentInfo | null>(null);
+  const [infoLoaded, setInfoLoaded] = useState(false);
+  const [serversByAgent, setServersByAgent] = useState<
+    Partial<Record<AgentName, McpAuthStatus[]>>
+  >({});
+  const [calls, setCalls] = useState<Awaited<ReturnType<typeof getRecentToolCalls>> | null>(null);
 
-    `/api/agent` is the workbench's whole agent picture — memory files, skills,
-    plugins, projects — and answering it is tens of kilobytes. All this widget
-    wants from it is a name that cannot change while the tab is open, so paying
-    for it on every poll is a large repeated request for a constant. Home is the
-    page people leave open.
-  */
-  const agentRef = useRef<AgentName | null>(null);
-  /*
-    And the configured tools from that same answer, kept rather than discarded.
-
-    The call was already being made to learn the name; the profile rides along
-    with it for free. Holding it here means the tabs cost no request of their
-    own and no second trip when the poll comes round.
-  */
-  const toolsRef = useRef<Pick<
-    HomeAgentSummary,
-    "hooks" | "mcpServers" | "plugins" | "skills"
-  > | null>(null);
+  // One profile request carries both Claude Code and Codex. Keep it separate
+  // from the selected agent's live MCP check so switching never re-reads it.
+  useEffect(() => {
+    let active = true;
+    void getAgentInfo()
+      .then((next) => {
+        if (active) setInfo(next);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setInfoLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
-
-    const resolveAgent = async (): Promise<AgentName> => {
-      if (agentRef.current) return agentRef.current;
-      /*
-        `mcp-status` is per-agent and the endpoint only knows the two that have
-        a CLI to ask. Detection can also come back "gemini" or "unknown", so
-        anything that isn't Codex asks as Claude Code — the same defaulting the
-        agent terminal already does, rather than a second rule to keep in sync.
-      */
-      const info = await getAgentInfo().catch(() => null);
-      const agent: AgentName = info?.detected.name === "codex" ? "codex" : "claude-code";
-      // Only remember a real answer: caching the fallback would make one failed
-      // call permanent for the life of the tab.
-      if (info) {
-        agentRef.current = agent;
-        /* The detected agent's own profile, not the union of both — `AgentInfo`
-           extends `AgentProfile` with exactly that at the top level. */
-        toolsRef.current = {
-          skills: info.skills,
-          mcpServers: info.mcpServers,
-          plugins: info.plugins,
-          hooks: info.hooks,
-        };
-      }
-      return agent;
-    };
-
     const load = async () => {
-      const agent = await resolveAgent();
-      if (!active) return;
-
-      const [servers, calls] = await Promise.all([
+      const [servers, nextCalls] = await Promise.all([
         getMcpAuthStatuses(agent).catch(() => [] as McpAuthStatus[]),
         getRecentToolCalls(CALL_WINDOW).catch(() => []),
       ]);
       if (!active) return;
-
-      setSummary({
-        servers,
-        skills: toolsRef.current?.skills ?? [],
-        mcpServers: toolsRef.current?.mcpServers ?? [],
-        plugins: toolsRef.current?.plugins ?? [],
-        hooks: toolsRef.current?.hooks ?? [],
-        connected: servers.filter((server) => server.state === "connected").length,
-        // `needs-auth` and `failed` are both "you have to go do something";
-        // `no-auth` and `unknown` are neither working nor broken.
-        degraded: servers.filter(
-          (server) => server.state === "failed" || server.state === "needs-auth",
-        ).length,
-        calls: calls.length,
-        failedCalls: calls.filter((call) => call.status === "error").length,
-        loaded: true,
-      });
+      setServersByAgent((current) => ({ ...current, [agent]: servers }));
+      setCalls(nextCalls);
     };
 
     void load();
@@ -177,7 +124,24 @@ export function useHomeAgentSummary(pollMs = POLL_MS): HomeAgentSummary {
       active = false;
       window.clearInterval(interval);
     };
-  }, [pollMs]);
+  }, [agent, pollMs]);
 
-  return summary;
+  const servers = serversByAgent[agent] ?? [];
+  const profile = info?.agents[agent];
+  return {
+    servers,
+    skills: profile?.skills ?? [],
+    mcpServers: profile?.mcpServers ?? [],
+    plugins: profile?.plugins ?? [],
+    hooks: profile?.hooks ?? [],
+    connected: servers.filter((server) => server.state === "connected").length,
+    // `needs-auth` and `failed` are both "you have to go do something";
+    // `no-auth` and `unknown` are neither working nor broken.
+    degraded: servers.filter(
+      (server) => server.state === "failed" || server.state === "needs-auth",
+    ).length,
+    calls: calls?.length ?? 0,
+    failedCalls: calls?.filter((call) => call.status === "error").length ?? 0,
+    loaded: infoLoaded && serversByAgent[agent] !== undefined && calls !== null,
+  };
 }

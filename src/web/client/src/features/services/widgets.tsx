@@ -16,6 +16,7 @@ import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget
 import type { ServiceHealth, ServiceStatus } from "@/lib/api";
 import { type Translate, useT } from "@/lib/i18n";
 import { formatUptime } from "@/lib/utils";
+import { LifecycleActions } from "./service-actions";
 import { serviceUrl } from "./service-list";
 
 /**
@@ -47,23 +48,31 @@ export const servicesWidget: WidgetDefinition = {
   scope: "global",
   source: "dashboard",
   page: "services",
-  render: ({ data, height }) => <ServicesSummary data={data} height={height} />,
+  render: ({ data, height, onRefresh }) => (
+    <ServicesSummary data={data} height={height} onRefresh={onRefresh} />
+  ),
 };
 
-function ServicesSummary({ data, height }: WidgetRenderProps) {
+function ServicesSummary({ data, height, onRefresh }: WidgetRenderProps) {
   const t = useT();
   const registered = data.config.services.length;
-  const statuses = Object.values(data.runtime.services);
 
   if (registered === 0) {
     return <WidgetNote>{t("home.services.none")}</WidgetNote>;
   }
 
   const ports = new Map(data.config.services.map((service) => [service.name, service.port]));
-  const live = statuses.filter(
-    (service) => service.state === "running" || service.state === "starting",
+  const services = data.config.services.map((definition) => ({
+    definition,
+    status: data.runtime.services[definition.name],
+  }));
+  const live = services.filter(
+    ({ status }) => status?.state === "running" || status?.state === "starting",
   );
-  const exited = statuses.filter((service) => service.state === "exited");
+  const exited = services.filter(({ status }) => status?.state === "exited");
+  const stoppedServices = services.filter(
+    ({ status }) => !status || status.state === "stopped",
+  );
   /*
     A port held by something we did not spawn — the one fact this widget cannot
     derive from its own statuses, because the blocked service has no runtime
@@ -72,19 +81,14 @@ function ServicesSummary({ data, height }: WidgetRenderProps) {
     signal moved here rather than being lost with it.
   */
   const conflicts = data.ports.filter((port) => port.state === "occupied");
-  /*
-    A service that has never been started has no runtime entry at all, so
-    "stopped" is what is left over from the registered count rather than a
-    state to filter for. Clamped because runtime can briefly hold an entry for
-    a service that was just unregistered.
-  */
-  const stopped = Math.max(0, registered - live.length - exited.length);
+  // A never-started service has no runtime entry; it is still a stopped row.
+  const stopped = stoppedServices.length;
 
   // Exits first: a service that fell over is the only thing here worth reading
   // before the ones that are simply up. A blocked port outranks even that — it
   // is the one state where nothing is wrong with a service *and* it still
   // cannot start, so it must survive `ROW_CAP` on a busy page.
-  const rows = [...exited, ...live];
+  const rows = [...exited, ...live, ...stoppedServices];
   // Conflicts are never dropped, so the budget the service rows share is what
   // is left of the cap after them.
   const cap = Math.max(0, rowCap(height, ROW_CAP) - conflicts.length);
@@ -110,13 +114,19 @@ function ServicesSummary({ data, height }: WidgetRenderProps) {
               tone="bad"
             />
           ))}
-          {rows.slice(0, cap).map((service) => (
+          {rows.slice(0, cap).map(({ definition, status }) => (
             <WidgetRow
-              key={service.name}
-              meta={serviceMeta(service, ports.get(service.name), t)}
-              name={service.name}
-              tone={serviceTone(service)}
-              trailing={serviceTrailing(service, ports.get(service.name), t)}
+              key={definition.name}
+              meta={serviceMeta(status, ports.get(definition.name), t)}
+              name={definition.name}
+              tone={serviceTone(status)}
+              trailing={serviceTrailing(
+                definition.name,
+                status,
+                ports.get(definition.name),
+                onRefresh,
+                t,
+              )}
             />
           ))}
           {rows.length > cap ? (
@@ -132,13 +142,21 @@ function ServicesSummary({ data, height }: WidgetRenderProps) {
   );
 }
 
-function serviceTone(service: ServiceStatus): WidgetTone {
+function serviceTone(service: ServiceStatus | undefined): WidgetTone {
+  if (!service || service.state === "stopped") return "idle";
   if (service.state === "exited") return service.exitCode === 0 ? "idle" : "bad";
   if (service.state === "starting") return "warn";
   return "ok";
 }
 
-function serviceMeta(service: ServiceStatus, port: number | undefined, t: Translate): ReactNode {
+function serviceMeta(
+  service: ServiceStatus | undefined,
+  port: number | undefined,
+  t: Translate,
+): ReactNode {
+  if (!service || service.state === "stopped") {
+    return port ? <WidgetId>:{port}</WidgetId> : t("common.stopped");
+  }
   if (service.state === "exited") {
     return t("home.services.exitCode", { code: service.exitCode ?? "?" });
   }
@@ -147,30 +165,39 @@ function serviceMeta(service: ServiceStatus, port: number | undefined, t: Transl
 }
 
 /**
- * How long it has been up, and a way to actually go there.
+ * The compact lifecycle controls, plus uptime and the live URL when reachable.
  *
- * Only for `running`. A service that is starting has no URL worth handing over
- * yet and an exited one has none at all, so both keep the plain uptime cell —
- * offering a link that lands on a connection refused would be worse than
- * offering nothing.
+ * Starting and stopped services deliberately get no URL: offering a link that
+ * lands on connection refused would be worse than offering nothing.
  *
  * The service's own reported URL wins over one built from the port: a service
  * that announced `http://127.0.0.1:5175/` on stdout knows its path and scheme,
  * and `serviceUrl` is the guess for when nothing was announced.
  */
 function serviceTrailing(
-  service: ServiceStatus,
+  name: string,
+  service: ServiceStatus | undefined,
   port: number | undefined,
+  onRefresh: () => Promise<void>,
   t: Translate,
 ): ReactNode {
-  if (service.state !== "running") return undefined;
-  const url = service.url ?? (port ? serviceUrl(port) : undefined);
-  const uptime = formatUptime(service.startedAt);
-  if (!url) return uptime;
+  const running = service?.state === "running";
+  const active = running || service?.state === "starting";
+  const url = running ? (service.url ?? (port ? serviceUrl(port) : undefined)) : undefined;
+  const uptime = running ? formatUptime(service.startedAt) : undefined;
   return (
-    <span className="flex items-center justify-end gap-1.5">
-      {uptime}
-      <WidgetOpenLink label={t("services.openUrl", { url })} url={url} />
+    <span className="flex items-center justify-end">
+      {uptime ? <span>{uptime}</span> : null}
+      {url ? <WidgetOpenLink label={t("services.openUrl", { url })} url={url} /> : null}
+      <LifecycleActions
+        active={active}
+        baseUrl={`/api/services/${encodeURIComponent(name)}`}
+        compact="widget"
+        onRefresh={onRefresh}
+        resourceKind="service"
+        resourceName={name}
+        targetLabel={name}
+      />
     </span>
   );
 }
@@ -186,7 +213,7 @@ export const healthWidget: WidgetDefinition = {
   render: ({ data, height }) => <HealthSummary data={data} height={height} />,
 };
 
-function HealthSummary({ data, height }: WidgetRenderProps) {
+function HealthSummary({ data, height }: Pick<WidgetRenderProps, "data" | "height">) {
   const t = useT();
   const entries = Object.values(data.health);
   /*

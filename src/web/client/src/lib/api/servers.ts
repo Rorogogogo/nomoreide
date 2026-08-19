@@ -39,6 +39,31 @@ export interface SshSetupStatus {
   sshCopyIdAvailable: boolean;
 }
 
+export type RemoteFileType = "directory" | "file" | "symlink" | "other";
+
+export interface RemoteFileEntry {
+  name: string;
+  path: string;
+  type: RemoteFileType;
+  size: number;
+  modifiedAt: number | null;
+}
+
+export interface RemoteDirectoryListing {
+  host: string;
+  path: string;
+  entries: RemoteFileEntry[];
+}
+
+export interface RemoteFileContent {
+  host: string;
+  path: string;
+  content: string;
+  size: number;
+  binary: boolean;
+  truncated: boolean;
+}
+
 export interface RemoteProcessMetric {
   pid: number;
   ppid: number;
@@ -104,6 +129,27 @@ export async function getRemoteHostMetrics(host: string): Promise<RemoteHostMetr
     `/api/servers/${encodeURIComponent(host)}/metrics`,
   );
   return response.metrics;
+}
+
+export async function listRemoteDirectory(
+  host: string,
+  path = ".",
+  includeHidden = false,
+): Promise<RemoteDirectoryListing> {
+  const search = new URLSearchParams({ path });
+  if (includeHidden) search.set("hidden", "1");
+  const response = await requestJson<{ ok: true; directory: RemoteDirectoryListing }>(
+    `/api/servers/${encodeURIComponent(host)}/files?${search}`,
+  );
+  return response.directory;
+}
+
+export async function getRemoteFile(host: string, path: string): Promise<RemoteFileContent> {
+  const search = new URLSearchParams({ path });
+  const response = await requestJson<{ ok: true; file: RemoteFileContent }>(
+    `/api/servers/${encodeURIComponent(host)}/file?${search}`,
+  );
+  return response.file;
 }
 
 export async function openSshTerminal(host: string): Promise<TerminalSessionInfo> {

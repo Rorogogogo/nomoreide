@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, X } from "lucide-react";
+import { ChevronRight, RefreshCw, X } from "lucide-react";
 import {
   createGitHubPR,
   getGitHubPRTemplate,
@@ -136,42 +136,83 @@ function GitHubConnectionRecovery({
 
   const authError = token.status === "auth_error";
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="w-full max-w-lg space-y-4 rounded-md border border-border bg-card p-5">
-        <div className="flex items-start gap-2">
-          <GitHubLogo className="size-5" />
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
+      <section aria-labelledby="github-connection-title" className="w-full max-w-lg">
+        <div className="flex items-start gap-3">
+          <GitHubLogo className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold">{t("github.connFailed")}</h2>
-            <p className="text-[12px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="text-sm font-semibold" id="github-connection-title">
+                {t("github.connFailed")}
+              </h2>
+              <ConnectionState
+                label={authError ? t("github.needsRelogin") : t("github.connProblem")}
+                tone={authError ? "danger" : "warning"}
+              />
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
               {authError ? t("github.tokenRejected") : t("github.cantValidate")}
             </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <Button
+                className="h-7 px-2 text-[11px]"
+                onClick={() =>
+                  setSetupMode(token.deviceFlowAvailable ? "device-pending" : "pat")
+                }
+                size="sm"
+                type="button"
+              >
+                {t("github.reconnectGithub")}
+              </Button>
+              {token.info ? (
+                <GitHubAccountSelector
+                  className="rounded-md border border-border/70 px-0.5"
+                  info={token.info}
+                  onChanged={token.refresh}
+                />
+              ) : null}
+              <Button
+                className="h-7 px-2 text-[11px] [&_svg]:size-3.5"
+                onClick={token.refresh}
+                size="sm"
+                title={t("github.recheckTitle")}
+                type="button"
+                variant="outline"
+              >
+                <RefreshCw aria-hidden="true" />
+                {t("common.refresh")}
+              </Button>
+              {token.deviceFlowAvailable ? (
+                <Button
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => setSetupMode("pat")}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  {t("github.useToken")}
+                </Button>
+              ) : null}
+            </div>
           </div>
-          <ConnectionState
-            label={authError ? t("github.needsRelogin") : t("github.connProblem")}
-            tone={authError ? "danger" : "warning"}
-          />
         </div>
 
-        {token.error ? <Alert variant="destructive">{token.error}</Alert> : null}
-
-        <div className="flex flex-wrap gap-2">
-          {token.info ? <GitHubAccountSelector info={token.info} onChanged={token.refresh} /> : null}
-          <Button onClick={token.refresh} type="button" variant={authError ? "outline" : "default"}>
-            <RefreshCw />
-            {t("common.refresh")}
-          </Button>
-          <Button
-            onClick={() => setSetupMode(token.deviceFlowAvailable ? "device-pending" : "pat")}
-            type="button"
-            variant={authError ? "default" : "outline"}
-          >
-            {t("github.reconnectGithub")}
-          </Button>
-          <Button onClick={() => setSetupMode("pat")} type="button" variant="outline">
-            {t("github.useToken")}
-          </Button>
-        </div>
-      </div>
+        {token.error ? (
+          <details className="group mt-5 border-y border-border/70">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 px-1 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden="true"
+                className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              />
+              {t("github.technicalDetails")}
+            </summary>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap border-t border-border/70 bg-muted/15 px-3 py-2 font-mono text-[10px] leading-4 text-muted-foreground">
+              {token.error}
+            </pre>
+          </details>
+        ) : null}
+      </section>
     </div>
   );
 }
@@ -403,7 +444,7 @@ function ConnectionState({
 
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-      <span className={`size-1.5 rounded-full ${toneClass}`} />
+      <span aria-hidden="true" className={`size-1.5 rounded-full ${toneClass}`} />
       {label}
     </span>
   );

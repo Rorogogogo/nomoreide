@@ -15,6 +15,7 @@ import { gitRoutes } from "./git-routes.js";
 import { githubRoutes } from "./github-routes.js";
 import { hostRoutes } from "./host-routes.js";
 import { logSourceRoutes } from "./log-sources-routes.js";
+import { jetBrainsImportRoutes } from "./jetbrains-import-routes.js";
 import { metricsRoutes } from "./metrics-routes.js";
 import { onboardRoutes } from "./onboard-routes.js";
 import { overviewRoutes } from "./overview-routes.js";
@@ -54,6 +55,7 @@ export const routes: Route[] = [
   ...githubRoutes,
   ...gitRoutes,
   ...logSourceRoutes,
+  ...jetBrainsImportRoutes,
   ...metricsRoutes,
   ...workflowRoutes,
   ...workflowTriggerRoutes,

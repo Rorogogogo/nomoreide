@@ -31,27 +31,27 @@ export function ProjectList({
 
   return (
     <div className="min-h-0 overflow-y-auto border-border sm:border-r">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-3 py-1">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {t("git.repo.projectsShort")}
         </span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[10px] text-muted-foreground">
           {t("git.repo.projectsColumnHint")}
         </span>
       </div>
 
       <button
         className={cn(
-          "grid w-full grid-cols-[1fr_auto] items-center gap-2 border-b border-border px-4 py-2.5 text-left transition-colors hover:bg-muted",
-          scopeAll && "bg-muted/70",
+          "grid w-full grid-cols-[1fr_auto] items-center gap-2 border-b border-border px-3 py-2.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+          scopeAll && "bg-muted/45",
         )}
         onClick={onSelectAll}
         type="button"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <Globe2 className="size-3.5 shrink-0 text-muted-foreground" />
+          <Globe2 aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium leading-tight">
+            <span className="block truncate text-[13px] font-medium leading-tight">
               {t("app.allProjects")}
             </span>
             <span className="block truncate text-[10px] leading-tight text-muted-foreground">
@@ -59,7 +59,7 @@ export function ProjectList({
             </span>
           </span>
         </span>
-        {scopeAll ? <Check className="size-3.5" /> : <span className="size-3.5" />}
+        {scopeAll ? <Check aria-hidden="true" className="size-3.5" /> : <span className="size-3.5" />}
       </button>
 
       {data.config.gitRepositories.length ? (
@@ -72,17 +72,17 @@ export function ProjectList({
             return (
               <div
                 className={cn(
-                  "group grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-muted",
-                  selected && "bg-muted/70",
+                  "group grid w-full grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/20",
+                  selected && "bg-muted/45",
                 )}
                 key={repository.name}
               >
                 <button
-                  className="min-w-0 text-left"
+                  className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => onSelect(repository.name)}
                   type="button"
                 >
-                  <span className="block truncate text-sm font-medium leading-tight">
+                  <span className="block truncate text-[13px] font-medium leading-tight">
                     {repository.name}
                   </span>
                   <span
@@ -97,24 +97,24 @@ export function ProjectList({
                     ? t("git.repo.serviceCountOne", { count: owned })
                     : t("git.repo.serviceCount", { count: owned })}
                 </span>
-                {selected ? <Check className="size-3.5" /> : <span className="size-3.5" />}
+                {selected ? <Check aria-hidden="true" className="size-3.5" /> : <span className="size-3.5" />}
                 <Button
                   aria-label={t("git.repo.removeName", { name: repository.name })}
-                  className="size-6 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="size-6 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
                   onClick={() => onRemove(repository.name)}
                   size="icon"
                   title={t("git.repo.removeName", { name: repository.name })}
                   type="button"
                   variant="ghost"
                 >
-                  <Trash2 className="size-3.5 text-destructive" />
+                  <Trash2 aria-hidden="true" className="size-3.5 text-destructive" />
                 </Button>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+        <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
           {t("git.repo.noProjects")}
         </div>
       )}

@@ -67,6 +67,10 @@ export function registerServiceTools(
       name: z.string().min(1),
       kind: z.enum(["local", "docker-compose", "ssh"]).optional(),
       command: z.string().min(1).optional(),
+      args: z
+        .array(z.string())
+        .optional()
+        .describe("When present, execute command directly with these arguments instead of through a shell."),
       cwd: z.string().min(1).optional(),
       port: z.number().int().positive().max(65535).optional(),
       env: z.record(z.string()).optional(),

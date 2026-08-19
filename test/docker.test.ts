@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+  dockerReadDirectoryArgs,
+  dockerReadFileArgs,
+  dockerDesktopInstallUrl,
+  dockerDesktopLookupCommand,
+  dockerDesktopStartCommand,
   mergeTimestampedLogLines,
   parseDockerPsLines,
 } from "../src/core/docker.js";
@@ -95,5 +100,48 @@ describe("mergeTimestampedLogLines", () => {
 
   test("drops blank lines from either stream", () => {
     expect(mergeTimestampedLogLines("\n\n", "\n")).toBe("");
+  });
+});
+
+describe("Docker file explorer argv", () => {
+  test("keeps unusual container paths in one positional argument", () => {
+    const path = "/app/a folder/it's-$HOME";
+
+    const args = dockerReadDirectoryArgs("api-1", path);
+
+    expect(args.slice(0, 4)).toEqual(["exec", "api-1", "sh", "-c"]);
+    expect(args.at(-2)).toBe("nomoreide");
+    expect(args.at(-1)).toBe(path);
+  });
+
+  test("requires absolute paths when reading file contents", () => {
+    expect(() => dockerReadFileArgs("api-1", "etc/passwd")).toThrow(
+      "must be absolute",
+    );
+  });
+});
+
+describe("Docker Desktop launcher", () => {
+  test("uses the fixed macOS application launch command", () => {
+    expect(dockerDesktopStartCommand("darwin")).toEqual({
+      file: "open",
+      args: ["-a", "Docker"],
+    });
+  });
+
+  test("does not claim automatic start support on other platforms", () => {
+    expect(dockerDesktopStartCommand("linux")).toBeNull();
+    expect(dockerDesktopStartCommand("win32")).toBeNull();
+  });
+
+  test("looks up the app without launching it and links official macOS instructions", () => {
+    expect(dockerDesktopLookupCommand("darwin")).toEqual({
+      file: "open",
+      args: ["-Ra", "Docker"],
+    });
+    expect(dockerDesktopInstallUrl("darwin")).toBe(
+      "https://docs.docker.com/desktop/setup/install/mac-install/",
+    );
+    expect(dockerDesktopInstallUrl("linux")).toBeUndefined();
   });
 });

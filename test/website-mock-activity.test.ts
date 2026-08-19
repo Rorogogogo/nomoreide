@@ -39,5 +39,30 @@ describe("website Activity Monitor mock", () => {
       },
     });
     expect(body.metrics.host.samples.length).toBeGreaterThan(10);
+
+    const servers = await window.fetch("/api/servers").then((result) => result.json());
+    expect(servers).toMatchObject({
+      ok: true,
+      servers: [
+        {
+          host: "demo-prod",
+          environment: "PROD",
+          discovered: true,
+          saved: true,
+        },
+      ],
+    });
+
+    const probe = await window.fetch("/api/servers/demo-prod/probe", {
+      method: "POST",
+    }).then((result) => result.json());
+    expect(probe).toMatchObject({
+      ok: true,
+      probe: {
+        host: "demo-prod",
+        reachable: true,
+        platform: "Linux",
+      },
+    });
   });
 });

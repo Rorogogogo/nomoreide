@@ -3,6 +3,8 @@ import type {
   DockerApi,
   DockerContainerAction,
   DockerContainerDetail,
+  DockerDirectoryListing,
+  DockerFileContent,
   DockerContainerStats,
   DockerContainerSummary,
   DockerImageSummary,
@@ -15,6 +17,10 @@ export const httpDockerApi: DockerApi = {
   async getDockerStatus() {
     const response = await requestJson<{ ok: true; status: DockerStatus }>("/api/docker/status");
     return response.status;
+  },
+
+  async startDocker() {
+    await requestJson("/api/docker/start", { method: "POST" });
   },
 
   async getDockerContainers() {
@@ -71,5 +77,22 @@ export const httpDockerApi: DockerApi = {
       `/api/docker/containers/${encodeURIComponent(id)}/logs${query}`,
     );
     return response.logs;
+  },
+
+  async getDockerContainerDirectory(id: string, path = ".", includeHidden = false) {
+    const search = new URLSearchParams({ path });
+    if (includeHidden) search.set("hidden", "1");
+    const response = await requestJson<{ ok: true; directory: DockerDirectoryListing }>(
+      `/api/docker/containers/${encodeURIComponent(id)}/files?${search}`,
+    );
+    return response.directory;
+  },
+
+  async getDockerContainerFile(id: string, path: string) {
+    const search = new URLSearchParams({ path });
+    const response = await requestJson<{ ok: true; file: DockerFileContent }>(
+      `/api/docker/containers/${encodeURIComponent(id)}/file?${search}`,
+    );
+    return response.file;
   },
 };

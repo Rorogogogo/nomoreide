@@ -36,6 +36,8 @@ export type WidgetSpan = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface WidgetRenderProps {
   data: DashboardData;
+  /** Refresh the shared dashboard payload after a widget mutation. */
+  onRefresh: () => Promise<void>;
   /**
    * The height the user gave this panel, in row units, or `null` for
    * fit-to-content — and the answer to "how much of my list should I show".

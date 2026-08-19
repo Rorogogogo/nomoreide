@@ -1,4 +1,4 @@
-import { GitBranch, Plus } from "lucide-react";
+import { FileInput, GitBranch, Plus } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { AgentMark } from "../agent/ai-spark";
 
@@ -13,11 +13,13 @@ export function FirstRunGuide({
   onOnboardWithAi,
   onCreateService,
   onCreateWithAi,
+  onImportJetBrains,
 }: {
   onOnboardRepo: () => void;
   onOnboardWithAi: () => void;
   onCreateService: () => void;
   onCreateWithAi: () => void;
+  onImportJetBrains?: () => void;
 }) {
   const t = useT();
   return (
@@ -37,6 +39,14 @@ export function FirstRunGuide({
             onAi={onOnboardWithAi}
             aiTitle={t("services.onboardWithAiHint")}
           />
+          {onImportJetBrains ? (
+            <GuideStep
+              icon={<FileInput className="size-5" />}
+              title={t("services.jetbrains.menu")}
+              description={t("services.jetbrains.firstRunDesc")}
+              onClick={onImportJetBrains}
+            />
+          ) : null}
           <GuideStep
             icon={<Plus className="size-5" />}
             title={t("services.firstRun.createTitle")}
@@ -63,8 +73,8 @@ function GuideStep({
   title: string;
   description: string;
   onClick: () => void;
-  onAi: () => void;
-  aiTitle: string;
+  onAi?: () => void;
+  aiTitle?: string;
 }) {
   return (
     <div className="group flex items-stretch overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors hover:border-foreground/20">
@@ -79,15 +89,17 @@ function GuideStep({
           <span className="block text-xs text-muted-foreground">{description}</span>
         </span>
       </button>
-      <button
-        className="flex shrink-0 items-center gap-1.5 border-l border-border px-4 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-        onClick={onAi}
-        title={aiTitle}
-        type="button"
-      >
-        <AgentMark className="size-4 shrink-0" />
-        AI
-      </button>
+      {onAi ? (
+        <button
+          className="flex shrink-0 items-center gap-1.5 border-l border-border px-4 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          onClick={onAi}
+          title={aiTitle}
+          type="button"
+        >
+          <AgentMark className="size-4 shrink-0" />
+          AI
+        </button>
+      ) : null}
     </div>
   );
 }

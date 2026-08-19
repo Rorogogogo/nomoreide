@@ -7,6 +7,17 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import {
+  assertReadOnlyPath,
+  FILE_PREVIEW_BYTES,
+  FILE_READ_TIMEOUT_MS,
+  parseReadOnlyDirectory,
+  parseReadOnlyFile,
+  READ_DIRECTORY_SCRIPT,
+  READ_FILE_SCRIPT,
+  type ReadOnlyDirectoryListing,
+  type ReadOnlyFileContent,
+} from "./read-only-files.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -52,22 +63,69 @@ export function readString(raw: Record<string, unknown>, key: string): string {
 
 export interface DockerStatus {
   available: boolean;
+  canStart: boolean;
+  installUrl?: string;
   version?: string;
   error?: string;
 }
 
 /** Whether the `docker` CLI/daemon is reachable at all, for the page's empty state. */
 export async function getDockerStatus(): Promise<DockerStatus> {
+  const canStart = await isDockerDesktopInstalled();
+  const installUrl = canStart ? undefined : dockerDesktopInstallUrl();
   try {
     const { stdout } = await execFileAsync("docker", [
       "version",
       "--format",
       "{{.Server.Version}}",
     ]);
-    return { available: true, version: stdout.trim() };
+    return { available: true, canStart, installUrl, version: stdout.trim() };
   } catch (error) {
-    return { available: false, error: errorMessage(error) };
+    return { available: false, canStart, installUrl, error: errorMessage(error) };
   }
+}
+
+/** A fixed, platform-owned launch command—never derived from request input. */
+export function dockerDesktopStartCommand(
+  platform = process.platform,
+): { file: string; args: string[] } | null {
+  if (platform === "darwin") return { file: "open", args: ["-a", "Docker"] };
+  return null;
+}
+
+export function dockerDesktopLookupCommand(
+  platform = process.platform,
+): { file: string; args: string[] } | null {
+  if (platform === "darwin") return { file: "open", args: ["-Ra", "Docker"] };
+  return null;
+}
+
+export function dockerDesktopInstallUrl(platform = process.platform): string | undefined {
+  return platform === "darwin"
+    ? "https://docs.docker.com/desktop/setup/install/mac-install/"
+    : undefined;
+}
+
+export async function isDockerDesktopInstalled(platform = process.platform): Promise<boolean> {
+  const command = dockerDesktopLookupCommand(platform);
+  if (!command) return false;
+  try {
+    await execFileAsync(command.file, command.args, { timeout: 5_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function startDockerDesktop(): Promise<void> {
+  if (!(await isDockerDesktopInstalled())) {
+    throw new Error("Docker Desktop is not installed.");
+  }
+  const command = dockerDesktopStartCommand();
+  if (!command) {
+    throw new Error("Starting Docker automatically is currently supported on macOS only.");
+  }
+  await execFileAsync(command.file, command.args, { timeout: 10_000 });
 }
 
 export interface DockerContainerSummary {
@@ -155,6 +213,61 @@ export async function readDockerContainerLogs(id: string, tail = 200): Promise<s
     id,
   ]);
   return mergeTimestampedLogLines(stdout, stderr);
+}
+
+export interface DockerDirectoryListing extends ReadOnlyDirectoryListing {
+  containerId: string;
+}
+
+export interface DockerFileContent extends ReadOnlyFileContent {
+  containerId: string;
+}
+
+/** Lazy, read-only listing rooted at the container's configured working directory. */
+export async function readDockerContainerDirectory(
+  id: string,
+  path = ".",
+  includeHidden = false,
+): Promise<DockerDirectoryListing> {
+  const { stdout } = await execFileAsync(
+    "docker",
+    dockerReadDirectoryArgs(id, path),
+    {
+      encoding: "buffer",
+      timeout: FILE_READ_TIMEOUT_MS,
+      maxBuffer: 4 * 1024 * 1024,
+    },
+  );
+  return { containerId: id, ...parseReadOnlyDirectory(stdout, includeHidden) };
+}
+
+export async function readDockerContainerFile(
+  id: string,
+  path: string,
+): Promise<DockerFileContent> {
+  const { stdout } = await execFileAsync(
+    "docker",
+    dockerReadFileArgs(id, path),
+    {
+      encoding: "buffer",
+      timeout: FILE_READ_TIMEOUT_MS,
+      maxBuffer: FILE_PREVIEW_BYTES + 64 * 1024,
+    },
+  );
+  return { containerId: id, ...parseReadOnlyFile(path, stdout) };
+}
+
+/** Exact argv boundary used by the read-only explorer; paths never become shell source. */
+export function dockerReadDirectoryArgs(id: string, path: string): string[] {
+  validateContainerId(id);
+  assertReadOnlyPath(path);
+  return ["exec", id, "sh", "-c", READ_DIRECTORY_SCRIPT, "nomoreide", path];
+}
+
+export function dockerReadFileArgs(id: string, path: string): string[] {
+  validateContainerId(id);
+  assertReadOnlyPath(path, true);
+  return ["exec", id, "sh", "-c", READ_FILE_SCRIPT, "nomoreide", path];
 }
 
 /**

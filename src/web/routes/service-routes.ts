@@ -1,7 +1,7 @@
 import { dirname } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { IncomingMessage } from "node:http";
-import type { ConfigStore } from "../../core/config-store.js";
+import { ConfigValidationError, type ConfigStore } from "../../core/config-store.js";
 import {
   browseDirectory,
   type ConfigFileInfo,
@@ -20,6 +20,7 @@ import {
 } from "../../core/env-file.js";
 import { computeRuntimeEnvStatus } from "../../core/env-runtime.js";
 import { PortConflictError } from "../../core/process-manager.js";
+import { publicConfig } from "../../core/public-config.js";
 import { buildServiceGraph } from "../../core/service-graph.js";
 import { readLogSource } from "../../core/log-sources.js";
 import { deriveServiceLogSource } from "../../core/service-log-source.js";
@@ -55,6 +56,10 @@ export const serviceRoutes: Route[] = [
     // omitted rather than stored empty — clearing an assignment is a real edit.
     const projectPath = optionalFormValue(form, "projectPath");
     const projectField = projectPath ? { projectPath } : {};
+    const env = parseServiceEnv(form);
+    const envField = env === undefined ? {} : { env };
+    const args = parseServiceArgs(form);
+    const argsField = args === undefined ? {} : { args };
 
     const definition =
       kind === "docker-compose"
@@ -66,6 +71,7 @@ export const serviceRoutes: Route[] = [
             composeService: requiredFormValue(form, "composeService"),
             port,
             description,
+            ...envField,
             ...dependsOnField,
             ...projectField,
           }
@@ -76,24 +82,48 @@ export const serviceRoutes: Route[] = [
               host: requiredFormValue(form, "host"),
               cwd: requiredFormValue(form, "cwd"),
               command: requiredFormValue(form, "command"),
+              ...argsField,
               port,
               description,
+              ...envField,
               ...dependsOnField,
               ...projectField,
             }
           : {
               name,
               command: requiredFormValue(form, "command"),
+              ...argsField,
               cwd: requiredFormValue(form, "cwd"),
               port,
               description,
+              ...envField,
               ...dependsOnField,
               ...projectField,
             };
 
     const config = await configStore.registerService(definition);
-    sendJson(response, { ok: true, config });
+    sendJson(response, { ok: true, config: publicConfig(config) });
   }),
+
+  patternRoute(
+    /^\/api\/services\/([^/]+)\/definition$/,
+    ["name"],
+    async ({ request, response, configStore, params }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const name = decodeURIComponent(params.name);
+      const config = await configStore.load();
+      const service = config.services.find((item) => item.name === name);
+      if (!service) {
+        sendJson(response, { ok: false, error: `Service "${name}" is not registered.` }, 404);
+        return;
+      }
+      response.setHeader("cache-control", "no-store");
+      sendJson(response, { ok: true, service });
+    },
+  ),
 
   patternRoute(
     /^\/api\/services\/([^/]+)\/project$/,
@@ -109,7 +139,7 @@ export const serviceRoutes: Route[] = [
           decodeURIComponent(params.name),
           optionalFormValue(form, "projectPath"),
         );
-        sendJson(response, { ok: true, config });
+        sendJson(response, { ok: true, config: publicConfig(config) });
       } catch (error) {
         sendJson(response, { ok: false, error: errorMessage(error) }, 404);
       }
@@ -130,6 +160,8 @@ export const serviceRoutes: Route[] = [
       response,
       await testServiceCommand({
         command: requiredFormValue(form, "command"),
+        args: parseServiceArgs(form),
+        env: parseServiceEnv(form),
         cwd: requiredFormValue(form, "cwd"),
         port: portValue ? Number(portValue) : undefined,
       }),
@@ -195,7 +227,7 @@ export const serviceRoutes: Route[] = [
       { name: requiredFormValue(form, "name"), services },
       optionalFormValue(form, "originalName"),
     );
-    sendJson(response, { ok: true, config });
+    sendJson(response, { ok: true, config: publicConfig(config) });
   }),
 
   patternRoute(
@@ -474,13 +506,57 @@ export const serviceRoutes: Route[] = [
       }
       try {
         const config = await configStore.removeService(name);
-        sendJson(response, { ok: true, config });
+        sendJson(response, { ok: true, config: publicConfig(config) });
       } catch (error) {
         sendJson(response, { ok: false, error: errorMessage(error) }, 400);
       }
     },
   ),
 ];
+
+const SERVICE_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function parseServiceEnv(form: URLSearchParams): Record<string, string> | undefined {
+  const raw = form.get("env");
+  if (raw === null) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new ConfigValidationError("env must be a JSON object.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ConfigValidationError("env must be a JSON object.");
+  }
+  const entries = Object.entries(value);
+  for (const [key, entry] of entries) {
+    if (!SERVICE_ENV_KEY_PATTERN.test(key)) {
+      throw new ConfigValidationError(`Invalid environment variable name: ${key}`);
+    }
+    if (typeof entry !== "string") {
+      throw new ConfigValidationError(`Environment variable "${key}" must be a string.`);
+    }
+  }
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
+function parseServiceArgs(form: URLSearchParams): string[] | undefined {
+  const raw = form.get("args");
+  if (raw === null) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new ConfigValidationError("args must be a JSON array of strings.");
+  }
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+    throw new ConfigValidationError("args must be a JSON array of strings.");
+  }
+  if (value.some((entry) => entry.includes("\0"))) {
+    throw new ConfigValidationError("args contain an invalid null byte.");
+  }
+  return value as string[];
+}
 
 async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];

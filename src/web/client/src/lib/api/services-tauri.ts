@@ -5,6 +5,8 @@
  */
 import {
   tauri_getDashboard,
+  tauri_getServiceDefinition,
+  tauri_registerService,
   tauri_startService,
   tauri_stopService,
   tauri_restartService,
@@ -15,11 +17,14 @@ import {
   tauri_getServiceLogs,
 } from "./tauri-bridge.js";
 import { httpServicesApi } from "./services-http.js";
-import type { DashboardData, ServiceLogsResult, ServicesApi } from "./services-api.js";
+import type { DashboardData, ServiceDefinition, ServiceLogsResult, ServicesApi } from "./services-api.js";
 
 export const tauriServicesApi: ServicesApi = {
   ...httpServicesApi,
   getDashboard: () => tauri_getDashboard() as Promise<DashboardData>,
+  getServiceDefinition: (name) =>
+    tauri_getServiceDefinition(name) as Promise<ServiceDefinition>,
+  registerService: (service) => tauri_registerService(service).then(() => undefined),
   startService: (name) => tauri_startService(name),
   stopService: (name) => tauri_stopService(name),
   restartService: (name) => tauri_restartService(name),

@@ -789,12 +789,13 @@ async function spawnService(
     ? Object.fromEntries(entriesFromLines(envFile.lines).map((entry) => [entry.key, entry.value]))
     : {};
 
-  return spawn(service.command, {
+  const directArgs = service.args;
+  return spawn(service.command, directArgs ?? [], {
     cwd: service.cwd,
     // Load the conventional .env next to the service, while allowing values
     // configured explicitly in NoMoreIDE to override it.
     env: { ...process.env, ...fileEnv, ...service.env },
-    shell: true,
+    shell: directArgs === undefined,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
   });

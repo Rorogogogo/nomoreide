@@ -50,6 +50,28 @@ describe("ProcessManager", () => {
     );
   });
 
+  test("executes structured arguments directly without shell parsing", async () => {
+    await config.registerService({
+      name: "direct",
+      command: process.execPath,
+      args: [
+        "-e",
+        "console.log(process.argv[1]); setInterval(() => {}, 1000);",
+        "literal value; echo must-not-run",
+      ],
+      cwd: tempDir,
+    });
+
+    await manager.startService("direct");
+
+    await waitFor(() =>
+      logs
+        .read("direct")
+        .some((entry) => entry.text.includes("literal value; echo must-not-run")),
+    );
+    expect(logs.read("direct").filter((entry) => entry.text === "must-not-run")).toEqual([]);
+  });
+
   test("loads .env from the service working directory", async () => {
     await writeFile(
       join(tempDir, ".env"),
