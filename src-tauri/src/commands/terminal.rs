@@ -462,8 +462,7 @@ impl TerminalManager {
                 .sessions
                 .get(id)
                 .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
-            if session.generation != control_generation
-                || !Arc::ptr_eq(&control, &session.control)
+            if session.generation != control_generation || !Arc::ptr_eq(&control, &session.control)
             {
                 return Err(format!("Terminal session changed while opening: {id}"));
             }
@@ -481,8 +480,7 @@ impl TerminalManager {
                 .sessions
                 .get_mut(id)
                 .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
-            if session.generation != control_generation
-                || !Arc::ptr_eq(&control, &session.control)
+            if session.generation != control_generation || !Arc::ptr_eq(&control, &session.control)
             {
                 return Err(format!("Terminal session changed while opening: {id}"));
             }
@@ -564,8 +562,7 @@ impl TerminalManager {
                 .sessions
                 .get_mut(id)
                 .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
-            if session.generation != control_generation
-                || !Arc::ptr_eq(&control, &session.control)
+            if session.generation != control_generation || !Arc::ptr_eq(&control, &session.control)
             {
                 return Err(format!("Terminal session changed while reclaiming: {id}"));
             }
@@ -604,10 +601,11 @@ impl TerminalManager {
                 .sessions
                 .get_mut(id)
                 .ok_or_else(|| format!("Unknown terminal session: {id}"))?;
-            if session.generation != control_generation
-                || !Arc::ptr_eq(&control, &session.control)
+            if session.generation != control_generation || !Arc::ptr_eq(&control, &session.control)
             {
-                return Err(format!("Terminal session changed while inserting a prompt: {id}"));
+                return Err(format!(
+                    "Terminal session changed while inserting a prompt: {id}"
+                ));
             }
             validate_agent_prompt_target(&session.metadata)?;
             if session.prompt_write_active {
@@ -902,8 +900,7 @@ impl TerminalManager {
                 }
                 return Ok(());
             };
-            if session.generation != control_generation
-                || !Arc::ptr_eq(&control, &session.control)
+            if session.generation != control_generation || !Arc::ptr_eq(&control, &session.control)
             {
                 return Err(format!("Terminal session changed while closing: {id}"));
             }
@@ -1269,7 +1266,11 @@ pub async fn list_agent_transcripts(
                 .find(|repo| &repo.name == selected)
         })
         .or_else(|| config.git_repositories.first())
-        .map(|repo| repo.active_worktree_path.clone().unwrap_or_else(|| repo.path.clone()))
+        .map(|repo| {
+            repo.active_worktree_path
+                .clone()
+                .unwrap_or_else(|| repo.path.clone())
+        })
         .unwrap_or(
             std::env::current_dir()
                 .map_err(|error| error.to_string())?
@@ -1328,7 +1329,11 @@ pub async fn create_terminal_session(
                         .find(|repo| &repo.name == selected)
                 })
                 .or_else(|| config.git_repositories.first())
-                .map(|repo| repo.active_worktree_path.clone().unwrap_or_else(|| repo.path.clone()))
+                .map(|repo| {
+                    repo.active_worktree_path
+                        .clone()
+                        .unwrap_or_else(|| repo.path.clone())
+                })
         })
     } else {
         None
@@ -2192,11 +2197,7 @@ mod tests {
         use std::sync::Arc;
 
         let manager = Arc::new(super::TerminalManager::new());
-        spawn_test_session(
-            &manager,
-            "svc:closing",
-            "trap '' HUP; exec sleep 30",
-        );
+        spawn_test_session(&manager, "svc:closing", "trap '' HUP; exec sleep 30");
         std::thread::sleep(std::time::Duration::from_millis(50));
         let closer = {
             let manager = manager.clone();
@@ -2371,11 +2372,7 @@ mod tests {
         use std::sync::{mpsc, Arc};
 
         let manager = Arc::new(super::TerminalManager::new());
-        let pid = spawn_test_session(
-            &manager,
-            "active-close",
-            "trap '' HUP; exec sleep 30",
-        );
+        let pid = spawn_test_session(&manager, "active-close", "trap '' HUP; exec sleep 30");
         std::thread::sleep(std::time::Duration::from_millis(50));
         let closer = {
             let manager = manager.clone();

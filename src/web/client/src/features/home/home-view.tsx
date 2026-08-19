@@ -19,9 +19,13 @@ import {
 import { useHomeMasonry } from "./home-masonry";
 import { useWidgetMove, WidgetMoveOverlay } from "./home-move";
 import { previewResize, type PanelPlacement } from "./home-pack";
-import { WidgetDragFrame, WidgetGrid, WidgetPanel } from "./widget-grid";
+import { useWidgetDisclosure } from "./use-widget-disclosure";
+import { WidgetDragFrame, WidgetGrid, WidgetLoading, WidgetPanel } from "./widget-grid";
 import { WidgetResizeGrip, type ResizeFrame, type WidgetBox } from "./widget-resize";
 import { WIDGETS } from "./widget-registry";
+
+/** A revealed list gets room to breathe without becoming a second page. */
+const DISCLOSURE_HEIGHT = 8;
 
 /**
  * Home — the page that answers "what is happening right now".
@@ -72,10 +76,12 @@ function resizeBox(
 export function HomeView({
   data,
   onOpen,
+  onRefresh,
   scopeName,
 }: {
-  data: DashboardData;
+  data: DashboardData | null;
   onOpen: (page: AppPage) => void;
+  onRefresh: () => Promise<void>;
   scopeName: string | null;
 }) {
   const t = useT();
@@ -89,6 +95,7 @@ export function HomeView({
     drawn outside the grid, which clips its own overflow.
   */
   const [frame, setFrame] = useState<ResizeFrame | null>(null);
+  const { expanded, toggleExpanded, transitioning } = useWidgetDisclosure();
 
   const layout = ui.home;
   const placed = resolveHomeLayout(WIDGETS, layout);
@@ -135,7 +142,12 @@ export function HomeView({
             elsewhere leaves every other key alone instead of remounting a
             neighbour, and for a `fetch` widget a remount is a re-request.
           */}
-          {placed.map(({ tile, widget }) => (
+          {placed.map(({ tile, widget }) => {
+            const isExpanded = expanded === widget.id;
+            const shownHeight = isExpanded
+              ? Math.max(tile.h ?? DISCLOSURE_HEIGHT, DISCLOSURE_HEIGHT)
+              : tile.h;
+            return (
               <WidgetPanel
                 controls={
                   <WidgetControls
@@ -157,18 +169,27 @@ export function HomeView({
                   />
                 }
                 dragging={move?.id === widget.id}
-                height={tile.h}
+                expanded={isExpanded}
+                height={shownHeight}
                 icon={widget.icon}
                 id={widget.id}
                 key={widget.id}
+                lessLabel={t("home.less")}
+                onDisclosureToggle={(animate) => toggleExpanded(widget.id, animate)}
                 onOpen={() => onOpen(widget.page)}
                 openLabel={t("home.open", { title: t(widget.titleKey) })}
                 place={boxes.get(widget.id)}
                 title={t(widget.titleKey)}
+                transitioning={transitioning === widget.id}
               >
-                {widget.render({ data, height: tile.h })}
+                {data ? (
+                  widget.render({ data, height: shownHeight, onRefresh })
+                ) : (
+                  <WidgetLoading label={t("common.loading")} />
+                )}
               </WidgetPanel>
-          ))}
+            );
+          })}
         </WidgetGrid>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">

@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
 // Data types (mirror the TypeScript Zod schemas)
@@ -17,12 +19,18 @@ pub struct ServiceDef {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
+    /// Undefined preserves the legacy shell command; present executes
+    /// `command` directly with these arguments.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -182,6 +190,98 @@ pub struct ProviderConnectionDef {
     pub legacy_team_slug: Option<String>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicServiceDef<'a> {
+    name: &'a str,
+    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    command: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    args: Option<&'a Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cwd: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_path: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    test: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    depends_on: Option<&'a Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    compose_file: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    compose_service: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    host: Option<&'a String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicDatabaseDef<'a> {
+    name: &'a str,
+    engine: &'a str,
+    url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    write_unlocked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_path: Option<&'a String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicGithubTokenDef<'a> {
+    host: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    login: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    avatar_url: Option<&'a String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicProviderConnectionDef<'a> {
+    source: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    expires_at: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    client_id: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope_id: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope_slug: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    username: Option<&'a String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PublicConfig<'a> {
+    version: u32,
+    services: Vec<PublicServiceDef<'a>>,
+    bundles: &'a [BundleDef],
+    git_repositories: &'a [GitRepoDef],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_git_repository: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    git_board_repositories: Option<&'a Vec<String>>,
+    databases: Vec<PublicDatabaseDef<'a>>,
+    log_sources: &'a [LogSourceDef],
+    ssh_servers: &'a [SshServerDef],
+    github_tokens: Vec<PublicGithubTokenDef<'a>>,
+    github_identities: &'a [GithubIdentityDef],
+    connections: BTreeMap<String, PublicProviderConnectionDef<'a>>,
+    workflows: &'a [serde_json::Value],
+    workflow_triggers: &'a [serde_json::Value],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preferences: Option<&'a serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chat_provider: Option<&'a String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -234,6 +334,87 @@ pub struct Config {
 pub const LEGACY_PROVIDER_ID: &str = "vercel";
 
 impl Config {
+    /// Configuration metadata safe to serialize to the dashboard.
+    /// Runtime code must continue to use `Config` so credentials never have to
+    /// make a round trip through a webview merely to start a service.
+    pub fn public_value(&self) -> serde_json::Value {
+        let public = PublicConfig {
+            version: self.version,
+            services: self
+                .services
+                .iter()
+                .map(|service| PublicServiceDef {
+                    name: &service.name,
+                    kind: &service.kind,
+                    command: service.command.as_ref(),
+                    args: service.args.as_ref(),
+                    cwd: service.cwd.as_ref(),
+                    port: service.port,
+                    description: service.description.as_ref(),
+                    project_path: service.project_path.as_ref(),
+                    test: service.test.as_ref(),
+                    depends_on: service.depends_on.as_ref(),
+                    compose_file: service.compose_file.as_ref(),
+                    compose_service: service.compose_service.as_ref(),
+                    host: service.host.as_ref(),
+                })
+                .collect(),
+            bundles: &self.bundles,
+            git_repositories: &self.git_repositories,
+            selected_git_repository: self.selected_git_repository.as_ref(),
+            git_board_repositories: self.git_board_repositories.as_ref(),
+            databases: self
+                .databases
+                .iter()
+                .map(|database| PublicDatabaseDef {
+                    name: &database.name,
+                    engine: &database.engine,
+                    url: if database.engine == "sqlite" {
+                        database.url.clone()
+                    } else {
+                        mask_database_url(&database.url)
+                    },
+                    write_unlocked: database.write_unlocked,
+                    project_path: database.project_path.as_ref(),
+                })
+                .collect(),
+            log_sources: &self.log_sources,
+            ssh_servers: &self.ssh_servers,
+            github_tokens: self
+                .github_tokens
+                .iter()
+                .map(|token| PublicGithubTokenDef {
+                    host: &token.host,
+                    login: token.login.as_ref(),
+                    avatar_url: token.avatar_url.as_ref(),
+                })
+                .collect(),
+            github_identities: &self.github_identities,
+            connections: self
+                .connections
+                .iter()
+                .map(|(id, connection)| {
+                    (
+                        id.clone(),
+                        PublicProviderConnectionDef {
+                            source: &connection.source,
+                            expires_at: connection.expires_at,
+                            client_id: connection.client_id.as_ref(),
+                            scope_id: connection.scope_id.as_ref(),
+                            scope_slug: connection.scope_slug.as_ref(),
+                            username: connection.username.as_ref(),
+                        },
+                    )
+                })
+                .collect(),
+            workflows: &self.workflows,
+            workflow_triggers: &self.workflow_triggers,
+            preferences: self.preferences.as_ref(),
+            chat_provider: self.chat_provider.as_ref(),
+        };
+        serde_json::to_value(public).expect("Public config must serialize")
+    }
+
     /// Lift the pre-registry Vercel fields into their provider-keyed homes:
     ///
     ///   config.vercel                  → config.connections["vercel"]
@@ -347,9 +528,46 @@ impl ConfigStore {
                 .context("Failed to create config dir")?;
         }
         let json = serde_json::to_string_pretty(config).context("Failed to serialize config")?;
-        fs::write(&self.path, format!("{json}\n"))
-            .await
-            .context("Failed to write config.json")
+        let file_name = self
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("config.json");
+        let temporary_path = self.path.with_file_name(format!(
+            ".{file_name}.{}.{}.tmp",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            options.mode(0o600);
+        }
+
+        let write_result = async {
+            let mut file = options
+                .open(&temporary_path)
+                .await
+                .context("Failed to create temporary config.json")?;
+            file.write_all(format!("{json}\n").as_bytes())
+                .await
+                .context("Failed to write temporary config.json")?;
+            file.sync_all()
+                .await
+                .context("Failed to sync temporary config.json")?;
+            drop(file);
+            fs::rename(&temporary_path, &self.path)
+                .await
+                .context("Failed to atomically replace config.json")
+        }
+        .await;
+
+        if write_result.is_err() {
+            let _ = fs::remove_file(&temporary_path).await;
+        }
+        write_result
     }
 
     pub async fn register_service(&self, service: ServiceDef) -> Result<Config> {
@@ -712,9 +930,146 @@ impl ConfigStore {
     }
 }
 
+fn mask_database_url(url: &str) -> String {
+    let Some(scheme_end) = url.find("://") else {
+        return "[redacted]".to_string();
+    };
+    let authority_start = scheme_end + 3;
+    let Some(at_offset) = url[authority_start..].find('@') else {
+        return mask_database_query(url);
+    };
+    let at = authority_start + at_offset;
+    let authority = &url[authority_start..at];
+    let Some(colon_offset) = authority.find(':') else {
+        return mask_database_query(url);
+    };
+    let password_start = authority_start + colon_offset + 1;
+    mask_database_query(&format!("{}****{}", &url[..password_start], &url[at..]))
+}
+
+fn mask_database_query(url: &str) -> String {
+    let Some((base, query)) = url.split_once('?') else {
+        return url.to_string();
+    };
+    let masked = query
+        .split('&')
+        .map(|part| {
+            let Some((key, _value)) = part.split_once('=') else {
+                return part.to_string();
+            };
+            let normalized = key.to_ascii_lowercase().replace(['_', '-'], "");
+            if normalized.contains("password")
+                || normalized.contains("passwd")
+                || normalized.contains("secret")
+                || normalized.contains("token")
+                || normalized.contains("apikey")
+            {
+                format!("{key}=****")
+            } else {
+                part.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("&");
+    format!("{base}?{masked}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn save_uses_owner_only_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = std::env::temp_dir().join(format!(
+            "nomoreide-private-config-{}-{}",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+        let path = dir.join("config.json");
+        let store = ConfigStore::new(path.clone());
+
+        store.save(&Config::default()).await.unwrap();
+
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn public_config_removes_credentials() {
+        let mut config = Config::default();
+        config.services.push(ServiceDef {
+            name: "api".into(),
+            kind: "local".into(),
+            command: Some("npm run dev".into()),
+            args: None,
+            cwd: Some("/repo".into()),
+            port: None,
+            description: None,
+            project_path: None,
+            env: Some(HashMap::from([(
+                "API_TOKEN".into(),
+                "service-secret".into(),
+            )])),
+            test: None,
+            depends_on: None,
+            compose_file: None,
+            compose_service: None,
+            host: None,
+        });
+        config.databases.push(DatabaseDef {
+            name: "main".into(),
+            engine: "postgres".into(),
+            url: "postgres://app:database-secret@localhost/app?sslpassword=query-secret".into(),
+            write_unlocked: None,
+            project_path: None,
+        });
+        config.github_tokens.push(GithubTokenDef {
+            host: "github.com".into(),
+            token: "github-secret".into(),
+            login: Some("octocat".into()),
+            avatar_url: None,
+        });
+        config.connections.insert(
+            "vercel".into(),
+            ProviderConnectionDef {
+                source: "oauth".into(),
+                token: Some("access-secret".into()),
+                refresh_token: Some("refresh-secret".into()),
+                username: Some("octocat".into()),
+                ..ProviderConnectionDef::default()
+            },
+        );
+
+        let public = config.public_value();
+        let serialized = public.to_string();
+
+        assert!(public["services"][0].get("env").is_none());
+        assert_eq!(
+            public["databases"][0]["url"],
+            "postgres://app:****@localhost/app?sslpassword=****"
+        );
+        assert!(public["githubTokens"][0].get("token").is_none());
+        assert!(public["connections"]["vercel"].get("token").is_none());
+        assert!(public["connections"]["vercel"]
+            .get("refreshToken")
+            .is_none());
+        for secret in [
+            "service-secret",
+            "database-secret",
+            "query-secret",
+            "github-secret",
+            "access-secret",
+            "refresh-secret",
+        ] {
+            assert!(!serialized.contains(secret));
+        }
+    }
 
     /// `save()` serializes the whole struct, so any Node-owned key missing from
     /// `Config` is a key the desktop silently deletes from the shared config.

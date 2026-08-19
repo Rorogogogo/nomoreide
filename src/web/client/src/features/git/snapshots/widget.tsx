@@ -1,12 +1,14 @@
 import { History } from "lucide-react";
 import {
+  rowCap,
+  WidgetLoading,
   WidgetMore,
   WidgetRow,
   WidgetRows,
   WidgetStat,
   WidgetStats,
 } from "@/features/home/widget-grid";
-import type { WidgetDefinition } from "@/features/home/widget-types";
+import type { WidgetDefinition, WidgetRenderProps } from "@/features/home/widget-types";
 import { useT } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/utils";
 import { useHomeSnapshotSummary } from "./use-home-snapshot-summary";
@@ -31,30 +33,32 @@ export const snapshotsWidget: WidgetDefinition = {
   scope: "repo",
   source: "fetch",
   page: "git",
-  render: () => <SnapshotSummary />,
+  render: ({ height }) => <SnapshotSummary height={height} />,
 };
 
 /** Four restore points is the shape of the recent past; the rest is the page. */
 const ROW_CAP = 4;
 
-function SnapshotSummary() {
+function SnapshotSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const t = useT();
   const { loaded, recent, snapshots, total } = useHomeSnapshotSummary();
+  const cap = rowCap(height, ROW_CAP);
+
+  if (!loaded) return <WidgetLoading label={t("common.loading")} />;
 
   return (
     <>
       <WidgetStats>
         <WidgetStat
           label={t("home.snapshots.recent")}
-          pending={!loaded}
           tone="ok"
           value={recent}
         />
-        <WidgetStat label={t("home.snapshots.total")} pending={!loaded} value={total} />
+        <WidgetStat label={t("home.snapshots.total")} value={total} />
       </WidgetStats>
       {snapshots.length === 0 ? null : (
         <WidgetRows>
-          {snapshots.slice(0, ROW_CAP).map((snapshot) => (
+          {snapshots.slice(0, cap).map((snapshot) => (
             <WidgetRow
               key={snapshot.sha}
               meta={snapshot.label}
@@ -67,8 +71,8 @@ function SnapshotSummary() {
               trailing={formatRelativeTime(snapshot.createdAt)}
             />
           ))}
-          {snapshots.length > ROW_CAP ? (
-            <WidgetMore>{t("home.more", { count: snapshots.length - ROW_CAP })}</WidgetMore>
+          {snapshots.length > cap ? (
+            <WidgetMore>{t("home.more", { count: snapshots.length - cap })}</WidgetMore>
           ) : null}
         </WidgetRows>
       )}

@@ -436,3 +436,10 @@ html.theme-transition::view-transition-new(root) {
     0 at var(--theme-transition-x) var(--theme-transition-y)
   );
 }
+
+/* Content disclosure is an occasional spatial change: show the vertical
+   growth, then get out of the way. Keyboard and reduced-motion paths skip it. */
+::view-transition-group(home-widget-disclosure) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}

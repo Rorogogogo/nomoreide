@@ -39,7 +39,7 @@ export const repositoryWidget: WidgetDefinition = {
 /** Five paths names the change; more and the panel is the Git page. */
 const FILE_CAP = 5;
 
-function RepositorySummary({ data, height }: WidgetRenderProps) {
+function RepositorySummary({ data, height }: Pick<WidgetRenderProps, "data" | "height">) {
   const t = useT();
   const { selectedRepository, status } = data.git;
   const cap = rowCap(height, FILE_CAP);

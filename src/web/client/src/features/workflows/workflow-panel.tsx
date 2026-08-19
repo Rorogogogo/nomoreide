@@ -34,6 +34,7 @@ import {
 } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n/en";
@@ -67,6 +68,8 @@ export function WorkflowPanel() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const [editing, setEditing] = useState<Workflow | null>(null);
+  /** Workflow waiting on its delete confirmation. */
+  const [pendingDelete, setPendingDelete] = useState<Workflow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingRun, setViewingRun] = useState(false);
@@ -112,9 +115,14 @@ export function WorkflowPanel() {
     }
   }
 
-  async function removeSavedWorkflow(workflow: Workflow) {
+  /** Built-ins have no delete button; the guard is here so they can't lose one. */
+  function requestDelete(workflow: Workflow) {
     if (workflow.builtin) return;
-    if (!window.confirm(t("workflows.deleteConfirm", { name: workflow.name }))) return;
+    setPendingDelete(workflow);
+  }
+
+  async function removeSavedWorkflow(workflow: Workflow) {
+    setPendingDelete(null);
     setError(null);
     try {
       setWorkflows(await deleteWorkflow(workflow.id));
@@ -219,7 +227,7 @@ export function WorkflowPanel() {
                 key={workflow.id}
                 lastRun={run?.workflow.id === workflow.id ? run : null}
                 workflow={workflow}
-                onDelete={() => void removeSavedWorkflow(workflow)}
+                onDelete={() => requestDelete(workflow)}
                 onDuplicate={() => duplicateWorkflow(workflow)}
                 onEdit={() => setEditing(workflow)}
                 onRun={() => runWorkflow(workflow)}
@@ -229,6 +237,18 @@ export function WorkflowPanel() {
           <TriggersSection workflows={workflows} />
         </>
       )}
+      {pendingDelete ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("common.delete")}
+          icon={<Trash2 className="text-destructive" />}
+          message={t("workflows.deleteConfirmBody")}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void removeSavedWorkflow(pendingDelete)}
+          title={t("workflows.deleteConfirm", { name: pendingDelete.name })}
+          tone="danger"
+        />
+      ) : null}
     </div>
   );
 }

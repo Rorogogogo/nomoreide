@@ -1,4 +1,3 @@
-use crate::core::config::Config;
 use crate::core::process_manager::ServiceStatus;
 use crate::AppState;
 use serde::{Deserialize, Serialize};
@@ -7,7 +6,7 @@ use tauri::State;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DashboardData {
-    pub config: Config,
+    pub config: serde_json::Value,
     pub runtime: RuntimeData,
 }
 
@@ -23,7 +22,7 @@ pub async fn get_dashboard(state: State<'_, AppState>) -> Result<DashboardData, 
     let services = state.process_manager.status();
 
     Ok(DashboardData {
-        config,
+        config: config.public_value(),
         runtime: RuntimeData { services },
     })
 }

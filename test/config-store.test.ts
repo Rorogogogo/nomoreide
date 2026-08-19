@@ -6,6 +6,7 @@ import {
   realpath,
   rename,
   rm,
+  stat,
   utimes,
   writeFile,
 } from "node:fs/promises";
@@ -33,6 +34,17 @@ afterEach(async () => {
 });
 
 describe("ConfigStore", () => {
+  test.runIf(process.platform !== "win32")(
+    "writes config files with owner-only permissions",
+    async () => {
+      const store = new ConfigStore(configPath);
+
+      await store.registerBundle({ name: "stack", services: ["api"] });
+
+      expect((await stat(configPath)).mode & 0o777).toBe(0o600);
+    },
+  );
+
   test("round-trips optional project preferences", async () => {
     const store = new ConfigStore(configPath);
 
@@ -375,6 +387,30 @@ describe("ConfigStore", () => {
       },
     ]);
     expect(raw.services[0].name).toBe("backend");
+  });
+
+  test("round-trips direct arguments and validates configured env names", async () => {
+    const store = new ConfigStore(configPath);
+    await store.registerService({
+      name: "worker",
+      command: "/usr/bin/node",
+      args: ["worker.js", "value with spaces"],
+      cwd: "/repo",
+      env: { NODE_ENV: "test" },
+    });
+
+    expect((await store.load()).services[0]).toMatchObject({
+      args: ["worker.js", "value with spaces"],
+      env: { NODE_ENV: "test" },
+    });
+    await expect(
+      store.registerService({
+        name: "unsafe",
+        command: "true",
+        cwd: "/repo",
+        env: { "BAD-NAME": "value" },
+      }),
+    ).rejects.toThrow(/environment variable names/i);
   });
 
   test("removes a service and prunes it from bundles", async () => {

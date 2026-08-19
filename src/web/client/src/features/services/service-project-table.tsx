@@ -63,7 +63,7 @@ export function ServiceProjectTable({
 
   if (services.length === 0) {
     return (
-      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+      <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
         {t("services.project.noServices")}
       </div>
     );
@@ -71,11 +71,11 @@ export function ServiceProjectTable({
 
   return (
     <div>
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-3 py-1">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {t("services.project.tableTitle")}
         </span>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[10px] text-muted-foreground">
           {unassignedCount > 0
             ? t("services.project.countWithUnassigned", {
                 total: services.length,
@@ -98,11 +98,11 @@ export function ServiceProjectTable({
           );
           return (
             <div
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-2 px-4 py-1.5"
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-2 px-3 py-1.5 transition-colors hover:bg-muted/20"
               key={service.name}
             >
               <span className="min-w-0">
-                <span className="block truncate text-xs font-medium leading-tight">
+                <span className="block truncate text-[13px] font-medium leading-tight">
                   {service.name}
                 </span>
                 <span
@@ -117,7 +117,7 @@ export function ServiceProjectTable({
                 className={cn(
                   // pr-6 keeps the longest option clear of the native chevron —
                   // without it the label renders straight under the arrow.
-                  "h-7 w-full truncate rounded-md border border-border bg-background py-0 pl-1.5 pr-6 text-[11px]",
+                  "h-7 w-full truncate rounded-md border border-border bg-background py-0 pl-1.5 pr-6 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   !owner && "border-amber-500/70",
                 )}
                 disabled={saving === service.name}
@@ -150,13 +150,13 @@ export function ServiceProjectTable({
                 service.cwd ? (
                   <button
                     aria-label={t("services.project.adoptAria", { name: service.name })}
-                    className="flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-[10px] text-amber-600 transition-colors hover:bg-amber-500/10 disabled:opacity-50 dark:text-amber-500"
+                    className="flex items-center gap-1 whitespace-nowrap rounded px-1 py-0.5 text-[10px] text-amber-600 transition-colors hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:text-amber-500"
                     disabled={saving === service.name}
                     onClick={() => void adopt(service.name, service.cwd ?? "")}
                     title={t("services.project.adoptTitle")}
                     type="button"
                   >
-                    <AlertTriangle className="size-3.5" />
+                    <AlertTriangle aria-hidden="true" className="size-3.5" />
                     {t("services.project.adopt")}
                   </button>
                 ) : (

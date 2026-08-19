@@ -7,6 +7,7 @@ import {
   type HostPortStatus,
 } from "../core/port-utils.js";
 import type { ProcessManager } from "../core/process-manager.js";
+import { publicConfig } from "../core/public-config.js";
 import { computeServiceHealth } from "../core/service-health.js";
 import type { TimelineStore } from "../core/timeline-store.js";
 import type {
@@ -80,7 +81,7 @@ export async function buildDashboardPayload(options: {
   return {
     ok: true,
     cwd: options.cwd,
-    config,
+    config: publicConfig(config),
     runtime,
     ports,
     health,

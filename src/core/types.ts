@@ -39,6 +39,11 @@ export interface ServiceDefinition {
   projectPath?: string;
   // local + ssh
   command?: string;
+  /**
+   * Direct-exec arguments. Undefined preserves the legacy shell command;
+   * present (including an empty array) executes `command` without a shell.
+   */
+  args?: string[];
   cwd?: string;
   env?: Record<string, string>;
   // docker-compose

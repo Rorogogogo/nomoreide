@@ -78,6 +78,7 @@ pub fn run() {
             commands::onboard::clone_git_repository,
             // config
             commands::config::get_config,
+            commands::config::get_service_definition,
             commands::config::register_service,
             commands::config::remove_service,
             commands::config::register_bundle,

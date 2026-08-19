@@ -53,6 +53,32 @@ describe("CLI commands", () => {
     expect(output.join("\n")).toContain("3001");
   });
 
+  test("adds a direct-exec service with configured environment", async () => {
+    const exitCode = await runCli(
+      [
+        "add",
+        "service",
+        "worker",
+        "--command",
+        process.execPath,
+        "--args",
+        '["worker.js","value with spaces"]',
+        "--env",
+        '{"NODE_ENV":"test"}',
+        "--cwd",
+        tempDir,
+      ],
+      cliOptions(),
+    );
+
+    expect(exitCode).toBe(0);
+    const raw = JSON.parse(await readFile(configPath, "utf8"));
+    expect(raw.services[0]).toMatchObject({
+      args: ["worker.js", "value with spaces"],
+      env: { NODE_ENV: "test" },
+    });
+  });
+
   test("adds a bundle", async () => {
     const exitCode = await runCli(
       ["add", "bundle", "full-stack", "backend", "frontend"],

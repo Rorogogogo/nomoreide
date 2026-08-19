@@ -313,7 +313,7 @@ export function DockStatusStrip({
         <StatItem
           className="hidden lg:flex"
           key="cost"
-          title={t("dock.status.costTitle", { cost: picked.costUSD.toFixed(4) })}
+          title={t("dock.status.costTitle", { cost: `$${picked.costUSD.toFixed(4)}` })}
         >
           <span className="tabular-nums text-emerald-700 dark:text-emerald-500">
             ${picked.costUSD.toFixed(2)}

@@ -3,6 +3,7 @@ import { ChevronRight, FileText, Folder, FolderOpen, LoaderCircle, Plus, Save, S
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { TabStrip } from "@/components/ui/tab-strip";
 import {
@@ -155,9 +156,24 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
   }, [mode, note?.revision, projectPath, selected?.kind, selected?.ref.id]);
 
   const pinnedKeys = useMemo(() => new Set((snapshot?.pinned ?? []).map(key)), [snapshot?.pinned]);
+  /**
+   * What to do once the discard question is answered. Held as an object so
+   * `setState` takes it as a value rather than as an updater function.
+   */
+  const [pendingDiscard, setPendingDiscard] = useState<{ run: () => void } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
+
+  /** Runs `action`, asking first when the open note has unsaved edits. */
+  function withDiscardGuard(action: () => void) {
+    if (!dirtyRef.current) {
+      action();
+      return;
+    }
+    setPendingDiscard({ run: action });
+  }
 
   async function createNote() {
-    if (dirtyRef.current && !window.confirm(t("context.discardConfirm"))) return;
+    setPendingDiscard(null);
     setSaving(true);
     try {
       const created = await createContextNote({ title: t("context.untitled"), projectPaths: projectPath ? [projectPath] : [] });
@@ -190,7 +206,8 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
   }
 
   async function removeNote() {
-    if (!note || !window.confirm(t("context.deleteConfirm", { title: note.title }))) return;
+    if (!note) return;
+    setPendingDelete(false);
     setSaving(true);
     try { await deleteContextNote(note.ref.id, note.revision); setSelected(null); setNote(null); await refresh(); }
     catch (caught) { setError(caught instanceof Error ? caught.message : String(caught)); }
@@ -208,12 +225,12 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
   }
 
   function selectItem(item: ContextItem) {
-    if (
-      selectedRef.current &&
-      key(selectedRef.current.ref) !== key(item.ref) &&
-      dirtyRef.current &&
-      !window.confirm(t("context.discardConfirm"))
-    ) return;
+    const switchingAway =
+      selectedRef.current && key(selectedRef.current.ref) !== key(item.ref);
+    if (switchingAway) {
+      withDiscardGuard(() => setSelected(item));
+      return;
+    }
     setSelected(item);
   }
 
@@ -240,7 +257,7 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
           <input className="size-3.5" checked={showSessions} onChange={(event) => setShowSessions(event.target.checked)} type="checkbox" />
           {t("context.sessions")}
         </label>
-        <Button className="h-7 px-2 text-[11px] [&_svg]:size-3.5" disabled={saving} onClick={() => void createNote()} size="sm"><Plus aria-hidden="true" />{t("context.newNote")}</Button>
+        <Button className="h-7 px-2 text-[11px] [&_svg]:size-3.5" disabled={saving} onClick={() => withDiscardGuard(() => void createNote())} size="sm"><Plus aria-hidden="true" />{t("context.newNote")}</Button>
       </header>
 
       {error ? <Alert className="m-3 shrink-0" variant="destructive">{error}</Alert> : null}
@@ -282,13 +299,38 @@ export function ContextView({ projectPath }: { projectPath?: string | null }) {
                 <Badge size="small" variant="outline">{selected.kind}</Badge>
                 <Button className="h-7 px-2 text-[11px]" onClick={() => attachContextItem(selected)} size="sm" variant="outline">{t("context.attach")}</Button>
                 <Button aria-label={selected.pinned ? t("context.unpin") : t("context.pin")} onClick={() => void togglePin(selected)} size="icon-sm" variant="ghost"><Star aria-hidden="true" className={cn(selected.pinned && "fill-current text-amber-500")} /></Button>
-                {note ? <><Button aria-label={t("context.save")} disabled={saving || (!title.trim())} onClick={() => void saveNote()} size="icon-sm"><Save aria-hidden="true" /></Button><Button aria-label={t("context.delete")} disabled={saving} onClick={() => void removeNote()} size="icon-sm" variant="destructive"><Trash2 aria-hidden="true" /></Button></> : null}
+                {note ? <><Button aria-label={t("context.save")} disabled={saving || (!title.trim())} onClick={() => void saveNote()} size="icon-sm"><Save aria-hidden="true" /></Button><Button aria-label={t("context.delete")} disabled={saving} onClick={() => setPendingDelete(true)} size="icon-sm" variant="destructive"><Trash2 aria-hidden="true" /></Button></> : null}
               </div>
               {note ? <div className="min-h-0 flex-1 overflow-auto"><Suspense fallback={<div className="p-3 text-xs text-muted-foreground">{t("context.editorLoading")}</div>}><CodeEditor ariaLabel={t("context.editor")} onChange={setDraft} path={`${note.title}.md`} value={draft} /></Suspense></div> : <EntityDetail error={previewError} item={selected} loading={previewLoading} preview={preview} />}
             </div>
           ) : <div className="grid h-full place-items-center text-xs text-muted-foreground">{t("context.empty")}</div>}
         </section>
       </div>
+      {pendingDiscard ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("context.discard")}
+          icon={<Trash2 className="text-destructive" />}
+          message={t("context.discardConfirmBody")}
+          onCancel={() => setPendingDiscard(null)}
+          onConfirm={pendingDiscard.run}
+          title={t("context.discardConfirm")}
+          tone="danger"
+        />
+      ) : null}
+      {pendingDelete && note ? (
+        <ConfirmDialog
+          cancelLabel={t("common.cancel")}
+          confirmLabel={t("common.delete")}
+          icon={<Trash2 className="text-destructive" />}
+          loading={saving}
+          message={t("context.deleteConfirm")}
+          onCancel={() => setPendingDelete(false)}
+          onConfirm={() => void removeNote()}
+          title={t("context.deleteTitle", { title: note.title })}
+          tone="danger"
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { entriesFromLines, envFilePath, readEnvFile } from "../core/env-file.js";
 import { isPortAvailable } from "../core/port-utils.js";
 
 export interface ServiceTestResult {
@@ -13,10 +14,14 @@ export interface ServiceTestResult {
 export async function testServiceCommand({
   command,
   cwd,
+  args,
+  env,
   port,
   timeoutMs = 2500,
 }: {
   command: string;
+  args?: string[];
+  env?: Record<string, string>;
   cwd: string;
   port?: number;
   timeoutMs?: number;
@@ -32,11 +37,15 @@ export async function testServiceCommand({
 
   const stdout: string[] = [];
   const stderr: string[] = [];
-  const child = spawn(command, {
+  const envFile = await readEnvFile(envFilePath(cwd));
+  const fileEnv = envFile.exists
+    ? Object.fromEntries(entriesFromLines(envFile.lines).map((entry) => [entry.key, entry.value]))
+    : {};
+  const child = spawn(command, args ?? [], {
     cwd,
     detached: process.platform !== "win32",
-    env: process.env,
-    shell: true,
+    env: { ...process.env, ...fileEnv, ...env },
+    shell: args === undefined,
     stdio: ["ignore", "pipe", "pipe"],
   });
 

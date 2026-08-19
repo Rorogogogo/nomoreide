@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { openExternal } from "@/lib/tauri";
 import { useT, type Translate } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { ComposerDialog } from "./service-forms";
 
 type LifecycleOp = "start" | "stop" | "restart";
@@ -62,7 +63,7 @@ export function LifecycleActions({
   active: boolean;
   /** HTTP base (`/api/services/x`); used only for the web-only port-conflict retry. */
   baseUrl: string;
-  compact?: boolean;
+  compact?: boolean | "widget";
   onRefresh: () => Promise<void>;
   /** Fired after a successful start, so the caller can select the started service. */
   onStarted?: () => void;
@@ -74,7 +75,7 @@ export function LifecycleActions({
 }) {
   const t = useT();
   if (!active) {
-    return (
+    const start = (
       <ActionButton
         baseUrl={baseUrl}
         compact={compact}
@@ -89,9 +90,14 @@ export function LifecycleActions({
         onSuccess={onStarted}
       />
     );
+    return compact === "widget" ? (
+      <span className="inline-flex size-5 shrink-0 items-center">{start}</span>
+    ) : (
+      start
+    );
   }
 
-  return (
+  const activeActions = (
     <>
       <ActionButton
         baseUrl={baseUrl}
@@ -120,6 +126,11 @@ export function LifecycleActions({
       />
     </>
   );
+  return compact === "widget" ? (
+    <span className="inline-flex shrink-0 items-center">{activeActions}</span>
+  ) : (
+    activeActions
+  );
 }
 
 export function actionErrorMessage(
@@ -146,7 +157,7 @@ function ActionButton({
   onSuccess,
 }: {
   baseUrl: string;
-  compact?: boolean;
+  compact?: boolean | "widget";
   intent?: "neutral" | "restart" | "start" | "startSolid" | "stop";
   icon: ReactNode;
   label: string;
@@ -197,10 +208,17 @@ function ActionButton({
     );
   }
 
+  const widget = compact === "widget";
   const button = (
     <Button
       aria-label={label}
-      className={`${actionButtonClass[intent]} ${compact ? "size-7" : ""}`.trim()}
+      className={cn(
+        actionButtonClass[intent],
+        compact === true && "size-7",
+        widget &&
+          "size-5 rounded-sm border-0 bg-transparent p-0 text-muted-foreground hover:bg-muted hover:text-foreground [&_svg]:size-3",
+        widget && widgetActionClass[intent],
+      )}
       loading={busy}
       loadingLabel={t("services.actions.pending", { label, target: targetLabel })}
       onClick={() => void run()}
@@ -298,4 +316,16 @@ const actionButtonClass = {
   // Groups: filled green.
   startSolid: "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700",
   stop: "border-red-600 bg-red-600 text-white hover:bg-red-700",
+} satisfies Record<"neutral" | "restart" | "start" | "startSolid" | "stop", string>;
+
+/** Restrained semantic color keeps icon-only widget actions recognizable. */
+const widgetActionClass = {
+  neutral: "",
+  restart:
+    "text-amber-600/75 hover:bg-amber-500/10 hover:text-amber-600 focus-visible:text-amber-600 dark:text-amber-400/75 dark:hover:text-amber-400 dark:focus-visible:text-amber-400",
+  start:
+    "text-emerald-600/75 hover:bg-emerald-500/10 hover:text-emerald-600 focus-visible:text-emerald-600 dark:text-emerald-400/75 dark:hover:text-emerald-400 dark:focus-visible:text-emerald-400",
+  startSolid:
+    "text-emerald-600/75 hover:bg-emerald-500/10 hover:text-emerald-600 focus-visible:text-emerald-600 dark:text-emerald-400/75 dark:hover:text-emerald-400 dark:focus-visible:text-emerald-400",
+  stop: "text-red-600/75 hover:bg-red-500/10 hover:text-red-600 focus-visible:text-red-600 dark:text-red-400/75 dark:hover:text-red-400 dark:focus-visible:text-red-400",
 } satisfies Record<"neutral" | "restart" | "start" | "startSolid" | "stop", string>;

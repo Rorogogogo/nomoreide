@@ -93,6 +93,16 @@ const serviceDefinitions = [
   },
 ];
 
+const sshServers = [
+  {
+    host: "demo-prod",
+    name: "Demo production",
+    environment: "PROD",
+    discovered: true,
+    saved: true,
+  },
+];
+
 const gitFiles = [
   { path: "src/features/billing/checkout.tsx", index: " ", workingTree: "M" },
   { path: "src/config/services.json", index: "M", workingTree: " " },
@@ -1179,6 +1189,23 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   if (path === "/api/processes/terminate" && method === "POST") {
     return json({ ok: true });
   }
+  if (path === "/api/servers" && method === "GET") {
+    return json({ ok: true, servers: sshServers });
+  }
+  const sshProbe = path.match(/^\/api\/servers\/([^/]+)\/probe$/);
+  if (sshProbe && method === "POST") {
+    const host = decodeURIComponent(sshProbe[1]);
+    return json({
+      ok: true,
+      probe: {
+        host,
+        reachable: true,
+        latencyMs: 42,
+        hostname: "demo-prod-01",
+        platform: "Linux",
+      },
+    });
+  }
 
   // Agent Environments (ROR-60). All three endpoints are read-on-mount.
   if (path === "/api/agent-env/agents") {
@@ -2048,7 +2075,7 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
 
   if (path === "/api/docker/status") {
-    return json({ ok: true, status: { available: true, version: "27.3.1" } });
+    return json({ ok: true, status: { available: true, canStart: false, version: "27.3.1" } });
   }
   if (path === "/api/docker/containers") {
     return json({
@@ -2586,6 +2613,67 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
   }
   if (path === "/api/context/preview") {
     return json({ ok: true, preview: { context: demoContextNote.body, estimatedTokens: 15, resolved: [demoContextNote], missing: [], warnings: [] } });
+  }
+
+  if (path === "/api/import/jetbrains/scan" && method === "POST") {
+    return json({
+      ok: true,
+      preview: {
+        sessionId: "website-demo-jetbrains-import",
+        projectRoot: "/Users/demo/projects/acme",
+        candidates: [
+          {
+            id: "demo-npm",
+            name: "web-dev",
+            runType: "js.build_tools.npm",
+            source: ".run/web-dev.run.xml",
+            command: "npm",
+            args: ["run", "dev"],
+            cwd: "/Users/demo/projects/acme",
+            envKeys: ["NODE_ENV"],
+            conflict: false,
+          },
+        ],
+        unsupported: [
+          {
+            name: "IDE plugin task",
+            runType: "PluginConfigurationType",
+            source: ".idea/runConfigurations/plugin.xml",
+            reason: "This JetBrains run configuration type is not supported.",
+          },
+        ],
+        databases: [
+          {
+            id: "demo-postgres",
+            name: "local-postgres",
+            engine: "postgres",
+            source: ".idea/dataSources.xml",
+            host: "localhost",
+            port: 5432,
+            database: "acme",
+            username: "acme",
+            conflict: false,
+          },
+        ],
+        unsupportedDatabases: [],
+        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      },
+    });
+  }
+  if (path === "/api/import/jetbrains/apply" && method === "POST") {
+    const body = parseJsonBody(init) as {
+      selections?: Array<{ conflict?: string; name?: string }>;
+      databases?: Array<{ conflict?: string; name?: string }>;
+    };
+    return json({
+      ok: true,
+      imported: (body.selections ?? [])
+        .filter((selection) => selection.conflict !== "skip")
+        .map((selection) => selection.name || "web-dev"),
+      importedDatabases: (body.databases ?? [])
+        .filter((selection) => selection.conflict !== "skip")
+        .map((selection) => selection.name || "local-postgres"),
+    });
   }
 
   if (path === "/api/services" || path === "/api/bundles" || path === "/api/fs/directories") {

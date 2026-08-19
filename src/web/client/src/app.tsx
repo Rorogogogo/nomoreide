@@ -900,15 +900,16 @@ function AppContent({ syncLocation }: { syncLocation: boolean }) {
             />
           ) : null}
 
-          {loading && !data ? (
+          {loading && !data && page !== "home" ? (
             <Loading className="py-8" label={t("app.loading")} />
           ) : null}
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            {scopedData && page === "home" ? (
+            {page === "home" && (scopedData || loading) ? (
               <HomeView
                 data={scopedData}
                 onOpen={setPage}
+                onRefresh={refreshView}
                 scopeName={activeProject?.name ?? null}
               />
             ) : null}

@@ -41,7 +41,7 @@ const SEVERITY_TONE: Record<TimelineEvent["severity"], WidgetTone> = {
   error: "bad",
 };
 
-function ActivitySummary({ data, height }: WidgetRenderProps) {
+function ActivitySummary({ data, height }: Pick<WidgetRenderProps, "data" | "height">) {
   const t = useT();
   const events = data.timeline;
   const cap = rowCap(height, EVENT_CAP);

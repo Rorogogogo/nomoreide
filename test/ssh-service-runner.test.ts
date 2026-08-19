@@ -36,6 +36,14 @@ describe("createSshCommand", () => {
     expect(() =>
       createSshCommand({ host: "h", cwd: "/x", command: "y\0z" }),
     ).toThrow(/null byte/);
+    expect(() =>
+      createSshCommand({
+        host: "h",
+        cwd: "/x",
+        command: "true",
+        env: { "BAD-NAME": "value" },
+      }),
+    ).toThrow(/environment variable name/i);
   });
 
   test("escapes single quotes in cwd safely", () => {

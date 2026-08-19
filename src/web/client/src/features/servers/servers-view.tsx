@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   Activity,
   Check,
+  FolderOpen,
   KeyRound,
   Pencil,
   Plus,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/lib/i18n";
 import { SshSetupPanel } from "./ssh-setup-panel";
+import { RemoteFileExplorer } from "./remote-file-explorer";
 
 const AUTO_PROBE_LIMIT = 12;
 const AUTO_PROBE_INTERVAL_MS = 30_000;
@@ -52,6 +54,7 @@ export function ServersView({
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<SshServerSummary | null | "new">(null);
   const [saving, setSaving] = useState(false);
+  const [browsing, setBrowsing] = useState<SshServerSummary | null>(null);
   const activeProbesRef = useRef(new Set<string>());
   const lastProbeCycleRef = useRef(0);
 
@@ -116,6 +119,16 @@ export function ServersView({
     () => Object.values(probes).filter((probe) => probe.reachable).length,
     [probes],
   );
+
+  if (browsing) {
+    return (
+      <RemoteFileExplorer
+        host={browsing.host}
+        label={browsing.name ?? browsing.host}
+        onBack={() => setBrowsing(null)}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -232,6 +245,12 @@ export function ServersView({
                           onClick={() => onOpenActivity(server.host)}
                         >
                           <Activity aria-hidden="true" />
+                        </IconButton>
+                        <IconButton
+                          label={t("servers.files")}
+                          onClick={() => setBrowsing(server)}
+                        >
+                          <FolderOpen aria-hidden="true" />
                         </IconButton>
                         <IconButton
                           label={t("servers.terminal")}

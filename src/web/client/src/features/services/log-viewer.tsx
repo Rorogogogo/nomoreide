@@ -77,11 +77,14 @@ export function LogViewer({
   return (
     <div
       className={cn(
-        "code-font-size h-full max-w-full overflow-auto bg-background font-mono text-[11px] leading-4 dark:bg-zinc-950",
+        "h-full max-w-full overflow-auto bg-background font-mono leading-[1.45] dark:bg-zinc-950",
         className,
       )}
       ref={containerRef}
       role="log"
+      // Logs are denser than editors and query results, but still follow the
+      // user's global code-size preference instead of fixing themselves at 11px.
+      style={{ fontSize: "max(10px, calc(var(--code-font-size) - 1px))" }}
     >
       {logs.length ? (
         logs.map((entry, index) => {
@@ -90,7 +93,7 @@ export function LogViewer({
               className={cn(
                 "group grid min-w-max w-full cursor-default appearance-none border-0 bg-transparent px-2 py-px text-left font-inherit transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                 showTimestamps
-                  ? "grid-cols-[6.25rem_minmax(420px,1fr)] gap-1"
+                  ? "grid-cols-[7.75em_minmax(420px,1fr)] gap-1"
                   : "grid-cols-[minmax(420px,1fr)]",
                 selectedIndices.has(index) && "bg-muted/45",
                 !selectedIndices.has(index) && entry.stream === "stderr"
@@ -112,7 +115,7 @@ export function LogViewer({
               }}
             >
               {showTimestamps ? (
-                <span className="whitespace-nowrap border-r border-border/60 pr-1 text-muted-foreground dark:border-zinc-800 dark:text-zinc-500" title={entry.timestamp}>
+                <span className="whitespace-nowrap border-r border-border/60 pr-1 text-[0.9em] text-muted-foreground dark:border-zinc-800 dark:text-zinc-500" title={entry.timestamp}>
                   {formatLogTime(entry.timestamp)}
                 </span>
               ) : null}

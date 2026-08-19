@@ -14,6 +14,8 @@ export interface ServiceDefinition {
   name: string;
   kind?: ServiceKind;
   command?: string;
+  /** Present means direct execution; absent preserves the legacy shell command. */
+  args?: string[];
   cwd?: string;
   port?: number;
   description?: string;
@@ -27,6 +29,8 @@ export interface ServiceDefinition {
   composeFile?: string;
   composeService?: string;
   host?: string;
+  /** Only returned by the explicit edit endpoint, never by dashboard polling. */
+  env?: Record<string, string>;
 }
 
 export interface BundleDefinition {
@@ -335,6 +339,10 @@ export interface ServiceGraph {
 
 export interface ServicesApi {
   getDashboard(): Promise<DashboardData>;
+  /** Full edit-time definition, including configured environment values. */
+  getServiceDefinition(name: string): Promise<ServiceDefinition>;
+  /** Create or replace a service definition without dropping private fields. */
+  registerService(service: ServiceDefinition): Promise<void>;
   /** Structural service dependency graph (nodes/edges/order/cycles). */
   getServiceGraph(): Promise<ServiceGraph>;
   startService(name: string): Promise<void>;

@@ -1,5 +1,7 @@
 export interface DockerStatus {
   available: boolean;
+  canStart: boolean;
+  installUrl?: string;
   version?: string;
   error?: string;
 }
@@ -84,8 +86,34 @@ export interface DockerContainerDetail {
   labels: Record<string, string>;
 }
 
+export type DockerFileType = "directory" | "file" | "symlink" | "other";
+
+export interface DockerFileEntry {
+  name: string;
+  path: string;
+  type: DockerFileType;
+  size: number;
+  modifiedAt: number | null;
+}
+
+export interface DockerDirectoryListing {
+  containerId: string;
+  path: string;
+  entries: DockerFileEntry[];
+}
+
+export interface DockerFileContent {
+  containerId: string;
+  path: string;
+  content: string;
+  size: number;
+  binary: boolean;
+  truncated: boolean;
+}
+
 export interface DockerApi {
   getDockerStatus(): Promise<DockerStatus>;
+  startDocker(): Promise<void>;
   getDockerContainers(): Promise<DockerContainerSummary[]>;
   getDockerStats(): Promise<DockerContainerStats[]>;
   getDockerImages(): Promise<DockerImageSummary[]>;
@@ -94,4 +122,10 @@ export interface DockerApi {
   getDockerContainerDetail(id: string): Promise<DockerContainerDetail>;
   runDockerContainerAction(id: string, action: DockerContainerAction): Promise<void>;
   getDockerContainerLogs(id: string, tail?: number): Promise<string>;
+  getDockerContainerDirectory(
+    id: string,
+    path?: string,
+    includeHidden?: boolean,
+  ): Promise<DockerDirectoryListing>;
+  getDockerContainerFile(id: string, path: string): Promise<DockerFileContent>;
 }

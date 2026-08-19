@@ -7,6 +7,7 @@ import { GitWorktreeManager } from "../../core/git-worktrees.js";
 import type { GitRepositoryDefinition } from "../../core/types.js";
 import { createRepository } from "../../core/repo-create.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
+import { publicConfig } from "../../core/public-config.js";
 import { getSelectedGitRepository, readGitDiff, selectedGitCwd } from "../dashboard.js";
 import { readForm, readJson, requiredFormValue, sendJson, sendText } from "../http-utils.js";
 import { errorMessage, patternRoute, route, type Route } from "./context.js";
@@ -572,7 +573,7 @@ export const gitRoutes: Route[] = [
       name: requiredFormValue(form, "name"),
       path: requiredFormValue(form, "path"),
     });
-    sendJson(response, { ok: true, config });
+    sendJson(response, { ok: true, config: publicConfig(config) });
   }),
 
   // Clone a remote repo (HTTPS or SSH) into the managed repos dir, then register
@@ -641,14 +642,14 @@ export const gitRoutes: Route[] = [
       const config = await configStore.removeGitRepository(
         decodeURIComponent(params.name),
       );
-      sendJson(response, { ok: true, config });
+      sendJson(response, { ok: true, config: publicConfig(config) });
     },
   ),
 
   route("POST", "/api/git/select", async ({ request, response, configStore }) => {
     const form = await readForm(request);
     const config = await configStore.selectGitRepository(requiredFormValue(form, "name"));
-    sendJson(response, { ok: true, config });
+    sendJson(response, { ok: true, config: publicConfig(config) });
   }),
 ];
 

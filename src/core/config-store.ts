@@ -32,6 +32,7 @@ import { workflowTriggerSchema, type WorkflowTrigger } from "./workflow-triggers
 import { GitWorktreeManager } from "./git-worktrees.js";
 
 const execFileAsync = promisify(execFile);
+const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 const CONFIG_LOCK_WAIT_MS = 5_000;
 const CONFIG_LOCK_STALE_MS = 30_000;
@@ -55,11 +56,18 @@ const baseServiceSchema = z.object({
   projectPath: z.string().min(1).optional(),
 });
 
+const serviceEnvSchema = z
+  .record(z.string())
+  .refine((env) => Object.keys(env).every((key) => ENV_KEY_PATTERN.test(key)), {
+    message: "Environment variable names must use letters, numbers, and underscores.",
+  });
+
 const localServiceSchema = baseServiceSchema.extend({
   kind: z.literal("local").optional(),
   command: z.string().min(1),
+  args: z.array(z.string().refine((value) => !value.includes("\0"))).optional(),
   cwd: z.string().min(1),
-  env: z.record(z.string()).optional(),
+  env: serviceEnvSchema.optional(),
 });
 
 const dockerServiceSchema = baseServiceSchema.extend({
@@ -79,7 +87,7 @@ const sshServiceSchema = baseServiceSchema.extend({
     .refine((value) => !value.includes("\0"), {
       message: "SSH command contains invalid null byte.",
     }),
-  env: z.record(z.string()).optional(),
+  env: serviceEnvSchema.optional(),
 });
 
 const serviceSchema = z.union([
@@ -441,7 +449,7 @@ export class ConfigStore {
       await writeFile(
         temporaryPath,
         `${JSON.stringify(parsed, null, 2)}\n`,
-        { flag: "wx" },
+        { flag: "wx", mode: 0o600 },
       );
       await rename(temporaryPath, this.configPath);
     } catch (error) {
@@ -526,6 +534,88 @@ export class ConfigStore {
         ...config.services.filter((item) => item.name !== parsedService.name),
         parsedService,
       ];
+    });
+  }
+
+  /** Apply a reviewed import as one config mutation; no partial registration. */
+  async importServices(
+    services: Array<{
+      definition: ServiceDefinition;
+      onConflict: "error" | "replace";
+    }>,
+  ): Promise<NoMoreIdeConfig> {
+    return this.importProjectSetup({ services, databases: [] });
+  }
+
+  /** Atomically applies a reviewed project setup import across both resource kinds. */
+  async importProjectSetup(input: {
+    services: Array<{
+      definition: ServiceDefinition;
+      onConflict: "error" | "replace";
+    }>;
+    databases: Array<{
+      definition: DatabaseConnection;
+      onConflict: "error" | "replace";
+    }>;
+  }): Promise<NoMoreIdeConfig> {
+    const parsed = input.services.map((service) => ({
+      definition: serviceSchema.parse(service.definition),
+      onConflict: service.onConflict,
+    }));
+    const parsedDatabases = input.databases.map((database) => ({
+      definition: databaseSchema.parse({
+        ...database.definition,
+        // An import is never authority to unlock writes, including replace.
+        writeUnlocked: false,
+      }),
+      onConflict: database.onConflict,
+    }));
+    const importedNames = new Set<string>();
+    for (const service of parsed) {
+      if (importedNames.has(service.definition.name)) {
+        throw new ConfigValidationError(
+          `Import contains duplicate service name: ${service.definition.name}`,
+        );
+      }
+      importedNames.add(service.definition.name);
+    }
+    const importedDatabaseNames = new Set<string>();
+    for (const database of parsedDatabases) {
+      if (importedDatabaseNames.has(database.definition.name)) {
+        throw new ConfigValidationError(
+          `Import contains duplicate database name: ${database.definition.name}`,
+        );
+      }
+      importedDatabaseNames.add(database.definition.name);
+    }
+
+    return this.mutateConfig((config) => {
+      const next = [...config.services];
+      for (const service of parsed) {
+        const index = next.findIndex((item) => item.name === service.definition.name);
+        if (index >= 0 && service.onConflict === "error") {
+          throw new ConfigValidationError(
+            `Service "${service.definition.name}" is already registered.`,
+          );
+        }
+        if (index >= 0) next[index] = service.definition;
+        else next.push(service.definition);
+      }
+      const nextDatabases = [...config.databases];
+      for (const database of parsedDatabases) {
+        const index = nextDatabases.findIndex(
+          (item) => item.name === database.definition.name,
+        );
+        if (index >= 0 && database.onConflict === "error") {
+          throw new ConfigValidationError(
+            `Database connection "${database.definition.name}" is already registered.`,
+          );
+        }
+        if (index >= 0) nextDatabases[index] = database.definition;
+        else nextDatabases.push(database.definition);
+      }
+      config.services = next;
+      config.databases = nextDatabases;
     });
   }
 

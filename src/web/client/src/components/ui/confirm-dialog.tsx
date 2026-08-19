@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
  * overlay/card treatment as ComposerDialog, an icon, a message, and a
  * Cancel/Confirm pair. `tone` colors the confirm button (danger → destructive,
  * primary → success/merge). Escape and backdrop click both cancel.
+ *
+ * The card is the only frame here. The icon used to sit in a bordered box and
+ * the buttons on a tinted band with a full-bleed rule, which drew three nested
+ * frames around two sentences and a pair of buttons — for the smallest window
+ * the app opens. An inset hairline separates the actions instead: enough to
+ * part them from the message, not enough to box them.
  */
 export function ConfirmDialog({
   title,
@@ -56,16 +62,15 @@ export function ConfirmDialog({
       >
         <div className="flex items-start gap-3 px-4 py-4">
           {icon ? (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground [&_svg]:size-4">
-              {icon}
-            </div>
+            <span className="mt-0.5 shrink-0 text-muted-foreground [&_svg]:size-4">{icon}</span>
           ) : null}
           <div className="min-w-0 flex-1 space-y-1">
             <h2 className="text-sm font-semibold">{title}</h2>
             <div className="text-[13px] text-muted-foreground">{message}</div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border bg-muted/30 px-4 py-3">
+        <div className="mx-4 h-px bg-border" />
+        <div className="flex justify-end gap-2 px-4 py-3">
           <Button disabled={loading} onClick={onCancel} size="sm" type="button" variant="outline">
             {cancelLabel}
           </Button>

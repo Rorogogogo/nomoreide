@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { Braces, Eye, EyeOff, FolderOpen, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EnvRuntimeBanner } from "./env-runtime-banner";
@@ -73,17 +74,18 @@ export function EnvTab({ serviceName }: { serviceName: string }) {
           {t("services.env.file")}
         </span>
         {files.length > 0 ? (
-          <select
-            className="min-w-0 rounded border border-border/60 bg-background px-1.5 py-0.5 font-mono text-[11px]"
-            onChange={(event) => setSelectedPath(event.target.value)}
-            value={selectedPath ?? ""}
-          >
-            {files.map((file) => (
-              <option key={file.path} value={file.path}>
-                {file.relativePath} [{file.format}]
-              </option>
-            ))}
-          </select>
+          <SelectMenu
+            ariaLabel={t("services.env.file")}
+            className="max-w-[28rem]"
+            mono
+            onChange={setSelectedPath}
+            options={files.map((file) => ({
+              value: file.path,
+              label: file.relativePath,
+              hint: file.format,
+            }))}
+            value={selectedPath ?? null}
+          />
         ) : (
           <span className="text-[12px] text-muted-foreground">
             {t("services.env.noneDetected")}

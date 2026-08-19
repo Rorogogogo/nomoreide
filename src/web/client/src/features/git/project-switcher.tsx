@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Globe2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,14 @@ export function ProjectSwitcherDialog({
 }) {
   const t = useT();
   const { error: showErrorToast, success: showSuccessToast } = useToasts();
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
 
   async function selectProject(name: string) {
     try {
@@ -55,19 +64,21 @@ export function ProjectSwitcherDialog({
   }
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[1000] grid place-items-center bg-black/35 px-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
+    <div className="fixed inset-0 z-[1000] grid place-items-center px-4">
+      <button
+        aria-label={t("git.repo.closeSwitcher")}
+        className="absolute inset-0 cursor-default bg-black/35"
+        onClick={onClose}
+        tabIndex={-1}
+        type="button"
+      />
       {/* Height is capped and the two lanes scroll on their own, so the add
           section stays reachable no matter how long either list gets. */}
-      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-          <Globe2 className="size-4 text-muted-foreground" />
+      <div aria-labelledby="projects-dialog-title" aria-modal="true" className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl" role="dialog">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+          <Globe2 aria-hidden="true" className="size-4 text-muted-foreground" />
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight">
+            <div className="text-[13px] font-semibold leading-tight" id="projects-dialog-title">
               {t("git.repo.projectsShort")}
             </div>
             {/* States the containment outright: a project is the folder, services
@@ -84,10 +95,10 @@ export function ProjectSwitcherDialog({
             aria-label={t("git.repo.closeSwitcher")}
             className="ml-auto size-7"
             onClick={onClose}
-            size="icon"
+            size="icon-sm"
             variant="ghost"
           >
-            <X className="size-4" />
+            <X aria-hidden="true" className="size-4" />
           </Button>
         </div>
 

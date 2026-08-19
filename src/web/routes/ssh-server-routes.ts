@@ -3,6 +3,8 @@ import {
   discoverSshHosts,
   mergeSshServers,
   probeSshServer,
+  readRemoteDirectory,
+  readRemoteFile,
   readRemoteHostMetrics,
 } from "../../core/ssh-servers.js";
 import {
@@ -94,6 +96,50 @@ export const sshServerRoutes: Route[] = [
         sendJson(response, { ok: true, servers: config.sshServers });
       } catch (error) {
         sendJson(response, { ok: false, error: errorMessage(error) }, 400);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/servers\/([^/]+)\/files$/,
+    ["host"],
+    async ({ request, response, params, url }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      try {
+        const path = url.searchParams.get("path") || ".";
+        const directory = await readRemoteDirectory(
+          decodeURIComponent(params.host),
+          path,
+          url.searchParams.get("hidden") === "1",
+        );
+        sendJson(response, { ok: true, directory });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 502);
+      }
+    },
+  ),
+
+  patternRoute(
+    /^\/api\/servers\/([^/]+)\/file$/,
+    ["host"],
+    async ({ request, response, params, url }) => {
+      if (request.method !== "GET") {
+        sendJson(response, { ok: false, error: "Method not allowed" }, 405);
+        return;
+      }
+      const path = url.searchParams.get("path");
+      if (!path) {
+        sendJson(response, { ok: false, error: "path is required" }, 400);
+        return;
+      }
+      try {
+        const file = await readRemoteFile(decodeURIComponent(params.host), path);
+        sendJson(response, { ok: true, file });
+      } catch (error) {
+        sendJson(response, { ok: false, error: errorMessage(error) }, 502);
       }
     },
   ),

@@ -19,6 +19,11 @@ function validateSshInput(input: SshCommandInput): void {
   if (input.command.includes("\0")) {
     throw new Error("SSH command contains invalid null byte.");
   }
+  for (const key of Object.keys(input.env ?? {})) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`Invalid environment variable name: ${key}`);
+    }
+  }
 }
 
 function formatEnvPrefix(env?: Record<string, string>): string {

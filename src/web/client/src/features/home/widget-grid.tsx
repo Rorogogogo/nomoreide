@@ -1,5 +1,16 @@
 import { ArrowUpRight, ExternalLink } from "lucide-react";
-import type { CSSProperties, ReactNode, RefObject } from "react";
+import {
+  createContext,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { Loading } from "@/components/ui/loading";
 import { openExternal } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { HOME_ROW_PX } from "./home-layout";
@@ -20,6 +31,23 @@ import { WidgetScroll } from "./widget-scroll";
 
 /** What a number or a row *means*, in the fixed vocabulary of `DESIGN.md`. */
 export type WidgetTone = "ok" | "warn" | "bad" | "idle";
+
+interface WidgetDisclosureValue {
+  expanded: boolean;
+  onToggle: (animate: boolean) => void;
+}
+
+const WidgetDisclosureContext = createContext<WidgetDisclosureValue | null>(null);
+
+interface WidgetStatsDockValue {
+  docked: boolean;
+  target: HTMLSpanElement | null;
+}
+
+const WidgetStatsDockContext = createContext<WidgetStatsDockValue | null>(null);
+
+/** Room for a title, three counters, and Home's panel controls without overlap. */
+const HEADER_STATS_MIN_WIDTH = 400;
 
 const TEXT_TONE: Record<WidgetTone, string> = {
   ok: "text-emerald-500",
@@ -91,7 +119,12 @@ export function WidgetGrid({
         truth is and spares every panel a ref it would otherwise have to thread.
         It is also what the masonry measures itself inside.
       */}
-      <div className="relative -mr-px" data-widget-grid="" ref={gridRef} style={{ height }}>
+      <div
+        className="relative -mr-px"
+        data-widget-grid=""
+        ref={gridRef}
+        style={{ height }}
+      >
         {children}
       </div>
     </div>
@@ -297,9 +330,10 @@ export function WidgetPanelHeader({
  * hold controls of its own, because there is no enclosing button for them to be
  * illegally nested inside. What has *not* changed is the reason behind the old
  * rule: a widget that grows a whole second interface has started becoming a
- * drifting copy of the page it summarises. Controls that pick *what the summary
- * shows* — Logs' tab per service — are the intended kind; controls that act on
- * the world belong on the page the arrow opens.
+ * drifting copy of the page it summarises. Small, contextual controls are fine
+ * when they complete the row's obvious task — for example starting or stopping
+ * a named service — while configuration and multi-step workflows stay on the
+ * page the arrow opens.
  *
  * **There is one panel, and it is always the editable one.** Home used to have
  * a mode: a Customize button swapped every cell for a second component that
@@ -313,13 +347,17 @@ export function WidgetPanel({
   controls,
   corner,
   dragging,
+  expanded = false,
   height,
   icon,
   id,
+  lessLabel,
+  onDisclosureToggle,
   onOpen,
   openLabel,
   place,
   title,
+  transitioning = false,
 }: {
   children: ReactNode;
   /** Home's per-panel controls, beside the arrow. */
@@ -327,14 +365,49 @@ export function WidgetPanel({
   /** Home's resize grip, pinned to the corner of the slot the rules draw. */
   corner?: ReactNode;
   dragging?: boolean;
+  expanded?: boolean;
   height: number | null;
   icon: ReactNode;
   id: string;
+  lessLabel: string;
+  onDisclosureToggle: (animate: boolean) => void;
   onOpen: () => void;
   openLabel: string;
   place: PanelPlacement | undefined;
   title: string;
+  transitioning?: boolean;
 }) {
+  const style = panelStyle(place);
+  const panel = useRef<HTMLDivElement | null>(null);
+  const statsTarget = useRef<HTMLSpanElement | null>(null);
+  const [statsDocked, setStatsDocked] = useState(false);
+  const focusAfterToggle = useRef<"less" | "more" | null>(null);
+
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (!element) return;
+    const update = () => setStatsDocked(element.clientWidth >= HEADER_STATS_MIN_WIDTH);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const target = focusAfterToggle.current;
+    if (!target) return;
+    focusAfterToggle.current = null;
+    panel.current
+      ?.querySelector<HTMLButtonElement>(`[data-widget-disclosure-${target}]`)
+      ?.focus();
+  }, [expanded]);
+
+  const toggleDisclosure = (animate: boolean) => {
+    if (!animate) focusAfterToggle.current = expanded ? "more" : "less";
+    onDisclosureToggle(animate);
+  };
+
   return (
     <div
       className={cn(
@@ -350,28 +423,55 @@ export function WidgetPanel({
         itself rather than hit-testing its neighbours.
       */
       data-widget-cell={id}
-      style={panelStyle(place)}
+      ref={panel}
+      style={transitioning ? { ...style, viewTransitionName: "home-widget-disclosure" } : style}
     >
       <WidgetBody height={height} id={id}>
-        <WidgetPanelHeader
-          icon={icon}
-          title={title}
-          trailing={
-            <span className="ml-auto flex items-center gap-0.5">
-              {controls}
+        <WidgetStatsDockContext.Provider
+          value={{ docked: statsDocked, target: statsTarget.current }}
+        >
+          <WidgetPanelHeader
+            icon={icon}
+            title={title}
+            trailing={
+              <>
+                <span
+                  aria-hidden={!statsDocked}
+                  className="ml-auto flex shrink-0 items-center"
+                  ref={statsTarget}
+                />
+                <span className="flex items-center gap-0.5">
+                  {controls}
+                  <button
+                    aria-label={openLabel}
+                    className="rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/widget:text-muted-foreground"
+                    onClick={onOpen}
+                    title={openLabel}
+                    type="button"
+                  >
+                    <ArrowUpRight aria-hidden className="size-3" />
+                  </button>
+                </span>
+              </>
+            }
+          />
+          <WidgetDisclosureContext.Provider
+            value={{ expanded, onToggle: toggleDisclosure }}
+          >
+            <WidgetScroll>{children}</WidgetScroll>
+            {expanded ? (
               <button
-                aria-label={openLabel}
-                className="rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover/widget:text-muted-foreground"
-                onClick={onOpen}
-                title={openLabel}
+                aria-expanded={true}
+                className="self-start rounded-sm text-[10px] text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                data-widget-disclosure-less=""
+                onClick={(event) => toggleDisclosure(event.detail > 0)}
                 type="button"
               >
-                <ArrowUpRight aria-hidden className="size-3" />
+                {lessLabel}
               </button>
-            </span>
-          }
-        />
-        <WidgetScroll>{children}</WidgetScroll>
+            ) : null}
+          </WidgetDisclosureContext.Provider>
+        </WidgetStatsDockContext.Provider>
       </WidgetBody>
       {/*
         The grip is the cell's, not the body's: it marks the corner of the
@@ -433,9 +533,16 @@ export function WidgetTab({
  * read against its neighbours, so three 13px figures beat one large one.
  */
 export function WidgetStats({ children }: { children: ReactNode }) {
-  return (
+  const dock = useContext(WidgetStatsDockContext);
+  const stats = (
     <span className="flex flex-wrap items-center divide-x divide-border">{children}</span>
   );
+  return dock?.docked && dock.target ? createPortal(stats, dock.target) : stats;
+}
+
+/** The app's existing wave loader, sized for a compact dashboard panel. */
+export function WidgetLoading({ label }: { label: string }) {
+  return <Loading className="min-h-12 py-1" label={label} />;
 }
 
 /** What a counter shows before it has an answer — never a zero. */
@@ -609,7 +716,7 @@ export function WidgetOpenLink({ label, url }: { label: string; url: string }) {
   return (
     <button
       aria-label={label}
-      className="shrink-0 rounded-sm text-muted-foreground/40 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover/widget:text-muted-foreground/80"
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover/widget:text-muted-foreground/80"
       /* `openExternal`, not an `<a target="_blank">`: in the Tauri build a
          plain link is swallowed by the webview, and this page ships in both. */
       onClick={() => void openExternal(url)}
@@ -626,9 +733,23 @@ export function WidgetId({ children }: { children: ReactNode }) {
   return <span className="font-mono">{children}</span>;
 }
 
-/** The "and 14 others" line that keeps a row list from becoming a log. */
+/** The contextual disclosure shown only when this widget has hidden rows. */
 export function WidgetMore({ children }: { children: ReactNode }) {
-  return <span className="text-[10px] text-muted-foreground/70">{children}</span>;
+  const disclosure = useContext(WidgetDisclosureContext);
+  if (!disclosure) {
+    return <span className="text-[10px] text-muted-foreground/70">{children}</span>;
+  }
+  return (
+    <button
+      aria-expanded={disclosure.expanded}
+      className="self-start rounded-sm text-[10px] text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      data-widget-disclosure-more=""
+      onClick={(event) => disclosure.onToggle(event.detail > 0)}
+      type="button"
+    >
+      {children}
+    </button>
+  );
 }
 
 /** An empty state, or the one sentence a widget has when it has no rows. */

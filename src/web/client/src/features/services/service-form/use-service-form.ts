@@ -3,7 +3,8 @@ import { useToasts } from "@/components/ui/toast";
 import { useOperations } from "@/components/operations/operation-context";
 import { useT } from "@/lib/i18n";
 import {
-  postForm,
+  getServiceDefinition,
+  registerService,
   testServiceCommand as testServiceCommandRequest,
   type ServiceDefinition,
   type ServiceTestResult,
@@ -37,6 +38,13 @@ export function useServiceForm({
   const [kind, setKind] = useState<ServiceKindOption>(initialService?.kind ?? "local");
   const [name, setName] = useState(initialService?.name ?? "");
   const [command, setCommand] = useState(initialService?.command ?? "");
+  const [directExec, setDirectExec] = useState(initialService?.args !== undefined);
+  const [args, setArgs] = useState<string[]>(initialService?.args ?? []);
+  const [env, setEnv] = useState<Array<{ key: string; value: string }>>(
+    Object.entries(initialService?.env ?? {}).map(([key, value]) => ({ key, value })),
+  );
+  const [definitionLoading, setDefinitionLoading] = useState(Boolean(initialService));
+  const [definitionLoadFailed, setDefinitionLoadFailed] = useState(false);
   const [formCwd, setFormCwd] = useState(initialService?.cwd ?? cwd);
   const [port, setPort] = useState(initialService?.port ? String(initialService.port) : "");
   const [description, setDescription] = useState(initialService?.description ?? "");
@@ -50,12 +58,49 @@ export function useServiceForm({
   const [testing, setTesting] = useState(false);
 
   useEffect(() => {
+    if (!initialService) return;
+    let cancelled = false;
+    setDefinitionLoading(true);
+    setDefinitionLoadFailed(false);
+    void getServiceDefinition(initialService.name)
+      .then((service) => {
+        if (cancelled) return;
+        setDirectExec(service.args !== undefined);
+        setArgs(service.args ?? []);
+        setEnv(
+          Object.entries(service.env ?? {}).map(([key, value]) => ({ key, value })),
+        );
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setDefinitionLoadFailed(true);
+        showErrorToast(
+          actionErrorMessage(
+            t,
+            t("services.actions.loadService"),
+            initialService.name,
+            caught,
+          ),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setDefinitionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialService?.name, showErrorToast, t]);
+
+  useEffect(() => {
     setTestResult(null);
-  }, [command, formCwd, port, kind]);
+  }, [command, args, directExec, env, formCwd, port, kind]);
 
   function resetForm() {
     setName("");
     setCommand("");
+    setDirectExec(false);
+    setArgs([]);
+    setEnv([]);
     setFormCwd(cwd);
     setPort("");
     setDescription("");
@@ -69,6 +114,12 @@ export function useServiceForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (definitionLoading || definitionLoadFailed) return;
+    const envKeys = env.map((entry) => entry.key);
+    if (new Set(envKeys).size !== envKeys.length) {
+      showErrorToast(t("services.form.duplicateVariable"));
+      return;
+    }
     try {
       await runOperation(
         {
@@ -78,25 +129,29 @@ export function useServiceForm({
           }),
         },
         async () => {
-          const payload: Record<string, string> = {
+          const definition: ServiceDefinition = {
             name,
             kind,
             cwd: formCwd,
-            port,
             description,
+            ...(port ? { port: Number(port) } : {}),
+            dependsOn: dependsOn.filter((dep) => dep !== name),
+            ...(projectPath ? { projectPath } : {}),
           };
-          if (kind === "local" || kind === "ssh") payload.command = command;
-          if (kind === "docker-compose") {
-            payload.composeFile = composeFile;
-            payload.composeService = composeService;
+          if (kind === "local" || kind === "ssh") definition.command = command;
+          if (kind === "local" && directExec) definition.args = args;
+          if (kind === "local" || kind === "ssh") {
+            definition.env = Object.fromEntries(
+              env.map((entry) => [entry.key, entry.value]),
+            );
           }
-          if (kind === "ssh") payload.host = host;
-          // Joined here; the server splits, trims, and drops self/blank references.
-          payload.dependsOn = dependsOn.filter((dep) => dep !== name).join(",");
-          // Blank is meaningful: it clears an assignment back to cwd inference.
-          payload.projectPath = projectPath;
+          if (kind === "docker-compose") {
+            definition.composeFile = composeFile;
+            definition.composeService = composeService;
+          }
+          if (kind === "ssh") definition.host = host;
 
-          await postForm("/api/services", payload);
+          await registerService(definition);
           if (!editing) resetForm();
           showSuccessToast(
             editing
@@ -136,6 +191,8 @@ export function useServiceForm({
       setTestResult(
         await testServiceCommandRequest({
           command,
+          ...(directExec ? { args: JSON.stringify(args) } : {}),
+          env: JSON.stringify(Object.fromEntries(env.map((entry) => [entry.key, entry.value]))),
           cwd: formCwd,
           port,
         }),
@@ -162,6 +219,12 @@ export function useServiceForm({
     setName,
     command,
     setCommand,
+    directExec,
+    setDirectExec,
+    args,
+    setArgs,
+    env,
+    setEnv,
     formCwd,
     setFormCwd,
     port,
@@ -181,6 +244,8 @@ export function useServiceForm({
     testResult,
     testing,
     saving,
+    definitionLoading,
+    definitionLoadFailed,
     submit,
     testCommand,
   };

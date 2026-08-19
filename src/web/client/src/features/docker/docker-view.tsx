@@ -1,14 +1,17 @@
-import { useCallback, useMemo, useState } from "react";
-import { Container, Layers3 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, Container, ExternalLink, Layers3, Play, RefreshCw } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import { useRegisterRefresh } from "@/components/refresh-registry";
 import { useT, type TranslationKey } from "@/lib/i18n";
+import { openExternal } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import type { DockerContainerSummary } from "@/lib/api";
+import { startDocker, type DockerContainerSummary } from "@/lib/api";
 import { EmptyState } from "../services/empty-state";
 import { DockerContainerRow } from "./docker-container-row";
 import { DockerDetailPanel } from "./docker-detail-panel";
+import { DockerFileExplorer } from "./docker-file-explorer";
 import {
   DockerImagesTable,
   DockerNetworksTable,
@@ -30,6 +33,7 @@ export function DockerView() {
   const { status, containers, loading, error, refresh } = useDocker();
   const [tab, setTab] = useState<DockerTab>("containers");
   const [selected, setSelected] = useState<DockerContainerSummary | null>(null);
+  const [browsing, setBrowsing] = useState<DockerContainerSummary | null>(null);
   const [resourceRefreshVersion, setResourceRefreshVersion] = useState(0);
 
   const refreshAll = useCallback(async () => {
@@ -45,6 +49,10 @@ export function DockerView() {
   ).length;
   const groups = useMemo(() => groupDockerContainers(containers), [containers]);
   const stacks = groups.filter((group) => group.project !== null).length;
+
+  if (browsing) {
+    return <DockerFileExplorer container={browsing} onBack={() => setBrowsing(null)} />;
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -92,7 +100,13 @@ export function DockerView() {
       {loading && status === null ? (
         <Loading className="flex-1" label={t("docker.loading")} />
       ) : status && !available ? (
-        <DockerUnavailable error={status.error} />
+        <DockerUnavailable
+          canStart={status.canStart}
+          error={status.error}
+          installUrl={status.installUrl}
+          onRetry={() => refresh()}
+          onStart={startDocker}
+        />
       ) : tab === "containers" ? (
         <div
           aria-labelledby="docker-tab-containers"
@@ -106,6 +120,7 @@ export function DockerView() {
           <div className="min-h-0 overflow-auto p-4">
             <ContainerGroups
               groups={groups}
+              onBrowse={setBrowsing}
               onRefresh={refreshAll}
               onSelect={(container) => {
                 const closing = selected?.id === container.id;
@@ -226,34 +241,155 @@ function InlineStat({
   );
 }
 
-function DockerUnavailable({ error }: { error?: string }) {
+export function DockerUnavailable({
+  canStart,
+  error,
+  installUrl,
+  onRetry,
+  onStart,
+}: {
+  canStart: boolean;
+  error?: string;
+  installUrl?: string;
+  onRetry: () => Promise<void>;
+  onStart: () => Promise<void>;
+}) {
   const t = useT();
+  const [retrying, setRetrying] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
+
+  async function retry() {
+    if (retrying || starting) return;
+    setActionError(null);
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  async function start() {
+    if (starting || retrying) return;
+    setStarting(true);
+    setActionError(null);
+    try {
+      await onStart();
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await wait(1_500);
+        if (!mountedRef.current) return;
+        await onRetry();
+        if (!mountedRef.current) return;
+      }
+      setActionError(t("docker.unavailable.startTimeout"));
+    } catch (caught) {
+      if (mountedRef.current) {
+        setActionError(
+          t("docker.unavailable.startFailed", {
+            error: caught instanceof Error ? caught.message : String(caught),
+          }),
+        );
+      }
+    } finally {
+      if (mountedRef.current) setStarting(false);
+    }
+  }
+
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      <Alert className="m-3" variant="muted">
-        <Container aria-hidden="true" />
-        <div>
-          <p className="font-medium text-foreground">{t("docker.unavailable.title")}</p>
-          <p className="mt-1 text-muted-foreground">{t("docker.unavailable.body")}</p>
-          {error ? (
-            <pre className="mt-2 overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-2 font-mono text-[11px] text-muted-foreground">
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
+      <section aria-labelledby="docker-unavailable-title" className="w-full max-w-lg">
+        <div className="flex items-start gap-3">
+          <Container aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold" id="docker-unavailable-title">
+              {t("docker.unavailable.title")}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {t("docker.unavailable.body")}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {canStart ? (
+                <Button
+                  className="h-7 px-2 text-[11px] [&_svg]:size-3.5"
+                  loading={starting}
+                  loadingLabel={t("docker.unavailable.starting")}
+                  onClick={() => void start()}
+                  size="sm"
+                  type="button"
+                >
+                  <Play aria-hidden="true" />
+                  {t("docker.unavailable.start")}
+                </Button>
+              ) : installUrl ? (
+                <Button
+                  className="h-7 px-2 text-[11px] [&_svg]:size-3.5"
+                  onClick={() => void openExternal(installUrl)}
+                  size="sm"
+                  type="button"
+                >
+                  <ExternalLink aria-hidden="true" />
+                  {t("docker.unavailable.install")}
+                </Button>
+              ) : null}
+              <Button
+                className="h-7 px-2 text-[11px] [&_svg]:size-3.5"
+                disabled={starting}
+                loading={retrying}
+                onClick={() => void retry()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RefreshCw aria-hidden="true" />
+                {t("docker.unavailable.retry")}
+              </Button>
+            </div>
+            {actionError ? (
+              <p aria-live="polite" className="mt-2 text-[10px] leading-4 text-destructive">
+                {actionError}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {error ? (
+          <details className="group mt-5 border-y border-border/70">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 px-1 py-2 text-[10px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <ChevronRight
+                aria-hidden="true"
+                className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              />
+              {t("docker.unavailable.details")}
+            </summary>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap border-t border-border/70 bg-muted/15 px-3 py-2 font-mono text-[10px] leading-4 text-muted-foreground">
               {error}
             </pre>
-          ) : null}
-        </div>
-      </Alert>
+          </details>
+        ) : null}
+      </section>
     </div>
   );
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 function ContainerGroups({
   groups,
+  onBrowse,
   onRefresh,
   onSelect,
   selectedId,
   statsFor,
 }: {
   groups: ReturnType<typeof groupDockerContainers>;
+  onBrowse: (container: DockerContainerSummary) => void;
   onRefresh: () => Promise<void>;
   onSelect: (container: DockerContainerSummary) => void;
   selectedId: string | null;
@@ -298,6 +434,7 @@ function ContainerGroups({
               <DockerContainerRow
                 key={container.id}
                 container={container}
+                onBrowse={onBrowse}
                 onRefresh={onRefresh}
                 onSelect={onSelect}
                 selected={selectedId === container.id}

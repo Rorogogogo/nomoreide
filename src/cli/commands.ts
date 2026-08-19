@@ -121,6 +121,8 @@ export async function runCli(
       const kind = (flags.kind ?? "local") as "local" | "docker-compose" | "ssh";
       const port = flags.port ? Number(flags.port) : undefined;
       const description = flags.description;
+      const env = flags.env ? parseStringMapFlag(flags.env, "--env") : undefined;
+      const directArgs = flags.args ? parseStringArrayFlag(flags.args, "--args") : undefined;
 
       if (kind === "docker-compose") {
         if (!flags.composeService) {
@@ -145,6 +147,7 @@ export async function runCli(
           host: flags.host,
           cwd: flags.cwd,
           command: flags.command,
+          env,
           port,
           description,
         });
@@ -153,8 +156,10 @@ export async function runCli(
         await configStore.registerService({
           name,
           command: flags.command,
+          args: directArgs,
           cwd: flags.cwd ?? process.cwd(),
           port,
+          env,
           description,
         });
       }
@@ -235,6 +240,37 @@ export async function runCli(
       ? 1
       : 2;
   }
+}
+
+function parseStringArrayFlag(value: string, name: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new UsageError(`${name} must be a JSON array of strings`);
+  }
+  if (!Array.isArray(parsed) || parsed.some((entry) => typeof entry !== "string")) {
+    throw new UsageError(`${name} must be a JSON array of strings`);
+  }
+  return parsed as string[];
+}
+
+function parseStringMapFlag(value: string, name: string): Record<string, string> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new UsageError(`${name} must be a JSON object with string values`);
+  }
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    Object.values(parsed).some((entry) => typeof entry !== "string")
+  ) {
+    throw new UsageError(`${name} must be a JSON object with string values`);
+  }
+  return parsed as Record<string, string>;
 }
 
 function setupAgent(value: string): DebugSetupAgent {

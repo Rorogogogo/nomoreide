@@ -9,7 +9,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -1159,6 +1159,41 @@ describe("web server", () => {
     });
   });
 
+  test("keeps service env out of dashboard polling but returns it for explicit editing", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    const config = new ConfigStore(configPath);
+    await config.registerService({
+      name: "backend",
+      command: process.execPath,
+      args: ["server.js", "--port", "3001"],
+      cwd: tempDir,
+      env: { API_TOKEN: "service-secret", NODE_ENV: "development" },
+    });
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      cwd: tempDir,
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+    }).start();
+
+    const dashboard = await (await fetch(`${server.url}/api/dashboard`)).json();
+    const editResponse = await fetch(`${server.url}/api/services/backend/definition`);
+    const edit = await editResponse.json();
+
+    expect(dashboard.config.services[0]).toMatchObject({
+      command: process.execPath,
+      args: ["server.js", "--port", "3001"],
+    });
+    expect(dashboard.config.services[0]).not.toHaveProperty("env");
+    expect(JSON.stringify(dashboard)).not.toContain("service-secret");
+    expect(edit.service.env).toEqual({
+      API_TOKEN: "service-secret",
+      NODE_ENV: "development",
+    });
+    expect(editResponse.headers.get("cache-control")).toBe("no-store");
+  });
+
   test("reports configured ports occupied by external processes", async () => {
     const occupiedPort = await listenOnFreePort();
     const configPath = join(tempDir, "nomoreide.config.json");
@@ -1301,7 +1336,9 @@ describe("web server", () => {
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         name: "frontend",
-        command: "npm run dev",
+        command: process.execPath,
+        args: '["server.js","--port","5173"]',
+        env: '{"API_TOKEN":"service-secret","NODE_ENV":"development"}',
         cwd: tempDir,
         port: "5173",
         description: "Vite app",
@@ -1313,13 +1350,90 @@ describe("web server", () => {
 
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ ok: true });
+    expect(JSON.stringify(body)).not.toContain("service-secret");
+    expect(body.config.services[0]).not.toHaveProperty("env");
     expect(config.services[0]).toMatchObject({
       name: "frontend",
-      command: "npm run dev",
+      command: process.execPath,
+      args: ["server.js", "--port", "5173"],
+      env: { API_TOKEN: "service-secret", NODE_ENV: "development" },
       cwd: tempDir,
       port: 5173,
       description: "Vite app",
     });
+  });
+
+  test("previews and atomically applies selected JetBrains services without starting them", async () => {
+    const configPath = join(tempDir, "nomoreide.config.json");
+    server = await createWebServer({
+      configPath,
+      logDir: join(tempDir, "logs"),
+      registryPath: join(tempDir, "runtime.json"),
+      port: 0,
+    }).start();
+
+    const scanResponse = await fetch(`${server.url}/api/import/jetbrains/scan`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectRoot: resolve("test/fixtures/jetbrains-project"),
+        includePersonal: false,
+      }),
+    });
+    const scan = await scanResponse.json();
+    expect(scanResponse.status).toBe(200);
+    expect(JSON.stringify(scan)).not.toContain("fixture-secret");
+    expect(JSON.stringify(scan)).not.toContain("embedded-secret");
+    expect(JSON.stringify(scan)).not.toContain("query-secret");
+    expect(scan.preview.candidates.map((candidate: { name: string }) => candidate.name)).toEqual(
+      expect.arrayContaining(["npm-dev", "api-node"]),
+    );
+
+    const postgres = scan.preview.databases.find(
+      (database: { name: string }) => database.name === "project-postgres",
+    );
+    const sqlite = scan.preview.databases.find(
+      (database: { name: string }) => database.name === "local-sqlite",
+    );
+    expect(postgres).toBeDefined();
+    expect(sqlite).toBeDefined();
+    const applyResponse = await fetch(`${server.url}/api/import/jetbrains/apply`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionId: scan.preview.sessionId,
+        selections: scan.preview.candidates.map((candidate: { id: string }) => ({
+          id: candidate.id,
+          conflict: "add",
+        })),
+        databases: [
+          {
+            id: postgres.id,
+            conflict: "add",
+            username: "runtime_user",
+            password: "prompted-secret",
+            test: false,
+          },
+          { id: sqlite.id, conflict: "add", test: false },
+        ],
+      }),
+    });
+    const applied = await applyResponse.json();
+    const config = await new ConfigStore(configPath).load();
+
+    expect(applyResponse.status).toBe(200);
+    expect(applied.imported).toEqual(expect.arrayContaining(["npm-dev", "api-node"]));
+    expect(applied.importedDatabases).toEqual(["project-postgres", "local-sqlite"]);
+    expect(JSON.stringify(applied)).not.toContain("fixture-secret");
+    expect(JSON.stringify(applied)).not.toContain("prompted-secret");
+    expect(config.services.find((service) => service.name === "npm-dev")?.env).toEqual({
+      API_TOKEN: "fixture-secret",
+      NODE_ENV: "development",
+    });
+    expect(config.databases.every((database) => database.writeUnlocked === false)).toBe(true);
+    expect(config.databases.find((database) => database.name === "project-postgres")?.url)
+      .toContain("runtime_user:prompted-secret@");
+    expect((await (await fetch(`${server.url}/api/dashboard`)).json()).runtime.services).toEqual({});
   });
 
   test("registers a docker-compose service from a web form post", async () => {

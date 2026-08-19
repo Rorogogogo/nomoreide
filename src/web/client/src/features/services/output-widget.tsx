@@ -60,7 +60,7 @@ export const outputWidget: WidgetDefinition = {
   render: ({ data, height }) => <OutputSummary data={data} height={height} />,
 };
 
-function OutputSummary({ data, height }: WidgetRenderProps) {
+function OutputSummary({ data, height }: Pick<WidgetRenderProps, "data" | "height">) {
   const t = useT();
   const streams = groupByService(data.logs);
   const [picked, setPicked] = useState<string | null>(null);

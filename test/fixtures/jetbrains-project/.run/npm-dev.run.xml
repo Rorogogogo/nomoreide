@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="npm-dev" type="js.build_tools.npm" factoryName="npm">
+    <package-json value="$PROJECT_DIR$/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="dev" />
+    </scripts>
+    <envs>
+      <env name="NODE_ENV" value="development" />
+      <env name="API_TOKEN" value="fixture-secret" />
+    </envs>
+  </configuration>
+</component>

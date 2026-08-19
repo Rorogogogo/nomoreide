@@ -1,6 +1,7 @@
 import { MessagesSquare } from "lucide-react";
 import {
   rowCap,
+  WidgetLoading,
   WidgetMore,
   WidgetNote,
   WidgetRow,
@@ -66,16 +67,16 @@ function ConversationSummary({ height }: Pick<WidgetRenderProps, "height">) {
   const { conversations, loaded, today, total } = useHomeConversationSummary();
   const cap = rowCap(height, ROW_CAP);
 
+  if (!loaded) return <WidgetLoading label={t("common.loading")} />;
+
   return (
     <>
       <WidgetStats>
-        <WidgetStat label={t("home.conversations.today")} pending={!loaded} value={today} />
-        <WidgetStat label={t("home.conversations.total")} pending={!loaded} value={total} />
+        <WidgetStat label={t("home.conversations.today")} value={today} />
+        <WidgetStat label={t("home.conversations.total")} value={total} />
       </WidgetStats>
       {conversations.length === 0 ? (
-        loaded ? (
-          <WidgetNote>{t("home.conversations.none")}</WidgetNote>
-        ) : null
+        <WidgetNote>{t("home.conversations.none")}</WidgetNote>
       ) : (
         <WidgetRows>
           {conversations.slice(0, cap).map((conversation) => (
