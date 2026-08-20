@@ -1,6 +1,7 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { buildServiceAgentContext } from "../../core/agent-context.js";
+import { publicConfig } from "../../core/public-config.js";
 import { computeServiceHealth } from "../../core/service-health.js";
 import type { NoMoreIdeConfig } from "../../core/types.js";
 import { stringify, type ToolContext } from "./context.js";
@@ -41,6 +42,12 @@ export function buildServiceDiscovery(
   };
 }
 
+export function buildServiceRegistrationResult(
+  config: NoMoreIdeConfig,
+): ReturnType<typeof publicConfig> {
+  return publicConfig(config);
+}
+
 /**
  * Runtime tools (start/stop/logs/status/…) call the machine-global daemon
  * over HTTP so every session shares the same services; registration tools
@@ -79,7 +86,8 @@ export function registerServiceTools(
       composeService: z.string().min(1).optional(),
       host: z.string().min(1).optional(),
     }),
-    execute: async (args) => stringify(await configStore.registerService(args)),
+    execute: async (args) =>
+      stringify(buildServiceRegistrationResult(await configStore.registerService(args))),
   });
 
   server.addTool({
@@ -127,7 +135,8 @@ export function registerServiceTools(
       name: z.string().min(1),
       services: z.array(z.string().min(1)).min(1),
     }),
-    execute: async (args) => stringify(await configStore.registerBundle(args)),
+    execute: async (args) =>
+      stringify(buildServiceRegistrationResult(await configStore.registerBundle(args))),
   });
 
   server.addTool({
