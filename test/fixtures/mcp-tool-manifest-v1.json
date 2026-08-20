@@ -1,0 +1,180 @@
+{
+  "manifestVersion": 1,
+  "total": 90,
+  "domains": [
+    {
+      "owner": "services",
+      "count": 13,
+      "tools": [
+        "nomoreide_list_services",
+        "nomoreide_register_service",
+        "nomoreide_start_service",
+        "nomoreide_stop_service",
+        "nomoreide_restart_service",
+        "nomoreide_read_logs",
+        "nomoreide_register_bundle",
+        "nomoreide_start_bundle",
+        "nomoreide_stop_bundle",
+        "nomoreide_status",
+        "nomoreide_service_context",
+        "nomoreide_service_health",
+        "nomoreide_timeline"
+      ]
+    },
+    {
+      "owner": "onboarding",
+      "count": 1,
+      "tools": [
+        "nomoreide_onboard_repo"
+      ]
+    },
+    {
+      "owner": "git",
+      "count": 19,
+      "tools": [
+        "nomoreide_git_status",
+        "nomoreide_git_branches",
+        "nomoreide_git_switch_branch",
+        "nomoreide_git_create_branch",
+        "nomoreide_git_fetch",
+        "nomoreide_git_diff",
+        "nomoreide_git_staged_diff",
+        "nomoreide_git_log",
+        "nomoreide_git_stage",
+        "nomoreide_git_unstage",
+        "nomoreide_git_commit",
+        "nomoreide_git_push",
+        "nomoreide_git_clone",
+        "nomoreide_git_register_repository",
+        "nomoreide_git_select_repository",
+        "nomoreide_git_worktrees",
+        "nomoreide_git_create_worktree",
+        "nomoreide_git_select_worktree",
+        "nomoreide_git_prune_worktrees"
+      ]
+    },
+    {
+      "owner": "snapshots",
+      "count": 2,
+      "tools": [
+        "nomoreide_snapshots_list",
+        "nomoreide_snapshot_create"
+      ]
+    },
+    {
+      "owner": "github",
+      "count": 13,
+      "tools": [
+        "nomoreide_github_set_token",
+        "nomoreide_github_list_prs",
+        "nomoreide_github_get_pr",
+        "nomoreide_github_get_pr_diff",
+        "nomoreide_github_create_pr",
+        "nomoreide_github_merge_pr",
+        "nomoreide_github_list_issues",
+        "nomoreide_github_get_issue",
+        "nomoreide_github_list_issue_comments",
+        "nomoreide_github_add_issue_comment",
+        "nomoreide_github_create_issue",
+        "nomoreide_github_get_commit_ci",
+        "nomoreide_github_list_workflow_runs"
+      ]
+    },
+    {
+      "owner": "providers",
+      "count": 4,
+      "tools": [
+        "nomoreide_deploy_list_projects",
+        "nomoreide_deploy_list_deployments",
+        "nomoreide_deploy_get_deployment",
+        "nomoreide_deploy_logs"
+      ]
+    },
+    {
+      "owner": "errors",
+      "count": 2,
+      "tools": [
+        "nomoreide_list_errors",
+        "nomoreide_error_prompt"
+      ]
+    },
+    {
+      "owner": "databases",
+      "count": 9,
+      "tools": [
+        "nomoreide_list_databases",
+        "nomoreide_register_database",
+        "nomoreide_check_database",
+        "nomoreide_db_schemas",
+        "nomoreide_db_objects",
+        "nomoreide_db_object_details",
+        "nomoreide_db_tables",
+        "nomoreide_db_sample",
+        "nomoreide_db_query"
+      ]
+    },
+    {
+      "owner": "documentation-ui",
+      "count": 3,
+      "tools": [
+        "nomoreide_docs",
+        "nomoreide_open_ui",
+        "nomoreide_close_ui"
+      ]
+    },
+    {
+      "owner": "agent-status",
+      "count": 1,
+      "tools": [
+        "nomoreide_agents_status"
+      ]
+    },
+    {
+      "owner": "agent-environments",
+      "count": 7,
+      "tools": [
+        "nomoreide_agents_read_configs",
+        "nomoreide_agents_doctor",
+        "nomoreide_agents_add_mcp",
+        "nomoreide_agents_remove_mcp",
+        "nomoreide_agents_move_mcp_scope",
+        "nomoreide_agents_move_skill_scope",
+        "nomoreide_agents_snapshot_agent"
+      ]
+    },
+    {
+      "owner": "profiles",
+      "count": 10,
+      "tools": [
+        "nomoreide_profiles_list",
+        "nomoreide_profiles_get",
+        "nomoreide_profiles_create",
+        "nomoreide_profiles_update",
+        "nomoreide_profiles_delete",
+        "nomoreide_profiles_snapshot",
+        "nomoreide_profiles_apply",
+        "nomoreide_profiles_export",
+        "nomoreide_profiles_import",
+        "nomoreide_profiles_copy_items"
+      ]
+    },
+    {
+      "owner": "profile-registry",
+      "count": 3,
+      "tools": [
+        "nomoreide_profiles_publish",
+        "nomoreide_profiles_install_from_registry",
+        "nomoreide_profiles_register_github"
+      ]
+    },
+    {
+      "owner": "terminals",
+      "count": 3,
+      "tools": [
+        "nomoreide_list_terminal_sessions",
+        "nomoreide_open_terminal",
+        "nomoreide_reclaim_terminal"
+      ]
+    }
+  ]
+}

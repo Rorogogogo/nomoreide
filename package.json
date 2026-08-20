@@ -33,6 +33,8 @@
     "lint:fix": "biome lint --write src",
     "dev": "tsx src/index.ts",
     "dev:web": "vite --host 127.0.0.1",
+    "mcp:contract:update": "node --import tsx scripts/update-mcp-contract.ts",
+    "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
     "tauri": "tauri",
