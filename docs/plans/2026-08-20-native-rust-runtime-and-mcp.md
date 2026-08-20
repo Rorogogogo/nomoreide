@@ -6,6 +6,8 @@
 
 **Order:** This migration is the prerequisite for the remote-control relay. The relay must target the native Rust daemon, not add another dependency on the TypeScript daemon.
 
+**Companion document:** `2026-08-20-repo-layout-cleanup.md` covers the directory restructuring this migration depends on. It lands as PR 2 so the crates below arrive in their final home.
+
 ## Decisions
 
 1. Users install **one binary** named `nomoreide`.
@@ -40,18 +42,58 @@ The daemon continues to bind only to loopback. No migration phase may expose por
 
 ## Proposed Rust workspace
 
-Create a root Cargo workspace while keeping `src-tauri` as a member:
+Create a root Cargo workspace. `src-tauri` becomes a member and is renamed `crates/nomoreide-tauri` (see `2026-08-20-repo-layout-cleanup.md`):
 
 ```text
 Cargo.toml
 crates/
-  nomoreide-core/       domain types, config, safety policy, shared services
-  nomoreide-daemon/     machine-global runtime and loopback API
-  nomoreide-client/     daemon discovery, authentication, typed client
-  nomoreide-mcp/        stdio MCP protocol and 90 tool adapters
-  nomoreide-cli/        the `nomoreide` binary and subcommands
-src-tauri/              desktop shell using the shared client/core crates
+  nomoreide-core/       logic and domain types; no server, no transport
+  nomoreide-daemon/     wraps core in the loopback HTTP API; the only crate that holds state
+  nomoreide-client/     talks to the daemon: discovery, authentication, typed calls; stateless
+  nomoreide-mcp/        stdio MCP protocol and the 90 tool adapters
+  nomoreide-cli/        the `nomoreide` binary and its subcommands
+  nomoreide-tauri/      desktop shell: window, tray, native dialogs
 ```
+
+### Crate responsibilities
+
+| Crate | Owns | Replaces |
+| --- | --- | --- |
+| `nomoreide-core` | The actual work: spawn a process, read a repository, query a database, write config. Domain types and safety policy. | `src/core/*` and `src-tauri/src/core/*` |
+| `nomoreide-daemon` | The machine-global runtime and the loopback server on `127.0.0.1:4317`. The single owner of live state. | `src/web/server.ts`, `src/web/routes/*` |
+| `nomoreide-client` | Daemon discovery, lock/health negotiation, local credential, and typed method calls over loopback. Holds no state and spawns nothing. | `src/core/daemon-client.ts`, `src/core/daemon-lifecycle.ts` |
+| `nomoreide-mcp` | MCP protocol framing and the 90 tool adapters. | `src/mcp/*` |
+| `nomoreide-cli` | Argument parsing, subcommand dispatch, and the single shipped binary. | `src/index.ts`, `src/cli/*` |
+| `nomoreide-tauri` | Native desktop surface only. No runtime managers of its own. | `src-tauri/src/commands/*` after the logic moves to core |
+
+### The daemon is a mode, not a separate program
+
+Consistent with decisions 1 and 4, `nomoreide-daemon` is a library that `nomoreide-cli` boots. It is never a separate download or a separate installed executable:
+
+```text
+nomoreide            the one installed binary, built by nomoreide-cli
+  ├─ nomoreide daemon   boots nomoreide-daemon      long-lived, machine-global
+  ├─ nomoreide mcp      boots nomoreide-mcp         one process per MCP client
+  └─ nomoreide status   uses nomoreide-client       exits immediately
+```
+
+### Dependency direction is the safety mechanism
+
+```text
+              nomoreide-core        owns state, spawns processes
+                    ^
+              nomoreide-daemon      the only crate that links core for runtime ownership
+                    ^  (loopback HTTP)
+              nomoreide-client      stateless
+                 ^    ^    ^
+               mcp   cli  tauri
+```
+
+This direction is load-bearing, not stylistic. Today `src-tauri/src/lib.rs:22` constructs its own `ConfigStore`, `LogStore`, and `ProcessManager`, so the desktop app and the daemon each own services and neither observes the other. Keeping `nomoreide-client` unable to reach `nomoreide-core` converts that class of bug from a review-discipline problem into a compile error.
+
+**Known nuance:** `nomoreide-mcp` will depend on both crates, mirroring today's behavior — service runtime tools go through `nomoreide-client`, while config, Git, and database tools run locally against `nomoreide-core`. The guarantee that MCP cannot spawn services therefore comes from *which* core modules it links, not from the crate graph alone. Record that dependency list explicitly and gate it in CI.
+
+**Naming note:** `nomoreide-client` means the daemon client, not the web client (`apps/dashboard`). If that collision proves confusing in review, rename it `nomoreide-daemon-client`; the tradeoff is a longer path in every consumer.
 
 The final executable is built by `nomoreide-cli` and supports at least:
 
@@ -67,7 +109,50 @@ nomoreide db ...
 nomoreide remote ...       reserved for the later relay
 ```
 
-Crate boundaries are architectural, not packaging boundaries. Do not ship five user-facing binaries.
+Crate boundaries are architectural, not packaging boundaries. Do not ship six user-facing binaries.
+
+## Reuse of the existing Rust implementation
+
+`src-tauri` already contains **19,367 lines of Rust**. This migration starts from that code rather than beside it. An audit of the current tree (2026-08-20) shows the split is favourable:
+
+| Layer | Files | Lines | Tauri coupling |
+| --- | ---: | ---: | --- |
+| `src-tauri/src/core/` | 19 | 6,700 | **none** — zero `tauri::`, `AppHandle`, `State<>`, or `tauri_plugin` references |
+| `src-tauri/src/commands/` | 19 | 11,700 | thin — ~143 of ~180 references are the single `State<AppState>` parameter on each `#[tauri::command]` |
+
+### `core/` moves verbatim
+
+`src-tauri/src/core/` is not Tauri code awaiting extraction. It is already a standalone runtime library that happens to be linked into a Tauri app, and it becomes `crates/nomoreide-core` through a file move plus a `Cargo.toml` — not a rewrite. It already covers `config`, `process_manager`, `log_store`, `git_manager`, `git_identity`, `github_auth`, `service_graph`, `service_health`, `port_utils`, `external_terminal`, `agent_transcripts`, `context_library`, `one_time_skills`, and the five Vercel modules.
+
+`core/config.rs:498` resolves `XDG_CONFIG_HOME`/`~/.config/nomoreide/` exactly as `src/core/config-store.ts:408` does, so the Rust config reader is **already proven against the production `config.json`** that the Phase 1 exit gate asks us to prove.
+
+### `commands/` moves by mechanical unwrapping
+
+The command modules look coupled and are not. The bodies are ordinary Rust; the Tauri surface is the attribute plus the state parameter. Each body moves into a core function taking `&Core`, and the `#[tauri::command]` shrinks to a three-line wrapper. These files *are* the later phases:
+
+| Module | Lines | Phase it serves |
+| --- | ---: | --- |
+| `commands/database.rs` | 2,838 | Phase 4 |
+| `commands/terminal.rs` | 2,625 | Phase 5 — already `portable-pty`, already has external-terminal reclaim |
+| `commands/agent.rs` | 1,270 | Phase 5 |
+| `commands/onboard.rs` | 994 | Phase 3 |
+| `commands/github.rs` | 756 | Phase 3 |
+| `commands/git.rs` | 598 | Phase 3 |
+| `commands/vercel.rs` + `core/vercel_*.rs` | 2,462 | Phase 4 |
+
+### The one seam that needs an abstraction
+
+Event emission is the only genuinely Tauri-shaped dependency: roughly 22 `app.emit(...)` sites — ~13 in `terminal.rs` (`terminal-output-{id}`, `terminal-session-changed`), ~5 in `agent_chat.rs`, ~4 in `onboard.rs` — plus `AppHandle` threaded through `open_in_terminal` and `reclaim_to_dock`. The daemon needs SSE/WebSocket fan-out instead.
+
+Define one event-sink trait (or a `tokio::sync::broadcast` channel) in `nomoreide-core`, with a Tauri implementation that calls `app.emit` and a daemon implementation that fans out to connected clients. That is one abstraction, not a duplicated stack.
+
+### What genuinely has no Rust today
+
+No Rust exists for the MCP server and its 90 tool adapters, daemon lifecycle/discovery/lock/authentication, or the HTTP server and route registry. On the core side, roughly two thirds of `src/core` (~67 modules, ~12,400 lines) has no Rust counterpart: `agent-env-*`, profiles and the hosted registry, `error-inbox`, `cloudflare-manager`, `vultr-manager`, `ssh-servers`, `docker`, `metrics-store`, `workflow-triggers`, `jetbrains-import`, `log-sources`, `usage-history`.
+
+### Counterpart is not parity
+
+Eighteen modules exist under the same name on both sides and have drifted in both directions — `process-manager` is 508 Rust lines against 891 TypeScript, `port-utils` 52 against 123, while `vercel-oauth` is 460 Rust against 86. Reuse means *start from*, never *done*. The Phase 0 parity harness remains the judge for every ported module.
 
 ## Compatibility contract
 
@@ -156,13 +241,16 @@ Each phase should be a reviewable vertical slice with tests. Do not perform a bi
 
 ### Phase 1 — Workspace, shared types, and local security
 
-- Create the Cargo workspace and the five crate boundaries above.
-- Port config schemas, atomic filesystem helpers, redaction, path containment, and runtime-state types.
+- Create the Cargo workspace and the six crate boundaries above, with `nomoreide-client` forbidden from depending on `nomoreide-core`.
+- **Move `src-tauri/src/core/*` into `crates/nomoreide-core` and make `src-tauri` a consumer of it.** This is a file move, not a port: that directory has no Tauri coupling, so the change is behaviour-neutral and reviewable in a single sitting. Doing it here is what prevents phases 2–5 from writing a second Rust implementation beside the one that already exists.
+- Introduce the event-sink abstraction in `nomoreide-core` and route the existing `app.emit` sites through it, keeping the Tauri implementation as the only one for now.
+- Fill remaining gaps in the ported config/state layer: atomic filesystem helpers, redaction, path containment, and runtime-state types.
 - Implement daemon discovery, lock ownership, health/version negotiation, and a mode-`0600` local credential.
 - Add `nomoreide mcp` with initialization and `tools/list` from the frozen manifest; tool calls may return a typed `not_implemented` only on the development branch.
-- Make Tauri depend on shared serializable types where practical, without changing runtime ownership yet.
 
-**Exit gate:** the native binary starts on supported targets, lists the exact 90-tool contract, reads existing config safely, and cannot run beside another active daemon owner.
+**Exit gate:** the native binary starts on supported targets, lists the exact 90-tool contract, reads existing config safely, and cannot run beside another active daemon owner. The desktop app builds and behaves identically while owning no core module of its own.
+
+**Why this ordering.** The original sequencing deferred all Tauri convergence to Phase 6 and limited Phase 1 to sharing serializable types. That guarantees three concurrent implementations — TypeScript, Tauri-owned, and daemon-owned — for five phases, with the Tauri copy drifting the whole time. Lifting `core/` first costs one mechanical PR and makes every later phase extend a single implementation.
 
 ### Phase 2 — Canonical service runtime
 
@@ -207,7 +295,7 @@ Each phase should be a reviewable vertical slice with tests. Do not perform a bi
 
 - Serve the compiled React assets and compatible loopback API from the Rust daemon.
 - Move CLI commands to the native client/core crates.
-- Replace Tauri-owned process/log/agent managers with the shared daemon client.
+- Point the remaining Tauri commands at the shared daemon client. Because Phase 1 already removed Tauri's ownership of core modules, this is a call-site change rather than a manager replacement.
 - Keep native-only desktop actions in Tauri, but make runtime state canonical in the daemon.
 - Prove CLI, MCP, web, and Tauri observe the same service, terminal, and agent state.
 
@@ -247,16 +335,17 @@ codex mcp add nomoreide -- nomoreide mcp
 ## Suggested PR sequence
 
 1. Contract snapshot and parity harness.
-2. Cargo workspace, config/state compatibility, daemon lock/auth.
-3. Services/runtime vertical slice and MCP tools.
-4. Git/GitHub/worktree/snapshot/onboarding slice.
-5. Database/provider/error/docs slice.
-6. Agent environment/profile/registry/terminal slice.
-7. Dashboard/CLI/Tauri convergence.
-8. Native release matrix and installer.
-9. Default cutover, followed later by TypeScript runtime removal.
+2. Repository layout cleanup (see `2026-08-20-repo-layout-cleanup.md`), landed before the workspace so the crates arrive in their final home.
+3. Cargo workspace, `core/` lift out of `src-tauri`, config/state compatibility, daemon lock/auth.
+4. Services/runtime vertical slice and MCP tools.
+5. Git/GitHub/worktree/snapshot/onboarding slice.
+6. Database/provider/error/docs slice.
+7. Agent environment/profile/registry/terminal slice.
+8. Dashboard/CLI/Tauri convergence.
+9. Native release matrix and installer.
+10. Default cutover, followed later by TypeScript runtime removal.
 
-Every PR must keep the shipped TypeScript path working until PR 9.
+Every PR must keep the shipped TypeScript path working until PR 10.
 
 ## Validation matrix
 
