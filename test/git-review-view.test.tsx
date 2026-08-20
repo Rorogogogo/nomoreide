@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
-import { GitReviewView } from "../src/web/client/src/features/git/git-review-view";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import { AgentProvider } from "../apps/dashboard/src/features/agent/chat/agent-context";
+import { GitReviewView } from "../apps/dashboard/src/features/git/git-review-view";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 function buildDashboardData(): DashboardData {
   return {

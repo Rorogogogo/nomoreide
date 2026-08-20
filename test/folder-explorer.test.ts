@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { canOpenParentFolder } from "../src/web/client/src/features/git/folder-explorer";
+import { canOpenParentFolder } from "../apps/dashboard/src/features/git/folder-explorer";
 
 describe("canOpenParentFolder", () => {
   test("shows parent navigation from the picker starting folder", () => {

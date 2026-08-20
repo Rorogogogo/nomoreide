@@ -1,8 +1,8 @@
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { LogViewer } from "../src/web/client/src/features/services/log-viewer";
-import type { LogEntry } from "../src/web/client/src/lib/api";
+import { LogViewer } from "../apps/dashboard/src/features/services/log-viewer";
+import type { LogEntry } from "../apps/dashboard/src/lib/api";
 
 describe("LogViewer", () => {
   test("renders dark-mode console classes for stdout and stderr rows", () => {

@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { AgentColumn } from "../src/web/client/src/features/agent-env/agent-column";
+import { AgentColumn } from "../apps/dashboard/src/features/agent-env/agent-column";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

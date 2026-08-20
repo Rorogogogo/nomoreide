@@ -15,8 +15,8 @@ describe("legacy preference stores", () => {
 
     await expect(
       Promise.all([
-        import("../src/web/client/src/lib/theme"),
-        import("../src/web/client/src/lib/language"),
+        import("../apps/dashboard/src/lib/theme"),
+        import("../apps/dashboard/src/lib/language"),
       ]),
     ).resolves.toBeDefined();
   });

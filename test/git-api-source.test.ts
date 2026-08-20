@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 
 // Post transport-seam refactor the helpers are re-exported from the `git.ts`
 // barrel and implemented (with their endpoints) in the HTTP backend.
-const apiDir = resolve(__dirname, "../src/web/client/src/lib/api");
+const apiDir = resolve(__dirname, "../apps/dashboard/src/lib/api");
 const gitBarrel = readFileSync(resolve(apiDir, "git.ts"), "utf8");
 const gitHttp = readFileSync(resolve(apiDir, "git-http.ts"), "utf8");
 

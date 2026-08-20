@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { MetricsTab } from "../src/web/client/src/features/services/service-detail/metrics-tab";
+import { MetricsTab } from "../apps/dashboard/src/features/services/service-detail/metrics-tab";
 
 const api = vi.hoisted(() => ({ getServiceMetrics: vi.fn() }));
 

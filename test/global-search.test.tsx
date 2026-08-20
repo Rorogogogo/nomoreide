@@ -2,11 +2,11 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import type { DashboardData } from "../src/web/client/src/lib/api/services-api";
+import type { DashboardData } from "../apps/dashboard/src/lib/api/services-api";
 import {
   GlobalSearch,
   shortcutLabel,
-} from "../src/web/client/src/features/global-search/global-search";
+} from "../apps/dashboard/src/features/global-search/global-search";
 
 const agent = vi.hoisted(() => ({
   setActiveTaskId: vi.fn(),
@@ -26,7 +26,7 @@ const agent = vi.hoisted(() => ({
   ],
 }));
 
-vi.mock("../src/web/client/src/features/agent/chat/agent-context", () => ({
+vi.mock("../apps/dashboard/src/features/agent/chat/agent-context", () => ({
   useAgentDock: () => agent,
 }));
 

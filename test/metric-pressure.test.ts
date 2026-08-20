@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { metricPressure } from "../src/web/client/src/features/activity/metric-pressure";
+import { metricPressure } from "../apps/dashboard/src/features/activity/metric-pressure";
 
 describe("activity metric pressure", () => {
   test("maps low, medium, and high utilization at stable boundaries", () => {

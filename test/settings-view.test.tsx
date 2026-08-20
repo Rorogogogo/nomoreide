@@ -3,10 +3,10 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { SettingsView } from "../src/web/client/src/features/settings/settings-view";
-import type { SettingsContextValue } from "../src/web/client/src/features/settings/settings-context";
-import { requestGlobalSearchFocus } from "../src/web/client/src/features/global-search/global-search-navigation";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { SettingsView } from "../apps/dashboard/src/features/settings/settings-view";
+import type { SettingsContextValue } from "../apps/dashboard/src/features/settings/settings-context";
+import { requestGlobalSearchFocus } from "../apps/dashboard/src/features/global-search/global-search-navigation";
 
 const settings = vi.hoisted(() => ({ current: null as SettingsContextValue | null }));
 

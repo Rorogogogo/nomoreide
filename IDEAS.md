@@ -5,7 +5,7 @@ High-leverage additions beyond the current Services / Logs / Git / Agent dashboa
 > **Conventions** (so each idea slots into the existing patterns):
 > - **Server routing** is a manual `routeRequest()` in `src/web/server.ts` — add an `if (request.method === ... && url.pathname === ...)` block per endpoint.
 > - **Core logic** is a stateful module in `src/core/` (Zod-validated), exposed to the web layer and mirrored as an MCP tool in `src/mcp/tools.ts` where it makes sense.
-> - **UI** is a feature folder under `src/web/client/src/features/`, surfaced as a tab in `app.tsx` or a panel in an existing view.
+> - **UI** is a feature folder under `apps/dashboard/src/features/`, surfaced as a tab in `app.tsx` or a panel in an existing view.
 > - Keep Git **read-safe** and DB/API access **read-only** unless the idea explicitly calls out a guarded write.
 
 ## 1. Env/Secrets Manager — ✅ shipped (ROR-10)

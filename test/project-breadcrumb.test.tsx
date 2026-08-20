@@ -3,8 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ProjectBreadcrumb } from "../src/web/client/src/features/git/project-breadcrumb";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+import { ProjectBreadcrumb } from "../apps/dashboard/src/features/git/project-breadcrumb";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 vi.mock("@/components/ui/toast", () => ({
   useToasts: () => ({ error: vi.fn(), success: vi.fn() }),
@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({ selectGitRepository: vi.fn() }));
 
 // The manage dialog pulls in the whole git API surface; the breadcrumb's own
 // behaviour is what is under test here.
-vi.mock("../src/web/client/src/features/git/project-switcher", () => ({
+vi.mock("../apps/dashboard/src/features/git/project-switcher", () => ({
   ProjectSwitcherDialog: () => null,
 }));
 

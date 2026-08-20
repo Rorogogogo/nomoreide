@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: mocks.save }));
 
-vi.mock("../src/web/client/src/lib/api/tauri-bridge", () => ({
+vi.mock("../apps/dashboard/src/lib/api/tauri-bridge", () => ({
   tauri_databaseCapabilities: mocks.capabilities,
   tauri_deleteDatabaseRows: mocks.deleteRows,
   tauri_executeDatabase: mocks.execute,
@@ -38,7 +38,7 @@ vi.mock("../src/web/client/src/lib/api/tauri-bridge", () => ({
   tauri_testDatabaseConnection: mocks.test,
 }));
 
-import { tauriDatabaseApi } from "../src/web/client/src/lib/api/database-tauri";
+import { tauriDatabaseApi } from "../apps/dashboard/src/lib/api/database-tauri";
 
 beforeEach(() => {
   vi.clearAllMocks();

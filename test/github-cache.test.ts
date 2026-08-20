@@ -5,7 +5,7 @@ import {
   readGitHubCache,
   revalidateGitHubCache,
   writeGitHubCache,
-} from "../src/web/client/src/features/github/github-cache";
+} from "../apps/dashboard/src/features/github/github-cache";
 
 afterEach(() => {
   clearGitHubCache();

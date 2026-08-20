@@ -19,7 +19,7 @@ The compiled binary entry point is `dist/index.js`, exposed as `nomoreide` when 
 **What CI gates.** `.github/workflows/ci.yml` runs `npm run build` + `npm test` across the Node matrix, and a `quality` job running the web client's type check and Biome. `vite build` does not typecheck, which is why the client check is its own step. To reproduce the `quality` job locally:
 
 ```bash
-npx tsc -p src/web/client/tsconfig.json --noEmit   # client types (server types are covered by npm run build)
+npx tsc -p apps/dashboard/tsconfig.json --noEmit   # client types (server types are covered by npm run build)
 npm run lint
 ```
 
@@ -63,7 +63,7 @@ Tools are grouped by domain in `src/mcp/tools/<domain>.ts`, each exporting a `re
 
 ### Web Layer (`src/web/`)
 
-HTTP server on `localhost:4317` (the daemon process). Serves a React SPA + REST API endpoints under `/api/*`. The React frontend (`src/web/client/src/`) uses Vite, React 19, Tailwind CSS 4, Radix UI, and Framer Motion, organized as one directory per feature under `features/` (services, git, github, database, errors, workflows, terminal, agent, agent-env, onboard, settings).
+HTTP server on `localhost:4317` (the daemon process). Serves a React SPA + REST API endpoints under `/api/*`. The React frontend (`apps/dashboard/src/`) uses Vite, React 19, Tailwind CSS 4, Radix UI, and Framer Motion, organized as one directory per feature under `features/` (services, git, github, database, errors, workflows, terminal, agent, agent-env, onboard, settings).
 
 `server.ts` is a thin dispatcher: it builds a `RouteServices` context once and matches each request against a **route registry** (`src/web/routes/`). Each domain owns a `<domain>-routes.ts` exporting a `Route[]`; `routes/index.ts` concatenates them in dispatch order (`/api/*` groups first, the SPA-shell catch-alls last). Use `route(method, path, handler)` for exact paths and `patternRoute(regex, paramNames, handler)` for parameterized ones (the handler does its own method check, mirroring 405 behavior). **Adding an endpoint never edits the dispatcher** — add/extend a route module and register it in `routes/index.ts`.
 
@@ -86,7 +86,7 @@ User ────► CLI / TUI / browser ──┼── HTTP 127.0.0.1:4317 ─
 
 - **Zod everywhere**: all config schemas and MCP tool inputs are validated with Zod at runtime.
 - **XDG-compliant**: global config in `~/.config/nomoreide/`, project logs in `.nomoreide/logs/`.
-- **TypeScript strict mode**: `tsconfig.json` has `strict: true`; `src/web/client` is excluded from the server tsconfig and built separately by Vite.
+- **TypeScript strict mode**: `tsconfig.json` has `strict: true`; `apps/dashboard` is excluded from the server tsconfig and built separately by Vite.
 - **Test isolation**: tests use `os.tmpdir()` fixtures via Vitest; all test files live in `/test/`.
 - **i18n (en + zh)**: user-visible strings go through `useT()` (`lib/i18n/`). `en.ts` is the source of truth and defines `TranslationKey`; `zh.ts` is a `Partial` map, so **a key missing from zh silently renders English rather than failing any build** — add both sides in the same change.
 - **Dual license**: AGPL-3.0 for open source, commercial license for proprietary use (see `COMMERCIAL.md`).

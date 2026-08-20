@@ -106,8 +106,8 @@ const sshServers = [
 const gitFiles = [
   { path: "src/features/billing/checkout.tsx", index: " ", workingTree: "M" },
   { path: "src/config/services.json", index: "M", workingTree: " " },
-  { path: "src/web/client/src/features/services/service-detail/env-tab.tsx", index: " ", workingTree: "M" },
-  { path: "src/web/client/src/features/git/diff-viewer.tsx", index: " ", workingTree: "M" },
+  { path: "apps/dashboard/src/features/services/service-detail/env-tab.tsx", index: " ", workingTree: "M" },
+  { path: "apps/dashboard/src/features/git/diff-viewer.tsx", index: " ", workingTree: "M" },
   { path: "src/mcp/tools/services.ts", index: "M", workingTree: "M" },
   { path: "test/service-health-ui.test.tsx", index: " ", workingTree: "M" },
   { path: "website/src/components/real-product-demo.tsx", index: "A", workingTree: " " },
@@ -162,10 +162,10 @@ new file mode 100644
 +
 +Run \`nomoreide\` to open the service workbench.
 +Credentials in screenshots use placeholders only.`,
-  "src/web/client/src/features/services/service-detail/env-tab.tsx": `diff --git a/src/web/client/src/features/services/service-detail/env-tab.tsx b/src/web/client/src/features/services/service-detail/env-tab.tsx
+  "apps/dashboard/src/features/services/service-detail/env-tab.tsx": `diff --git a/apps/dashboard/src/features/services/service-detail/env-tab.tsx b/apps/dashboard/src/features/services/service-detail/env-tab.tsx
 index 355ad90..81c72af 100644
---- a/src/web/client/src/features/services/service-detail/env-tab.tsx
-+++ b/src/web/client/src/features/services/service-detail/env-tab.tsx
+--- a/apps/dashboard/src/features/services/service-detail/env-tab.tsx
++++ b/apps/dashboard/src/features/services/service-detail/env-tab.tsx
 @@ -28,7 +28,10 @@ export function EnvTab({ service }: Props) {
    return (
      <EnvTable
@@ -177,10 +177,10 @@ index 355ad90..81c72af 100644
      />
    );
  }`,
-  "src/web/client/src/features/git/diff-viewer.tsx": `diff --git a/src/web/client/src/features/git/diff-viewer.tsx b/src/web/client/src/features/git/diff-viewer.tsx
+  "apps/dashboard/src/features/git/diff-viewer.tsx": `diff --git a/apps/dashboard/src/features/git/diff-viewer.tsx b/apps/dashboard/src/features/git/diff-viewer.tsx
 index 1db917a..dbf4212 100644
---- a/src/web/client/src/features/git/diff-viewer.tsx
-+++ b/src/web/client/src/features/git/diff-viewer.tsx
+--- a/apps/dashboard/src/features/git/diff-viewer.tsx
++++ b/apps/dashboard/src/features/git/diff-viewer.tsx
 @@ -74,6 +74,8 @@ export function DiffViewer({ diff }: Props) {
        const kind = line.startsWith("+") ? "add" : line.startsWith("-") ? "remove" : "context";
        return (
@@ -268,7 +268,7 @@ const files: Record<string, string> = {
     null,
     2,
   ),
-  "src/web/client/src/features/services/service-detail/env-tab.tsx": `export function EnvTab({ service }: Props) {
+  "apps/dashboard/src/features/services/service-detail/env-tab.tsx": `export function EnvTab({ service }: Props) {
   return (
     <EnvTable
       entries={entries}
@@ -279,7 +279,7 @@ const files: Record<string, string> = {
   );
 }
 `,
-  "src/web/client/src/features/git/diff-viewer.tsx": `export function DiffViewer({ diff }: Props) {
+  "apps/dashboard/src/features/git/diff-viewer.tsx": `export function DiffViewer({ diff }: Props) {
   return diff.split("\\n").map((line, index) => {
     const kind = line.startsWith("+") ? "add" : line.startsWith("-") ? "remove" : "context";
     return <DiffLine key={index} kind={kind}>{line}</DiffLine>;

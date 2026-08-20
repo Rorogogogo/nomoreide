@@ -5,7 +5,7 @@ const websiteRoot = path.resolve(import.meta.dirname, "..");
 const repoRoot = path.resolve(websiteRoot, "..");
 const sourceRoots = [
   path.join(websiteRoot, "src"),
-  path.join(repoRoot, "src/web/client/src"),
+  path.join(repoRoot, "apps/dashboard/src"),
 ];
 const packageJson = JSON.parse(
   readFileSync(path.join(websiteRoot, "package.json"), "utf8"),

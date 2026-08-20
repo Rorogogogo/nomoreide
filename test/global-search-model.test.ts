@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import type { DashboardData } from "../src/web/client/src/lib/api/services-api";
-import type { AgentTerminalTask } from "../src/web/client/src/features/agent/terminal/use-agent-terminal-tasks";
+import type { DashboardData } from "../apps/dashboard/src/lib/api/services-api";
+import type { AgentTerminalTask } from "../apps/dashboard/src/features/agent/terminal/use-agent-terminal-tasks";
 import {
   buildGlobalSearchItems,
   searchGlobalItems,
-} from "../src/web/client/src/features/global-search/global-search-model";
-import { en } from "../src/web/client/src/lib/i18n/en";
-import { zh } from "../src/web/client/src/lib/i18n/zh";
+} from "../apps/dashboard/src/features/global-search/global-search-model";
+import { en } from "../apps/dashboard/src/lib/i18n/en";
+import { zh } from "../apps/dashboard/src/lib/i18n/zh";
 
 const t = (key: keyof typeof en) => en[key];
 

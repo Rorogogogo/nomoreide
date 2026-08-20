@@ -7,7 +7,7 @@ import {
   loadAgentDockLayoutPreferences,
   parseAgentDockLayoutPreferences,
   saveAgentDockLayoutPreferences,
-} from "../src/web/client/src/features/agent/terminal/agent-dock-layout-preferences";
+} from "../apps/dashboard/src/features/agent/terminal/agent-dock-layout-preferences";
 
 beforeEach(() => {
   window.localStorage.clear();

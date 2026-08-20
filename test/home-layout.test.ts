@@ -17,11 +17,11 @@ import {
   removeWidget,
   resolveHomeLayout,
   setWidgetSize,
-} from "../src/web/client/src/features/home/home-layout";
-import { WIDGETS } from "../src/web/client/src/features/home/widget-registry";
-import type { WidgetDefinition } from "../src/web/client/src/features/home/widget-types";
-import type { HomeLayout } from "../src/web/client/src/features/settings/ui-preferences";
-import { parseUiPreferences } from "../src/web/client/src/features/settings/ui-preferences";
+} from "../apps/dashboard/src/features/home/home-layout";
+import { WIDGETS } from "../apps/dashboard/src/features/home/widget-registry";
+import type { WidgetDefinition } from "../apps/dashboard/src/features/home/widget-types";
+import type { HomeLayout } from "../apps/dashboard/src/features/settings/ui-preferences";
+import { parseUiPreferences } from "../apps/dashboard/src/features/settings/ui-preferences";
 
 /**
  * Home's saved layout, now that a panel is a rectangle.

@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { httpTerminalApi } from "../src/web/client/src/lib/api/terminal-http.js";
+import { httpTerminalApi } from "../apps/dashboard/src/lib/api/terminal-http.js";
 
-const apiDir = resolve(__dirname, "../src/web/client/src/lib/api");
+const apiDir = resolve(__dirname, "../apps/dashboard/src/lib/api");
 const contractSource = readFileSync(resolve(apiDir, "terminal-api.ts"), "utf8");
 const tauriSource = readFileSync(resolve(apiDir, "terminal-tauri.ts"), "utf8");
 const bridgeSource = readFileSync(resolve(apiDir, "tauri-bridge.ts"), "utf8");

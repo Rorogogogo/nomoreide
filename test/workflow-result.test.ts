@@ -3,7 +3,7 @@ import {
   looksBlocked,
   parseRecommendedBranchName,
   readStepResult,
-} from "../src/web/client/src/features/workflows/workflow-result.js";
+} from "../apps/dashboard/src/features/workflows/workflow-result.js";
 
 describe("workflow step result", () => {
   test("explicit ok marker → not blocked, marker stripped", () => {

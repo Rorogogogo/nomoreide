@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ContextView } from "../src/web/client/src/features/context/context-view";
+import { ContextView } from "../apps/dashboard/src/features/context/context-view";
 
 const api = vi.hoisted(() => ({
   createContextNote: vi.fn(),

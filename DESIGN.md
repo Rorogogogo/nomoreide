@@ -35,7 +35,7 @@ from adding ornament.
 
 ### Color
 
-Tokens live in `src/web/client/src/styles.css` as HSL triples, exposed to
+Tokens live in `apps/dashboard/src/styles.css` as HSL triples, exposed to
 Tailwind via `@theme inline`. **Always use the semantic token** (`bg-card`,
 `text-muted-foreground`, `border-border`) — never a raw Tailwind gray.
 
@@ -242,5 +242,5 @@ Motion exists to show that something is **happening right now**. Nothing else.
 3. Rows clickable, `min-w-0` + `truncate` applied?
 4. Focus ring on every interactive element?
 5. Both `en.ts` and `zh.ts` updated?
-6. `npx tsc -p src/web/client/tsconfig.json --noEmit` and `npx biome check` clean?
+6. `npx tsc -p apps/dashboard/tsconfig.json --noEmit` and `npx biome check` clean?
    (Neither runs in CI — see CLAUDE.md.)

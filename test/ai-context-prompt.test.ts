@@ -2,8 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   buildAiContextLabel,
   buildAiContextPrompt,
-} from "../src/web/client/src/features/agent/prompts/ai-context";
-import type { DashboardData, DatabaseConnection, ErrorIncident } from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/features/agent/prompts/ai-context";
+import type { DashboardData, DatabaseConnection, ErrorIncident } from "../apps/dashboard/src/lib/api";
 
 const dashboard = {
   cwd: "/workspace/nomoreide",

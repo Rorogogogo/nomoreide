@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { httpSettingsApi } from "../src/web/client/src/lib/api/settings-http";
+import { httpSettingsApi } from "../apps/dashboard/src/lib/api/settings-http";
 
 const snapshot = {
   ok: true as const,

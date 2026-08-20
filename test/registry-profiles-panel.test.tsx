@@ -3,8 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { RegistryProfilesPanel } from "../src/web/client/src/features/agent-env/registry-profiles-panel";
-import type { useRegistryProfiles } from "../src/web/client/src/features/agent-env/use-registry-profiles";
+import { RegistryProfilesPanel } from "../apps/dashboard/src/features/agent-env/registry-profiles-panel";
+import type { useRegistryProfiles } from "../apps/dashboard/src/features/agent-env/use-registry-profiles";
 
 let host: HTMLDivElement;
 let root: Root;

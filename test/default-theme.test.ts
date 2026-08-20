@@ -5,11 +5,11 @@ import { describe, expect, test } from "vitest";
 // The storage key + dark default live in the shared theme store (used by the
 // header toggle and the Settings page).
 const themeStoreSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/lib/theme.ts"),
+  resolve(__dirname, "../apps/dashboard/src/lib/theme.ts"),
   "utf8",
 );
 const productHtml = readFileSync(
-  resolve(__dirname, "../src/web/client/index.html"),
+  resolve(__dirname, "../apps/dashboard/index.html"),
   "utf8",
 );
 const websiteHtml = readFileSync(resolve(__dirname, "../website/index.html"), "utf8");

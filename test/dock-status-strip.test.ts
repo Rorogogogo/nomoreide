@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { GitHubWorkflowRun } from "../src/web/client/src/lib/api/github-api.js";
-import { actionState } from "../src/web/client/src/features/agent/terminal/dock-status-strip.js";
+import type { GitHubWorkflowRun } from "../apps/dashboard/src/lib/api/github-api.js";
+import { actionState } from "../apps/dashboard/src/features/agent/terminal/dock-status-strip.js";
 
 function workflowRun(
   status: string,

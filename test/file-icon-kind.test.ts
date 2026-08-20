@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fileIconKind } from "../src/web/client/src/features/git/file-icon-kind";
+import { fileIconKind } from "../apps/dashboard/src/features/git/file-icon-kind";
 
 describe("fileIconKind", () => {
   test.each([

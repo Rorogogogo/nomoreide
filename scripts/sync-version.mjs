@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const packagePath = resolve(root, "package.json");
+const packageLockPath = resolve(root, "package-lock.json");
+const dashboardPackagePath = resolve(root, "apps/dashboard/package.json");
 const tauriConfigPath = resolve(root, "src-tauri/tauri.conf.json");
 const cargoManifestPath = resolve(root, "src-tauri/Cargo.toml");
 const cargoLockPath = resolve(root, "src-tauri/Cargo.lock");
@@ -20,6 +22,10 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v
 
 const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, "utf8"));
 tauriConfig.version = version;
+const dashboardPackage = JSON.parse(readFileSync(dashboardPackagePath, "utf8"));
+dashboardPackage.version = version;
+const packageLock = JSON.parse(readFileSync(packageLockPath, "utf8"));
+packageLock.packages["apps/dashboard"].version = version;
 
 const cargoManifest = replacePackageVersion(
   readFileSync(cargoManifestPath, "utf8"),
@@ -33,6 +39,8 @@ const cargoLock = replacePackageVersion(
 );
 
 const expectedFiles = [
+  [dashboardPackagePath, `${JSON.stringify(dashboardPackage, null, 2)}\n`],
+  [packageLockPath, `${JSON.stringify(packageLock, null, 2)}\n`],
   [tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`],
   [cargoManifestPath, cargoManifest],
   [cargoLockPath, cargoLock],
@@ -50,7 +58,7 @@ if (checkOnly) {
   console.log(`Release versions are synchronized at ${version}.`);
 } else {
   for (const [path, content] of expectedFiles) writeFileSync(path, content);
-  console.log(`Synchronized Tauri and Cargo versions to ${version}.`);
+  console.log(`Synchronized dashboard, Tauri, and Cargo versions to ${version}.`);
 }
 
 function replacePackageVersion(content, nextVersion, label) {

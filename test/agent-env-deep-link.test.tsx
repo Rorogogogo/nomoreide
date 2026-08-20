@@ -22,8 +22,8 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   listAgentEnvRegistryProfiles,
 }));
 
-import { AgentEnvView } from "../src/web/client/src/features/agent-env/agent-env-view";
-import { initialPage, installSlugFromSearch } from "../src/web/client/src/app";
+import { AgentEnvView } from "../apps/dashboard/src/features/agent-env/agent-env-view";
+import { initialPage, installSlugFromSearch } from "../apps/dashboard/src/app";
 
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;

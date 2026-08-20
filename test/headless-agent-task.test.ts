@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { runHeadlessAgentTask } from "../src/web/client/src/features/agent/headless/run-headless-agent-task";
+import { runHeadlessAgentTask } from "../apps/dashboard/src/features/agent/headless/run-headless-agent-task";
 
 const api = vi.hoisted(() => ({
   approveAgentTool: vi.fn(),

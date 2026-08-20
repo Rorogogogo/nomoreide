@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { estimateEnergyImpact } from "../src/web/client/src/features/activity/energy-impact.js";
+import { estimateEnergyImpact } from "../apps/dashboard/src/features/activity/energy-impact.js";
 
 describe("estimated energy impact", () => {
   test("combines CPU with a smaller memory-pressure signal", () => {

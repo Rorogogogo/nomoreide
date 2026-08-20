@@ -7,12 +7,12 @@ import {
   SettingsProvider,
   useSettings,
   type SettingsContextValue,
-} from "../src/web/client/src/features/settings/settings-context";
+} from "../apps/dashboard/src/features/settings/settings-context";
 import {
   loadUiPreferences,
   resetUiPreferences,
   UI_PREFERENCES_KEY,
-} from "../src/web/client/src/features/settings/ui-preferences";
+} from "../apps/dashboard/src/features/settings/ui-preferences";
 
 const api = vi.hoisted(() => ({
   getSettings: vi.fn(),

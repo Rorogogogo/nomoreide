@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildWorkflowAiDraftPrompt,
   draftWorkflowFromIntent,
-} from "../src/web/client/src/features/workflows/workflow-composer.js";
+} from "../apps/dashboard/src/features/workflows/workflow-composer.js";
 
 describe("workflow composer", () => {
   test("drafts a gated review commit push pr workflow from intent", () => {

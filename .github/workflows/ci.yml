@@ -45,7 +45,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Type check web client
-        run: npx tsc -p src/web/client/tsconfig.json --noEmit
+        run: npm run typecheck --workspace @nomoreide/dashboard
       - run: npm run lint
 
   audit:

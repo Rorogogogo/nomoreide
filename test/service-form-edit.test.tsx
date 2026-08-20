@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { ServiceForm } from "../src/web/client/src/features/services/service-form/service-form";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import type { ServiceDefinition } from "../src/web/client/src/lib/api";
+import { ServiceForm } from "../apps/dashboard/src/features/services/service-form/service-form";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import type { ServiceDefinition } from "../apps/dashboard/src/lib/api";
 
 describe("ServiceForm edit mode", () => {
   test("prefills fields from the existing service config", () => {

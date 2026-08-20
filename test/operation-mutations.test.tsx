@@ -8,15 +8,15 @@ import {
   OperationProvider,
   useOperations,
   type OperationContextValue,
-} from "../src/web/client/src/components/operations/operation-context";
-import { LifecycleActions } from "../src/web/client/src/features/services/service-actions";
-import { IssueDetail } from "../src/web/client/src/features/github/issue-detail";
-import { PrDetail } from "../src/web/client/src/features/github/pr-detail";
+} from "../apps/dashboard/src/components/operations/operation-context";
+import { LifecycleActions } from "../apps/dashboard/src/features/services/service-actions";
+import { IssueDetail } from "../apps/dashboard/src/features/github/issue-detail";
+import { PrDetail } from "../apps/dashboard/src/features/github/pr-detail";
 import type {
   GitHubIssue,
   GitHubPR,
   GitHubPRReviewCockpit,
-} from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/lib/api";
 
 const api = vi.hoisted(() => ({
   getGitHubPRReviewCockpit: vi.fn(),
@@ -36,7 +36,7 @@ const ui = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/web/client/src/lib/api")>()),
+  ...(await importOriginal<typeof import("../apps/dashboard/src/lib/api")>()),
   ...api,
 }));
 
@@ -243,15 +243,15 @@ describe("global mutation feedback", () => {
 
   test("uses stable keys and shared loading buttons for service save and disconnect", () => {
     const form = readFileSync(
-      "src/web/client/src/features/services/service-form/service-form.tsx",
+      "apps/dashboard/src/features/services/service-form/service-form.tsx",
       "utf8",
     );
     const formHook = readFileSync(
-      "src/web/client/src/features/services/service-form/use-service-form.ts",
+      "apps/dashboard/src/features/services/service-form/use-service-form.ts",
       "utf8",
     );
     const github = readFileSync(
-      "src/web/client/src/features/github/hooks/use-github-account-menu.ts",
+      "apps/dashboard/src/features/github/hooks/use-github-account-menu.ts",
       "utf8",
     );
 
@@ -267,11 +267,11 @@ describe("global mutation feedback", () => {
 
   test("does not register query-only refresh or load-more work", () => {
     const sources = [
-      "src/web/client/src/features/services/service-actions.tsx",
-      "src/web/client/src/features/services/service-form/use-service-form.ts",
-      "src/web/client/src/features/github/issue-detail.tsx",
-      "src/web/client/src/features/github/pr-detail.tsx",
-      "src/web/client/src/features/github/github-view.tsx",
+      "apps/dashboard/src/features/services/service-actions.tsx",
+      "apps/dashboard/src/features/services/service-form/use-service-form.ts",
+      "apps/dashboard/src/features/github/issue-detail.tsx",
+      "apps/dashboard/src/features/github/pr-detail.tsx",
+      "apps/dashboard/src/features/github/github-view.tsx",
     ].map((path) => readFileSync(path, "utf8")).join("\n");
 
     expect(sources).not.toContain('key: "github:refresh"');
@@ -282,37 +282,37 @@ describe("global mutation feedback", () => {
   test("tracks remaining destructive and save mutations with resource-specific keys", () => {
     const contracts = [
       [
-        "src/web/client/src/features/database/add-connection-dialog.tsx",
+        "apps/dashboard/src/features/database/add-connection-dialog.tsx",
         'database:${initial?.name ?? "new"}:save',
         "loading={saving}",
       ],
       [
-        "src/web/client/src/features/database/sql-console.tsx",
+        "apps/dashboard/src/features/database/sql-console.tsx",
         'database:${connection}:write',
         "loading={isWrite && writePending}",
       ],
       [
-        "src/web/client/src/features/agent/changes-tab.tsx",
+        "apps/dashboard/src/features/agent/changes-tab.tsx",
         'agent:changes:${id}:restore',
         "loading={busy}",
       ],
       [
-        "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
+        "apps/dashboard/src/features/agent-env/agent-settings-dialog.tsx",
         'agent-env:${agent}:model',
         "loading={applyingModel}",
       ],
       [
-        "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
+        "apps/dashboard/src/features/agent-env/agent-settings-dialog.tsx",
         'agent-env:${agent}:settings',
         "loading={savingFile}",
       ],
       [
-        "src/web/client/src/features/agent-env/profile-contents.tsx",
+        "apps/dashboard/src/features/agent-env/profile-contents.tsx",
         'agent-env:profile:${name}:update',
         "disabled={busy}",
       ],
       [
-        "src/web/client/src/features/settings/setting-controls.tsx",
+        "apps/dashboard/src/features/settings/setting-controls.tsx",
         'settings:${scopeKey ?? "global"}:${id}:save',
         "loading={saving}",
       ],
@@ -328,11 +328,11 @@ describe("global mutation feedback", () => {
 
   test("keeps read-only database and agent refresh work out of global operations", () => {
     const sources = [
-      "src/web/client/src/features/database/add-connection-dialog.tsx",
-      "src/web/client/src/features/database/sql-console.tsx",
-      "src/web/client/src/features/agent/changes-tab.tsx",
-      "src/web/client/src/features/agent-env/agent-settings-dialog.tsx",
-      "src/web/client/src/features/agent-env/profile-contents.tsx",
+      "apps/dashboard/src/features/database/add-connection-dialog.tsx",
+      "apps/dashboard/src/features/database/sql-console.tsx",
+      "apps/dashboard/src/features/agent/changes-tab.tsx",
+      "apps/dashboard/src/features/agent-env/agent-settings-dialog.tsx",
+      "apps/dashboard/src/features/agent-env/profile-contents.tsx",
     ].map((path) => readFileSync(path, "utf8")).join("\n");
 
     expect(sources).not.toContain('database:${connection}:query');

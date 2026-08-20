@@ -3,8 +3,8 @@ import {
   connectionInScope,
   pathInScope,
   scopeDashboard,
-} from "../src/web/client/src/features/services/project-scope";
-import type { DashboardData } from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/features/services/project-scope";
+import type { DashboardData } from "../apps/dashboard/src/lib/api";
 
 describe("pathInScope", () => {
   test("matches the repo root and nested directories only", () => {

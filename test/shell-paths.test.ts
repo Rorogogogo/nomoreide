@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { extensionPath, PAGE_PATHS } from "../src/web/client/src/app";
+import { extensionPath, PAGE_PATHS } from "../apps/dashboard/src/app";
 import { servesShell, shellPathPrefixes, shellPaths } from "../src/web/routes/shell-routes";
 
 describe("SPA shell paths", () => {

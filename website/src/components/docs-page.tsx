@@ -523,7 +523,7 @@ nomoreide logs backend`}
                 ["Core", "ConfigStore, ProcessManager, LogStore, GitManager, ServiceHealth, TimelineStore, DbPeek, and ErrorInbox."],
                 ["MCP", "FastMCP stdio server with domain-specific tool modules."],
                 ["Web", "Local HTTP server plus route registry under src/web/routes/."],
-                ["Dashboard", "React, Vite, Tailwind CSS, and feature modules under src/web/client/src/features/."],
+                ["Dashboard", "React, Vite, Tailwind CSS, and feature modules under apps/dashboard/src/features/."],
               ]}
             />
             <CodeBlock

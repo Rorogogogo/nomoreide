@@ -46,7 +46,7 @@ function webAppShellCandidates(): string[] {
   return [
     resolve(here, "../../dist/web/client/index.html"),
     resolve(here, "client/index.html"),
-    resolve(here, "../../src/web/client/index.html"),
+    resolve(here, "../../apps/dashboard/index.html"),
   ];
 }
 

@@ -6,8 +6,8 @@ import {
   mcpInsertText,
   skillInsertText,
   summarizeMcpAuth,
-} from "../src/web/client/src/features/agent/terminal/agent-capability-data";
-import type { AgentEnvConfig, AgentHook, McpAuthStatus } from "../src/web/client/src/lib/api";
+} from "../apps/dashboard/src/features/agent/terminal/agent-capability-data";
+import type { AgentEnvConfig, AgentHook, McpAuthStatus } from "../apps/dashboard/src/lib/api";
 
 function config(overrides: Partial<AgentEnvConfig> = {}): AgentEnvConfig {
   return {

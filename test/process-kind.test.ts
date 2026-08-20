@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { processKindForCommand } from "../src/web/client/src/features/services/process-kind.js";
+import { processKindForCommand } from "../apps/dashboard/src/features/services/process-kind.js";
 
 describe("processKindForCommand", () => {
   test.each([

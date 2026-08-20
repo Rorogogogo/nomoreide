@@ -1,12 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
-import { Badge } from "../src/web/client/src/components/ui/badge";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { AgentProvider } from "../src/web/client/src/features/agent/chat/agent-context";
-import { CommitList } from "../src/web/client/src/features/git/git-graph/commit-list";
-import { ProcessBadge } from "../src/web/client/src/features/services/process-badge";
-import { ServiceRow } from "../src/web/client/src/features/services/service-list";
-import type { GitGraphCommit } from "../src/web/client/src/lib/api";
+import { Badge } from "../apps/dashboard/src/components/ui/badge";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { AgentProvider } from "../apps/dashboard/src/features/agent/chat/agent-context";
+import { CommitList } from "../apps/dashboard/src/features/git/git-graph/commit-list";
+import { ProcessBadge } from "../apps/dashboard/src/features/services/process-badge";
+import { ServiceRow } from "../apps/dashboard/src/features/services/service-list";
+import type { GitGraphCommit } from "../apps/dashboard/src/lib/api";
 
 const rowRefs = { current: new Map<string, HTMLLIElement>() };
 

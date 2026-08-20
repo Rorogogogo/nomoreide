@@ -117,7 +117,7 @@ vi.mock("@/features/terminal/terminal-viewport", async () => {
 vi.mock("@/features/agent/chat/file-picker", () => ({ FilePicker: () => null }));
 vi.mock("@/features/git/git-situation-banner", () => ({ GitSituationBanner: () => null }));
 
-import { AgentTerminalDock, clampAgentDockHeight, clampAgentDockWidth } from "../src/web/client/src/features/agent/terminal/agent-terminal-dock";
+import { AgentTerminalDock, clampAgentDockHeight, clampAgentDockWidth } from "../apps/dashboard/src/features/agent/terminal/agent-terminal-dock";
 
 /**
  * Roots mounted by the current test. An unmounted root can still hold work in
@@ -1673,7 +1673,7 @@ describe("AgentTerminalDock", () => {
   });
 
   test("the app mounts the native terminal dock instead of the legacy chat dock", () => {
-    const source = readFileSync("src/web/client/src/app.tsx", "utf8");
+    const source = readFileSync("apps/dashboard/src/app.tsx", "utf8");
     expect(source).toContain("<AgentTerminalDock");
     expect(source).toContain("currentPage={page}");
     expect(source).toContain("onNavigate=");

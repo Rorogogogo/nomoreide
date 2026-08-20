@@ -5,7 +5,7 @@ import {
   type HomeTile,
   packTiles,
   rowsForPx,
-} from "../src/web/client/src/features/home/home-grid";
+} from "../apps/dashboard/src/features/home/home-grid";
 
 /**
  * The page as rectangles.

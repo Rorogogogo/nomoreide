@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { Save } from "lucide-react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { Button } from "../src/web/client/src/components/ui/button";
+import { Button } from "../apps/dashboard/src/components/ui/button";
 
 describe("Button loading state", () => {
   test("renders an accessible pending label without leaking custom props", () => {
@@ -49,11 +49,11 @@ describe("Button loading state", () => {
 
   test("keeps toast actions on the canonical button primitive", () => {
     const toast = readFileSync(
-      "src/web/client/src/components/ui/toast.tsx",
+      "apps/dashboard/src/components/ui/toast.tsx",
       "utf8",
     );
     const demo = readFileSync(
-      "src/web/client/src/components/ui/toast-demo.tsx",
+      "apps/dashboard/src/components/ui/toast-demo.tsx",
       "utf8",
     );
     const productionSources = `${toast}\n${demo}`;

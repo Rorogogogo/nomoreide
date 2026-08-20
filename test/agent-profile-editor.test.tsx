@@ -3,8 +3,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { OperationProvider } from "../src/web/client/src/components/operations/operation-context";
-import { ProfileContents } from "../src/web/client/src/features/agent-env/profile-contents";
+import { OperationProvider } from "../apps/dashboard/src/components/operations/operation-context";
+import { ProfileContents } from "../apps/dashboard/src/features/agent-env/profile-contents";
 
 const api = vi.hoisted(() => ({
   getProfile: vi.fn(),

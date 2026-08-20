@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { httpGitApi } from "../src/web/client/src/lib/api/git-http";
+import { httpGitApi } from "../apps/dashboard/src/lib/api/git-http";
 
 afterEach(() => {
   vi.unstubAllGlobals();

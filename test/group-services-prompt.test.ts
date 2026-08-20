@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildGroupServicesPrompt } from "../src/web/client/src/features/agent/prompts/group-services";
+import { buildGroupServicesPrompt } from "../apps/dashboard/src/features/agent/prompts/group-services";
 
 describe("group services prompt", () => {
   test("lists the ungrouped services and asks for a confirmed grouping", () => {

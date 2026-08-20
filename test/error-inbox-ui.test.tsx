@@ -11,19 +11,19 @@ import {
   incidentFilterOptions,
   incidentMatchesQuery,
   type IncidentFilters,
-} from "../src/web/client/src/features/errors/incident-filters";
-import type { ErrorIncident } from "../src/web/client/src/lib/api";
-import { IncidentTable } from "../src/web/client/src/features/errors/incident-table";
-import { ErrorInboxView } from "../src/web/client/src/features/errors/error-inbox-view";
+} from "../apps/dashboard/src/features/errors/incident-filters";
+import type { ErrorIncident } from "../apps/dashboard/src/lib/api";
+import { IncidentTable } from "../apps/dashboard/src/features/errors/incident-table";
+import { ErrorInboxView } from "../apps/dashboard/src/features/errors/error-inbox-view";
 import {
   OperationProvider,
   useOperations,
   type OperationContextValue,
-} from "../src/web/client/src/components/operations/operation-context";
+} from "../apps/dashboard/src/components/operations/operation-context";
 import {
   AiContextMenuProvider,
   useAiContextMenuRegistry,
-} from "../src/web/client/src/features/agent/context-menu/ai-context-menu";
+} from "../apps/dashboard/src/features/agent/context-menu/ai-context-menu";
 
 const incidentFeed = vi.hoisted(() => ({
   value: {
@@ -49,7 +49,7 @@ vi.mock("@/features/agent/chat/agent-context", () => ({
 }));
 
 vi.mock("@/lib/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/web/client/src/lib/api")>()),
+  ...(await importOriginal<typeof import("../apps/dashboard/src/lib/api")>()),
   startFix: actions.startFix,
 }));
 
@@ -334,7 +334,7 @@ describe("IncidentTable", () => {
 
   test("avoids the demo shell and simulated log model", () => {
     const source = readFileSync(
-      resolve("src/web/client/src/features/errors/incident-table.tsx"),
+      resolve("apps/dashboard/src/features/errors/incident-table.tsx"),
       "utf8",
     );
 
@@ -430,7 +430,7 @@ describe("ErrorInboxView", () => {
     expect(host.querySelector('input[aria-label="Search incidents"]')).not.toBeNull();
 
     const source = readFileSync(
-      resolve("src/web/client/src/features/errors/error-inbox-view.tsx"),
+      resolve("apps/dashboard/src/features/errors/error-inbox-view.tsx"),
       "utf8",
     );
     expect(source).toContain("<IncidentTable");

@@ -14,8 +14,8 @@
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["../src/web/client/src/*"]
+      "@/*": ["../apps/dashboard/src/*"]
     }
   },
-  "include": ["src", "../src/web/client/src"]
+  "include": ["src", "../apps/dashboard/src"]
 }

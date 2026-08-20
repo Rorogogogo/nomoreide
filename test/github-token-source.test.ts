@@ -3,35 +3,35 @@ import { describe, expect, test } from "vitest";
 
 // The connection-status type lives in the seam's API contract module after the
 // transport-seam refactor (the `github.ts` barrel only re-exports it).
-const apiSource = readFileSync("src/web/client/src/lib/api/github-api.ts", "utf8");
+const apiSource = readFileSync("apps/dashboard/src/lib/api/github-api.ts", "utf8");
 const hookSource = readFileSync(
-  "src/web/client/src/features/github/hooks/use-github-token.ts",
+  "apps/dashboard/src/features/github/hooks/use-github-token.ts",
   "utf8",
 );
 const routeSource = readFileSync("src/web/routes/github-routes.ts", "utf8");
 const indicatorSource = readFileSync(
-  "src/web/client/src/features/github/github-header-indicator.tsx",
+  "apps/dashboard/src/features/github/github-header-indicator.tsx",
   "utf8",
 );
 // The <img> itself moved here so the header and the account menu render the
 // same avatar with the same offline fallback.
 const avatarSource = readFileSync(
-  "src/web/client/src/features/github/github-avatar.tsx",
+  "apps/dashboard/src/features/github/github-avatar.tsx",
   "utf8",
 );
 const selectorSource = readFileSync(
-  "src/web/client/src/features/github/github-account-selector.tsx",
+  "apps/dashboard/src/features/github/github-account-selector.tsx",
   "utf8",
 );
 // The rows themselves live here, shared by the header indicator (the everyday
 // entry point) and the selector on the connection-recovery screen.
 const menuSource = readFileSync(
-  "src/web/client/src/features/github/github-account-menu.tsx",
+  "apps/dashboard/src/features/github/github-account-menu.tsx",
   "utf8",
 );
 // Its state and API calls, split out to keep the component near the file budget.
 const menuHookSource = readFileSync(
-  "src/web/client/src/features/github/hooks/use-github-account-menu.ts",
+  "apps/dashboard/src/features/github/hooks/use-github-account-menu.ts",
   "utf8",
 );
 
@@ -78,11 +78,11 @@ describe("GitHub token client status", () => {
 
   test("repo_access renders its own notice, not the failure card", () => {
     const viewSource = readFileSync(
-      "src/web/client/src/features/github/github-view.tsx",
+      "apps/dashboard/src/features/github/github-view.tsx",
       "utf8",
     );
     const noticeSource = readFileSync(
-      "src/web/client/src/features/github/github-repo-access.tsx",
+      "apps/dashboard/src/features/github/github-repo-access.tsx",
       "utf8",
     );
     expect(viewSource).toContain('token.status === "repo_access"');
@@ -94,7 +94,7 @@ describe("GitHub token client status", () => {
 
   test("the account menu can add a token and remove the one it stored", () => {
     const setupSource = readFileSync(
-      "src/web/client/src/features/github/github-token-setup.tsx",
+      "apps/dashboard/src/features/github/github-token-setup.tsx",
       "utf8",
     );
     // Reachable only from the setup/failure screens before, which never appear
@@ -110,7 +110,7 @@ describe("GitHub token client status", () => {
 
   test("the account menu lives in the header, not the GitHub page's tab row", () => {
     const viewSource = readFileSync(
-      "src/web/client/src/features/github/github-view.tsx",
+      "apps/dashboard/src/features/github/github-view.tsx",
       "utf8",
     );
     // The credential is stored per repository, so identity belongs beside the
@@ -131,7 +131,7 @@ describe("GitHub token client status", () => {
 
   test("adding a token from the header survives the page not being mounted", () => {
     const navigationSource = readFileSync(
-      "src/web/client/src/features/github/github-navigation.ts",
+      "apps/dashboard/src/features/github/github-navigation.ts",
       "utf8",
     );
     // The menu raises the request *while* navigating, so a plain event would

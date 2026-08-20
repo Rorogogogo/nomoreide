@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import * as editor from "../src/web/client/src/features/git/code-editor";
+import * as editor from "../apps/dashboard/src/features/git/code-editor";
 
 describe("code editor helpers", () => {
   test("detects TypeScript React files", () => {

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const source = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/services/service-detail/log-console.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/services/service-detail/log-console.tsx"),
   "utf8",
 );
 

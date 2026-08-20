@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   AgentProvider,
   useAgentDock,
-} from "../src/web/client/src/features/agent/chat/agent-context";
+} from "../apps/dashboard/src/features/agent/chat/agent-context";
 
 const api = vi.hoisted(() => ({
   approveAgentTool: vi.fn(),

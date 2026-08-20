@@ -3,13 +3,13 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const workflowPanelSource = readFileSync(
-  resolve(__dirname, "../src/web/client/src/features/workflows/workflow-panel.tsx"),
+  resolve(__dirname, "../apps/dashboard/src/features/workflows/workflow-panel.tsx"),
   "utf8",
 );
 // UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted
 // against en.ts rather than the component source.
 const catalog = readFileSync(
-  resolve(__dirname, "../src/web/client/src/lib/i18n/en.ts"),
+  resolve(__dirname, "../apps/dashboard/src/lib/i18n/en.ts"),
   "utf8",
 );
 

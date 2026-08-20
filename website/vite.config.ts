@@ -48,7 +48,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "../src/web/client/src"),
+      "@": path.resolve(__dirname, "../apps/dashboard/src"),
       ...Object.fromEntries(
         browserPackageAliases.map((packageName) => [
           packageName,

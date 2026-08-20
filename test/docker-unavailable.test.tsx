@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { DockerUnavailable } from "../src/web/client/src/features/docker/docker-view";
+import { DockerUnavailable } from "../apps/dashboard/src/features/docker/docker-view";
 
 describe("DockerUnavailable", () => {
   test("keeps diagnostics behind a disclosure and offers an explicit retry", () => {

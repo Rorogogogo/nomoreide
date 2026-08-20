@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
-import { DebugTimeline } from "../src/web/client/src/features/services/debug-timeline";
-import type { TimelineEvent } from "../src/web/client/src/lib/api";
+import { DebugTimeline } from "../apps/dashboard/src/features/services/debug-timeline";
+import type { TimelineEvent } from "../apps/dashboard/src/lib/api";
 
 describe("DebugTimeline UI", () => {
   test("renders a per-service row with counts, density bars, and the last warning message", () => {

@@ -4,7 +4,7 @@ import {
   isPinned,
   PINNED_SLACK_PX,
   STICKY_KEEP_PX,
-} from "../src/web/client/src/features/home/home-scroll";
+} from "../apps/dashboard/src/features/home/home-scroll";
 
 /**
  * The Logs panel's two scroll decisions.

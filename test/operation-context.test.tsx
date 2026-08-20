@@ -8,7 +8,7 @@ import {
   useOperations,
   type OperationContextValue,
   type OperationInput,
-} from "../src/web/client/src/components/operations/operation-context";
+} from "../apps/dashboard/src/components/operations/operation-context";
 
 const toasts = vi.hoisted(() => ({
   error: vi.fn(),

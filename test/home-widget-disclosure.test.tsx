@@ -3,13 +3,13 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { useWidgetDisclosure } from "../src/web/client/src/features/home/use-widget-disclosure";
+import { useWidgetDisclosure } from "../apps/dashboard/src/features/home/use-widget-disclosure";
 import {
   WidgetMore,
   WidgetPanel,
   WidgetStat,
   WidgetStats,
-} from "../src/web/client/src/features/home/widget-grid";
+} from "../apps/dashboard/src/features/home/widget-grid";
 
 let host: HTMLDivElement;
 let root: Root;

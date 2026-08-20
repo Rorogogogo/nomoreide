@@ -9,10 +9,10 @@ import {
   applyUiPreferences,
   defaultUiPreferences,
   parseUiPreferences,
-} from "../src/web/client/src/features/settings/ui-preferences";
+} from "../apps/dashboard/src/features/settings/ui-preferences";
 import {
   headerActionClassName,
-} from "../src/web/client/src/components/header-action";
+} from "../apps/dashboard/src/components/header-action";
 
 interface MediaHarness {
   media: MediaQueryList;
@@ -82,7 +82,7 @@ describe("theme application", () => {
       JSON.stringify({ ...defaultUiPreferences(), theme: "system" }),
     );
 
-    const theme = await import("../src/web/client/src/lib/theme");
+    const theme = await import("../apps/dashboard/src/lib/theme");
 
     expect(theme.getTheme()).toBe("system");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
@@ -91,7 +91,7 @@ describe("theme application", () => {
   test("system follows color-scheme changes and explicit themes unsubscribe", async () => {
     const harness = mediaHarness(false);
     vi.spyOn(window, "matchMedia").mockReturnValue(harness.media);
-    const theme = await import("../src/web/client/src/lib/theme");
+    const theme = await import("../apps/dashboard/src/lib/theme");
 
     theme.setTheme("system");
     expect(theme.getTheme()).toBe("system");
@@ -110,9 +110,9 @@ describe("theme application", () => {
   test("the header toggle cycles explicit light and dark choices", async () => {
     const harness = mediaHarness(false);
     vi.spyOn(window, "matchMedia").mockReturnValue(harness.media);
-    const theme = await import("../src/web/client/src/lib/theme");
+    const theme = await import("../apps/dashboard/src/lib/theme");
     const { ThemeToggle } = await import(
-      "../src/web/client/src/components/theme-toggle"
+      "../apps/dashboard/src/components/theme-toggle"
     );
     theme.setTheme("light");
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -144,9 +144,9 @@ describe("theme application", () => {
       configurable: true,
       value: startViewTransition,
     });
-    const theme = await import("../src/web/client/src/lib/theme");
+    const theme = await import("../apps/dashboard/src/lib/theme");
     const { ThemeToggle } = await import(
-      "../src/web/client/src/components/theme-toggle"
+      "../apps/dashboard/src/components/theme-toggle"
     );
     theme.setTheme("light");
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -224,18 +224,18 @@ describe("appearance preferences", () => {
 
   test("appearance CSS is scoped to settings rows, motion, and opted-in code surfaces", () => {
     const styles = readFileSync(
-      resolve(__dirname, "../src/web/client/src/styles.css"),
+      resolve(__dirname, "../apps/dashboard/src/styles.css"),
       "utf8",
     );
     const settingControls = readFileSync(
-      resolve(__dirname, "../src/web/client/src/features/settings/setting-controls.tsx"),
+      resolve(__dirname, "../apps/dashboard/src/features/settings/setting-controls.tsx"),
       "utf8",
     );
     const consumers = [
-      "../src/web/client/src/features/services/log-viewer.tsx",
-      "../src/web/client/src/features/git/diff-viewer.tsx",
-      "../src/web/client/src/features/database/sql-console.tsx",
-      "../src/web/client/src/features/database/table-grid.tsx",
+      "../apps/dashboard/src/features/services/log-viewer.tsx",
+      "../apps/dashboard/src/features/git/diff-viewer.tsx",
+      "../apps/dashboard/src/features/database/sql-console.tsx",
+      "../apps/dashboard/src/features/database/table-grid.tsx",
     ].map((path) => readFileSync(resolve(__dirname, path), "utf8"));
 
     expect(styles).toContain("--code-font-size: 12px");

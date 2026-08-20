@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildLargeFileSplitPrompt } from "../src/web/client/src/features/agent/prompts/large-file";
+import { buildLargeFileSplitPrompt } from "../apps/dashboard/src/features/agent/prompts/large-file";
 
 describe("large file prompts", () => {
   test("asks the agent for a structural split with both file paths", () => {

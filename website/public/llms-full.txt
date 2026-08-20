@@ -402,7 +402,7 @@ MCP server: FastMCP stdio server that registers domain tool groups from `src/mcp
 
 Web server: local HTTP server and route registry under `src/web/routes/`.
 
-React dashboard: Vite, React, Tailwind CSS, feature modules under `src/web/client/src/features/`.
+React dashboard: Vite, React, Tailwind CSS, feature modules under `apps/dashboard/src/features/`.
 
 CLI, TUI, and desktop: `src/index.ts` dispatches to MCP, TUI, web, service, Git, database, agent environment, and profile commands; Tauri provides the standalone macOS shell.
 
