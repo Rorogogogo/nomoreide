@@ -9,10 +9,13 @@ import {
 } from "../test/support/mcp-contract.js";
 
 const separator = process.argv.indexOf("--");
-const candidateArgs = separator === -1 ? process.argv.slice(2) : process.argv.slice(separator + 1);
+const rawCandidateArgs =
+  separator === -1 ? process.argv.slice(2) : process.argv.slice(separator + 1);
+const surfaceOnly = rawCandidateArgs.includes("--surface-only");
+const candidateArgs = rawCandidateArgs.filter((argument) => argument !== "--surface-only");
 if (candidateArgs.length === 0) {
   throw new Error(
-    "Usage: npm run mcp:parity -- <candidate-command> [candidate-args...]",
+    "Usage: npm run mcp:parity -- [--surface-only] <candidate-command> [candidate-args...]",
   );
 }
 
@@ -44,11 +47,24 @@ try {
   const candidate = await captureMcpContract(
     command(candidateArgs[0], candidateArgs.slice(1), candidateHome),
   );
-  assert.deepStrictEqual(
-    normalizeMcpContract(candidate, { temporaryPaths: [candidateHome] }),
-    normalizeMcpContract(reference, { temporaryPaths: [referenceHome] }),
+  const candidateContract = normalizeMcpContract(candidate, {
+    temporaryPaths: [candidateHome],
+  });
+  const referenceContract = normalizeMcpContract(reference, {
+    temporaryPaths: [referenceHome],
+  });
+  if (surfaceOnly) {
+    const surface = ({ initialize, tools }: typeof candidate) => ({ initialize, tools });
+    assert.deepStrictEqual(
+      surface(candidateContract as typeof candidate),
+      surface(referenceContract as typeof reference),
+    );
+  } else {
+    assert.deepStrictEqual(candidateContract, referenceContract);
+  }
+  process.stdout.write(
+    `MCP ${surfaceOnly ? "Phase 1 surface " : ""}parity passed for ${candidateArgs.join(" ")}\n`,
   );
-  process.stdout.write(`MCP parity passed for ${candidateArgs.join(" ")}\n`);
 } finally {
   await Promise.all([
     rm(referenceHome, { recursive: true, force: true }),
