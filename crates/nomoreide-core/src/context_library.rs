@@ -1,3 +1,6 @@
+use crate::filesystem::{
+    atomic_write, canonicalize_contained, resolve_relative_path, AtomicWriteOptions,
+};
 use chrono::Utc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -5,7 +8,7 @@ use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 const MAX_NOTE_BYTES: usize = 1024 * 1024;
@@ -214,7 +217,12 @@ impl ContextLibrary {
             .root
             .join("Notes")
             .join(format!("{}--{}.md", slug(&input.title), &id[..8]));
-        atomic_write(&path, &render_markdown(&frontmatter, &input.body)?)?;
+        atomic_write(
+            &path,
+            render_markdown(&frontmatter, &input.body)?,
+            AtomicWriteOptions::default(),
+        )
+        .map_err(|error| error.to_string())?;
         self.read_note(&path)
     }
 
@@ -243,7 +251,12 @@ impl ContextLibrary {
             serde_json::to_value(input.project_paths).unwrap_or_default(),
         );
         frontmatter.insert("updated".into(), Value::String(Utc::now().to_rfc3339()));
-        atomic_write(&path, &render_markdown(&frontmatter, &input.body)?)?;
+        atomic_write(
+            &path,
+            render_markdown(&frontmatter, &input.body)?,
+            AtomicWriteOptions::default(),
+        )
+        .map_err(|error| error.to_string())?;
         self.read_note(&path)
     }
 
@@ -285,7 +298,12 @@ impl ContextLibrary {
             pinned: pinned.clone(),
         })
         .map_err(|error| error.to_string())?;
-        atomic_write(&self.root.join(".nomoreide/settings.json"), &(raw + "\n"))?;
+        atomic_write(
+            &self.root.join(".nomoreide/settings.json"),
+            raw + "\n",
+            AtomicWriteOptions::default(),
+        )
+        .map_err(|error| error.to_string())?;
         Ok(pinned)
     }
 
@@ -397,6 +415,8 @@ impl ContextLibrary {
     }
 
     fn read_note(&self, path: &Path) -> Result<ContextNote, String> {
+        canonicalize_contained(&self.root, path)
+            .map_err(|_| "Context path escapes the vault.".to_string())?;
         let metadata = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
         if metadata.file_type().is_symlink() {
             return Err("Context notes cannot be symlinks.".into());
@@ -553,18 +573,8 @@ fn strings(value: Option<&Value>) -> Vec<String> {
 }
 
 fn safe_join(root: &Path, relative: &str) -> Result<PathBuf, String> {
-    let path = Path::new(relative);
-    if path.is_absolute()
-        || path.components().any(|part| {
-            matches!(
-                part,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        })
-    {
-        return Err("Context path escapes the vault.".into());
-    }
-    let joined = root.join(path);
+    let joined = resolve_relative_path(root, relative)
+        .map_err(|_| "Context path escapes the vault.".to_string())?;
     if joined.extension().and_then(|value| value.to_str()) != Some("md") {
         return Err("Context notes must be Markdown files.".into());
     }
@@ -617,19 +627,6 @@ fn xml(value: &str) -> String {
         .replace('"', "&quot;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
-}
-
-fn atomic_write(path: &Path, content: &str) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-    }
-    let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let temp = path.with_file_name(format!(".{name}.{}.tmp", Uuid::new_v4()));
-    fs::write(&temp, content).map_err(|error| error.to_string())?;
-    fs::rename(&temp, path).map_err(|error| {
-        let _ = fs::remove_file(&temp);
-        error.to_string()
-    })
 }
 
 #[cfg(test)]

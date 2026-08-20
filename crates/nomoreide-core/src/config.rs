@@ -1,9 +1,10 @@
+use crate::filesystem::{atomic_write_async, AtomicWriteOptions};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
+#[cfg(test)]
 use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
@@ -539,52 +540,14 @@ impl ConfigStore {
     }
 
     pub async fn save(&self, config: &Config) -> Result<()> {
-        if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent)
-                .await
-                .context("Failed to create config dir")?;
-        }
         let json = serde_json::to_string_pretty(config).context("Failed to serialize config")?;
-        let file_name = self
-            .path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("config.json");
-        let temporary_path = self.path.with_file_name(format!(
-            ".{file_name}.{}.{}.tmp",
-            std::process::id(),
-            Uuid::new_v4()
-        ));
-
-        let mut options = fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            options.mode(0o600);
-        }
-
-        let write_result = async {
-            let mut file = options
-                .open(&temporary_path)
-                .await
-                .context("Failed to create temporary config.json")?;
-            file.write_all(format!("{json}\n").as_bytes())
-                .await
-                .context("Failed to write temporary config.json")?;
-            file.sync_all()
-                .await
-                .context("Failed to sync temporary config.json")?;
-            drop(file);
-            fs::rename(&temporary_path, &self.path)
-                .await
-                .context("Failed to atomically replace config.json")
-        }
-        .await;
-
-        if write_result.is_err() {
-            let _ = fs::remove_file(&temporary_path).await;
-        }
-        write_result
+        atomic_write_async(
+            &self.path,
+            format!("{json}\n"),
+            AtomicWriteOptions::private(),
+        )
+        .await
+        .context("Failed to atomically replace config.json")
     }
 
     pub async fn register_service(&self, service: ServiceDef) -> Result<Config> {
