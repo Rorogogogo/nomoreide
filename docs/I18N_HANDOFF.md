@@ -28,7 +28,7 @@ Dependency-free, homegrown. Lives in `apps/dashboard/src/lib/i18n/`:
 - Namespace keys by feature: `services.*`, `git.*`, `github.*`, `database.*`, `errors.*`, `common.*`. Use `common.*` for shared words (Cancel/Save/Close/Copy/etc. — already defined).
 - Don't translate example placeholders that are literal values (e.g. `placeholder="npm run dev"`, `"PROD"`, `"3001"`) — those are illustrative, leave as-is.
 - For dense technical paragraphs with many inline `<code>` where Chinese word order differs, translate as ONE `t()` string with the code shown as inline backticks (see `services.form.sshBody`) rather than fighting per-token segments.
-- Verify after each feature: `cd apps/dashboard && npx tsc --noEmit 2>&1 | grep "error TS" | grep -vE "snapshots-tauri|tauri-bridge|terminal-tauri"` (those 3 tauri files have PRE-EXISTING errors — ignore them). Then `npm run build` from repo root (must exit 0), and the website build (`cd website && npm run build`).
+- Verify after each feature: `cd apps/dashboard && npx tsc --noEmit 2>&1 | grep "error TS" | grep -vE "snapshots-tauri|tauri-bridge|terminal-tauri"` (those 3 tauri files have PRE-EXISTING errors — ignore them). Then `npm run build` from repo root (must exit 0), and the website build (`npm --prefix apps/website run build`).
 
 ## DONE (translated + build green)
 - App shell (`app.tsx`), `theme-toggle.tsx`, Settings (`features/settings/settings-view.tsx`)
@@ -64,4 +64,4 @@ Every feature dir is translated and the full-client sweep (JSX text + `placehold
 **Lesson for future passes:** don't trust a file being listed as "done" — the reliable check is `grep -L 't("' <file>` combined with a literal-string sweep. Several files here were marked done but had zero `t()` calls.
 
 ## Quick continue prompt for next conversation
-"The Chinese i18n pass is complete (Read I18N_HANDOFF.md): every feature dir translated, 1201 keys, exact en↔zh parity, all three builds green. If asked to extend: any NEW component needs `useT()` + keys in lib/i18n/en.ts & zh.ts (keep proper nouns / shell snippets / SQL / raw enums / illustrative placeholders English), then `cd apps/dashboard && npx tsc --noEmit` (ignore the 3 tauri files), root `npm run build`, and `cd website && npm run build`. Re-run the en↔zh parity node-script after adding keys."
+"The Chinese i18n pass is complete (read `docs/I18N_HANDOFF.md`): every feature dir translated, 1201 keys, exact en↔zh parity, all three builds green. If asked to extend: any NEW component needs `useT()` + keys in lib/i18n/en.ts & zh.ts (keep proper nouns / shell snippets / SQL / raw enums / illustrative placeholders English), then `cd apps/dashboard && npx tsc --noEmit` (ignore the 3 tauri files), root `npm run build`, and `npm --prefix apps/website run build`. Re-run the en↔zh parity node-script after adding keys."

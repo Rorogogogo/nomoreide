@@ -26,10 +26,10 @@ import { WidgetScroll } from "./widget-scroll";
  * needs something outside it, either the vocabulary is short a word or the
  * widget is trying to be its page (see the hard rule in `widget-types.ts`).
  *
- * The look is `DESIGN.md`: **lines, not boxes.** Nothing here draws a card.
+ * The look is `docs/DESIGN.md`: **lines, not boxes.** Nothing here draws a card.
  */
 
-/** What a number or a row *means*, in the fixed vocabulary of `DESIGN.md`. */
+/** What a number or a row *means*, in the fixed vocabulary of `docs/DESIGN.md`. */
 export type WidgetTone = "ok" | "warn" | "bad" | "idle";
 
 interface WidgetDisclosureValue {
@@ -486,7 +486,7 @@ export function WidgetPanel({
 }
 
 /**
- * A row of choices along a hairline — `DESIGN.md`'s "lines, not boxes", so the
+ * A row of choices along a hairline — `docs/DESIGN.md`'s "lines, not boxes", so the
  * selected one is marked by the rule thickening under it rather than by a
  * filled pill.
  *
@@ -529,7 +529,7 @@ export function WidgetTab({
 
 /**
  * The counters a widget leads with, split by hairlines rather than tiled —
- * `DESIGN.md` again, and the reason nothing here is 24px: a dashboard number is
+ * `docs/DESIGN.md` again, and the reason nothing here is 24px: a dashboard number is
  * read against its neighbours, so three 13px figures beat one large one.
  */
 export function WidgetStats({ children }: { children: ReactNode }) {
@@ -664,7 +664,7 @@ export function WidgetRow({
         row put a full upstream ref in it and
         `origin/xwangrobert/ror-105-rebuild-homes-widgets-…` ran straight off
         the panel and out of the viewport. This is the exact blow-out
-        `DESIGN.md` warns about for long branch names.
+        `docs/DESIGN.md` warns about for long branch names.
       */}
       {trailing ? (
         <span className="ml-auto min-w-0 max-w-[50%] truncate pl-1 text-[10px] tabular-nums text-muted-foreground/70">

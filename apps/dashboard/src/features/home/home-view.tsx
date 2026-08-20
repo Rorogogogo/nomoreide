@@ -125,7 +125,7 @@ export function HomeView({
   });
 
   /*
-    Full-bleed, per `DESIGN.md` — the grid runs to the panel edges and the
+    Full-bleed, per `docs/DESIGN.md` — the grid runs to the panel edges and the
     hairlines between widgets are the only structure on the page. No outer
     padding, because padding here would read as a margin around a card.
   */

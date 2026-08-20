@@ -126,7 +126,7 @@ export function WidgetControls({
  * The footer strip: the two controls that are about the page rather than about
  * any one panel — what is missing from it, and starting over.
  *
- * Home is full-bleed by design (`DESIGN.md`) and a toolbar above the grid would
+ * Home is full-bleed by design (`docs/DESIGN.md`) and a toolbar above the grid would
  * be the first thing you read every visit, to serve the rarest thing you do.
  * The strip is already there for the scope note.
  *

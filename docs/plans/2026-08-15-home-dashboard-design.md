@@ -126,7 +126,7 @@ Stage 1 shipped wrong on both of the axes it is judged on, and both were obvious
 on sight rather than in review.
 
 - **It broke the layout law.** Every widget was a `rounded-lg border bg-card`
-  tile — literally the "No" example in `DESIGN.md`, and the first item on its
+  tile — literally the "No" example in `docs/DESIGN.md`, and the first item on its
   own before-you-ship checklist. It also led with a `text-2xl` figure, in a
   document that caps a normal view at 13px. Widgets are now grid cells divided
   by hairlines, with the counters split by `divide-x` the way that file already

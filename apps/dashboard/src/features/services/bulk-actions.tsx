@@ -11,7 +11,7 @@ export type BulkAction = "start" | "stop" | "restart";
  *
  * These used to live in a kebab menu, which cost two clicks and hid the labels
  * behind a glyph that says nothing about what is in it. They are not a row of
- * their own either — DESIGN.md forbids stacking a second header bar on a
+ * their own either — docs/DESIGN.md forbids stacking a second header bar on a
  * panel, and a whole line of permanent chrome to hold one button is more than
  * it is worth. So the constructive action carries its label into the space the
  * heading was already wasting, and stop rides along as an icon — it is the one
