@@ -2285,12 +2285,27 @@ dependencies = [
 name = "nomoreide-daemon"
 version = "0.1.103"
 dependencies = [
+ "libc",
  "nomoreide-core",
+ "nomoreide-daemon-client",
+ "serde",
+ "serde_json",
+ "uuid",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "nomoreide-daemon-client"
 version = "0.1.103"
+dependencies = [
+ "dirs 5.0.1",
+ "libc",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "nomoreide-mcp"
