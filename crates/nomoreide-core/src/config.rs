@@ -280,6 +280,17 @@ struct PublicConfig<'a> {
     preferences: Option<&'a serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     chat_provider: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chat_models: Option<&'a ChatModelsDef>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatModelsDef {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub codex: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -328,6 +339,10 @@ pub struct Config {
     /// chosen → fall back to detection. Shares the `chatProvider` key with Node.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub chat_provider: Option<String>,
+    /// Model pins are owned by the shared agent-chat config. The desktop does
+    /// not apply them yet, but must preserve them when it writes config.json.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chat_models: Option<ChatModelsDef>,
 }
 
 /// Provider id the pre-registry fields belonged to.
@@ -411,6 +426,7 @@ impl Config {
             workflow_triggers: &self.workflow_triggers,
             preferences: self.preferences.as_ref(),
             chat_provider: self.chat_provider.as_ref(),
+            chat_models: self.chat_models.as_ref(),
         };
         serde_json::to_value(public).expect("Public config must serialize")
     }
@@ -475,6 +491,7 @@ impl Default for Config {
             workflow_triggers: vec![],
             preferences: None,
             chat_provider: None,
+            chat_models: None,
         }
     }
 }
@@ -1089,6 +1106,7 @@ mod tests {
             "workflows": [],
             "workflowTriggers": [{ "id": "t1", "event": "service.crashed" }],
             "preferences": { "logs": { "showTimestamps": true, "wrapLines": false } },
+            "chatModels": { "claude": "claude-opus-4-1", "codex": "gpt-5.3-codex" },
             "vercel": { "source": "oauth", "token": "at", "refreshToken": "rt", "clientId": "cl_1", "teamId": "team_1" }
         }"#;
 
@@ -1104,6 +1122,13 @@ mod tests {
         let config = store.load().await.expect("config should parse");
         assert_eq!(config.github_identities.len(), 1);
         assert_eq!(config.github_identities[0].email, "work@example.test");
+        assert_eq!(
+            config
+                .chat_models
+                .as_ref()
+                .and_then(|models| models.claude.as_deref()),
+            Some("claude-opus-4-1")
+        );
 
         store.save(&config).await.unwrap();
         let written: serde_json::Value =
@@ -1111,6 +1136,11 @@ mod tests {
         assert_eq!(written["workflowTriggers"][0]["id"], "t1");
         assert_eq!(written["preferences"]["logs"]["showTimestamps"], true);
         assert_eq!(written["githubIdentities"][0]["login"], "work");
+        assert_eq!(written["chatModels"]["codex"], "gpt-5.3-codex");
+        assert_eq!(
+            config.public_value()["chatModels"]["claude"],
+            "claude-opus-4-1"
+        );
         // A dropped connection would silently sign the user out of the web app
         // the next time the desktop wrote the shared config.
         assert_eq!(written["connections"]["vercel"]["refreshToken"], "rt");
