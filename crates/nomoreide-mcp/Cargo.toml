@@ -1,0 +1,10 @@
+[package]
+name = "nomoreide-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+nomoreide-core = { path = "../nomoreide-core" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }

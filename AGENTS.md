@@ -8,7 +8,7 @@ NoMoreIDE is a Node.js 20+ TypeScript application with React and Tauri surfaces.
 - `src/cli/`, `src/mcp/`, `src/web/routes/`, and `src/tui/` expose that logic through the CLI, MCP server, HTTP API, and terminal UI.
 - `apps/dashboard/` is the Vite/React dashboard; keep reusable UI in `components/`, domain behavior in `features/`, and transport adapters in `lib/api/`.
 - `test/` contains the Vitest suite. Tests generally mirror source behavior rather than directory layout.
-- `src-tauri/` contains the Rust desktop shell. `apps/website/`, `video/`, and `assets/` hold the public site, Remotion media, and shared artwork.
+- `crates/` contains the Rust workspace, including the shared core and Tauri desktop shell. `apps/website/`, `video/`, and `assets/` hold the public site, Remotion media, and shared artwork.
 - Generated output belongs in `dist/`, `apps/website/dist/`, or `video/out/` and should not be hand-edited.
 
 ## Build, Test, and Development Commands

@@ -1,0 +1,15 @@
+[package]
+name = "nomoreide-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "nomoreide"
+path = "src/main.rs"
+
+[dependencies]
+nomoreide-daemon = { path = "../nomoreide-daemon" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
+nomoreide-mcp = { path = "../nomoreide-mcp" }

@@ -80,9 +80,12 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - run: npm ci
       - run: npm run version:check
+      - run: npm run rust:dependency-check
       - run: npm run build
-      - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace

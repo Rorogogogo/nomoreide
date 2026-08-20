@@ -49,7 +49,7 @@ Cargo.toml
 crates/
   nomoreide-core/       logic and domain types; no server, no transport
   nomoreide-daemon/     wraps core in the loopback HTTP API; the only crate that holds state
-  nomoreide-client/     talks to the daemon: discovery, authentication, typed calls; stateless
+  nomoreide-daemon-client/     talks to the daemon: discovery, authentication, typed calls; stateless
   nomoreide-mcp/        stdio MCP protocol and the 90 tool adapters
   nomoreide-cli/        the `nomoreide` binary and its subcommands
   nomoreide-tauri/      desktop shell: window, tray, native dialogs
@@ -61,7 +61,7 @@ crates/
 | --- | --- | --- |
 | `nomoreide-core` | The actual work: spawn a process, read a repository, query a database, write config. Domain types and safety policy. | `src/core/*` and `src-tauri/src/core/*` |
 | `nomoreide-daemon` | The machine-global runtime and the loopback server on `127.0.0.1:4317`. The single owner of live state. | `src/web/server.ts`, `src/web/routes/*` |
-| `nomoreide-client` | Daemon discovery, lock/health negotiation, local credential, and typed method calls over loopback. Holds no state and spawns nothing. | `src/core/daemon-client.ts`, `src/core/daemon-lifecycle.ts` |
+| `nomoreide-daemon-client` | Daemon discovery, lock/health negotiation, local credential, and typed method calls over loopback. Holds no state and spawns nothing. | `src/core/daemon-client.ts`, `src/core/daemon-lifecycle.ts` |
 | `nomoreide-mcp` | MCP protocol framing and the 90 tool adapters. | `src/mcp/*` |
 | `nomoreide-cli` | Argument parsing, subcommand dispatch, and the single shipped binary. | `src/index.ts`, `src/cli/*` |
 | `nomoreide-tauri` | Native desktop surface only. No runtime managers of its own. | `src-tauri/src/commands/*` after the logic moves to core |
@@ -74,7 +74,7 @@ Consistent with decisions 1 and 4, `nomoreide-daemon` is a library that `nomorei
 nomoreide            the one installed binary, built by nomoreide-cli
   ├─ nomoreide daemon   boots nomoreide-daemon      long-lived, machine-global
   ├─ nomoreide mcp      boots nomoreide-mcp         one process per MCP client
-  └─ nomoreide status   uses nomoreide-client       exits immediately
+  └─ nomoreide status   uses nomoreide-daemon-client       exits immediately
 ```
 
 ### Dependency direction is the safety mechanism
@@ -84,16 +84,16 @@ nomoreide            the one installed binary, built by nomoreide-cli
                     ^
               nomoreide-daemon      the only crate that links core for runtime ownership
                     ^  (loopback HTTP)
-              nomoreide-client      stateless
+              nomoreide-daemon-client      stateless
                  ^    ^    ^
                mcp   cli  tauri
 ```
 
-This direction is load-bearing, not stylistic. Today `src-tauri/src/lib.rs:22` constructs its own `ConfigStore`, `LogStore`, and `ProcessManager`, so the desktop app and the daemon each own services and neither observes the other. Keeping `nomoreide-client` unable to reach `nomoreide-core` converts that class of bug from a review-discipline problem into a compile error.
+This direction is load-bearing, not stylistic. Today `src-tauri/src/lib.rs:22` constructs its own `ConfigStore`, `LogStore`, and `ProcessManager`, so the desktop app and the daemon each own services and neither observes the other. Keeping `nomoreide-daemon-client` unable to reach `nomoreide-core` converts that class of bug from a review-discipline problem into a compile error.
 
-**Known nuance:** `nomoreide-mcp` will depend on both crates, mirroring today's behavior — service runtime tools go through `nomoreide-client`, while config, Git, and database tools run locally against `nomoreide-core`. The guarantee that MCP cannot spawn services therefore comes from *which* core modules it links, not from the crate graph alone. Record that dependency list explicitly and gate it in CI.
+**Known nuance:** `nomoreide-mcp` will depend on both crates, mirroring today's behavior — service runtime tools go through `nomoreide-daemon-client`, while config, Git, and database tools run locally against `nomoreide-core`. The guarantee that MCP cannot spawn services therefore comes from *which* core modules it links, not from the crate graph alone. Record that dependency list explicitly and gate it in CI.
 
-**Naming note:** `nomoreide-client` means the daemon client, not the web client (`apps/dashboard`). If that collision proves confusing in review, rename it `nomoreide-daemon-client`; the tradeoff is a longer path in every consumer.
+**Naming decision:** use `nomoreide-daemon-client` so the crate cannot be confused with the web client (`apps/dashboard`), accepting the longer path in each consumer.
 
 The final executable is built by `nomoreide-cli` and supports at least:
 
@@ -241,7 +241,7 @@ Each phase should be a reviewable vertical slice with tests. Do not perform a bi
 
 ### Phase 1 — Workspace, shared types, and local security
 
-- Create the Cargo workspace and the six crate boundaries above, with `nomoreide-client` forbidden from depending on `nomoreide-core`.
+- Create the Cargo workspace and the six crate boundaries above, with `nomoreide-daemon-client` forbidden from depending on `nomoreide-core`.
 - **Move `src-tauri/src/core/*` into `crates/nomoreide-core` and make `src-tauri` a consumer of it.** This is a file move, not a port: that directory has no Tauri coupling, so the change is behaviour-neutral and reviewable in a single sitting. Doing it here is what prevents phases 2–5 from writing a second Rust implementation beside the one that already exists.
 - Introduce the event-sink abstraction in `nomoreide-core` and route the existing `app.emit` sites through it, keeping the Tauri implementation as the only one for now.
 - Fill remaining gaps in the ported config/state layer: atomic filesystem helpers, redaction, path containment, and runtime-state types.

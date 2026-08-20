@@ -51,7 +51,7 @@ nomoreide/
 ├── crates/
 │   ├── nomoreide-core/     ← src-tauri/src/core
 │   ├── nomoreide-daemon/
-│   ├── nomoreide-client/
+│   ├── nomoreide-daemon-client/
 │   ├── nomoreide-mcp/
 │   ├── nomoreide-cli/
 │   └── nomoreide-tauri/    ← src-tauri
