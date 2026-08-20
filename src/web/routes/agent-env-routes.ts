@@ -19,7 +19,7 @@ const snapshotBodySchema = z.object({ agent: z.enum(["claude", "codex", "antigra
 /**
  * Agent Environments: read-only views (ROR-60) plus staged writes (ROR-61).
  * The three GET endpoints are read-on-mount — each has a matching handler in
- * `website/src/mock-api.ts`, as does `changes/preview` (its response is
+ * `apps/website/src/mock-api.ts`, as does `changes/preview` (its response is
  * rendered in the staged-changes drawer). All mutations flow through the
  * write-guarded core/agent-env-actions module and report backup paths.
  */

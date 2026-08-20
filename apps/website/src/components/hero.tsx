@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Copy, Download, Sparkles, Star } from "lucide-react";
-import { App as WorkbenchApp } from "@/app";
+import { App as WorkbenchApp } from "@nomoreide/dashboard/app";
 import { installWebsiteMockApi } from "../mock-api";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";

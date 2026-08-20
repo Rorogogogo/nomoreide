@@ -8,7 +8,7 @@
  * `register-github` paths with a 405.
  *
  * `GET /api/agent-env/auth/status` is read-on-mount — it has a matching
- * handler in `website/src/mock-api.ts`.
+ * handler in `apps/website/src/mock-api.ts`.
  */
 import { randomBytes } from "node:crypto";
 import { z } from "zod";

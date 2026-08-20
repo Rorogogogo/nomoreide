@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { beforeAll, describe, expect, test, vi } from "vitest";
-import { installWebsiteMockApi } from "../website/src/mock-api";
+import { installWebsiteMockApi } from "../apps/website/src/mock-api";
 
 beforeAll(() => {
   window.fetch = vi.fn(async () => new Response(null, { status: 404 }));

@@ -51,7 +51,7 @@ npm run dev
 npm run dev:web
 npm test
 npm run build
-npm --prefix website run build`;
+npm --prefix apps/website run build`;
 
 const serviceTools = [
   "nomoreide_list_services",

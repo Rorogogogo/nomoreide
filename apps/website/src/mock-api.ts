@@ -49,6 +49,7 @@ const createMockGlobalSettings = (): AppSettings => ({
     copyOnSelect: false,
     confirmTerminate: true,
     smoothScroll: true,
+    externalTerminal: "automatic" as const,
   },
 });
 
@@ -110,7 +111,7 @@ const gitFiles = [
   { path: "apps/dashboard/src/features/git/diff-viewer.tsx", index: " ", workingTree: "M" },
   { path: "src/mcp/tools/services.ts", index: "M", workingTree: "M" },
   { path: "test/service-health-ui.test.tsx", index: " ", workingTree: "M" },
-  { path: "website/src/components/real-product-demo.tsx", index: "A", workingTree: " " },
+  { path: "apps/website/src/components/real-product-demo.tsx", index: "A", workingTree: " " },
   { path: "src/core/config-store.ts", index: " ", workingTree: "M" },
   { path: "README.md", index: " ", workingTree: "A" },
 ];
@@ -216,10 +217,10 @@ index c3d84f2..a1c49b1 100644
 +  expect(screen.queryByText("real-secret-value")).not.toBeInTheDocument();
  });
 `,
-  "website/src/components/real-product-demo.tsx": `diff --git a/website/src/components/real-product-demo.tsx b/website/src/components/real-product-demo.tsx
+  "apps/website/src/components/real-product-demo.tsx": `diff --git a/apps/website/src/components/real-product-demo.tsx b/apps/website/src/components/real-product-demo.tsx
 new file mode 100644
 --- /dev/null
-+++ b/website/src/components/real-product-demo.tsx
++++ b/apps/website/src/components/real-product-demo.tsx
 @@ -0,0 +1,8 @@
 +import { App as WorkbenchApp } from "@/app";
 +import { installWebsiteMockApi } from "../mock-api";
@@ -302,7 +303,7 @@ const files: Record<string, string> = {
   expect(screen.queryByText("real-secret-value")).not.toBeInTheDocument();
 });
 `,
-  "website/src/components/real-product-demo.tsx": `import { App as WorkbenchApp } from "@/app";
+  "apps/website/src/components/real-product-demo.tsx": `import { App as WorkbenchApp } from "@nomoreide/dashboard/app";
 import { installWebsiteMockApi } from "../mock-api";
 
 installWebsiteMockApi();

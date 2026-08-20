@@ -16,7 +16,7 @@ const modelBodySchema = z.object({ model: z.string() });
  * Agent settings files (dialog in Agent Env): GET returns the raw file plus a
  * parsed model hint; PUT replaces the whole file; POST /model does the curated
  * model switch. All writes validate + back up first (core/agent-settings.ts).
- * The dialog fetches on open — mock handlers live in website/src/mock-api.ts.
+ * The dialog fetches on open — mock handlers live in apps/website/src/mock-api.ts.
  */
 export const agentSettingsRoutes: Route[] = [
   patternRoute(

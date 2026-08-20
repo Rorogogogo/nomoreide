@@ -41,7 +41,7 @@ function dockerReadRoute<T>(
 /**
  * Read-mostly Docker visibility: whatever's running on the host, registered
  * as a nomoreide service or not. `status` and `containers` are read-on-mount
- * (mirrored in `website/src/mock-api.ts`); actions/logs are click-driven.
+ * (mirrored in `apps/website/src/mock-api.ts`); actions/logs are click-driven.
  */
 export const dockerRoutes: Route[] = [
   route("GET", "/api/docker/status", async ({ response }) => {

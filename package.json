@@ -20,7 +20,8 @@
   ],
   "type": "module",
   "workspaces": [
-    "apps/dashboard"
+    "apps/dashboard",
+    "apps/website"
   ],
   "bin": {
     "nomoreide": "dist/index.js"

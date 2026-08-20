@@ -1,4 +1,4 @@
-import { App as WorkbenchApp } from "@/app";
+import { App as WorkbenchApp } from "@nomoreide/dashboard/app";
 import { installWebsiteMockApi } from "../mock-api";
 
 installWebsiteHistoryGuard();

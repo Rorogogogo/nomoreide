@@ -46,6 +46,10 @@ jobs:
       - run: npm ci
       - name: Type check web client
         run: npm run typecheck --workspace @nomoreide/dashboard
+      - name: Type check website
+        run: npm run typecheck --workspace @nomoreide/website
+      - name: Build website
+        run: npm run build --workspace @nomoreide/website
       - run: npm run lint
 
   audit:

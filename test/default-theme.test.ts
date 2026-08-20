@@ -12,7 +12,7 @@ const productHtml = readFileSync(
   resolve(__dirname, "../apps/dashboard/index.html"),
   "utf8",
 );
-const websiteHtml = readFileSync(resolve(__dirname, "../website/index.html"), "utf8");
+const websiteHtml = readFileSync(resolve(__dirname, "../apps/website/index.html"), "utf8");
 
 describe("default theme", () => {
   test("models system as a first-class product theme", () => {
