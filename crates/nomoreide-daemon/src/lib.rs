@@ -1,5 +1,10 @@
 //! Machine-global loopback daemon ownership and state boundary.
 
+mod server;
+mod service_discovery;
+
+pub use server::{run, serve_until, DaemonOptions};
+
 use nomoreide_core::filesystem::{atomic_write, AtomicWriteOptions};
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use serde::{Deserialize, Serialize};
@@ -91,6 +96,12 @@ impl DaemonOwnership {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "daemon state pid does not match the lock owner",
+            ));
+        }
+        if state.owner_id != self.owner_id {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "daemon state identity does not match the lock owner",
             ));
         }
         let mut serialized = serde_json::to_vec_pretty(state).map_err(invalid_data)?;
@@ -195,10 +206,11 @@ mod tests {
         )
     }
 
-    fn state() -> DaemonState {
+    fn state(owner_id: &str) -> DaemonState {
         let endpoint = DaemonEndpoint::localhost(4317);
         DaemonState {
             pid: std::process::id(),
+            owner_id: owner_id.into(),
             url: endpoint.as_str().trim_end_matches('/').to_string(),
             port: 4317,
             version: Some("0.1.103".into()),
@@ -227,7 +239,7 @@ mod tests {
         let owner = DaemonOwnership::acquire(paths.clone()).unwrap();
         assert!(!paths.state.exists());
         assert!(!paths.credential.exists());
-        owner.publish(&state()).unwrap();
+        owner.publish(&state(owner.owner_id())).unwrap();
         assert_eq!(
             fs::read_to_string(&paths.credential).unwrap().trim().len(),
             64
@@ -250,6 +262,20 @@ mod tests {
         drop(owner);
         assert!(!paths.state.exists());
         assert!(!paths.credential.exists());
+        let _ = fs::remove_dir_all(paths.state_dir);
+    }
+
+    #[test]
+    fn publication_rejects_state_for_a_different_owner() {
+        let paths = paths("identity-mismatch");
+        let owner = DaemonOwnership::acquire(paths.clone()).unwrap();
+
+        let error = owner.publish(&state("different-owner")).unwrap_err();
+
+        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+        assert!(!paths.state.exists());
+        assert!(!paths.credential.exists());
+        drop(owner);
         let _ = fs::remove_dir_all(paths.state_dir);
     }
 

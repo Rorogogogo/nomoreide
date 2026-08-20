@@ -10,3 +10,4 @@ nomoreide-core = { path = "../nomoreide-core" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
 serde.workspace = true
 serde_json.workspace = true
+tokio.workspace = true

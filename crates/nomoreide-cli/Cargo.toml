@@ -13,6 +13,7 @@ path = "src/main.rs"
 nomoreide-daemon = { path = "../nomoreide-daemon" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
 nomoreide-mcp = { path = "../nomoreide-mcp" }
+tokio.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -16,8 +16,8 @@ use uuid::Uuid;
 pub struct ServiceDef {
     pub name: String,
     /// "local" | "docker-compose" | "ssh" — absent means "local"
-    #[serde(default = "default_local_kind")]
-    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub command: Option<String>,
     /// Undefined preserves the legacy shell command; present executes
@@ -50,8 +50,10 @@ pub struct ServiceDef {
     pub host: Option<String>,
 }
 
-fn default_local_kind() -> String {
-    "local".to_string()
+impl ServiceDef {
+    pub fn effective_kind(&self) -> &str {
+        self.kind.as_deref().unwrap_or("local")
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -195,7 +197,8 @@ pub struct ProviderConnectionDef {
 #[serde(rename_all = "camelCase")]
 struct PublicServiceDef<'a> {
     name: &'a str,
-    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     command: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -361,7 +364,7 @@ impl Config {
                 .iter()
                 .map(|service| PublicServiceDef {
                     name: &service.name,
-                    kind: &service.kind,
+                    kind: service.kind.as_ref(),
                     command: service.command.as_ref(),
                     args: service.args.as_ref(),
                     cwd: service.cwd.as_ref(),
@@ -958,6 +961,33 @@ fn mask_database_query(url: &str) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn service_kind_preserves_legacy_omission() {
+        let implicit: ServiceDef = serde_json::from_value(serde_json::json!({
+            "name": "api",
+            "command": "npm run dev",
+            "cwd": "/repo"
+        }))
+        .unwrap();
+        assert_eq!(implicit.kind, None);
+        assert_eq!(implicit.effective_kind(), "local");
+        assert!(serde_json::to_value(&implicit)
+            .unwrap()
+            .get("kind")
+            .is_none());
+
+        let explicit: ServiceDef = serde_json::from_value(serde_json::json!({
+            "name": "worker",
+            "kind": "local",
+            "command": "npm run worker",
+            "cwd": "/repo"
+        }))
+        .unwrap();
+        assert_eq!(explicit.kind.as_deref(), Some("local"));
+        assert_eq!(explicit.effective_kind(), "local");
+        assert_eq!(serde_json::to_value(&explicit).unwrap()["kind"], "local");
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn save_uses_owner_only_permissions() {
@@ -985,7 +1015,7 @@ mod tests {
         let mut config = Config::default();
         config.services.push(ServiceDef {
             name: "api".into(),
-            kind: "local".into(),
+            kind: Some("local".into()),
             command: Some("npm run dev".into()),
             args: None,
             cwd: Some("/repo".into()),

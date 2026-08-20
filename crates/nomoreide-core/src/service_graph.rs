@@ -121,7 +121,7 @@ mod tests {
     fn svc(name: &str, deps: &[&str]) -> ServiceDef {
         ServiceDef {
             name: name.to_string(),
-            kind: "local".to_string(),
+            kind: Some("local".to_string()),
             command: Some("true".to_string()),
             args: None,
             cwd: Some("/tmp".to_string()),

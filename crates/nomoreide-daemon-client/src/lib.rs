@@ -1,5 +1,10 @@
 //! Stateless discovery and protocol types for the machine-global NoMoreIDE daemon.
 
+mod client;
+pub mod protocol;
+
+pub use client::{DaemonClient, DaemonClientError};
+
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::io;
@@ -40,6 +45,7 @@ impl Default for RuntimePaths {
 #[serde(rename_all = "camelCase")]
 pub struct DaemonState {
     pub pid: u32,
+    pub owner_id: String,
     pub url: String,
     pub port: u16,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -57,7 +63,11 @@ impl DaemonState {
     }
 
     pub fn validate(&self) -> io::Result<()> {
-        if self.pid == 0 || self.port == 0 || self.started_at.trim().is_empty() {
+        if self.pid == 0
+            || self.owner_id.trim().is_empty()
+            || self.port == 0
+            || self.started_at.trim().is_empty()
+        {
             return Err(invalid_data("daemon state is incomplete"));
         }
         self.endpoint().map(|_| ())
@@ -112,14 +122,21 @@ impl DaemonEndpoint {
     fn health_url(&self) -> Url {
         self.0.join("api/health").expect("validated base URL")
     }
+
+    pub(crate) fn api_url(&self, path: &str) -> Url {
+        self.0.join(path).expect("validated API path")
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct DaemonHealth {
     #[serde(default)]
     pub version: Option<String>,
     #[serde(default)]
     pub pid: Option<u32>,
+    #[serde(default)]
+    pub owner_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,6 +168,7 @@ pub enum DaemonDiscovery {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct HealthEnvelope {
     ok: bool,
     app: String,
@@ -158,6 +176,8 @@ struct HealthEnvelope {
     version: Option<String>,
     #[serde(default)]
     pid: Option<u32>,
+    #[serde(default)]
+    owner_id: Option<String>,
 }
 
 pub async fn probe_daemon(endpoint: &DaemonEndpoint, client: &Client) -> DaemonProbe {
@@ -172,6 +192,7 @@ pub async fn probe_daemon(endpoint: &DaemonEndpoint, client: &Client) -> DaemonP
         Ok(body) if body.ok && body.app == "nomoreide" => DaemonProbe::NoMoreIde(DaemonHealth {
             version: body.version,
             pid: body.pid,
+            owner_id: body.owner_id,
         }),
         _ => DaemonProbe::Foreign,
     }
@@ -209,12 +230,14 @@ pub async fn discover_daemon(
         if is_pid_alive(state.pid) {
             let endpoint = state.endpoint()?;
             if let DaemonProbe::NoMoreIde(health) = probe_daemon(&endpoint, client).await {
-                return Ok(DaemonDiscovery::Running(DiscoveredDaemon {
-                    status: DiscoveryStatus::Recorded,
-                    pid: health.pid.unwrap_or(state.pid),
-                    version_warning: version_warning(client_version, &health),
-                    endpoint,
-                }));
+                if health.owner_id.as_deref() == Some(state.owner_id.as_str()) {
+                    return Ok(DaemonDiscovery::Running(DiscoveredDaemon {
+                        status: DiscoveryStatus::Recorded,
+                        pid: health.pid.unwrap_or(state.pid),
+                        version_warning: version_warning(client_version, &health),
+                        endpoint,
+                    }));
+                }
             }
         }
     }
@@ -347,6 +370,7 @@ mod tests {
         let health = DaemonHealth {
             version: Some("0.0.1".into()),
             pid: Some(42),
+            owner_id: None,
         };
         let warning = version_warning("0.1.103", &health).unwrap();
         assert!(warning.contains("0.0.1"));
@@ -363,7 +387,7 @@ mod tests {
             let read = stream.read(&mut request).await.unwrap();
             assert!(String::from_utf8_lossy(&request[..read]).contains("GET /api/health"));
             let body = format!(
-                r#"{{"ok":true,"app":"nomoreide","version":"0.0.1","pid":{}}}"#,
+                r#"{{"ok":true,"app":"nomoreide","version":"0.0.1","pid":{},"ownerId":"test-owner"}}"#,
                 std::process::id()
             );
             stream
@@ -384,6 +408,7 @@ mod tests {
         tokio::fs::create_dir_all(&paths.state_dir).await.unwrap();
         let state = DaemonState {
             pid: std::process::id(),
+            owner_id: "test-owner".into(),
             url: format!("http://127.0.0.1:{port}"),
             port,
             version: Some("0.0.1".into()),

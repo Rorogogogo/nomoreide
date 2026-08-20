@@ -123,7 +123,7 @@ pub(crate) async fn all_context_items(
             kind: "service".into(),
             excerpt: Some(format!(
                 "{} · {}",
-                service.kind,
+                service.effective_kind(),
                 service.command.clone().unwrap_or_else(|| cwd.clone())
             )),
             project_path,

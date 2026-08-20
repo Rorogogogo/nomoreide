@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
-interface JsonRpcResponse {
+export interface JsonRpcResponse {
   jsonrpc: "2.0";
   id: number;
   result?: unknown;
@@ -12,6 +12,30 @@ interface JsonRpcResponse {
     message: string;
     data?: unknown;
   };
+}
+
+export async function callMcpTool(
+  command: McpCommand,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<Omit<JsonRpcResponse, "id" | "jsonrpc">> {
+  const client = new RawMcpClient(command);
+  try {
+    const initialize = await client.request("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "nomoreide-tool-parity", version: "1.0.0" },
+    });
+    if (initialize.error) {
+      throw new Error(`MCP initialize failed: ${initialize.error.message}`);
+    }
+    client.notify("notifications/initialized");
+    return contractResponse(
+      await client.request("tools/call", { name, arguments: args }),
+    );
+  } finally {
+    await client.close();
+  }
 }
 
 export interface McpCommand {

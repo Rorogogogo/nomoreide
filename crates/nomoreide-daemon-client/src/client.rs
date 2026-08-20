@@ -1,0 +1,462 @@
+use crate::protocol::{ErrorEnvelope, ServiceDiscovery, ServiceDiscoveryEnvelope};
+use crate::{
+    discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
+    DaemonDiscovery, DaemonEndpoint, DaemonProbe, DiscoveryStatus, RuntimePaths,
+};
+use reqwest::header::{HeaderValue, AUTHORIZATION};
+use reqwest::{Client, StatusCode};
+use thiserror::Error;
+
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
+const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
+#[derive(Debug, Error)]
+pub enum DaemonClientError {
+    #[error("failed to configure the daemon HTTP client: {0}")]
+    Client(#[source] reqwest::Error),
+    #[error("failed to read daemon runtime state: {0}")]
+    State(#[source] std::io::Error),
+    #[error("failed to read the daemon credential: {0}")]
+    Credential(#[source] std::io::Error),
+    #[error("daemon request failed: {0}")]
+    Request(#[source] reqwest::Error),
+    #[error("daemon request failed ({status}): {message}")]
+    Http { status: StatusCode, message: String },
+    #[error("daemon returned an invalid response: {0}")]
+    Protocol(String),
+    #[error("another application is listening on the NoMoreIDE daemon port")]
+    ForeignDaemon,
+    #[error("the NoMoreIDE daemon is not running")]
+    DaemonDown,
+    #[error("the NoMoreIDE daemon identity could not be verified")]
+    IdentityUnverified,
+}
+
+#[derive(Debug, Clone)]
+pub struct DaemonClient {
+    endpoint: DaemonEndpoint,
+    paths: RuntimePaths,
+    owner_id: String,
+    http: Client,
+    authorization: HeaderValue,
+}
+
+impl DaemonClient {
+    pub async fn discover(
+        paths: &RuntimePaths,
+        configured_port: u16,
+        client_version: &str,
+    ) -> Result<Self, DaemonClientError> {
+        let http = daemon_http_client()?;
+        let endpoint = match discover_daemon(paths, configured_port, client_version, &http)
+            .await
+            .map_err(DaemonClientError::State)?
+        {
+            DaemonDiscovery::Running(daemon) if daemon.status == DiscoveryStatus::Recorded => {
+                daemon.endpoint
+            }
+            DaemonDiscovery::Running(_) => return Err(DaemonClientError::IdentityUnverified),
+            DaemonDiscovery::Foreign(_) => return Err(DaemonClientError::ForeignDaemon),
+            DaemonDiscovery::Down(_) => return Err(DaemonClientError::DaemonDown),
+        };
+        let owner_id = verify_daemon_identity(paths, &endpoint, &http, None).await?;
+        let credential = read_daemon_credential(paths)
+            .await
+            .map_err(DaemonClientError::Credential)?;
+        Self::new(endpoint, paths.clone(), owner_id, credential, http)
+    }
+
+    pub async fn connect(
+        endpoint: DaemonEndpoint,
+        paths: &RuntimePaths,
+    ) -> Result<Self, DaemonClientError> {
+        let http = daemon_http_client()?;
+        let owner_id = verify_daemon_identity(paths, &endpoint, &http, None).await?;
+        let credential = read_daemon_credential(paths)
+            .await
+            .map_err(DaemonClientError::Credential)?;
+        Self::new(endpoint, paths.clone(), owner_id, credential, http)
+    }
+
+    fn new(
+        endpoint: DaemonEndpoint,
+        paths: RuntimePaths,
+        owner_id: String,
+        credential: String,
+        http: Client,
+    ) -> Result<Self, DaemonClientError> {
+        let mut authorization = HeaderValue::from_str(&format!("Bearer {credential}"))
+            .map_err(|_| DaemonClientError::Protocol("daemon credential is malformed".into()))?;
+        authorization.set_sensitive(true);
+        Ok(Self {
+            endpoint,
+            paths,
+            owner_id,
+            http,
+            authorization,
+        })
+    }
+
+    pub async fn list_services(&self) -> Result<ServiceDiscovery, DaemonClientError> {
+        verify_daemon_identity(
+            &self.paths,
+            &self.endpoint,
+            &self.http,
+            Some(&self.owner_id),
+        )
+        .await?;
+        let response = self
+            .http
+            .get(self.endpoint.api_url("api/services"))
+            .header(AUTHORIZATION, self.authorization.clone())
+            .send()
+            .await
+            .map_err(DaemonClientError::Request)?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+
+        if !status.is_success() {
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Daemon request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+
+        let envelope = serde_json::from_slice::<ServiceDiscoveryEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.into())
+    }
+}
+
+async fn verify_daemon_identity(
+    paths: &RuntimePaths,
+    endpoint: &DaemonEndpoint,
+    http: &Client,
+    expected_owner_id: Option<&str>,
+) -> Result<String, DaemonClientError> {
+    let state = read_daemon_state(&paths.state)
+        .await
+        .map_err(DaemonClientError::State)?;
+    let Some(state) = state else {
+        return Err(DaemonClientError::IdentityUnverified);
+    };
+    if !is_pid_alive(state.pid)
+        || state.endpoint().ok().as_ref() != Some(endpoint)
+        || expected_owner_id.is_some_and(|expected| expected != state.owner_id)
+    {
+        return Err(DaemonClientError::IdentityUnverified);
+    }
+    match probe_daemon(endpoint, http).await {
+        DaemonProbe::NoMoreIde(health)
+            if health.owner_id.as_deref() == Some(state.owner_id.as_str()) =>
+        {
+            Ok(state.owner_id)
+        }
+        _ => Err(DaemonClientError::IdentityUnverified),
+    }
+}
+
+fn daemon_http_client() -> Result<Client, DaemonClientError> {
+    Client::builder()
+        .no_proxy()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .timeout(REQUEST_TIMEOUT)
+        .build()
+        .map_err(DaemonClientError::Client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::DaemonState;
+    use std::process::Command;
+    use std::time::Instant;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+    use tokio::time::timeout;
+
+    const PROXY_CHILD: &str = "NOMOREIDE_PROXY_REGRESSION_CHILD";
+
+    #[tokio::test]
+    async fn identity_mismatch_never_sends_the_credential() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let paths = runtime_paths("identity-mismatch", port);
+        write_runtime(&paths, port, "recorded-owner", true).await;
+        let secret = "ab".repeat(32);
+        let server = tokio::spawn(async move {
+            let mut requests = Vec::new();
+            for _ in 0..2 {
+                requests.push(
+                    respond_once(
+                        &listener,
+                        &format!(
+                            r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"spoof-owner"}}"#,
+                            std::process::id()
+                        ),
+                    )
+                    .await,
+                );
+            }
+            requests
+        });
+
+        let error = DaemonClient::discover(&paths, port, env!("CARGO_PKG_VERSION"))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, DaemonClientError::IdentityUnverified));
+        for request in server.await.unwrap() {
+            assert!(!request.to_ascii_lowercase().contains("authorization:"));
+            assert!(!request.contains(&secret));
+        }
+        let _ = tokio::fs::remove_dir_all(paths.state_dir).await;
+    }
+
+    #[tokio::test]
+    async fn hanging_health_response_is_bounded() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let paths = runtime_paths("hanging-health", port);
+        write_runtime(&paths, port, "recorded-owner", false).await;
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0u8; 2048];
+            let read = stream.read(&mut request).await.unwrap();
+            assert!(String::from_utf8_lossy(&request[..read]).contains("GET /api/health"));
+            std::future::pending::<()>().await;
+        });
+        let started = Instant::now();
+
+        let result = timeout(
+            REQUEST_TIMEOUT + std::time::Duration::from_secs(2),
+            DaemonClient::connect(DaemonEndpoint::localhost(port), &paths),
+        )
+        .await;
+
+        assert!(result.is_ok(), "client exceeded its total request timeout");
+        assert!(matches!(
+            result.unwrap(),
+            Err(DaemonClientError::IdentityUnverified)
+        ));
+        assert!(started.elapsed() < REQUEST_TIMEOUT + std::time::Duration::from_secs(2));
+        server.abort();
+        let _ = tokio::fs::remove_dir_all(paths.state_dir).await;
+    }
+
+    #[tokio::test]
+    async fn replacement_listener_never_receives_the_credential() {
+        let initial = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = initial.local_addr().unwrap().port();
+        let paths = runtime_paths("replacement-listener", port);
+        write_runtime(&paths, port, "recorded-owner", true).await;
+        let initial_server = tokio::spawn(async move {
+            respond_once(
+                &initial,
+                &format!(
+                    r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"recorded-owner"}}"#,
+                    std::process::id()
+                ),
+            )
+            .await
+        });
+        let client = DaemonClient::connect(DaemonEndpoint::localhost(port), &paths)
+            .await
+            .unwrap();
+        assert!(!initial_server
+            .await
+            .unwrap()
+            .to_ascii_lowercase()
+            .contains("authorization:"));
+
+        let replacement = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
+        let replacement_server = tokio::spawn(async move {
+            respond_once(
+                &replacement,
+                &format!(
+                    r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"replacement-owner"}}"#,
+                    std::process::id()
+                ),
+            )
+            .await
+        });
+
+        let error = client.list_services().await.unwrap_err();
+
+        assert!(matches!(error, DaemonClientError::IdentityUnverified));
+        let request = replacement_server.await.unwrap();
+        assert!(request.contains("GET /api/health"));
+        assert!(!request.to_ascii_lowercase().contains("authorization:"));
+        assert!(!request.contains(&"ab".repeat(32)));
+        let _ = tokio::fs::remove_dir_all(paths.state_dir).await;
+    }
+
+    #[tokio::test]
+    async fn stale_client_rejects_a_new_daemon_owner() {
+        let initial = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = initial.local_addr().unwrap().port();
+        let paths = runtime_paths("new-daemon-owner", port);
+        write_runtime(&paths, port, "initial-owner", true).await;
+        let initial_server = tokio::spawn(async move {
+            respond_once(
+                &initial,
+                &format!(
+                    r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"initial-owner"}}"#,
+                    std::process::id()
+                ),
+            )
+            .await
+        });
+        let client = DaemonClient::connect(DaemonEndpoint::localhost(port), &paths)
+            .await
+            .unwrap();
+        initial_server.await.unwrap();
+
+        write_runtime(&paths, port, "new-owner", true).await;
+        tokio::fs::write(&paths.credential, "cd".repeat(32))
+            .await
+            .unwrap();
+        let replacement = TcpListener::bind(("127.0.0.1", port)).await.unwrap();
+        let replacement_contacted = tokio::spawn(async move {
+            timeout(
+                std::time::Duration::from_secs(1),
+                respond_once(
+                    &replacement,
+                    &format!(
+                        r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"new-owner"}}"#,
+                        std::process::id()
+                    ),
+                ),
+            )
+            .await
+            .is_ok()
+        });
+
+        let error = client.list_services().await.unwrap_err();
+
+        assert!(matches!(error, DaemonClientError::IdentityUnverified));
+        assert!(!replacement_contacted.await.unwrap());
+        let _ = tokio::fs::remove_dir_all(paths.state_dir).await;
+    }
+
+    #[tokio::test]
+    async fn daemon_http_client_ignores_environment_proxies() {
+        if std::env::var_os(PROXY_CHILD).is_none() {
+            let output = Command::new(std::env::current_exe().unwrap())
+                .arg("daemon_http_client_ignores_environment_proxies")
+                .arg("--nocapture")
+                .env(PROXY_CHILD, "1")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "proxy regression child failed:\nstdout:\n{}\nstderr:\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+
+        let daemon = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = daemon.local_addr().unwrap().port();
+        let proxy = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_url = format!("http://{}", proxy.local_addr().unwrap());
+        for key in ["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"] {
+            std::env::set_var(key, &proxy_url);
+        }
+        for key in ["NO_PROXY", "no_proxy"] {
+            std::env::remove_var(key);
+        }
+
+        let paths = runtime_paths("proxy-bypass", port);
+        write_runtime(&paths, port, "recorded-owner", true).await;
+        let daemon_server = tokio::spawn(async move {
+            let health = format!(
+                r#"{{"ok":true,"app":"nomoreide","pid":{},"ownerId":"recorded-owner"}}"#,
+                std::process::id()
+            );
+            let first = respond_once(&daemon, &health).await;
+            let second = respond_once(&daemon, &health).await;
+            let third = respond_once(&daemon, r#"{"ok":true,"services":[],"bundles":[]}"#).await;
+            (first, second, third)
+        });
+        let proxy_received = tokio::spawn(async move {
+            timeout(std::time::Duration::from_secs(1), proxy.accept())
+                .await
+                .is_ok()
+        });
+
+        let client = DaemonClient::connect(DaemonEndpoint::localhost(port), &paths)
+            .await
+            .unwrap();
+        assert_eq!(client.list_services().await.unwrap().services, Vec::new());
+        let (health_request, repeated_health_request, service_request) =
+            daemon_server.await.unwrap();
+        assert!(health_request.contains("GET /api/health"));
+        assert!(!health_request
+            .to_ascii_lowercase()
+            .contains("authorization:"));
+        assert!(repeated_health_request.contains("GET /api/health"));
+        assert!(!repeated_health_request
+            .to_ascii_lowercase()
+            .contains("authorization:"));
+        assert!(service_request.contains("GET /api/services"));
+        assert!(service_request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer "));
+        assert!(!proxy_received.await.unwrap());
+        let _ = tokio::fs::remove_dir_all(paths.state_dir).await;
+    }
+
+    fn runtime_paths(label: &str, port: u16) -> RuntimePaths {
+        RuntimePaths::new(std::env::temp_dir().join(format!(
+            "nomoreide-daemon-client-{label}-{}-{port}",
+            std::process::id()
+        )))
+    }
+
+    async fn write_runtime(paths: &RuntimePaths, port: u16, owner_id: &str, credential: bool) {
+        tokio::fs::create_dir_all(&paths.state_dir).await.unwrap();
+        let state = DaemonState {
+            pid: std::process::id(),
+            owner_id: owner_id.into(),
+            url: format!("http://127.0.0.1:{port}"),
+            port,
+            version: Some(env!("CARGO_PKG_VERSION").into()),
+            started_at: "2026-08-20T00:00:00Z".into(),
+        };
+        tokio::fs::write(&paths.state, serde_json::to_vec(&state).unwrap())
+            .await
+            .unwrap();
+        if credential {
+            tokio::fs::write(&paths.credential, "ab".repeat(32))
+                .await
+                .unwrap();
+        }
+    }
+
+    async fn respond_once(listener: &TcpListener, body: &str) -> String {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut request = [0u8; 4096];
+        let read = stream.read(&mut request).await.unwrap();
+        let request = String::from_utf8_lossy(&request[..read]).into_owned();
+        stream
+            .write_all(
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                )
+                .as_bytes(),
+            )
+            .await
+            .unwrap();
+        request
+    }
+}

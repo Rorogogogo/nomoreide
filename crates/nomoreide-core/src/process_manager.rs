@@ -156,7 +156,7 @@ impl ProcessManager {
             }
         }
 
-        match def.kind.as_str() {
+        match def.effective_kind() {
             "docker-compose" => self.start_docker_compose(def).await,
             "ssh" => self.start_ssh(def).await,
             _ => self.start_local(def).await,

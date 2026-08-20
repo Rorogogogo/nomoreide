@@ -1,5 +1,7 @@
 use crate::contract::registry;
+use crate::tools::ToolExecutor;
 use serde_json::{json, Map, Value};
+use std::sync::Arc;
 
 const LATEST_PROTOCOL_VERSION: &str = "2025-11-25";
 const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
@@ -20,18 +22,24 @@ const LOGGING_LEVELS: &[&str] = &[
     "emergency",
 ];
 
-pub(crate) struct McpSession;
+pub(crate) struct McpSession {
+    executor: Arc<dyn ToolExecutor>,
+}
 
 impl McpSession {
-    pub(crate) fn handle_line(&mut self, line: &str) -> Option<Value> {
+    pub(crate) fn new(executor: Arc<dyn ToolExecutor>) -> Self {
+        Self { executor }
+    }
+
+    pub(crate) async fn handle_line(&mut self, line: &str) -> Option<Value> {
         let value = match serde_json::from_str::<Value>(line) {
             Ok(value) => value,
             Err(_) => return Some(error(Value::Null, -32700, "Parse error", None)),
         };
-        self.handle_value(value)
+        self.handle_value(value).await
     }
 
-    fn handle_value(&mut self, value: Value) -> Option<Value> {
+    async fn handle_value(&mut self, value: Value) -> Option<Value> {
         let object = match value.as_object() {
             Some(object) => object,
             None => return Some(error(Value::Null, -32600, "Invalid Request", None)),
@@ -61,7 +69,7 @@ impl McpSession {
             } else {
                 error(id, -32602, "Invalid params", None)
             }),
-            "tools/call" => Some(self.call_tool(id, object.get("params"))),
+            "tools/call" => Some(self.call_tool(id, object.get("params")).await),
             "logging/setLevel" => Some(if valid_logging_params(object.get("params")) {
                 success(id, json!({}))
             } else {
@@ -72,7 +80,7 @@ impl McpSession {
         }
     }
 
-    fn call_tool(&self, id: Value, params: Option<&Value>) -> Value {
+    async fn call_tool(&self, id: Value, params: Option<&Value>) -> Value {
         let params = match params.and_then(Value::as_object) {
             Some(params) => params,
             None => return error(id, -32602, "Invalid params", None),
@@ -81,9 +89,12 @@ impl McpSession {
             Some(name) => name,
             None => return error(id, -32602, "Invalid params", None),
         };
-        if !matches!(params.get("arguments"), None | Some(Value::Object(_))) {
-            return error(id, -32602, "Invalid params", None);
-        }
+        let empty_arguments = Map::new();
+        let arguments = match params.get("arguments") {
+            None => &empty_arguments,
+            Some(Value::Object(arguments)) => arguments,
+            Some(_) => return error(id, -32602, "Invalid params", None),
+        };
 
         if !registry().contains(name) {
             return error(
@@ -92,6 +103,22 @@ impl McpSession {
                 &format!("MCP error -32601: Unknown tool: {name}"),
                 None,
             );
+        }
+
+        if name == "nomoreide_list_services" {
+            return match self.executor.execute(name, arguments).await {
+                Ok(text) => success(id, json!({ "content": [{ "type": "text", "text": text }] })),
+                Err(message) => success(
+                    id,
+                    json!({
+                        "content": [{
+                            "type": "text",
+                            "text": format!("Tool '{name}' execution failed: {message}")
+                        }],
+                        "isError": true
+                    }),
+                ),
+            };
         }
 
         error(
@@ -197,52 +224,61 @@ fn error(id: Value, code: i64, message: &str, data: Option<Value>) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tools::StaticToolExecutor;
 
-    fn request(session: &mut McpSession, value: Value) -> Value {
+    async fn request(session: &mut McpSession, value: Value) -> Value {
         session
             .handle_line(&serde_json::to_string(&value).unwrap())
+            .await
             .unwrap()
     }
 
-    #[test]
-    fn known_but_unported_tools_have_a_typed_migration_error() {
+    fn session(result: Result<String, String>) -> McpSession {
+        McpSession::new(Arc::new(StaticToolExecutor { result }))
+    }
+
+    #[tokio::test]
+    async fn known_but_unported_tools_have_a_typed_migration_error() {
         let response = request(
-            &mut McpSession,
+            &mut session(Ok(String::new())),
             json!({
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
                 "params": { "name": "nomoreide_status", "arguments": {} }
             }),
-        );
+        )
+        .await;
         assert_eq!(response["id"], "call-1");
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
         assert_eq!(response["error"]["data"]["tool"], "nomoreide_status");
     }
 
-    #[test]
-    fn unknown_tools_are_not_reported_as_migration_placeholders() {
+    #[tokio::test]
+    async fn unknown_tools_are_not_reported_as_migration_placeholders() {
         let response = request(
-            &mut McpSession,
+            &mut session(Ok(String::new())),
             json!({
                 "jsonrpc": "2.0",
                 "id": 7,
                 "method": "tools/call",
                 "params": { "name": "missing", "arguments": {} }
             }),
-        );
+        )
+        .await;
         assert_eq!(response["error"]["code"], -32601);
         assert_eq!(response["error"].get("data"), None);
     }
 
-    #[test]
-    fn initialize_validates_params_and_negotiates_supported_versions() {
-        let mut session = McpSession;
+    #[tokio::test]
+    async fn initialize_validates_params_and_negotiates_supported_versions() {
+        let mut session = session(Ok(String::new()));
         let invalid = request(
             &mut session,
             json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {} }),
-        );
+        )
+        .await;
         assert_eq!(invalid["error"]["code"], -32602);
 
         let supported = request(
@@ -257,7 +293,8 @@ mod tests {
                     "clientInfo": { "name": "test", "version": "1" }
                 }
             }),
-        );
+        )
+        .await;
         assert_eq!(supported["result"]["protocolVersion"], "2024-11-05");
 
         let unsupported = request(
@@ -272,16 +309,17 @@ mod tests {
                     "clientInfo": { "name": "test", "version": "1" }
                 }
             }),
-        );
+        )
+        .await;
         assert_eq!(
             unsupported["result"]["protocolVersion"],
             LATEST_PROTOCOL_VERSION
         );
     }
 
-    #[test]
-    fn advertised_capability_methods_are_registered() {
-        let mut session = McpSession;
+    #[tokio::test]
+    async fn advertised_capability_methods_are_registered() {
+        let mut session = session(Ok(String::new()));
         let logging = request(
             &mut session,
             json!({
@@ -290,7 +328,8 @@ mod tests {
                 "method": "logging/setLevel",
                 "params": { "level": "warning" }
             }),
-        );
+        )
+        .await;
         assert_eq!(logging["result"], json!({}));
 
         let completion = request(
@@ -304,8 +343,35 @@ mod tests {
                     "argument": { "name": "topic", "value": "" }
                 }
             }),
-        );
+        )
+        .await;
         assert_eq!(completion["error"]["code"], -32603);
         assert_ne!(completion["error"]["code"], -32601);
+    }
+
+    #[tokio::test]
+    async fn list_services_returns_fastmcp_text_content() {
+        let response = request(
+            &mut session(Ok("{\n  \"services\": [],\n  \"bundles\": []\n}".into())),
+            json!({
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "tools/call",
+                "params": {
+                    "name": "nomoreide_list_services",
+                    "arguments": { "ignoredByReference": true }
+                }
+            }),
+        )
+        .await;
+        assert_eq!(
+            response["result"],
+            json!({
+                "content": [{
+                    "type": "text",
+                    "text": "{\n  \"services\": [],\n  \"bundles\": []\n}"
+                }]
+            })
+        );
     }
 }
