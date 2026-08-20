@@ -1,13 +1,15 @@
+use crate::event_sink::tauri_event_sink;
 use crate::AppState;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine as _;
 use nomoreide_core::config::GitRepoDef;
+use nomoreide_core::event_sink::{emit_event, SharedEventSink};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
@@ -285,13 +287,13 @@ pub async fn run_install_command(
         .spawn()
         .map_err(|e| e.to_string())?;
 
-    tokio::spawn(run_install(app, child));
+    tokio::spawn(run_install(tauri_event_sink(app), child));
     Ok(())
 }
 
-async fn run_install(app: AppHandle, mut child: tokio::process::Child) {
+async fn run_install(sink: SharedEventSink, mut child: tokio::process::Child) {
     let emit = |payload: Value| {
-        let _ = app.emit("install-output", payload);
+        let _ = emit_event(sink.as_ref(), "install-output", payload);
     };
 
     let stdout = match child.stdout.take() {
@@ -304,12 +306,13 @@ async fn run_install(app: AppHandle, mut child: tokio::process::Child) {
     let stderr = child.stderr.take();
 
     // Drain stderr in background.
-    let app2 = app.clone();
+    let stderr_sink = sink.clone();
     if let Some(stderr) = stderr {
         tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                let _ = app2.emit(
+                let _ = emit_event(
+                    stderr_sink.as_ref(),
                     "install-output",
                     json!({"type":"line","stream":"stderr","text": line}),
                 );

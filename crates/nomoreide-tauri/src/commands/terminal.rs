@@ -1,8 +1,10 @@
+use crate::event_sink::tauri_event_sink;
 use crate::AppState;
 use nomoreide_core::agent_transcripts::{
     list_agent_transcripts as read_agent_transcripts, AgentTranscript, DEFAULT_TRANSCRIPT_LIMIT,
 };
 use nomoreide_core::context_library::{ContextAttachment, ContextLibrary};
+use nomoreide_core::event_sink::{emit_event, EventSink, SharedEventSink};
 #[cfg(target_os = "macos")]
 use nomoreide_core::external_terminal::{
     accept_authenticated, external_terminal_title, launch_terminal, new_socket_path, read_frame,
@@ -30,7 +32,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 #[cfg(unix)]
@@ -452,7 +454,7 @@ impl TerminalManager {
     }
 
     #[cfg(target_os = "macos")]
-    fn open_in_terminal(&self, app: &AppHandle, id: &str) -> Result<TerminalSession, String> {
+    fn open_in_terminal(&self, sink: SharedEventSink, id: &str) -> Result<TerminalSession, String> {
         let (control, control_generation) = {
             let registry = self.registry.0.lock().unwrap();
             let session = registry
@@ -499,10 +501,10 @@ impl TerminalManager {
             });
             (session.generation.clone(), session.metadata.clone())
         };
-        emit_terminal_session(app, &snapshot);
+        emit_terminal_session(sink.as_ref(), &snapshot);
 
         let registry = self.registry.clone();
-        let app_clone = app.clone();
+        let listener_sink = Arc::clone(&sink);
         let id_owned = id.to_string();
         let token_owned = token.clone();
         let socket_owned = socket_path.clone();
@@ -511,7 +513,7 @@ impl TerminalManager {
         std::thread::spawn(move || {
             run_external_listener(
                 registry,
-                app_clone,
+                listener_sink,
                 id_owned,
                 listener_generation,
                 lease_owned,
@@ -527,7 +529,7 @@ impl TerminalManager {
         if let Err(error) = launch_terminal(&socket_path, &token, &title) {
             let rollback = reset_external_presentation(&self.registry, id, &generation, &lease);
             if let Some(session) = rollback.as_ref() {
-                emit_terminal_session(app, session);
+                emit_terminal_session(sink.as_ref(), session);
             }
             return Err(error);
         }
@@ -548,11 +550,15 @@ impl TerminalManager {
     }
 
     #[cfg(not(target_os = "macos"))]
-    fn open_in_terminal(&self, _app: &AppHandle, _id: &str) -> Result<TerminalSession, String> {
+    fn open_in_terminal(
+        &self,
+        _sink: SharedEventSink,
+        _id: &str,
+    ) -> Result<TerminalSession, String> {
         Err("External Terminal is currently available on macOS only".to_string())
     }
 
-    fn reclaim_to_dock(&self, app: &AppHandle, id: &str) -> Result<TerminalSession, String> {
+    fn reclaim_to_dock(&self, sink: &dyn EventSink, id: &str) -> Result<TerminalSession, String> {
         let (control, control_generation) = {
             let registry = self.registry.0.lock().unwrap();
             let session = registry
@@ -580,7 +586,7 @@ impl TerminalManager {
             session.metadata.presentation = TerminalPresentation::Dock;
             session.metadata.clone()
         };
-        emit_terminal_session(app, &snapshot);
+        emit_terminal_session(sink, &snapshot);
         Ok(snapshot)
     }
 
@@ -969,15 +975,15 @@ impl TerminalManager {
     }
 }
 
-fn emit_terminal_session(app: &AppHandle, session: &TerminalSession) {
-    let _ = app.emit("terminal-session-changed", session.clone());
+fn emit_terminal_session(sink: &dyn EventSink, session: &TerminalSession) {
+    let _ = emit_event(sink, "terminal-session-changed", session);
 }
 
 #[cfg(target_os = "macos")]
 #[allow(clippy::too_many_arguments)]
 fn run_external_listener(
     registry: Arc<(Mutex<TerminalRegistry>, Condvar)>,
-    app: AppHandle,
+    sink: SharedEventSink,
     id: String,
     generation: String,
     lease: String,
@@ -1007,7 +1013,7 @@ fn run_external_listener(
     .ok()
     .flatten();
     let Some(mut stream) = accepted else {
-        emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+        emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
         return;
     };
 
@@ -1015,14 +1021,14 @@ fn run_external_listener(
     let writer_stream = match stream.try_clone() {
         Ok(clone) => clone,
         Err(_) => {
-            emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+            emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
             return;
         }
     };
     let revoke = Arc::new(match stream.try_clone() {
         Ok(clone) => clone,
         Err(_) => {
-            emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+            emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
             return;
         }
     });
@@ -1063,21 +1069,21 @@ fn run_external_listener(
         }
         if session.metadata.state != "running" {
             drop(locked);
-            emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+            emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
             return;
         }
         let mut gate = session.gate.lock().unwrap();
         if gate.closed {
             drop(gate);
             drop(locked);
-            emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+            emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
             return;
         }
         let replay: Vec<u8> = gate.replay.iter().copied().collect();
         if sender.send(ExternalOutput::Replay(replay)).is_err() {
             drop(gate);
             drop(locked);
-            emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+            emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
             return;
         }
         gate.external = Some(ExternalOutputSink {
@@ -1092,7 +1098,7 @@ fn run_external_listener(
         session.metadata.presentation = TerminalPresentation::Terminal;
         session.metadata.clone()
     };
-    emit_terminal_session(&app, &snapshot);
+    emit_terminal_session(sink.as_ref(), &snapshot);
 
     loop {
         match read_frame(&mut stream) {
@@ -1163,7 +1169,7 @@ fn run_external_listener(
             Ok(_) => {}
         }
     }
-    emit_reset_external_presentation(&registry, &app, &id, &generation, &lease);
+    emit_reset_external_presentation(&registry, sink.as_ref(), &id, &generation, &lease);
 }
 
 #[cfg(target_os = "macos")]
@@ -1187,13 +1193,13 @@ fn reset_external_presentation(
 #[cfg(target_os = "macos")]
 fn emit_reset_external_presentation(
     registry: &Arc<(Mutex<TerminalRegistry>, Condvar)>,
-    app: &AppHandle,
+    sink: &dyn EventSink,
     id: &str,
     generation: &str,
     lease: &str,
 ) {
     if let Some(session) = reset_external_presentation(registry, id, generation, lease).as_ref() {
-        emit_terminal_session(app, session);
+        emit_terminal_session(sink, session);
     }
 }
 
@@ -1308,6 +1314,7 @@ pub async fn create_terminal_session(
     cwd: Option<String>,
     agent: Option<AgentTerminalRequest>,
 ) -> Result<TerminalSession, String> {
+    let sink = tauri_event_sink(app);
     let is_agent = agent.is_some();
     let config = if is_agent || cwd.is_none() {
         resolve_config_load(is_agent, state.config_store.load().await)?
@@ -1485,9 +1492,9 @@ pub async fn create_terminal_session(
 
     let gate = Arc::new(Mutex::new(OutputGate::default()));
 
-    // Stream PTY output as Tauri events (buffering until the frontend attaches).
+    // Stream PTY output as events (buffering until the frontend attaches).
     let event_id = id.clone();
-    let app_clone = app.clone();
+    let reader_sink = Arc::clone(&sink);
     let reader_gate = gate.clone();
     #[cfg(target_os = "macos")]
     let reader_registry = state.terminal_manager.registry.clone();
@@ -1511,7 +1518,11 @@ pub async fn create_terminal_session(
                     if g.streaming {
                         drop(g);
                         let data = String::from_utf8_lossy(&buf[..n]).into_owned();
-                        let _ = app_clone.emit(&format!("terminal-output-{event_id}"), data);
+                        let _ = emit_event(
+                            reader_sink.as_ref(),
+                            &format!("terminal-output-{event_id}"),
+                            data,
+                        );
                     } else {
                         g.pending.extend_from_slice(&buf[..n]);
                         drop(g);
@@ -1520,7 +1531,7 @@ pub async fn create_terminal_session(
                     if let Some(lease) = external_failure {
                         emit_reset_external_presentation(
                             &reader_registry,
-                            &app_clone,
+                            reader_sink.as_ref(),
                             &event_id,
                             &reader_generation,
                             &lease,
@@ -1554,7 +1565,7 @@ pub async fn create_terminal_session(
             if let Some(lease) = lease {
                 emit_reset_external_presentation(
                     &reader_registry,
-                    &app_clone,
+                    reader_sink.as_ref(),
                     &event_id,
                     &reader_generation,
                     &lease,
@@ -1608,6 +1619,7 @@ pub async fn start_terminal_stream(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
+    let sink = tauri_event_sink(app);
     let gate = {
         let registry = state.terminal_manager.registry.0.lock().unwrap();
         registry.sessions.get(&id).map(|s| s.gate.clone())
@@ -1617,7 +1629,7 @@ pub async fn start_terminal_stream(
     let mut g = gate.lock().unwrap();
     if !g.pending.is_empty() {
         let data = String::from_utf8_lossy(&g.pending).into_owned();
-        let _ = app.emit(&format!("terminal-output-{id}"), data);
+        let _ = emit_event(sink.as_ref(), &format!("terminal-output-{id}"), data);
         g.pending.clear();
     }
     g.streaming = true;
@@ -1708,7 +1720,9 @@ pub async fn open_terminal_in_system_terminal(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<TerminalSession, String> {
-    state.terminal_manager.open_in_terminal(&app, &id)
+    state
+        .terminal_manager
+        .open_in_terminal(tauri_event_sink(app), &id)
 }
 
 #[tauri::command]
@@ -1717,7 +1731,8 @@ pub async fn reclaim_terminal_to_dock(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<TerminalSession, String> {
-    state.terminal_manager.reclaim_to_dock(&app, &id)
+    let sink = tauri_event_sink(app);
+    state.terminal_manager.reclaim_to_dock(sink.as_ref(), &id)
 }
 
 #[tauri::command]

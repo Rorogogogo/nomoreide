@@ -1,9 +1,11 @@
+use crate::event_sink::tauri_event_sink;
 use crate::AppState;
+use nomoreide_core::event_sink::{emit_event, SharedEventSink};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::process::Stdio;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
@@ -166,7 +168,7 @@ pub async fn start_agent_chat(
             }
         })?;
 
-    tokio::spawn(run_agent(app, child, is_codex));
+    tokio::spawn(run_agent(tauri_event_sink(app), child, is_codex));
     Ok(())
 }
 
@@ -212,13 +214,14 @@ fn build_codex_args(message: &str, resume_session_id: Option<&str>) -> Vec<Strin
 // Subprocess runner
 // ---------------------------------------------------------------------------
 
-async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: bool) {
+async fn run_agent(sink: SharedEventSink, mut child: tokio::process::Child, is_codex: bool) {
     let mut tool_names: HashMap<String, String> = HashMap::new();
 
     let stdout = match child.stdout.take() {
         Some(s) => s,
         None => {
-            let _ = app.emit(
+            let _ = emit_event(
+                sink.as_ref(),
                 "agent-chat-event",
                 json!({"type":"error","message":"No stdout pipe"}),
             );
@@ -259,7 +262,7 @@ async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: b
             if event.get("type").and_then(|t| t.as_str()) == Some("done") {
                 done_sent = true;
             }
-            let _ = app.emit("agent-chat-event", event);
+            let _ = emit_event(sink.as_ref(), "agent-chat-event", event);
         }
     }
 
@@ -270,13 +273,18 @@ async fn run_agent(app: AppHandle, mut child: tokio::process::Child, is_codex: b
             let stderr = stderr_buf.lock().await;
             let msg = stderr.trim().to_string();
             if !msg.is_empty() {
-                let _ = app.emit("agent-chat-event", json!({"type":"error","message": msg}));
+                let _ = emit_event(
+                    sink.as_ref(),
+                    "agent-chat-event",
+                    json!({"type":"error","message": msg}),
+                );
             }
         }
     }
 
     if !done_sent {
-        let _ = app.emit(
+        let _ = emit_event(
+            sink.as_ref(),
             "agent-chat-event",
             json!({"type":"done","stopReason": null}),
         );

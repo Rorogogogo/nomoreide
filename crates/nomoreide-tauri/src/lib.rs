@@ -1,4 +1,5 @@
 mod commands;
+mod event_sink;
 
 pub fn run_terminal_attach(socket_path: &str, token: &str) -> Result<(), String> {
     nomoreide_core::external_terminal::run_attach(socket_path, token)
