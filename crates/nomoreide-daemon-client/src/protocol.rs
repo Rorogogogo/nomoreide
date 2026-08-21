@@ -135,6 +135,11 @@ pub struct ServiceRuntimeStatus {
     pub exit_code: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// ISO-8601 UTC, to the millisecond, for the launch this status describes.
+    /// Absent for a service the daemon has never run. It outlives the process
+    /// so a reader can tell this run's output from an earlier run's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

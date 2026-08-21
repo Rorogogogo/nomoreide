@@ -166,6 +166,10 @@ enum ArgumentContract {
     /// `nomoreide_timeline`: both fields optional — an absent `service` means
     /// every service rather than one named nothing.
     Timeline,
+    /// `nomoreide_service_health`: one optional non-empty `service`. Absent
+    /// asks about every registered service; present and empty is still a
+    /// rejected name.
+    OptionalService,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -181,7 +185,9 @@ impl ArgumentContract {
             | "nomoreide_stop_service"
             | "nomoreide_restart_service"
             | "nomoreide_start_bundle"
-            | "nomoreide_stop_bundle" => Some(Self::RequiredName),
+            | "nomoreide_stop_bundle"
+            | "nomoreide_service_context" => Some(Self::RequiredName),
+            "nomoreide_service_health" => Some(Self::OptionalService),
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
             "nomoreide_timeline" => Some(Self::Timeline),
             _ => None,
@@ -202,6 +208,7 @@ impl ArgumentContract {
                 failures.extend(bounded_integer(arguments, "limit", TIMELINE_LIMIT_MAX));
                 collect(failures)
             }
+            Self::OptionalService => collect(optional_name(arguments, "service")),
         }
     }
 }
@@ -393,17 +400,14 @@ mod tests {
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
-                "params": { "name": "nomoreide_service_health", "arguments": {} }
+                "params": { "name": "nomoreide_list_errors", "arguments": {} }
             }),
         )
         .await;
         assert_eq!(response["id"], "call-1");
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
-        assert_eq!(
-            response["error"]["data"]["tool"],
-            "nomoreide_service_health"
-        );
+        assert_eq!(response["error"]["data"]["tool"], "nomoreide_list_errors");
     }
 
     #[tokio::test]

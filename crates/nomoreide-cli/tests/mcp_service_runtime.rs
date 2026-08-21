@@ -361,6 +361,130 @@ fn mcp_tools_read_the_timeline_from_the_shared_daemon() {
     let _ = std::fs::remove_dir_all(home);
 }
 
+/// The debugging packet joins two sources that only the tool can join: the
+/// definition the user registered, read from config, and the runtime reading,
+/// read from the daemon that owns the process. Neither half alone answers
+/// "what is wrong with this service".
+#[test]
+fn mcp_tools_report_service_context_and_health_from_config_and_the_daemon() {
+    let home = temp_home();
+    write_config(&home);
+    let (mut daemon, port) = DaemonProcess::spawn(&home);
+
+    call_tools(
+        &home,
+        port,
+        &[("nomoreide_start_service", json!({ "name": "sleeper" }))],
+    );
+    await_announcement(&home, port);
+
+    let answers = call_tools(
+        &home,
+        port,
+        &[
+            ("nomoreide_service_context", json!({ "name": "sleeper" })),
+            ("nomoreide_service_context", json!({ "name": "missing" })),
+            ("nomoreide_service_health", json!({ "service": "sleeper" })),
+            ("nomoreide_service_health", json!({})),
+            ("nomoreide_service_health", json!({ "service": "missing" })),
+        ],
+    );
+
+    let packet = text_of(&answers[0]);
+    assert!(
+        packet.starts_with("Investigate NoMoreIDE service \"sleeper\".\n"),
+        "{packet}"
+    );
+    assert!(packet.contains("- state: running"), "{packet}");
+    assert!(
+        packet.contains("- configured port: not configured"),
+        "{packet}"
+    );
+    assert!(packet.contains("- runtime url: not detected"), "{packet}");
+    assert!(
+        packet.contains("- Service is running without detected warnings."),
+        "{packet}"
+    );
+    // The service announced itself, so both the log tail and the timeline it
+    // produced reach the packet.
+    assert!(packet.contains(FIXTURE_MARKER), "{packet}");
+    assert!(packet.contains("[info] sleeper started"), "{packet}");
+    assert!(packet.ends_with('\n'), "{packet:?}");
+
+    // A packet is only meaningful for a registered service; an unknown name is
+    // a refusal, unlike a log read, which reads back empty.
+    assert_eq!(answers[1]["result"]["isError"], true);
+    assert_eq!(
+        text_of(&answers[1]),
+        "Tool 'nomoreide_service_context' execution failed: Service \"missing\" is not registered."
+    );
+
+    let health = status_of(&answers[2]);
+    assert_eq!(health["service"], "sleeper");
+    assert_eq!(health["status"], "healthy");
+    assert_eq!(
+        health["summary"],
+        "Service is running without detected warnings."
+    );
+    // Reported because a client reads the fields it was promised, even though
+    // this tool never fills them.
+    assert_eq!(health["checks"], json!([]));
+    assert_eq!(health["ports"], json!([]));
+    assert!(health["agentContext"].as_str().unwrap().contains("sleeper"));
+    // Nothing samples a process tree natively, so the field is absent rather
+    // than reported empty.
+    assert!(health.get("processTree").is_none(), "{health}");
+    assert!(health.get("lastErrorLog").is_none(), "{health}");
+
+    // Unnamed asks about every registered service, in config order, and a
+    // service the daemon has never run is unknown rather than unhealthy.
+    let all = statuses_of(&answers[3]);
+    assert_eq!(all.len(), 2);
+    assert_eq!(all[0]["service"], "sleeper");
+    assert_eq!(all[1]["service"], "follower");
+    assert_eq!(all[1]["status"], "unknown");
+    assert_eq!(all[1]["summary"], "Service is not running.");
+
+    assert_eq!(answers[4]["result"]["isError"], true);
+    assert_eq!(
+        text_of(&answers[4]),
+        "Tool 'nomoreide_service_health' execution failed: Service \"missing\" is not registered."
+    );
+
+    daemon.shutdown();
+    let _ = std::fs::remove_dir_all(home);
+}
+
+/// Wait until the fixture child's own line has reached the daemon's buffer.
+/// The child writes once it is scheduled and the daemon buffers that
+/// asynchronously, so the first read can legitimately come back empty.
+fn await_announcement(home: &Path, port: u16) {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        let read = call_tools(
+            home,
+            port,
+            &[("nomoreide_read_logs", json!({ "name": "sleeper" }))],
+        );
+        let announced = match status_of(&read[0]) {
+            Value::Array(entries) => entries.iter().any(|entry| {
+                entry["text"]
+                    .as_str()
+                    .is_some_and(|text| text.contains(FIXTURE_MARKER))
+            }),
+            other => panic!("expected an array of log entries, got {other}"),
+        };
+        if announced {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the fixture child never announced itself"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 fn call_tools(home: &Path, port: u16, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut frames = vec![
         json!({
@@ -418,6 +542,13 @@ fn statuses_of(response: &Value) -> Vec<Value> {
         Value::Array(statuses) => statuses,
         other => panic!("expected an array of statuses, got {other}"),
     }
+}
+
+/// The raw text a tool answered with, for the tools that answer in prose.
+fn text_of(response: &Value) -> &str {
+    response["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap_or_else(|| panic!("expected tool text content: {response}"))
 }
 
 /// The status an agent reads back, parsed out of the tool's text content.

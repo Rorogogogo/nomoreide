@@ -1,3 +1,6 @@
+mod diagnostics;
+
+use nomoreide_core::config::ConfigStore;
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, ServiceRuntimeStatus};
 use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, DEFAULT_DAEMON_PORT};
 use serde::Serialize;
@@ -16,6 +19,10 @@ pub(crate) trait ToolExecutor: Send + Sync {
 pub(crate) struct NativeToolExecutor {
     paths: RuntimePaths,
     port: u16,
+    /// Service definitions are read here rather than asked of the daemon, the
+    /// way the reference reads them: a definition is what the user registered,
+    /// and the daemon re-reads the same file per operation anyway.
+    config: ConfigStore,
 }
 
 impl Default for NativeToolExecutor {
@@ -27,6 +34,7 @@ impl Default for NativeToolExecutor {
                 .and_then(|value| value.parse().ok())
                 .filter(|port| *port > 0)
                 .unwrap_or(DEFAULT_DAEMON_PORT),
+            config: ConfigStore::new(ConfigStore::default_path()),
         }
     }
 }
@@ -98,6 +106,22 @@ impl ToolExecutor for NativeToolExecutor {
                     let statuses = client.stop_bundle(bundle).await.map_err(daemon_message)?;
                     render(&status_views(&statuses))
                 }
+                NativeTool::ServiceContext(service) => {
+                    let config = self
+                        .config
+                        .load()
+                        .await
+                        .map_err(|error| error.to_string())?;
+                    diagnostics::service_context(&client, &config, service).await
+                }
+                NativeTool::ServiceHealth(service) => {
+                    let config = self
+                        .config
+                        .load()
+                        .await
+                        .map_err(|error| error.to_string())?;
+                    diagnostics::service_health(&client, &config, service).await
+                }
             }
         })
     }
@@ -122,6 +146,10 @@ enum NativeTool<'a> {
     StartBundle(&'a str),
     StopBundle(&'a str),
     Status,
+    ServiceContext(&'a str),
+    /// An absent service asks about every registered one, so `None` is a wider
+    /// question rather than a missing answer.
+    ServiceHealth(Option<&'a str>),
 }
 
 impl<'a> NativeTool<'a> {
@@ -146,6 +174,10 @@ impl<'a> NativeTool<'a> {
             }),
             "nomoreide_start_bundle" => Ok(Self::StartBundle(bundle_name(arguments)?)),
             "nomoreide_stop_bundle" => Ok(Self::StopBundle(bundle_name(arguments)?)),
+            "nomoreide_service_context" => Ok(Self::ServiceContext(service_name(arguments)?)),
+            "nomoreide_service_health" => Ok(Self::ServiceHealth(
+                arguments.get("service").and_then(Value::as_str),
+            )),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -228,6 +260,17 @@ fn daemon_message(error: DaemonClientError) -> String {
 /// The status shape the reference implementation returns for these tools. The
 /// process-group id the daemon tracks is an ownership detail agents have no use
 /// for, so it stays inside the daemon boundary.
+/// How a runtime state reads to an agent. The reference has no distinct
+/// stopping state, so a service on its way down reports as stopped.
+fn state_label(state: ServiceRuntimeState) -> &'static str {
+    match state {
+        ServiceRuntimeState::Stopped | ServiceRuntimeState::Stopping => "stopped",
+        ServiceRuntimeState::Starting => "starting",
+        ServiceRuntimeState::Running => "running",
+        ServiceRuntimeState::Exited => "exited",
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServiceStatusView<'a> {
@@ -245,14 +288,7 @@ impl<'a> ServiceStatusView<'a> {
     fn of(status: &'a ServiceRuntimeStatus) -> Self {
         Self {
             name: &status.name,
-            state: match status.state {
-                ServiceRuntimeState::Stopped => "stopped",
-                ServiceRuntimeState::Starting => "starting",
-                ServiceRuntimeState::Running => "running",
-                // The reference runtime has no distinct stopping state.
-                ServiceRuntimeState::Stopping => "stopped",
-                ServiceRuntimeState::Exited => "exited",
-            },
+            state: state_label(status.state),
             pid: status.pid,
             url: status.url.as_deref(),
             exit_code: status.exit_code,
@@ -286,6 +322,7 @@ mod tests {
             pgid: Some(4321),
             exit_code: None,
             url: Some("http://localhost:3000".into()),
+            started_at: Some("2026-08-21T10:00:00.000Z".into()),
         }
     }
 
@@ -372,8 +409,24 @@ mod tests {
             NativeTool::parse("nomoreide_status", &arguments),
             Ok(NativeTool::Status)
         ));
-        // Still unported, so still refused by the executor.
-        assert!(NativeTool::parse("nomoreide_service_health", &arguments).is_err());
+        assert!(matches!(
+            NativeTool::parse("nomoreide_service_context", &arguments),
+            Ok(NativeTool::ServiceContext("api"))
+        ));
+        // An absent service is the whole-runtime question, not a missing name.
+        assert!(matches!(
+            NativeTool::parse("nomoreide_service_health", &Map::new()),
+            Ok(NativeTool::ServiceHealth(None))
+        ));
+        let mut health = Map::new();
+        health.insert("service".into(), Value::String("api".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_service_health", &health),
+            Ok(NativeTool::ServiceHealth(Some("api")))
+        ));
+        assert!(NativeTool::parse("nomoreide_service_context", &Map::new()).is_err());
+        // Outside phase 2, so still refused by the executor.
+        assert!(NativeTool::parse("nomoreide_list_errors", &arguments).is_err());
 
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {

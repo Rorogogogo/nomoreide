@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+chrono.workspace = true
 nomoreide-core = { path = "../nomoreide-core" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
 serde.workspace = true

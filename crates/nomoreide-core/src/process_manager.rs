@@ -11,6 +11,7 @@ use super::timeline::{
     NewTimelineEvent, TimelineEvent, TimelineEventKind, TimelineSeverity, TimelineStore,
 };
 use anyhow::{anyhow, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -128,6 +129,12 @@ pub struct ServiceStatus {
     pub pgid: Option<u32>,
     pub exit_code: Option<i32>,
     pub url: Option<String>,
+    /// When this generation of the process was launched. It survives the exit
+    /// it belongs to — a health check reads it to tell the output of the run
+    /// that just failed apart from whatever an earlier run left behind, and
+    /// clearing it on exit would take that answer away exactly when it is
+    /// wanted. `None` means this manager has never launched the service.
+    pub started_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -169,6 +176,7 @@ struct ManagedProcess {
     state: ServiceState,
     exit_code: Option<i32>,
     url: Option<String>,
+    started_at: Option<DateTime<Utc>>,
     cleanup_confirmed: bool,
     controller: Option<mpsc::Sender<SupervisorCommand>>,
 }
@@ -463,6 +471,7 @@ impl ProcessManager {
                 pgid: p.pgid,
                 exit_code: p.exit_code,
                 url: p.url.clone(),
+                started_at: p.started_at,
             })
             .collect()
     }
@@ -476,6 +485,7 @@ impl ProcessManager {
             pgid: p.pgid,
             exit_code: p.exit_code,
             url: p.url.clone(),
+            started_at: p.started_at,
         })
     }
 
@@ -909,6 +919,7 @@ impl ProcessManager {
                 state: ServiceState::Running,
                 exit_code: None,
                 url: None,
+                started_at: Some(Utc::now()),
                 cleanup_confirmed: false,
                 controller: Some(controller),
             },
@@ -2562,6 +2573,7 @@ mod tests {
                 state: ServiceState::Stopping,
                 exit_code: None,
                 url: None,
+                started_at: Some(Utc::now()),
                 cleanup_confirmed: false,
                 controller: None,
             },

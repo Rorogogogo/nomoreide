@@ -284,6 +284,9 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         pgid: status.pgid,
         exit_code: status.exit_code,
         url: status.url,
+        started_at: status
+            .started_at
+            .map(|at| at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)),
     }
 }
 
@@ -337,6 +340,7 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
         pgid: None,
         exit_code: None,
         url: None,
+        started_at: None,
     }
 }
 

@@ -1,3 +1,4 @@
+pub mod agent_context;
 pub mod agent_transcripts;
 pub mod bundle;
 pub mod config;
