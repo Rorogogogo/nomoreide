@@ -155,16 +155,21 @@ impl McpSession {
 /// rejected, so only declared fields can fail.
 enum ArgumentContract {
     Empty,
-    ServiceName,
+    /// A single required non-empty `name`. The reference's `serviceNameSchema`
+    /// and `bundleNameSchema` are the same shape, so they reject the same
+    /// arguments with the same wording.
+    RequiredName,
 }
 
 impl ArgumentContract {
     fn of(tool: &str) -> Option<Self> {
         match tool {
             "nomoreide_list_services" => Some(Self::Empty),
-            "nomoreide_start_service" | "nomoreide_stop_service" | "nomoreide_restart_service" => {
-                Some(Self::ServiceName)
-            }
+            "nomoreide_start_service"
+            | "nomoreide_stop_service"
+            | "nomoreide_restart_service"
+            | "nomoreide_start_bundle"
+            | "nomoreide_stop_bundle" => Some(Self::RequiredName),
             _ => None,
         }
     }
@@ -172,7 +177,7 @@ impl ArgumentContract {
     fn validate(&self, arguments: &Map<String, Value>) -> Result<(), String> {
         match self {
             Self::Empty => Ok(()),
-            Self::ServiceName => match arguments.get("name") {
+            Self::RequiredName => match arguments.get("name") {
                 None => Err("name: Required".into()),
                 Some(Value::String(name)) if name.is_empty() => {
                     Err("name: String must contain at least 1 character(s)".into())
@@ -323,6 +328,8 @@ mod tests {
             "nomoreide_start_service",
             "nomoreide_stop_service",
             "nomoreide_restart_service",
+            "nomoreide_start_bundle",
+            "nomoreide_stop_bundle",
         ] {
             let response = request(
                 &mut session(Ok("{\n  \"name\": \"api\"\n}".into())),
@@ -391,12 +398,15 @@ mod tests {
                 "name: Expected string, received array",
             ),
         ];
-        // Every service mutation shares the reference's serviceNameSchema, so
-        // each one has to reject the same arguments with the same wording.
+        // The reference gives every service mutation `serviceNameSchema` and
+        // every bundle mutation the identically shaped `bundleNameSchema`, so
+        // all of them reject the same arguments with the same wording.
         for tool in [
             "nomoreide_start_service",
             "nomoreide_stop_service",
             "nomoreide_restart_service",
+            "nomoreide_start_bundle",
+            "nomoreide_stop_bundle",
         ] {
             for (arguments, detail) in cases.clone() {
                 let response = request(

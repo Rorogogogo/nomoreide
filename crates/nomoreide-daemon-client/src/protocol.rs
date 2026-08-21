@@ -155,6 +155,8 @@ pub enum DaemonErrorCode {
     ConfigLoadFailed,
     ServiceStartFailed,
     CleanupFailed,
+    BundleNotFound,
+    DependencyCycle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -175,6 +177,13 @@ pub struct PortConflict {
     pub service: String,
     pub port: u16,
     pub holder: Option<PortHolderIdentity>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BundleMutationEnvelope {
+    pub ok: bool,
+    pub statuses: Vec<ServiceRuntimeStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

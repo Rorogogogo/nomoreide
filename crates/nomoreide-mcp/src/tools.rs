@@ -60,6 +60,14 @@ impl ToolExecutor for NativeToolExecutor {
                         .map_err(daemon_message)?;
                     render(&ServiceStatusView::of(&status))
                 }
+                NativeTool::StartBundle(bundle) => {
+                    let statuses = client.start_bundle(bundle).await.map_err(daemon_message)?;
+                    render(&status_views(&statuses))
+                }
+                NativeTool::StopBundle(bundle) => {
+                    let statuses = client.stop_bundle(bundle).await.map_err(daemon_message)?;
+                    render(&status_views(&statuses))
+                }
             }
         })
     }
@@ -73,6 +81,8 @@ enum NativeTool<'a> {
     StartService(&'a str),
     StopService(&'a str),
     RestartService(&'a str),
+    StartBundle(&'a str),
+    StopBundle(&'a str),
 }
 
 impl<'a> NativeTool<'a> {
@@ -82,17 +92,33 @@ impl<'a> NativeTool<'a> {
             "nomoreide_start_service" => Ok(Self::StartService(service_name(arguments)?)),
             "nomoreide_stop_service" => Ok(Self::StopService(service_name(arguments)?)),
             "nomoreide_restart_service" => Ok(Self::RestartService(service_name(arguments)?)),
+            "nomoreide_start_bundle" => Ok(Self::StartBundle(bundle_name(arguments)?)),
+            "nomoreide_stop_bundle" => Ok(Self::StopBundle(bundle_name(arguments)?)),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
 }
 
 fn service_name(arguments: &Map<String, Value>) -> Result<&str, String> {
+    required_name(arguments, "service")
+}
+
+fn bundle_name(arguments: &Map<String, Value>) -> Result<&str, String> {
+    required_name(arguments, "bundle")
+}
+
+fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'a str, String> {
     arguments
         .get("name")
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty())
-        .ok_or_else(|| "Registered service name is required.".to_string())
+        .ok_or_else(|| format!("Registered {kind} name is required."))
+}
+
+/// The reference returns a bundle's statuses as a plain array, in the order the
+/// services were acted on.
+fn status_views(statuses: &[ServiceRuntimeStatus]) -> Vec<ServiceStatusView<'_>> {
+    statuses.iter().map(ServiceStatusView::of).collect()
 }
 
 fn render<T: Serialize>(value: &T) -> Result<String, String> {
@@ -213,6 +239,7 @@ mod tests {
         arguments.insert("name".into(), Value::String(String::new()));
         assert!(NativeTool::parse("nomoreide_stop_service", &arguments).is_err());
         assert!(NativeTool::parse("nomoreide_restart_service", &arguments).is_err());
+        assert!(NativeTool::parse("nomoreide_start_bundle", &arguments).is_err());
         arguments.insert("name".into(), Value::String("api".into()));
         assert!(matches!(
             NativeTool::parse("nomoreide_stop_service", &arguments),
@@ -221,6 +248,14 @@ mod tests {
         assert!(matches!(
             NativeTool::parse("nomoreide_restart_service", &arguments),
             Ok(NativeTool::RestartService("api"))
+        ));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_start_bundle", &arguments),
+            Ok(NativeTool::StartBundle("api"))
+        ));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_stop_bundle", &arguments),
+            Ok(NativeTool::StopBundle("api"))
         ));
         assert!(NativeTool::parse("nomoreide_status", &arguments).is_err());
 

@@ -13,8 +13,8 @@ use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_daemon_client::protocol::{
-    DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, ServiceDiscoveryEnvelope,
-    ServiceMutationEnvelope,
+    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope,
+    ServiceDiscoveryEnvelope, ServiceMutationEnvelope,
 };
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use serde::Serialize;
@@ -133,6 +133,8 @@ pub async fn serve_with_shutdown_requests(
         .route("/api/services/:name/start", post(start_service))
         .route("/api/services/:name/stop", post(stop_service))
         .route("/api/services/:name/restart", post(restart_service))
+        .route("/api/bundles/:name/start", post(start_bundle))
+        .route("/api/bundles/:name/stop", post(stop_bundle))
         .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
         .with_state(app_state);
@@ -255,6 +257,46 @@ async fn restart_service(
     }
 }
 
+async fn start_bundle(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    bundle_action(state, name, headers, BundleAction::Start).await
+}
+
+async fn stop_bundle(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    bundle_action(state, name, headers, BundleAction::Stop).await
+}
+
+enum BundleAction {
+    Start,
+    Stop,
+}
+
+async fn bundle_action(
+    state: AppState,
+    name: String,
+    headers: HeaderMap,
+    action: BundleAction,
+) -> Response {
+    if !authorized(&headers, &state.credential) {
+        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
+    }
+    let result = match action {
+        BundleAction::Start => state.runtime.start_bundle(&name).await,
+        BundleAction::Stop => state.runtime.stop_bundle(&name).await,
+    };
+    match result {
+        Ok(statuses) => Json(BundleMutationEnvelope { ok: true, statuses }).into_response(),
+        Err(error) => mutation_error(error),
+    }
+}
+
 fn authorized(headers: &HeaderMap, credential: &str) -> bool {
     let Some(candidate) = headers
         .get(axum::http::header::AUTHORIZATION)
@@ -328,6 +370,18 @@ fn mutation_error(error: RuntimeMutationError) -> Response {
             StatusCode::INTERNAL_SERVER_ERROR,
             DaemonErrorCode::ServiceStartFailed,
             "Failed to start the registered service.".to_string(),
+            None,
+        ),
+        RuntimeMutationError::BundleNotFound => (
+            StatusCode::NOT_FOUND,
+            DaemonErrorCode::BundleNotFound,
+            "Bundle is not registered.".to_string(),
+            None,
+        ),
+        RuntimeMutationError::DependencyCycle(message) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            DaemonErrorCode::DependencyCycle,
+            message,
             None,
         ),
         RuntimeMutationError::CleanupFailed => (

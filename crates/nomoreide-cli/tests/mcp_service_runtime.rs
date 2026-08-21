@@ -136,6 +136,71 @@ fn mcp_tools_restart_a_service_in_the_shared_daemon() {
     let _ = std::fs::remove_dir_all(home);
 }
 
+/// The bundle tools have to reach the same daemon and hand back the reference's
+/// array of statuses, ordered so dependencies come up first.
+#[test]
+fn mcp_tools_start_and_stop_a_bundle_in_the_shared_daemon() {
+    let home = temp_home();
+    write_config(&home);
+    let port = reserved_port();
+    let mut daemon = DaemonProcess::spawn(&home, port);
+
+    let started = call_tools(
+        &home,
+        port,
+        &[
+            ("nomoreide_start_bundle", json!({ "name": "pair" })),
+            ("nomoreide_start_bundle", json!({ "name": "missing" })),
+        ],
+    );
+
+    let statuses = statuses_of(&started[0]);
+    assert_eq!(
+        statuses
+            .iter()
+            .map(|status| status["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["sleeper", "follower"],
+        "the dependency starts before the service that declares it"
+    );
+    assert!(statuses
+        .iter()
+        .all(|status| status["state"] == "running" && status.get("pgid").is_none()));
+    let pids = statuses
+        .iter()
+        .map(|status| status["pid"].as_u64().unwrap() as u32)
+        .collect::<Vec<_>>();
+    assert!(pids.iter().copied().all(process_exists));
+
+    assert_eq!(started[1]["result"]["isError"], true);
+    assert_eq!(
+        started[1]["result"]["content"][0]["text"],
+        "Tool 'nomoreide_start_bundle' execution failed: Bundle is not registered."
+    );
+
+    // Stopping is scoped to the bundle's own members, so the dependency it
+    // pulled in is left running.
+    let stopped = call_tools(
+        &home,
+        port,
+        &[("nomoreide_stop_bundle", json!({ "name": "pair" }))],
+    );
+    let stopped_statuses = statuses_of(&stopped[0]);
+    assert_eq!(
+        stopped_statuses
+            .iter()
+            .map(|status| status["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        vec!["follower"]
+    );
+    assert!(!process_exists(pids[1]));
+    assert!(process_exists(pids[0]));
+
+    daemon.shutdown();
+    assert!(!process_exists(pids[0]));
+    let _ = std::fs::remove_dir_all(home);
+}
+
 fn call_tools(home: &Path, port: u16, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut frames = vec![
         json!({
@@ -185,6 +250,14 @@ fn call_tools(home: &Path, port: u16, calls: &[(&str, Value)]) -> Vec<Value> {
     // The initialize reply plus one reply per call; the notification is silent.
     assert_eq!(responses.len(), calls.len() + 1);
     responses[1..].to_vec()
+}
+
+/// The array of statuses a bundle tool reports back.
+fn statuses_of(response: &Value) -> Vec<Value> {
+    match status_of(response) {
+        Value::Array(statuses) => statuses,
+        other => panic!("expected an array of statuses, got {other}"),
+    }
 }
 
 /// The status an agent reads back, parsed out of the tool's text content.
@@ -255,18 +328,31 @@ fn write_config(home: &Path) {
         directory.join("config.json"),
         serde_json::to_vec_pretty(&json!({
             "version": 1,
-            "services": [{
-                "name": "sleeper",
-                "command": std::env::current_exe().unwrap(),
-                "args": ["--exact", "mcp_runtime_fixture_child", "--nocapture"],
-                "cwd": std::env::current_dir().unwrap(),
-                "env": { FIXTURE_VARIABLE: "1" }
-            }],
-            "bundles": []
+            "services": [
+                fixture_service("sleeper", None),
+                fixture_service("follower", Some(vec!["sleeper"]))
+            ],
+            // The bundle names only the dependent; `sleeper` comes along as its
+            // dependency.
+            "bundles": [{ "name": "pair", "services": ["follower"] }]
         }))
         .unwrap(),
     )
     .unwrap();
+}
+
+fn fixture_service(name: &str, depends_on: Option<Vec<&str>>) -> Value {
+    let mut definition = json!({
+        "name": name,
+        "command": std::env::current_exe().unwrap(),
+        "args": ["--exact", "mcp_runtime_fixture_child", "--nocapture"],
+        "cwd": std::env::current_dir().unwrap(),
+        "env": { FIXTURE_VARIABLE: "1" }
+    });
+    if let Some(dependencies) = depends_on {
+        definition["dependsOn"] = json!(dependencies);
+    }
+    definition
 }
 
 fn temp_home() -> PathBuf {

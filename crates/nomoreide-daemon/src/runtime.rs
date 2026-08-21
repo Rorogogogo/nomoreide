@@ -1,3 +1,5 @@
+mod bundles;
+
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::port_utils::PortHolder;
 use nomoreide_core::process_manager::{
@@ -28,6 +30,8 @@ pub(crate) enum RuntimeMutationError {
     ConfigLoadFailed,
     ServiceStartFailed,
     CleanupFailed,
+    BundleNotFound,
+    DependencyCycle(String),
 }
 
 pub(crate) struct DaemonRuntime {
@@ -168,21 +172,34 @@ impl DaemonRuntime {
         &self,
         name: &str,
     ) -> Result<nomoreide_core::config::ServiceDef, RuntimeMutationError> {
-        let config = self
-            .config_store
+        let config = self.config().await?;
+        local_service(&config, name).cloned()
+    }
+
+    async fn config(&self) -> Result<nomoreide_core::config::Config, RuntimeMutationError> {
+        self.config_store
             .load()
             .await
-            .map_err(|_| RuntimeMutationError::ConfigLoadFailed)?;
-        let service = config
-            .services
-            .into_iter()
-            .find(|service| service.name == name)
-            .ok_or(RuntimeMutationError::ServiceNotFound)?;
-        if service.effective_kind() != "local" {
-            return Err(RuntimeMutationError::UnsupportedServiceKind);
-        }
-        Ok(service)
+            .map_err(|_| RuntimeMutationError::ConfigLoadFailed)
     }
+}
+
+/// The one definition this daemon will run for `name`. Only registered local
+/// services qualify; anything else belongs to a runtime the native daemon does
+/// not own yet.
+fn local_service<'a>(
+    config: &'a nomoreide_core::config::Config,
+    name: &str,
+) -> Result<&'a nomoreide_core::config::ServiceDef, RuntimeMutationError> {
+    let service = config
+        .services
+        .iter()
+        .find(|service| service.name == name)
+        .ok_or(RuntimeMutationError::ServiceNotFound)?;
+    if service.effective_kind() != "local" {
+        return Err(RuntimeMutationError::UnsupportedServiceKind);
+    }
+    Ok(service)
 }
 
 #[derive(Clone, Copy)]

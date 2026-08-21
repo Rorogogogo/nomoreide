@@ -1,6 +1,6 @@
 use crate::protocol::{
-    DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery,
-    ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceRuntimeStatus,
+    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, PortConflict,
+    ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceRuntimeStatus,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -13,6 +13,10 @@ use thiserror::Error;
 const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
 const MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+/// A bundle starts its services one at a time and lets each dependency bind its
+/// port first, so it needs room for several readiness waits in a row rather
+/// than the single-service budget.
+const BUNDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
 
 #[derive(Debug, Error)]
 pub enum DaemonClientError {
@@ -159,15 +163,70 @@ impl DaemonClient {
         self.service_action(name, "restart").await
     }
 
+    pub async fn start_bundle(
+        &self,
+        name: &str,
+    ) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
+        self.bundle_action(name, "start").await
+    }
+
+    pub async fn stop_bundle(
+        &self,
+        name: &str,
+    ) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
+        self.bundle_action(name, "stop").await
+    }
+
     async fn service_action(
         &self,
         name: &str,
         action: &str,
     ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
-        let request = self
-            .http
-            .post(self.endpoint.service_action_url(name, action))
-            .timeout(MUTATION_TIMEOUT);
+        let body = self
+            .mutation(
+                self.endpoint.action_url("services", name, action),
+                MUTATION_TIMEOUT,
+            )
+            .await?;
+        let envelope = serde_json::from_slice::<ServiceMutationEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.status)
+    }
+
+    async fn bundle_action(
+        &self,
+        name: &str,
+        action: &str,
+    ) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
+        let body = self
+            .mutation(
+                self.endpoint.action_url("bundles", name, action),
+                BUNDLE_TIMEOUT,
+            )
+            .await?;
+        let envelope = serde_json::from_slice::<BundleMutationEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.statuses)
+    }
+
+    /// POST a mutation and hand back its body, turning any non-success status
+    /// into the daemon's own typed refusal where it sent one.
+    async fn mutation(
+        &self,
+        url: reqwest::Url,
+        timeout: std::time::Duration,
+    ) -> Result<Vec<u8>, DaemonClientError> {
+        let request = self.http.post(url).timeout(timeout);
         let response = self.send_authenticated(request).await?;
         let status = response.status();
         let body = response.bytes().await.map_err(DaemonClientError::Request)?;
@@ -189,14 +248,7 @@ impl DaemonClient {
                 .unwrap_or_else(|| "Daemon request failed.".to_string());
             return Err(DaemonClientError::Http { status, message });
         }
-        let envelope = serde_json::from_slice::<ServiceMutationEnvelope>(&body)
-            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
-        if !envelope.ok {
-            return Err(DaemonClientError::Protocol(
-                "daemon returned an unsuccessful response".into(),
-            ));
-        }
-        Ok(envelope.status)
+        Ok(body.to_vec())
     }
 
     async fn send_authenticated(

@@ -129,11 +129,11 @@ impl DaemonEndpoint {
         self.0.join(path).expect("validated API path")
     }
 
-    pub(crate) fn service_action_url(&self, name: &str, action: &str) -> Url {
+    pub(crate) fn action_url(&self, collection: &str, name: &str, action: &str) -> Url {
         let mut url = self.0.clone();
         url.path_segments_mut()
             .expect("validated hierarchical daemon URL")
-            .extend(["api", "services", name, action]);
+            .extend(["api", collection, name, action]);
         url
     }
 }

@@ -461,6 +461,133 @@ async fn corrupt_native_registry_fails_before_daemon_publication() {
     let _ = tokio::fs::remove_dir_all(root).await;
 }
 
+#[tokio::test]
+async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let executable = std::env::current_exe().unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let service = |name: &str, depends_on: Option<Vec<&str>>| {
+        let mut definition = json!({
+            "name": name,
+            "command": executable,
+            "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+            "cwd": cwd,
+            "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+        });
+        if let Some(dependencies) = depends_on {
+            definition["dependsOn"] = json!(dependencies);
+        }
+        definition
+    };
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [
+                service("db", None),
+                service("api", Some(vec!["db"])),
+                {
+                    "name": "compose",
+                    "kind": "docker-compose",
+                    "cwd": cwd,
+                    "composeService": "web"
+                }
+            ],
+            // The bundle names only `api`; `db` is pulled in as its dependency.
+            "bundles": [
+                { "name": "stack", "services": ["api"] },
+                { "name": "mixed", "services": ["db", "compose"] }
+            ]
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let unauthorized = http
+        .post(format!("{}/api/bundles/stack/start", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+    let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
+        .await
+        .unwrap();
+    let missing = client.start_bundle("missing").await.unwrap_err();
+    assert!(matches!(
+        missing,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::BundleNotFound
+    ));
+
+    // A bundle holding a service this daemon cannot run is refused whole,
+    // before any of its members start.
+    let mixed = client.start_bundle("mixed").await.unwrap_err();
+    assert!(matches!(
+        mixed,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::UnsupportedServiceKind
+    ));
+    // Nothing launched: the journal only appears once a service is spawned, so
+    // its absence proves `db` was never started on the way to the refusal.
+    assert!(!runtime_paths
+        .state_dir
+        .join("native/runtime-v1.json")
+        .exists());
+
+    let started = client.start_bundle("stack").await.unwrap();
+    let names = started
+        .iter()
+        .map(|status| status.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, vec!["db", "api"], "dependencies start first");
+    assert!(started
+        .iter()
+        .all(|status| status.state == ServiceRuntimeState::Running));
+    let db_pid = started[0].pid.unwrap();
+    let api_pid = started[1].pid.unwrap();
+    assert!(is_pid_alive(db_pid) && is_pid_alive(api_pid));
+
+    // Stopping is scoped to the bundle's own members, so the dependency it
+    // pulled in keeps running for whoever else may need it.
+    let stopped = client.stop_bundle("stack").await.unwrap();
+    assert_eq!(
+        stopped
+            .iter()
+            .map(|status| status.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["api"]
+    );
+    assert!(!is_pid_alive(api_pid));
+    assert!(is_pid_alive(db_pid));
+
+    shutdown_tx.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    assert!(!is_pid_alive(db_pid));
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
 async fn wait_for_state(
     paths: &RuntimePaths,
     server: &mut tokio::task::JoinHandle<anyhow::Result<()>>,

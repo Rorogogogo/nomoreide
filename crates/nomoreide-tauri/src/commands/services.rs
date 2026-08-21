@@ -1,11 +1,9 @@
 use crate::AppState;
+use nomoreide_core::bundle;
 use nomoreide_core::config::ServiceDef;
-use nomoreide_core::port_utils;
-use nomoreide_core::process_manager::{ServiceState, ServiceStatus};
-use nomoreide_core::service_graph;
+use nomoreide_core::process_manager::ServiceStatus;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
 use tauri::State;
 
 #[tauri::command]
@@ -195,17 +193,9 @@ pub async fn restart_service(state: State<'_, AppState>, name: String) -> Result
 #[tauri::command]
 pub async fn start_bundle(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let bundle = config
-        .bundles
-        .iter()
-        .find(|b| b.name == name)
-        .cloned()
-        .ok_or_else(|| format!("Bundle '{name}' not found"))?;
-
-    // Topologically order the bundle (and any transitive deps it declares) so
-    // dependencies come up before dependents. Errs on a cycle instead of
+    // Dependencies come up before dependents, and a cycle errs instead of
     // half-starting the bundle.
-    let order = service_graph::resolve_start_order(&config.services, &bundle.services)?;
+    let order = bundle::start_order(&config, &name).map_err(|error| order_message(error, &name))?;
     let by_name: HashMap<&str, &ServiceDef> = config
         .services
         .iter()
@@ -218,11 +208,14 @@ pub async fn start_bundle(state: State<'_, AppState>, name: String) -> Result<()
         };
         // Each declared dependency precedes this service in `order` and is thus
         // already started; wait for it to look ready before the dependent.
-        if let Some(deps) = &def.depends_on {
-            for dep in deps {
-                if let Some(dep_def) = by_name.get(dep.as_str()) {
-                    wait_for_service_ready(&state, dep_def).await;
-                }
+        for dep in def.depends_on.iter().flatten() {
+            if let Some(dep_def) = by_name.get(dep.as_str()) {
+                bundle::wait_for_service_ready(
+                    &state.process_manager,
+                    dep_def,
+                    bundle::READY_TIMEOUT,
+                )
+                .await;
             }
         }
         state
@@ -234,51 +227,19 @@ pub async fn start_bundle(state: State<'_, AppState>, name: String) -> Result<()
     Ok(())
 }
 
-/// Wait until a dependency looks ready before starting services that need it.
-/// A service with a port is "ready" once that port is bound; portless services
-/// have no probe, so we return immediately. Times out (does not error) so a
-/// slow/never-binding dependency can't wedge a bundle start.
-async fn wait_for_service_ready(state: &State<'_, AppState>, def: &ServiceDef) {
-    let Some(port) = def.port else {
-        return;
-    };
-    let deadline = Instant::now() + Duration::from_secs(15);
-    while Instant::now() < deadline {
-        match state.process_manager.service_status(&def.name) {
-            Some(status)
-                if status.state == ServiceState::Running
-                    || status.state == ServiceState::Starting => {}
-            // Stopped/stopping/gone → nothing to wait for.
-            _ => return,
-        }
-        if !port_utils::is_port_available("127.0.0.1", port) {
-            return; // port bound → ready
-        }
-        tokio::time::sleep(Duration::from_millis(250)).await;
+fn order_message(error: bundle::BundleOrderError, name: &str) -> String {
+    match error {
+        bundle::BundleOrderError::NotRegistered => format!("Bundle '{name}' not found"),
+        bundle::BundleOrderError::DependencyCycle(message) => message,
     }
 }
 
 #[tauri::command]
 pub async fn stop_bundle(state: State<'_, AppState>, name: String) -> Result<(), String> {
     let config = state.config_store.load().await.map_err(|e| e.to_string())?;
-    let bundle = config
-        .bundles
-        .iter()
-        .find(|b| b.name == name)
-        .cloned()
-        .ok_or_else(|| format!("Bundle '{name}' not found"))?;
-
-    // Reverse dependency order, scoped to the bundle's own members. Falls back
-    // to declaration order if a cycle makes a topo sort impossible — stopping
-    // must never fail the way a start can.
-    let in_bundle: HashSet<&str> = bundle.services.iter().map(|s| s.as_str()).collect();
-    let mut order: Vec<String> =
-        service_graph::resolve_start_order(&config.services, &bundle.services)
-            .unwrap_or_else(|_| bundle.services.clone())
-            .into_iter()
-            .filter(|svc_name| in_bundle.contains(svc_name.as_str()))
-            .collect();
-    order.reverse();
+    // Dependents stop before what they depend on, scoped to the bundle's own
+    // members.
+    let order = bundle::stop_order(&config, &name).map_err(|error| order_message(error, &name))?;
 
     for svc_name in &order {
         state
