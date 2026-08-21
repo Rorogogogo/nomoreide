@@ -164,7 +164,7 @@ enum ArgumentContract {
 impl ArgumentContract {
     fn of(tool: &str) -> Option<Self> {
         match tool {
-            "nomoreide_list_services" => Some(Self::Empty),
+            "nomoreide_list_services" | "nomoreide_status" => Some(Self::Empty),
             "nomoreide_start_service"
             | "nomoreide_stop_service"
             | "nomoreide_restart_service"
@@ -312,14 +312,14 @@ mod tests {
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
-                "params": { "name": "nomoreide_status", "arguments": {} }
+                "params": { "name": "nomoreide_read_logs", "arguments": {} }
             }),
         )
         .await;
         assert_eq!(response["id"], "call-1");
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
-        assert_eq!(response["error"]["data"]["tool"], "nomoreide_status");
+        assert_eq!(response["error"]["data"]["tool"], "nomoreide_read_logs");
     }
 
     #[tokio::test]
@@ -525,6 +525,28 @@ mod tests {
         .await;
         assert_eq!(completion["error"]["code"], -32603);
         assert_ne!(completion["error"]["code"], -32601);
+    }
+
+    #[tokio::test]
+    async fn argumentless_tools_ignore_whatever_they_are_given() {
+        // The reference declares no parameters for these, so nothing about the
+        // arguments can fail validation.
+        for tool in ["nomoreide_list_services", "nomoreide_status"] {
+            let response = request(
+                &mut session(Ok("{}".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": tool,
+                    "method": "tools/call",
+                    "params": { "name": tool, "arguments": { "unexpected": 1 } }
+                }),
+            )
+            .await;
+            assert_eq!(
+                response["result"],
+                json!({ "content": [{ "type": "text", "text": "{}" }] })
+            );
+        }
     }
 
     #[tokio::test]

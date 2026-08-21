@@ -55,6 +55,20 @@ impl DaemonRuntime {
         self.process_manager.reconcile_runtime().await
     }
 
+    /// Every service this daemon is tracking, sorted by name. The process map
+    /// behind it is unordered, so sorting is what makes two consecutive reads
+    /// comparable.
+    pub(crate) fn status(&self) -> Vec<ServiceRuntimeStatus> {
+        let mut statuses = self
+            .process_manager
+            .status()
+            .into_iter()
+            .map(runtime_status)
+            .collect::<Vec<_>>();
+        statuses.sort_by(|left, right| left.name.cmp(&right.name));
+        statuses
+    }
+
     pub(crate) async fn start_service(
         &self,
         name: &str,

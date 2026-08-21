@@ -181,6 +181,13 @@ pub struct PortConflict {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct StatusEnvelope {
+    pub ok: bool,
+    pub services: Vec<ServiceRuntimeStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct BundleMutationEnvelope {
     pub ok: bool,
     pub statuses: Vec<ServiceRuntimeStatus>,

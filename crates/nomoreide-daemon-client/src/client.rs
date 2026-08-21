@@ -1,6 +1,7 @@
 use crate::protocol::{
     BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, PortConflict,
     ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceRuntimeStatus,
+    StatusEnvelope,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -117,21 +118,7 @@ impl DaemonClient {
     }
 
     pub async fn list_services(&self) -> Result<ServiceDiscovery, DaemonClientError> {
-        let response = self
-            .send_authenticated(self.http.get(self.endpoint.api_url("api/services")))
-            .await?;
-        let status = response.status();
-        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
-
-        if !status.is_success() {
-            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
-                .ok()
-                .filter(|envelope| !envelope.ok)
-                .map(|envelope| envelope.error)
-                .unwrap_or_else(|| "Daemon request failed.".to_string());
-            return Err(DaemonClientError::Http { status, message });
-        }
-
+        let body = self.read(self.endpoint.api_url("api/services")).await?;
         let envelope = serde_json::from_slice::<ServiceDiscoveryEnvelope>(&body)
             .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
         if !envelope.ok {
@@ -140,6 +127,22 @@ impl DaemonClient {
             ));
         }
         Ok(envelope.into())
+    }
+
+    /// GET a read-only endpoint and hand back its body.
+    async fn read(&self, url: reqwest::Url) -> Result<Vec<u8>, DaemonClientError> {
+        let response = self.send_authenticated(self.http.get(url)).await?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+        if !status.is_success() {
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Daemon request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+        Ok(body.to_vec())
     }
 
     pub async fn start_service(
@@ -161,6 +164,19 @@ impl DaemonClient {
         name: &str,
     ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
         self.service_action(name, "restart").await
+    }
+
+    /// Every service the daemon is tracking, however it was started.
+    pub async fn status(&self) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
+        let body = self.read(self.endpoint.api_url("api/status")).await?;
+        let envelope = serde_json::from_slice::<StatusEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.services)
     }
 
     pub async fn start_bundle(

@@ -285,6 +285,15 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     ));
     assert!(held_listener.local_addr().is_ok());
 
+    // Nothing has been started, so the daemon is tracking nothing yet.
+    let unauthorized_status = http
+        .get(format!("{}/api/status", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized_status.status(), StatusCode::UNAUTHORIZED);
+    assert!(client.status().await.unwrap().is_empty());
+
     let started = client.start_service("sleeper").await.unwrap();
     assert_eq!(started.state, ServiceRuntimeState::Running);
     let pid = started.pid.unwrap();
@@ -294,9 +303,25 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
         .join("native/runtime-v1.json")
         .exists());
 
+    // Status reports what the daemon is tracking, whoever started it.
+    let tracked = client.status().await.unwrap();
+    assert_eq!(
+        tracked
+            .iter()
+            .map(|status| status.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["sleeper"]
+    );
+    assert_eq!(tracked[0].state, ServiceRuntimeState::Running);
+    assert_eq!(tracked[0].pid, Some(pid));
+
     let stopped = client.stop_service("sleeper").await.unwrap();
     assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
     assert!(!is_pid_alive(pid));
+    // A stopped service stays in the report rather than vanishing from it.
+    let after_stop = client.status().await.unwrap();
+    assert_eq!(after_stop.len(), 1);
+    assert_eq!(after_stop[0].state, ServiceRuntimeState::Stopped);
 
     let restarted = client.start_service("sleeper").await.unwrap();
     let restarted_pid = restarted.pid.unwrap();
@@ -461,6 +486,10 @@ async fn corrupt_native_registry_fails_before_daemon_publication() {
     let _ = tokio::fs::remove_dir_all(root).await;
 }
 
+/// This test owns the stop-scoping guarantee: the runtime is in-process here,
+/// so a dependency left running can be asserted directly. The end-to-end MCP
+/// suite deliberately does not repeat that assertion — out of process it rides
+/// on service supervision that is currently flaky under concurrent load.
 #[tokio::test]
 async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
     let root = temp_dir();

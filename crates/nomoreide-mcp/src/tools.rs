@@ -3,6 +3,7 @@ use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, DEF
 use serde::Serialize;
 use serde_json::Map;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -60,6 +61,10 @@ impl ToolExecutor for NativeToolExecutor {
                         .map_err(daemon_message)?;
                     render(&ServiceStatusView::of(&status))
                 }
+                NativeTool::Status => {
+                    let statuses = client.status().await.map_err(daemon_message)?;
+                    render(&StatusView::of(&statuses))
+                }
                 NativeTool::StartBundle(bundle) => {
                     let statuses = client.start_bundle(bundle).await.map_err(daemon_message)?;
                     render(&status_views(&statuses))
@@ -83,12 +88,14 @@ enum NativeTool<'a> {
     RestartService(&'a str),
     StartBundle(&'a str),
     StopBundle(&'a str),
+    Status,
 }
 
 impl<'a> NativeTool<'a> {
     fn parse(name: &str, arguments: &'a Map<String, Value>) -> Result<Self, String> {
         match name {
             "nomoreide_list_services" => Ok(Self::ListServices),
+            "nomoreide_status" => Ok(Self::Status),
             "nomoreide_start_service" => Ok(Self::StartService(service_name(arguments)?)),
             "nomoreide_stop_service" => Ok(Self::StopService(service_name(arguments)?)),
             "nomoreide_restart_service" => Ok(Self::RestartService(service_name(arguments)?)),
@@ -113,6 +120,25 @@ fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty())
         .ok_or_else(|| format!("Registered {kind} name is required."))
+}
+
+/// The reference reports runtime status as an object keyed by service name.
+/// The daemon sorts the services, and a `BTreeMap` keeps that order here, so
+/// two consecutive reads are comparable.
+#[derive(Serialize)]
+struct StatusView<'a> {
+    services: BTreeMap<&'a str, ServiceStatusView<'a>>,
+}
+
+impl<'a> StatusView<'a> {
+    fn of(statuses: &'a [ServiceRuntimeStatus]) -> Self {
+        Self {
+            services: statuses
+                .iter()
+                .map(|status| (status.name.as_str(), ServiceStatusView::of(status)))
+                .collect(),
+        }
+    }
 }
 
 /// The reference returns a bundle's statuses as a plain array, in the order the
@@ -213,6 +239,27 @@ mod tests {
     }
 
     #[test]
+    fn status_is_keyed_by_service_name_and_hides_the_process_group() {
+        let statuses = vec![
+            ServiceRuntimeStatus {
+                name: "web".into(),
+                ..status(ServiceRuntimeState::Running)
+            },
+            ServiceRuntimeStatus {
+                name: "api".into(),
+                ..status(ServiceRuntimeState::Running)
+            },
+        ];
+        let rendered = render(&StatusView::of(&statuses)).unwrap();
+        let parsed: Value = serde_json::from_str(&rendered).unwrap();
+        assert_eq!(parsed["services"]["api"]["state"], "running");
+        assert_eq!(parsed["services"]["web"]["pid"], 4321);
+        assert!(!rendered.contains("pgid"));
+        // Sorted, so two consecutive reads of the same runtime compare equal.
+        assert!(rendered.find("\"api\"").unwrap() < rendered.find("\"web\"").unwrap());
+    }
+
+    #[test]
     fn a_stopped_service_reports_only_what_the_reference_reports() {
         let stopped = ServiceRuntimeStatus {
             pid: None,
@@ -257,7 +304,11 @@ mod tests {
             NativeTool::parse("nomoreide_stop_bundle", &arguments),
             Ok(NativeTool::StopBundle("api"))
         ));
-        assert!(NativeTool::parse("nomoreide_status", &arguments).is_err());
+        assert!(matches!(
+            NativeTool::parse("nomoreide_status", &arguments),
+            Ok(NativeTool::Status)
+        ));
+        assert!(NativeTool::parse("nomoreide_read_logs", &arguments).is_err());
 
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {

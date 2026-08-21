@@ -14,7 +14,7 @@ use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_daemon_client::protocol::{
     BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope,
-    ServiceDiscoveryEnvelope, ServiceMutationEnvelope,
+    ServiceDiscoveryEnvelope, ServiceMutationEnvelope, StatusEnvelope,
 };
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use serde::Serialize;
@@ -130,6 +130,7 @@ pub async fn serve_with_shutdown_requests(
     let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/services", get(list_services))
+        .route("/api/status", get(status))
         .route("/api/services/:name/start", post(start_service))
         .route("/api/services/:name/stop", post(stop_service))
         .route("/api/services/:name/restart", post(restart_service))
@@ -255,6 +256,20 @@ async fn restart_service(
         Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
         Err(error) => mutation_error(error),
     }
+}
+
+async fn status(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    if !authorized(&headers, &state.credential) {
+        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
+    }
+    (
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        Json(StatusEnvelope {
+            ok: true,
+            services: state.runtime.status(),
+        }),
+    )
+        .into_response()
 }
 
 async fn start_bundle(
