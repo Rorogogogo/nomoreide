@@ -132,6 +132,7 @@ pub async fn serve_with_shutdown_requests(
         .route("/api/services", get(list_services))
         .route("/api/services/:name/start", post(start_service))
         .route("/api/services/:name/stop", post(stop_service))
+        .route("/api/services/:name/restart", post(restart_service))
         .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
         .with_state(app_state);
@@ -235,6 +236,20 @@ async fn stop_service(
         return error(StatusCode::UNAUTHORIZED, "Authentication required.");
     }
     match state.runtime.stop_service(&name).await {
+        Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
+        Err(error) => mutation_error(error),
+    }
+}
+
+async fn restart_service(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    if !authorized(&headers, &state.credential) {
+        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
+    }
+    match state.runtime.restart_service(&name).await {
         Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
         Err(error) => mutation_error(error),
     }

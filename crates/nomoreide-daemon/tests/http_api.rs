@@ -301,9 +301,35 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     let restarted = client.start_service("sleeper").await.unwrap();
     let restarted_pid = restarted.pid.unwrap();
     assert!(is_pid_alive(restarted_pid));
+
+    // A restart replaces the process, and refuses the same names a start
+    // refuses: it has to launch from a registered local definition.
+    let unauthorized_restart = http
+        .post(format!("{}/api/services/sleeper/restart", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized_restart.status(), StatusCode::UNAUTHORIZED);
+    for (name, code) in [
+        ("missing", DaemonErrorCode::ServiceNotFound),
+        ("compose", DaemonErrorCode::UnsupportedServiceKind),
+    ] {
+        let refused = client.restart_service(name).await.unwrap_err();
+        assert!(matches!(
+            refused,
+            DaemonClientError::Mutation(error) if error.code == code
+        ));
+    }
+    let replaced = client.restart_service("sleeper").await.unwrap();
+    assert_eq!(replaced.state, ServiceRuntimeState::Running);
+    let replaced_pid = replaced.pid.unwrap();
+    assert_ne!(replaced_pid, restarted_pid);
+    assert!(!is_pid_alive(restarted_pid));
+    assert!(is_pid_alive(replaced_pid));
+
     shutdown_tx.send(()).unwrap();
     server.await.unwrap().unwrap();
-    assert!(!is_pid_alive(restarted_pid));
+    assert!(!is_pid_alive(replaced_pid));
     assert!(!runtime_paths.state.exists());
     assert!(!runtime_paths.credential.exists());
     drop(held_listener);

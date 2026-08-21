@@ -68,6 +68,74 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     let _ = std::fs::remove_dir_all(home);
 }
 
+/// A restart has to replace the process rather than report the old one back,
+/// and it has to work on a service that is not running — the daemon resolves
+/// the definition and launches it either way.
+#[test]
+fn mcp_tools_restart_a_service_in_the_shared_daemon() {
+    let home = temp_home();
+    write_config(&home);
+    let port = reserved_port();
+    let mut daemon = DaemonProcess::spawn(&home, port);
+
+    let started = call_tools(
+        &home,
+        port,
+        &[("nomoreide_start_service", json!({ "name": "sleeper" }))],
+    );
+    let first_pid = status_of(&started[0])["pid"].as_u64().unwrap() as u32;
+    assert!(process_exists(first_pid));
+
+    // A second session restarts what it did not start.
+    let restarted = call_tools(
+        &home,
+        port,
+        &[
+            ("nomoreide_restart_service", json!({ "name": "sleeper" })),
+            ("nomoreide_restart_service", json!({ "name": "missing" })),
+        ],
+    );
+    let status = status_of(&restarted[0]);
+    assert_eq!(status["state"], "running");
+    assert_eq!(status["name"], "sleeper");
+    assert!(status.get("pgid").is_none(), "{status}");
+    let second_pid = status["pid"].as_u64().unwrap() as u32;
+    assert_ne!(
+        second_pid, first_pid,
+        "a restart must replace the running process"
+    );
+    assert!(!process_exists(first_pid));
+    assert!(process_exists(second_pid));
+
+    // An unregistered name cannot be restarted, because a restart has to start
+    // from a definition.
+    assert_eq!(restarted[1]["result"]["isError"], true);
+    assert_eq!(
+        restarted[1]["result"]["content"][0]["text"],
+        "Tool 'nomoreide_restart_service' execution failed: Service is not registered."
+    );
+
+    // Restarting a stopped service starts it.
+    let cycled = call_tools(
+        &home,
+        port,
+        &[
+            ("nomoreide_stop_service", json!({ "name": "sleeper" })),
+            ("nomoreide_restart_service", json!({ "name": "sleeper" })),
+        ],
+    );
+    assert_eq!(status_of(&cycled[0])["state"], "stopped");
+    assert!(!process_exists(second_pid));
+    let third = status_of(&cycled[1]);
+    assert_eq!(third["state"], "running");
+    let third_pid = third["pid"].as_u64().unwrap() as u32;
+    assert!(process_exists(third_pid));
+
+    daemon.shutdown();
+    assert!(!process_exists(third_pid));
+    let _ = std::fs::remove_dir_all(home);
+}
+
 fn call_tools(home: &Path, port: u16, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut frames = vec![
         json!({
@@ -124,7 +192,8 @@ fn status_of(response: &Value) -> Value {
     let text = response["result"]["content"][0]["text"]
         .as_str()
         .unwrap_or_else(|| panic!("expected tool text content: {response}"));
-    serde_json::from_str(text).unwrap()
+    serde_json::from_str(text)
+        .unwrap_or_else(|error| panic!("expected a status document, got {text:?}: {error}"))
 }
 
 struct DaemonProcess(Child);

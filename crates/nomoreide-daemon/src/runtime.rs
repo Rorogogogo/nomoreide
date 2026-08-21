@@ -55,23 +55,39 @@ impl DaemonRuntime {
         &self,
         name: &str,
     ) -> Result<ServiceRuntimeStatus, RuntimeMutationError> {
+        self.launch(name, Launch::Start).await
+    }
+
+    /// A restart ends in a start, so it takes the start gate rather than the
+    /// lenient stop one, and it resolves the definition *before* anything is
+    /// stopped: a restart that could never start again must not take the
+    /// running process down on its way to failing.
+    pub(crate) async fn restart_service(
+        &self,
+        name: &str,
+    ) -> Result<ServiceRuntimeStatus, RuntimeMutationError> {
+        self.launch(name, Launch::Restart).await
+    }
+
+    /// Both launches hold a single mutation permit for the whole operation. A
+    /// restart that took one permit to stop and a second to start would let a
+    /// shutdown drain in between and leave the service down. The stop and the
+    /// start are handed to the process manager together so they also share its
+    /// per-service operation lock.
+    async fn launch(
+        &self,
+        name: &str,
+        mode: Launch,
+    ) -> Result<ServiceRuntimeStatus, RuntimeMutationError> {
         self.require_start_allowed()?;
         let _permit = self.mutation_gate.read().await;
         self.require_start_allowed()?;
         let service = self.registered_local_service(name).await?;
-        if let Err(error) = self.process_manager.start_service(&service).await {
-            if let Some(conflict) = error.downcast_ref::<PortConflictError>() {
-                return Err(RuntimeMutationError::PortConflict {
-                    message: conflict.to_string(),
-                    conflict: Box::new(PortConflict {
-                        service: conflict.service.clone(),
-                        port: conflict.port,
-                        holder: conflict.holder.as_ref().map(holder_identity),
-                    }),
-                });
-            }
-            return Err(RuntimeMutationError::ServiceStartFailed);
+        match mode {
+            Launch::Start => self.process_manager.start_service(&service).await,
+            Launch::Restart => self.process_manager.restart_service(&service).await,
         }
+        .map_err(launch_error)?;
         self.process_manager
             .service_status(name)
             .map(runtime_status)
@@ -169,6 +185,30 @@ impl DaemonRuntime {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Launch {
+    Start,
+    Restart,
+}
+
+/// A restart reports a failed stop as a failed start, because the process
+/// manager returns one result for both phases. The daemon keeps the protocol's
+/// existing error codes rather than inventing a restart-only one the reference
+/// implementation does not have.
+fn launch_error(error: anyhow::Error) -> RuntimeMutationError {
+    if let Some(conflict) = error.downcast_ref::<PortConflictError>() {
+        return RuntimeMutationError::PortConflict {
+            message: conflict.to_string(),
+            conflict: Box::new(PortConflict {
+                service: conflict.service.clone(),
+                port: conflict.port,
+                holder: conflict.holder.as_ref().map(holder_identity),
+            }),
+        };
+    }
+    RuntimeMutationError::ServiceStartFailed
+}
+
 fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
     ServiceRuntimeStatus {
         name: status.name,
@@ -233,6 +273,12 @@ mod tests {
         );
         assert!(matches!(
             runtime.start_service("missing").await,
+            Err(RuntimeMutationError::DaemonCleanupFailed)
+        ));
+        // A restart ends in a start, so it is gated like one rather than like
+        // the remediation stop beside it.
+        assert!(matches!(
+            runtime.restart_service("missing").await,
             Err(RuntimeMutationError::DaemonCleanupFailed)
         ));
         assert!(matches!(

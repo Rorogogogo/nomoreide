@@ -152,6 +152,13 @@ impl DaemonClient {
         self.service_action(name, "stop").await
     }
 
+    pub async fn restart_service(
+        &self,
+        name: &str,
+    ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
+        self.service_action(name, "restart").await
+    }
+
     async fn service_action(
         &self,
         name: &str,

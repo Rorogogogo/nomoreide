@@ -162,7 +162,9 @@ impl ArgumentContract {
     fn of(tool: &str) -> Option<Self> {
         match tool {
             "nomoreide_list_services" => Some(Self::Empty),
-            "nomoreide_start_service" | "nomoreide_stop_service" => Some(Self::ServiceName),
+            "nomoreide_start_service" | "nomoreide_stop_service" | "nomoreide_restart_service" => {
+                Some(Self::ServiceName)
+            }
             _ => None,
         }
     }
@@ -316,8 +318,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn start_and_stop_return_the_runtime_status_as_text_content() {
-        for name in ["nomoreide_start_service", "nomoreide_stop_service"] {
+    async fn service_mutations_return_the_runtime_status_as_text_content() {
+        for name in [
+            "nomoreide_start_service",
+            "nomoreide_stop_service",
+            "nomoreide_restart_service",
+        ] {
             let response = request(
                 &mut session(Ok("{\n  \"name\": \"api\"\n}".into())),
                 json!({
@@ -385,27 +391,35 @@ mod tests {
                 "name: Expected string, received array",
             ),
         ];
-        for (arguments, detail) in cases {
-            let response = request(
-                &mut session(Ok("unreachable".into())),
-                json!({
-                    "jsonrpc": "2.0",
-                    "id": 12,
-                    "method": "tools/call",
-                    "params": { "name": "nomoreide_stop_service", "arguments": arguments }
-                }),
-            )
-            .await;
-            assert_eq!(response["error"]["code"], -32602);
-            assert_eq!(
-                response["error"]["message"],
-                format!(
-                    "MCP error -32602: Tool 'nomoreide_stop_service' parameter validation \
-                     failed: {detail}. Please check the parameter types and values according \
-                     to the tool's schema."
+        // Every service mutation shares the reference's serviceNameSchema, so
+        // each one has to reject the same arguments with the same wording.
+        for tool in [
+            "nomoreide_start_service",
+            "nomoreide_stop_service",
+            "nomoreide_restart_service",
+        ] {
+            for (arguments, detail) in cases.clone() {
+                let response = request(
+                    &mut session(Ok("unreachable".into())),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": 12,
+                        "method": "tools/call",
+                        "params": { "name": tool, "arguments": arguments }
+                    }),
                 )
-            );
-            assert_eq!(response["error"].get("data"), None);
+                .await;
+                assert_eq!(response["error"]["code"], -32602);
+                assert_eq!(
+                    response["error"]["message"],
+                    format!(
+                        "MCP error -32602: Tool '{tool}' parameter validation \
+                         failed: {detail}. Please check the parameter types and values according \
+                         to the tool's schema."
+                    )
+                );
+                assert_eq!(response["error"].get("data"), None);
+            }
         }
     }
 

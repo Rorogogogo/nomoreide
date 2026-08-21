@@ -53,6 +53,13 @@ impl ToolExecutor for NativeToolExecutor {
                     let status = client.stop_service(service).await.map_err(daemon_message)?;
                     render(&ServiceStatusView::of(&status))
                 }
+                NativeTool::RestartService(service) => {
+                    let status = client
+                        .restart_service(service)
+                        .await
+                        .map_err(daemon_message)?;
+                    render(&ServiceStatusView::of(&status))
+                }
             }
         })
     }
@@ -65,6 +72,7 @@ enum NativeTool<'a> {
     ListServices,
     StartService(&'a str),
     StopService(&'a str),
+    RestartService(&'a str),
 }
 
 impl<'a> NativeTool<'a> {
@@ -73,6 +81,7 @@ impl<'a> NativeTool<'a> {
             "nomoreide_list_services" => Ok(Self::ListServices),
             "nomoreide_start_service" => Ok(Self::StartService(service_name(arguments)?)),
             "nomoreide_stop_service" => Ok(Self::StopService(service_name(arguments)?)),
+            "nomoreide_restart_service" => Ok(Self::RestartService(service_name(arguments)?)),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -203,12 +212,17 @@ mod tests {
         assert!(NativeTool::parse("nomoreide_start_service", &arguments).is_err());
         arguments.insert("name".into(), Value::String(String::new()));
         assert!(NativeTool::parse("nomoreide_stop_service", &arguments).is_err());
+        assert!(NativeTool::parse("nomoreide_restart_service", &arguments).is_err());
         arguments.insert("name".into(), Value::String("api".into()));
         assert!(matches!(
             NativeTool::parse("nomoreide_stop_service", &arguments),
             Ok(NativeTool::StopService("api"))
         ));
-        assert!(NativeTool::parse("nomoreide_restart_service", &arguments).is_err());
+        assert!(matches!(
+            NativeTool::parse("nomoreide_restart_service", &arguments),
+            Ok(NativeTool::RestartService("api"))
+        ));
+        assert!(NativeTool::parse("nomoreide_status", &arguments).is_err());
 
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {
