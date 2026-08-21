@@ -8,6 +8,7 @@ use std::io::Write;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -202,11 +203,10 @@ fn mcp_tools_start_and_stop_a_bundle_in_the_shared_daemon() {
         vec!["follower"]
     );
     assert!(!process_exists(pids[1]));
-    // That the dependency is left *running* is asserted in the daemon's own
-    // suite (`bundles_start_in_dependency_order_and_stop_only_their_own_members`),
-    // where the runtime is in-process and the check is deterministic. Asserting
-    // it here would ride on service supervision that is currently flaky under
-    // load — see the note on that test.
+    assert!(
+        process_exists(pids[0]),
+        "the dependency the bundle pulled in is left running"
+    );
 
     daemon.shutdown();
     assert!(!process_exists(pids[0]));
@@ -313,16 +313,40 @@ impl DaemonProcess {
             .stderr(Stdio::null())
             .spawn()
             .unwrap();
+        Self::await_published(daemon, home)
+    }
+
+    /// Wait until the state file names *this* daemon. A daemon that cannot take
+    /// ownership of the home exits without publishing anything, so accepting
+    /// state written by any other daemon would hand the test a client pointed
+    /// at a process it does not own — the failure this waits out is silent
+    /// cross-talk, not a missing file.
+    fn await_published(mut daemon: Child, home: &Path) -> Self {
+        let expected = daemon.id();
         let state = home.join(".nomoreide").join("daemon.json");
         let deadline = Instant::now() + Duration::from_secs(20);
-        while !state.exists() {
+        loop {
+            if let Some(published) = std::fs::read(&state)
+                .ok()
+                .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+                .and_then(|state| state["pid"].as_u64())
+            {
+                if published == u64::from(expected) {
+                    return Self(daemon);
+                }
+                panic!(
+                    "daemon {expected} never took ownership of {home:?}; it is held by {published}"
+                );
+            }
+            if let Ok(Some(status)) = daemon.try_wait() {
+                panic!("the daemon exited before publishing state: {status}");
+            }
             assert!(
                 Instant::now() < deadline,
                 "the daemon never published state"
             );
             std::thread::sleep(Duration::from_millis(20));
         }
-        Self(daemon)
     }
 
     /// Ask for the same graceful shutdown an operator would, so the daemon
@@ -388,17 +412,30 @@ fn fixture_service(name: &str, depends_on: Option<Vec<&str>>) -> Value {
     definition
 }
 
+/// A home no other test can be handed. Naming it after the clock is not enough:
+/// these tests start together, `SystemTime` is only microsecond-resolute here,
+/// and `create_dir_all` succeeds on a directory that already exists — so two
+/// tests silently shared one home, and with it one daemon, one state file and
+/// one credential. Each then stopped the other's services. A counter makes the
+/// name unique within the process, and creating the directory *exclusively*
+/// proves it rather than assuming it, so a name that is somehow still taken
+/// fails the test instead of quietly aliasing another one.
 fn temp_home() -> PathBuf {
-    let home = std::env::temp_dir().join(format!(
-        "nomoreide-mcp-runtime-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
-    std::fs::create_dir_all(&home).unwrap();
-    home
+    static NEXT_HOME: AtomicU32 = AtomicU32::new(0);
+    let root = std::env::temp_dir();
+    loop {
+        let home = root.join(format!(
+            "nomoreide-mcp-runtime-{}-{}",
+            std::process::id(),
+            NEXT_HOME.fetch_add(1, Ordering::Relaxed)
+        ));
+        match std::fs::create_dir(&home) {
+            Ok(()) => return home,
+            // Only a leftover from a run whose pid this one reuses.
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("could not create {home:?}: {error}"),
+        }
+    }
 }
 
 fn reserved_port() -> u16 {

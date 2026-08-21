@@ -487,9 +487,8 @@ async fn corrupt_native_registry_fails_before_daemon_publication() {
 }
 
 /// This test owns the stop-scoping guarantee: the runtime is in-process here,
-/// so a dependency left running can be asserted directly. The end-to-end MCP
-/// suite deliberately does not repeat that assertion — out of process it rides
-/// on service supervision that is currently flaky under concurrent load.
+/// so a dependency left running can be asserted directly, without a daemon
+/// process or an HTTP hop in between.
 #[tokio::test]
 async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
     let root = temp_dir();
