@@ -7,8 +7,12 @@ use super::port_utils::{
 #[cfg(unix)]
 use super::port_utils::{inspect_process_identity, process_start_token};
 use super::runtime_registry::{RuntimeRecord, RuntimeRegistry};
+use super::timeline::{
+    NewTimelineEvent, TimelineEvent, TimelineEventKind, TimelineSeverity, TimelineStore,
+};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 #[cfg(unix)]
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
@@ -175,6 +179,39 @@ enum SupervisorCommand {
     },
 }
 
+impl SupervisorContext {
+    /// Record how a generation ended.
+    ///
+    /// A service that was asked to stop is not news however it died, so only an
+    /// *unrequested* exit with a non-zero code is an error — the reference draws
+    /// the line in the same place. Emitted once, where the runtime settles the
+    /// terminal state, rather than at every caller that can cause one.
+    fn record_termination(&self, state: ServiceState, termination: Termination) {
+        let Some(timeline) = &self.timeline else {
+            return;
+        };
+        let exited = state == ServiceState::Exited;
+        let severity = if exited && termination.exit_code.is_some_and(|code| code != 0) {
+            TimelineSeverity::Error
+        } else {
+            TimelineSeverity::Info
+        };
+        let outcome = if exited { "exited" } else { "stopped" };
+        timeline.append(
+            NewTimelineEvent::new(
+                TimelineEventKind::ServiceLifecycle,
+                severity,
+                format!("{} {outcome}", self.name),
+            )
+            .service(self.name.clone())
+            .data(json!({
+                "exitCode": termination.exit_code,
+                "signal": termination.signal,
+            })),
+        );
+    }
+}
+
 struct SupervisorContext {
     name: String,
     generation: u64,
@@ -182,6 +219,7 @@ struct SupervisorContext {
     process_tree: ProcessTreeGuard,
     processes: Arc<Mutex<HashMap<String, ManagedProcess>>>,
     runtime_registry: Option<RuntimeRegistry>,
+    timeline: Option<TimelineStore>,
     policy: StopPolicy,
 }
 
@@ -350,6 +388,7 @@ pub struct ProcessManager {
     operation_locks: AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>,
     next_generation: AtomicU64,
     log_store: LogStore,
+    timeline: Option<TimelineStore>,
     stop_policy: StopPolicy,
     runtime_registry: Option<RuntimeRegistry>,
     reconciled: AsyncMutex<bool>,
@@ -367,6 +406,7 @@ impl ProcessManager {
             operation_locks: AsyncMutex::new(HashMap::new()),
             next_generation: AtomicU64::new(1),
             log_store,
+            timeline: None,
             stop_policy: StopPolicy::default(),
             runtime_registry: None,
             reconciled: AsyncMutex::new(false),
@@ -379,6 +419,28 @@ impl ProcessManager {
         Self {
             runtime_registry: Some(runtime_registry),
             ..Self::new(log_store)
+        }
+    }
+
+    /// Record lifecycle moments on a timeline. Optional because only the daemon
+    /// keeps one; Tauri runs services without it.
+    pub fn with_timeline(mut self, timeline: TimelineStore) -> Self {
+        self.timeline = Some(timeline);
+        self
+    }
+
+    /// The most recent timeline events, oldest first. Empty when this manager
+    /// keeps no timeline.
+    pub fn timeline(&self, limit: usize) -> Vec<TimelineEvent> {
+        self.timeline
+            .as_ref()
+            .map(|timeline| timeline.read(limit))
+            .unwrap_or_default()
+    }
+
+    fn record(&self, event: NewTimelineEvent) {
+        if let Some(timeline) = &self.timeline {
+            timeline.append(event);
         }
     }
 
@@ -456,7 +518,22 @@ impl ProcessManager {
         let operation = self.operation_lock(&def.name).await;
         let _guard = operation.lock().await;
         self.ensure_reconciled().await?;
-        self.start_service_locked(def, &options).await
+        let started = self.start_service_locked(def, &options).await;
+        // Recorded here rather than deeper in, so every reason a start can fail
+        // — an occupied port, a definition that will not spawn, an unfinished
+        // prior generation — reaches the timeline through one place.
+        if let Err(error) = &started {
+            self.record(
+                NewTimelineEvent::new(
+                    TimelineEventKind::ServiceLifecycle,
+                    TimelineSeverity::Error,
+                    format!("{} failed", def.name),
+                )
+                .service(def.name.clone())
+                .detail(error.to_string()),
+            );
+        }
+        started
     }
 
     async fn start_service_locked(
@@ -837,19 +914,50 @@ impl ProcessManager {
             },
         );
 
+        self.record(
+            NewTimelineEvent::new(
+                TimelineEventKind::ServiceLifecycle,
+                TimelineSeverity::Info,
+                format!("{} started", def.name),
+            )
+            .service(def.name.clone())
+            .data(json!({ "pid": pid })),
+        );
+
         if let Some(out) = stdout {
             let store = self.log_store.clone();
             let name = def.name.clone();
             let processes = self.processes.clone();
             let port = def.port;
+            let timeline = self.timeline.clone();
             tokio::spawn(async move {
                 let mut lines = BufReader::new(out).lines();
                 while let Ok(Some(line)) = lines.next_line().await {
                     if let Some(url) = detect_url(&line, port) {
-                        let mut entries = processes.lock().unwrap();
-                        if let Some(process) = entries.get_mut(&name) {
-                            if process.generation == generation {
-                                process.url = Some(url);
+                        let mut claimed = false;
+                        {
+                            let mut entries = processes.lock().unwrap();
+                            if let Some(process) = entries.get_mut(&name) {
+                                if process.generation == generation {
+                                    process.url = Some(url.clone());
+                                    claimed = true;
+                                }
+                            }
+                        }
+                        // Only the generation that owns the name announces its
+                        // URL; a superseded one is talking about a service the
+                        // runtime has already replaced.
+                        if claimed {
+                            if let Some(timeline) = &timeline {
+                                timeline.append(
+                                    NewTimelineEvent::new(
+                                        TimelineEventKind::ServicePort,
+                                        TimelineSeverity::Info,
+                                        format!("{name} reported {url}"),
+                                    )
+                                    .service(name.clone())
+                                    .detail(url),
+                                );
                             }
                         }
                     }
@@ -873,6 +981,7 @@ impl ProcessManager {
         let processes = self.processes.clone();
         let policy = self.stop_policy;
         let registry = self.journal().cloned();
+        let timeline = self.timeline.clone();
         tokio::spawn(async move {
             supervise_child(
                 child,
@@ -884,6 +993,7 @@ impl ProcessManager {
                     process_tree,
                     processes,
                     runtime_registry: registry,
+                    timeline,
                     policy,
                 },
             )
@@ -1480,7 +1590,8 @@ async fn supervise_child(
     loop {
         tokio::select! {
             status = child.wait() => {
-                let exit_code = status.ok().and_then(|status| status.code());
+                let termination = status.map(Termination::of).unwrap_or_default();
+                let exit_code = termination.exit_code;
                 let group_cleanup = cleanup_after_natural_exit(
                     context.pgid,
                     context.policy,
@@ -1497,7 +1608,7 @@ async fn supervise_child(
                     await_reaped_child_cleanup(
                         &mut commands,
                         &context,
-                        exit_code,
+                        termination,
                     ).await;
                     return;
                 }
@@ -1506,14 +1617,16 @@ async fn supervise_child(
                     &context.name,
                     context.generation,
                 ).await.is_ok();
+                let state = if stop_requested { ServiceState::Stopped } else { ServiceState::Exited };
                 finish_generation(
                     &context.processes,
                     &context.name,
                     context.generation,
-                    if stop_requested { ServiceState::Stopped } else { ServiceState::Exited },
+                    state.clone(),
                     exit_code,
                     group_cleanup && registry_cleanup,
                 );
+                context.record_termination(state, termination);
                 return;
             }
             Some(SupervisorCommand::Stop { reply }) = commands.recv() => {
@@ -1526,7 +1639,7 @@ async fn supervise_child(
                 )
                 .await;
                 match outcome {
-                    Ok(exit_code) => {
+                    Ok(termination) => {
                         let registry_result = remove_runtime_record(
                             context.runtime_registry.as_ref(),
                             &context.name,
@@ -1538,9 +1651,10 @@ async fn supervise_child(
                             &context.name,
                             context.generation,
                             ServiceState::Stopped,
-                            exit_code,
+                            termination.exit_code,
                             registry_cleanup,
                         );
+                        context.record_termination(ServiceState::Stopped, termination);
                         let result = registry_result
                             .map_err(|error| format!("Failed to update runtime registry: {error}"));
                         let _ = reply.send(result);
@@ -1558,7 +1672,7 @@ async fn supervise_child(
                             await_reaped_child_cleanup(
                                 &mut commands,
                                 &context,
-                                None,
+                                Termination::default(),
                             )
                             .await;
                             return;
@@ -1573,7 +1687,7 @@ async fn supervise_child(
 async fn await_reaped_child_cleanup(
     commands: &mut mpsc::Receiver<SupervisorCommand>,
     context: &SupervisorContext,
-    exit_code: Option<i32>,
+    termination: Termination,
 ) {
     while let Some(SupervisorCommand::Stop { reply }) = commands.recv().await {
         if !cleanup_after_natural_exit(context.pgid, context.policy, &context.process_tree).await {
@@ -1594,9 +1708,10 @@ async fn await_reaped_child_cleanup(
             &context.name,
             context.generation,
             ServiceState::Stopped,
-            exit_code,
+            termination.exit_code,
             registry_cleanup,
         );
+        context.record_termination(ServiceState::Stopped, termination);
         let result =
             registry_result.map_err(|error| format!("Failed to update runtime registry: {error}"));
         let _ = reply.send(result);
@@ -1638,12 +1753,40 @@ fn finish_generation(
     }
 }
 
+/// How a child ended. A process killed by a signal has no exit code, so
+/// reporting only the code says nothing at all about the most interesting way
+/// for a service to die.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Termination {
+    exit_code: Option<i32>,
+    signal: Option<i32>,
+}
+
+impl Termination {
+    fn of(status: std::process::ExitStatus) -> Self {
+        Self {
+            exit_code: status.code(),
+            signal: exit_signal(&status),
+        }
+    }
+}
+
+#[cfg(unix)]
+fn exit_signal(status: &std::process::ExitStatus) -> Option<i32> {
+    std::os::unix::process::ExitStatusExt::signal(status)
+}
+
+#[cfg(not(unix))]
+fn exit_signal(_status: &std::process::ExitStatus) -> Option<i32> {
+    None
+}
+
 async fn stop_child_and_group(
     child: &mut Child,
     pgid: Option<u32>,
     policy: StopPolicy,
     process_tree: &ProcessTreeGuard,
-) -> Result<Option<i32>> {
+) -> Result<Termination> {
     #[cfg(unix)]
     if let Some(group) = pgid {
         signal_process_group(group, libc::SIGTERM)?;
@@ -1660,7 +1803,7 @@ async fn stop_child_and_group(
     #[cfg(all(not(unix), not(windows)))]
     child.start_kill()?;
 
-    let mut exit_code = None;
+    let mut termination = Termination::default();
     #[cfg(windows)]
     let should_wait_for_graceful_exit = graceful_error.is_none();
     #[cfg(not(windows))]
@@ -1671,12 +1814,12 @@ async fn stop_child_and_group(
             pgid,
             policy.term_grace,
             policy.poll_interval,
-            &mut exit_code,
+            &mut termination,
             process_tree,
         )
         .await?
     {
-        return Ok(exit_code);
+        return Ok(termination);
     }
 
     #[cfg(unix)]
@@ -1700,12 +1843,12 @@ async fn stop_child_and_group(
         pgid,
         policy.kill_grace,
         policy.poll_interval,
-        &mut exit_code,
+        &mut termination,
         process_tree,
     )
     .await?
     {
-        Ok(exit_code)
+        Ok(termination)
     } else {
         Err(anyhow!("process-group termination was not confirmed"))
     }
@@ -1734,7 +1877,7 @@ async fn wait_for_child_and_group(
     pgid: Option<u32>,
     timeout: Duration,
     poll_interval: Duration,
-    exit_code: &mut Option<i32>,
+    termination: &mut Termination,
     process_tree: &ProcessTreeGuard,
 ) -> Result<bool> {
     #[cfg(not(windows))]
@@ -1744,7 +1887,7 @@ async fn wait_for_child_and_group(
     let deadline = Instant::now() + timeout;
     loop {
         if let Some(status) = child.try_wait()? {
-            *exit_code = status.code();
+            *termination = Termination::of(status);
         }
         let child_reaped = child.id().is_none();
         #[cfg(unix)]

@@ -14,6 +14,7 @@ use nomoreide_core::config::ConfigStore;
 use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
+use nomoreide_core::timeline::TimelineStore;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -64,7 +65,12 @@ pub async fn serve_with_shutdown_requests(
     let ownership = DaemonOwnership::acquire(options.runtime_paths.clone())
         .context("failed to acquire daemon ownership")?;
     let config_store = ConfigStore::new(options.config_path);
-    let log_store = LogStore::new(options.runtime_paths.state_dir.join("logs"));
+    // One timeline, shared by the two things that write to it: the log store
+    // raises an event for a line that classified as notable, and the process
+    // manager raises one for each lifecycle moment.
+    let timeline = TimelineStore::new(options.runtime_paths.state_dir.join("timeline.log"));
+    let log_store =
+        LogStore::new(options.runtime_paths.state_dir.join("logs")).with_timeline(timeline.clone());
     let registry = RuntimeRegistry::new(
         options
             .runtime_paths
@@ -74,7 +80,7 @@ pub async fn serve_with_shutdown_requests(
     );
     let runtime = Arc::new(DaemonRuntime::new(
         config_store.clone(),
-        ProcessManager::with_runtime_registry(log_store, registry),
+        ProcessManager::with_runtime_registry(log_store, registry).with_timeline(timeline),
     ));
     // Whatever a crashed owner left behind is reclaimed before this one binds a
     // port or publishes a credential, so nothing can reach a half-owned runtime.

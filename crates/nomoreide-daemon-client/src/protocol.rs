@@ -200,6 +200,59 @@ pub struct LogsEnvelope {
     pub logs: Vec<ServiceLogEntry>,
 }
 
+/// The taxonomy the reference fixes for timeline events. Mirrored rather than
+/// relayed as a string so a kind that does not exist cannot reach a client.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TimelineEventKind {
+    #[serde(rename = "service.lifecycle")]
+    ServiceLifecycle,
+    #[serde(rename = "service.log")]
+    ServiceLog,
+    #[serde(rename = "service.health")]
+    ServiceHealth,
+    #[serde(rename = "service.port")]
+    ServicePort,
+    #[serde(rename = "service.http")]
+    ServiceHttp,
+    #[serde(rename = "mcp.tool")]
+    McpTool,
+    #[serde(rename = "git.change")]
+    GitChange,
+    #[serde(rename = "user.action")]
+    UserAction,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TimelineSeverity {
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineEvent {
+    pub id: String,
+    pub timestamp: String,
+    pub kind: TimelineEventKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    pub severity: TimelineSeverity,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineEnvelope {
+    pub ok: bool,
+    pub timeline: Vec<TimelineEvent>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusEnvelope {

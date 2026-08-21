@@ -1,7 +1,7 @@
 use crate::protocol::{
     BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, LogsEnvelope, MutationErrorEnvelope,
     PortConflict, ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceLogEntry,
-    ServiceMutationEnvelope, ServiceRuntimeStatus, StatusEnvelope,
+    ServiceMutationEnvelope, ServiceRuntimeStatus, StatusEnvelope, TimelineEnvelope, TimelineEvent,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -197,6 +197,22 @@ impl DaemonClient {
             ));
         }
         Ok(envelope.logs)
+    }
+
+    /// The most recent timeline events, oldest last.
+    pub async fn timeline(&self, limit: u32) -> Result<Vec<TimelineEvent>, DaemonClientError> {
+        let mut url = self.endpoint.api_url("api/timeline");
+        url.query_pairs_mut()
+            .append_pair("limit", &limit.to_string());
+        let body = self.read(url).await?;
+        let envelope = serde_json::from_slice::<TimelineEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.timeline)
     }
 
     pub async fn start_bundle(

@@ -6,8 +6,13 @@ use nomoreide_core::port_utils::PortHolder;
 use nomoreide_core::process_manager::{
     PortConflictError, ProcessManager, ServiceState, ServiceStatus,
 };
+use nomoreide_core::timeline::{
+    TimelineEvent as CoreTimelineEvent, TimelineEventKind as CoreKind,
+    TimelineSeverity as CoreSeverity,
+};
 use nomoreide_daemon_client::protocol::{
     PortConflict, PortHolderIdentity, ServiceLogEntry, ServiceRuntimeState, ServiceRuntimeStatus,
+    TimelineEvent, TimelineEventKind, TimelineSeverity,
 };
 use std::future::Future;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -82,6 +87,15 @@ impl DaemonRuntime {
             .logs(name, lines)
             .into_iter()
             .map(log_entry)
+            .collect()
+    }
+
+    /// The most recent timeline events, oldest last.
+    pub(crate) fn timeline(&self, limit: usize) -> Vec<TimelineEvent> {
+        self.process_manager
+            .timeline(limit)
+            .into_iter()
+            .map(timeline_event)
             .collect()
     }
 
@@ -284,6 +298,34 @@ fn log_entry(entry: LogEntry) -> ServiceLogEntry {
         timestamp: entry
             .timestamp
             .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+    }
+}
+
+fn timeline_event(event: CoreTimelineEvent) -> TimelineEvent {
+    TimelineEvent {
+        id: event.id,
+        timestamp: event
+            .timestamp
+            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        kind: match event.kind {
+            CoreKind::ServiceLifecycle => TimelineEventKind::ServiceLifecycle,
+            CoreKind::ServiceLog => TimelineEventKind::ServiceLog,
+            CoreKind::ServiceHealth => TimelineEventKind::ServiceHealth,
+            CoreKind::ServicePort => TimelineEventKind::ServicePort,
+            CoreKind::ServiceHttp => TimelineEventKind::ServiceHttp,
+            CoreKind::McpTool => TimelineEventKind::McpTool,
+            CoreKind::GitChange => TimelineEventKind::GitChange,
+            CoreKind::UserAction => TimelineEventKind::UserAction,
+        },
+        service: event.service,
+        severity: match event.severity {
+            CoreSeverity::Info => TimelineSeverity::Info,
+            CoreSeverity::Warning => TimelineSeverity::Warning,
+            CoreSeverity::Error => TimelineSeverity::Error,
+        },
+        title: event.title,
+        detail: event.detail,
+        data: event.data,
     }
 }
 

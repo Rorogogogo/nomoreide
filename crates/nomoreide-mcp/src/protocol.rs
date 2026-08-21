@@ -163,10 +163,15 @@ enum ArgumentContract {
     /// `limit` in `(0, 1000]`. zod reports every field it rejected, in schema
     /// order, so this collects failures instead of returning the first.
     ServiceLogs,
+    /// `nomoreide_timeline`: both fields optional — an absent `service` means
+    /// every service rather than one named nothing.
+    Timeline,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
 const LOG_LIMIT_MAX: f64 = 1000.0;
+/// The reference's `z.number().int().positive().max(200).default(80)`.
+const TIMELINE_LIMIT_MAX: f64 = 200.0;
 
 impl ArgumentContract {
     fn of(tool: &str) -> Option<Self> {
@@ -178,6 +183,7 @@ impl ArgumentContract {
             | "nomoreide_start_bundle"
             | "nomoreide_stop_bundle" => Some(Self::RequiredName),
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
+            "nomoreide_timeline" => Some(Self::Timeline),
             _ => None,
         }
     }
@@ -189,13 +195,22 @@ impl ArgumentContract {
             Self::ServiceLogs => {
                 let mut failures = required_name(arguments).err().unwrap_or_default();
                 failures.extend(bounded_integer(arguments, "limit", LOG_LIMIT_MAX));
-                if failures.is_empty() {
-                    Ok(())
-                } else {
-                    Err(failures.join(", "))
-                }
+                collect(failures)
+            }
+            Self::Timeline => {
+                let mut failures = optional_name(arguments, "service");
+                failures.extend(bounded_integer(arguments, "limit", TIMELINE_LIMIT_MAX));
+                collect(failures)
             }
         }
+    }
+}
+
+fn collect(failures: Vec<String>) -> Result<(), String> {
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(failures.join(", "))
     }
 }
 
@@ -209,6 +224,24 @@ fn required_name(arguments: &Map<String, Value>) -> Result<(), Vec<String>> {
         Some(other) => format!("name: Expected string, received {}", schema_type(other)),
     };
     Err(vec![failure])
+}
+
+/// An optional non-empty string. Absent is valid; present and empty is not,
+/// because the reference asks for `.min(1)` either way.
+fn optional_name(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    match arguments.get(key) {
+        None => Vec::new(),
+        Some(Value::String(value)) if value.is_empty() => {
+            vec![format!(
+                "{key}: String must contain at least 1 character(s)"
+            )]
+        }
+        Some(Value::String(_)) => Vec::new(),
+        Some(other) => vec![format!(
+            "{key}: Expected string, received {}",
+            schema_type(other)
+        )],
+    }
 }
 
 /// An optional positive integer with an inclusive upper bound.
@@ -533,6 +566,95 @@ mod tests {
             .as_str()
             .unwrap()
             .contains("limit: Number must be less than or equal to 1000"));
+    }
+
+    /// Read back from the running reference, like the log-tool cases above.
+    /// Both fields are optional here, so the interesting cases are the ones
+    /// that are present and wrong.
+    #[tokio::test]
+    async fn timeline_rejects_arguments_exactly_as_the_reference_does() {
+        for (arguments, detail) in [
+            (
+                json!({ "service": "" }),
+                "service: String must contain at least 1 character(s)",
+            ),
+            (
+                json!({ "service": 5 }),
+                "service: Expected string, received number",
+            ),
+            (
+                json!({ "limit": 0 }),
+                "limit: Number must be greater than 0",
+            ),
+            (
+                json!({ "limit": 201 }),
+                "limit: Number must be less than or equal to 200",
+            ),
+            (
+                json!({ "limit": 1.5 }),
+                "limit: Expected integer, received float",
+            ),
+            (
+                json!({ "limit": null }),
+                "limit: Expected number, received null",
+            ),
+            (
+                json!({ "limit": 200.5 }),
+                "limit: Expected integer, received float, limit: Number must be less than or equal to 200",
+            ),
+            (
+                json!({ "service": "", "limit": 0 }),
+                "service: String must contain at least 1 character(s), limit: Number must be greater than 0",
+            ),
+        ] {
+            let response = request(
+                &mut session(Ok(String::new())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_timeline", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(
+                response["error"]["message"],
+                json!(format!(
+                    "MCP error -32602: Tool 'nomoreide_timeline' parameter validation failed: \
+                     {detail}. Please check the parameter types and values according to the \
+                     tool's schema."
+                )),
+                "{arguments}"
+            );
+        }
+    }
+
+    /// Both fields are optional, so no arguments at all is a valid call — the
+    /// whole timeline, at the reference's default depth.
+    #[tokio::test]
+    async fn timeline_accepts_an_absent_service_and_limit() {
+        for arguments in [
+            json!({}),
+            json!({ "service": "api" }),
+            json!({ "limit": 200 }),
+            json!({ "service": "api", "limit": 1 }),
+        ] {
+            let response = request(
+                &mut session(Ok("[]".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_timeline", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(
+                response["result"],
+                json!({ "content": [{ "type": "text", "text": "[]" }] }),
+                "{arguments}"
+            );
+        }
     }
 
     #[tokio::test]

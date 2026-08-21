@@ -65,6 +65,27 @@ impl ToolExecutor for NativeToolExecutor {
                     let logs = client.logs(service, limit).await.map_err(daemon_message)?;
                     render(&logs)
                 }
+                NativeTool::Timeline { service, limit } => {
+                    // The reference asks for the whole buffer and narrows it
+                    // here, so filtering by service still returns the newest
+                    // `limit` events *for that service* rather than whatever
+                    // survived a filter applied to an already-truncated read.
+                    let events = client
+                        .timeline(TIMELINE_READ_SIZE)
+                        .await
+                        .map_err(daemon_message)?;
+                    let matched = events
+                        .into_iter()
+                        .filter(|event| {
+                            // `is_none_or` would read better but postdates the
+                            // workspace MSRV.
+                            service
+                                .map_or(true, |service| event.service.as_deref() == Some(service))
+                        })
+                        .collect::<Vec<_>>();
+                    let start = matched.len().saturating_sub(limit);
+                    render(&matched[start..])
+                }
                 NativeTool::Status => {
                     let statuses = client.status().await.map_err(daemon_message)?;
                     render(&StatusView::of(&statuses))
@@ -90,7 +111,14 @@ enum NativeTool<'a> {
     StartService(&'a str),
     StopService(&'a str),
     RestartService(&'a str),
-    ReadLogs { service: &'a str, limit: u32 },
+    ReadLogs {
+        service: &'a str,
+        limit: u32,
+    },
+    Timeline {
+        service: Option<&'a str>,
+        limit: usize,
+    },
     StartBundle(&'a str),
     StopBundle(&'a str),
     Status,
@@ -107,6 +135,14 @@ impl<'a> NativeTool<'a> {
             "nomoreide_read_logs" => Ok(Self::ReadLogs {
                 service: service_name(arguments)?,
                 limit: log_limit(arguments),
+            }),
+            "nomoreide_timeline" => Ok(Self::Timeline {
+                service: arguments.get("service").and_then(Value::as_str),
+                limit: arguments
+                    .get("limit")
+                    .and_then(Value::as_u64)
+                    .and_then(|limit| usize::try_from(limit).ok())
+                    .unwrap_or(DEFAULT_TIMELINE_LIMIT),
             }),
             "nomoreide_start_bundle" => Ok(Self::StartBundle(bundle_name(arguments)?)),
             "nomoreide_stop_bundle" => Ok(Self::StopBundle(bundle_name(arguments)?)),
@@ -135,6 +171,12 @@ fn log_limit(arguments: &Map<String, Value>) -> u32 {
         .and_then(|limit| u32::try_from(limit).ok())
         .unwrap_or(DEFAULT_LOG_LIMIT)
 }
+
+/// The reference reads 200 events and narrows them, and reports at most 80 when
+/// the caller names no limit. The protocol layer has already rejected anything
+/// outside `(0, 200]`.
+const TIMELINE_READ_SIZE: u32 = 200;
+const DEFAULT_TIMELINE_LIMIT: usize = 80;
 
 fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'a str, String> {
     arguments
@@ -169,7 +211,7 @@ fn status_views(statuses: &[ServiceRuntimeStatus]) -> Vec<ServiceStatusView<'_>>
     statuses.iter().map(ServiceStatusView::of).collect()
 }
 
-fn render<T: Serialize>(value: &T) -> Result<String, String> {
+fn render<T: Serialize + ?Sized>(value: &T) -> Result<String, String> {
     serde_json::to_string_pretty(value).map_err(|error| error.to_string())
 }
 

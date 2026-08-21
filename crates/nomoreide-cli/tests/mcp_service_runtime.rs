@@ -275,6 +275,92 @@ fn mcp_tools_start_and_stop_a_bundle_in_the_shared_daemon() {
     let _ = std::fs::remove_dir_all(home);
 }
 
+/// The timeline has to reach the same daemon and narrow to one service, so a
+/// session can ask what happened to the thing it is debugging rather than what
+/// happened to everything.
+#[test]
+fn mcp_tools_read_the_timeline_from_the_shared_daemon() {
+    let home = temp_home();
+    write_config(&home);
+    let (mut daemon, port) = DaemonProcess::spawn(&home);
+
+    call_tools(
+        &home,
+        port,
+        &[
+            ("nomoreide_start_service", json!({ "name": "sleeper" })),
+            ("nomoreide_start_service", json!({ "name": "follower" })),
+        ],
+    );
+
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let events = loop {
+        let read = call_tools(&home, port, &[("nomoreide_timeline", json!({}))]);
+        let events = match status_of(&read[0]) {
+            Value::Array(events) => events,
+            other => panic!("expected an array of events, got {other}"),
+        };
+        let started = |service: &str| {
+            events
+                .iter()
+                .any(|event| event["title"] == format!("{service} started"))
+        };
+        if started("sleeper") && started("follower") {
+            break events;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the timeline never recorded both starts: {events:?}"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    let lifecycle = events
+        .iter()
+        .find(|event| event["title"] == "sleeper started")
+        .unwrap();
+    assert_eq!(lifecycle["kind"], "service.lifecycle");
+    assert_eq!(lifecycle["severity"], "info");
+    assert_eq!(lifecycle["service"], "sleeper");
+
+    // Filtering happens before the limit is applied, so naming a service
+    // returns that service's own events rather than whatever survived a filter
+    // over an already-truncated read.
+    let filtered = call_tools(
+        &home,
+        port,
+        &[("nomoreide_timeline", json!({ "service": "sleeper" }))],
+    );
+    let scoped = match status_of(&filtered[0]) {
+        Value::Array(events) => events,
+        other => panic!("expected an array of events, got {other}"),
+    };
+    assert!(!scoped.is_empty());
+    assert!(scoped.iter().all(|event| event["service"] == "sleeper"));
+
+    // A limit reports the newest events, not the oldest.
+    let limited = call_tools(
+        &home,
+        port,
+        &[("nomoreide_timeline", json!({ "limit": 1 }))],
+    );
+    let newest = match status_of(&limited[0]) {
+        Value::Array(events) => events,
+        other => panic!("expected an array of events, got {other}"),
+    };
+    assert_eq!(newest.len(), 1);
+
+    // A service the daemon has never heard of simply has no events.
+    let unknown = call_tools(
+        &home,
+        port,
+        &[("nomoreide_timeline", json!({ "service": "never-started" }))],
+    );
+    assert_eq!(status_of(&unknown[0]), json!([]));
+
+    daemon.shutdown();
+    let _ = std::fs::remove_dir_all(home);
+}
+
 fn call_tools(home: &Path, port: u16, calls: &[(&str, Value)]) -> Vec<Value> {
     let mut frames = vec![
         json!({

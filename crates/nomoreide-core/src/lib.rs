@@ -15,6 +15,7 @@ pub mod process_manager;
 pub mod runtime_registry;
 pub mod service_graph;
 pub mod service_health;
+pub mod timeline;
 pub mod vercel_actions;
 pub mod vercel_auth;
 pub mod vercel_context;

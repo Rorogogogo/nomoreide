@@ -1,5 +1,7 @@
 use nomoreide_daemon::{serve_until, DaemonOptions};
-use nomoreide_daemon_client::protocol::{DaemonErrorCode, ServiceRuntimeState};
+use nomoreide_daemon_client::protocol::{
+    DaemonErrorCode, ServiceRuntimeState, TimelineEventKind, TimelineSeverity,
+};
 use nomoreide_daemon_client::{
     is_pid_alive, read_daemon_state, DaemonClient, DaemonClientError, RuntimePaths,
 };
@@ -198,8 +200,12 @@ async fn serves_authenticated_redacted_service_discovery_on_loopback() {
 }
 
 /// Announced so a log read has something of the child's own to find, rather
-/// than only whatever the test harness prints around it.
-const FIXTURE_MARKER: &str = "nomoreide daemon fixture child started";
+/// than only whatever the test harness prints around it. Deliberately ordinary
+/// text: it must reach the logs without reaching the timeline.
+const FIXTURE_MARKER: &str = "nomoreide daemon fixture child is here";
+
+/// Reads like a service announcing it is up, so it is timeline material.
+const FIXTURE_READY_LINE: &str = "fixture child listening for nothing";
 
 #[test]
 fn daemon_fixture_child() {
@@ -207,6 +213,7 @@ fn daemon_fixture_child() {
         return;
     }
     println!("{FIXTURE_MARKER}");
+    println!("{FIXTURE_READY_LINE}");
     loop {
         std::thread::sleep(std::time::Duration::from_secs(60));
     }
@@ -741,6 +748,144 @@ async fn buffered_service_logs_are_readable_and_lenient_about_their_line_budget(
     let _ = shutdown_tx.send(());
     let _ = server.await;
     let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+/// The timeline is the account of what the runtime *did*, so a start and a stop
+/// have to appear on it, and so does the line the child printed on its way up —
+/// while ordinary output stays out.
+#[tokio::test]
+async fn the_timeline_records_lifecycle_moments_and_notable_log_lines() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let executable = std::env::current_exe().unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [{
+                "name": "talker",
+                "command": executable,
+                "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+                "cwd": cwd,
+                "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+            }],
+            "bundles": []
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let unauthorized = http
+        .get(format!("{}/api/timeline", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+    let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
+        .await
+        .unwrap();
+    assert!(client.timeline(200).await.unwrap().is_empty());
+
+    let started = client.start_service("talker").await.unwrap();
+    let start = wait_for_event(&client, |event| {
+        event.kind == TimelineEventKind::ServiceLifecycle && event.title == "talker started"
+    })
+    .await;
+    assert_eq!(start.service.as_deref(), Some("talker"));
+    assert_eq!(start.severity, TimelineSeverity::Info);
+    assert_eq!(start.data.as_ref().unwrap()["pid"], started.pid.unwrap());
+
+    // The child's readiness line is worth an entry; its severity is info,
+    // because announcing you are up is not a problem.
+    let announced =
+        wait_for_event(&client, |event| event.kind == TimelineEventKind::ServiceLog).await;
+    assert_eq!(announced.severity, TimelineSeverity::Info);
+    assert_eq!(announced.title, "talker stdout");
+    assert_eq!(announced.detail.as_deref(), Some(FIXTURE_READY_LINE));
+    // The child's other line said nothing about itself, so it is in the logs
+    // and not on the timeline.
+    assert!(client
+        .logs("talker", 500)
+        .await
+        .unwrap()
+        .iter()
+        .any(|entry| entry.text == FIXTURE_MARKER));
+    assert!(client
+        .timeline(200)
+        .await
+        .unwrap()
+        .iter()
+        .all(|event| event.detail.as_deref() != Some(FIXTURE_MARKER)));
+
+    client.stop_service("talker").await.unwrap();
+    let stopped = wait_for_event(&client, |event| event.title == "talker stopped").await;
+    assert_eq!(stopped.kind, TimelineEventKind::ServiceLifecycle);
+    // A service that was asked to stop is not an error however it died.
+    assert_eq!(stopped.severity, TimelineSeverity::Info);
+    assert_eq!(
+        stopped.data.as_ref().unwrap()["signal"],
+        json!(libc::SIGTERM)
+    );
+
+    // Every event carries an id and a millisecond ISO timestamp.
+    let events = client.timeline(200).await.unwrap();
+    assert!(events
+        .iter()
+        .all(|event| !event.id.is_empty() && event.timestamp.len() == 24));
+    // A limit is a budget on the newest events, and the daemon will not read
+    // back more than the buffer holds however much is asked for.
+    assert_eq!(
+        client.timeline(1).await.unwrap(),
+        vec![events.last().unwrap().clone()]
+    );
+    assert_eq!(client.timeline(100_000).await.unwrap().len(), events.len());
+
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+/// Events are raised as the runtime reaches each moment, so a read can arrive
+/// before the one being waited for.
+async fn wait_for_event(
+    client: &DaemonClient,
+    matches: impl Fn(&nomoreide_daemon_client::protocol::TimelineEvent) -> bool,
+) -> nomoreide_daemon_client::protocol::TimelineEvent {
+    for _ in 0..200 {
+        if let Some(event) = client
+            .timeline(200)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(&matches)
+        {
+            return event;
+        }
+        sleep(Duration::from_millis(20)).await;
+    }
+    panic!("the timeline never recorded the event being waited for");
 }
 
 /// The child writes its line once it is scheduled, and the daemon buffers it
