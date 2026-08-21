@@ -105,7 +105,18 @@ impl McpSession {
             );
         }
 
-        if name == "nomoreide_list_services" {
+        if let Some(contract) = ArgumentContract::of(name) {
+            if let Err(detail) = contract.validate(arguments) {
+                return error(
+                    id,
+                    -32602,
+                    &format!(
+                        "MCP error -32602: Tool '{name}' parameter validation failed: {detail}. \
+                         Please check the parameter types and values according to the tool's schema."
+                    ),
+                    None,
+                );
+            }
             return match self.executor.execute(name, arguments).await {
                 Ok(text) => success(id, json!({ "content": [{ "type": "text", "text": text }] })),
                 Err(message) => success(
@@ -133,6 +144,55 @@ impl McpSession {
                 "migrationPhase": 1
             })),
         )
+    }
+}
+
+/// The argument contract of a tool the native runtime serves itself.
+///
+/// The reference implementation validates arguments with zod before a tool
+/// runs, so the same request has to fail here in the same way — including the
+/// message an agent reads back. Unknown keys are stripped rather than
+/// rejected, so only declared fields can fail.
+enum ArgumentContract {
+    Empty,
+    ServiceName,
+}
+
+impl ArgumentContract {
+    fn of(tool: &str) -> Option<Self> {
+        match tool {
+            "nomoreide_list_services" => Some(Self::Empty),
+            "nomoreide_start_service" | "nomoreide_stop_service" => Some(Self::ServiceName),
+            _ => None,
+        }
+    }
+
+    fn validate(&self, arguments: &Map<String, Value>) -> Result<(), String> {
+        match self {
+            Self::Empty => Ok(()),
+            Self::ServiceName => match arguments.get("name") {
+                None => Err("name: Required".into()),
+                Some(Value::String(name)) if name.is_empty() => {
+                    Err("name: String must contain at least 1 character(s)".into())
+                }
+                Some(Value::String(_)) => Ok(()),
+                Some(other) => Err(format!(
+                    "name: Expected string, received {}",
+                    schema_type(other)
+                )),
+            },
+        }
+    }
+}
+
+fn schema_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
     }
 }
 
@@ -253,20 +313,99 @@ mod tests {
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
         assert_eq!(response["error"]["data"]["tool"], "nomoreide_status");
+    }
 
+    #[tokio::test]
+    async fn start_and_stop_return_the_runtime_status_as_text_content() {
         for name in ["nomoreide_start_service", "nomoreide_stop_service"] {
             let response = request(
-                &mut session(Ok(String::new())),
+                &mut session(Ok("{\n  \"name\": \"api\"\n}".into())),
                 json!({
                     "jsonrpc": "2.0",
                     "id": name,
                     "method": "tools/call",
-                    "params": { "name": name, "arguments": { "name": "api" } }
+                    "params": {
+                        "name": name,
+                        // The reference strips undeclared arguments instead of
+                        // rejecting the call.
+                        "arguments": { "name": "api", "ignoredByReference": true }
+                    }
                 }),
             )
             .await;
-            assert_eq!(response["error"]["code"], -32001);
-            assert_eq!(response["error"]["data"]["tool"], name);
+            assert_eq!(
+                response["result"],
+                json!({
+                    "content": [{ "type": "text", "text": "{\n  \"name\": \"api\"\n}" }]
+                })
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn service_mutations_report_daemon_failures_as_tool_errors() {
+        let response = request(
+            &mut session(Err("Service is not registered.".into())),
+            json!({
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tools/call",
+                "params": {
+                    "name": "nomoreide_start_service",
+                    "arguments": { "name": "missing" }
+                }
+            }),
+        )
+        .await;
+        assert_eq!(response["result"]["isError"], true);
+        assert_eq!(
+            response["result"]["content"][0]["text"],
+            "Tool 'nomoreide_start_service' execution failed: Service is not registered."
+        );
+    }
+
+    #[tokio::test]
+    async fn service_mutations_reject_invalid_arguments_like_the_reference() {
+        let cases = [
+            (json!({}), "name: Required"),
+            (
+                json!({ "name": "" }),
+                "name: String must contain at least 1 character(s)",
+            ),
+            (
+                json!({ "name": 7 }),
+                "name: Expected string, received number",
+            ),
+            (
+                json!({ "name": null }),
+                "name: Expected string, received null",
+            ),
+            (
+                json!({ "name": ["api"] }),
+                "name: Expected string, received array",
+            ),
+        ];
+        for (arguments, detail) in cases {
+            let response = request(
+                &mut session(Ok("unreachable".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 12,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_stop_service", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(response["error"]["code"], -32602);
+            assert_eq!(
+                response["error"]["message"],
+                format!(
+                    "MCP error -32602: Tool 'nomoreide_stop_service' parameter validation \
+                     failed: {detail}. Please check the parameter types and values according \
+                     to the tool's schema."
+                )
+            );
+            assert_eq!(response["error"].get("data"), None);
         }
     }
 

@@ -2334,6 +2334,7 @@ dependencies = [
 name = "nomoreide-cli"
 version = "0.1.103"
 dependencies = [
+ "libc",
  "nomoreide-daemon",
  "nomoreide-daemon-client",
  "nomoreide-mcp",

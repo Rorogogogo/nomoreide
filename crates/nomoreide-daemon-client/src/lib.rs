@@ -4,6 +4,8 @@ mod client;
 pub mod protocol;
 
 pub use client::{DaemonApiError, DaemonClient, DaemonClientError};
+/// Re-exported because the error types above carry one.
+pub use reqwest::StatusCode;
 
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
