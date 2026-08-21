@@ -253,6 +253,21 @@ mod tests {
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
         assert_eq!(response["error"]["data"]["tool"], "nomoreide_status");
+
+        for name in ["nomoreide_start_service", "nomoreide_stop_service"] {
+            let response = request(
+                &mut session(Ok(String::new())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": name,
+                    "method": "tools/call",
+                    "params": { "name": name, "arguments": { "name": "api" } }
+                }),
+            )
+            .await;
+            assert_eq!(response["error"]["code"], -32001);
+            assert_eq!(response["error"]["data"]["tool"], name);
+        }
     }
 
     #[tokio::test]

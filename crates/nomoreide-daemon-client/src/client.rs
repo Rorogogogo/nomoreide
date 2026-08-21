@@ -1,4 +1,7 @@
-use crate::protocol::{ErrorEnvelope, ServiceDiscovery, ServiceDiscoveryEnvelope};
+use crate::protocol::{
+    DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery,
+    ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceRuntimeStatus,
+};
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
     DaemonDiscovery, DaemonEndpoint, DaemonProbe, DiscoveryStatus, RuntimePaths,
@@ -9,6 +12,7 @@ use thiserror::Error;
 
 const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+const MUTATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 #[derive(Debug, Error)]
 pub enum DaemonClientError {
@@ -22,6 +26,8 @@ pub enum DaemonClientError {
     Request(#[source] reqwest::Error),
     #[error("daemon request failed ({status}): {message}")]
     Http { status: StatusCode, message: String },
+    #[error(transparent)]
+    Mutation(#[from] Box<DaemonApiError>),
     #[error("daemon returned an invalid response: {0}")]
     Protocol(String),
     #[error("another application is listening on the NoMoreIDE daemon port")]
@@ -30,6 +36,15 @@ pub enum DaemonClientError {
     DaemonDown,
     #[error("the NoMoreIDE daemon identity could not be verified")]
     IdentityUnverified,
+}
+
+#[derive(Debug, Error)]
+#[error("daemon mutation failed ({status}, {code:?}): {message}")]
+pub struct DaemonApiError {
+    pub status: StatusCode,
+    pub code: DaemonErrorCode,
+    pub message: String,
+    pub conflict: Option<PortConflict>,
 }
 
 #[derive(Debug, Clone)]
@@ -98,20 +113,9 @@ impl DaemonClient {
     }
 
     pub async fn list_services(&self) -> Result<ServiceDiscovery, DaemonClientError> {
-        verify_daemon_identity(
-            &self.paths,
-            &self.endpoint,
-            &self.http,
-            Some(&self.owner_id),
-        )
-        .await?;
         let response = self
-            .http
-            .get(self.endpoint.api_url("api/services"))
-            .header(AUTHORIZATION, self.authorization.clone())
-            .send()
-            .await
-            .map_err(DaemonClientError::Request)?;
+            .send_authenticated(self.http.get(self.endpoint.api_url("api/services")))
+            .await?;
         let status = response.status();
         let body = response.bytes().await.map_err(DaemonClientError::Request)?;
 
@@ -132,6 +136,78 @@ impl DaemonClient {
             ));
         }
         Ok(envelope.into())
+    }
+
+    pub async fn start_service(
+        &self,
+        name: &str,
+    ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
+        self.service_action(name, "start").await
+    }
+
+    pub async fn stop_service(
+        &self,
+        name: &str,
+    ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
+        self.service_action(name, "stop").await
+    }
+
+    async fn service_action(
+        &self,
+        name: &str,
+        action: &str,
+    ) -> Result<ServiceRuntimeStatus, DaemonClientError> {
+        let request = self
+            .http
+            .post(self.endpoint.service_action_url(name, action))
+            .timeout(MUTATION_TIMEOUT);
+        let response = self.send_authenticated(request).await?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+        if !status.is_success() {
+            if let Ok(envelope) = serde_json::from_slice::<MutationErrorEnvelope>(&body) {
+                if !envelope.ok {
+                    return Err(DaemonClientError::Mutation(Box::new(DaemonApiError {
+                        status,
+                        code: envelope.code,
+                        message: envelope.error,
+                        conflict: envelope.conflict,
+                    })));
+                }
+            }
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Daemon request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+        let envelope = serde_json::from_slice::<ServiceMutationEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.status)
+    }
+
+    async fn send_authenticated(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, DaemonClientError> {
+        verify_daemon_identity(
+            &self.paths,
+            &self.endpoint,
+            &self.http,
+            Some(&self.owner_id),
+        )
+        .await?;
+        request
+            .header(AUTHORIZATION, self.authorization.clone())
+            .send()
+            .await
+            .map_err(DaemonClientError::Request)
     }
 }
 

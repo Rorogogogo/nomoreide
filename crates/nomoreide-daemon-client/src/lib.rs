@@ -3,7 +3,7 @@
 mod client;
 pub mod protocol;
 
-pub use client::{DaemonClient, DaemonClientError};
+pub use client::{DaemonApiError, DaemonClient, DaemonClientError};
 
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
@@ -125,6 +125,14 @@ impl DaemonEndpoint {
 
     pub(crate) fn api_url(&self, path: &str) -> Url {
         self.0.join(path).expect("validated API path")
+    }
+
+    pub(crate) fn service_action_url(&self, name: &str, action: &str) -> Url {
+        let mut url = self.0.clone();
+        url.path_segments_mut()
+            .expect("validated hierarchical daemon URL")
+            .extend(["api", "services", name, action]);
+        url
     }
 }
 

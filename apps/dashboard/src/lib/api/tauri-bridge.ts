@@ -66,7 +66,7 @@ export async function tauriListen(
 
 export interface RustServiceStatus {
   name: string;
-  state: "stopped" | "starting" | "running" | "stopping" | "Stopped" | "Starting" | "Running" | "Stopping";
+  state: "stopped" | "starting" | "running" | "stopping" | "exited" | "Stopped" | "Starting" | "Running" | "Stopping" | "Exited";
   pid: number | null;
   exitCode: number | null;
   url: string | null;
@@ -98,7 +98,7 @@ function adaptServiceStatus(s: RustServiceStatus) {
   const state = s.state.toLowerCase();
   return {
     name: s.name,
-    state: state === "stopping" ? "stopped" : state as "stopped" | "starting" | "running",
+    state: state === "stopping" ? "stopped" : state as "stopped" | "starting" | "running" | "exited",
     pid: s.pid ?? undefined,
     exitCode: s.exitCode ?? null,
     url: s.url ?? undefined,

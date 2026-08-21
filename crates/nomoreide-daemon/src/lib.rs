@@ -1,9 +1,10 @@
 //! Machine-global loopback daemon ownership and state boundary.
 
+mod runtime;
 mod server;
 mod service_discovery;
 
-pub use server::{run, serve_until, DaemonOptions};
+pub use server::{run, serve_until, serve_with_shutdown_requests, DaemonOptions};
 
 use nomoreide_core::filesystem::{atomic_write, AtomicWriteOptions};
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};

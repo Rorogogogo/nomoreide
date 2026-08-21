@@ -225,12 +225,23 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
                 let state: State<AppState> = window.state();
                 if state.terminal_manager.has_external_presentations() {
-                    api.prevent_close();
                     let _ = window.hide();
                 } else {
-                    window.app_handle().exit(0);
+                    let app = window.app_handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        let state: State<AppState> = app.state();
+                        if let Err(error) = state.terminal_manager.close_all() {
+                            eprintln!("NoMoreIDE refused to exit: {error}");
+                            return;
+                        }
+                        match state.process_manager.shutdown_all().await {
+                            Ok(()) => app.exit(0),
+                            Err(error) => eprintln!("NoMoreIDE refused to exit: {error}"),
+                        }
+                    });
                 }
             }
         })

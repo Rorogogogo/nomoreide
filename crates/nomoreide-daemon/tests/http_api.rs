@@ -1,5 +1,8 @@
 use nomoreide_daemon::{serve_until, DaemonOptions};
-use nomoreide_daemon_client::{read_daemon_state, DaemonClient, RuntimePaths};
+use nomoreide_daemon_client::protocol::{DaemonErrorCode, ServiceRuntimeState};
+use nomoreide_daemon_client::{
+    is_pid_alive, read_daemon_state, DaemonClient, DaemonClientError, RuntimePaths,
+};
 use reqwest::StatusCode;
 use serde_json::json;
 use std::path::PathBuf;
@@ -172,6 +175,261 @@ async fn serves_authenticated_redacted_service_discovery_on_loopback() {
 
     shutdown_tx.send(()).unwrap();
     server.await.unwrap().unwrap();
+    assert!(!runtime_paths.state.exists());
+    assert!(!runtime_paths.credential.exists());
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+#[test]
+fn daemon_fixture_child() {
+    if std::env::var_os("NOMOREIDE_DAEMON_FIXTURE_CHILD").is_none() {
+        return;
+    }
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(60));
+    }
+}
+
+#[tokio::test]
+async fn authenticated_client_starts_and_stops_only_registered_local_services() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let executable = std::env::current_exe().unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let held_port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let held_listener = std::net::TcpListener::bind(("127.0.0.1", held_port)).unwrap();
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [
+                {
+                    "name": "sleeper",
+                    "command": executable,
+                    "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+                    "cwd": cwd,
+                    "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+                },
+                {
+                    "name": "blocked",
+                    "command": executable,
+                    "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+                    "cwd": cwd,
+                    "port": held_port,
+                    "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+                },
+                {
+                    "name": "compose",
+                    "kind": "docker-compose",
+                    "cwd": cwd,
+                    "composeService": "web"
+                }
+            ],
+            "bundles": []
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let unauthorized = http
+        .post(format!("{}/api/services/sleeper/start", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+    let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
+        .await
+        .unwrap();
+    let missing = client.start_service("missing").await.unwrap_err();
+    assert!(matches!(
+        missing,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::ServiceNotFound
+    ));
+    let unsupported = client.start_service("compose").await.unwrap_err();
+    assert!(matches!(
+        unsupported,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::UnsupportedServiceKind
+    ));
+    let conflict = client.start_service("blocked").await.unwrap_err();
+    assert!(matches!(
+        conflict,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::PortInUse && error.conflict.is_some()
+    ));
+    assert!(held_listener.local_addr().is_ok());
+
+    let started = client.start_service("sleeper").await.unwrap();
+    assert_eq!(started.state, ServiceRuntimeState::Running);
+    let pid = started.pid.unwrap();
+    assert!(is_pid_alive(pid));
+    assert!(runtime_paths
+        .state_dir
+        .join("native/runtime-v1.json")
+        .exists());
+
+    let stopped = client.stop_service("sleeper").await.unwrap();
+    assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
+    assert!(!is_pid_alive(pid));
+
+    let restarted = client.start_service("sleeper").await.unwrap();
+    let restarted_pid = restarted.pid.unwrap();
+    assert!(is_pid_alive(restarted_pid));
+    shutdown_tx.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    assert!(!is_pid_alive(restarted_pid));
+    assert!(!runtime_paths.state.exists());
+    assert!(!runtime_paths.credential.exists());
+    drop(held_listener);
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+#[tokio::test]
+async fn managed_services_stay_stoppable_after_their_definition_drifts() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let executable = std::env::current_exe().unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    let service = |name: &str| {
+        json!({
+            "name": name,
+            "command": executable,
+            "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+            "cwd": cwd,
+            "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+        })
+    };
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    let full_config = json!({
+        "version": 1,
+        "services": [service("removed"), service("unreadable")],
+        "bundles": []
+    });
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&full_config).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path: config_path.clone(),
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
+        .await
+        .unwrap();
+    let removed_pid = client.start_service("removed").await.unwrap().pid.unwrap();
+    let unreadable_pid = client
+        .start_service("unreadable")
+        .await
+        .unwrap()
+        .pid
+        .unwrap();
+
+    // Drift 1: the definition disappears from a config that still parses.
+    let config_path = root.join("config.json");
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [service("unreadable")],
+            "bundles": []
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+    let stopped = client.stop_service("removed").await.unwrap();
+    assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
+    assert!(!is_pid_alive(removed_pid));
+    // A name this daemon never started still has to be registered.
+    let unknown = client.stop_service("never-started").await.unwrap_err();
+    assert!(matches!(
+        unknown,
+        DaemonClientError::Mutation(error) if error.code == DaemonErrorCode::ServiceNotFound
+    ));
+
+    // Drift 2: the config cannot be read at all.
+    tokio::fs::write(&config_path, b"{ not json").await.unwrap();
+    let stopped = client.stop_service("unreadable").await.unwrap();
+    assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
+    assert!(!is_pid_alive(unreadable_pid));
+    let unreadable = client.stop_service("never-started").await.unwrap_err();
+    assert!(matches!(
+        unreadable,
+        DaemonClientError::Mutation(error) if error.code == DaemonErrorCode::ConfigLoadFailed
+    ));
+
+    shutdown_tx.send(()).unwrap();
+    server.await.unwrap().unwrap();
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn corrupt_native_registry_fails_before_daemon_publication() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let registry_path = runtime_paths.state_dir.join("native/runtime-v1.json");
+    tokio::fs::create_dir_all(registry_path.parent().unwrap())
+        .await
+        .unwrap();
+    tokio::fs::write(&registry_path, b"not-json").await.unwrap();
+
+    let error = serve_until(
+        DaemonOptions {
+            port: 0,
+            runtime_paths: runtime_paths.clone(),
+            config_path: root.join("config.json"),
+        },
+        std::future::pending(),
+    )
+    .await
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("failed to reconcile the native runtime registry"));
     assert!(!runtime_paths.state.exists());
     assert!(!runtime_paths.credential.exists());
     let _ = tokio::fs::remove_dir_all(root).await;
