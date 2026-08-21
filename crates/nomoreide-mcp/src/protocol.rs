@@ -159,7 +159,14 @@ enum ArgumentContract {
     /// and `bundleNameSchema` are the same shape, so they reject the same
     /// arguments with the same wording.
     RequiredName,
+    /// `nomoreide_read_logs`: the same required `name` plus an optional
+    /// `limit` in `(0, 1000]`. zod reports every field it rejected, in schema
+    /// order, so this collects failures instead of returning the first.
+    ServiceLogs,
 }
+
+/// The reference's `z.number().int().positive().max(1000)`.
+const LOG_LIMIT_MAX: f64 = 1000.0;
 
 impl ArgumentContract {
     fn of(tool: &str) -> Option<Self> {
@@ -170,6 +177,7 @@ impl ArgumentContract {
             | "nomoreide_restart_service"
             | "nomoreide_start_bundle"
             | "nomoreide_stop_bundle" => Some(Self::RequiredName),
+            "nomoreide_read_logs" => Some(Self::ServiceLogs),
             _ => None,
         }
     }
@@ -177,19 +185,59 @@ impl ArgumentContract {
     fn validate(&self, arguments: &Map<String, Value>) -> Result<(), String> {
         match self {
             Self::Empty => Ok(()),
-            Self::RequiredName => match arguments.get("name") {
-                None => Err("name: Required".into()),
-                Some(Value::String(name)) if name.is_empty() => {
-                    Err("name: String must contain at least 1 character(s)".into())
+            Self::RequiredName => required_name(arguments).map_err(|failure| failure.join(", ")),
+            Self::ServiceLogs => {
+                let mut failures = required_name(arguments).err().unwrap_or_default();
+                failures.extend(bounded_integer(arguments, "limit", LOG_LIMIT_MAX));
+                if failures.is_empty() {
+                    Ok(())
+                } else {
+                    Err(failures.join(", "))
                 }
-                Some(Value::String(_)) => Ok(()),
-                Some(other) => Err(format!(
-                    "name: Expected string, received {}",
-                    schema_type(other)
-                )),
-            },
+            }
         }
     }
+}
+
+fn required_name(arguments: &Map<String, Value>) -> Result<(), Vec<String>> {
+    let failure = match arguments.get("name") {
+        None => "name: Required".to_string(),
+        Some(Value::String(name)) if name.is_empty() => {
+            "name: String must contain at least 1 character(s)".to_string()
+        }
+        Some(Value::String(_)) => return Ok(()),
+        Some(other) => format!("name: Expected string, received {}", schema_type(other)),
+    };
+    Err(vec![failure])
+}
+
+/// An optional positive integer with an inclusive upper bound.
+///
+/// A value of the wrong type fails on that alone, but a number is then checked
+/// against all three of `int`, `positive`, and `max` — so `1000.5` reports both
+/// that it is not an integer and that it is out of range, exactly as the
+/// reference does. Integer-ness is a property of the value, not of how it was
+/// written: the reference treats `1e20` as an integer, and so does this.
+fn bounded_integer(arguments: &Map<String, Value>, key: &str, max: f64) -> Vec<String> {
+    let Some(value) = arguments.get(key) else {
+        return Vec::new();
+    };
+    let Some(number) = value.as_f64().filter(|_| value.is_number()) else {
+        return vec![format!(
+            "{key}: Expected number, received {}",
+            schema_type(value)
+        )];
+    };
+    let mut failures = Vec::new();
+    if number.fract() != 0.0 {
+        failures.push(format!("{key}: Expected integer, received float"));
+    }
+    if number <= 0.0 {
+        failures.push(format!("{key}: Number must be greater than 0"));
+    } else if number > max {
+        failures.push(format!("{key}: Number must be less than or equal to {max}"));
+    }
+    failures
 }
 
 fn schema_type(value: &Value) -> &'static str {
@@ -312,14 +360,17 @@ mod tests {
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
-                "params": { "name": "nomoreide_read_logs", "arguments": {} }
+                "params": { "name": "nomoreide_service_health", "arguments": {} }
             }),
         )
         .await;
         assert_eq!(response["id"], "call-1");
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
-        assert_eq!(response["error"]["data"]["tool"], "nomoreide_read_logs");
+        assert_eq!(
+            response["error"]["data"]["tool"],
+            "nomoreide_service_health"
+        );
     }
 
     #[tokio::test]
@@ -353,6 +404,135 @@ mod tests {
                 })
             );
         }
+    }
+
+    /// Every wording here was read back from the reference implementation, not
+    /// derived from zod's documentation: the message an agent sees on a bad
+    /// argument is part of the contract this migration promises to preserve.
+    #[tokio::test]
+    async fn read_logs_rejects_arguments_exactly_as_the_reference_does() {
+        for (arguments, detail) in [
+            (json!({}), "name: Required"),
+            (
+                json!({ "name": "" }),
+                "name: String must contain at least 1 character(s)",
+            ),
+            (
+                json!({ "name": 5 }),
+                "name: Expected string, received number",
+            ),
+            (
+                json!({ "name": "api", "limit": "5" }),
+                "limit: Expected number, received string",
+            ),
+            (
+                json!({ "name": "api", "limit": null }),
+                "limit: Expected number, received null",
+            ),
+            (
+                json!({ "name": "api", "limit": true }),
+                "limit: Expected number, received boolean",
+            ),
+            (
+                json!({ "name": "api", "limit": 1.5 }),
+                "limit: Expected integer, received float",
+            ),
+            (
+                json!({ "name": "api", "limit": 0 }),
+                "limit: Number must be greater than 0",
+            ),
+            (
+                json!({ "name": "api", "limit": -3 }),
+                "limit: Number must be greater than 0",
+            ),
+            (
+                json!({ "name": "api", "limit": 1001 }),
+                "limit: Number must be less than or equal to 1000",
+            ),
+            // A number can fail its type refinement and its range at once, and
+            // the reference reports both.
+            (
+                json!({ "name": "api", "limit": 1000.5 }),
+                "limit: Expected integer, received float, limit: Number must be less than or equal to 1000",
+            ),
+            (
+                json!({ "name": "api", "limit": -1.5 }),
+                "limit: Expected integer, received float, limit: Number must be greater than 0",
+            ),
+            // Both fields are reported, in the order the schema declares them.
+            (
+                json!({ "limit": 0 }),
+                "name: Required, limit: Number must be greater than 0",
+            ),
+        ] {
+            let response = request(
+                &mut session(Ok(String::new())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_read_logs", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(response["error"]["code"], -32602, "{arguments}");
+            assert_eq!(
+                response["error"]["message"],
+                json!(format!(
+                    "MCP error -32602: Tool 'nomoreide_read_logs' parameter validation failed: \
+                     {detail}. Please check the parameter types and values according to the \
+                     tool's schema."
+                )),
+                "{arguments}"
+            );
+        }
+    }
+
+    /// The bounds are inclusive at the top and exclusive at the bottom, and a
+    /// large value written in exponent form is still an integer — the reference
+    /// asks whether the *value* is whole, not how it was spelled.
+    #[tokio::test]
+    async fn read_logs_accepts_the_limits_the_reference_accepts() {
+        for arguments in [
+            json!({ "name": "api" }),
+            json!({ "name": "api", "limit": 1 }),
+            json!({ "name": "api", "limit": 1000 }),
+            json!({ "name": "api", "limit": 1000, "ignoredByReference": true }),
+        ] {
+            let response = request(
+                &mut session(Ok("[]".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_read_logs", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(
+                response["result"],
+                json!({ "content": [{ "type": "text", "text": "[]" }] }),
+                "{arguments}"
+            );
+        }
+        // 1e20 is a whole number, so it clears `int` and fails only on range.
+        let response = request(
+            &mut session(Ok("[]".into())),
+            json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "nomoreide_read_logs",
+                    "arguments": { "name": "api", "limit": 1e20 }
+                }
+            }),
+        )
+        .await;
+        assert!(response["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("limit: Number must be less than or equal to 1000"));
     }
 
     #[tokio::test]

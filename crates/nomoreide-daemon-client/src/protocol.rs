@@ -179,6 +179,27 @@ pub struct PortConflict {
     pub holder: Option<PortHolderIdentity>,
 }
 
+/// One buffered line of a service's output.
+///
+/// The reference carries exactly these four fields; the severity its log store
+/// derives feeds timeline events rather than this shape, so it stays a core
+/// concern and does not reach the wire.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceLogEntry {
+    pub service: String,
+    pub stream: String,
+    pub text: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LogsEnvelope {
+    pub ok: bool,
+    pub logs: Vec<ServiceLogEntry>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusEnvelope {

@@ -1,12 +1,13 @@
 mod bundles;
 
 use nomoreide_core::config::ConfigStore;
+use nomoreide_core::log_store::LogEntry;
 use nomoreide_core::port_utils::PortHolder;
 use nomoreide_core::process_manager::{
     PortConflictError, ProcessManager, ServiceState, ServiceStatus,
 };
 use nomoreide_daemon_client::protocol::{
-    PortConflict, PortHolderIdentity, ServiceRuntimeState, ServiceRuntimeStatus,
+    PortConflict, PortHolderIdentity, ServiceLogEntry, ServiceRuntimeState, ServiceRuntimeStatus,
 };
 use std::future::Future;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -67,6 +68,21 @@ impl DaemonRuntime {
             .collect::<Vec<_>>();
         statuses.sort_by(|left, right| left.name.cmp(&right.name));
         statuses
+    }
+
+    /// The tail of a service's buffered output.
+    ///
+    /// Reading logs is not gated on the service being registered, the way a
+    /// start is: a service whose definition was removed, or that this daemon
+    /// never ran, still has whatever it already wrote, and that is exactly what
+    /// someone debugging its disappearance needs. An unknown name has no lines
+    /// rather than being an error, matching the reference.
+    pub(crate) fn logs(&self, name: &str, lines: usize) -> Vec<ServiceLogEntry> {
+        self.process_manager
+            .logs(name, lines)
+            .into_iter()
+            .map(log_entry)
+            .collect()
     }
 
     pub(crate) async fn start_service(
@@ -254,6 +270,20 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         pgid: status.pgid,
         exit_code: status.exit_code,
         url: status.url,
+    }
+}
+
+/// Timestamps cross the wire the way the reference writes them — an ISO string
+/// with millisecond precision — rather than in chrono's default nanosecond
+/// form, which no reference client has ever seen.
+fn log_entry(entry: LogEntry) -> ServiceLogEntry {
+    ServiceLogEntry {
+        service: entry.service,
+        stream: entry.stream,
+        text: entry.text,
+        timestamp: entry
+            .timestamp
+            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
     }
 }
 

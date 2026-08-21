@@ -3,19 +3,21 @@
 use crate::server::app::AppState;
 use crate::server::errors::{error, mutation_error};
 use crate::service_discovery::build_service_discovery;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use nomoreide_daemon_client::protocol::{
-    ServiceDiscoveryEnvelope, ServiceMutationEnvelope, StatusEnvelope,
+    LogsEnvelope, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, StatusEnvelope,
 };
+use serde::Deserialize;
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/services", get(list_services))
         .route("/api/status", get(status))
+        .route("/api/services/:name/logs", get(logs))
         .route("/api/services/:name/start", post(start_service))
         .route("/api/services/:name/stop", post(stop_service))
         .route("/api/services/:name/restart", post(restart_service))
@@ -59,6 +61,38 @@ async fn status(State(state): State<AppState>) -> Response {
         Json(StatusEnvelope {
             ok: true,
             services: state.runtime.status(),
+        }),
+    )
+        .into_response()
+}
+
+/// How many buffered lines to hand back. The reference reads this leniently —
+/// anything missing, unparsable, or not positive falls back to the default
+/// rather than failing the request, because a malformed `lines` is no reason to
+/// withhold the logs someone is debugging with.
+#[derive(Deserialize)]
+struct LogQuery {
+    #[serde(default)]
+    lines: Option<String>,
+}
+
+const DEFAULT_LOG_LINES: usize = 500;
+
+async fn logs(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Query(query): Query<LogQuery>,
+) -> Response {
+    let lines = query
+        .lines
+        .and_then(|lines| lines.parse::<usize>().ok())
+        .filter(|lines| *lines > 0)
+        .unwrap_or(DEFAULT_LOG_LINES);
+    (
+        [(axum::http::header::CACHE_CONTROL, "no-store")],
+        Json(LogsEnvelope {
+            ok: true,
+            logs: state.runtime.logs(&name, lines),
         }),
     )
         .into_response()

@@ -197,11 +197,16 @@ async fn serves_authenticated_redacted_service_discovery_on_loopback() {
     let _ = tokio::fs::remove_dir_all(root).await;
 }
 
+/// Announced so a log read has something of the child's own to find, rather
+/// than only whatever the test harness prints around it.
+const FIXTURE_MARKER: &str = "nomoreide daemon fixture child started";
+
 #[test]
 fn daemon_fixture_child() {
     if std::env::var_os("NOMOREIDE_DAEMON_FIXTURE_CHILD").is_none() {
         return;
     }
+    println!("{FIXTURE_MARKER}");
     loop {
         std::thread::sleep(std::time::Duration::from_secs(60));
     }
@@ -631,6 +636,139 @@ async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
     server.await.unwrap().unwrap();
     assert!(!is_pid_alive(db_pid));
     let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+/// Logs are a debugging capability, so they are read-only, unauthenticated only
+/// to nobody, and deliberately more forgiving than a start: an unregistered name
+/// is empty rather than an error, and a malformed `lines` falls back to the
+/// default instead of failing the request.
+#[tokio::test]
+async fn buffered_service_logs_are_readable_and_lenient_about_their_line_budget() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let executable = std::env::current_exe().unwrap();
+    let cwd = std::env::current_dir().unwrap();
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [{
+                "name": "talker",
+                "command": executable,
+                "args": ["--exact", "daemon_fixture_child", "--nocapture"],
+                "cwd": cwd,
+                "env": { "NOMOREIDE_DAEMON_FIXTURE_CHILD": "1" }
+            }],
+            "bundles": []
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let unauthorized = http
+        .get(format!("{}/api/services/talker/logs", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+    let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
+        .await
+        .unwrap();
+    // A name this daemon has never run has no lines, not an error.
+    assert!(client.logs("never-started", 500).await.unwrap().is_empty());
+
+    client.start_service("talker").await.unwrap();
+    let entry = wait_for_marker(&client).await;
+    assert_eq!(entry.service, "talker");
+    assert_eq!(entry.stream, "stdout");
+    // Rendered the way the reference writes it: an ISO instant in UTC with
+    // millisecond precision.
+    assert!(
+        entry.timestamp.ends_with('Z') && entry.timestamp.len() == 24,
+        "{}",
+        entry.timestamp
+    );
+
+    // `lines` is a budget, not a filter: asking for one line yields the newest.
+    let all = client.logs("talker", 500).await.unwrap();
+    let newest = client.logs("talker", 1).await.unwrap();
+    assert_eq!(newest.len(), 1);
+    assert_eq!(newest[0], *all.last().unwrap());
+
+    // Unparsable and non-positive budgets fall back to the default rather than
+    // failing a read someone is debugging with.
+    for lines in ["", "0", "-4", "many"] {
+        let response = http
+            .get(format!(
+                "{}/api/services/talker/logs?lines={lines}",
+                state.url
+            ))
+            .bearer_auth(credential(&runtime_paths).await)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "lines={lines}");
+        let body = response.json::<serde_json::Value>().await.unwrap();
+        assert_eq!(body["ok"], true, "lines={lines}");
+        assert_eq!(
+            body["logs"].as_array().unwrap().len(),
+            all.len(),
+            "lines={lines}"
+        );
+    }
+
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
+    let _ = tokio::fs::remove_dir_all(root).await;
+}
+
+/// The child writes its line once it is scheduled, and the daemon buffers it
+/// asynchronously, so the first read can legitimately be empty.
+async fn wait_for_marker(
+    client: &DaemonClient,
+) -> nomoreide_daemon_client::protocol::ServiceLogEntry {
+    for _ in 0..200 {
+        if let Some(entry) = client
+            .logs("talker", 500)
+            .await
+            .unwrap()
+            .into_iter()
+            .find(|entry| entry.text.contains(FIXTURE_MARKER))
+        {
+            return entry;
+        }
+        sleep(Duration::from_millis(20)).await;
+    }
+    panic!("the fixture child never announced itself");
+}
+
+async fn credential(paths: &RuntimePaths) -> String {
+    tokio::fs::read_to_string(&paths.credential)
+        .await
+        .unwrap()
+        .trim()
+        .to_string()
 }
 
 async fn wait_for_state(

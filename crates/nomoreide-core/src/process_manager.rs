@@ -417,6 +417,13 @@ impl ProcessManager {
         })
     }
 
+    /// The tail of a service's buffered output. Reading goes through the
+    /// manager that writes it, so there is one owner of a service's log stream
+    /// rather than two handles that can drift apart.
+    pub fn logs(&self, service: &str, limit: usize) -> Vec<LogEntry> {
+        self.log_store.read(service, limit)
+    }
+
     pub fn service_process_ids(&self, name: &str) -> Option<(Option<u32>, Option<u32>)> {
         let procs = self.processes.lock().unwrap();
         procs.get(name).and_then(|process| {

@@ -1,7 +1,7 @@
 use crate::protocol::{
-    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope, PortConflict,
-    ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceRuntimeStatus,
-    StatusEnvelope,
+    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, LogsEnvelope, MutationErrorEnvelope,
+    PortConflict, ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceLogEntry,
+    ServiceMutationEnvelope, ServiceRuntimeStatus, StatusEnvelope,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -177,6 +177,26 @@ impl DaemonClient {
             ));
         }
         Ok(envelope.services)
+    }
+
+    /// The tail of a service's buffered output, newest last.
+    pub async fn logs(
+        &self,
+        name: &str,
+        lines: u32,
+    ) -> Result<Vec<ServiceLogEntry>, DaemonClientError> {
+        let mut url = self.endpoint.action_url("services", name, "logs");
+        url.query_pairs_mut()
+            .append_pair("lines", &lines.to_string());
+        let body = self.read(url).await?;
+        let envelope = serde_json::from_slice::<LogsEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.logs)
     }
 
     pub async fn start_bundle(

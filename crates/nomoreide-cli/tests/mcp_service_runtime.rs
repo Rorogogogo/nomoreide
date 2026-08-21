@@ -14,15 +14,77 @@ use std::time::{Duration, Instant};
 
 const FIXTURE_VARIABLE: &str = "NOMOREIDE_MCP_RUNTIME_FIXTURE_CHILD";
 
+/// Announced so a log read finds a line the service wrote itself.
+const FIXTURE_MARKER: &str = "nomoreide mcp fixture child started";
+
 /// The service the daemon is asked to run. Inert unless the parent selects it.
 #[test]
 fn mcp_runtime_fixture_child() {
     if std::env::var_os(FIXTURE_VARIABLE).is_none() {
         return;
     }
+    println!("{FIXTURE_MARKER}");
     loop {
         std::thread::sleep(Duration::from_secs(60));
     }
+}
+
+/// Reading logs has to reach the daemon that owns the process, so a session
+/// that did not start a service can still see what it printed.
+#[test]
+fn mcp_tools_read_logs_from_the_shared_daemon() {
+    let home = temp_home();
+    write_config(&home);
+    let (mut daemon, port) = DaemonProcess::spawn(&home);
+
+    call_tools(
+        &home,
+        port,
+        &[("nomoreide_start_service", json!({ "name": "sleeper" }))],
+    );
+
+    // The child writes once it is scheduled and the daemon buffers that
+    // asynchronously, so the first read can legitimately come back empty.
+    let deadline = Instant::now() + Duration::from_secs(20);
+    let entry = loop {
+        let read = call_tools(
+            &home,
+            port,
+            &[("nomoreide_read_logs", json!({ "name": "sleeper" }))],
+        );
+        let entries = match status_of(&read[0]) {
+            Value::Array(entries) => entries,
+            other => panic!("expected an array of log entries, got {other}"),
+        };
+        if let Some(entry) = entries.into_iter().find(|entry| {
+            entry["text"]
+                .as_str()
+                .is_some_and(|text| text.contains(FIXTURE_MARKER))
+        }) {
+            break entry;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the fixture child never announced itself"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    };
+    assert_eq!(entry["service"], "sleeper");
+    assert_eq!(entry["stream"], "stdout");
+    // The reference reports exactly these four fields.
+    let fields = entry.as_object().unwrap().keys().collect::<Vec<_>>();
+    assert_eq!(fields, vec!["service", "stream", "text", "timestamp"]);
+
+    // A service this daemon has never run reads back as no lines, not an error.
+    let unknown = call_tools(
+        &home,
+        port,
+        &[("nomoreide_read_logs", json!({ "name": "never-started" }))],
+    );
+    assert_eq!(status_of(&unknown[0]), json!([]));
+
+    daemon.shutdown();
+    let _ = std::fs::remove_dir_all(home);
 }
 
 #[test]

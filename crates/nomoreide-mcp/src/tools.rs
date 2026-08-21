@@ -61,6 +61,10 @@ impl ToolExecutor for NativeToolExecutor {
                         .map_err(daemon_message)?;
                     render(&ServiceStatusView::of(&status))
                 }
+                NativeTool::ReadLogs { service, limit } => {
+                    let logs = client.logs(service, limit).await.map_err(daemon_message)?;
+                    render(&logs)
+                }
                 NativeTool::Status => {
                     let statuses = client.status().await.map_err(daemon_message)?;
                     render(&StatusView::of(&statuses))
@@ -86,6 +90,7 @@ enum NativeTool<'a> {
     StartService(&'a str),
     StopService(&'a str),
     RestartService(&'a str),
+    ReadLogs { service: &'a str, limit: u32 },
     StartBundle(&'a str),
     StopBundle(&'a str),
     Status,
@@ -99,6 +104,10 @@ impl<'a> NativeTool<'a> {
             "nomoreide_start_service" => Ok(Self::StartService(service_name(arguments)?)),
             "nomoreide_stop_service" => Ok(Self::StopService(service_name(arguments)?)),
             "nomoreide_restart_service" => Ok(Self::RestartService(service_name(arguments)?)),
+            "nomoreide_read_logs" => Ok(Self::ReadLogs {
+                service: service_name(arguments)?,
+                limit: log_limit(arguments),
+            }),
             "nomoreide_start_bundle" => Ok(Self::StartBundle(bundle_name(arguments)?)),
             "nomoreide_stop_bundle" => Ok(Self::StopBundle(bundle_name(arguments)?)),
             _ => Err(format!("Tool '{name}' is not implemented.")),
@@ -112,6 +121,19 @@ fn service_name(arguments: &Map<String, Value>) -> Result<&str, String> {
 
 fn bundle_name(arguments: &Map<String, Value>) -> Result<&str, String> {
     required_name(arguments, "bundle")
+}
+
+/// The reference asks the daemon for 500 lines when the caller names no limit.
+/// The protocol layer has already rejected anything outside `(0, 1000]`, so a
+/// value that reaches here is in range.
+const DEFAULT_LOG_LIMIT: u32 = 500;
+
+fn log_limit(arguments: &Map<String, Value>) -> u32 {
+    arguments
+        .get("limit")
+        .and_then(Value::as_u64)
+        .and_then(|limit| u32::try_from(limit).ok())
+        .unwrap_or(DEFAULT_LOG_LIMIT)
 }
 
 fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'a str, String> {
@@ -308,7 +330,8 @@ mod tests {
             NativeTool::parse("nomoreide_status", &arguments),
             Ok(NativeTool::Status)
         ));
-        assert!(NativeTool::parse("nomoreide_read_logs", &arguments).is_err());
+        // Still unported, so still refused by the executor.
+        assert!(NativeTool::parse("nomoreide_service_health", &arguments).is_err());
 
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {
@@ -319,5 +342,28 @@ mod tests {
             }))),
             "Port 3000 is already in use for api"
         );
+    }
+
+    /// The reference asks the daemon for 500 lines when the caller names none,
+    /// and passes the caller's number through otherwise.
+    #[test]
+    fn read_logs_defaults_to_the_reference_line_budget() {
+        let mut arguments = Map::new();
+        arguments.insert("name".into(), Value::String("api".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_read_logs", &arguments),
+            Ok(NativeTool::ReadLogs {
+                service: "api",
+                limit: 500
+            })
+        ));
+        arguments.insert("limit".into(), Value::from(25));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_read_logs", &arguments),
+            Ok(NativeTool::ReadLogs {
+                service: "api",
+                limit: 25
+            })
+        ));
     }
 }
