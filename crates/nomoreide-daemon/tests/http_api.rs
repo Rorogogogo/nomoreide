@@ -113,6 +113,23 @@ async fn serves_authenticated_redacted_service_discovery_on_loopback() {
     assert_eq!(wrong.status(), StatusCode::UNAUTHORIZED);
     assert_eq!(missing.bytes().await.unwrap(), wrong.bytes().await.unwrap());
 
+    // Authentication guards routes, not the router: an unknown path is still a
+    // 404 and a known path with the wrong method is still a 405, both without a
+    // credential. Pinning them here keeps the guard from quietly widening into
+    // an authentication wall that hides which endpoints exist.
+    let unknown = http
+        .get(format!("{}/api/nope", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unknown.status(), StatusCode::NOT_FOUND);
+    let wrong_method = http
+        .post(format!("{}/api/services", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wrong_method.status(), StatusCode::METHOD_NOT_ALLOWED);
+
     let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
         .await
         .unwrap();

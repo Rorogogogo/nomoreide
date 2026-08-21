@@ -1,28 +1,24 @@
-use crate::runtime::{DaemonRuntime, RuntimeMutationError};
-use crate::service_discovery::build_service_discovery;
+//! Booting the loopback daemon: take ownership, bind, publish, serve, drain.
+//! What it serves lives in [`routes`].
+
+mod app;
+mod errors;
+mod routes;
+
+use crate::runtime::DaemonRuntime;
 use crate::DaemonOwnership;
 use anyhow::{Context, Result};
-use axum::extract::{Path, State};
-use axum::http::{HeaderMap, StatusCode};
-use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
-use axum::{Json, Router};
+use app::AppState;
 use chrono::Utc;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
-use nomoreide_daemon_client::protocol::{
-    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope,
-    ServiceDiscoveryEnvelope, ServiceMutationEnvelope, StatusEnvelope,
-};
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
-use serde::Serialize;
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
-use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 
@@ -41,24 +37,6 @@ impl Default for DaemonOptions {
             config_path: ConfigStore::default_path(),
         }
     }
-}
-
-#[derive(Clone)]
-struct AppState {
-    credential: String,
-    owner_id: String,
-    config_store: ConfigStore,
-    runtime: Arc<DaemonRuntime>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct HealthEnvelope {
-    ok: bool,
-    app: &'static str,
-    version: &'static str,
-    pid: u32,
-    owner_id: String,
 }
 
 pub async fn run(options: DaemonOptions) -> Result<()> {
@@ -81,7 +59,7 @@ where
 
 pub async fn serve_with_shutdown_requests(
     options: DaemonOptions,
-    mut shutdown_requests: mpsc::Receiver<()>,
+    shutdown_requests: mpsc::Receiver<()>,
 ) -> Result<()> {
     let ownership = DaemonOwnership::acquire(options.runtime_paths.clone())
         .context("failed to acquire daemon ownership")?;
@@ -98,6 +76,8 @@ pub async fn serve_with_shutdown_requests(
         config_store.clone(),
         ProcessManager::with_runtime_registry(log_store, registry),
     ));
+    // Whatever a crashed owner left behind is reclaimed before this one binds a
+    // port or publishes a credential, so nothing can reach a half-owned runtime.
     runtime
         .reconcile_runtime()
         .await
@@ -121,46 +101,19 @@ pub async fn serve_with_shutdown_requests(
         .publish(&state)
         .context("failed to publish daemon state")?;
 
-    let app_state = AppState {
+    let app = routes::router(AppState {
         credential: ownership.credential().to_string(),
         owner_id: ownership.owner_id().to_string(),
         config_store,
         runtime: runtime.clone(),
-    };
-    let app = Router::new()
-        .route("/api/health", get(health))
-        .route("/api/services", get(list_services))
-        .route("/api/status", get(status))
-        .route("/api/services/:name/start", post(start_service))
-        .route("/api/services/:name/stop", post(stop_service))
-        .route("/api/services/:name/restart", post(restart_service))
-        .route("/api/bundles/:name/start", post(start_bundle))
-        .route("/api/bundles/:name/stop", post(stop_bundle))
-        .fallback(not_found)
-        .method_not_allowed_fallback(method_not_allowed)
-        .with_state(app_state);
+    });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();
-    let shutdown_runtime = runtime.clone();
-    let shutdown_coordinator = tokio::spawn(async move {
-        let mut http_shutdown_tx = Some(http_shutdown_tx);
-        loop {
-            match shutdown_requests.recv().await {
-                Some(()) => match shutdown_runtime.shutdown().await {
-                    Ok(()) => {
-                        if let Some(sender) = http_shutdown_tx.take() {
-                            let _ = sender.send(());
-                        }
-                        return;
-                    }
-                    Err(error) => {
-                        eprintln!("nomoreide: daemon cleanup failed; shutdown refused: {error}");
-                    }
-                },
-                None => std::future::pending::<()>().await,
-            }
-        }
-    });
+    let shutdown_coordinator = tokio::spawn(drain_before_shutdown(
+        runtime.clone(),
+        shutdown_requests,
+        http_shutdown_tx,
+    ));
 
     let server_result = axum::serve(listener, app)
         .with_graceful_shutdown(async {
@@ -173,249 +126,31 @@ pub async fn serve_with_shutdown_requests(
     Ok(())
 }
 
-async fn health(State(state): State<AppState>) -> Json<HealthEnvelope> {
-    Json(HealthEnvelope {
-        ok: true,
-        app: "nomoreide",
-        version: env!("CARGO_PKG_VERSION"),
-        pid: std::process::id(),
-        owner_id: state.owner_id,
-    })
-}
-
-async fn list_services(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
-    }
-    let config = match state.config_store.load().await {
-        Ok(config) => config,
-        Err(_) => {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to load NoMoreIDE config.",
-            )
+/// Stop serving only once the services are actually down. A cleanup failure
+/// refuses the shutdown rather than completing it, so the next request still
+/// reaches a daemon that knows it has processes it could not account for.
+async fn drain_before_shutdown(
+    runtime: Arc<DaemonRuntime>,
+    mut requests: mpsc::Receiver<()>,
+    http_shutdown: oneshot::Sender<()>,
+) {
+    let mut http_shutdown = Some(http_shutdown);
+    loop {
+        match requests.recv().await {
+            Some(()) => match runtime.shutdown().await {
+                Ok(()) => {
+                    if let Some(sender) = http_shutdown.take() {
+                        let _ = sender.send(());
+                    }
+                    return;
+                }
+                Err(error) => {
+                    eprintln!("nomoreide: daemon cleanup failed; shutdown refused: {error}");
+                }
+            },
+            None => std::future::pending::<()>().await,
         }
-    };
-    let discovery = match build_service_discovery(&config) {
-        Ok(discovery) => discovery,
-        Err(_) => {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to build service discovery.",
-            )
-        }
-    };
-    (
-        [(axum::http::header::CACHE_CONTROL, "no-store")],
-        Json(ServiceDiscoveryEnvelope {
-            ok: true,
-            services: discovery.services,
-            bundles: discovery.bundles,
-        }),
-    )
-        .into_response()
-}
-
-async fn start_service(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
     }
-    match state.runtime.start_service(&name).await {
-        Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
-        Err(error) => mutation_error(error),
-    }
-}
-
-async fn stop_service(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
-    }
-    match state.runtime.stop_service(&name).await {
-        Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
-        Err(error) => mutation_error(error),
-    }
-}
-
-async fn restart_service(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
-    }
-    match state.runtime.restart_service(&name).await {
-        Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
-        Err(error) => mutation_error(error),
-    }
-}
-
-async fn status(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
-    }
-    (
-        [(axum::http::header::CACHE_CONTROL, "no-store")],
-        Json(StatusEnvelope {
-            ok: true,
-            services: state.runtime.status(),
-        }),
-    )
-        .into_response()
-}
-
-async fn start_bundle(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    bundle_action(state, name, headers, BundleAction::Start).await
-}
-
-async fn stop_bundle(
-    State(state): State<AppState>,
-    Path(name): Path<String>,
-    headers: HeaderMap,
-) -> Response {
-    bundle_action(state, name, headers, BundleAction::Stop).await
-}
-
-enum BundleAction {
-    Start,
-    Stop,
-}
-
-async fn bundle_action(
-    state: AppState,
-    name: String,
-    headers: HeaderMap,
-    action: BundleAction,
-) -> Response {
-    if !authorized(&headers, &state.credential) {
-        return error(StatusCode::UNAUTHORIZED, "Authentication required.");
-    }
-    let result = match action {
-        BundleAction::Start => state.runtime.start_bundle(&name).await,
-        BundleAction::Stop => state.runtime.stop_bundle(&name).await,
-    };
-    match result {
-        Ok(statuses) => Json(BundleMutationEnvelope { ok: true, statuses }).into_response(),
-        Err(error) => mutation_error(error),
-    }
-}
-
-fn authorized(headers: &HeaderMap, credential: &str) -> bool {
-    let Some(candidate) = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-    else {
-        return false;
-    };
-    bool::from(candidate.as_bytes().ct_eq(credential.as_bytes()))
-}
-
-async fn not_found() -> Response {
-    error(StatusCode::NOT_FOUND, "Not found.")
-}
-
-async fn method_not_allowed() -> Response {
-    error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed.")
-}
-
-fn error(status: StatusCode, message: &str) -> Response {
-    (
-        status,
-        Json(ErrorEnvelope {
-            ok: false,
-            error: message.to_string(),
-        }),
-    )
-        .into_response()
-}
-
-fn mutation_error(error: RuntimeMutationError) -> Response {
-    let (status, code, message, conflict) = match error {
-        RuntimeMutationError::ServiceNotFound => (
-            StatusCode::NOT_FOUND,
-            DaemonErrorCode::ServiceNotFound,
-            "Service is not registered.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::UnsupportedServiceKind => (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            DaemonErrorCode::UnsupportedServiceKind,
-            "Only registered local services are supported by the native daemon.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::PortConflict { message, conflict } => (
-            StatusCode::CONFLICT,
-            DaemonErrorCode::PortInUse,
-            message,
-            Some(*conflict),
-        ),
-        RuntimeMutationError::DaemonDraining => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            DaemonErrorCode::DaemonDraining,
-            "The daemon is draining process mutations.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::DaemonCleanupFailed => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            DaemonErrorCode::DaemonCleanupFailed,
-            "The daemon previously failed to clean up its services; new starts are disabled."
-                .to_string(),
-            None,
-        ),
-        RuntimeMutationError::ConfigLoadFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::ConfigLoadFailed,
-            "Failed to load NoMoreIDE config.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::ServiceStartFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::ServiceStartFailed,
-            "Failed to start the registered service.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::BundleNotFound => (
-            StatusCode::NOT_FOUND,
-            DaemonErrorCode::BundleNotFound,
-            "Bundle is not registered.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::DependencyCycle(message) => (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            DaemonErrorCode::DependencyCycle,
-            message,
-            None,
-        ),
-        RuntimeMutationError::CleanupFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::CleanupFailed,
-            "Failed to confirm service cleanup.".to_string(),
-            None,
-        ),
-    };
-    (
-        status,
-        Json(MutationErrorEnvelope {
-            ok: false,
-            error: message,
-            code,
-            conflict,
-        }),
-    )
-        .into_response()
 }
 
 async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
