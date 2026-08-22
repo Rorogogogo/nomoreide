@@ -639,6 +639,44 @@ Still open, deliberately, and recorded so neither is lost:
 
 ### Phase 4 — Databases, providers, errors, and documentation
 
+**Slice 1 (done): the database read/write split, before anything is built on
+it.** `crates/nomoreide-tauri/src/commands/database.rs` had grown to 2,836
+lines with the reads, the writes, and the file export all in one place — and it
+was about to become the foundation for nine agent-reachable MCP tools. Split
+the way Phase 3 slice 1 split git:
+
+- Read-safe, and what the agent will reach: `nomoreide-core/src/db/` as
+  `{types,sql,engine,catalog,details,rows}.rs` plus a facade, each inside the
+  ~300-line budget. All three engines enforce read-only underneath — a
+  `READ ONLY` transaction for Postgres and MySQL, a read-only connection for
+  SQLite — so the guarantee is the driver's, not a keyword check's.
+- Write-capable, and reached by no MCP tool: `nomoreide-actions/src/db.rs`,
+  beside `git.rs`, holding execute, the structured delete, and the affected-rows
+  preview.
+- The desktop commands became thin wrappers, keeping only the file export,
+  which is neither: it reads rows but streams them to disk and can be cancelled,
+  so it holds Tauri's own cancellation state.
+
+The eight existing tests moved with their subjects — four to core, three to
+actions, one stayed with the export — and core seeds its own fixtures through
+`sqlx` rather than borrowing the write crate, which would have inverted the
+dependency the split exists to enforce.
+
+Two behaviours are carried over verbatim rather than reconciled, and belong to
+the Phase 4 parity pass: the desktop `query_database` applies a row limit by
+wrapping the caller's SQL in `SELECT * FROM (…) _q LIMIT n` and gates statements
+on a keyword allowlist before running them, and `mask_url` returns `****` for a
+URL with no scheme separator. None has been diffed against the TypeScript
+reference yet.
+
+One thing this slice cost: the local Windows cross-check no longer covers
+`nomoreide-core` or anything that depends on it. `sqlx` pulls in `ring`, whose
+build needs a mingw toolchain this machine does not have. It is not a CI gate
+(there is no Windows job) and the desktop app already carried `sqlx` through
+`nomoreide-tauri`, so nothing about the product's Windows story changed — but
+the check now only reaches `nomoreide-daemon-client`.
+
+
 - Port database registration, catalog inspection, sampling, masking, and guarded queries.
 - Support the same database engines and URL redaction behavior as today.
 - Port the provider registry and Vercel/Cloudflare/Vultr HTTP behavior used by MCP and dashboard APIs.

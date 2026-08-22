@@ -52,4 +52,5 @@
 //! question, and belongs in the TypeScript reference first so both runtimes
 //! stay diffable.
 
+pub mod db;
 pub mod git;

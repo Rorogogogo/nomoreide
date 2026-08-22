@@ -9,6 +9,9 @@ license.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 tokio.workspace = true
+sqlx.workspace = true
+serde_json.workspace = true
+nomoreide-core = { path = "../nomoreide-core" }
 
 # Only the parity probe in `examples/` needs to print JSON; the crate itself
 # does not serialise anything on its own.

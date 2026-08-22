@@ -2335,8 +2335,10 @@ name = "nomoreide-actions"
 version = "0.1.103"
 dependencies = [
  "anyhow",
+ "nomoreide-core",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
 ]
 
@@ -2367,6 +2369,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sha2",
+ "sqlx",
  "tokio",
  "urlencoding",
  "uuid",
