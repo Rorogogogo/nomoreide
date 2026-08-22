@@ -9,15 +9,26 @@
 
 use super::catalog::{columns_for, postgres_table_script, resolve_object};
 use super::engine::run_query;
-use super::sql::{cap_definition, first_value, quote_identifier, sql_literal, terminate_statement};
-use super::types::{NamedDefinition, ObjectDetails};
+use super::sql::{
+    cap_definition, first_value, quote_identifier, sql_literal, terminate_statement, value_as_bool,
+};
+use super::types::{CatalogObject, NamedDefinition, ObjectDetails};
 use crate::config::DatabaseDef;
 use serde_json::Value;
 
 /// Columns, indexes, constraints, triggers, and a capped create script for one
 /// object named by the opaque key a listing handed out.
 pub async fn object_details(database: &DatabaseDef, key: &str) -> Result<ObjectDetails, String> {
-    let object = resolve_object(database, key).await?;
+    details_for(database, &resolve_object(database, key).await?).await
+}
+
+/// The same reading, for an object a caller has already resolved. The agent
+/// surface refuses an unknown key in its own words, so it resolves first and
+/// arrives here with the object in hand.
+pub(super) async fn details_for(
+    database: &DatabaseDef,
+    object: &CatalogObject,
+) -> Result<ObjectDetails, String> {
     let mut details = ObjectDetails {
         object: object.clone(),
         columns: vec![],
@@ -28,7 +39,7 @@ pub async fn object_details(database: &DatabaseDef, key: &str) -> Result<ObjectD
         create_script: None,
     };
     if matches!(object.kind.as_str(), "table" | "view" | "materializedView") {
-        details.columns = columns_for(database, &object).await?;
+        details.columns = columns_for(database, object).await?;
     }
     if database.engine == "sqlite" {
         let quoted = quote_identifier(&object.name, "sqlite");
@@ -57,20 +68,35 @@ pub async fn object_details(database: &DatabaseDef, key: &str) -> Result<ObjectD
                 .collect::<Vec<_>>()
                 .join("\n\n"),
         );
-        let indexes = run_query(
+        // Two readings joined: `index_list` knows which indexes exist and
+        // which are unique, and only `sqlite_master` holds the DDL. An index
+        // SQLite created for itself — the one behind a UNIQUE column — has no
+        // DDL at all, and is reported with an empty definition rather than
+        // hidden, because it is still an index rows are matched through.
+        let listed = run_query(
             "sqlite",
             &database.url,
             &format!("PRAGMA index_list({quoted})"),
         )
         .await?;
-        details.indexes = indexes
+        let sources = run_query("sqlite", &database.url, &format!("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name={name_literal}")).await?;
+        details.indexes = listed
             .rows
             .into_iter()
             .filter_map(|row| {
+                let name = row.get(1)?.as_str()?.to_string();
+                let definition = sources
+                    .rows
+                    .iter()
+                    .find(|source| source.first().and_then(Value::as_str) == Some(&name))
+                    .and_then(|source| source.get(1))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
                 Some(NamedDefinition {
-                    name: row.get(1)?.as_str()?.into(),
-                    definition: String::new(),
-                    unique: Some(row.get(2).and_then(Value::as_i64).unwrap_or(0) == 1),
+                    name,
+                    definition,
+                    unique: Some(value_as_bool(row.get(2))),
                     r#type: None,
                 })
             })
@@ -88,12 +114,64 @@ pub async fn object_details(database: &DatabaseDef, key: &str) -> Result<ObjectD
                 })
             })
             .collect();
-        if details.columns.iter().any(|column| column.primary_key) {
+        // SQLite has no catalog of constraints, so the two that can be
+        // reconstructed are, and the rest are not invented: a CHECK or a
+        // standalone UNIQUE is visible in the definition above and nowhere
+        // else, and naming one here would mean naming it something SQLite
+        // never called it.
+        let primary_key: Vec<&str> = details
+            .columns
+            .iter()
+            .filter(|column| column.primary_key)
+            .map(|column| column.name.as_str())
+            .collect();
+        if !primary_key.is_empty() {
             details.constraints.push(NamedDefinition {
                 name: format!("pk_{}", object.name),
-                definition: "PRIMARY KEY".into(),
+                definition: format!("PRIMARY KEY ({})", primary_key.join(", ")),
                 unique: None,
                 r#type: Some("PRIMARY KEY".into()),
+            });
+        }
+        let foreign_keys = run_query(
+            "sqlite",
+            &database.url,
+            &format!("PRAGMA foreign_key_list({quoted})"),
+        )
+        .await?;
+        // One constraint per `id`, however many columns it spans: SQLite
+        // reports a composite key as several rows sharing an id.
+        let mut grouped: Vec<(i64, String, Vec<String>, Vec<String>)> = Vec::new();
+        for row in &foreign_keys.rows {
+            let Some(id) = row.first().and_then(Value::as_i64) else {
+                continue;
+            };
+            let table = row.get(2).and_then(Value::as_str).unwrap_or_default();
+            let from = row.get(3).and_then(Value::as_str).unwrap_or_default();
+            let to = row.get(4).and_then(Value::as_str).unwrap_or_default();
+            match grouped.iter_mut().find(|entry| entry.0 == id) {
+                Some(entry) => {
+                    entry.2.push(from.to_string());
+                    entry.3.push(to.to_string());
+                }
+                None => grouped.push((
+                    id,
+                    table.to_string(),
+                    vec![from.to_string()],
+                    vec![to.to_string()],
+                )),
+            }
+        }
+        for (id, table, from, to) in grouped {
+            details.constraints.push(NamedDefinition {
+                name: format!("fk_{}_{id}", object.name),
+                definition: format!(
+                    "FOREIGN KEY ({}) REFERENCES {table} ({})",
+                    from.join(", "),
+                    to.join(", ")
+                ),
+                unique: None,
+                r#type: Some("FOREIGN KEY".into()),
             });
         }
     } else if database.engine == "mysql" {

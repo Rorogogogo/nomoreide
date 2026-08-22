@@ -17,6 +17,7 @@
 mod catalog;
 mod details;
 mod engine;
+mod peek;
 mod rows;
 mod sql;
 mod types;
@@ -24,6 +25,11 @@ mod types;
 pub use catalog::{columns_for, objects_for, resolve_object, schemas_for};
 pub use details::object_details;
 pub use engine::{hex_bytes, list_db_tables, lossless_json_integer, run_query};
+pub use peek::{
+    connection as peek_connection, details as peek_details, is_read_statement,
+    objects as peek_objects, query as peek_query, sample as peek_sample, schemas as peek_schemas,
+    tables as peek_tables, write_staging_guidance, QueryOutcome, TableRef, DEFAULT_ROW_LIMIT,
+};
 pub use rows::{row_browse_clauses, sample_object};
 pub use sql::{is_sensitive_preview_column, quote_identifier, sample_column_expression};
 pub use types::{
@@ -45,19 +51,23 @@ pub fn connection<'a>(config: &'a Config, name: &str) -> Result<&'a DatabaseDef,
 
 /// Every registered connection, with its URL masked.
 pub fn list_connections(config: &Config) -> Vec<Value> {
-    config
-        .databases
-        .iter()
-        .map(|d| {
-            json!({
-                "name": d.name,
-                "engine": d.engine,
-                "url": mask_url(&d.engine, &d.url),
-                "writeUnlocked": d.write_unlocked.unwrap_or(false),
-                "projectPath": d.project_path,
-            })
-        })
-        .collect()
+    config.databases.iter().map(public_connection).collect()
+}
+
+/// One connection as every surface reports it: no raw URL, and no key at all
+/// for a project path the connection does not have. An absent field and a null
+/// one read differently to whatever is on the other end.
+pub fn public_connection(database: &DatabaseDef) -> Value {
+    let mut entry = json!({
+        "name": database.name,
+        "engine": database.engine,
+        "url": mask_url(&database.engine, &database.url),
+        "writeUnlocked": database.write_unlocked.unwrap_or(false),
+    });
+    if let Some(path) = &database.project_path {
+        entry["projectPath"] = json!(path);
+    }
+    entry
 }
 
 /// Check that a connection can be reached, without saying anything about it.
@@ -93,28 +103,43 @@ pub fn capabilities(engine: &str) -> Result<CatalogCapabilities, String> {
     })
 }
 
+/// A connection URL with its password removed.
+///
+/// A URL that parses keeps every part a person needs to recognise it — scheme,
+/// user, host, port, database — and loses only the secret. One that does not
+/// parse cannot be edited that precisely, so it is blanked down to its first
+/// and last few characters: enough to tell two connections apart, not enough to
+/// reconstruct either. Anything short enough that those two ends would be most
+/// of it is replaced outright.
+///
+/// SQLite is left alone. Its "URL" is a path on the user's own disk and carries
+/// no credential, and masking it would hide which file a connection reads.
 pub fn mask_url(engine: &str, url: &str) -> String {
     if engine == "sqlite" {
         return url.to_string();
     }
-    let Some(scheme_end) = url.find("://") else {
-        return "****".to_string();
-    };
-    let credentials_start = scheme_end + 3;
-    let Some(at_offset) = url[credentials_start..].find('@') else {
-        return url.to_string();
-    };
-    let at = credentials_start + at_offset;
-    let credentials = &url[credentials_start..at];
-    let Some(colon) = credentials.find(':') else {
-        return url.to_string();
-    };
-    format!(
-        "{}{}:****{}",
-        &url[..credentials_start],
-        &credentials[..colon],
-        &url[at..]
-    )
+    const KEPT_EDGE: usize = 4;
+    match url::Url::parse(url) {
+        Ok(mut parsed) => {
+            if parsed
+                .password()
+                .is_some_and(|password| !password.is_empty())
+                && parsed.set_password(Some("****")).is_ok()
+            {
+                return parsed.to_string();
+            }
+            parsed.to_string()
+        }
+        Err(_) => {
+            let characters: Vec<char> = url.chars().collect();
+            if characters.len() <= KEPT_EDGE * 2 {
+                return "****".to_string();
+            }
+            let head: String = characters[..KEPT_EDGE].iter().collect();
+            let tail: String = characters[characters.len() - KEPT_EDGE..].iter().collect();
+            format!("{head}****{tail}")
+        }
+    }
 }
 
 #[cfg(test)]

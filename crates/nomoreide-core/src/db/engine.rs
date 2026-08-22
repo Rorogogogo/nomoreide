@@ -8,13 +8,141 @@
 //! Moved out of the Tauri command module unchanged.
 
 use super::types::QueryResult;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
+
+/// How a cell holding bytes is written into JSON.
+///
+/// The two surfaces that read a row disagree about this, so the caller says
+/// which one it is rather than the engine deciding. The dashboard wants a
+/// short human label; the agent surface wants the bytes themselves, because an
+/// agent asked to explain a column cannot do it from "<blob 3 bytes>".
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum CellStyle {
+    Dashboard,
+    Peek,
+}
+
+/// One statement to run, with whatever the caller wants bound into it.
+///
+/// The bind exists for the agent surface's row cap: a value that came from a
+/// request belongs in a parameter rather than in the statement text, even when
+/// it has already been validated as a small integer.
+pub struct QueryPlan<'a> {
+    pub sql: &'a str,
+    pub bind: Option<i64>,
+    pub style: CellStyle,
+}
+
+impl<'a> QueryPlan<'a> {
+    pub fn peek(sql: &'a str, bind: Option<i64>) -> Self {
+        Self {
+            sql,
+            bind,
+            style: CellStyle::Peek,
+        }
+    }
+}
+
+/// What the database itself said, without sqlx's framing around it.
+///
+/// A caller reading "no such table: books" can act on it; the same message
+/// behind "error returned from database: (code: 1)" tells them nothing more and
+/// leaks which driver happens to be underneath. Errors that never reached a
+/// database — a bad URL, a refused socket — keep their own wording, because
+/// there is no database message to prefer.
+pub(super) fn driver_message(error: sqlx::Error) -> String {
+    match error {
+        sqlx::Error::Database(failure) => failure.message().to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// A float as JSON can carry it.
+///
+/// Negative zero is written as zero: no reader distinguishes `-0` from `0` once
+/// it has been through a JSON text, so writing `-0.0` would only mean the two
+/// runtimes disagreed about a value neither can actually deliver. Infinities
+/// and NaN need no handling here — JSON has no spelling for them and `json!`
+/// already writes them as null.
+fn json_number(value: f64) -> Value {
+    json!(if value == 0.0 { 0.0 } else { value })
+}
+
+/// One SQLite cell, read by what it actually holds rather than by what its
+/// column was declared to hold.
+///
+/// SQLite columns are only loosely typed, and a `PRAGMA` has no declared types
+/// at all — so a reader that trusts the declaration silently turns a catalog
+/// listing into a column of nulls. Each storage class is tried in turn and the
+/// first that decodes wins; `NULL` decodes as the first of them, which is why
+/// it does not fall through to the end.
+fn sqlite_cell(row: &sqlx::sqlite::SqliteRow, index: usize, style: CellStyle) -> Value {
+    use sqlx::Row;
+    if let Ok(value) = row.try_get::<Option<i64>, _>(index) {
+        return value.map_or(Value::Null, |value| json!(value));
+    }
+    if let Ok(Some(value)) = row.try_get::<Option<f64>, _>(index) {
+        return json_number(value);
+    }
+    if let Ok(Some(value)) = row.try_get::<Option<String>, _>(index) {
+        return Value::String(value);
+    }
+    if let Ok(Some(value)) = row.try_get::<Option<Vec<u8>>, _>(index) {
+        return bytes_value(style, &value);
+    }
+    Value::Null
+}
+
+/// The plan's statement with its bind applied, ready to run on any engine.
+fn bound<'a, DB>(
+    plan: &'a QueryPlan<'a>,
+) -> sqlx::query::Query<'a, DB, <DB as sqlx::Database>::Arguments<'a>>
+where
+    DB: sqlx::Database,
+    i64: sqlx::Encode<'a, DB> + sqlx::Type<DB>,
+{
+    let query = sqlx::query(plan.sql);
+    match plan.bind {
+        Some(value) => query.bind(value),
+        None => query,
+    }
+}
+
 pub async fn run_query(engine: &str, url: &str, sql: &str) -> Result<QueryResult, String> {
+    run_plan(
+        engine,
+        url,
+        QueryPlan {
+            sql,
+            bind: None,
+            style: CellStyle::Dashboard,
+        },
+    )
+    .await
+}
+
+pub async fn run_plan(engine: &str, url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, String> {
     match engine {
-        "postgres" => query_postgres(url, sql).await,
-        "sqlite" => query_sqlite(url, sql).await,
-        "mysql" => query_mysql(url, sql).await,
+        "postgres" => query_postgres(url, plan).await,
+        "sqlite" => query_sqlite(url, plan).await,
+        "mysql" => query_mysql(url, plan).await,
         _ => Err(format!("Unsupported engine: {engine}")),
+    }
+}
+
+/// Bytes as the chosen surface spells them. `Peek` mirrors how a typed array
+/// reaches JSON — an object keyed by index — because that is what an agent
+/// reading the reference has always been handed.
+fn bytes_value(style: CellStyle, bytes: &[u8]) -> Value {
+    match style {
+        CellStyle::Dashboard => Value::String(format!("<blob {} bytes>", bytes.len())),
+        CellStyle::Peek => Value::Object(
+            bytes
+                .iter()
+                .enumerate()
+                .map(|(index, byte)| (index.to_string(), json!(byte)))
+                .collect::<Map<String, Value>>(),
+        ),
     }
 }
 
@@ -61,21 +189,21 @@ pub async fn list_db_tables(engine: &str, url: &str) -> Result<Vec<String>, Stri
 // Postgres
 // ---------------------------------------------------------------------------
 
-async fn query_postgres(url: &str, sql: &str) -> Result<QueryResult, String> {
+async fn query_postgres(url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, String> {
     use sqlx::postgres::PgPool;
     use sqlx::{Column, Row, TypeInfo};
 
-    let pool = PgPool::connect(url).await.map_err(|e| e.to_string())?;
-    let mut transaction = pool.begin().await.map_err(|e| e.to_string())?;
+    let pool = PgPool::connect(url).await.map_err(driver_message)?;
+    let mut transaction = pool.begin().await.map_err(driver_message)?;
     sqlx::query("SET TRANSACTION READ ONLY")
         .execute(&mut *transaction)
         .await
-        .map_err(|e| e.to_string())?;
-    let rows = sqlx::query(sql)
+        .map_err(driver_message)?;
+    let rows = bound(&plan)
         .fetch_all(&mut *transaction)
         .await
-        .map_err(|e| e.to_string())?;
-    transaction.rollback().await.map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
+    transaction.rollback().await.map_err(driver_message)?;
 
     if rows.is_empty() {
         return Ok(QueryResult {
@@ -125,13 +253,13 @@ async fn query_postgres(url: &str, sql: &str) -> Result<QueryResult, String> {
                             .try_get::<Option<f32>, _>(i)
                             .ok()
                             .flatten()
-                            .map(|v| json!(v))
+                            .map(|v| json_number(f64::from(v)))
                             .unwrap_or(Value::Null),
                         "FLOAT8" | "DOUBLE PRECISION" => row
                             .try_get::<Option<f64>, _>(i)
                             .ok()
                             .flatten()
-                            .map(|v| json!(v))
+                            .map(json_number)
                             .unwrap_or(Value::Null),
                         "JSONB" | "JSON" => row
                             .try_get::<Option<Value>, _>(i)
@@ -158,13 +286,13 @@ async fn query_postgres(url: &str, sql: &str) -> Result<QueryResult, String> {
     })
 }
 
-async fn query_sqlite(url: &str, sql: &str) -> Result<QueryResult, String> {
+async fn query_sqlite(url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, String> {
     use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-    use sqlx::{Column, Row, TypeInfo};
+    use sqlx::{Column, Row};
     use std::str::FromStr;
 
     let options = if url.starts_with("sqlite:") {
-        SqliteConnectOptions::from_str(url).map_err(|e| e.to_string())?
+        SqliteConnectOptions::from_str(url).map_err(driver_message)?
     } else {
         SqliteConnectOptions::new().filename(url)
     }
@@ -173,11 +301,11 @@ async fn query_sqlite(url: &str, sql: &str) -> Result<QueryResult, String> {
         .max_connections(1)
         .connect_with(options)
         .await
-        .map_err(|e| e.to_string())?;
-    let rows = sqlx::query(sql)
+        .map_err(driver_message)?;
+    let rows = bound(&plan)
         .fetch_all(&pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
 
     if rows.is_empty() {
         return Ok(QueryResult {
@@ -196,35 +324,7 @@ async fn query_sqlite(url: &str, sql: &str) -> Result<QueryResult, String> {
         .iter()
         .map(|row| {
             (0..columns.len())
-                .map(|i| {
-                    let type_name = row.column(i).type_info().name().to_uppercase();
-                    match type_name.as_str() {
-                        "INTEGER" | "INT" | "INT64" => row
-                            .try_get::<Option<i64>, _>(i)
-                            .ok()
-                            .flatten()
-                            .map(|v| json!(v))
-                            .unwrap_or(Value::Null),
-                        "REAL" => row
-                            .try_get::<Option<f64>, _>(i)
-                            .ok()
-                            .flatten()
-                            .map(|v| json!(v))
-                            .unwrap_or(Value::Null),
-                        "BLOB" => row
-                            .try_get::<Option<Vec<u8>>, _>(i)
-                            .ok()
-                            .flatten()
-                            .map(|v| Value::String(format!("<blob {} bytes>", v.len())))
-                            .unwrap_or(Value::Null),
-                        _ => row
-                            .try_get::<Option<String>, _>(i)
-                            .ok()
-                            .flatten()
-                            .map(Value::String)
-                            .unwrap_or(Value::Null),
-                    }
-                })
+                .map(|i| sqlite_cell(row, i, plan.style))
                 .collect()
         })
         .collect();
@@ -237,24 +337,24 @@ async fn query_sqlite(url: &str, sql: &str) -> Result<QueryResult, String> {
     })
 }
 
-async fn query_mysql(url: &str, sql: &str) -> Result<QueryResult, String> {
+async fn query_mysql(url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, String> {
     use sqlx::mysql::MySqlPool;
     use sqlx::{Column, Row, TypeInfo};
 
-    let pool = MySqlPool::connect(url).await.map_err(|e| e.to_string())?;
-    let mut connection = pool.acquire().await.map_err(|e| e.to_string())?;
+    let pool = MySqlPool::connect(url).await.map_err(driver_message)?;
+    let mut connection = pool.acquire().await.map_err(driver_message)?;
     sqlx::query("START TRANSACTION READ ONLY")
         .execute(&mut *connection)
         .await
-        .map_err(|e| e.to_string())?;
-    let rows = sqlx::query(sql)
+        .map_err(driver_message)?;
+    let rows = bound(&plan)
         .fetch_all(&mut *connection)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
     sqlx::query("ROLLBACK")
         .execute(&mut *connection)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
 
     if rows.is_empty() {
         return Ok(QueryResult {
@@ -309,7 +409,7 @@ async fn query_mysql(url: &str, sql: &str) -> Result<QueryResult, String> {
                             .try_get::<Option<Vec<u8>>, _>(i)
                             .ok()
                             .flatten()
-                            .map(|v| Value::String(format!("<blob {} bytes>", v.len())))
+                            .map(|v| bytes_value(plan.style, &v))
                             .unwrap_or(Value::Null),
                         _ => row
                             .try_get::<Option<String>, _>(i)

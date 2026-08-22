@@ -1,0 +1,976 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [],
+  "databases": [
+    {
+      "id": "demo",
+      "statements": [
+        "CREATE TABLE authors (id INTEGER NOT NULL, tenant TEXT NOT NULL, name TEXT, PRIMARY KEY (id, tenant), UNIQUE (id))",
+        "CREATE TABLE books (id INTEGER PRIMARY KEY AUTOINCREMENT, author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE, isbn TEXT UNIQUE, pages INTEGER CHECK (pages > 0), title TEXT NOT NULL DEFAULT 'untitled')",
+        "CREATE UNIQUE INDEX books_isbn_idx ON books(isbn) WHERE isbn IS NOT NULL",
+        "CREATE INDEX books_author_idx ON books(author_id, pages DESC)",
+        "CREATE TRIGGER books_touch AFTER UPDATE ON books BEGIN SELECT 1; END",
+        "CREATE TRIGGER books_ins BEFORE INSERT ON books FOR EACH ROW BEGIN SELECT 2; END",
+        "CREATE VIEW v_books AS SELECT id, title FROM books",
+        "CREATE TABLE \"weird name\" (a INT)",
+        "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT, api_token TEXT, age INTEGER)",
+        "CREATE TABLE cells (i INTEGER, r REAL, t TEXT, b BLOB, n INTEGER)",
+        "INSERT INTO authors VALUES (1,'acme','Ada'), (2,'acme','Bo')",
+        "INSERT INTO books (author_id, isbn, pages, title) VALUES (1,'x',10,'First'), (2,'y',20,'Second'), (1,NULL,30,'Third')",
+        "INSERT INTO users VALUES (1,'a@b.c','hunter2','tok',30), (2,'d@e.f',NULL,NULL,17), (3,'g@h.i','x','y',40)",
+        "INSERT INTO cells VALUES (42, 1.5, 'hi', x'00ff10', NULL)"
+      ]
+    },
+    {
+      "id": "empty",
+      "statements": [
+        "CREATE TABLE only (id INTEGER PRIMARY KEY)"
+      ]
+    }
+  ],
+  "plan": [
+    {
+      "id": "register-empty-listing",
+      "tool": "nomoreide_list_databases",
+      "arguments": {}
+    },
+    {
+      "id": "register-sqlite",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "demo",
+        "engine": "sqlite",
+        "url": "{{db:demo}}"
+      }
+    },
+    {
+      "id": "register-with-project",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "scoped",
+        "engine": "sqlite",
+        "url": "{{db:demo}}",
+        "projectPath": "/workspace/app"
+      }
+    },
+    {
+      "id": "register-duplicate",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "demo",
+        "engine": "sqlite",
+        "url": "{{db:demo}}",
+        "check": false
+      }
+    },
+    {
+      "id": "register-replace",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "scoped",
+        "engine": "sqlite",
+        "url": "{{db:empty}}",
+        "check": false,
+        "replace": true
+      }
+    },
+    {
+      "id": "register-unreachable-sqlite",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "broken",
+        "engine": "sqlite",
+        "url": "{{home}}/no-such-directory/x.db"
+      }
+    },
+    {
+      "id": "register-unchecked",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "broken",
+        "engine": "sqlite",
+        "url": "{{home}}/no-such-directory/x.db",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-00",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask0",
+        "engine": "postgres",
+        "url": "postgres://bob:s3cret@localhost:5999/app",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-01",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask1",
+        "engine": "postgres",
+        "url": "postgres://bob@localhost:5999/app",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-02",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask2",
+        "engine": "postgres",
+        "url": "postgres://bob:@localhost:5999/app",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-03",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask3",
+        "engine": "postgres",
+        "url": "PostgreS://Bob:S3cret@H.EXAMPLE.COM:5999/app?sslmode=require",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-04",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask4",
+        "engine": "postgres",
+        "url": "postgres://u%3Ax:p%40w@h/d#frag",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-05",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask5",
+        "engine": "postgres",
+        "url": "just-a-string",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-06",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask6",
+        "engine": "postgres",
+        "url": "abcdefgh",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-07",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask7",
+        "engine": "postgres",
+        "url": "abcdefghi",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-08",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask8",
+        "engine": "postgres",
+        "url": "ab",
+        "check": false
+      }
+    },
+    {
+      "id": "mask-09",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "mask9",
+        "engine": "postgres",
+        "url": "foo:bar",
+        "check": false
+      }
+    },
+    {
+      "id": "register-mysql-unchecked",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "my",
+        "engine": "mysql",
+        "url": "mysql://root:pw@127.0.0.1:3999/app",
+        "check": false
+      }
+    },
+    {
+      "id": "list-after-registration",
+      "tool": "nomoreide_list_databases",
+      "arguments": {}
+    },
+    {
+      "id": "reject-missing-connection",
+      "tool": "nomoreide_check_database",
+      "arguments": {}
+    },
+    {
+      "id": "reject-empty-connection",
+      "tool": "nomoreide_check_database",
+      "arguments": {
+        "connection": ""
+      }
+    },
+    {
+      "id": "reject-missing-schema",
+      "tool": "nomoreide_db_objects",
+      "arguments": {}
+    },
+    {
+      "id": "reject-missing-key",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "reject-missing-table",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "reject-missing-sql",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "reject-bad-engine",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "x",
+        "engine": "oracle",
+        "url": "x"
+      }
+    },
+    {
+      "id": "reject-empty-name",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "",
+        "engine": "sqlite",
+        "url": "x"
+      }
+    },
+    {
+      "id": "reject-missing-url",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "x",
+        "engine": "sqlite"
+      }
+    },
+    {
+      "id": "reject-missing-engine",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": "x",
+        "url": "x"
+      }
+    },
+    {
+      "id": "reject-nothing-at-all",
+      "tool": "nomoreide_register_database",
+      "arguments": {}
+    },
+    {
+      "id": "reject-registration-types",
+      "tool": "nomoreide_register_database",
+      "arguments": {
+        "name": 1,
+        "engine": 2,
+        "url": true,
+        "projectPath": 3,
+        "check": "yes",
+        "replace": 4
+      }
+    },
+    {
+      "id": "reject-limit-zero",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1",
+        "limit": 0
+      }
+    },
+    {
+      "id": "reject-limit-max",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "books",
+        "limit": 1001
+      }
+    },
+    {
+      "id": "reject-limit-float",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1",
+        "limit": 1.5
+      }
+    },
+    {
+      "id": "reject-limit-type",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "books",
+        "limit": "10"
+      }
+    },
+    {
+      "id": "unknown-connection-check",
+      "tool": "nomoreide_check_database",
+      "arguments": {
+        "connection": "nope"
+      }
+    },
+    {
+      "id": "unknown-connection-schemas",
+      "tool": "nomoreide_db_schemas",
+      "arguments": {
+        "connection": "nope"
+      }
+    },
+    {
+      "id": "unknown-connection-tables",
+      "tool": "nomoreide_db_tables",
+      "arguments": {
+        "connection": "nope"
+      }
+    },
+    {
+      "id": "unknown-connection-objects",
+      "tool": "nomoreide_db_objects",
+      "arguments": {
+        "connection": "nope",
+        "schema": "main"
+      }
+    },
+    {
+      "id": "unknown-connection-details",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "nope",
+        "key": "x"
+      }
+    },
+    {
+      "id": "unknown-connection-sample",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "nope",
+        "table": "books"
+      }
+    },
+    {
+      "id": "unknown-connection-query",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "nope",
+        "sql": "SELECT 1"
+      }
+    },
+    {
+      "id": "check-reachable",
+      "tool": "nomoreide_check_database",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "schemas",
+      "tool": "nomoreide_db_schemas",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "objects-main",
+      "tool": "nomoreide_db_objects",
+      "arguments": {
+        "connection": "demo",
+        "schema": "main"
+      }
+    },
+    {
+      "id": "objects-unknown-schema",
+      "tool": "nomoreide_db_objects",
+      "arguments": {
+        "connection": "demo",
+        "schema": "nope"
+      }
+    },
+    {
+      "id": "tables",
+      "tool": "nomoreide_db_tables",
+      "arguments": {
+        "connection": "demo"
+      }
+    },
+    {
+      "id": "tables-single",
+      "tool": "nomoreide_db_tables",
+      "arguments": {
+        "connection": "scoped"
+      }
+    },
+    {
+      "id": "details-books",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InRhYmxlIn0"
+      }
+    },
+    {
+      "id": "details-authors",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImF1dGhvcnMiLCJraW5kIjoidGFibGUifQ"
+      }
+    },
+    {
+      "id": "details-v_books",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6InZfYm9va3MiLCJraW5kIjoidmlldyJ9"
+      }
+    },
+    {
+      "id": "details-weird",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6IndlaXJkIG5hbWUiLCJraW5kIjoidGFibGUifQ"
+      }
+    },
+    {
+      "id": "details-reordered",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJraW5kIjoidGFibGUiLCJuYW1lIjoiYm9va3MiLCJzY2hlbWEiOiJtYWluIn0"
+      }
+    },
+    {
+      "id": "details-wrong-kind",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImJvb2tzIiwia2luZCI6InZpZXcifQ"
+      }
+    },
+    {
+      "id": "details-gone",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "eyJzY2hlbWEiOiJtYWluIiwibmFtZSI6ImdvbmUiLCJraW5kIjoidGFibGUifQ"
+      }
+    },
+    {
+      "id": "details-not-base64",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "not-base64!!"
+      }
+    },
+    {
+      "id": "details-not-json",
+      "tool": "nomoreide_db_object_details",
+      "arguments": {
+        "connection": "demo",
+        "key": "aGVsbG8"
+      }
+    },
+    {
+      "id": "sample-default-limit",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "users"
+      }
+    },
+    {
+      "id": "sample-capped",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "books",
+        "limit": 2
+      }
+    },
+    {
+      "id": "sample-view",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "v_books"
+      }
+    },
+    {
+      "id": "sample-empty-table",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "weird name"
+      }
+    },
+    {
+      "id": "sample-cell-types",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "cells"
+      }
+    },
+    {
+      "id": "sample-unknown-table",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "nope"
+      }
+    },
+    {
+      "id": "sample-qualified-spelling",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "main.books"
+      }
+    },
+    {
+      "id": "sample-case",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": "BOOKS"
+      }
+    },
+    {
+      "id": "sample-padded",
+      "tool": "nomoreide_db_sample",
+      "arguments": {
+        "connection": "demo",
+        "table": " books"
+      }
+    },
+    {
+      "id": "query-rows",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id, title FROM books ORDER BY id"
+      }
+    },
+    {
+      "id": "query-cells",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT i, r, t, b, n FROM cells"
+      }
+    },
+    {
+      "id": "query-no-rows",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 AS a WHERE 0"
+      }
+    },
+    {
+      "id": "query-duplicate-columns",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 AS d, 2 AS d, 3 AS d, 4 AS e"
+      }
+    },
+    {
+      "id": "query-duplicate-collision",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 AS \"d:1\", 2 AS d, 3 AS d"
+      }
+    },
+    {
+      "id": "query-json-unrepresentable",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1.0 AS f, -0.0 AS z, 1e308*10 AS inf"
+      }
+    },
+    {
+      "id": "query-truncation-1",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id",
+        "limit": 1
+      }
+    },
+    {
+      "id": "query-truncation-2",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id",
+        "limit": 2
+      }
+    },
+    {
+      "id": "query-truncation-3",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id",
+        "limit": 3
+      }
+    },
+    {
+      "id": "query-truncation-4",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id",
+        "limit": 4
+      }
+    },
+    {
+      "id": "query-inner-limit",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id LIMIT 1"
+      }
+    },
+    {
+      "id": "query-cte",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "WITH recent AS (SELECT id, title FROM books) SELECT * FROM recent ORDER BY id"
+      }
+    },
+    {
+      "id": "query-values",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "VALUES (1)"
+      }
+    },
+    {
+      "id": "query-parenthesised",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "(SELECT 1)"
+      }
+    },
+    {
+      "id": "query-unknown-table",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT * FROM missing"
+      }
+    },
+    {
+      "id": "query-syntax-error",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 zz zz"
+      }
+    },
+    {
+      "id": "refusal-update",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "UPDATE books SET title = 'x' WHERE id = 1"
+      }
+    },
+    {
+      "id": "refusal-insert",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "INSERT INTO books (author_id, title) VALUES (1, 'x')"
+      }
+    },
+    {
+      "id": "refusal-delete",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "DELETE FROM books"
+      }
+    },
+    {
+      "id": "refusal-create",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "CREATE TABLE zzz (a INT)"
+      }
+    },
+    {
+      "id": "refusal-drop",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "DROP TABLE books"
+      }
+    },
+    {
+      "id": "refusal-alter",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "ALTER TABLE books ADD COLUMN q INT"
+      }
+    },
+    {
+      "id": "refusal-attach",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "ATTACH DATABASE ':memory:' AS m"
+      }
+    },
+    {
+      "id": "refusal-vacuum",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "VACUUM"
+      }
+    },
+    {
+      "id": "refusal-begin",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "BEGIN"
+      }
+    },
+    {
+      "id": "refusal-cte-write",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "WITH x AS (SELECT 1) DELETE FROM books"
+      }
+    },
+    {
+      "id": "refusal-lowercase",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "  insert into books (author_id, title) values (1, 'x')  "
+      }
+    },
+    {
+      "id": "refusal-blank",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "   "
+      }
+    },
+    {
+      "id": "refusal-not-a-keyword",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "selectx 1"
+      }
+    },
+    {
+      "id": "refusal-quoted-keyword",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "\"SELECT\" 1"
+      }
+    },
+    {
+      "id": "refusal-table-statement",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "TABLE books"
+      }
+    },
+    {
+      "id": "refusal-values-trailing",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "VALUES (1) zz"
+      }
+    },
+    {
+      "id": "refusal-names-connection",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "scoped",
+        "sql": "DELETE FROM only"
+      }
+    },
+    {
+      "id": "driver-error-pragma",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "PRAGMA user_version"
+      }
+    },
+    {
+      "id": "driver-error-explain",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "EXPLAIN SELECT 1"
+      }
+    },
+    {
+      "id": "driver-error-show",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SHOW TABLES"
+      }
+    },
+    {
+      "id": "driver-error-describe",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "DESCRIBE books"
+      }
+    },
+    {
+      "id": "driver-error-multi-statement",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1; SELECT 2"
+      }
+    },
+    {
+      "id": "driver-error-trailing-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 -- comment"
+      }
+    },
+    {
+      "id": "string-literal-write",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 'delete from books' AS a, 'drop table' AS b"
+      }
+    },
+    {
+      "id": "query-closes-the-wrapper",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT id FROM books ORDER BY id) UNION SELECT id FROM (SELECT id FROM authors",
+        "limit": 2
+      }
+    },
+    {
+      "id": "classify-with-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "WITH x AS (SELECT 1 a) SELECT * FROM x -- c"
+      }
+    },
+    {
+      "id": "classify-values-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "VALUES (1) -- c"
+      }
+    },
+    {
+      "id": "classify-paren-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "(SELECT 1) -- c"
+      }
+    },
+    {
+      "id": "classify-select-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "SELECT 1 a -- c"
+      }
+    },
+    {
+      "id": "classify-pragma-comment",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "PRAGMA user_version -- c"
+      }
+    },
+    {
+      "id": "classify-desc-prefix",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "DESCRIBES books"
+      }
+    },
+    {
+      "id": "classify-desc",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "DESC books"
+      }
+    },
+    {
+      "id": "classify-explain-lowercase",
+      "tool": "nomoreide_db_query",
+      "arguments": {
+        "connection": "demo",
+        "sql": "explain select 1"
+      }
+    }
+  ]
+}

@@ -662,12 +662,8 @@ actions, one stayed with the export — and core seeds its own fixtures through
 `sqlx` rather than borrowing the write crate, which would have inverted the
 dependency the split exists to enforce.
 
-Two behaviours are carried over verbatim rather than reconciled, and belong to
-the Phase 4 parity pass: the desktop `query_database` applies a row limit by
-wrapping the caller's SQL in `SELECT * FROM (…) _q LIMIT n` and gates statements
-on a keyword allowlist before running them, and `mask_url` returns `****` for a
-URL with no scheme separator. None has been diffed against the TypeScript
-reference yet.
+Two behaviours were carried over verbatim rather than reconciled, and slice 2
+settled both against the reference — see below.
 
 One thing this slice cost: the local Windows cross-check no longer covers
 `nomoreide-core` or anything that depends on it. `sqlx` pulls in `ring`, whose
@@ -676,6 +672,60 @@ build needs a mingw toolchain this machine does not have. It is not a CI gate
 `nomoreide-tauri`, so nothing about the product's Windows story changed — but
 the check now only reaches `nomoreide-daemon-client`.
 
+
+**Slice 2 (done): the nine database MCP tools.** Every shape was read off the
+running reference rather than out of its source, and the gate is
+`npm run mcp:database-parity` — 113 steps against a SQLite file each runtime
+gets its own copy of. What the probing settled:
+
+- The agent surface is *not* the dashboard's read path, which is why it now has
+  its own module (`core/src/db/peek.rs`, mirroring the reference's own
+  `db-peek.ts`). A row comes back as an object keyed by column name, bytes come
+  back as bytes rather than `<blob 3 bytes>`, and a query's columns are named by
+  the statement rather than by the catalog. The dashboard's lossless-integer
+  casting is *not* applied here.
+- The row cap is `SELECT * FROM (…) LIMIT ?` with the cap bound and one row
+  over-fetched: `truncated` is whether the extra row arrived, which is why a
+  limit equal to the row count reports false.
+- The keyword allowlist carried over from the desktop turned out not to be a
+  gate at all. The reference runs the statement first and consults the keyword
+  only when it *failed*, to decide whether to answer with a driver error or with
+  the write-staging prose. The allowlist is `select|show|describe|desc|explain|
+  pragma` — `with` and `values` are absent, so a CTE that fails is answered as a
+  refusal. Replicated exactly, including that asymmetry.
+- `mask_url` does not return `****` for a URL with no scheme separator. It
+  parses the URL and replaces only the password, and falls back to first-four +
+  `****` + last-four for anything unparseable, or `****` when that would be most
+  of the string. The Rust version was wrong on every count and was replaced.
+- `projectPath` is omitted when absent rather than reported as null.
+
+Three fixes fell out of building it, each of which had been quietly returning
+nulls in the *dashboard* too:
+
+- SQLite cells were decoded by the column's *declared* type, so a `PRAGMA`
+  result — which has no declared types — read back as a column of nulls. Index
+  uniqueness and the entire foreign-key list were being dropped. Now decoded by
+  what the value actually holds.
+- sqlx's framing (`error returned from database: (code: 1) …`) was reaching
+  callers instead of the database's own message.
+- `-0.0` and non-finite floats were serialized as themselves, which no JSON
+  reader on the other end can distinguish or accept.
+
+Documented divergences, none of them gated:
+
+- Postgres and MySQL are unexercised: a fixture cannot stand up a server without
+  testing the server. Their catalog SQL, their `schema.name` qualification, and
+  their drivers' connection-failure text are unchecked. The reference reports an
+  *empty* message when it cannot reach Postgres; the native runtime reports what
+  sqlx says, which is the better answer and not worth matching.
+- Integers past 2^53: the reference cannot report one at all — `node:sqlite`
+  throws rather than lose precision, so sampling a table holding one fails. The
+  native runtime returns the number.
+- A statement that closes the wrapper's parenthesis and comments out the rest of
+  the line takes the bound cap with it. SQLite runs the shortened statement and
+  sqlx lets the homeless parameter go; the reference's driver raises "column
+  index out of range". Both stay read-only, so what differs is how loudly a
+  caller escapes their own row cap.
 
 - Port database registration, catalog inspection, sampling, masking, and guarded queries.
 - Support the same database engines and URL redaction behavior as today.

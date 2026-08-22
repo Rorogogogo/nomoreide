@@ -56,6 +56,26 @@ pub(super) enum ArgumentContract {
     /// and three optional narrowings. `createBranch` defaults to true, so an
     /// absent one is a valid request rather than a missing argument.
     WorktreeCreation,
+    /// `nomoreide_register_database`: a name, an engine from a fixed set, and
+    /// a URL. Whether that URL reaches anything is the executor's question —
+    /// this one only asks whether it was given.
+    DatabaseRegistration,
+    /// `nomoreide_check_database`, `nomoreide_db_schemas`, and
+    /// `nomoreide_db_tables`: one required `connection`. Unlike a `cwd`, a
+    /// connection has no default — a database is only ever one the user named.
+    DatabaseConnection,
+    /// `nomoreide_db_objects`: that connection plus the schema to look in.
+    DatabaseSchema,
+    /// `nomoreide_db_object_details`: that connection plus the opaque key a
+    /// listing handed out. The key is not parsed here; a key that decodes to
+    /// nothing and a key that names a dropped table are the same answer, and
+    /// only the executor can tell either from a live catalog.
+    DatabaseObject,
+    /// `nomoreide_db_sample`: a connection, a table, and a row cap in
+    /// `(0, 1000]`.
+    DatabaseSample,
+    /// `nomoreide_db_query`: a connection, the statement, and the same cap.
+    DatabaseQuery,
     /// `nomoreide_git_select_worktree`: a registered repository name and a
     /// path, both required. Whether the path is one of that repository's
     /// worktrees is the store's question, not this one's.
@@ -140,6 +160,11 @@ const SHA_MIN_LENGTH: usize = 7;
 const PAGE_MAX: f64 = f64::MAX;
 /// The kinds of service the reference knows how to run.
 const SERVICE_KINDS: &[&str] = &["local", "docker-compose", "ssh"];
+/// The engines a connection can name.
+const DATABASE_ENGINES: &[&str] = &["postgres", "mysql", "sqlite"];
+/// The reference's `z.number().int().positive().max(1000)`, for rows rather
+/// than for log lines.
+const ROW_LIMIT_MAX: f64 = 1000.0;
 
 impl ArgumentContract {
     pub(super) fn of(tool: &str) -> Option<Self> {
@@ -190,6 +215,15 @@ impl ArgumentContract {
             "nomoreide_github_get_commit_ci" => Some(Self::GithubCommitSha),
             "nomoreide_github_list_workflow_runs" => Some(Self::GithubWorkflowRuns),
             "nomoreide_git_select_worktree" => Some(Self::WorktreeSelection),
+            "nomoreide_list_databases" => Some(Self::Empty),
+            "nomoreide_register_database" => Some(Self::DatabaseRegistration),
+            "nomoreide_check_database" | "nomoreide_db_schemas" | "nomoreide_db_tables" => {
+                Some(Self::DatabaseConnection)
+            }
+            "nomoreide_db_objects" => Some(Self::DatabaseSchema),
+            "nomoreide_db_object_details" => Some(Self::DatabaseObject),
+            "nomoreide_db_sample" => Some(Self::DatabaseSample),
+            "nomoreide_db_query" => Some(Self::DatabaseQuery),
             _ => None,
         }
     }
@@ -212,6 +246,46 @@ impl ArgumentContract {
             Self::RepositoryRegistration => {
                 let mut failures = required_name(arguments).err().unwrap_or_default();
                 failures.extend(required_string(arguments, "path").err().unwrap_or_default());
+                collect(failures)
+            }
+            Self::DatabaseRegistration => {
+                let mut failures = required_name(arguments).err().unwrap_or_default();
+                failures.extend(required_enumerated(arguments, "engine", DATABASE_ENGINES));
+                failures.extend(required_string(arguments, "url").err().unwrap_or_default());
+                failures.extend(optional_string(arguments, "projectPath"));
+                failures.extend(boolean(arguments, "check"));
+                failures.extend(boolean(arguments, "replace"));
+                collect(failures)
+            }
+            Self::DatabaseConnection => collect(connection_name(arguments)),
+            Self::DatabaseSchema => {
+                let mut failures = connection_name(arguments);
+                failures.extend(
+                    required_string(arguments, "schema")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                collect(failures)
+            }
+            Self::DatabaseObject => {
+                let mut failures = connection_name(arguments);
+                failures.extend(required_string(arguments, "key").err().unwrap_or_default());
+                collect(failures)
+            }
+            Self::DatabaseSample => {
+                let mut failures = connection_name(arguments);
+                failures.extend(
+                    required_string(arguments, "table")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                failures.extend(bounded_integer(arguments, "limit", ROW_LIMIT_MAX));
+                collect(failures)
+            }
+            Self::DatabaseQuery => {
+                let mut failures = connection_name(arguments);
+                failures.extend(required_string(arguments, "sql").err().unwrap_or_default());
+                failures.extend(bounded_integer(arguments, "limit", ROW_LIMIT_MAX));
                 collect(failures)
             }
             Self::GitCwd => collect(optional_name(arguments, "cwd")),
@@ -391,6 +465,22 @@ fn collect(failures: Vec<String>) -> Result<(), String> {
 
 fn required_name(arguments: &Map<String, Value>) -> Result<(), Vec<String>> {
     required_string(arguments, "name")
+}
+
+/// The `connection` every database read but the listing starts with.
+fn connection_name(arguments: &Map<String, Value>) -> Vec<String> {
+    required_string(arguments, "connection")
+        .err()
+        .unwrap_or_default()
+}
+
+/// A required member of a fixed set: absent is a missing argument rather than
+/// an accepted default.
+fn required_enumerated(arguments: &Map<String, Value>, key: &str, members: &[&str]) -> Vec<String> {
+    if arguments.get(key).is_none() {
+        return vec![format!("{key}: Required")];
+    }
+    enumerated(arguments, key, members)
 }
 
 /// A required non-empty string under `key`, reported the way zod reports it.

@@ -46,7 +46,7 @@ Around that backbone sit ~45 more feature modules (workflows, error inbox, snaps
 | Read-safe (agent-reachable) | Write-capable (guarded) |
 | --- | --- |
 | `git-manager.ts` | `git-actions.ts` — push/commit/squash-merge |
-| `db-peek.ts` / `nomoreide-core/src/db/` | `db-write.ts` / `nomoreide-actions/src/db.rs` — human-only, per-connection unlock, affected-rows preview |
+| `db-peek.ts` / `nomoreide-core/src/db/` (the agent's own read path is `db/peek.rs`) | `db-write.ts` / `nomoreide-actions/src/db.rs` — human-only, per-connection unlock, affected-rows preview |
 | `vercel-manager.ts` | `vercel-actions.ts` — redeploy/cancel/promote/rollback, dashboard-only (no MCP tools) |
 
 ### Shared Daemon (`src/core/daemon-lifecycle.ts`, `src/core/daemon-client.ts`, `src/cli/daemon.ts`)

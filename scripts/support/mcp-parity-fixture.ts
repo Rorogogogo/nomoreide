@@ -12,6 +12,7 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { promisify } from "node:util";
 import type { McpCommand } from "../../test/support/mcp-contract.js";
 
@@ -70,6 +71,16 @@ export type Setup =
 export interface FixtureTree {
   repositories: Array<{ id: string; initialBranch: string; setup: Setup[] }>;
   /**
+   * SQLite files to seed, each reachable from a step as `{{db:<id>}}`.
+   *
+   * SQLite is the only engine a fixture can stand up: Postgres and MySQL would
+   * need a server, and a gate that depends on one is a gate that tests the
+   * server. Everything these tools do that is engine-independent — the
+   * catalog shapes, the row cap, the refusal — is visible through SQLite, and
+   * what is not is recorded in the gate rather than pretended at.
+   */
+  databases?: Array<{ id: string; statements: string[] }>;
+  /**
    * Extra bare repositories under `remotes/`, named however the fixture likes.
    * A clone derives its project name from the URL, so a name that has to be
    * sanitised is the only way to compare that derivation.
@@ -125,6 +136,19 @@ export async function prepareRuntime(
       await apply(base, repository.id, path, step);
     }
     paths.set(`repo:${repository.id}`, path);
+  }
+  for (const database of fixture.databases ?? []) {
+    const path = join(base, "databases", `${database.id}.db`);
+    await mkdir(dirname(path), { recursive: true });
+    const handle = new DatabaseSync(path);
+    try {
+      for (const statement of database.statements) {
+        handle.exec(statement);
+      }
+    } finally {
+      handle.close();
+    }
+    paths.set(`db:${database.id}`, path);
   }
   for (const directory of fixture.plainDirectories ?? []) {
     const path = join(base, "plain", directory);

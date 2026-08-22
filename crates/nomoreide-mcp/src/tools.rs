@@ -1,10 +1,11 @@
+mod database;
 mod diagnostics;
 mod git;
 mod github;
 mod onboard;
 mod registration;
 
-use nomoreide_core::config::ConfigStore;
+use nomoreide_core::config::{ConfigStore, DatabaseDef};
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, ServiceRuntimeStatus};
 use nomoreide_daemon_client::{DaemonClient, DaemonClientError, RuntimePaths, DEFAULT_DAEMON_PORT};
 use serde::Serialize;
@@ -102,6 +103,32 @@ impl ToolExecutor for NativeToolExecutor {
                     onboard::snapshot_create(cwd, label).await
                 }
                 NativeTool::OnboardRepo(url) => onboard::onboard_repo(url).await,
+                // Databases are read where they are registered, so these are
+                // served locally too. The daemon owns processes; a connection
+                // is not one.
+                NativeTool::ListDatabases => database::list_databases(&self.config).await,
+                NativeTool::RegisterDatabase {
+                    definition,
+                    check,
+                    replace,
+                } => database::register_database(&self.config, definition, check, replace).await,
+                NativeTool::CheckDatabase(name) => {
+                    database::check_database(&self.config, name).await
+                }
+                NativeTool::DbSchemas(name) => database::db_schemas(&self.config, name).await,
+                NativeTool::DbObjects { name, schema } => {
+                    database::db_objects(&self.config, name, schema).await
+                }
+                NativeTool::DbObjectDetails { name, key } => {
+                    database::db_object_details(&self.config, name, key).await
+                }
+                NativeTool::DbTables(name) => database::db_tables(&self.config, name).await,
+                NativeTool::DbSample { name, table, limit } => {
+                    database::db_sample(&self.config, name, table, limit).await
+                }
+                NativeTool::DbQuery { name, sql, limit } => {
+                    database::db_query(&self.config, name, sql, limit).await
+                }
                 NativeTool::GithubSetToken { token, host } => {
                     github::set_token(&self.config, token, host).await
                 }
@@ -274,6 +301,15 @@ impl NativeToolExecutor {
             | NativeTool::SnapshotsList(_)
             | NativeTool::SnapshotCreate { .. }
             | NativeTool::OnboardRepo(_)
+            | NativeTool::ListDatabases
+            | NativeTool::RegisterDatabase { .. }
+            | NativeTool::CheckDatabase(_)
+            | NativeTool::DbSchemas(_)
+            | NativeTool::DbObjects { .. }
+            | NativeTool::DbObjectDetails { .. }
+            | NativeTool::DbTables(_)
+            | NativeTool::DbSample { .. }
+            | NativeTool::DbQuery { .. }
             | NativeTool::GithubSetToken { .. }
             | NativeTool::GithubListPrs { .. }
             | NativeTool::GithubGetPr { .. }
@@ -392,6 +428,33 @@ enum NativeTool<'a> {
         label: &'a str,
     },
     OnboardRepo(&'a str),
+    ListDatabases,
+    RegisterDatabase {
+        definition: DatabaseDef,
+        check: bool,
+        replace: bool,
+    },
+    CheckDatabase(&'a str),
+    DbSchemas(&'a str),
+    DbObjects {
+        name: &'a str,
+        schema: &'a str,
+    },
+    DbObjectDetails {
+        name: &'a str,
+        key: &'a str,
+    },
+    DbTables(&'a str),
+    DbSample {
+        name: &'a str,
+        table: &'a str,
+        limit: i64,
+    },
+    DbQuery {
+        name: &'a str,
+        sql: &'a str,
+        limit: i64,
+    },
     GithubSetToken {
         token: &'a str,
         host: &'a str,
@@ -566,6 +629,54 @@ impl<'a> NativeTool<'a> {
                 label: required_text(arguments, "label")?,
             }),
             "nomoreide_onboard_repo" => Ok(Self::OnboardRepo(required_text(arguments, "url")?)),
+            "nomoreide_list_databases" => Ok(Self::ListDatabases),
+            "nomoreide_register_database" => Ok(Self::RegisterDatabase {
+                definition: DatabaseDef {
+                    name: required_text(arguments, "name")?.to_string(),
+                    engine: required_text(arguments, "engine")?.to_string(),
+                    url: required_text(arguments, "url")?.to_string(),
+                    // A connection is registered locked. Unlocking one is a
+                    // thing a person does in the dashboard, per connection.
+                    write_unlocked: None,
+                    project_path: optional_text(arguments, "project_path")
+                        .or_else(|| optional_text(arguments, "projectPath"))
+                        .map(str::to_string),
+                },
+                // Both default the way the reference's schema does: a
+                // connection is checked unless the caller says not to, and
+                // never replaces one silently.
+                check: arguments
+                    .get("check")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+                replace: arguments
+                    .get("replace")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            }),
+            "nomoreide_check_database" => {
+                Ok(Self::CheckDatabase(required_text(arguments, "connection")?))
+            }
+            "nomoreide_db_schemas" => Ok(Self::DbSchemas(required_text(arguments, "connection")?)),
+            "nomoreide_db_objects" => Ok(Self::DbObjects {
+                name: required_text(arguments, "connection")?,
+                schema: required_text(arguments, "schema")?,
+            }),
+            "nomoreide_db_object_details" => Ok(Self::DbObjectDetails {
+                name: required_text(arguments, "connection")?,
+                key: required_text(arguments, "key")?,
+            }),
+            "nomoreide_db_tables" => Ok(Self::DbTables(required_text(arguments, "connection")?)),
+            "nomoreide_db_sample" => Ok(Self::DbSample {
+                name: required_text(arguments, "connection")?,
+                table: required_text(arguments, "table")?,
+                limit: row_limit(arguments),
+            }),
+            "nomoreide_db_query" => Ok(Self::DbQuery {
+                name: required_text(arguments, "connection")?,
+                sql: required_text(arguments, "sql")?,
+                limit: row_limit(arguments),
+            }),
             "nomoreide_github_set_token" => Ok(Self::GithubSetToken {
                 token: required_text(arguments, "token")?,
                 // The reference's schema defaults this, so an absent host is
@@ -783,6 +894,15 @@ impl<'a> StatusView<'a> {
 /// services were acted on.
 fn status_views(statuses: &[ServiceRuntimeStatus]) -> Vec<ServiceStatusView<'_>> {
     statuses.iter().map(ServiceStatusView::of).collect()
+}
+
+/// How many rows a sample or a query may report. The contract has already
+/// bounded whatever is here, so an absent one is the only case left to answer.
+fn row_limit(arguments: &Map<String, Value>) -> i64 {
+    arguments
+        .get("limit")
+        .and_then(Value::as_i64)
+        .unwrap_or(nomoreide_core::db::DEFAULT_ROW_LIMIT)
 }
 
 pub(crate) fn render<T: Serialize + ?Sized>(value: &T) -> Result<String, String> {
