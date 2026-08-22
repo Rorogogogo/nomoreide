@@ -4,7 +4,7 @@
 //! this module only carries daemon policy: which services it will admit, how a
 //! partial failure is reported, and how each phase is gated.
 
-use super::{launch_error, local_service, runtime_status, DaemonRuntime, RuntimeMutationError};
+use super::{launch_error, runtime_status, startable_service, DaemonRuntime, RuntimeMutationError};
 use nomoreide_core::bundle::{self, BundleOrderError};
 use nomoreide_core::config::{Config, ServiceDef};
 use nomoreide_daemon_client::protocol::ServiceRuntimeStatus;
@@ -27,7 +27,7 @@ impl DaemonRuntime {
         let order = bundle::start_order(&config, name).map_err(order_error)?;
         let admitted = order
             .iter()
-            .map(|service| local_service(&config, service))
+            .map(|service| startable_service(&config, service))
             .collect::<Result<Vec<_>, _>>()?;
 
         let mut statuses = Vec::with_capacity(admitted.len());
@@ -68,7 +68,7 @@ impl DaemonRuntime {
             // A name this daemon is already running stays stoppable even if its
             // definition drifted, matching `stop_service`.
             if self.process_manager.service_status(service).is_none() {
-                local_service(&config, service)?;
+                startable_service(&config, service)?;
             }
             match self.process_manager.stop_service(service).await {
                 Ok(()) => statuses.push(
@@ -91,7 +91,7 @@ impl DaemonRuntime {
     /// the resolved order, so each one has already been asked to start.
     async fn await_dependencies(&self, config: &Config, service: &ServiceDef) {
         for dependency in service.depends_on.iter().flatten() {
-            if let Ok(def) = local_service(config, dependency) {
+            if let Ok(def) = startable_service(config, dependency) {
                 bundle::wait_for_service_ready(&self.process_manager, def, bundle::READY_TIMEOUT)
                     .await;
             }

@@ -131,6 +131,9 @@ pub struct ServiceRuntimeStatus {
     /// has never run — nothing was launched, so nothing has a kind.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    /// The host a remote service runs on. Only an `ssh` service has one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]

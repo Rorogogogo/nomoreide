@@ -299,11 +299,10 @@ fn state_label(state: ServiceRuntimeState) -> &'static str {
 }
 
 /// The status shape the reference implementation returns for these tools:
-/// these nine keys, in this order, with absent ones skipped. The
-/// process-group id the daemon tracks is an ownership detail agents have no
-/// use for, so it stays inside the daemon boundary. `host` (ssh) and
-/// `containerId` (compose) belong to the same shape but can never appear
-/// here — the native runtime refuses both kinds.
+/// these keys, in this order, with absent ones skipped. The process-group id
+/// the daemon tracks is an ownership detail agents have no use for, so it
+/// stays inside the daemon boundary. `containerId` belongs to the same shape
+/// but cannot appear here yet — the native runtime has no compose runtime.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServiceStatusView<'a> {
@@ -311,6 +310,10 @@ struct ServiceStatusView<'a> {
     state: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     kind: Option<&'a str>,
+    /// Only a remote service has one, so this is the one field of the shape
+    /// that is absent for the common case rather than present and empty.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    host: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -340,6 +343,7 @@ impl<'a> ServiceStatusView<'a> {
             name: &status.name,
             state: state_label(status.state),
             kind: status.kind.as_deref(),
+            host: status.host.as_deref(),
             pid: status.pid,
             started_at: status.started_at.as_deref(),
             url: status.url.as_deref(),
@@ -373,6 +377,7 @@ mod tests {
             name: "api".into(),
             state,
             kind: Some("local".into()),
+            host: None,
             pid: Some(4321),
             pgid: Some(4321),
             exit_code: None,

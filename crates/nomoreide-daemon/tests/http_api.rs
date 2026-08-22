@@ -258,6 +258,13 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
                     "kind": "docker-compose",
                     "cwd": cwd,
                     "composeService": "web"
+                },
+                {
+                    "name": "remote",
+                    "kind": "ssh",
+                    "host": "nomoreide-test.invalid",
+                    "cwd": "/srv/app",
+                    "command": "true"
                 }
             ],
             "bundles": []
@@ -306,6 +313,16 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
         DaemonClientError::Mutation(error)
             if error.code == DaemonErrorCode::UnsupportedServiceKind
     ));
+    // A remote service is a child this daemon spawns and supervises like any
+    // other, so it is launched rather than refused. The host is unresolvable,
+    // so the ssh client exits on its own straight afterwards — what is being
+    // asserted here is the launch, and that the status says what it launched.
+    let remote = client.start_service("remote").await.unwrap();
+    assert_eq!(remote.kind.as_deref(), Some("ssh"));
+    assert_eq!(remote.host.as_deref(), Some("nomoreide-test.invalid"));
+    assert!(remote.pid.is_some());
+    client.stop_service("remote").await.unwrap();
+
     let conflict = client.start_service("blocked").await.unwrap_err();
     assert!(matches!(
         conflict,
@@ -314,14 +331,19 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     ));
     assert!(held_listener.local_addr().is_ok());
 
-    // Nothing has been started, so the daemon is tracking nothing yet.
     let unauthorized_status = http
         .get(format!("{}/api/status", state.url))
         .send()
         .await
         .unwrap();
     assert_eq!(unauthorized_status.status(), StatusCode::UNAUTHORIZED);
-    assert!(client.status().await.unwrap().is_empty());
+    // Only the remote service has run so far, and a service that has stopped
+    // stays in the report rather than vanishing from it.
+    let before = client.status().await.unwrap();
+    assert_eq!(
+        before.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(),
+        vec!["remote"]
+    );
 
     let started = client.start_service("sleeper").await.unwrap();
     assert_eq!(started.state, ServiceRuntimeState::Running);
@@ -339,18 +361,24 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
             .iter()
             .map(|status| status.name.as_str())
             .collect::<Vec<_>>(),
-        vec!["sleeper"]
+        vec!["remote", "sleeper"]
     );
-    assert_eq!(tracked[0].state, ServiceRuntimeState::Running);
-    assert_eq!(tracked[0].pid, Some(pid));
+    let sleeper = tracked.iter().find(|s| s.name == "sleeper").unwrap();
+    assert_eq!(sleeper.state, ServiceRuntimeState::Running);
+    assert_eq!(sleeper.pid, Some(pid));
+    // A local service is answerable to no host.
+    assert_eq!(sleeper.kind.as_deref(), Some("local"));
+    assert_eq!(sleeper.host, None);
 
     let stopped = client.stop_service("sleeper").await.unwrap();
     assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
     assert!(!is_pid_alive(pid));
     // A stopped service stays in the report rather than vanishing from it.
     let after_stop = client.status().await.unwrap();
-    assert_eq!(after_stop.len(), 1);
-    assert_eq!(after_stop[0].state, ServiceRuntimeState::Stopped);
+    assert_eq!(after_stop.len(), 2);
+    assert!(after_stop
+        .iter()
+        .all(|status| status.state == ServiceRuntimeState::Stopped));
 
     let restarted = client.start_service("sleeper").await.unwrap();
     let restarted_pid = restarted.pid.unwrap();

@@ -129,6 +129,9 @@ pub struct ServiceStatus {
     /// joined from config at read time: a service dropped from config after it
     /// started is still running, and still ran as something.
     pub kind: String,
+    /// The host a remote service was launched against. Only an `ssh` service
+    /// has one; for every other kind the question does not arise.
+    pub host: Option<String>,
     pub pid: Option<u32>,
     pub pgid: Option<u32>,
     pub exit_code: Option<i32>,
@@ -183,6 +186,7 @@ impl std::error::Error for PortConflictError {}
 struct ManagedProcess {
     generation: u64,
     kind: String,
+    host: Option<String>,
     pid: Option<u32>,
     pgid: Option<u32>,
     state: ServiceState,
@@ -202,6 +206,7 @@ fn status_of(name: &str, process: &ManagedProcess) -> ServiceStatus {
         name: name.to_string(),
         state: process.state.clone(),
         kind: process.kind.clone(),
+        host: process.host.clone(),
         pid: process.pid,
         pgid: process.pgid,
         exit_code: process.exit_code,
@@ -670,37 +675,14 @@ impl ProcessManager {
         self.spawn_and_register(def, cmd).await
     }
 
+    /// A remote service is an ordinary local child: this runtime supervises the
+    /// `ssh` client, and the process group it cleans up is the client's. The
+    /// remote process lives and dies with that connection, exactly as it does
+    /// in the reference.
     async fn start_ssh(&self, def: &ServiceDef) -> Result<()> {
-        let host = def
-            .host
-            .as_deref()
-            .ok_or_else(|| anyhow!("SSH service missing host"))?;
-        let command = def
-            .command
-            .as_deref()
-            .ok_or_else(|| anyhow!("SSH service missing command"))?;
-        let cwd = def.cwd.as_deref().unwrap_or("~");
-
-        let env_prefix = match &def.env {
-            Some(env) if !env.is_empty() => {
-                let mut entries = env.iter().collect::<Vec<_>>();
-                entries.sort_by_key(|(key, _)| *key);
-                let assignments = entries
-                    .into_iter()
-                    .map(|(key, value)| {
-                        if !is_env_key(key) {
-                            return Err(anyhow!("Invalid environment variable name: {key}"));
-                        }
-                        Ok(format!("{key}={}", shell_escape(value)))
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                format!("{} ", assignments.join(" "))
-            }
-            _ => String::new(),
-        };
-        let remote_cmd = format!("cd {} && {env_prefix}exec {command}", shell_escape(cwd));
-        let mut cmd = Command::new("ssh");
-        cmd.args([host, &remote_cmd])
+        let (program, args) = ssh_command(def)?;
+        let mut cmd = Command::new(program);
+        cmd.args(args)
             .env("PATH", service_path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -927,6 +909,7 @@ impl ProcessManager {
             ManagedProcess {
                 generation,
                 kind: def.effective_kind().to_string(),
+                host: launched_host(def),
                 pid: Some(pid),
                 pgid,
                 state: ServiceState::Running,
@@ -2113,6 +2096,91 @@ fn parse_dotenv(content: &str) -> HashMap<String, String> {
         .collect()
 }
 
+/// The host a launch is answerable to. Only a remote service has one, so the
+/// field is absent rather than empty for everything else — the reference draws
+/// the same line.
+fn launched_host(def: &ServiceDef) -> Option<String> {
+    (def.effective_kind() == "ssh")
+        .then(|| def.host.clone())
+        .flatten()
+}
+
+/// The argv that runs a registered service on its host, built the way the
+/// reference builds it: one `ssh <host> <remote>` invocation whose remote
+/// string is `cd <cwd> && <env> exec <command>`. Nothing is passed through a
+/// local shell, so the escaping here is the remote shell's, not this one's.
+///
+/// Every value is rejected rather than defaulted. A remote service with no
+/// `cwd` would otherwise run in the login directory, which is a different
+/// service from the one that was registered.
+fn ssh_command(def: &ServiceDef) -> Result<(String, Vec<String>)> {
+    let missing = || {
+        anyhow!(
+            "Service \"{}\" is missing ssh host, cwd, or command.",
+            def.name
+        )
+    };
+    let host = def
+        .host
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .ok_or_else(missing)?;
+    let cwd = def
+        .cwd
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .ok_or_else(missing)?;
+    let command = def
+        .command
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .ok_or_else(missing)?;
+    if command.contains('\0') {
+        return Err(anyhow!("SSH command contains invalid null byte."));
+    }
+
+    let remote = format!(
+        "cd {} && {}exec {command}",
+        shell_escape(cwd),
+        ssh_env_prefix(def.env.as_ref())?
+    );
+    Ok(("ssh".to_string(), vec![host.to_string(), remote]))
+}
+
+/// Assignments that prefix the remote command. Sorted by name because the
+/// config parses `env` into a `HashMap`, which has no insertion order left to
+/// preserve — the reference emits them in the order the file listed them. The
+/// remote environment is identical either way; only the argv text differs.
+///
+/// The name rule here is stricter than [`is_env_key`] on purpose: these names
+/// are pasted into a remote shell as assignments, where a dot is not a legal
+/// identifier, while a `.env` file may legitimately carry a dotted key.
+fn ssh_env_prefix(env: Option<&HashMap<String, String>>) -> Result<String> {
+    let Some(env) = env.filter(|env| !env.is_empty()) else {
+        return Ok(String::new());
+    };
+    let mut entries = env.iter().collect::<Vec<_>>();
+    entries.sort_by_key(|(key, _)| *key);
+    let assignments = entries
+        .into_iter()
+        .map(|(key, value)| {
+            if !is_shell_assignable(key) {
+                return Err(anyhow!("Invalid environment variable name: {key}"));
+            }
+            Ok(format!("{key}={}", shell_escape(value)))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    Ok(format!("{} ", assignments.join(" ")))
+}
+
+/// `^[A-Za-z_][A-Za-z0-9_]*$` — a name a shell will accept on the left of an
+/// assignment.
+fn is_shell_assignable(key: &str) -> bool {
+    let mut chars = key.chars();
+    matches!(chars.next(), Some('_') | Some('a'..='z') | Some('A'..='Z'))
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
 fn is_env_key(key: &str) -> bool {
     let mut chars = key.chars();
     matches!(chars.next(), Some('_') | Some('a'..='z') | Some('A'..='Z'))
@@ -2158,7 +2226,6 @@ fn detect_url(line: &str, port: Option<u16>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(unix)]
     use serde_json::json;
     #[cfg(unix)]
     use std::path::PathBuf;
@@ -2186,6 +2253,132 @@ mod tests {
         assert!(is_env_key("NODE_ENV"));
         assert!(is_env_key("NODE.ENV"));
         assert!(!is_env_key("NODE-ENV"));
+    }
+
+    fn ssh_service(value: serde_json::Value) -> ServiceDef {
+        serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn ssh_argv_is_the_remote_command_the_reference_builds() {
+        let (program, args) = ssh_command(&ssh_service(json!({
+            "name": "remote",
+            "kind": "ssh",
+            "host": "dev-box",
+            "cwd": "/srv/app",
+            "command": "npm start",
+        })))
+        .unwrap();
+
+        assert_eq!(program, "ssh");
+        assert_eq!(args, vec!["dev-box", "cd '/srv/app' && exec npm start"]);
+    }
+
+    #[test]
+    fn ssh_env_is_assigned_on_the_remote_side_and_escaped_for_it() {
+        let (_, args) = ssh_command(&ssh_service(json!({
+            "name": "remote",
+            "kind": "ssh",
+            "host": "dev-box",
+            "cwd": "/srv/app",
+            "command": "npm start",
+            "env": { "TOKEN": "it's secret", "MODE": "prod" },
+        })))
+        .unwrap();
+
+        // Sorted, because the config parses `env` into a map with no insertion
+        // order left to read back.
+        assert_eq!(
+            args[1],
+            "cd '/srv/app' && MODE='prod' TOKEN='it'\\''s secret' exec npm start"
+        );
+    }
+
+    #[test]
+    fn ssh_refuses_what_it_cannot_run_rather_than_defaulting_it() {
+        // A missing cwd would otherwise run the service in the login
+        // directory, which is a different service than the registered one.
+        for missing in ["host", "cwd", "command"] {
+            let mut fields = serde_json::Map::new();
+            fields.insert("name".into(), json!("remote"));
+            fields.insert("kind".into(), json!("ssh"));
+            for (key, value) in [
+                ("host", "dev-box"),
+                ("cwd", "/srv"),
+                ("command", "npm start"),
+            ] {
+                if key != missing {
+                    fields.insert(key.into(), json!(value));
+                }
+            }
+            let error = ssh_command(&ssh_service(serde_json::Value::Object(fields.clone())))
+                .unwrap_err()
+                .to_string();
+            assert_eq!(
+                error,
+                "Service \"remote\" is missing ssh host, cwd, or command."
+            );
+
+            // Present but blank is the same refusal, not an empty argument.
+            fields.insert(missing.into(), json!("   "));
+            assert!(ssh_command(&ssh_service(serde_json::Value::Object(fields))).is_err());
+        }
+    }
+
+    #[test]
+    fn ssh_rejects_names_a_remote_shell_cannot_assign() {
+        let dotted = ssh_command(&ssh_service(json!({
+            "name": "remote",
+            "kind": "ssh",
+            "host": "dev-box",
+            "cwd": "/srv",
+            "command": "npm start",
+            "env": { "NODE.ENV": "prod" },
+        })));
+        // A dotted key is legal in a `.env` file and illegal as a shell
+        // assignment, which is why the two rules are not the same rule.
+        assert!(is_env_key("NODE.ENV"));
+        assert!(!is_shell_assignable("NODE.ENV"));
+        assert_eq!(
+            dotted.unwrap_err().to_string(),
+            "Invalid environment variable name: NODE.ENV"
+        );
+
+        let null_byte = ssh_command(&ssh_service(json!({
+            "name": "remote",
+            "kind": "ssh",
+            "host": "dev-box",
+            "cwd": "/srv",
+            "command": "npm start\u{0}rm -rf /",
+        })));
+        assert_eq!(
+            null_byte.unwrap_err().to_string(),
+            "SSH command contains invalid null byte."
+        );
+    }
+
+    #[test]
+    fn only_a_remote_service_is_answerable_to_a_host() {
+        assert_eq!(
+            launched_host(&ssh_service(json!({
+                "name": "remote",
+                "kind": "ssh",
+                "host": "dev-box",
+                "cwd": "/srv",
+                "command": "npm start",
+            }))),
+            Some("dev-box".to_string())
+        );
+        // A local service with a stray host field is still not remote.
+        assert_eq!(
+            launched_host(&ssh_service(json!({
+                "name": "local",
+                "command": "npm run dev",
+                "cwd": "/repo",
+                "host": "dev-box",
+            }))),
+            None
+        );
     }
 
     #[cfg(unix)]
@@ -2679,6 +2872,7 @@ mod tests {
             ManagedProcess {
                 generation: 1,
                 kind: "local".into(),
+                host: None,
                 pid: Some(pid),
                 pgid: Some(pid),
                 state: ServiceState::Stopping,

@@ -130,7 +130,7 @@ impl DaemonRuntime {
         self.require_start_allowed()?;
         let _permit = self.mutation_gate.read().await;
         self.require_start_allowed()?;
-        let service = self.registered_local_service(name).await?;
+        let service = self.registered_startable_service(name).await?;
         match mode {
             Launch::Start => self.process_manager.start_service(&service).await,
             Launch::Restart => self.process_manager.restart_service(&service).await,
@@ -155,7 +155,7 @@ impl DaemonRuntime {
         let _permit = self.mutation_gate.read().await;
         self.require_stop_allowed()?;
         if self.process_manager.service_status(name).is_none() {
-            self.registered_local_service(name).await?;
+            self.registered_startable_service(name).await?;
         }
         self.process_manager
             .stop_service(name)
@@ -212,12 +212,12 @@ impl DaemonRuntime {
         }
     }
 
-    async fn registered_local_service(
+    async fn registered_startable_service(
         &self,
         name: &str,
     ) -> Result<nomoreide_core::config::ServiceDef, RuntimeMutationError> {
         let config = self.config().await?;
-        local_service(&config, name).cloned()
+        startable_service(&config, name).cloned()
     }
 
     async fn config(&self) -> Result<nomoreide_core::config::Config, RuntimeMutationError> {
@@ -228,10 +228,13 @@ impl DaemonRuntime {
     }
 }
 
-/// The one definition this daemon will run for `name`. Only registered local
-/// services qualify; anything else belongs to a runtime the native daemon does
-/// not own yet.
-fn local_service<'a>(
+/// The one definition this daemon will run for `name`.
+///
+/// A remote service qualifies alongside a local one: both are a child process
+/// this daemon spawns and supervises, and an `ssh` service differs only in
+/// which program that child is. A compose service does not — it has no child
+/// of its own to own, so it belongs to a runtime this daemon does not have.
+fn startable_service<'a>(
     config: &'a nomoreide_core::config::Config,
     name: &str,
 ) -> Result<&'a nomoreide_core::config::ServiceDef, RuntimeMutationError> {
@@ -240,7 +243,7 @@ fn local_service<'a>(
         .iter()
         .find(|service| service.name == name)
         .ok_or(RuntimeMutationError::ServiceNotFound)?;
-    if service.effective_kind() != "local" {
+    if !matches!(service.effective_kind(), "local" | "ssh") {
         return Err(RuntimeMutationError::UnsupportedServiceKind);
     }
     Ok(service)
@@ -281,6 +284,7 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
             ServiceState::Exited => ServiceRuntimeState::Exited,
         },
         kind: Some(status.kind),
+        host: status.host,
         pid: status.pid,
         pgid: status.pgid,
         exit_code: status.exit_code,
@@ -338,6 +342,7 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
         name: name.to_string(),
         state: ServiceRuntimeState::Stopped,
         kind: None,
+        host: None,
         pid: None,
         pgid: None,
         exit_code: None,
