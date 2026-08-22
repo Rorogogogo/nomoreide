@@ -434,7 +434,11 @@ async function waitForDaemon(
   stderr: () => string,
 ): Promise<void> {
   const statePath = join(runtime.home, ".nomoreide", "daemon.json");
-  for (let attempt = 0; attempt < 300; attempt += 1) {
+  // Generous because the reference boots through tsx, which compiles the
+  // server on the fly: a cold CI runner is far slower than a warm laptop, and
+  // a timeout here would read as a parity failure rather than a slow start.
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
     if (daemon.exitCode !== null) {
       throw new Error(`${runtime.label} daemon exited during startup: ${stderr().trim()}`);
     }
