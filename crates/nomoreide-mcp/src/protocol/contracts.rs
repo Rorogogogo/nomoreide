@@ -79,6 +79,18 @@ pub(super) enum ArgumentContract {
     /// of a shape git could clone is decided by the clone itself, which names
     /// the part that was wrong.
     RepositoryClone,
+    /// `nomoreide_snapshots_list`: one optional non-empty `cwd`, the same
+    /// shape as `GitCwd` but a separate name because the two tools' schemas
+    /// are separate and only happen to agree today.
+    SnapshotList,
+    /// `nomoreide_snapshot_create`: that `cwd` plus a required non-empty
+    /// `label`. The label is reported second, after `cwd`, because it extends
+    /// the list schema rather than replacing it.
+    SnapshotCreate,
+    /// `nomoreide_onboard_repo`: a required non-empty `url`, the same shape a
+    /// clone asks for.
+    RepositoryOnboard,
+
     /// `nomoreide_github_set_token`: a required `token` and a `host` that
     /// defaults to github.com — so an absent host is valid and an empty one is
     /// still too short.
@@ -160,6 +172,9 @@ impl ArgumentContract {
             "nomoreide_git_create_worktree" => Some(Self::WorktreeCreation),
             "nomoreide_git_push" => Some(Self::GitPush),
             "nomoreide_git_clone" => Some(Self::RepositoryClone),
+            "nomoreide_snapshots_list" => Some(Self::SnapshotList),
+            "nomoreide_snapshot_create" => Some(Self::SnapshotCreate),
+            "nomoreide_onboard_repo" => Some(Self::RepositoryOnboard),
             "nomoreide_github_set_token" => Some(Self::GithubToken),
             "nomoreide_github_list_prs" | "nomoreide_github_list_issues" => {
                 Some(Self::GithubListing)
@@ -252,6 +267,19 @@ impl ArgumentContract {
             }
             Self::RepositoryClone => {
                 collect(required_string(arguments, "url").err().unwrap_or_default())
+            }
+            Self::RepositoryOnboard => {
+                collect(required_string(arguments, "url").err().unwrap_or_default())
+            }
+            Self::SnapshotList => collect(optional_name(arguments, "cwd")),
+            Self::SnapshotCreate => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(
+                    required_string(arguments, "label")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                collect(failures)
             }
             Self::GithubToken => {
                 let mut failures = required_string(arguments, "token")

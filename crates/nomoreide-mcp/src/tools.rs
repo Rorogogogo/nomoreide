@@ -1,6 +1,7 @@
 mod diagnostics;
 mod git;
 mod github;
+mod onboard;
 mod registration;
 
 use nomoreide_core::config::ConfigStore;
@@ -94,6 +95,13 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GitFetch(cwd) => git::fetch(cwd).await,
                 NativeTool::GitPush { cwd, remote } => git::push(&self.config, cwd, remote).await,
                 NativeTool::GitClone(url) => git::clone(&self.config, url).await,
+                // Snapshots and onboarding touch only git and the filesystem,
+                // so they need no daemon either.
+                NativeTool::SnapshotsList(cwd) => onboard::snapshots_list(cwd).await,
+                NativeTool::SnapshotCreate { cwd, label } => {
+                    onboard::snapshot_create(cwd, label).await
+                }
+                NativeTool::OnboardRepo(url) => onboard::onboard_repo(url).await,
                 NativeTool::GithubSetToken { token, host } => {
                     github::set_token(&self.config, token, host).await
                 }
@@ -263,6 +271,9 @@ impl NativeToolExecutor {
             | NativeTool::GitFetch(_)
             | NativeTool::GitPush { .. }
             | NativeTool::GitClone(_)
+            | NativeTool::SnapshotsList(_)
+            | NativeTool::SnapshotCreate { .. }
+            | NativeTool::OnboardRepo(_)
             | NativeTool::GithubSetToken { .. }
             | NativeTool::GithubListPrs { .. }
             | NativeTool::GithubGetPr { .. }
@@ -375,6 +386,12 @@ enum NativeTool<'a> {
         remote: Option<&'a str>,
     },
     GitClone(&'a str),
+    SnapshotsList(Option<&'a str>),
+    SnapshotCreate {
+        cwd: Option<&'a str>,
+        label: &'a str,
+    },
+    OnboardRepo(&'a str),
     GithubSetToken {
         token: &'a str,
         host: &'a str,
@@ -543,6 +560,12 @@ impl<'a> NativeTool<'a> {
                 remote: optional_text(arguments, "remote"),
             }),
             "nomoreide_git_clone" => Ok(Self::GitClone(required_text(arguments, "url")?)),
+            "nomoreide_snapshots_list" => Ok(Self::SnapshotsList(optional_text(arguments, "cwd"))),
+            "nomoreide_snapshot_create" => Ok(Self::SnapshotCreate {
+                cwd: optional_text(arguments, "cwd"),
+                label: required_text(arguments, "label")?,
+            }),
+            "nomoreide_onboard_repo" => Ok(Self::OnboardRepo(required_text(arguments, "url")?)),
             "nomoreide_github_set_token" => Ok(Self::GithubSetToken {
                 token: required_text(arguments, "token")?,
                 // The reference's schema defaults this, so an absent host is
@@ -762,7 +785,7 @@ fn status_views(statuses: &[ServiceRuntimeStatus]) -> Vec<ServiceStatusView<'_>>
     statuses.iter().map(ServiceStatusView::of).collect()
 }
 
-fn render<T: Serialize + ?Sized>(value: &T) -> Result<String, String> {
+pub(crate) fn render<T: Serialize + ?Sized>(value: &T) -> Result<String, String> {
     serde_json::to_string_pretty(value).map_err(|error| error.to_string())
 }
 

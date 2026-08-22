@@ -11,7 +11,7 @@
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import type { McpCommand } from "../../test/support/mcp-contract.js";
 
@@ -38,6 +38,12 @@ export const inheritedEnv = Object.fromEntries(
  */
 export type Setup =
   | { commit: { file: string; contents: string; message: string } }
+  /**
+   * Write several files — nested paths included — and commit them together.
+   * A repository that exists to be *scanned* is a source tree, not a sequence
+   * of one-file commits, and spelling it that way keeps a fixture readable.
+   */
+  | { commitFiles: { files: Record<string, string>; message: string } }
   /** Create a bare origin, push the current branch, and track it. */
   | { remote: true }
   /** Point `origin` at a URL nothing has to answer — a remote only read, never reached. */
@@ -48,6 +54,12 @@ export type Setup =
   | { resetTo: string }
   /** Create a branch without switching to it. */
   | { branch: string }
+  /**
+   * Fabricate snapshot refs directly, without going through the tool. Pruning
+   * only starts mattering past fifty of them, and fifty tool calls per runtime
+   * would be a slow way to say so.
+   */
+  | { snapshotRefs: number }
   /** Leave HEAD on no branch at all. */
   | { detach: true }
   /** Write files and leave them uncommitted. */
@@ -80,6 +92,12 @@ export interface Runtime extends RuntimeSpec {
   paths: Map<string, string>;
   /** Extra environment this gate wants the runtime's MCP process to carry. */
   env: Record<string, string>;
+  /**
+   * Where the MCP process itself runs. Defaults to the checkout, which is what
+   * the reference's own `src/index.ts` needs when it is spawned by path; a gate
+   * that wants to exercise a tool's "no cwd argument" fallback overrides it.
+   */
+  cwd?: string;
 }
 
 /** Build one runtime's own copy of the fixture tree. `roots` collects it for cleanup. */
@@ -152,9 +170,17 @@ export async function git(cwd: string, args: string[]): Promise<void> {
 
 async function apply(base: string, id: string, path: string, step: Setup): Promise<void> {
   if ("commit" in step) {
-    await writeFile(join(path, step.commit.file), step.commit.contents);
+    await write(path, step.commit.file, step.commit.contents);
     await git(path, ["add", "--", step.commit.file]);
     await git(path, ["commit", "--quiet", "-m", step.commit.message]);
+    return;
+  }
+  if ("commitFiles" in step) {
+    for (const [file, contents] of Object.entries(step.commitFiles.files)) {
+      await write(path, file, contents);
+    }
+    await git(path, ["add", "--", ...Object.keys(step.commitFiles.files)]);
+    await git(path, ["commit", "--quiet", "-m", step.commitFiles.message]);
     return;
   }
   if ("remote" in step) {
@@ -181,13 +207,23 @@ async function apply(base: string, id: string, path: string, step: Setup): Promi
     await git(path, ["branch", step.branch]);
     return;
   }
+  if ("snapshotRefs" in step) {
+    for (let index = 0; index < step.snapshotRefs; index += 1) {
+      // A fixed base stamp rather than a real clock: these have to sort the
+      // same way in both runtimes, and they must not read as "about now".
+      const stamp = 1700000000000 + index;
+      const name = `refs/nomoreide/snapshots/${stamp}-seeded-${String(index).padStart(3, "0")}`;
+      await git(path, ["update-ref", name, "HEAD"]);
+    }
+    return;
+  }
   if ("detach" in step) {
     await git(path, ["checkout", "--quiet", "--detach", "HEAD"]);
     return;
   }
   if ("write" in step) {
     for (const [file, contents] of Object.entries(step.write)) {
-      await writeFile(join(path, file), contents);
+      await write(path, file, contents);
     }
     return;
   }
@@ -200,11 +236,18 @@ async function apply(base: string, id: string, path: string, step: Setup): Promi
   await git(path, ["add", "--", ...step.stage]);
 }
 
+/** Write one fixture file, creating whatever directories its path names. */
+async function write(root: string, file: string, contents: string): Promise<void> {
+  const target = join(root, file);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, contents);
+}
+
 export function mcpCommand(runtime: Runtime): McpCommand {
   return {
     command: runtime.command,
     args: [...runtime.args, "mcp"],
-    cwd: repositoryRoot,
+    cwd: runtime.cwd ?? repositoryRoot,
     env: {
       ...inheritedEnv,
       HOME: runtime.home,
@@ -241,10 +284,17 @@ export function substitute(value: unknown, runtime: Runtime): unknown {
   });
 }
 
+/** Roughly now — the window a timestamp a tool just produced has to fall in. */
+export function isRecent(epochMs: number): boolean {
+  const day = 24 * 60 * 60 * 1000;
+  return Number.isFinite(epochMs) && Math.abs(Date.now() - epochMs) < day;
+}
+
 /**
  * Replace a plausible `createdAt` with a token, and leave anything else in that
- * key alone. A runtime that omitted it, reported it as a string, or reported a
- * nonsense time still differs — only the digits of a real one are forgiven.
+ * key alone. A runtime that omitted it, or reported a nonsense time, still
+ * differs — only a real one is forgiven, and the two spellings get different
+ * tokens so a runtime that swapped them differs too.
  */
 function maskCreatedAt(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -255,8 +305,21 @@ function maskCreatedAt(value: unknown): unknown {
   }
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => {
-      if (key === "createdAt" && typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
+      if (key !== "createdAt") {
+        return [key, maskCreatedAt(entry)];
+      }
+      if (typeof entry === "number" && entry > 0 && isRecent(entry)) {
         return [key, "<epoch-ms>"];
+      }
+      // An ISO instant in UTC to the millisecond, which is what `toISOString`
+      // produces. A time in another format, or in the wrong year, is left as
+      // it is and so still fails the comparison.
+      if (
+        typeof entry === "string" &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(entry) &&
+        isRecent(Date.parse(entry))
+      ) {
+        return [key, "<iso-instant>"];
       }
       return [key, maskCreatedAt(entry)];
     }),
