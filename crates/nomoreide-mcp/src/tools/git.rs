@@ -8,15 +8,10 @@
 //! so they run locally without a daemon: the daemon re-reads the file per
 //! operation and picks up what they wrote without being told.
 //!
-//! Both validations below are the reference's and belong here rather than in
-//! `nomoreide_core::config`, which registers whatever it is handed. The Rust
-//! `ConfigStore` predates this tool and had neither.
 
 use super::render;
 use nomoreide_core::config::{ConfigStore, GitRepoDef};
 use nomoreide_core::git_manager::GitManager;
-use std::path::Path;
-use tokio::process::Command;
 
 pub(super) async fn status(cwd: Option<&str>) -> Result<String, String> {
     let status = GitManager::status(&working_directory(cwd)?)
@@ -70,8 +65,6 @@ pub(super) async fn register_repository(
     name: &str,
     path: &str,
 ) -> Result<String, String> {
-    require_absolute_path(path)?;
-    require_git_worktree(path).await?;
     let config = store
         .register_git_repository(GitRepoDef {
             name: name.to_string(),
@@ -96,31 +89,50 @@ pub(super) async fn select_repository(store: &ConfigStore, name: &str) -> Result
     render(&view)
 }
 
-/// `~` is not expanded here, so a path that starts with it would be registered
-/// literally and resolve to nothing. Say so rather than storing it.
-fn require_absolute_path(path: &str) -> Result<(), String> {
-    if Path::new(path).is_absolute() {
-        return Ok(());
-    }
-    Err("Please add an absolute path. Paths beginning with ~ are not expanded here.".to_string())
-}
-
-async fn require_git_worktree(path: &str) -> Result<(), String> {
-    if is_git_worktree(path).await {
-        return Ok(());
-    }
-    Err("Not a Git repository. Choose a folder inside a Git worktree.".to_string())
-}
-
-/// A missing directory, a missing `git`, and a directory outside any repository
-/// are all the same answer here: not a worktree.
-async fn is_git_worktree(path: &str) -> bool {
-    Command::new("git")
-        .args(["rev-parse", "--is-inside-work-tree"])
-        .current_dir(path)
-        .output()
+pub(super) async fn worktrees(cwd: Option<&str>) -> Result<String, String> {
+    let worktrees = GitManager::worktrees(&working_directory(cwd)?)
         .await
-        .ok()
-        .filter(|output| output.status.success())
-        .is_some_and(|output| String::from_utf8_lossy(&output.stdout).trim() == "true")
+        .map_err(|error| error.to_string())?;
+    render(&worktrees)
+}
+
+pub(super) async fn create_worktree(
+    cwd: Option<&str>,
+    branch: &str,
+    create_branch: bool,
+    base_ref: Option<&str>,
+    project_name: Option<&str>,
+) -> Result<String, String> {
+    let worktree = GitManager::create_worktree(
+        &working_directory(cwd)?,
+        project_name,
+        branch,
+        create_branch,
+        base_ref,
+    )
+    .await
+    .map_err(|error| error.to_string())?;
+    render(&worktree)
+}
+
+pub(super) async fn select_worktree(
+    store: &ConfigStore,
+    repository: &str,
+    path: &str,
+) -> Result<String, String> {
+    let config = store
+        .select_git_worktree(repository, path)
+        .await
+        .map_err(|error| error.to_string())?;
+    let view = config.public_view();
+    render(&view)
+}
+
+/// Pruning reports that it happened rather than what git said, because git says
+/// nothing when there was nothing stale to drop.
+pub(super) async fn prune_worktrees(cwd: Option<&str>) -> Result<String, String> {
+    GitManager::prune_worktrees(&working_directory(cwd)?)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&serde_json::json!({ "pruned": true }))
 }

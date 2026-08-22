@@ -592,7 +592,14 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Register a repository folder, keeping the credentials and provider
+    /// projects an existing registration of the same name already carried.
+    ///
+    /// The two checks come first, and live here rather than at each caller, so
+    /// the dashboard, the desktop app, and an agent all refuse the same folder.
     pub async fn register_git_repository(&self, mut repo: GitRepoDef) -> Result<Config> {
+        require_absolute_path(&repo.path)?;
+        require_git_worktree(&repo.path).await?;
         let mut config = self.load().await?;
         let existing = config.git_repositories.iter().find(|r| r.name == repo.name);
         if repo.github_credential.is_none() {
@@ -651,14 +658,32 @@ impl ConfigStore {
         Ok(config)
     }
 
-    pub async fn select_git_worktree(&self, name: &str, path: String) -> Result<Config> {
+    /// Point a repository at one of its worktrees.
+    ///
+    /// `path` has to name a worktree of *that* repository, which is a question
+    /// only git can answer — a folder that merely sits inside the managed root,
+    /// or one that belongs to a different project, is refused. What is stored is
+    /// the path git reports rather than the one passed in, so a symlinked or
+    /// relative-through-`..` spelling of the same directory is recorded once.
+    pub async fn select_git_worktree(&self, name: &str, path: &str) -> Result<Config> {
+        require_absolute_path(path)?;
         let mut config = self.load().await?;
-        let repo = config
+        let repository_path = config
+            .git_repositories
+            .iter()
+            .find(|repo| repo.name == name)
+            .map(|repo| repo.path.clone())
+            .with_context(|| format!("Git repository \"{name}\" is not registered."))?;
+        let worktree = crate::git_manager::worktree_at(&repository_path, path)
+            .await?
+            .context("The selected folder is not a worktree of this project.")?;
+        if let Some(repo) = config
             .git_repositories
             .iter_mut()
             .find(|repo| repo.name == name)
-            .context("Git repository is not registered")?;
-        repo.active_worktree_path = Some(path);
+        {
+            repo.active_worktree_path = Some(worktree.path);
+        }
         self.save(&config).await?;
         Ok(config)
     }
@@ -980,6 +1005,36 @@ fn mask_database_query(url: &str) -> String {
     format!("{base}?{masked}")
 }
 
+/// `~` is not expanded anywhere in this project, so a path that starts with it
+/// would be stored literally and resolve to nothing. Say so rather than storing
+/// it.
+fn require_absolute_path(path: &str) -> Result<()> {
+    if PathBuf::from(path).is_absolute() {
+        return Ok(());
+    }
+    anyhow::bail!("Please add an absolute path. Paths beginning with ~ are not expanded here.")
+}
+
+async fn require_git_worktree(path: &str) -> Result<()> {
+    if is_git_worktree(path).await {
+        return Ok(());
+    }
+    anyhow::bail!("Not a Git repository. Choose a folder inside a Git worktree.")
+}
+
+/// A missing directory, a missing `git`, and a directory outside any repository
+/// are all the same answer here: not a worktree.
+pub async fn is_git_worktree(path: &str) -> bool {
+    tokio::process::Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(path)
+        .output()
+        .await
+        .ok()
+        .filter(|output| output.status.success())
+        .is_some_and(|output| String::from_utf8_lossy(&output.stdout).trim() == "true")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1021,6 +1076,24 @@ mod tests {
         ConfigStore::new(dir.join("config.json"))
     }
 
+    /// A real, throwaway git worktree. Registration refuses anything else, so
+    /// a test that registers a repository has to have one.
+    async fn scratch_repo(label: &str) -> String {
+        let dir = std::env::temp_dir().join(format!(
+            "nomoreide-repo-{label}-{}-{}",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+        fs::create_dir_all(&dir).await.unwrap();
+        tokio::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&dir)
+            .output()
+            .await
+            .unwrap();
+        dir.to_string_lossy().into_owned()
+    }
+
     fn repo(name: &str, path: &str) -> GitRepoDef {
         GitRepoDef {
             name: name.to_string(),
@@ -1035,9 +1108,11 @@ mod tests {
     #[tokio::test]
     async fn registering_a_repository_also_selects_it() {
         let store = scratch_store("register-selects");
+        let demo = scratch_repo("selects-demo").await;
+        let other = scratch_repo("selects-other").await;
 
         let config = store
-            .register_git_repository(repo("demo", "/demo"))
+            .register_git_repository(repo("demo", &demo))
             .await
             .unwrap();
         assert_eq!(config.selected_git_repository.as_deref(), Some("demo"));
@@ -1045,12 +1120,12 @@ mod tests {
         // A second registration takes the selection, and re-registering the
         // first brings it back — registering is how a repository comes forward.
         let config = store
-            .register_git_repository(repo("other", "/other"))
+            .register_git_repository(repo("other", &other))
             .await
             .unwrap();
         assert_eq!(config.selected_git_repository.as_deref(), Some("other"));
         let config = store
-            .register_git_repository(repo("demo", "/demo"))
+            .register_git_repository(repo("demo", &demo))
             .await
             .unwrap();
         assert_eq!(config.selected_git_repository.as_deref(), Some("demo"));
@@ -1061,7 +1136,7 @@ mod tests {
     async fn selecting_an_unregistered_repository_is_refused() {
         let store = scratch_store("select-unknown");
         store
-            .register_git_repository(repo("demo", "/demo"))
+            .register_git_repository(repo("demo", &scratch_repo("select-unknown").await))
             .await
             .unwrap();
 
@@ -1080,10 +1155,97 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_folder_that_is_not_a_repository_cannot_be_registered() {
+        let store = scratch_store("register-refusals");
+        let plain = std::env::temp_dir().join(format!(
+            "nomoreide-plain-{}-{}",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+        fs::create_dir_all(&plain).await.unwrap();
+
+        // Both checks live here rather than at each caller, so the dashboard,
+        // the desktop app, and an agent all refuse the same folder.
+        let relative = store
+            .register_git_repository(repo("demo", "relative/path"))
+            .await
+            .expect_err("a relative path should be refused");
+        assert_eq!(
+            relative.to_string(),
+            "Please add an absolute path. Paths beginning with ~ are not expanded here."
+        );
+
+        for path in [plain.to_string_lossy().as_ref(), "/definitely/not/here"] {
+            let error = store
+                .register_git_repository(repo("demo", path))
+                .await
+                .expect_err("a folder outside any worktree should be refused");
+            assert_eq!(
+                error.to_string(),
+                "Not a Git repository. Choose a folder inside a Git worktree."
+            );
+        }
+
+        // Nothing was registered or selected on the way through.
+        let config = store.load().await.unwrap();
+        assert!(config.git_repositories.is_empty());
+        assert_eq!(config.selected_git_repository, None);
+    }
+
+    #[tokio::test]
+    async fn selecting_a_worktree_takes_the_path_git_reports() {
+        let store = scratch_store("select-worktree");
+        let path = scratch_repo("select-worktree").await;
+        store
+            .register_git_repository(repo("demo", &path))
+            .await
+            .unwrap();
+
+        // The primary worktree, named through a "." detour: what is stored is
+        // the directory git reports, not the spelling that was passed in.
+        let spelled = format!("{path}/.");
+        let config = store.select_git_worktree("demo", &spelled).await.unwrap();
+        let stored = config.git_repositories[0]
+            .active_worktree_path
+            .clone()
+            .expect("a worktree should have been selected");
+        assert_ne!(stored, spelled);
+        assert!(
+            std::fs::canonicalize(&stored).unwrap() == std::fs::canonicalize(&path).unwrap(),
+            "{stored} should be the same directory as {path}"
+        );
+
+        assert_eq!(
+            store
+                .select_git_worktree("demo", "relative/path")
+                .await
+                .expect_err("a relative path should be refused")
+                .to_string(),
+            "Please add an absolute path. Paths beginning with ~ are not expanded here."
+        );
+        assert_eq!(
+            store
+                .select_git_worktree("ghost", &path)
+                .await
+                .expect_err("an unregistered repository should be refused")
+                .to_string(),
+            "Git repository \"ghost\" is not registered."
+        );
+        assert_eq!(
+            store
+                .select_git_worktree("demo", "/")
+                .await
+                .expect_err("a folder outside the project should be refused")
+                .to_string(),
+            "The selected folder is not a worktree of this project."
+        );
+    }
+
+    #[tokio::test]
     async fn selecting_nothing_clears_the_selection() {
         let store = scratch_store("select-none");
         store
-            .register_git_repository(repo("demo", "/demo"))
+            .register_git_repository(repo("demo", &scratch_repo("select-none").await))
             .await
             .unwrap();
 
@@ -1251,10 +1413,11 @@ mod tests {
     async fn re_registering_a_repository_keeps_its_vercel_pin() {
         let dir = std::env::temp_dir().join(format!("nomoreide-vercel-cfg-{}", std::process::id()));
         let store = ConfigStore::new(dir.join("config.json"));
+        let app = scratch_repo("vercel-pin").await;
         store
             .register_git_repository(GitRepoDef {
                 name: "app".into(),
-                path: "/tmp/app".into(),
+                path: app.clone(),
                 active_worktree_path: None,
                 github_credential: None,
                 provider_projects: Some(BTreeMap::from([(
@@ -1269,7 +1432,7 @@ mod tests {
         let config = store
             .register_git_repository(GitRepoDef {
                 name: "app".into(),
-                path: "/tmp/app".into(),
+                path: app.clone(),
                 active_worktree_path: None,
                 github_credential: None,
                 provider_projects: None,

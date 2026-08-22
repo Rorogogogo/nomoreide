@@ -408,6 +408,53 @@ left/right column pass. Verified to bite on three seeded regressions: the
 swapped columns, a dropped `origin/HEAD` filter, and the old detached-HEAD
 branch name.
 
+**Slice 4 (done): worktrees — list, create, select, prune.**
+The four worktree tools, and the largest set of gaps so far. Every one was
+found by diffing against the running reference:
+
+- The listing read `worktree list --porcelain` without `-z`, so a path or a
+  lock reason containing a newline was read as the start of another record.
+- `create` and `remove` matched worktrees by string equality. git reports the
+  *resolved* path, and on macOS the managed root sits under a symlinked
+  `/var`, so the string git printed was never the string the code had built —
+  creating a worktree failed with "Git created the worktree but it could not
+  be found" on the very platform the desktop app ships for. Both now compare
+  canonically.
+- `create` required a project name; the reference falls back to the
+  repository's own folder name.
+- `safe_segment` replaced each unsafe character, where the reference replaces
+  each unsafe *run*, so `My // Project` produced four dashes instead of one.
+- `createdAt` was whole milliseconds against the reference's fractional
+  `birthtimeMs`, and an absent branch, lock reason, or prune reason rendered
+  as an explicit `null` where the reference omits the key.
+- `select_git_worktree` stored whatever path it was handed, without checking
+  that it was absolute or that it belonged to *that* repository. It now
+  refuses both, and stores the path git reports rather than the spelling
+  passed in. The desktop app's own by-string membership check is gone: it had
+  the same symlink bug, and the store now answers the question canonically.
+
+Two validations moved *into* `ConfigStore::register_git_repository` — that a
+path is absolute, and that it is inside a worktree. Slice 2 put them in the MCP
+tool; the reference has them in the store, which is the difference between an
+agent being refused and the desktop app registering the same bad folder
+silently.
+
+**Worktree failures read differently from every other git read, and that is
+faithful.** The reference runs these four through Node's `execFile` directly
+and lets its rejection through, so an agent sees `Command failed: git worktree
+add …` and then git's own words; the reads go through a wrapper that re-throws
+git's stderr alone. `command_failed` reproduces that, asserted literally in a
+unit test.
+
+The fixture is at **74 steps**. `createdAt` is the one field normalized beyond
+paths — it is the wall-clock birth time of a directory each runtime creates for
+itself, so it can never match; the mask only forgives the digits of a
+plausible number, so an omitted or wrong-typed one still differs. Note the
+limit: the fractional-vs-whole millisecond fix is therefore *not* what the gate
+proves, only the unit-level shape is. Verified to bite on four seeded
+regressions: the missing `-z`, a bare-stderr failure, string path comparison,
+and the per-character `safe_segment`.
+
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.
 - Port snapshots, repository selection, worktree management, context assembly, and onboarding.

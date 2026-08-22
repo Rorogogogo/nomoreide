@@ -137,7 +137,9 @@ pub async fn git_create_worktree(
         selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
     let worktree = GitManager::create_worktree(
         &repository.path,
-        &repository.name,
+        // The desktop app groups a repository's worktrees under its registered
+        // name, which is not always its folder name.
+        Some(&repository.name),
         &branch,
         create_branch,
         base_ref.as_deref(),
@@ -146,7 +148,7 @@ pub async fn git_create_worktree(
     .map_err(|error| error.to_string())?;
     state
         .config_store
-        .select_git_worktree(&repository.name, worktree.path.clone())
+        .select_git_worktree(&repository.name, &worktree.path)
         .await
         .map_err(|error| error.to_string())?;
     Ok(worktree)
@@ -161,15 +163,11 @@ pub async fn git_select_worktree(state: State<'_, AppState>, path: String) -> Re
         .map_err(|error| error.to_string())?;
     let repository =
         selected_repository(&config).ok_or_else(|| "No Git project is selected.".to_string())?;
-    let worktrees = GitManager::worktrees(&repository.path)
-        .await
-        .map_err(|error| error.to_string())?;
-    if !worktrees.iter().any(|worktree| worktree.path == path) {
-        return Err("The selected folder is not a worktree of this project.".to_string());
-    }
+    // The store checks membership itself, canonically — comparing the strings
+    // here missed a worktree reached through a symlinked path.
     state
         .config_store
-        .select_git_worktree(&repository.name, path)
+        .select_git_worktree(&repository.name, &path)
         .await
         .map_err(|error| error.to_string())?;
     Ok(())

@@ -71,6 +71,18 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GitDiff { cwd, path } => git::diff(cwd, path).await,
                 NativeTool::GitStagedDiff { cwd, path } => git::staged_diff(cwd, path).await,
                 NativeTool::GitLog { cwd, limit } => git::log(cwd, limit).await,
+                NativeTool::GitWorktrees(cwd) => git::worktrees(cwd).await,
+                NativeTool::GitCreateWorktree {
+                    cwd,
+                    branch,
+                    create_branch,
+                    base_ref,
+                    project_name,
+                } => git::create_worktree(cwd, branch, create_branch, base_ref, project_name).await,
+                NativeTool::GitSelectWorktree { repository, path } => {
+                    git::select_worktree(&self.config, repository, path).await
+                }
+                NativeTool::GitPruneWorktrees(cwd) => git::prune_worktrees(cwd).await,
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -169,8 +181,12 @@ impl NativeToolExecutor {
             | NativeTool::GitBranches(_)
             | NativeTool::GitDiff { .. }
             | NativeTool::GitStagedDiff { .. }
-            | NativeTool::GitLog { .. } => {
-                unreachable!("config writes and git reads are served locally")
+            | NativeTool::GitLog { .. }
+            | NativeTool::GitWorktrees(_)
+            | NativeTool::GitCreateWorktree { .. }
+            | NativeTool::GitSelectWorktree { .. }
+            | NativeTool::GitPruneWorktrees(_) => {
+                unreachable!("config writes and git operations are served locally")
             }
         }
     }
@@ -226,6 +242,21 @@ enum NativeTool<'a> {
         cwd: Option<&'a str>,
         limit: u32,
     },
+    GitWorktrees(Option<&'a str>),
+    GitCreateWorktree {
+        cwd: Option<&'a str>,
+        branch: &'a str,
+        create_branch: bool,
+        base_ref: Option<&'a str>,
+        project_name: Option<&'a str>,
+    },
+    /// Selecting names the repository rather than a directory: it is a config
+    /// write about a registration, not a question about wherever the caller is.
+    GitSelectWorktree {
+        repository: &'a str,
+        path: &'a str,
+    },
+    GitPruneWorktrees(Option<&'a str>),
 }
 
 impl<'a> NativeTool<'a> {
@@ -258,7 +289,7 @@ impl<'a> NativeTool<'a> {
             )),
             "nomoreide_git_register_repository" => Ok(Self::GitRegisterRepository {
                 name: required_name(arguments, "repository")?,
-                path: repository_path(arguments)?,
+                path: required_text(arguments, "path")?,
             }),
             "nomoreide_git_select_repository" => Ok(Self::GitSelectRepository(required_name(
                 arguments,
@@ -278,6 +309,26 @@ impl<'a> NativeTool<'a> {
                 cwd: optional_text(arguments, "cwd"),
                 limit: log_commit_limit(arguments),
             }),
+            "nomoreide_git_worktrees" => Ok(Self::GitWorktrees(optional_text(arguments, "cwd"))),
+            "nomoreide_git_create_worktree" => Ok(Self::GitCreateWorktree {
+                cwd: optional_text(arguments, "cwd"),
+                branch: required_text(arguments, "branch")?,
+                // The reference's schema defaults this to true, so an absent
+                // one asks for a new branch rather than an existing one.
+                create_branch: arguments
+                    .get("createBranch")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+                base_ref: optional_text(arguments, "baseRef"),
+                project_name: optional_text(arguments, "projectName"),
+            }),
+            "nomoreide_git_select_worktree" => Ok(Self::GitSelectWorktree {
+                repository: required_text(arguments, "repository")?,
+                path: required_text(arguments, "path")?,
+            }),
+            "nomoreide_git_prune_worktrees" => {
+                Ok(Self::GitPruneWorktrees(optional_text(arguments, "cwd")))
+            }
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -320,15 +371,15 @@ fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'
         .ok_or_else(|| format!("Registered {kind} name is required."))
 }
 
-/// The `path` of a repository registration. Like [`required_name`], this cannot
-/// fail in practice — `ArgumentContract::RepositoryRegistration` has already
-/// rejected a missing or empty path — so the wording is only a fallback.
-fn repository_path(arguments: &Map<String, Value>) -> Result<&str, String> {
+/// A required non-empty argument under `key`. Like [`required_name`], this
+/// cannot fail in practice — the tool's `ArgumentContract` has already rejected
+/// a missing or empty value — so the wording is only a fallback.
+fn required_text<'a>(arguments: &'a Map<String, Value>, key: &str) -> Result<&'a str, String> {
     arguments
-        .get("path")
+        .get(key)
         .and_then(Value::as_str)
-        .filter(|path| !path.is_empty())
-        .ok_or_else(|| "A repository path is required.".to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("A {key} is required."))
 }
 
 /// An argument the caller may leave out. The protocol layer has already
@@ -751,6 +802,57 @@ mod tests {
             Ok(NativeTool::GitLog {
                 cwd: None,
                 limit: 3
+            })
+        ));
+    }
+
+    /// The reference's schema defaults `createBranch` to true, so an absent
+    /// one asks for a new branch rather than an existing one.
+    #[test]
+    fn creating_a_worktree_defaults_to_creating_its_branch() {
+        let mut arguments = Map::new();
+        arguments.insert("branch".into(), Value::String("feature/x".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_create_worktree", &arguments),
+            Ok(NativeTool::GitCreateWorktree {
+                cwd: None,
+                branch: "feature/x",
+                create_branch: true,
+                base_ref: None,
+                project_name: None,
+            })
+        ));
+
+        arguments.insert("createBranch".into(), Value::Bool(false));
+        arguments.insert("baseRef".into(), Value::String("main".into()));
+        arguments.insert("projectName".into(), Value::String("demo".into()));
+        arguments.insert("cwd".into(), Value::String("/repo".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_create_worktree", &arguments),
+            Ok(NativeTool::GitCreateWorktree {
+                cwd: Some("/repo"),
+                branch: "feature/x",
+                create_branch: false,
+                base_ref: Some("main"),
+                project_name: Some("demo"),
+            })
+        ));
+    }
+
+    /// Selecting a worktree names the repository it belongs to, not a
+    /// directory to run in — so neither argument has a default.
+    #[test]
+    fn selecting_a_worktree_names_a_repository_and_a_path() {
+        assert!(NativeTool::parse("nomoreide_git_select_worktree", &Map::new()).is_err());
+        let mut arguments = Map::new();
+        arguments.insert("repository".into(), Value::String("demo".into()));
+        assert!(NativeTool::parse("nomoreide_git_select_worktree", &arguments).is_err());
+        arguments.insert("path".into(), Value::String("/repo/wt".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_select_worktree", &arguments),
+            Ok(NativeTool::GitSelectWorktree {
+                repository: "demo",
+                path: "/repo/wt"
             })
         ));
     }

@@ -70,14 +70,20 @@ pub struct FileSizeRank {
 pub struct GitWorktree {
     pub path: String,
     pub head: String,
-    pub created_at: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub branch: Option<String>,
     pub bare: bool,
     pub detached: bool,
     pub locked: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_reason: Option<String>,
     pub prunable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub prunable_reason: Option<String>,
+    /// Epoch milliseconds, fractional: the reference reports the filesystem's
+    /// birth time unrounded, and a filesystem that has none reports nothing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<f64>,
     pub primary: bool,
     pub dirty: bool,
 }

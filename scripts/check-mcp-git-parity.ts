@@ -17,7 +17,7 @@
  */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -97,6 +97,7 @@ interface Runtime {
   command: string;
   args: string[];
   home: string;
+  worktrees: string;
   /** Fixture id -> absolute path in this runtime's own tree. */
   paths: Map<string, string>;
 }
@@ -168,9 +169,23 @@ async function prepare(spec: { label: string; command: string; args: string[] })
     await mkdir(path, { recursive: true });
     paths.set(`dir:${directory}`, path);
   }
+  // Managed worktrees land here rather than in the real ~/.nomoreide.
+  const worktrees = join(base, "worktrees");
+  await mkdir(worktrees, { recursive: true });
+  paths.set("worktrees", worktrees);
   paths.set("home", home);
 
-  return { ...spec, home, paths };
+  // git reports the resolved path of a worktree, so on a machine where the
+  // temporary root is itself a symlink (macOS /var -> /private/var) the path it
+  // prints is never the one built above. Register both spellings.
+  for (const [key, path] of [...paths]) {
+    const resolved = await realpath(path).catch(() => path);
+    if (resolved !== path) {
+      paths.set(`${key}#real`, resolved);
+    }
+  }
+
+  return { ...spec, home, worktrees, paths };
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
@@ -236,6 +251,7 @@ function command(runtime: Runtime): McpCommand {
       HOME: runtime.home,
       XDG_CONFIG_HOME: join(runtime.home, ".config"),
       NOMOREIDE_AUTO_UI: "0",
+      NOMOREIDE_WORKTREES_DIR: runtime.worktrees,
     },
   };
 }
@@ -246,7 +262,9 @@ function substitute(value: unknown, runtime: Runtime): unknown {
     return value;
   }
   return value.replace(/\{\{([^}]+)\}\}/g, (whole, key: string) => {
-    const path = runtime.paths.get(key);
+    // `#real` spellings exist only so output can be normalized; a step asks
+    // for a path by its plain name.
+    const path = key.endsWith("#real") ? undefined : runtime.paths.get(key);
     if (path === undefined) {
       throw new Error(`Unknown fixture placeholder ${whole}`);
     }
@@ -264,13 +282,39 @@ async function call(runtime: Runtime, step: Fixture["plan"][number]): Promise<un
 
 /**
  * Replace what cannot repeat between two equivalent runs — each runtime's own
- * throwaway paths — and parse the tool's JSON payload so that key *order*,
- * which `serde_json` sorts and the reference does not, is not compared. Message
- * text, error codes, and every field are compared verbatim.
+ * throwaway paths, and `createdAt`, which is the wall-clock birth time of a
+ * directory each runtime creates for itself and so can never match — and parse
+ * the tool's JSON payload so that key *order*, which `serde_json` sorts and the
+ * reference does not, is not compared. Message text, error codes, and every
+ * other field are compared verbatim.
  */
+/**
+ * Replace a plausible `createdAt` with a token, and leave anything else in that
+ * key alone. A runtime that omitted it, reported it as a string, or reported a
+ * nonsense time still differs — only the digits of a real one are forgiven.
+ */
+function maskCreatedAt(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(maskCreatedAt);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => {
+      if (key === "createdAt" && typeof entry === "number" && Number.isFinite(entry) && entry > 0) {
+        return [key, "<epoch-ms>"];
+      }
+      return [key, maskCreatedAt(entry)];
+    }),
+  );
+}
+
 function normalize(response: unknown, runtime: Runtime): unknown {
   const tokens: Array<[string, string]> = [...runtime.paths]
-    .map(([key, path]) => [path, `<${key}>`] as [string, string])
+    // Both spellings of a path collapse onto the same token, so a resolved and
+    // an unresolved report of the same directory compare equal.
+    .map(([key, path]) => [path, `<${key.replace(/#real$/, "")}>`] as [string, string])
     // Longest first, so a nested path is not partly rewritten by its parent.
     .sort((left, right) => right[0].length - left[0].length);
 
@@ -289,7 +333,7 @@ function normalize(response: unknown, runtime: Runtime): unknown {
     }
     return {
       isError: (result as { isError?: boolean }).isError ?? false,
-      payload,
+      payload: maskCreatedAt(payload),
     };
   }
   return JSON.parse(rewrite(JSON.stringify(response)));

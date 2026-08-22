@@ -276,6 +276,159 @@
       "arguments": {"cwd": "{{repo:demo}}", "limit": "two"}
     },
     {
+      "id": "worktrees/only-the-primary",
+      "comment": "A repository with no linked worktrees still lists its own, marked primary.",
+      "tool": "nomoreide_git_worktrees",
+      "arguments": {"cwd": "{{repo:second}}"}
+    },
+    {
+      "id": "worktrees/create-new-branch",
+      "comment": "The default: a new branch, in a folder named after the repository and the branch.",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "feature/new"}
+    },
+    {
+      "id": "worktrees/create-existing-branch",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "feature/x", "createBranch": false}
+    },
+    {
+      "id": "worktrees/create-with-project-name",
+      "comment": "The project name is folded to one safe segment, and a run of unsafe characters collapses to a single dash.",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "named", "projectName": "My // Project!"}
+    },
+    {
+      "id": "worktrees/create-from-base-ref",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "from-base", "baseRef": "feature/x"}
+    },
+    {
+      "id": "worktrees/list-after-creating",
+      "tool": "nomoreide_git_worktrees",
+      "arguments": {"cwd": "{{repo:demo}}"}
+    },
+    {
+      "id": "error/create-branch-that-exists",
+      "comment": "git's own refusal, behind the command line that produced it.",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "feature/new"}
+    },
+    {
+      "id": "error/create-from-a-branch-that-does-not-exist",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "ghost", "createBranch": false}
+    },
+    {
+      "id": "error/create-from-a-base-that-does-not-exist",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "no-base", "baseRef": "no-such-ref"}
+    },
+    {
+      "id": "error/create-with-a-blank-branch",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "   "}
+    },
+    {
+      "id": "error/create-with-a-branch-that-looks-like-an-option",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "--force"}
+    },
+    {
+      "id": "error/create-with-an-unusable-project-name",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{repo:demo}}", "branch": "fine", "projectName": "///"}
+    },
+    {
+      "id": "error/create-outside-a-repository",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "{{dir:not-a-repo}}", "branch": "nowhere"}
+    },
+    {
+      "id": "error/worktrees-outside-a-repository",
+      "tool": "nomoreide_git_worktrees",
+      "arguments": {"cwd": "{{dir:not-a-repo}}"}
+    },
+    {
+      "id": "error/worktrees-in-a-missing-directory",
+      "tool": "nomoreide_git_worktrees",
+      "arguments": {"cwd": "{{home}}/nowhere"}
+    },
+    {
+      "id": "worktrees/select-a-linked-one",
+      "comment": "What is stored is the path git reports, not the one passed in.",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "demo", "path": "{{worktrees}}/demo/feature-new"}
+    },
+    {
+      "id": "worktrees/select-the-primary-one-back",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "demo", "path": "{{repo:demo}}"}
+    },
+    {
+      "id": "error/select-a-folder-that-is-not-a-worktree",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "demo", "path": "{{dir:not-a-repo}}"}
+    },
+    {
+      "id": "error/select-another-projects-worktree",
+      "comment": "A real worktree, of the wrong repository.",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "second", "path": "{{worktrees}}/demo/feature-new"}
+    },
+    {
+      "id": "error/select-a-relative-path",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "demo", "path": "relative/path"}
+    },
+    {
+      "id": "error/select-for-an-unregistered-repository",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": "never-registered", "path": "{{repo:demo}}"}
+    },
+    {
+      "id": "worktrees/prune",
+      "comment": "Nothing stale to drop, and it still reports that it ran.",
+      "tool": "nomoreide_git_prune_worktrees",
+      "arguments": {"cwd": "{{repo:demo}}"}
+    },
+    {
+      "id": "error/prune-outside-a-repository",
+      "tool": "nomoreide_git_prune_worktrees",
+      "arguments": {"cwd": "{{dir:not-a-repo}}"}
+    },
+    {
+      "id": "invalid/create-with-no-arguments",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {}
+    },
+    {
+      "id": "invalid/create-with-every-argument-wrong",
+      "comment": "Reported in the reference's own schema order: cwd, branch, createBranch, baseRef, projectName.",
+      "tool": "nomoreide_git_create_worktree",
+      "arguments": {"cwd": "", "branch": 1, "createBranch": "yes", "baseRef": "", "projectName": []}
+    },
+    {
+      "id": "invalid/select-with-no-arguments",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {}
+    },
+    {
+      "id": "invalid/select-with-wrong-types",
+      "tool": "nomoreide_git_select_worktree",
+      "arguments": {"repository": 3, "path": true}
+    },
+    {
+      "id": "invalid/worktrees-empty-cwd",
+      "tool": "nomoreide_git_worktrees",
+      "arguments": {"cwd": ""}
+    },
+    {
+      "id": "invalid/prune-wrong-type-cwd",
+      "tool": "nomoreide_git_prune_worktrees",
+      "arguments": {"cwd": 9}
+    },
+    {
       "id": "final/selection-survives",
       "comment": "A read-back, so the last write is compared as stored rather than as reported.",
       "tool": "nomoreide_git_select_repository",

@@ -52,6 +52,14 @@ pub(super) enum ArgumentContract {
     /// `nomoreide_git_log`: that `cwd` plus an optional `limit` in `(0, 50]` —
     /// a tighter bound than the log-line limit, because these are commits.
     GitLog,
+    /// `nomoreide_git_create_worktree`: the `cwd` base, a required `branch`,
+    /// and three optional narrowings. `createBranch` defaults to true, so an
+    /// absent one is a valid request rather than a missing argument.
+    WorktreeCreation,
+    /// `nomoreide_git_select_worktree`: a registered repository name and a
+    /// path, both required. Whether the path is one of that repository's
+    /// worktrees is the store's question, not this one's.
+    WorktreeSelection,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -85,6 +93,9 @@ impl ArgumentContract {
             "nomoreide_git_status" | "nomoreide_git_branches" => Some(Self::GitCwd),
             "nomoreide_git_diff" | "nomoreide_git_staged_diff" => Some(Self::GitPath),
             "nomoreide_git_log" => Some(Self::GitLog),
+            "nomoreide_git_worktrees" | "nomoreide_git_prune_worktrees" => Some(Self::GitCwd),
+            "nomoreide_git_create_worktree" => Some(Self::WorktreeCreation),
+            "nomoreide_git_select_worktree" => Some(Self::WorktreeSelection),
             _ => None,
         }
     }
@@ -120,6 +131,27 @@ impl ArgumentContract {
             Self::GitLog => {
                 let mut failures = optional_name(arguments, "cwd");
                 failures.extend(bounded_integer(arguments, "limit", COMMIT_LIMIT_MAX));
+                collect(failures)
+            }
+            // In the reference's own key order, which is the order it reports
+            // failures in: the base schema's `cwd` first, then the extension.
+            Self::WorktreeCreation => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(
+                    required_string(arguments, "branch")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                failures.extend(boolean(arguments, "createBranch"));
+                failures.extend(optional_name(arguments, "baseRef"));
+                failures.extend(optional_name(arguments, "projectName"));
+                collect(failures)
+            }
+            Self::WorktreeSelection => {
+                let mut failures = required_string(arguments, "repository")
+                    .err()
+                    .unwrap_or_default();
+                failures.extend(required_string(arguments, "path").err().unwrap_or_default());
                 collect(failures)
             }
             // In the reference's own key order, which is the order it reports
@@ -217,6 +249,18 @@ fn bounded_integer(arguments: &Map<String, Value>, key: &str, max: f64) -> Vec<S
         failures.push(format!("{key}: Number must be less than or equal to {max}"));
     }
     failures
+}
+
+/// An optional boolean. The reference gives this one a default, so only a
+/// present value of the wrong type can fail.
+fn boolean(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    match arguments.get(key) {
+        None | Some(Value::Bool(_)) => Vec::new(),
+        Some(other) => vec![format!(
+            "{key}: Expected boolean, received {}",
+            schema_type(other)
+        )],
+    }
 }
 
 /// A plain optional string, with nothing said about its length.

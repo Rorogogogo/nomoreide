@@ -20,6 +20,8 @@ mod inspect;
 mod types;
 mod worktrees;
 
+pub use worktrees::worktree_at;
+
 pub use types::{
     FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree,
 };

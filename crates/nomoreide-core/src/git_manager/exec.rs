@@ -54,7 +54,7 @@ pub(super) async fn checked(cwd: &str, args: &[&str]) -> Result<String> {
 /// An agent that points a tool at the wrong directory therefore reads the same
 /// two words from either runtime. Codes a git spawn cannot realistically
 /// produce are left as the OS text rather than invented.
-fn spawn_failure(error: &std::io::Error) -> String {
+pub(super) fn spawn_failure(error: &std::io::Error) -> String {
     let code = match error.kind() {
         ErrorKind::NotFound => "ENOENT",
         ErrorKind::PermissionDenied => "EACCES",
