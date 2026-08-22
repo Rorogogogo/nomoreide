@@ -404,9 +404,45 @@ fn returns_to_the_default_branch_and_fast_forwards_it() {
     fixture.git(&["remote", "set-head", "origin", "main"]);
     fixture.git(&["checkout", "-b", "feature/work"]);
 
-    block_on(fixture.actions().pull_default()).expect("pull_default");
+    let result = block_on(fixture.actions().pull_default(None)).expect("pull_default");
 
     assert_eq!(fixture.branch(), "main");
+    // The branch is reported rather than left for the caller to work out from
+    // git's text — the desktop app used to invent an empty one here.
+    assert_eq!(result.branch, "main");
+    assert!(
+        result.output.starts_with("Switched to main."),
+        "{}",
+        result.output
+    );
+}
+
+/// A repository whose remote was added by hand has no `origin/HEAD`, which is
+/// the common case this used to answer with a guess.
+#[test]
+fn a_missing_remote_head_falls_back_to_a_local_default() {
+    let fixture = Fixture::new("pull-default-fallback");
+    block_on(fixture.actions().push(None, None)).expect("push");
+    fixture.git(&["checkout", "-b", "feature/work"]);
+
+    let result = block_on(fixture.actions().pull_default(None)).expect("pull_default");
+
+    assert_eq!(result.branch, "main");
+}
+
+/// And one with no `main`, no `master`, and no remote head is a repository this
+/// cannot answer for — which is a refusal, not `main`.
+#[test]
+fn a_repository_with_no_recognisable_default_is_refused() {
+    let fixture = Fixture::new("pull-default-unknown");
+    fixture.git(&["branch", "-m", "trunk"]);
+
+    let error = block_on(fixture.actions().pull_default(None)).expect_err("no default");
+
+    assert_eq!(
+        error.to_string(),
+        "Could not determine default branch for origin."
+    );
 }
 
 #[test]

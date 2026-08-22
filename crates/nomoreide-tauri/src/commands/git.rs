@@ -1,5 +1,5 @@
 use crate::AppState;
-use nomoreide_actions::git::{GitActions, GitPushResult, PushCredential};
+use nomoreide_actions::git::{GitActions, GitPushResult, PullDefaultResult, PushCredential};
 use nomoreide_core::config::{Config, GitRepoDef};
 use nomoreide_core::git_identity;
 use nomoreide_core::git_manager::{
@@ -474,10 +474,10 @@ pub async fn git_branches(
 pub async fn git_pull_default(
     state: State<'_, AppState>,
     repo: Option<String>,
-) -> Result<String, String> {
+) -> Result<PullDefaultResult, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitActions::new(cwd)
-        .pull_default()
+        .pull_default(None)
         .await
         .map_err(|e| e.to_string())
 }

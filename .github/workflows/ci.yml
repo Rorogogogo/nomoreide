@@ -104,3 +104,9 @@ jobs:
         run: npm run mcp:github-parity -- ./target/debug/nomoreide
       - name: MCP snapshot and onboarding parity
         run: npm run mcp:onboard-parity -- ./target/debug/nomoreide
+      # Not an MCP surface: the dashboard and the desktop app reach these, so
+      # the gate drives the crate's own probe example rather than a tool.
+      - name: GitActions parity
+        run: |
+          cargo build --example git-actions-probe -p nomoreide-actions
+          npm run git-actions-parity

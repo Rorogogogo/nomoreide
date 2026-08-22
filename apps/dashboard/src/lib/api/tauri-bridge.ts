@@ -483,8 +483,11 @@ export async function tauri_gitBranches(repo?: string) {
 }
 
 export async function tauri_gitPullDefault(repo?: string) {
-  const output = await tauriInvoke<string>("git_pull_default", { repo: repo ?? null });
-  return { output, branch: "" };
+  // The Rust core reports the branch it landed on, the same as the HTTP
+  // backend, so there is nothing left to invent here.
+  return tauriInvoke<{ output: string; branch: string }>("git_pull_default", {
+    repo: repo ?? null,
+  });
 }
 
 export async function tauri_gitListFiles(repo?: string) {

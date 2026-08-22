@@ -19,6 +19,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::process::Command;
 
+/// The remote every operation here means when it is not told another one.
+const DEFAULT_REMOTE: &str = "origin";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullDefaultResult {
+    /// What a terminal would have shown, with a line naming the branch first.
+    pub output: String,
+    /// The branch this repository treats as its default.
+    pub branch: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitPushResult {
@@ -112,7 +124,7 @@ impl GitActions {
         remote: Option<&str>,
         credential: Option<PushCredential<'_>>,
     ) -> Result<GitPushResult> {
-        let remote = remote.unwrap_or("origin");
+        let remote = remote.unwrap_or(DEFAULT_REMOTE);
         let branch = self.git(&["branch", "--show-current"], None).await?;
         let branch = branch.trim().to_string();
         if branch.is_empty() {
@@ -194,36 +206,67 @@ impl GitActions {
     /// Check out the remote's default branch and fast-forward it — the "get me
     /// back to a clean main" move, without the destructive parts.
     ///
-    /// Carried over verbatim from the pre-split `GitManager::pull_default`, so
-    /// it still diverges from the TypeScript `checkoutDefaultAndPull`: that one
-    /// uses `switch`, surfaces the switch output, and errors when the default
-    /// branch cannot be determined. Reconciling the two belongs to the Phase 3
-    /// git parity pass, not to this move.
-    pub async fn pull_default(&self) -> Result<String> {
-        let default = self.default_branch().await;
-        let _ = Command::new("git")
-            .args(["checkout", &default])
-            .current_dir(&self.cwd)
-            .output()
-            .await?;
-        let out = Command::new("git")
-            .args(["pull", "--ff-only"])
-            .current_dir(&self.cwd)
-            .output()
-            .await?;
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    /// Reports the branch it landed on as well as the output, because "which
+    /// branch is default here" is the question the caller was really asking and
+    /// it is not reliably readable from git's own text.
+    pub async fn pull_default(&self, remote: Option<&str>) -> Result<PullDefaultResult> {
+        let remote = remote.unwrap_or(DEFAULT_REMOTE);
+        let branch = self.default_branch(remote).await?;
+        // `switch` rather than `checkout`: it refuses to do anything but change
+        // branch, so a branch name that is also a path cannot silently discard
+        // that path's changes instead.
+        let switched = self.git(&["switch", &branch], None).await?;
+        let pulled = self.git(&["pull", "--ff-only"], None).await?;
+        Ok(PullDefaultResult {
+            output: format!("Switched to {branch}.\n{switched}\n{pulled}")
+                .trim()
+                .to_string(),
+            branch,
+        })
     }
 
-    async fn default_branch(&self) -> String {
-        self.git(&["symbolic-ref", "refs/remotes/origin/HEAD"], None)
+    /// Which branch this repository treats as its default.
+    ///
+    /// The remote's own `HEAD` is the real answer, but it is only set by a
+    /// clone — a repository whose remote was added by hand does not have one.
+    /// So a local `main`, then a local `master`, stand in for it, and a
+    /// repository with none of the three is one this cannot answer for rather
+    /// than one where `main` is worth guessing.
+    async fn default_branch(&self, remote: &str) -> Result<String> {
+        let head = format!("refs/remotes/{remote}/HEAD");
+        let named = self
+            .git(&["symbolic-ref", &head], None)
             .await
-            .unwrap_or_default()
-            .trim()
-            .rsplit('/')
-            .next()
-            .filter(|name| !name.is_empty())
-            .unwrap_or("main")
-            .to_string()
+            .ok()
+            .and_then(|reference| {
+                reference
+                    .trim()
+                    .rsplit('/')
+                    .next()
+                    .filter(|name| !name.is_empty())
+                    .map(str::to_string)
+            });
+        if let Some(named) = named {
+            return Ok(named);
+        }
+        for candidate in ["main", "master"] {
+            if self
+                .git(
+                    &[
+                        "show-ref",
+                        "--verify",
+                        "--quiet",
+                        &format!("refs/heads/{candidate}"),
+                    ],
+                    None,
+                )
+                .await
+                .is_ok()
+            {
+                return Ok(candidate.to_string());
+            }
+        }
+        anyhow::bail!("Could not determine default branch for {remote}.")
     }
 
     /// Reject anything git itself would not accept as a branch name, and

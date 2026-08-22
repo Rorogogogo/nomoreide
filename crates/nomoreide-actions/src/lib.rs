@@ -36,9 +36,14 @@
 //! Agents do not reach `pull`, `merge`, `rebase`, or `pull_default`. Those four
 //! are the only git operations that can stop halfway and leave the working tree
 //! conflicted for a human to resolve, and `rebase` additionally rewrites hashes
-//! that may already be shared. The code corroborates it: they are the only ones
-//! guarded by [`git::GitActions`]'s clean-tree check and its `--abort` on
-//! failure.
+//! that may already be shared.
+//!
+//! They are not all guarded the same way, and it is worth being precise about
+//! it: `merge` and `rebase` refuse to start on a dirty tree and `--abort` if
+//! they fail, while `pull` and `pull_default` rely on `--ff-only` instead —
+//! git will not begin a merge it cannot fast-forward, so there is no half-state
+//! to abort out of. A dirty tree is fine for those two; git carries the changes
+//! across or refuses the switch itself.
 //!
 //! The readable invariant is that an agent may change the repository but must
 //! never leave the working tree in a state it cannot reason about. Whether to

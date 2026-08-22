@@ -331,11 +331,11 @@ frozen manifest instead of the table showed `nomoreide_git_push` is an MCP tool,
 so the ban would have broken parity. See "Dependency direction is the safety
 mechanism" above for where the boundary actually lives.
 
-Two behaviours are carried over verbatim rather than reconciled, and belong to
-the parity pass below: `pull_default` still uses `checkout` and swallows its
-error where the TypeScript `checkoutDefaultAndPull` uses `switch` and reports
-one, and the Rust `default_branch` has no fallback to a local `main`/`master`
-when `origin/HEAD` is unset.
+Two behaviours were carried over verbatim rather than reconciled, and were
+closed out at the end of Phase 3 (see "Slice 9" below): `pull_default` used
+`checkout` and swallowed its error where the TypeScript `checkoutDefaultAndPull`
+uses `switch` and reports one, and the Rust `default_branch` had no fallback to
+a local `main`/`master` when `origin/HEAD` is unset.
 
 **Slice 2 (done): repository registration and selection.**
 `nomoreide_git_register_repository` and `nomoreide_git_select_repository` are
@@ -592,7 +592,43 @@ The two Phase 3 gates now share `scripts/support/mcp-parity-fixture.ts` — the
 throwaway repository tree, the path tokens, and the payload normalization — so
 a third gate is a plan and a stub, not another copy of the harness.
 
-Remaining in Phase 3: snapshots and onboarding.
+**Slice 8 (done): snapshots and onboarding.** `snapshot_manager.rs` builds its
+tree in a scratch index so a checkpoint never disturbs what the user had
+staged, and `repo_onboard.rs` gained the scan half it was missing — the
+profile, the service proposals, and the database proposals. Gated by
+`npm run mcp:onboard-parity` (84 steps), verified against 41 seeded
+regressions of which it catches 39; the two it cannot are noted in the code.
+
+**Slice 9 (done): the two carried-over divergences.** `pull_default` now
+matches `checkoutDefaultAndPull` — `switch` rather than `checkout`, the switch
+output surfaced, a local `main`/`master` standing in for a missing
+`origin/HEAD`, and a refusal rather than a guess when none of the three is
+there. It returns `{ branch, output }`, which also let the desktop bridge stop
+inventing an empty branch name.
+
+Neither `pull` nor `pull_default` is an MCP tool, so no MCP gate can see them;
+`npm run git-actions-parity` drives the crate's own probe example instead (18
+cases, 13 of 13 seeded regressions caught). While writing it, the crate doc's
+claim that all four guarded operations share the clean-tree check turned out to
+be wrong — `pull` and `pull_default` rely on `--ff-only` instead — and was
+corrected.
+
+**Phase 3 is complete.** Its exit gate is met: 90 tools on the manifest,
+parity fixtures covering clean and dirty repositories, detached HEAD, remotes,
+worktrees, PR/issue errors, and the snapshot boundaries.
+
+Still open, deliberately, and recorded so neither is lost:
+
+- The ETag revalidation cache the reference keeps at module scope is unported.
+  The only Rust caller today is the MCP server, a fresh process per tool call,
+  where a cache could never be read. It belongs with the daemon's GitHub routes
+  in Phase 6, where it is what keeps the dashboard inside GitHub's rate limit.
+- `crates/nomoreide-tauri/src/commands/github.rs` still carries its own GitHub
+  client with `token`-scheme auth and different error wording. Pointing it at
+  `GithubManager` is a Phase 6 call-site change.
+- Whether to expose `merge`, `rebase`, and `pull` to MCP is an open product
+  question, not a port gap. It belongs in the TypeScript reference first so
+  both runtimes stay diffable.
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.

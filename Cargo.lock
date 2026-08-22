@@ -2336,6 +2336,7 @@ version = "0.1.103"
 dependencies = [
  "anyhow",
  "serde",
+ "serde_json",
  "tokio",
 ]
 
