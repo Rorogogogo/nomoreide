@@ -10,6 +10,7 @@ use axum::response::Response;
 use nomoreide_core::config::ConfigStore;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
+use tokio::sync::mpsc;
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -17,6 +18,10 @@ pub(crate) struct AppState {
     pub(crate) owner_id: String,
     pub(crate) config_store: ConfigStore,
     pub(crate) runtime: Arc<DaemonRuntime>,
+    /// The same channel a SIGTERM pulls on. A shutdown asked for over HTTP has
+    /// to drain the runtime the way a signalled one does, so both go through
+    /// here rather than one of them exiting the process directly.
+    pub(crate) shutdown: mpsc::Sender<()>,
 }
 
 /// Reject anything that does not carry the daemon's local credential.

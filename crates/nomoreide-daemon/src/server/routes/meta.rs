@@ -2,12 +2,20 @@
 
 use crate::server::app::AppState;
 use axum::extract::State;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::Serialize;
 
-pub(crate) fn routes() -> Router<AppState> {
+/// Reachable before a client has read the credential, because finding the
+/// daemon is what a client does first.
+pub(crate) fn public() -> Router<AppState> {
     Router::new().route("/api/health", get(health))
+}
+
+/// Stopping the daemon stops every service on the machine, so it sits behind
+/// the credential with the rest of the runtime.
+pub(crate) fn authenticated() -> Router<AppState> {
+    Router::new().route("/api/daemon/shutdown", post(shutdown))
 }
 
 #[derive(Serialize)]
@@ -30,4 +38,17 @@ async fn health(State(state): State<AppState>) -> Json<HealthEnvelope> {
         pid: std::process::id(),
         owner_id: state.owner_id,
     })
+}
+
+#[derive(Serialize)]
+struct ShutdownEnvelope {
+    ok: bool,
+}
+
+/// Answers before the daemon is down, not after: draining the services takes
+/// as long as they take to stop, and a caller that waited for the socket to
+/// close would be waiting on its own request to be dropped.
+async fn shutdown(State(state): State<AppState>) -> Json<ShutdownEnvelope> {
+    let _ = state.shutdown.try_send(());
+    Json(ShutdownEnvelope { ok: true })
 }

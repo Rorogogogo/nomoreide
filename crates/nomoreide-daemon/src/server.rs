@@ -42,8 +42,8 @@ impl Default for DaemonOptions {
 
 pub async fn run(options: DaemonOptions) -> Result<()> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
-    tokio::spawn(forward_shutdown_signals(shutdown_tx));
-    serve_with_shutdown_requests(options, shutdown_rx).await
+    tokio::spawn(forward_shutdown_signals(shutdown_tx.clone()));
+    serve_with_shutdown_requests(options, shutdown_tx, shutdown_rx).await
 }
 
 pub async fn serve_until<F>(options: DaemonOptions, shutdown: F) -> Result<()>
@@ -51,15 +51,20 @@ where
     F: Future<Output = ()> + Send + 'static,
 {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
+    let signalled = shutdown_tx.clone();
     tokio::spawn(async move {
         shutdown.await;
-        let _ = shutdown_tx.send(()).await;
+        let _ = signalled.send(()).await;
     });
-    serve_with_shutdown_requests(options, shutdown_rx).await
+    serve_with_shutdown_requests(options, shutdown_tx, shutdown_rx).await
 }
 
+/// `shutdown_requests` is handed in as both ends: the receiver drains the
+/// runtime, and the sender is what `POST /api/daemon/shutdown` pulls on, so a
+/// request and a signal reach the same drain rather than two separate exits.
 pub async fn serve_with_shutdown_requests(
     options: DaemonOptions,
+    shutdown_sender: mpsc::Sender<()>,
     shutdown_requests: mpsc::Receiver<()>,
 ) -> Result<()> {
     let ownership = DaemonOwnership::acquire(options.runtime_paths.clone())
@@ -112,6 +117,7 @@ pub async fn serve_with_shutdown_requests(
         owner_id: ownership.owner_id().to_string(),
         config_store,
         runtime: runtime.clone(),
+        shutdown: shutdown_sender,
     });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

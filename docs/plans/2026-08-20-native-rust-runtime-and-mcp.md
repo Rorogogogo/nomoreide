@@ -727,6 +727,31 @@ Documented divergences, none of them gated:
   index out of range". Both stay read-only, so what differs is how loudly a
   caller escapes their own row cap.
 
+**Slice 3 (done): the three documentation-and-UI tools.** The whole of the
+manifest's `documentation-ui` domain, gated by `npm run mcp:docs-ui-parity` —
+22 steps, half of which need no daemon and half of which need one each.
+
+- `nomoreide_docs` is a static table of twelve topics plus an index. Every
+  entry in the native table was transcribed from what the reference *reported*
+  for that topic, not from its source.
+- The overview named a hardcoded `v0.1.99` — four releases behind the package
+  it described, and drifting further with every release. Both runtimes now
+  interpolate their own version into a `{version}` placeholder, which is the
+  one thing in that table that is not a literal. This is a change to the
+  reference, not only to the port: replicating the drift would have shipped a
+  second runtime that tells agents the wrong version forever.
+- `nomoreide_open_ui` distinguishes five states. Four of them — `already_running`
+  (the state file named a daemon and it answered), `adopted` (the port answered
+  with no state file naming it), the foreign-port refusal, and `stopping` /
+  `not_running` from `nomoreide_close_ui` — are gated. The fifth, `started`, is
+  not: reaching it means no daemon is running, and the reference is launched
+  from `src/index.ts`, which refuses to spawn one. Everything up to the spawn is
+  shared and compared; the spawn is covered by the native runtime's own tests.
+- Two things the native runtime lacked and now has: `POST /api/daemon/shutdown`
+  on the Rust daemon, wired to the same drain a SIGTERM pulls on rather than to
+  a second exit path, and `nomoreide-daemon-client/src/lifecycle.rs`, which owns
+  "reuse, adopt, or spawn" so that no front end grows a second answer to it.
+
 - Port database registration, catalog inspection, sampling, masking, and guarded queries.
 - Support the same database engines and URL redaction behavior as today.
 - Port the provider registry and Vercel/Cloudflare/Vultr HTTP behavior used by MCP and dashboard APIs.

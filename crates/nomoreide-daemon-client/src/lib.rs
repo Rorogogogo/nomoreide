@@ -1,7 +1,13 @@
 //! Stateless discovery and protocol types for the machine-global NoMoreIDE daemon.
 
 mod client;
+mod lifecycle;
 pub mod protocol;
+
+pub use lifecycle::{
+    ensure as ensure_daemon, stop as stop_daemon, EnsureStatus, EnsuredDaemon, LifecycleError,
+    StopOutcome,
+};
 
 pub use client::{DaemonApiError, DaemonClient, DaemonClientError};
 /// Re-exported because the error types above carry one.

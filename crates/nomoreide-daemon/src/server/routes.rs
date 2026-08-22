@@ -16,7 +16,7 @@ pub(crate) fn router(state: AppState) -> Router {
         // Health is what a client probes to find the daemon, before it has read
         // the credential — so it is deliberately the one endpoint outside the
         // authenticated router.
-        .merge(meta::routes())
+        .merge(meta::public())
         .merge(authenticated(state.clone()))
         .fallback(not_found)
         .method_not_allowed_fallback(method_not_allowed)
@@ -29,6 +29,7 @@ pub(crate) fn router(state: AppState) -> Router {
 /// endpoints, it does not hide which ones exist.
 fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
+        .merge(meta::authenticated())
         .merge(services::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())

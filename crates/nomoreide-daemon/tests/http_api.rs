@@ -977,3 +977,72 @@ async fn wait_for_state(
     }
     panic!("daemon state was not published");
 }
+
+/// The shutdown endpoint drains the runtime the way a signal does, and it is
+/// behind the credential — stopping this daemon stops every service on the
+/// machine, which is not something an unauthenticated caller gets to do.
+#[tokio::test]
+async fn shutdown_is_authenticated_and_actually_stops_the_daemon() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({ "version": 1, "services": [], "bundles": [] })).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    // No external shutdown: the only thing that may end this server is the
+    // request below, which is the whole point of the test.
+    let (_shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+
+    let unauthenticated = http
+        .post(format!("{}/api/daemon/shutdown", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
+
+    let accepted = http
+        .post(format!("{}/api/daemon/shutdown", state.url))
+        .bearer_auth(credential(&runtime_paths).await)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(accepted.status(), StatusCode::OK);
+    assert_eq!(
+        accepted.json::<serde_json::Value>().await.unwrap(),
+        json!({ "ok": true })
+    );
+
+    // It answers before it is down, so the proof it meant it is the server
+    // task ending on its own.
+    for _ in 0..200 {
+        if server.is_finished() {
+            server.await.unwrap().unwrap();
+            tokio::fs::remove_dir_all(&root).await.ok();
+            return;
+        }
+        sleep(Duration::from_millis(20)).await;
+    }
+    panic!("the daemon acknowledged a shutdown it never performed");
+}

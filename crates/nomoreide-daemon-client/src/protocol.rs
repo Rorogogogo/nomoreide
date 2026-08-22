@@ -218,6 +218,13 @@ pub struct ServiceLogEntry {
     pub timestamp: String,
 }
 
+/// The daemon's acknowledgement that it will stop. It says nothing about
+/// whether the services are down yet — that takes as long as they take.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ShutdownEnvelope {
+    pub ok: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct LogsEnvelope {

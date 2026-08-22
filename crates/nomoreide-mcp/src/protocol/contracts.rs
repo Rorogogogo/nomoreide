@@ -76,6 +76,10 @@ pub(super) enum ArgumentContract {
     DatabaseSample,
     /// `nomoreide_db_query`: a connection, the statement, and the same cap.
     DatabaseQuery,
+    /// `nomoreide_docs`: one optional topic from a fixed set. Absent asks for
+    /// the index, so — unlike a database engine — nothing is missing when it
+    /// is not given.
+    DocsTopic,
     /// `nomoreide_git_select_worktree`: a registered repository name and a
     /// path, both required. Whether the path is one of that repository's
     /// worktrees is the store's question, not this one's.
@@ -224,6 +228,8 @@ impl ArgumentContract {
             "nomoreide_db_object_details" => Some(Self::DatabaseObject),
             "nomoreide_db_sample" => Some(Self::DatabaseSample),
             "nomoreide_db_query" => Some(Self::DatabaseQuery),
+            "nomoreide_docs" => Some(Self::DocsTopic),
+            "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
         }
     }
@@ -288,6 +294,11 @@ impl ArgumentContract {
                 failures.extend(bounded_integer(arguments, "limit", ROW_LIMIT_MAX));
                 collect(failures)
             }
+            Self::DocsTopic => collect(enumerated(
+                arguments,
+                "topic",
+                &crate::tools::docs::TOPIC_IDS,
+            )),
             Self::GitCwd => collect(optional_name(arguments, "cwd")),
             // `cwd` first: it is the base schema the path is extended onto, so
             // it is also the first failure the reference reports.

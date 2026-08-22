@@ -1,9 +1,11 @@
 mod database;
 mod diagnostics;
+pub(crate) mod docs;
 mod git;
 mod github;
 mod onboard;
 mod registration;
+mod ui;
 
 use nomoreide_core::config::{ConfigStore, DatabaseDef};
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, ServiceRuntimeStatus};
@@ -52,6 +54,15 @@ impl ToolExecutor for NativeToolExecutor {
                 // it is served without a daemon. Requiring one would make
                 // registering a service depend on something the service does
                 // not need in order to be registered.
+                // Documentation is a table this binary carries, so it answers
+                // whether or not anything else on the machine is running.
+                NativeTool::Docs(topic) => docs::docs(topic),
+                NativeTool::OpenUi => {
+                    ui::open_ui(&self.paths, self.port, env!("CARGO_PKG_VERSION")).await
+                }
+                NativeTool::CloseUi => {
+                    ui::close_ui(&self.paths, self.port, env!("CARGO_PKG_VERSION")).await
+                }
                 NativeTool::RegisterService => {
                     registration::register_service(&self.config, arguments).await
                 }
@@ -322,8 +333,11 @@ impl NativeToolExecutor {
             | NativeTool::GithubAddIssueComment { .. }
             | NativeTool::GithubCreateIssue { .. }
             | NativeTool::GithubGetCommitCi { .. }
-            | NativeTool::GithubListWorkflowRuns { .. } => {
-                unreachable!("config writes and git operations are served locally")
+            | NativeTool::GithubListWorkflowRuns { .. }
+            | NativeTool::Docs(_)
+            | NativeTool::OpenUi
+            | NativeTool::CloseUi => {
+                unreachable!("everything that needs no daemon is served before this")
             }
         }
     }
@@ -333,6 +347,10 @@ impl NativeToolExecutor {
 /// protocol layer enforces each tool's argument contract before execution;
 /// re-reading it here keeps this boundary self-contained.
 enum NativeTool<'a> {
+    /// An absent topic is the index rather than a missing argument.
+    Docs(Option<&'a str>),
+    OpenUi,
+    CloseUi,
     ListServices,
     StartService(&'a str),
     StopService(&'a str),
@@ -524,6 +542,9 @@ enum NativeTool<'a> {
 impl<'a> NativeTool<'a> {
     fn parse(name: &str, arguments: &'a Map<String, Value>) -> Result<Self, String> {
         match name {
+            "nomoreide_docs" => Ok(Self::Docs(arguments.get("topic").and_then(Value::as_str))),
+            "nomoreide_open_ui" => Ok(Self::OpenUi),
+            "nomoreide_close_ui" => Ok(Self::CloseUi),
             "nomoreide_list_services" => Ok(Self::ListServices),
             "nomoreide_status" => Ok(Self::Status),
             "nomoreide_start_service" => Ok(Self::StartService(service_name(arguments)?)),

@@ -1,7 +1,8 @@
 use crate::protocol::{
     BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, LogsEnvelope, MutationErrorEnvelope,
     PortConflict, ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceLogEntry,
-    ServiceMutationEnvelope, ServiceRuntimeStatus, StatusEnvelope, TimelineEnvelope, TimelineEvent,
+    ServiceMutationEnvelope, ServiceRuntimeStatus, ShutdownEnvelope, StatusEnvelope,
+    TimelineEnvelope, TimelineEvent,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -227,6 +228,25 @@ impl DaemonClient {
         name: &str,
     ) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
         self.bundle_action(name, "stop").await
+    }
+
+    /// Ask the daemon to stop itself, and with it every service on the machine.
+    ///
+    /// The daemon answers before it is down — draining takes as long as the
+    /// services take to stop — so a caller that needs the port free has to
+    /// watch for it rather than trust this returning.
+    pub async fn shutdown(&self) -> Result<(), DaemonClientError> {
+        let body = self
+            .mutation(self.endpoint.api_url("api/daemon/shutdown"), BUNDLE_TIMEOUT)
+            .await?;
+        let envelope = serde_json::from_slice::<ShutdownEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(())
     }
 
     async fn service_action(
