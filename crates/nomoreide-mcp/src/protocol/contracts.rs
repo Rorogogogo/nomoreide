@@ -60,6 +60,17 @@ pub(super) enum ArgumentContract {
     /// path, both required. Whether the path is one of that repository's
     /// worktrees is the store's question, not this one's.
     WorktreeSelection,
+    /// `nomoreide_git_switch_branch` and `nomoreide_git_create_branch`: the
+    /// `cwd` base plus a required `name`. Whether the name is one git would
+    /// accept is decided later, by git.
+    GitBranchName,
+    /// `nomoreide_git_stage` and `nomoreide_git_unstage`: the `cwd` base plus
+    /// at least one non-empty path. A path of only spaces clears this bar and
+    /// is refused by the operation itself.
+    GitPaths,
+    /// `nomoreide_git_commit`: the `cwd` base plus a required `message`. A
+    /// blank one likewise gets past here.
+    GitCommit,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -93,7 +104,14 @@ impl ArgumentContract {
             "nomoreide_git_status" | "nomoreide_git_branches" => Some(Self::GitCwd),
             "nomoreide_git_diff" | "nomoreide_git_staged_diff" => Some(Self::GitPath),
             "nomoreide_git_log" => Some(Self::GitLog),
-            "nomoreide_git_worktrees" | "nomoreide_git_prune_worktrees" => Some(Self::GitCwd),
+            "nomoreide_git_worktrees" | "nomoreide_git_prune_worktrees" | "nomoreide_git_fetch" => {
+                Some(Self::GitCwd)
+            }
+            "nomoreide_git_switch_branch" | "nomoreide_git_create_branch" => {
+                Some(Self::GitBranchName)
+            }
+            "nomoreide_git_stage" | "nomoreide_git_unstage" => Some(Self::GitPaths),
+            "nomoreide_git_commit" => Some(Self::GitCommit),
             "nomoreide_git_create_worktree" => Some(Self::WorktreeCreation),
             "nomoreide_git_select_worktree" => Some(Self::WorktreeSelection),
             _ => None,
@@ -145,6 +163,25 @@ impl ArgumentContract {
                 failures.extend(boolean(arguments, "createBranch"));
                 failures.extend(optional_name(arguments, "baseRef"));
                 failures.extend(optional_name(arguments, "projectName"));
+                collect(failures)
+            }
+            Self::GitBranchName => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(required_name(arguments).err().unwrap_or_default());
+                collect(failures)
+            }
+            Self::GitPaths => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(string_array(arguments, "paths", ArrayShape::NAMES));
+                collect(failures)
+            }
+            Self::GitCommit => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(
+                    required_string(arguments, "message")
+                        .err()
+                        .unwrap_or_default(),
+                );
                 collect(failures)
             }
             Self::WorktreeSelection => {

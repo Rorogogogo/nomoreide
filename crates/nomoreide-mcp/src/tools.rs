@@ -83,6 +83,14 @@ impl ToolExecutor for NativeToolExecutor {
                     git::select_worktree(&self.config, repository, path).await
                 }
                 NativeTool::GitPruneWorktrees(cwd) => git::prune_worktrees(cwd).await,
+                NativeTool::GitStage { cwd, paths } => git::stage(cwd, &paths).await,
+                NativeTool::GitUnstage { cwd, paths } => git::unstage(cwd, &paths).await,
+                NativeTool::GitCommit { cwd, message } => {
+                    git::commit(&self.config, cwd, message).await
+                }
+                NativeTool::GitCreateBranch { cwd, name } => git::create_branch(cwd, name).await,
+                NativeTool::GitSwitchBranch { cwd, name } => git::switch_branch(cwd, name).await,
+                NativeTool::GitFetch(cwd) => git::fetch(cwd).await,
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -185,7 +193,13 @@ impl NativeToolExecutor {
             | NativeTool::GitWorktrees(_)
             | NativeTool::GitCreateWorktree { .. }
             | NativeTool::GitSelectWorktree { .. }
-            | NativeTool::GitPruneWorktrees(_) => {
+            | NativeTool::GitPruneWorktrees(_)
+            | NativeTool::GitStage { .. }
+            | NativeTool::GitUnstage { .. }
+            | NativeTool::GitCommit { .. }
+            | NativeTool::GitCreateBranch { .. }
+            | NativeTool::GitSwitchBranch { .. }
+            | NativeTool::GitFetch(_) => {
                 unreachable!("config writes and git operations are served locally")
             }
         }
@@ -257,6 +271,29 @@ enum NativeTool<'a> {
         path: &'a str,
     },
     GitPruneWorktrees(Option<&'a str>),
+    /// Paths are owned rather than borrowed: they arrive as JSON values and
+    /// have to be strings by the time git sees them.
+    GitStage {
+        cwd: Option<&'a str>,
+        paths: Vec<String>,
+    },
+    GitUnstage {
+        cwd: Option<&'a str>,
+        paths: Vec<String>,
+    },
+    GitCommit {
+        cwd: Option<&'a str>,
+        message: &'a str,
+    },
+    GitCreateBranch {
+        cwd: Option<&'a str>,
+        name: &'a str,
+    },
+    GitSwitchBranch {
+        cwd: Option<&'a str>,
+        name: &'a str,
+    },
+    GitFetch(Option<&'a str>),
 }
 
 impl<'a> NativeTool<'a> {
@@ -329,6 +366,33 @@ impl<'a> NativeTool<'a> {
             "nomoreide_git_prune_worktrees" => {
                 Ok(Self::GitPruneWorktrees(optional_text(arguments, "cwd")))
             }
+            "nomoreide_git_stage" => Ok(Self::GitStage {
+                cwd: optional_text(arguments, "cwd"),
+                paths: string_list(arguments, "paths"),
+            }),
+            "nomoreide_git_unstage" => Ok(Self::GitUnstage {
+                cwd: optional_text(arguments, "cwd"),
+                paths: string_list(arguments, "paths"),
+            }),
+            "nomoreide_git_commit" => Ok(Self::GitCommit {
+                cwd: optional_text(arguments, "cwd"),
+                // Not `required_text`: a message of only spaces clears that
+                // bar, and refusing it is `GitManager::commit`'s job so the
+                // dashboard and the desktop app are refused the same way.
+                message: arguments
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default(),
+            }),
+            "nomoreide_git_create_branch" => Ok(Self::GitCreateBranch {
+                cwd: optional_text(arguments, "cwd"),
+                name: required_name(arguments, "branch")?,
+            }),
+            "nomoreide_git_switch_branch" => Ok(Self::GitSwitchBranch {
+                cwd: optional_text(arguments, "cwd"),
+                name: required_name(arguments, "branch")?,
+            }),
+            "nomoreide_git_fetch" => Ok(Self::GitFetch(optional_text(arguments, "cwd"))),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -369,6 +433,23 @@ fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty())
         .ok_or_else(|| format!("Registered {kind} name is required."))
+}
+
+/// An array of strings under `key`. The protocol layer has already rejected a
+/// missing array, a non-array, and a non-string member, so anything dropped
+/// here could not have reached git as a path anyway.
+fn string_list(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    arguments
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|members| {
+            members
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// A required non-empty argument under `key`. Like [`required_name`], this

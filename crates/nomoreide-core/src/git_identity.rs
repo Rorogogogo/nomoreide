@@ -12,6 +12,7 @@ use crate::config::{
     Config, ConfigStore, GitRepoDef, GithubCredentialSelection, GithubIdentityDef,
 };
 use crate::github_auth;
+use anyhow::Result;
 use serde::Serialize;
 use std::collections::HashMap;
 use tokio::process::Command;
@@ -48,6 +49,28 @@ pub fn identity_env(identity: &GithubIdentityDef) -> HashMap<String, String> {
         ("GIT_COMMITTER_NAME".into(), identity.name.clone()),
         ("GIT_COMMITTER_EMAIL".into(), identity.email.clone()),
     ])
+}
+
+/// [`resolve_identity_state`] for callers that only know a working directory —
+/// the MCP tools and the CLI, which take a `cwd` rather than a repository name.
+/// An unregistered or ambiguous directory resolves to "no selection", which
+/// keeps the machine identity in charge.
+pub async fn resolve_identity_for_cwd(store: &ConfigStore, cwd: &str) -> Result<GitIdentityState> {
+    let config = store.load().await?;
+    let repository = repository_for_cwd(&config, cwd).await;
+    Ok(resolve_identity_state(store, &config, repository, cwd).await)
+}
+
+/// The registered repository owning `cwd`, or None when there is not a clear
+/// one. An ambiguous or nested directory is None here rather than an error:
+/// the caller falls back to the machine's identity, which is what git would
+/// have done anyway.
+pub async fn repository_for_cwd<'a>(config: &'a Config, cwd: &str) -> Option<&'a GitRepoDef> {
+    let top_level = crate::repo_match::git_toplevel(cwd).await?;
+    crate::repo_match::match_registered_repository(config, &top_level)
+        .await
+        .ok()
+        .flatten()
 }
 
 pub async fn resolve_identity_state(

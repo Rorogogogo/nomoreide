@@ -299,7 +299,7 @@ pub async fn git_stage(
     state: State<'_, AppState>,
     paths: Vec<String>,
     repo: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::stage(&cwd, &paths)
         .await
@@ -311,7 +311,7 @@ pub async fn git_unstage(
     state: State<'_, AppState>,
     paths: Vec<String>,
     repo: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::unstage(&cwd, &paths)
         .await
@@ -430,7 +430,7 @@ pub async fn git_create_branch(
     name: String,
     start_point: Option<String>,
     repo: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::create_branch(&cwd, &name, start_point.as_deref())
         .await
@@ -454,7 +454,7 @@ pub async fn git_switch_branch(
     state: State<'_, AppState>,
     name: String,
     repo: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::switch_branch(&cwd, &name)
         .await

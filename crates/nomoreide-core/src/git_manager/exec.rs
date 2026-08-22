@@ -5,6 +5,7 @@
 //! `nomoreide-actions` exists to withhold. That crate carries its own runner.
 
 use anyhow::Result;
+use std::collections::HashMap;
 use std::io::ErrorKind;
 use tokio::process::Command;
 
@@ -29,12 +30,22 @@ pub(super) async fn output(cwd: &str, args: &[&str]) -> Result<String> {
 /// stdout, or stderr when stdout is empty; and on failure stderr, else stdout,
 /// else the reason the process never started — trimmed either way.
 pub(super) async fn checked(cwd: &str, args: &[&str]) -> Result<String> {
-    let out = match Command::new("git")
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .await
-    {
+    checked_with_env(cwd, args, &HashMap::new()).await
+}
+
+/// [`checked`] with extra environment variables for this one command.
+///
+/// Passed per command rather than written to `git config`, so nothing about
+/// the machine's setup changes and a commit in another repository at the same
+/// moment is unaffected.
+pub(super) async fn checked_with_env(
+    cwd: &str,
+    args: &[&str],
+    env: &HashMap<String, String>,
+) -> Result<String> {
+    let mut command = Command::new("git");
+    command.args(args).current_dir(cwd).envs(env);
+    let out = match command.output().await {
         Ok(out) => out,
         Err(error) => anyhow::bail!("{}", spawn_failure(&error)),
     };
@@ -76,10 +87,27 @@ pub(super) async fn lines(cwd: &str, args: &[&str]) -> Result<Vec<String>> {
 
 /// Reject anything git would not accept as a branch name, and anything that
 /// could be read as an option instead of a ref.
-pub(super) async fn validate_branch_ref(cwd: &str, branch: &str) -> Result<()> {
-    if branch.trim().is_empty() || branch.starts_with('-') {
-        anyhow::bail!("branch is required");
+///
+/// `label` names the argument in the refusal — a start point and a branch fail
+/// the same way but are not the same thing to whoever reads the message.
+/// Missing and malformed are told apart, because they are different mistakes.
+pub(super) async fn validate_branch_ref(cwd: &str, value: &str, label: &str) -> Result<String> {
+    let name = value.trim();
+    if name.is_empty() {
+        anyhow::bail!("{label} is required");
     }
-    checked(cwd, &["check-ref-format", "--branch", branch]).await?;
-    Ok(())
+    if name.starts_with('-') {
+        anyhow::bail!("{label} is invalid");
+    }
+    checked(cwd, &["check-ref-format", "--branch", name]).await?;
+    Ok(name.to_string())
+}
+
+/// A required argument that only has to be non-blank. Returns it trimmed.
+pub(super) fn require_name(value: &str, label: &str) -> Result<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        anyhow::bail!("{label} is required");
+    }
+    Ok(trimmed.to_string())
 }

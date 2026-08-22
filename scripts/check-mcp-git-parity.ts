@@ -252,6 +252,11 @@ function command(runtime: Runtime): McpCommand {
       XDG_CONFIG_HOME: join(runtime.home, ".config"),
       NOMOREIDE_AUTO_UI: "0",
       NOMOREIDE_WORKTREES_DIR: runtime.worktrees,
+      // A commit the *tool* makes is stamped from this environment. Without
+      // it the two runtimes commit at different instants and every hash they
+      // report differs, which would make `nomoreide_git_commit` uncomparable.
+      GIT_AUTHOR_DATE: COMMIT_TIME,
+      GIT_COMMITTER_DATE: COMMIT_TIME,
     },
   };
 }

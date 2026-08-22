@@ -30,6 +30,17 @@
       ]
     },
     {
+      "id": "writes",
+      "initialBranch": "main",
+      "comment": "Untouched by the read steps, so the staging and committing steps below start from a state they fully describe.",
+      "setup": [
+        {"commit": {"file": "kept.txt", "contents": "one\n", "message": "initial commit"}},
+        {"remote": true},
+        {"branch": "existing"},
+        {"write": {"kept.txt": "one\ntwo\n", "added.txt": "new\n"}}
+      ]
+    },
+    {
       "id": "unborn",
       "initialBranch": "main",
       "comment": "Initialized and never committed to: a branch that exists by name only.",
@@ -427,6 +438,199 @@
       "id": "invalid/prune-wrong-type-cwd",
       "tool": "nomoreide_git_prune_worktrees",
       "arguments": {"cwd": 9}
+    },
+    {
+      "id": "writes/stage-one-path",
+      "comment": "git says nothing, and the reply is that nothing as a JSON string.",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["added.txt"]}
+    },
+    {
+      "id": "writes/stage-shows-in-status",
+      "tool": "nomoreide_git_status",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "writes/stage-several-paths",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["kept.txt", "added.txt"]}
+    },
+    {
+      "id": "writes/unstage-one-back",
+      "tool": "nomoreide_git_unstage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["kept.txt"]}
+    },
+    {
+      "id": "writes/status-after-unstaging",
+      "tool": "nomoreide_git_status",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "error/stage-a-path-that-does-not-exist",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["nowhere.txt"]}
+    },
+    {
+      "id": "error/unstage-a-path-git-never-knew",
+      "comment": "The Rust unstage ignored git's exit status entirely before this slice.",
+      "tool": "nomoreide_git_unstage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["never-tracked.txt"]}
+    },
+    {
+      "id": "error/stage-a-path-that-is-only-spaces",
+      "comment": "Past the schema's length check, and refused by the operation.",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["  "]}
+    },
+    {
+      "id": "writes/commit-in-an-unregistered-repository",
+      "comment": "No registration, so no selected account, so the machine identity commits.",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}", "message": "add a file"}
+    },
+    {
+      "id": "error/commit-with-nothing-staged",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}", "message": "nothing to say"}
+    },
+    {
+      "id": "error/commit-with-a-blank-message",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}", "message": "   "}
+    },
+    {
+      "id": "writes/register-then-commit",
+      "comment": "Registered now, so the identity path resolves a repository rather than none.",
+      "tool": "nomoreide_git_register_repository",
+      "arguments": {"name": "writes", "path": "{{repo:writes}}"}
+    },
+    {
+      "id": "writes/stage-for-the-registered-commit",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["kept.txt"]}
+    },
+    {
+      "id": "writes/commit-in-a-registered-repository",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}", "message": "second commit"}
+    },
+    {
+      "id": "writes/create-branch",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "feature/y"}
+    },
+    {
+      "id": "error/create-a-branch-that-exists",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "feature/y"}
+    },
+    {
+      "id": "error/create-a-branch-git-rejects",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "bad name"}
+    },
+    {
+      "id": "error/create-a-branch-that-looks-like-an-option",
+      "comment": "Refused before git sees it, and told apart from a missing name.",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "-x"}
+    },
+    {
+      "id": "error/create-a-branch-named-only-spaces",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "  "}
+    },
+    {
+      "id": "writes/switch-back-to-main",
+      "tool": "nomoreide_git_switch_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "main"}
+    },
+    {
+      "id": "writes/switch-to-a-remote-branch",
+      "comment": "A remote name is tracked rather than switched to, which git then refuses because the local branch exists.",
+      "tool": "nomoreide_git_switch_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "origin/main"}
+    },
+    {
+      "id": "error/switch-to-a-branch-that-does-not-exist",
+      "tool": "nomoreide_git_switch_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "ghost"}
+    },
+    {
+      "id": "error/switch-to-a-branch-named-only-spaces",
+      "tool": "nomoreide_git_switch_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": "  "}
+    },
+    {
+      "id": "writes/fetch",
+      "tool": "nomoreide_git_fetch",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "error/fetch-outside-a-repository",
+      "tool": "nomoreide_git_fetch",
+      "arguments": {"cwd": "{{dir:not-a-repo}}"}
+    },
+    {
+      "id": "error/stage-outside-a-repository",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{dir:not-a-repo}}", "paths": ["x"]}
+    },
+    {
+      "id": "writes/log-after-the-commits",
+      "comment": "The hashes are comparable only because every commit is stamped with one fixed time.",
+      "tool": "nomoreide_git_log",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "invalid/stage-no-paths",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "invalid/stage-empty-array",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": []}
+    },
+    {
+      "id": "invalid/unstage-empty-member",
+      "tool": "nomoreide_git_unstage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": ["a.txt", ""]}
+    },
+    {
+      "id": "invalid/stage-wrong-types",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": 1, "paths": "a.txt"}
+    },
+    {
+      "id": "invalid/stage-non-string-member",
+      "tool": "nomoreide_git_stage",
+      "arguments": {"cwd": "{{repo:writes}}", "paths": [2]}
+    },
+    {
+      "id": "invalid/commit-no-message",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "invalid/commit-wrong-type-message",
+      "tool": "nomoreide_git_commit",
+      "arguments": {"cwd": "{{repo:writes}}", "message": 7}
+    },
+    {
+      "id": "invalid/create-branch-no-name",
+      "tool": "nomoreide_git_create_branch",
+      "arguments": {"cwd": "{{repo:writes}}"}
+    },
+    {
+      "id": "invalid/switch-branch-wrong-type-name",
+      "tool": "nomoreide_git_switch_branch",
+      "arguments": {"cwd": "{{repo:writes}}", "name": []}
+    },
+    {
+      "id": "invalid/fetch-empty-cwd",
+      "tool": "nomoreide_git_fetch",
+      "arguments": {"cwd": ""}
     },
     {
       "id": "final/selection-survives",

@@ -11,6 +11,7 @@
 
 use super::render;
 use nomoreide_core::config::{ConfigStore, GitRepoDef};
+use nomoreide_core::git_identity::resolve_identity_for_cwd;
 use nomoreide_core::git_manager::GitManager;
 
 pub(super) async fn status(cwd: Option<&str>) -> Result<String, String> {
@@ -135,4 +136,56 @@ pub(super) async fn prune_worktrees(cwd: Option<&str>) -> Result<String, String>
         .await
         .map_err(|error| error.to_string())?;
     render(&serde_json::json!({ "pruned": true }))
+}
+
+/// Staging and unstaging report git's own output — usually nothing — as a JSON
+/// string rather than as bare text, which is what the reference does and what
+/// tells the two apart from the tools that return a patch.
+pub(super) async fn stage(cwd: Option<&str>, paths: &[String]) -> Result<String, String> {
+    let output = GitManager::stage(&working_directory(cwd)?, paths)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&output)
+}
+
+pub(super) async fn unstage(cwd: Option<&str>, paths: &[String]) -> Result<String, String> {
+    let output = GitManager::unstage(&working_directory(cwd)?, paths)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&output)
+}
+
+/// Commit as the GitHub account selected for this repository, so an agent's
+/// commits and a human's carry one author. Without a selected account this
+/// falls back to the machine's `user.email`, which is what git would do anyway.
+pub(super) async fn commit(
+    store: &ConfigStore,
+    cwd: Option<&str>,
+    message: &str,
+) -> Result<String, String> {
+    let directory = working_directory(cwd)?;
+    let identity = resolve_identity_for_cwd(store, &directory)
+        .await
+        .map_err(|error| error.to_string())?;
+    GitManager::commit(&directory, message, identity.selected.as_ref())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub(super) async fn create_branch(cwd: Option<&str>, name: &str) -> Result<String, String> {
+    GitManager::create_branch(&working_directory(cwd)?, name, None)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub(super) async fn switch_branch(cwd: Option<&str>, name: &str) -> Result<String, String> {
+    GitManager::switch_branch(&working_directory(cwd)?, name)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub(super) async fn fetch(cwd: Option<&str>) -> Result<String, String> {
+    GitManager::fetch(&working_directory(cwd)?)
+        .await
+        .map_err(|error| error.to_string())
 }

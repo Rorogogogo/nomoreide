@@ -455,6 +455,45 @@ proves, only the unit-level shape is. Verified to bite on four seeded
 regressions: the missing `-z`, a bare-stderr failure, string path comparison,
 and the per-character `safe_segment`.
 
+**Slice 5 (done): the local write ops — stage, unstage, commit, create/switch
+branch, fetch.** Six tools, and the first slice where a Rust method silently
+reported success for a failed git command: `unstage` ran `restore --staged` and
+discarded the exit status entirely, so an agent unstaging a path git had never
+heard of was told it worked. Also fixed:
+
+- Every one of these returned `()`. The reference returns what git said — the
+  commit summary, the "Switched to a new branch" line — which is the only
+  report an agent has that the thing happened. They now return `String`, and
+  the desktop commands hand it back rather than dropping it.
+- `stage` bailed with git's stderr untrimmed; all six now go through
+  `exec::checked`, which is the reference runner's rule in one place.
+- Neither `stage` nor `unstage` checked that it had been given a path.
+  A path of only spaces clears the schema's length check and would reach git as
+  an argument meaning the current directory — staging everything instead of the
+  nothing that was named.
+- `commit` did not refuse a blank message.
+- `validate_branch_ref` reported a branch that looks like an option ("-x") as
+  *missing* rather than invalid, and could not name a start point in its
+  refusal. It now takes a label and tells the two mistakes apart.
+
+`nomoreide_git_commit` needed the commit-identity path, which needed
+`repository_for_cwd` — so `src/core/repo-match.ts` is ported as
+`crates/nomoreide-core/src/repo_match.rs`, with its strictness intact: an
+ambiguous or nested directory is refused rather than resolved, because the
+answer decides which GitHub account a commit is attributed to. It is also what
+`push` and the GitHub context will need.
+
+The fixture is at **111 steps**, on a `writes` repository the read steps never
+touch. The MCP process now runs with a fixed `GIT_AUTHOR_DATE`/
+`GIT_COMMITTER_DATE`, so a commit made *by a tool* is byte-identical across the
+two runtimes and `nomoreide_git_commit` is comparable as reported. Verified to
+bite on four seeded regressions: the swallowed `unstage` status, the missing
+blank-message check, the mislabelled option-shaped branch, and blank paths
+reaching git.
+
+Remaining in Phase 3's git group: `push` and `clone`, both of which need
+credential resolution, so they land with the GitHub slice.
+
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.
 - Port snapshots, repository selection, worktree management, context assembly, and onboarding.
