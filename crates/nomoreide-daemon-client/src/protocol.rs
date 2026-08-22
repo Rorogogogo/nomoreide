@@ -218,6 +218,48 @@ pub struct ServiceLogEntry {
     pub timestamp: String,
 }
 
+/// One deduped incident as it travels over the wire.
+///
+/// A twin of the core type rather than a re-export: this crate deliberately
+/// does not depend on `nomoreide-core`, so the daemon converts on the way out
+/// and clients read this without pulling the runtime in behind it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Incident {
+    pub id: u64,
+    pub service: String,
+    pub level: String,
+    pub signature: String,
+    pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    pub first_seen: String,
+    pub last_seen: String,
+    pub count: u64,
+    pub log_excerpt: Vec<String>,
+}
+
+/// The incidents the inbox is holding, most recently active first.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IncidentsEnvelope {
+    pub ok: bool,
+    pub incidents: Vec<Incident>,
+}
+
+/// One incident, the file it was traced to, and the prompt built from both.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IncidentPromptEnvelope {
+    pub ok: bool,
+    pub incident: Incident,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+    pub prompt: String,
+}
+
 /// The daemon's acknowledgement that it will stop. It says nothing about
 /// whether the services are down yet — that takes as long as they take.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

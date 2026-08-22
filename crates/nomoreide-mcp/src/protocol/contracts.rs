@@ -76,6 +76,13 @@ pub(super) enum ArgumentContract {
     DatabaseSample,
     /// `nomoreide_db_query`: a connection, the statement, and the same cap.
     DatabaseQuery,
+    /// `nomoreide_list_errors`: one optional `limit` in `(0, 200]`. Incidents
+    /// are already deduped, so this bound is far above what a caller needs.
+    IncidentList,
+    /// `nomoreide_error_prompt`: the id a listing handed out. Whether the
+    /// inbox still holds it is the executor's question — an inbox keeps only
+    /// the most recent hundred, so a valid id can stop existing.
+    IncidentPrompt,
     /// `nomoreide_docs`: one optional topic from a fixed set. Absent asks for
     /// the index, so — unlike a database engine — nothing is missing when it
     /// is not given.
@@ -166,6 +173,8 @@ const PAGE_MAX: f64 = f64::MAX;
 const SERVICE_KINDS: &[&str] = &["local", "docker-compose", "ssh"];
 /// The engines a connection can name.
 const DATABASE_ENGINES: &[&str] = &["postgres", "mysql", "sqlite"];
+/// The reference's `z.number().int().positive().max(200)`, for incidents.
+const INCIDENT_LIMIT_MAX: f64 = 200.0;
 /// The reference's `z.number().int().positive().max(1000)`, for rows rather
 /// than for log lines.
 const ROW_LIMIT_MAX: f64 = 1000.0;
@@ -228,6 +237,8 @@ impl ArgumentContract {
             "nomoreide_db_object_details" => Some(Self::DatabaseObject),
             "nomoreide_db_sample" => Some(Self::DatabaseSample),
             "nomoreide_db_query" => Some(Self::DatabaseQuery),
+            "nomoreide_list_errors" => Some(Self::IncidentList),
+            "nomoreide_error_prompt" => Some(Self::IncidentPrompt),
             "nomoreide_docs" => Some(Self::DocsTopic),
             "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
@@ -294,6 +305,8 @@ impl ArgumentContract {
                 failures.extend(bounded_integer(arguments, "limit", ROW_LIMIT_MAX));
                 collect(failures)
             }
+            Self::IncidentList => collect(bounded_integer(arguments, "limit", INCIDENT_LIMIT_MAX)),
+            Self::IncidentPrompt => collect(required_integer(arguments, "id")),
             Self::DocsTopic => collect(enumerated(
                 arguments,
                 "topic",

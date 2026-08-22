@@ -1,6 +1,7 @@
 mod database;
 mod diagnostics;
 pub(crate) mod docs;
+mod errors;
 mod git;
 mod github;
 mod onboard;
@@ -234,6 +235,8 @@ impl NativeToolExecutor {
                     .map_err(daemon_message)?;
                 render(&ServiceStatusView::of(&status))
             }
+            NativeTool::ListErrors { limit } => errors::list(&client, limit).await,
+            NativeTool::ErrorPrompt { id } => errors::prompt(&client, id).await,
             NativeTool::ReadLogs { service, limit } => {
                 let logs = client.logs(service, limit).await.map_err(daemon_message)?;
                 render(&logs)
@@ -351,6 +354,13 @@ enum NativeTool<'a> {
     Docs(Option<&'a str>),
     OpenUi,
     CloseUi,
+    /// The daemon owns the inbox, so both of these go through it.
+    ListErrors {
+        limit: u32,
+    },
+    ErrorPrompt {
+        id: u64,
+    },
     ListServices,
     StartService(&'a str),
     StopService(&'a str),
@@ -543,6 +553,16 @@ impl<'a> NativeTool<'a> {
     fn parse(name: &str, arguments: &'a Map<String, Value>) -> Result<Self, String> {
         match name {
             "nomoreide_docs" => Ok(Self::Docs(arguments.get("topic").and_then(Value::as_str))),
+            "nomoreide_list_errors" => Ok(Self::ListErrors {
+                limit: arguments
+                    .get("limit")
+                    .and_then(Value::as_u64)
+                    .and_then(|limit| u32::try_from(limit).ok())
+                    .unwrap_or(errors::DEFAULT_INCIDENT_LIMIT),
+            }),
+            "nomoreide_error_prompt" => Ok(Self::ErrorPrompt {
+                id: arguments.get("id").and_then(Value::as_u64).unwrap_or(0),
+            }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),
             "nomoreide_close_ui" => Ok(Self::CloseUi),
             "nomoreide_list_services" => Ok(Self::ListServices),
@@ -1238,8 +1258,8 @@ mod tests {
             Ok(NativeTool::ServiceHealth(Some("api")))
         ));
         assert!(NativeTool::parse("nomoreide_service_context", &Map::new()).is_err());
-        // Outside phase 2, so still refused by the executor.
-        assert!(NativeTool::parse("nomoreide_list_errors", &arguments).is_err());
+        // A Phase 5 tool, so still refused by the executor.
+        assert!(NativeTool::parse("nomoreide_open_terminal", &arguments).is_err());
 
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {

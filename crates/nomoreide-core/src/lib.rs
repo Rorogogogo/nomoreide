@@ -5,6 +5,7 @@ pub mod compose;
 pub mod config;
 pub mod context_library;
 pub mod db;
+pub mod error_inbox;
 pub mod event_sink;
 pub mod external_terminal;
 pub mod filesystem;

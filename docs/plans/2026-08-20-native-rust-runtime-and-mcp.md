@@ -752,6 +752,72 @@ manifest's `documentation-ui` domain, gated by `npm run mcp:docs-ui-parity` —
   a second exit path, and `nomoreide-daemon-client/src/lifecycle.rs`, which owns
   "reuse, adopt, or spawn" so that no front end grows a second answer to it.
 
+**Slice 4 (done): the error inbox.** Two MCP tools, and the detector behind
+them. Gated by `npm run mcp:errors-parity` — 16 steps, one of which compares
+28 incidents with their excerpts, files, and counts.
+
+The reason this is a slice of its own rather than three lines in slice 3: both
+tools were dead. `nomoreide_list_errors` returned `[]` and
+`nomoreide_error_prompt` answered "Incident N not found" **on every machine,
+for every user**, because they read an `ErrorInbox` living in the MCP adapter
+process — which never spawns a service and so never sees a log line. The daemon
+owns the services, has the incidents, and serves them correctly at
+`GET /api/errors`; the tools were simply left in the "runs locally" bucket when
+service runtime moved to the daemon. Both runtimes now read the daemon's inbox,
+which is a fix to the reference as well as a port.
+
+That made porting the detector unavoidable — and worth doing anyway, since the
+dashboard reads the same endpoint. Everything below was read off the running
+reference:
+
+- The word list is **not** the log store's severity list. The inbox counts
+  `error`, `fatal`, `panic`, `exception`, `uncaught`, `unhandled`,
+  `segmentation fault`, `eaddrinuse`, `econnrefused`; the log store also counts
+  `traceback`, which the inbox does not. Conflating them would change what an
+  agent is shown.
+- The error pattern has a **trailing** word boundary and no leading one, so
+  `terror` is an incident and `errors` is not. Replicated as observed.
+- A literal `0 error(s)` exempts a line — a build reporting zero errors is
+  announcing success — and the exemption applies to errors only, not warnings.
+- A signature is `{service} {normalized line}`, normalized by replacing ISO
+  instants, `0x…` literals, and whole numbers, collapsing whitespace, and
+  cutting at 200 characters. It is built from the **whole line**, not from the
+  240-character title: normalizing first is what lets a long line of varying
+  numbers sign by what it says rather than by where the title happened to end.
+- A frame needs both an extension and a column — `path.ext:line:col` — or
+  Python's `File "…", line N`. Without the extension `ECONNREFUSED
+  127.0.0.1:5432` and an ISO instant both read as frames, which is how the
+  first port of this had an incident blaming `2026-08-22T13`.
+- The excerpt is the twelve lines ending at the message, plus up to twelve
+  *stack continuations* — an indented `at …` or `File …` — appended as they
+  arrive. A continuation joins the excerpt even when it resolves to no file, so
+  a Java frame is kept rather than leaving a hole in the trace.
+- A file is resolved once: the last frame in the window at creation, or the
+  first continuation that resolves after it. Later frames never overwrite it.
+- The inbox keeps a hundred incidents and drops the oldest; listings are
+  ordered by most recent activity.
+
+One visible consequence of the fix: with no daemon running, both tools now say
+so, where `nomoreide_list_errors` used to answer `[]`. That is the same
+behaviour every other daemon-backed tool already had, and an empty list was the
+worse answer — it read as "nothing is wrong" when the truth was "nothing is
+being watched".
+
+The gate caught 40 of 40 seeded regressions, but only after two rounds: the
+first sweep read 32/40, and seven of the eight misses were gaps in the fixture
+rather than in the port — no line carried a zero-count *and* a warning word, no
+line had internal runs of whitespace, none led with spaces, none was indented
+without being a frame, no two services shared a message, no incident's only
+frame-shaped line lacked a column, and the default limit is invisible while the
+inbox holds fewer incidents than any plausible default. All seven are now
+fixture lines, and the re-run caught 8/8.
+
+One implementation trap worth recording: `LogStore` calls its listeners while
+holding its own write lock, so the first version of the inbox — which read the
+store back to build an excerpt — deadlocked the thread delivering the line. The
+inbox now keeps its own twelve-line window per service, which is also a better
+description of what an excerpt is.
+
 - Port database registration, catalog inspection, sampling, masking, and guarded queries.
 - Support the same database engines and URL redaction behavior as today.
 - Port the provider registry and Vercel/Cloudflare/Vultr HTTP behavior used by MCP and dashboard APIs.

@@ -112,6 +112,11 @@ jobs:
       # takes it back down, so it runs after everything that needs one.
       - name: MCP docs and UI parity
         run: npm run mcp:docs-ui-parity -- ./target/debug/nomoreide
+      # Services emit fixed line sequences one service at a time: incident ids
+      # and ordering are assigned by arrival, so the two runtimes are only
+      # comparable if the lines arrive in the same order.
+      - name: MCP error-inbox parity
+        run: npm run mcp:errors-parity -- ./target/debug/nomoreide
       # Not an MCP surface: the dashboard and the desktop app reach these, so
       # the gate drives the crate's own probe example rather than a tool.
       - name: GitActions parity

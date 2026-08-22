@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use app::AppState;
 use chrono::Utc;
 use nomoreide_core::config::ConfigStore;
+use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
@@ -83,6 +84,10 @@ pub async fn serve_with_shutdown_requests(
             .join("native")
             .join("runtime-v1.json"),
     );
+    // The inbox reads the same lines the log store keeps, so it is built over
+    // that store and told to watch before any service can produce one.
+    let errors = ErrorInbox::new(log_store.clone());
+    errors.watch();
     let runtime = Arc::new(DaemonRuntime::new(
         config_store.clone(),
         ProcessManager::with_runtime_registry(log_store, registry).with_timeline(timeline),
@@ -117,6 +122,7 @@ pub async fn serve_with_shutdown_requests(
         owner_id: ownership.owner_id().to_string(),
         config_store,
         runtime: runtime.clone(),
+        errors,
         shutdown: shutdown_sender,
     });
 

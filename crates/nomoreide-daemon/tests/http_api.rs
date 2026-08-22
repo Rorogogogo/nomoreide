@@ -1046,3 +1046,72 @@ async fn shutdown_is_authenticated_and_actually_stops_the_daemon() {
     }
     panic!("the daemon acknowledged a shutdown it never performed");
 }
+
+/// The error inbox is behind the credential like the rest of the runtime, and
+/// an id it does not hold is a 404 rather than an empty prompt.
+#[tokio::test]
+async fn the_error_inbox_is_authenticated_and_answers_for_ids_it_does_not_hold() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    tokio::fs::create_dir_all(&root).await.unwrap();
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({ "version": 1, "services": [], "bundles": [] })).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let token = credential(&runtime_paths).await;
+
+    let unauthenticated = http
+        .get(format!("{}/api/errors", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
+
+    // Nothing has run, so there is nothing to report — and that is an empty
+    // list, not an error.
+    let listed = http
+        .get(format!("{}/api/errors", state.url))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(listed.status(), StatusCode::OK);
+    assert_eq!(
+        listed.json::<serde_json::Value>().await.unwrap(),
+        json!({ "ok": true, "incidents": [] })
+    );
+
+    let missing = http
+        .get(format!("{}/api/errors/7/prompt", state.url))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
+    tokio::fs::remove_dir_all(&root).await.ok();
+}

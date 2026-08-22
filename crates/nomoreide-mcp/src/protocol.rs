@@ -259,14 +259,14 @@ mod tests {
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
-                "params": { "name": "nomoreide_list_errors", "arguments": {} }
+                "params": { "name": "nomoreide_open_terminal", "arguments": {} }
             }),
         )
         .await;
         assert_eq!(response["id"], "call-1");
         assert_eq!(response["error"]["code"], -32001);
         assert_eq!(response["error"]["data"]["kind"], "not_implemented");
-        assert_eq!(response["error"]["data"]["tool"], "nomoreide_list_errors");
+        assert_eq!(response["error"]["data"]["tool"], "nomoreide_open_terminal");
     }
 
     #[tokio::test]

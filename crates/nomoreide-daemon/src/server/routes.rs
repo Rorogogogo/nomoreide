@@ -3,6 +3,7 @@
 //! `server.rs`.
 
 mod bundles;
+mod errors;
 mod meta;
 mod services;
 mod timeline;
@@ -30,6 +31,7 @@ pub(crate) fn router(state: AppState) -> Router {
 fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(meta::authenticated())
+        .merge(errors::routes())
         .merge(services::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())

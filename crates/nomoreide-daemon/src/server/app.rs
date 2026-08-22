@@ -8,6 +8,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 use nomoreide_core::config::ConfigStore;
+use nomoreide_core::error_inbox::ErrorInbox;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
@@ -18,6 +19,7 @@ pub(crate) struct AppState {
     pub(crate) owner_id: String,
     pub(crate) config_store: ConfigStore,
     pub(crate) runtime: Arc<DaemonRuntime>,
+    pub(crate) errors: ErrorInbox,
     /// The same channel a SIGTERM pulls on. A shutdown asked for over HTTP has
     /// to drain the runtime the way a signalled one does, so both go through
     /// here rather than one of them exiting the process directly.

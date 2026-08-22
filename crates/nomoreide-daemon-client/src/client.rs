@@ -1,8 +1,8 @@
 use crate::protocol::{
-    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, LogsEnvelope, MutationErrorEnvelope,
-    PortConflict, ServiceDiscovery, ServiceDiscoveryEnvelope, ServiceLogEntry,
-    ServiceMutationEnvelope, ServiceRuntimeStatus, ShutdownEnvelope, StatusEnvelope,
-    TimelineEnvelope, TimelineEvent,
+    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, Incident, IncidentPromptEnvelope,
+    IncidentsEnvelope, LogsEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery,
+    ServiceDiscoveryEnvelope, ServiceLogEntry, ServiceMutationEnvelope, ServiceRuntimeStatus,
+    ShutdownEnvelope, StatusEnvelope, TimelineEnvelope, TimelineEvent,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -228,6 +228,43 @@ impl DaemonClient {
         name: &str,
     ) -> Result<Vec<ServiceRuntimeStatus>, DaemonClientError> {
         self.bundle_action(name, "stop").await
+    }
+
+    /// The incidents the daemon's inbox is holding, most recently active first.
+    pub async fn list_errors(&self, limit: u32) -> Result<Vec<Incident>, DaemonClientError> {
+        let mut url = self.endpoint.api_url("api/errors");
+        url.query_pairs_mut()
+            .append_pair("limit", &limit.to_string());
+        let body = self.read(url).await?;
+        let envelope = serde_json::from_slice::<IncidentsEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.incidents)
+    }
+
+    /// The debugging prompt for one incident. A 404 is not a transport failure
+    /// — it is the daemon saying it holds no such incident — so it comes back
+    /// as `None` rather than as an error.
+    pub async fn error_prompt(
+        &self,
+        id: u64,
+    ) -> Result<Option<IncidentPromptEnvelope>, DaemonClientError> {
+        let url = self.endpoint.api_url(&format!("api/errors/{id}/prompt"));
+        match self.read(url).await {
+            Ok(body) => {
+                let envelope = serde_json::from_slice::<IncidentPromptEnvelope>(&body)
+                    .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+                Ok(Some(envelope))
+            }
+            Err(DaemonClientError::Http { status, .. }) if status == StatusCode::NOT_FOUND => {
+                Ok(None)
+            }
+            Err(other) => Err(other),
+        }
     }
 
     /// Ask the daemon to stop itself, and with it every service on the machine.
