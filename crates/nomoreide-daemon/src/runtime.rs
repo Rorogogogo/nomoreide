@@ -230,10 +230,11 @@ impl DaemonRuntime {
 
 /// The one definition this daemon will run for `name`.
 ///
-/// A remote service qualifies alongside a local one: both are a child process
-/// this daemon spawns and supervises, and an `ssh` service differs only in
-/// which program that child is. A compose service does not — it has no child
-/// of its own to own, so it belongs to a runtime this daemon does not have.
+/// Every kind this runtime knows how to run qualifies. A local and a remote
+/// service are both a child this daemon supervises, differing only in which
+/// program that child is; a compose service is a container the Docker daemon
+/// runs on our behalf. Anything else is a kind nothing here implements, and a
+/// config can name one by hand.
 fn startable_service<'a>(
     config: &'a nomoreide_core::config::Config,
     name: &str,
@@ -243,7 +244,7 @@ fn startable_service<'a>(
         .iter()
         .find(|service| service.name == name)
         .ok_or(RuntimeMutationError::ServiceNotFound)?;
-    if !matches!(service.effective_kind(), "local" | "ssh") {
+    if !matches!(service.effective_kind(), "local" | "ssh" | "docker-compose") {
         return Err(RuntimeMutationError::UnsupportedServiceKind);
     }
     Ok(service)
@@ -285,6 +286,7 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         },
         kind: Some(status.kind),
         host: status.host,
+        container_id: status.container_id,
         pid: status.pid,
         pgid: status.pgid,
         exit_code: status.exit_code,
@@ -343,6 +345,7 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
         state: ServiceRuntimeState::Stopped,
         kind: None,
         host: None,
+        container_id: None,
         pid: None,
         pgid: None,
         exit_code: None,

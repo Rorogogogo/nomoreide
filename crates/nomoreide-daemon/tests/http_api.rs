@@ -256,8 +256,17 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
                 {
                     "name": "compose",
                     "kind": "docker-compose",
-                    "cwd": cwd,
+                    // A directory with no compose project in it, so bringing
+                    // the service up fails the same way whether or not this
+                    // machine has Docker at all.
+                    "cwd": root,
                     "composeService": "web"
+                },
+                {
+                    "name": "podman",
+                    "kind": "podman",
+                    "cwd": cwd,
+                    "command": "podman start web"
                 },
                 {
                     "name": "remote",
@@ -307,11 +316,21 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
         DaemonClientError::Mutation(error)
             if error.code == DaemonErrorCode::ServiceNotFound
     ));
-    let unsupported = client.start_service("compose").await.unwrap_err();
+    // A kind this daemon implements no runtime for is still refused as a kind.
+    let unsupported = client.start_service("podman").await.unwrap_err();
     assert!(matches!(
         unsupported,
         DaemonClientError::Mutation(error)
             if error.code == DaemonErrorCode::UnsupportedServiceKind
+    ));
+    // A compose service is not refused for its kind any more: it gets as far
+    // as asking compose to bring it up, and fails there because this fixture
+    // is not a compose project.
+    let composeless = client.start_service("compose").await.unwrap_err();
+    assert!(matches!(
+        composeless,
+        DaemonClientError::Mutation(error)
+            if error.code == DaemonErrorCode::ServiceStartFailed
     ));
     // A remote service is a child this daemon spawns and supervises like any
     // other, so it is launched rather than refused. The host is unresolvable,
@@ -385,7 +404,7 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     assert!(is_pid_alive(restarted_pid));
 
     // A restart replaces the process, and refuses the same names a start
-    // refuses: it has to launch from a registered local definition.
+    // refuses: it has to launch from a definition this daemon can run.
     let unauthorized_restart = http
         .post(format!("{}/api/services/sleeper/restart", state.url))
         .send()
@@ -394,7 +413,7 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     assert_eq!(unauthorized_restart.status(), StatusCode::UNAUTHORIZED);
     for (name, code) in [
         ("missing", DaemonErrorCode::ServiceNotFound),
-        ("compose", DaemonErrorCode::UnsupportedServiceKind),
+        ("podman", DaemonErrorCode::UnsupportedServiceKind),
     ] {
         let refused = client.restart_service(name).await.unwrap_err();
         assert!(matches!(
@@ -575,16 +594,16 @@ async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
                 service("db", None),
                 service("api", Some(vec!["db"])),
                 {
-                    "name": "compose",
-                    "kind": "docker-compose",
+                    "name": "podman",
+                    "kind": "podman",
                     "cwd": cwd,
-                    "composeService": "web"
+                    "command": "podman start web"
                 }
             ],
             // The bundle names only `api`; `db` is pulled in as its dependency.
             "bundles": [
                 { "name": "stack", "services": ["api"] },
-                { "name": "mixed", "services": ["db", "compose"] }
+                { "name": "mixed", "services": ["db", "podman"] }
             ]
         }))
         .unwrap(),
@@ -626,8 +645,9 @@ async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
             if error.code == DaemonErrorCode::BundleNotFound
     ));
 
-    // A bundle holding a service this daemon cannot run is refused whole,
-    // before any of its members start.
+    // A bundle holding a service of a kind this daemon implements no runtime
+    // for is refused whole, before any of its members start. A config can name
+    // such a kind by hand even though registration will not accept one.
     let mixed = client.start_bundle("mixed").await.unwrap_err();
     assert!(matches!(
         mixed,

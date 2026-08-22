@@ -1,6 +1,7 @@
 pub mod agent_context;
 pub mod agent_transcripts;
 pub mod bundle;
+pub mod compose;
 pub mod config;
 pub mod context_library;
 pub mod event_sink;

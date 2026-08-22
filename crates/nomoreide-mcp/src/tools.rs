@@ -301,8 +301,7 @@ fn state_label(state: ServiceRuntimeState) -> &'static str {
 /// The status shape the reference implementation returns for these tools:
 /// these keys, in this order, with absent ones skipped. The process-group id
 /// the daemon tracks is an ownership detail agents have no use for, so it
-/// stays inside the daemon boundary. `containerId` belongs to the same shape
-/// but cannot appear here yet — the native runtime has no compose runtime.
+/// stays inside the daemon boundary.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServiceStatusView<'a> {
@@ -318,6 +317,11 @@ struct ServiceStatusView<'a> {
     pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     started_at: Option<&'a str>,
+    /// A container id stands where a pid stands for every other kind, but the
+    /// reference reports it here, after the launch time, rather than in the
+    /// pid's place.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    container_id: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -337,8 +341,10 @@ impl<'a> ServiceStatusView<'a> {
     fn of(status: &'a ServiceRuntimeStatus) -> Self {
         // `exitedAt` is the one field the runtime stamps for every ending,
         // whatever it was, so it — not the exit code — decides whether this
-        // run has an ending to report at all.
-        let ended = status.exited_at.is_some();
+        // run has an ending to report at all. A container's end is not a
+        // process's end, though: it has no exit code and was killed by no
+        // signal, so it reports neither rather than reporting both as null.
+        let ended = status.exited_at.is_some() && status.container_id.is_none();
         Self {
             name: &status.name,
             state: state_label(status.state),
@@ -346,6 +352,7 @@ impl<'a> ServiceStatusView<'a> {
             host: status.host.as_deref(),
             pid: status.pid,
             started_at: status.started_at.as_deref(),
+            container_id: status.container_id.as_deref(),
             url: status.url.as_deref(),
             exited_at: status.exited_at.as_deref(),
             exit_code: ended.then_some(status.exit_code),
@@ -378,6 +385,7 @@ mod tests {
             state,
             kind: Some("local".into()),
             host: None,
+            container_id: None,
             pid: Some(4321),
             pgid: Some(4321),
             exit_code: None,
@@ -467,6 +475,48 @@ mod tests {
         assert!(!rendered.contains("pgid"));
         // Sorted, so two consecutive reads of the same runtime compare equal.
         assert!(rendered.find("\"api\"").unwrap() < rendered.find("\"web\"").unwrap());
+    }
+
+    #[test]
+    fn a_container_reports_no_exit_code_because_it_ended_no_process() {
+        let running = ServiceRuntimeStatus {
+            kind: Some("docker-compose".into()),
+            container_id: Some("container-abc".into()),
+            pid: None,
+            pgid: None,
+            url: None,
+            ..status(ServiceRuntimeState::Running)
+        };
+        assert_eq!(
+            render(&ServiceStatusView::of(&running)).unwrap(),
+            concat!(
+                "{\n",
+                "  \"name\": \"api\",\n",
+                "  \"state\": \"running\",\n",
+                "  \"kind\": \"docker-compose\",\n",
+                "  \"startedAt\": \"2026-08-21T10:00:00.000Z\",\n",
+                "  \"containerId\": \"container-abc\"\n",
+                "}"
+            )
+        );
+
+        // Taken down, the container keeps its identity and gains an ending —
+        // but not the exit code and signal a process would report, which is
+        // what the reference does too.
+        let stopped = ServiceRuntimeStatus {
+            exited_at: Some("2026-08-21T10:05:00.000Z".into()),
+            ..ServiceRuntimeStatus {
+                state: ServiceRuntimeState::Stopped,
+                ..running
+            }
+        };
+        let rendered = render(&ServiceStatusView::of(&stopped)).unwrap();
+        assert!(
+            rendered.ends_with("\"exitedAt\": \"2026-08-21T10:05:00.000Z\"\n}"),
+            "{rendered}"
+        );
+        assert!(!rendered.contains("exitCode"), "{rendered}");
+        assert!(!rendered.contains("signal"), "{rendered}");
     }
 
     #[test]

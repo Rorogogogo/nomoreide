@@ -134,6 +134,10 @@ pub struct ServiceRuntimeStatus {
     /// The host a remote service runs on. Only an `ssh` service has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
+    /// The container behind a compose service, which is what identifies it in
+    /// place of a pid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]

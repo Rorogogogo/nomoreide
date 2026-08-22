@@ -1,3 +1,4 @@
+use super::compose::{Compose, ComposeTarget};
 use super::config::ServiceDef;
 use super::log_store::{LogEntry, LogStore};
 use super::port_utils::{
@@ -132,6 +133,9 @@ pub struct ServiceStatus {
     /// The host a remote service was launched against. Only an `ssh` service
     /// has one; for every other kind the question does not arise.
     pub host: Option<String>,
+    /// The container behind a compose service. It stands where a pid stands
+    /// for every other kind: the identity of the thing that is running.
+    pub container_id: Option<String>,
     pub pid: Option<u32>,
     pub pgid: Option<u32>,
     pub exit_code: Option<i32>,
@@ -187,6 +191,12 @@ struct ManagedProcess {
     generation: u64,
     kind: String,
     host: Option<String>,
+    /// The container a compose service left running, for the status, and the
+    /// project to act on to take it down again. Both are recorded at launch so
+    /// a stop needs no config: a definition that drifts afterwards must not
+    /// strand a container nobody can reach.
+    container_id: Option<String>,
+    compose: Option<ComposeTarget>,
     pid: Option<u32>,
     pgid: Option<u32>,
     state: ServiceState,
@@ -207,6 +217,7 @@ fn status_of(name: &str, process: &ManagedProcess) -> ServiceStatus {
         state: process.state.clone(),
         kind: process.kind.clone(),
         host: process.host.clone(),
+        container_id: process.container_id.clone(),
         pid: process.pid,
         pgid: process.pgid,
         exit_code: process.exit_code,
@@ -435,6 +446,7 @@ pub struct ProcessManager {
     timeline: Option<TimelineStore>,
     stop_policy: StopPolicy,
     runtime_registry: Option<RuntimeRegistry>,
+    compose: Compose,
     reconciled: AsyncMutex<bool>,
     /// Only one launch handshake may be in flight at a time: a second `fork`
     /// inside the window would inherit the first child's release pipe and keep
@@ -453,6 +465,7 @@ impl ProcessManager {
             timeline: None,
             stop_policy: StopPolicy::default(),
             runtime_registry: None,
+            compose: Compose::new(),
             reconciled: AsyncMutex::new(false),
             #[cfg(unix)]
             launch_gate: AsyncMutex::new(()),
@@ -464,6 +477,15 @@ impl ProcessManager {
             runtime_registry: Some(runtime_registry),
             ..Self::new(log_store)
         }
+    }
+
+    /// Run compose verbs through something other than the Docker CLI. Only a
+    /// test has any reason to: it is how the compose paths are exercised on a
+    /// machine that has no Docker installed.
+    #[cfg(test)]
+    fn with_compose_program(mut self, program: impl Into<String>) -> Self {
+        self.compose = Compose::with_program(program);
+        self
     }
 
     /// Record lifecycle moments on a timeline. Optional because only the daemon
@@ -584,6 +606,14 @@ impl ProcessManager {
             }
         }
 
+        // Ahead of the port check on purpose, as in the reference: a compose
+        // service's port is published by the Docker daemon, so a local
+        // listener on it is that same service already up rather than a
+        // conflict to refuse.
+        if def.effective_kind() == "docker-compose" {
+            return self.start_docker_compose(def).await;
+        }
+
         if let Some(port) = def.port {
             if !is_port_available("127.0.0.1", port) {
                 let holder = get_port_holder(port)?;
@@ -609,7 +639,6 @@ impl ProcessManager {
         }
 
         match def.effective_kind() {
-            "docker-compose" => self.start_docker_compose(def).await,
             "ssh" => self.start_ssh(def).await,
             _ => self.start_local(def).await,
         }
@@ -654,25 +683,73 @@ impl ProcessManager {
         self.spawn_and_register(def, cmd).await
     }
 
+    /// Bring a compose service up and track the container it left behind.
+    ///
+    /// `docker compose up -d` returns once the container is started, so unlike
+    /// every other kind there is no child to supervise afterwards — what runs
+    /// belongs to the Docker daemon. The entry recorded here therefore has no
+    /// pid, no process group, and no supervisor, and nothing is journaled: a
+    /// crash of this daemon leaves the container running and nothing to
+    /// reconcile, which is what the reference does too.
     async fn start_docker_compose(&self, def: &ServiceDef) -> Result<()> {
-        let cwd = def
-            .cwd
-            .as_deref()
-            .ok_or_else(|| anyhow!("Docker service missing cwd"))?;
-        let svc = def
-            .compose_service
-            .as_deref()
-            .ok_or_else(|| anyhow!("Missing composeService"))?;
+        let target = ComposeTarget::of(def)?;
+        let container = self.compose.start(&target).await?;
 
-        let args = vec!["up", "--no-build", svc];
-        let mut cmd = Command::new("docker-compose");
-        cmd.args(&args)
-            .current_dir(cwd)
-            .env("PATH", service_path())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        configure_managed_process(&mut cmd);
-        self.spawn_and_register(def, cmd).await
+        self.processes.lock().unwrap().insert(
+            def.name.clone(),
+            ManagedProcess {
+                generation: self.next_generation.fetch_add(1, Ordering::Relaxed),
+                kind: def.effective_kind().to_string(),
+                host: None,
+                container_id: container.container_id.clone(),
+                compose: Some(target.clone()),
+                pid: None,
+                pgid: None,
+                state: ServiceState::Running,
+                exit_code: None,
+                signal: None,
+                url: None,
+                started_at: Some(Utc::now()),
+                exited_at: None,
+                // Nothing was spawned, so there is nothing left to confirm.
+                cleanup_confirmed: true,
+                controller: None,
+            },
+        );
+
+        self.record(
+            NewTimelineEvent::new(
+                TimelineEventKind::ServiceLifecycle,
+                TimelineSeverity::Info,
+                format!("{} started", def.name),
+            )
+            .service(def.name.clone())
+            .data(json!({ "containerId": container.container_id })),
+        );
+        Ok(())
+    }
+
+    /// Take a compose service down. The container is the only thing that was
+    /// ever running, so this is the whole of the stop — there is no process
+    /// group to confirm and no journal entry to remove.
+    async fn stop_docker_compose(&self, name: &str, target: &ComposeTarget) -> Result<()> {
+        self.compose.stop(target).await?;
+        {
+            let mut processes = self.processes.lock().unwrap();
+            if let Some(process) = processes.get_mut(name) {
+                process.state = ServiceState::Stopped;
+                process.exited_at = Some(Utc::now());
+            }
+        }
+        self.record(
+            NewTimelineEvent::new(
+                TimelineEventKind::ServiceLifecycle,
+                TimelineSeverity::Info,
+                format!("{name} stopped"),
+            )
+            .service(name.to_string()),
+        );
+        Ok(())
     }
 
     /// A remote service is an ordinary local child: this runtime supervises the
@@ -910,6 +987,8 @@ impl ProcessManager {
                 generation,
                 kind: def.effective_kind().to_string(),
                 host: launched_host(def),
+                container_id: None,
+                compose: None,
                 pid: Some(pid),
                 pgid,
                 state: ServiceState::Running,
@@ -1027,6 +1106,20 @@ impl ProcessManager {
     }
 
     async fn stop_service_locked(&self, name: &str) -> Result<()> {
+        // A container is not a process: it ends by asking compose to stop it,
+        // and none of the process-group and journal machinery below applies.
+        let compose_target = {
+            let processes = self.processes.lock().unwrap();
+            processes.get(name).and_then(|process| {
+                (process.state != ServiceState::Stopped)
+                    .then(|| process.compose.clone())
+                    .flatten()
+            })
+        };
+        if let Some(target) = compose_target {
+            return self.stop_docker_compose(name, &target).await;
+        }
+
         let target = {
             let mut processes = self.processes.lock().unwrap();
             let Some(process) = processes.get_mut(name) else {
@@ -2426,6 +2519,123 @@ mod tests {
         let _ = tokio::fs::remove_dir_all(test_dir).await;
     }
 
+    /// A stand-in for the Docker CLI: it records the argv it was called with
+    /// and answers `ps` with one container line, so the compose paths can be
+    /// driven on a machine that has no Docker on it.
+    #[cfg(unix)]
+    async fn fake_docker(dir: &std::path::Path) -> PathBuf {
+        let script = dir.join("fake-docker");
+        let log = dir.join("calls.log");
+        tokio::fs::write(
+            &script,
+            format!(
+                "#!/bin/sh\necho \"$@\" >> {}\ncase \"$*\" in\n  *\" ps \"*) echo '{{\"ID\":\"container-1\",\"State\":\"running\"}}' ;;\nesac\nexit 0\n",
+                log.display()
+            ),
+        )
+        .await
+        .unwrap();
+        let mut permissions = tokio::fs::metadata(&script).await.unwrap().permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+        tokio::fs::set_permissions(&script, permissions)
+            .await
+            .unwrap();
+        script
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_compose_service_is_tracked_by_its_container_not_by_a_process() {
+        let test_dir = test_dir("compose-lifecycle");
+        tokio::fs::create_dir_all(&test_dir).await.unwrap();
+        let docker = fake_docker(&test_dir).await;
+        let manager = ProcessManager::new(LogStore::new(test_dir.join("logs")))
+            .with_compose_program(docker.to_string_lossy().to_string());
+        let service: ServiceDef = serde_json::from_value(json!({
+            "name": "web",
+            "kind": "docker-compose",
+            "cwd": test_dir,
+            "composeFile": "compose.yml",
+            "composeService": "web",
+            // A port a compose service publishes is the Docker daemon's to
+            // hold, so it must not be checked for a conflict here.
+            "port": 3000,
+        }))
+        .unwrap();
+
+        manager.start_service(&service).await.unwrap();
+
+        let running = manager.service_status("web").unwrap();
+        assert_eq!(running.kind, "docker-compose");
+        assert_eq!(running.container_id.as_deref(), Some("container-1"));
+        // Nothing was spawned, so there is no process to report.
+        assert_eq!(running.pid, None);
+        assert_eq!(running.pgid, None);
+        assert!(matches!(running.state, ServiceState::Running));
+        assert!(running.started_at.is_some());
+
+        manager.stop_service("web").await.unwrap();
+
+        let stopped = manager.service_status("web").unwrap();
+        assert!(matches!(stopped.state, ServiceState::Stopped));
+        assert!(stopped.exited_at.is_some());
+        // A container has no exit code and was killed by no signal.
+        assert_eq!(stopped.exit_code, None);
+        assert_eq!(stopped.signal, None);
+        // The container it was is still what identifies the run.
+        assert_eq!(stopped.container_id.as_deref(), Some("container-1"));
+
+        let calls = tokio::fs::read_to_string(test_dir.join("calls.log"))
+            .await
+            .unwrap();
+        assert_eq!(
+            calls.lines().collect::<Vec<_>>(),
+            vec![
+                "compose -f compose.yml up -d web",
+                "compose -f compose.yml ps --format json web",
+                "compose -f compose.yml stop web",
+            ]
+        );
+        let _ = tokio::fs::remove_dir_all(test_dir).await;
+    }
+
+    /// Nothing was journaled, so a compose service does not go through the
+    /// process-group and registry machinery a child does — including on the
+    /// path where a stop finds no supervisor.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn stopping_a_compose_service_never_touches_the_launch_journal() {
+        let test_dir = test_dir("compose-journal");
+        tokio::fs::create_dir_all(&test_dir).await.unwrap();
+        let docker = fake_docker(&test_dir).await;
+        let journal = test_dir.join("native-runtime-v1.json");
+        let manager = ProcessManager::with_runtime_registry(
+            LogStore::new(test_dir.join("logs")),
+            RuntimeRegistry::new(journal.clone()),
+        )
+        .with_compose_program(docker.to_string_lossy().to_string());
+        let service: ServiceDef = serde_json::from_value(json!({
+            "name": "web",
+            "kind": "docker-compose",
+            "cwd": test_dir,
+            "composeService": "web",
+        }))
+        .unwrap();
+
+        manager.start_service(&service).await.unwrap();
+        manager.stop_service("web").await.unwrap();
+
+        assert!(matches!(
+            manager.service_status("web").unwrap().state,
+            ServiceState::Stopped
+        ));
+        // A container outlives this process on purpose, so there is nothing
+        // for a later run to reconcile — and nothing was written to say there
+        // was.
+        assert!(!journal.exists());
+        let _ = tokio::fs::remove_dir_all(test_dir).await;
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn a_stopped_run_reports_the_signal_that_ended_it_by_name() {
@@ -2873,6 +3083,8 @@ mod tests {
                 generation: 1,
                 kind: "local".into(),
                 host: None,
+                container_id: None,
+                compose: None,
                 pid: Some(pid),
                 pgid: Some(pid),
                 state: ServiceState::Stopping,

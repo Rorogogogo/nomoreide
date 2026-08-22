@@ -37,7 +37,8 @@ pub(crate) fn mutation_error(error: RuntimeMutationError) -> Response {
         RuntimeMutationError::UnsupportedServiceKind => (
             StatusCode::UNPROCESSABLE_ENTITY,
             DaemonErrorCode::UnsupportedServiceKind,
-            "Docker Compose services are not supported by the native daemon yet.".to_string(),
+            "Only local, ssh, and docker-compose services are supported by the native daemon."
+                .to_string(),
             None,
         ),
         RuntimeMutationError::PortConflict { message, conflict } => (
