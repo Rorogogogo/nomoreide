@@ -1,4 +1,8 @@
-//! Registering and selecting a Git repository.
+//! The Git surface: registering a repository, and reading one.
+//!
+//! Nothing here needs the daemon. Registration and selection write config,
+//! and the reads run git in a directory the caller names — neither is a
+//! question about a running service.
 //!
 //! Like service registration, these write config and never touch the runtime,
 //! so they run locally without a daemon: the daemon re-reads the file per
@@ -10,8 +14,56 @@
 
 use super::render;
 use nomoreide_core::config::{ConfigStore, GitRepoDef};
+use nomoreide_core::git_manager::GitManager;
 use std::path::Path;
 use tokio::process::Command;
+
+pub(super) async fn status(cwd: Option<&str>) -> Result<String, String> {
+    let status = GitManager::status(&working_directory(cwd)?)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&status)
+}
+
+pub(super) async fn branches(cwd: Option<&str>) -> Result<String, String> {
+    let branches = GitManager::branches(&working_directory(cwd)?)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&branches)
+}
+
+/// Diffs are returned as git wrote them, not as JSON: an agent reads a patch,
+/// and quoting one into a JSON string would only make it harder to read.
+pub(super) async fn diff(cwd: Option<&str>, path: Option<&str>) -> Result<String, String> {
+    GitManager::diff(&working_directory(cwd)?, path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub(super) async fn staged_diff(cwd: Option<&str>, path: Option<&str>) -> Result<String, String> {
+    GitManager::staged_diff(&working_directory(cwd)?, path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub(super) async fn log(cwd: Option<&str>, limit: u32) -> Result<String, String> {
+    let entries = GitManager::log(&working_directory(cwd)?, limit)
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&entries)
+}
+
+/// Where a read runs. An absent `cwd` means this process's own directory, the
+/// way it does in the reference — which is rarely what an agent wants, but is
+/// what it gets if it names nothing.
+fn working_directory(cwd: Option<&str>) -> Result<String, String> {
+    match cwd {
+        Some(cwd) => Ok(cwd.to_string()),
+        None => std::env::current_dir()
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(|error| error.to_string()),
+    }
+}
 
 pub(super) async fn register_repository(
     store: &ConfigStore,

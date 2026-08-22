@@ -353,7 +353,7 @@ absolute nor that it is inside a worktree. The first two are fixed in
 reference puts them.
 
 The gate is `npm run mcp:git-parity -- ./target/debug/nomoreide`
-(`scripts/check-mcp-git-parity.ts` + `test/fixtures/mcp-git-parity-v1.json`),
+(`scripts/check-mcp-git-parity.ts` + `test/fixtures/mcp-git-parity-v2.json`),
 now on every PR. It gives each runtime a private home and its own copy of every
 fixture repository, then walks an ordered plan of MCP calls and diffs the
 payloads. No daemon is involved — these tools write `config.json` directly.
@@ -366,6 +366,47 @@ auto-select and watching it fail.
 
 Add steps to the fixture as each remaining git slice lands, rather than building
 the whole Phase 3 gate at the end.
+
+**Slice 3 (done): the reads — status, branches, diff, staged diff, log.**
+These five were the first slice that was a *port* rather than a move. The Rust
+`GitManager` already had read methods, written for the desktop app, and diffing
+them against the running reference showed most of them answering a different
+question:
+
+- `status` named the branch with `rev-parse --abbrev-ref HEAD`, so a detached
+  HEAD came back as a branch called `HEAD` rather than as no branch at all; it
+  also rendered a missing upstream as an explicit `null` where the reference
+  omits the key.
+- `diff` returned the *staged* diff whenever there was one, and there was no
+  `staged_diff` at all.
+- `log` did not exist — `graph` is a different shape for the desktop commit
+  graph.
+- `branches` read two commands, so it could not mark the current branch's
+  upstream, and it listed `origin/HEAD`, which is a pointer at a branch already
+  in the list rather than a branch.
+- The runner swallowed non-zero exits, so a read outside a repository returned
+  nothing instead of git's `fatal:`, and reported a `cwd` that does not exist as
+  "git command failed" rather than naming the failure. It now follows the
+  reference's rule exactly — stdout, else stderr; on failure stderr, else
+  stdout, else why the process never started, trimmed — and names a spawn that
+  never happened the way Node does, `spawn git ENOENT`.
+
+All of these are fixed in `nomoreide-core`, not worked around in the tool, so
+the desktop app gets the same corrections. `GitBranch` now carries the
+reference's own field names and its `upstream`, which let
+`apps/dashboard/src/lib/api/tauri-bridge.ts` drop the `adaptBranches` translation
+layer that existed only because the two had drifted.
+
+The fixture grew to **45 steps** and its format to version 2: a repository is
+now built from an ordered list of declarative setup steps (commit, remote,
+`remoteHead`, `resetTo`, branch, detach, write, remove, stage) rather than a
+list of commits, and every commit is stamped with one fixed timestamp so both
+runtimes produce byte-identical hashes and `nomoreide_git_log` can be compared
+as reported. The demo repository ends up **two ahead and one behind** its
+upstream — deliberately different numbers, because equal ones let a swapped
+left/right column pass. Verified to bite on three seeded regressions: the
+swapped columns, a dropped `origin/HEAD` filter, and the old detached-HEAD
+branch name.
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.

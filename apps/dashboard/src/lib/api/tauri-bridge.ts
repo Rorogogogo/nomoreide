@@ -5,7 +5,7 @@
 import { beginApiRequest } from "@/lib/api-activity";
 
 import { isTauri } from "@/lib/tauri";
-import type { GitIdentityState } from "./git-api.js";
+import type { GitBranch, GitIdentityState } from "./git-api.js";
 import type {
   AgentTranscriptInfo,
   CreateAgentTerminalOptions,
@@ -243,23 +243,9 @@ export function adaptGitGraph(commits: RustGitCommit[]) {
   }));
 }
 
-export interface RustGitBranch {
-  name: string;
-  isCurrent: boolean;
-  isRemote: boolean;
-}
-
-export function adaptBranches(branches: RustGitBranch[]) {
-  return branches.map((b) => ({
-    name: b.name,
-    current: b.isCurrent,
-    remote: b.isRemote,
-  }));
-}
-
 export interface RustGitStatus {
   branch: string;
-  upstream: string | null;
+  upstream?: string;
   ahead: number;
   behind: number;
   files: Array<{ path: string; index: string; workingTree: string }>;
@@ -491,8 +477,9 @@ export async function tauri_gitSwitchBranch(name: string, repo?: string) {
 }
 
 export async function tauri_gitBranches(repo?: string) {
-  const branches = await tauriInvoke<RustGitBranch[]>("git_branches", { repo: repo ?? null });
-  return adaptBranches(branches);
+  // The Rust core reports branches in the same shape the HTTP backend does,
+  // so there is nothing to translate.
+  return tauriInvoke<GitBranch[]>("git_branches", { repo: repo ?? null });
 }
 
 export async function tauri_gitPullDefault(repo?: string) {

@@ -20,7 +20,9 @@ mod inspect;
 mod types;
 mod worktrees;
 
-pub use types::{FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitStatus, GitWorktree};
+pub use types::{
+    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree,
+};
 
 /// Read-safe Git operations. Every method takes the working directory it acts
 /// on, so one process can serve any number of repositories.

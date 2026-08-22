@@ -42,10 +42,22 @@ pub(super) enum ArgumentContract {
     /// the executor's question, not this one's — the reference asks it in
     /// `ConfigStore`, after zod has passed.
     RepositoryRegistration,
+    /// `nomoreide_git_status` and `nomoreide_git_branches`: one optional
+    /// non-empty `cwd`. Absent means the directory the server was started in,
+    /// so it is a default rather than a missing argument.
+    GitCwd,
+    /// `nomoreide_git_diff` and `nomoreide_git_staged_diff`: that `cwd` plus an
+    /// optional non-empty `path` to narrow the patch to.
+    GitPath,
+    /// `nomoreide_git_log`: that `cwd` plus an optional `limit` in `(0, 50]` —
+    /// a tighter bound than the log-line limit, because these are commits.
+    GitLog,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
 const LOG_LIMIT_MAX: f64 = 1000.0;
+/// The reference's `z.number().int().positive().max(50)`.
+const COMMIT_LIMIT_MAX: f64 = 50.0;
 /// The reference's `z.number().int().positive().max(200).default(80)`.
 const TIMELINE_LIMIT_MAX: f64 = 200.0;
 /// The reference's `z.number().int().positive().max(65535)`.
@@ -70,6 +82,9 @@ impl ArgumentContract {
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
             "nomoreide_timeline" => Some(Self::Timeline),
             "nomoreide_git_register_repository" => Some(Self::RepositoryRegistration),
+            "nomoreide_git_status" | "nomoreide_git_branches" => Some(Self::GitCwd),
+            "nomoreide_git_diff" | "nomoreide_git_staged_diff" => Some(Self::GitPath),
+            "nomoreide_git_log" => Some(Self::GitLog),
             _ => None,
         }
     }
@@ -92,6 +107,19 @@ impl ArgumentContract {
             Self::RepositoryRegistration => {
                 let mut failures = required_name(arguments).err().unwrap_or_default();
                 failures.extend(required_string(arguments, "path").err().unwrap_or_default());
+                collect(failures)
+            }
+            Self::GitCwd => collect(optional_name(arguments, "cwd")),
+            // `cwd` first: it is the base schema the path is extended onto, so
+            // it is also the first failure the reference reports.
+            Self::GitPath => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(optional_name(arguments, "path"));
+                collect(failures)
+            }
+            Self::GitLog => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(bounded_integer(arguments, "limit", COMMIT_LIMIT_MAX));
                 collect(failures)
             }
             // In the reference's own key order, which is the order it reports

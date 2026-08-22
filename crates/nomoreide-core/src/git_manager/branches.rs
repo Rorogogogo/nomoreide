@@ -82,7 +82,7 @@ impl GitManager {
         let is_remote = Self::branches(cwd)
             .await?
             .iter()
-            .any(|branch| branch.is_remote && branch.name == name);
+            .any(|branch| branch.remote && branch.name == name);
         if is_remote {
             exec::checked(cwd, &["switch", "--track", name]).await?;
         } else {

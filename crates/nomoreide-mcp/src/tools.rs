@@ -63,6 +63,14 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GitSelectRepository(name) => {
                     git::select_repository(&self.config, name).await
                 }
+                // The reads run git in a directory the caller names. The
+                // daemon owns running services, not repositories, so it has
+                // no part in answering these either.
+                NativeTool::GitStatus(cwd) => git::status(cwd).await,
+                NativeTool::GitBranches(cwd) => git::branches(cwd).await,
+                NativeTool::GitDiff { cwd, path } => git::diff(cwd, path).await,
+                NativeTool::GitStagedDiff { cwd, path } => git::staged_diff(cwd, path).await,
+                NativeTool::GitLog { cwd, limit } => git::log(cwd, limit).await,
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -151,12 +159,18 @@ impl NativeToolExecutor {
                     .map_err(|error| error.to_string())?;
                 diagnostics::service_health(&client, &config, service).await
             }
-            // All four were served before the daemon was ever asked for.
+            // Every git tool, and registration, was served before the daemon
+            // was ever asked for.
             NativeTool::RegisterService
             | NativeTool::RegisterBundle
             | NativeTool::GitRegisterRepository { .. }
-            | NativeTool::GitSelectRepository(_) => {
-                unreachable!("config writes are served locally")
+            | NativeTool::GitSelectRepository(_)
+            | NativeTool::GitStatus(_)
+            | NativeTool::GitBranches(_)
+            | NativeTool::GitDiff { .. }
+            | NativeTool::GitStagedDiff { .. }
+            | NativeTool::GitLog { .. } => {
+                unreachable!("config writes and git reads are served locally")
             }
         }
     }
@@ -195,6 +209,23 @@ enum NativeTool<'a> {
         path: &'a str,
     },
     GitSelectRepository(&'a str),
+    /// Every read below takes the directory to run in. `None` is the
+    /// reference's default — this process's own directory — rather than a
+    /// missing argument.
+    GitStatus(Option<&'a str>),
+    GitBranches(Option<&'a str>),
+    GitDiff {
+        cwd: Option<&'a str>,
+        path: Option<&'a str>,
+    },
+    GitStagedDiff {
+        cwd: Option<&'a str>,
+        path: Option<&'a str>,
+    },
+    GitLog {
+        cwd: Option<&'a str>,
+        limit: u32,
+    },
 }
 
 impl<'a> NativeTool<'a> {
@@ -233,6 +264,20 @@ impl<'a> NativeTool<'a> {
                 arguments,
                 "repository",
             )?)),
+            "nomoreide_git_status" => Ok(Self::GitStatus(optional_text(arguments, "cwd"))),
+            "nomoreide_git_branches" => Ok(Self::GitBranches(optional_text(arguments, "cwd"))),
+            "nomoreide_git_diff" => Ok(Self::GitDiff {
+                cwd: optional_text(arguments, "cwd"),
+                path: optional_text(arguments, "path"),
+            }),
+            "nomoreide_git_staged_diff" => Ok(Self::GitStagedDiff {
+                cwd: optional_text(arguments, "cwd"),
+                path: optional_text(arguments, "path"),
+            }),
+            "nomoreide_git_log" => Ok(Self::GitLog {
+                cwd: optional_text(arguments, "cwd"),
+                limit: log_commit_limit(arguments),
+            }),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -284,6 +329,25 @@ fn repository_path(arguments: &Map<String, Value>) -> Result<&str, String> {
         .and_then(Value::as_str)
         .filter(|path| !path.is_empty())
         .ok_or_else(|| "A repository path is required.".to_string())
+}
+
+/// An argument the caller may leave out. The protocol layer has already
+/// rejected a present-but-empty string, so anything that reaches here and is
+/// absent was genuinely not named.
+fn optional_text<'a>(arguments: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
+    arguments.get(key).and_then(Value::as_str)
+}
+
+/// `nomoreide_git_log` reads ten commits when the caller names no limit. The
+/// protocol layer has already rejected anything outside `(0, 50]`.
+const DEFAULT_COMMIT_LIMIT: u32 = 10;
+
+fn log_commit_limit(arguments: &Map<String, Value>) -> u32 {
+    arguments
+        .get("limit")
+        .and_then(Value::as_u64)
+        .and_then(|limit| u32::try_from(limit).ok())
+        .unwrap_or(DEFAULT_COMMIT_LIMIT)
 }
 
 /// The reference reports runtime status as an object keyed by service name.
@@ -635,6 +699,60 @@ mod tests {
             }))),
             "Port 3000 is already in use for api"
         );
+    }
+
+    /// Every git read takes the directory to work in, and every one of them
+    /// treats an absent one as "wherever this process was started" rather than
+    /// as a missing argument.
+    #[test]
+    fn a_git_read_without_a_cwd_is_a_question_about_here() {
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_status", &Map::new()),
+            Ok(NativeTool::GitStatus(None))
+        ));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_branches", &Map::new()),
+            Ok(NativeTool::GitBranches(None))
+        ));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_diff", &Map::new()),
+            Ok(NativeTool::GitDiff {
+                cwd: None,
+                path: None
+            })
+        ));
+
+        let mut arguments = Map::new();
+        arguments.insert("cwd".into(), Value::String("/repo".into()));
+        arguments.insert("path".into(), Value::String("src/main.rs".into()));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_staged_diff", &arguments),
+            Ok(NativeTool::GitStagedDiff {
+                cwd: Some("/repo"),
+                path: Some("src/main.rs")
+            })
+        ));
+    }
+
+    /// The reference reads ten commits when the caller names no limit.
+    #[test]
+    fn git_log_defaults_to_the_reference_commit_budget() {
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_log", &Map::new()),
+            Ok(NativeTool::GitLog {
+                cwd: None,
+                limit: 10
+            })
+        ));
+        let mut arguments = Map::new();
+        arguments.insert("limit".into(), Value::from(3));
+        assert!(matches!(
+            NativeTool::parse("nomoreide_git_log", &arguments),
+            Ok(NativeTool::GitLog {
+                cwd: None,
+                limit: 3
+            })
+        ));
     }
 
     /// The reference asks the daemon for 500 lines when the caller names none,

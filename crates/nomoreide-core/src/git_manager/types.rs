@@ -15,6 +15,9 @@ pub struct GitFileStatus {
 #[serde(rename_all = "camelCase")]
 pub struct GitStatus {
     pub branch: String,
+    /// Absent, not null, when the branch tracks nothing — the reference omits
+    /// the key, and a reader that tests for it has to see the same thing.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub upstream: Option<String>,
     pub ahead: i32,
     pub behind: i32,
@@ -38,8 +41,18 @@ pub struct GitCommit {
 #[serde(rename_all = "camelCase")]
 pub struct GitBranch {
     pub name: String,
-    pub is_current: bool,
-    pub is_remote: bool,
+    pub current: bool,
+    pub remote: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub upstream: Option<String>,
+}
+
+/// One line of history: what `nomoreide_git_log` reports per commit.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitLogEntry {
+    pub hash: String,
+    pub subject: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

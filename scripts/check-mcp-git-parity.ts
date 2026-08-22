@@ -4,7 +4,7 @@
  * Runs the TypeScript reference and a candidate binary against identical,
  * throwaway fixture repositories and compares what each reports through MCP.
  * Nothing here reads either implementation: the plan in
- * `test/fixtures/mcp-git-parity-v1.json` drives both runtimes with the same
+ * `test/fixtures/mcp-git-parity-v2.json` drives both runtimes with the same
  * ordered calls and the payloads are diffed.
  *
  * Unlike the Phase 2 runtime gate, no daemon is involved — the git config tools
@@ -36,12 +36,34 @@ if (candidateArgv.length === 0) {
 
 const root = resolve(import.meta.dirname, "..");
 
+/**
+ * One ordered step in building a fixture repository. Declarative rather than a
+ * list of git commands, so the fixture says what state it wants and this file
+ * stays the only place that knows how to reach it.
+ */
+type Setup =
+  | { commit: { file: string; contents: string; message: string } }
+  /** Create a bare origin, push the current branch, and track it. */
+  | { remote: true }
+  /** Point `origin/HEAD` at a branch, the way a clone would. */
+  | { remoteHead: string }
+  /** Move the branch back, leaving it behind whatever origin already has. */
+  | { resetTo: string }
+  /** Create a branch without switching to it. */
+  | { branch: string }
+  /** Leave HEAD on no branch at all. */
+  | { detach: true }
+  /** Write files and leave them uncommitted. */
+  | { write: Record<string, string> }
+  | { remove: string[] }
+  | { stage: string[] };
+
 interface Fixture {
-  fixtureVersion: 1;
+  fixtureVersion: 2;
   repositories: Array<{
     id: string;
     initialBranch: string;
-    commits: Array<{ file: string; contents: string; message: string }>;
+    setup: Setup[];
   }>;
   plainDirectories: string[];
   plan: Array<{
@@ -52,11 +74,19 @@ interface Fixture {
 }
 
 const fixture = JSON.parse(
-  await readFile(join(root, "test/fixtures/mcp-git-parity-v1.json"), "utf8"),
+  await readFile(join(root, "test/fixtures/mcp-git-parity-v2.json"), "utf8"),
 ) as Fixture;
-if (fixture.fixtureVersion !== 1) {
+if (fixture.fixtureVersion !== 2) {
   throw new Error(`Unsupported git parity fixture version ${fixture.fixtureVersion}`);
 }
+
+/**
+ * Every commit is stamped with the same fixed timestamp. Author, committer,
+ * message, and tree are already fixed by the fixture, so this is the last thing
+ * that would differ — and with it fixed, both runtimes see byte-identical
+ * commit hashes and `nomoreide_git_log` can be compared as reported.
+ */
+const COMMIT_TIME = "2026-01-02T03:04:05+00:00";
 
 const inheritedEnv = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
@@ -128,10 +158,8 @@ async function prepare(spec: { label: string; command: string; args: string[] })
     await git(path, ["config", "user.email", "parity@nomoreide.test"]);
     await git(path, ["config", "user.name", "NoMoreIDE Parity"]);
     await git(path, ["config", "commit.gpgsign", "false"]);
-    for (const commit of repository.commits) {
-      await writeFile(join(path, commit.file), commit.contents);
-      await git(path, ["add", commit.file]);
-      await git(path, ["commit", "--quiet", "-m", commit.message]);
+    for (const step of repository.setup) {
+      await apply(base, repository.id, path, step);
     }
     paths.set(`repo:${repository.id}`, path);
   }
@@ -146,7 +174,56 @@ async function prepare(spec: { label: string; command: string; args: string[] })
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
-  await execFileAsync("git", args, { cwd });
+  await execFileAsync("git", args, {
+    cwd,
+    env: { ...inheritedEnv, GIT_AUTHOR_DATE: COMMIT_TIME, GIT_COMMITTER_DATE: COMMIT_TIME },
+  });
+}
+
+async function apply(base: string, id: string, path: string, step: Setup): Promise<void> {
+  if ("commit" in step) {
+    await writeFile(join(path, step.commit.file), step.commit.contents);
+    await git(path, ["add", "--", step.commit.file]);
+    await git(path, ["commit", "--quiet", "-m", step.commit.message]);
+    return;
+  }
+  if ("remote" in step) {
+    const origin = join(base, "remotes", `${id}.git`);
+    await mkdir(origin, { recursive: true });
+    await git(path, ["init", "--quiet", "--bare", origin]);
+    await git(path, ["remote", "add", "origin", origin]);
+    await git(path, ["push", "--quiet", "--set-upstream", "origin", "HEAD"]);
+    return;
+  }
+  if ("remoteHead" in step) {
+    await git(path, ["remote", "set-head", "origin", step.remoteHead]);
+    return;
+  }
+  if ("resetTo" in step) {
+    await git(path, ["reset", "--quiet", "--hard", step.resetTo]);
+    return;
+  }
+  if ("branch" in step) {
+    await git(path, ["branch", step.branch]);
+    return;
+  }
+  if ("detach" in step) {
+    await git(path, ["checkout", "--quiet", "--detach", "HEAD"]);
+    return;
+  }
+  if ("write" in step) {
+    for (const [file, contents] of Object.entries(step.write)) {
+      await writeFile(join(path, file), contents);
+    }
+    return;
+  }
+  if ("remove" in step) {
+    for (const file of step.remove) {
+      await rm(join(path, file));
+    }
+    return;
+  }
+  await git(path, ["add", "--", ...step.stage]);
 }
 
 function command(runtime: Runtime): McpCommand {

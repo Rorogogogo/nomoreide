@@ -1,87 +1,160 @@
 //! Reading the repository: working-tree status, diffs, history, branches.
 
 use super::exec;
-use super::types::{GitBranch, GitCommit, GitFileStatus, GitStatus};
+use super::types::{GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus};
 use super::GitManager;
 use anyhow::Result;
 
+const LOCAL_PREFIX: &str = "refs/heads/";
+const REMOTE_PREFIX: &str = "refs/remotes/";
+
+/// What [`GitManager::tracking_status`] answers. Zeros stand for "no upstream",
+/// which is why it is not a `Result`.
+#[derive(Default)]
+struct TrackingStatus {
+    upstream: Option<String>,
+    ahead: i32,
+    behind: i32,
+}
+
+/// One porcelain line. The two status letters are read by position, and a line
+/// too short to hold them reads as spaces rather than panicking — git does not
+/// emit such a line, but a read tool that can be crashed by one is worse than
+/// one that shrugs.
+///
+/// Porcelain quotes a path that needs it and reports a rename as "old -> new".
+/// Neither is unpicked, because the reference hands both through as written.
+fn status_file(line: &str) -> GitFileStatus {
+    let letter = |column: usize| line.chars().nth(column).unwrap_or(' ').to_string();
+    GitFileStatus {
+        index: letter(0),
+        working_tree: letter(1),
+        path: line.chars().skip(3).collect(),
+    }
+}
+
+/// One line of `branch --all --format=%(refname)%09%(HEAD)%09%(upstream:short)`.
+fn branch_entry(line: &str) -> GitBranch {
+    let mut columns = line.split('\t');
+    let ref_name = columns.next().unwrap_or_default();
+    let head = columns.next().unwrap_or_default();
+    let upstream = columns.next().unwrap_or_default();
+    let remote = ref_name.starts_with(REMOTE_PREFIX);
+    let prefix = if remote { REMOTE_PREFIX } else { LOCAL_PREFIX };
+    GitBranch {
+        name: ref_name
+            .strip_prefix(prefix)
+            .unwrap_or(ref_name)
+            .to_string(),
+        current: head == "*",
+        remote,
+        upstream: (!upstream.is_empty()).then(|| upstream.to_string()),
+    }
+}
+
+/// One line of `log --pretty=format:%H%x09%s`. A subject containing a tab is
+/// cut at it, which is what splitting on tabs means in the reference too.
+fn log_entry(line: &str) -> GitLogEntry {
+    let mut columns = line.split('\t');
+    GitLogEntry {
+        hash: columns.next().unwrap_or_default().to_string(),
+        subject: columns.next().unwrap_or_default().to_string(),
+    }
+}
+
 impl GitManager {
     pub async fn status(cwd: &str) -> Result<GitStatus> {
-        // Branch name
-        let branch = exec::output(cwd, &["rev-parse", "--abbrev-ref", "HEAD"])
-            .await?
-            .trim()
-            .to_string();
-
-        // Upstream tracking
-        let upstream_raw = exec::output(
-            cwd,
-            &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-        )
-        .await
-        .unwrap_or_default();
-        let upstream = upstream_raw.trim().to_string();
-        let upstream = if upstream.is_empty() || upstream.starts_with("fatal") {
-            None
-        } else {
-            Some(upstream)
-        };
-
-        // Ahead/behind
-        let (ahead, behind) = if upstream.is_some() {
-            let ab = exec::output(cwd, &["rev-list", "--left-right", "--count", "HEAD...@{u}"])
-                .await
-                .unwrap_or_default();
-            let parts: Vec<i32> = ab
-                .split_whitespace()
-                .filter_map(|s| s.parse().ok())
-                .collect();
-            (
-                parts.first().copied().unwrap_or(0),
-                parts.get(1).copied().unwrap_or(0),
-            )
-        } else {
-            (0, 0)
-        };
-
-        // File statuses (porcelain v1)
-        let status_out = exec::output(cwd, &["status", "--porcelain", "-u"]).await?;
-        let files = status_out
-            .lines()
-            .filter(|l| l.len() >= 3)
-            .map(|l| {
-                let index = l.chars().next().map(|c| c.to_string()).unwrap_or_default();
-                let wt = l.chars().nth(1).map(|c| c.to_string()).unwrap_or_default();
-                let path = l[3..].trim().to_string();
-                GitFileStatus {
-                    path,
-                    index,
-                    working_tree: wt,
-                }
-            })
-            .collect();
+        // `--show-current` rather than `rev-parse --abbrev-ref HEAD`: a
+        // detached HEAD is on no branch, and the reference says so with an
+        // empty name instead of naming a branch called "HEAD".
+        let branch = exec::checked(cwd, &["branch", "--show-current"]).await?;
+        let porcelain =
+            exec::checked(cwd, &["status", "--porcelain=v1", "--untracked-files=all"]).await?;
+        let tracking = Self::tracking_status(cwd).await;
 
         Ok(GitStatus {
-            branch,
-            upstream,
-            ahead,
-            behind,
-            files,
+            branch: branch.trim().to_string(),
+            upstream: tracking.upstream,
+            ahead: tracking.ahead,
+            behind: tracking.behind,
+            files: porcelain
+                .lines()
+                .filter(|line| !line.is_empty())
+                .map(status_file)
+                .collect(),
         })
     }
 
+    /// How far the current branch is ahead of and behind its upstream. A branch
+    /// that tracks nothing, or a repository with no commits, answers zeros
+    /// rather than failing — the question is optional, unlike the two reads
+    /// above it.
+    async fn tracking_status(cwd: &str) -> TrackingStatus {
+        let upstream = exec::checked(
+            cwd,
+            &[
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ],
+        )
+        .await
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+        if upstream.is_empty() {
+            return TrackingStatus::default();
+        }
+
+        // `<upstream>...HEAD` with --left-right counts: left = behind, right = ahead.
+        let counts = exec::checked(
+            cwd,
+            &[
+                "rev-list",
+                "--left-right",
+                "--count",
+                &format!("{upstream}...HEAD"),
+            ],
+        )
+        .await
+        .unwrap_or_default();
+        let mut columns = counts.split_whitespace();
+        let behind = columns.next().and_then(|value| value.parse().ok());
+        let ahead = columns.next().and_then(|value| value.parse().ok());
+        TrackingStatus {
+            upstream: Some(upstream),
+            ahead: ahead.unwrap_or(0),
+            behind: behind.unwrap_or(0),
+        }
+    }
+
     pub async fn diff(cwd: &str, file: Option<&str>) -> Result<String> {
-        let mut args = vec!["diff", "--"];
-        if let Some(f) = file {
-            args.push(f);
+        match file {
+            Some(file) => exec::checked(cwd, &["diff", "--", file]).await,
+            None => exec::checked(cwd, &["diff"]).await,
         }
-        let staged = exec::output(cwd, &["diff", "--cached", "--"]).await?;
-        let unstaged = exec::output(cwd, &args).await?;
-        if !staged.is_empty() {
-            Ok(staged)
-        } else {
-            Ok(unstaged)
+    }
+
+    pub async fn staged_diff(cwd: &str, file: Option<&str>) -> Result<String> {
+        match file {
+            Some(file) => exec::checked(cwd, &["diff", "--cached", "--", file]).await,
+            None => exec::checked(cwd, &["diff", "--cached"]).await,
         }
+    }
+
+    /// The newest `limit` commits, hash and subject only.
+    pub async fn log(cwd: &str, limit: u32) -> Result<Vec<GitLogEntry>> {
+        let raw = exec::checked(
+            cwd,
+            &["log", &format!("-{limit}"), "--pretty=format:%H%x09%s"],
+        )
+        .await?;
+        Ok(raw
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(log_entry)
+            .collect())
     }
 
     pub async fn file_diff(cwd: &str, file: &str) -> Result<String> {
@@ -181,29 +254,26 @@ impl GitManager {
     }
 
     pub async fn branches(cwd: &str) -> Result<Vec<GitBranch>> {
-        let current = exec::output(cwd, &["rev-parse", "--abbrev-ref", "HEAD"])
-            .await?
-            .trim()
-            .to_string();
-        let locals = exec::lines(cwd, &["branch", "--format=%(refname:short)"]).await?;
-        let remotes = exec::lines(cwd, &["branch", "-r", "--format=%(refname:short)"]).await?;
-
-        let mut branches: Vec<GitBranch> = locals
-            .into_iter()
-            .map(|name| GitBranch {
-                is_current: name == current,
-                is_remote: false,
-                name,
-            })
-            .collect();
-
-        branches.extend(remotes.into_iter().map(|name| GitBranch {
-            is_current: false,
-            is_remote: true,
-            name,
-        }));
-
-        Ok(branches)
+        // One `--all` read rather than a local and a remote one: it is what
+        // marks the current branch and names each upstream, and it keeps the
+        // order the reference reports.
+        let raw = exec::checked(
+            cwd,
+            &[
+                "branch",
+                "--all",
+                "--format=%(refname)%09%(HEAD)%09%(upstream:short)",
+            ],
+        )
+        .await?;
+        Ok(raw
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(branch_entry)
+            // `origin/HEAD` is a pointer at another branch in this list, not a
+            // branch of its own, so it would only be a duplicate to switch to.
+            .filter(|branch| !branch.name.is_empty() && !branch.name.ends_with("/HEAD"))
+            .collect())
     }
 
     pub async fn remote_url(cwd: &str, remote: &str) -> Result<Option<String>> {
@@ -216,5 +286,93 @@ impl GitManager {
         } else {
             Some(trimmed.to_string())
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_porcelain_line_is_read_by_position() {
+        let modified = status_file(" M src/main.rs");
+        assert_eq!(modified.index, " ");
+        assert_eq!(modified.working_tree, "M");
+        assert_eq!(modified.path, "src/main.rs");
+
+        // A rename and a quoted path both reach the caller as git wrote them.
+        assert_eq!(
+            status_file("R  old.txt -> new.txt").path,
+            "old.txt -> new.txt"
+        );
+        assert_eq!(
+            status_file("?? \"with space.txt\"").path,
+            "\"with space.txt\""
+        );
+    }
+
+    #[test]
+    fn a_line_too_short_to_hold_the_letters_reads_as_spaces() {
+        // git emits no such line; a read tool that panicked on one would take
+        // the whole MCP server down with it.
+        for line in ["", "M", " M", "?? "] {
+            let file = status_file(line);
+            assert!(file.path.is_empty(), "{line:?} -> {file:?}");
+            assert_eq!(file.index.chars().count(), 1);
+            assert_eq!(file.working_tree.chars().count(), 1);
+        }
+        assert_eq!(status_file("").index, " ");
+        assert_eq!(status_file("M").working_tree, " ");
+    }
+
+    #[test]
+    fn a_branch_line_names_the_branch_without_its_ref_prefix() {
+        let current = branch_entry("refs/heads/main\t*\torigin/main");
+        assert_eq!(current.name, "main");
+        assert!(current.current);
+        assert!(!current.remote);
+        assert_eq!(current.upstream.as_deref(), Some("origin/main"));
+
+        // No upstream column at all, which is what an untracked branch reports.
+        let plain = branch_entry("refs/heads/feature/x\t\t");
+        assert_eq!(plain.name, "feature/x");
+        assert!(!plain.current);
+        assert_eq!(plain.upstream, None);
+
+        let remote = branch_entry("refs/remotes/origin/main\t\t");
+        assert_eq!(remote.name, "origin/main");
+        assert!(remote.remote);
+    }
+
+    #[test]
+    fn a_log_line_splits_the_hash_from_the_subject() {
+        let entry = log_entry("c4c2c82787efc2a6909ae760fc6ff49bb8ce300d\tfix: name the service");
+        assert_eq!(entry.hash, "c4c2c82787efc2a6909ae760fc6ff49bb8ce300d");
+        assert_eq!(entry.subject, "fix: name the service");
+        // An empty subject is still two columns, not one.
+        assert_eq!(log_entry("abc\t").subject, "");
+    }
+
+    /// The shapes cross to MCP clients and to the desktop app unchanged, so
+    /// what is absent has to stay absent rather than becoming an explicit null.
+    #[test]
+    fn an_absent_upstream_is_an_absent_key() {
+        let status = GitStatus {
+            branch: "main".into(),
+            upstream: None,
+            ahead: 0,
+            behind: 0,
+            files: vec![status_file(" M keep.txt")],
+        };
+        let rendered = serde_json::to_string(&status).unwrap();
+        assert_eq!(
+            rendered,
+            "{\"branch\":\"main\",\"ahead\":0,\"behind\":0,\
+             \"files\":[{\"path\":\"keep.txt\",\"index\":\" \",\"workingTree\":\"M\"}]}"
+        );
+        assert_eq!(
+            serde_json::to_string(&branch_entry("refs/heads/feature/x\t\t")).unwrap(),
+            "{\"name\":\"feature/x\",\"current\":false,\"remote\":false}"
+        );
     }
 }
