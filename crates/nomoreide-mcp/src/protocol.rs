@@ -598,6 +598,136 @@ mod tests {
         }
     }
 
+    /// Registration takes eleven fields where a runtime tool takes one, and
+    /// the reference reports every one it rejected, in schema order. Each
+    /// wording here was read back from the running reference: `kind` alone has
+    /// two, depending on whether it had a string to compare.
+    #[tokio::test]
+    async fn registration_rejects_arguments_exactly_as_the_reference_does() {
+        let cases = [
+            ("nomoreide_register_service", json!({}), "name: Required"),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "kind": "remote" }),
+                "kind: Invalid enum value. Expected 'local' | 'docker-compose' | 'ssh', \
+                 received 'remote'",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "kind": null }),
+                "kind: Expected 'local' | 'docker-compose' | 'ssh', received null",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "command": "" }),
+                "command: String must contain at least 1 character(s)",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "args": "--flag" }),
+                "args: Expected array, received string",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "args": ["ok", 7, {}] }),
+                "args.1: Expected string, received number, args.2: Expected string, \
+                 received object",
+            ),
+            // An argv member may be the empty string: it is passed to a program
+            // verbatim, and a program may want one.
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "args": [""], "port": 70000.5 }),
+                "port: Expected integer, received float, port: Number must be less than or \
+                 equal to 65535",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "env": "TOKEN=1" }),
+                "env: Expected object, received string",
+            ),
+            (
+                "nomoreide_register_service",
+                json!({ "name": "api", "env": { "TOKEN": 1 } }),
+                "env.TOKEN: Expected string, received number",
+            ),
+            // Reported in the reference's own key order, not in the order the
+            // caller happened to send them.
+            (
+                "nomoreide_register_service",
+                json!({ "host": "", "cwd": "", "name": 1, "description": 9 }),
+                "name: Expected string, received number, cwd: String must contain at least 1 \
+                 character(s), description: Expected string, received number, host: String \
+                 must contain at least 1 character(s)",
+            ),
+            (
+                "nomoreide_register_bundle",
+                json!({}),
+                "name: Required, services: Required",
+            ),
+            (
+                "nomoreide_register_bundle",
+                json!({ "name": "dev", "services": [] }),
+                "services: Array must contain at least 1 element(s)",
+            ),
+            (
+                "nomoreide_register_bundle",
+                json!({ "name": "dev", "services": ["api", ""] }),
+                "services.1: String must contain at least 1 character(s)",
+            ),
+            (
+                "nomoreide_register_bundle",
+                json!({ "name": "dev", "services": 5 }),
+                "services: Expected array, received number",
+            ),
+        ];
+        for (tool, arguments, detail) in cases {
+            let response = request(
+                &mut session(Ok("unreachable".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 21,
+                    "method": "tools/call",
+                    "params": { "name": tool, "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(response["error"]["code"], -32602, "{tool}");
+            assert_eq!(
+                response["error"]["message"],
+                format!(
+                    "MCP error -32602: Tool '{tool}' parameter validation \
+                     failed: {detail}. Please check the parameter types and values according \
+                     to the tool's schema."
+                )
+            );
+        }
+    }
+
+    /// A description may be empty, a port may sit at the top of its range, and
+    /// nothing but `name` has to be sent at all — the second gate decides
+    /// whether the fields describe a service, not this one.
+    #[tokio::test]
+    async fn registration_accepts_what_the_reference_accepts() {
+        for arguments in [
+            json!({ "name": "api" }),
+            json!({ "name": "api", "kind": "ssh", "description": "", "port": 65535 }),
+            json!({ "name": "api", "args": [], "env": {} }),
+        ] {
+            let response = request(
+                &mut session(Ok("registered".into())),
+                json!({
+                    "jsonrpc": "2.0",
+                    "id": 22,
+                    "method": "tools/call",
+                    "params": { "name": "nomoreide_register_service", "arguments": arguments }
+                }),
+            )
+            .await;
+            assert_eq!(response["result"]["content"][0]["text"], "registered");
+        }
+    }
+
     #[tokio::test]
     async fn unknown_tools_are_not_reported_as_migration_placeholders() {
         let response = request(

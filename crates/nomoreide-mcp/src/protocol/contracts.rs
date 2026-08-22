@@ -8,12 +8,8 @@
 
 use serde_json::{Map, Value};
 
-/// The argument contract of a tool the native runtime serves itself.
-///
-/// The reference implementation validates arguments with zod before a tool
-/// runs, so the same request has to fail here in the same way — including the
-/// message an agent reads back. Unknown keys are stripped rather than
-/// rejected, so only declared fields can fail.
+/// The argument contract of a tool the native runtime serves itself. Unknown
+/// keys are stripped rather than rejected, so only declared fields can fail.
 pub(super) enum ArgumentContract {
     Empty,
     /// A single required non-empty `name`. The reference's `serviceNameSchema`
@@ -31,12 +27,26 @@ pub(super) enum ArgumentContract {
     /// asks about every registered service; present and empty is still a
     /// rejected name.
     OptionalService,
+    /// `nomoreide_register_service`: eleven fields, every one but `name`
+    /// optional. This is only the first of two gates — it decides whether the
+    /// arguments are well-formed, and the executor then decides whether they
+    /// describe a service of some kind. A field that clears this one can never
+    /// fail the second on its type or its length, only by being missing.
+    ServiceRegistration,
+    /// `nomoreide_register_bundle`: a name and at least one non-empty member.
+    /// Its second gate is strictly weaker than this one, so a bundle that
+    /// reaches the executor always registers.
+    BundleRegistration,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
 const LOG_LIMIT_MAX: f64 = 1000.0;
 /// The reference's `z.number().int().positive().max(200).default(80)`.
 const TIMELINE_LIMIT_MAX: f64 = 200.0;
+/// The reference's `z.number().int().positive().max(65535)`.
+const PORT_MAX: f64 = 65535.0;
+/// The kinds of service the reference knows how to run.
+const SERVICE_KINDS: &[&str] = &["local", "docker-compose", "ssh"];
 
 impl ArgumentContract {
     pub(super) fn of(tool: &str) -> Option<Self> {
@@ -49,6 +59,8 @@ impl ArgumentContract {
             | "nomoreide_stop_bundle"
             | "nomoreide_service_context" => Some(Self::RequiredName),
             "nomoreide_service_health" => Some(Self::OptionalService),
+            "nomoreide_register_service" => Some(Self::ServiceRegistration),
+            "nomoreide_register_bundle" => Some(Self::BundleRegistration),
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
             "nomoreide_timeline" => Some(Self::Timeline),
             _ => None,
@@ -70,6 +82,27 @@ impl ArgumentContract {
                 collect(failures)
             }
             Self::OptionalService => collect(optional_name(arguments, "service")),
+            // In the reference's own key order, which is the order it reports
+            // failures in.
+            Self::ServiceRegistration => {
+                let mut failures = required_name(arguments).err().unwrap_or_default();
+                failures.extend(enumerated(arguments, "kind", SERVICE_KINDS));
+                failures.extend(optional_name(arguments, "command"));
+                failures.extend(string_array(arguments, "args", ArrayShape::ANY));
+                failures.extend(optional_name(arguments, "cwd"));
+                failures.extend(bounded_integer(arguments, "port", PORT_MAX));
+                failures.extend(string_map(arguments, "env"));
+                failures.extend(optional_string(arguments, "description"));
+                failures.extend(optional_name(arguments, "composeFile"));
+                failures.extend(optional_name(arguments, "composeService"));
+                failures.extend(optional_name(arguments, "host"));
+                collect(failures)
+            }
+            Self::BundleRegistration => {
+                let mut failures = required_name(arguments).err().unwrap_or_default();
+                failures.extend(string_array(arguments, "services", ArrayShape::NAMES));
+                collect(failures)
+            }
         }
     }
 }
@@ -139,6 +172,124 @@ fn bounded_integer(arguments: &Map<String, Value>, key: &str, max: f64) -> Vec<S
         failures.push(format!("{key}: Number must be less than or equal to {max}"));
     }
     failures
+}
+
+/// A plain optional string, with nothing said about its length.
+fn optional_string(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    match arguments.get(key) {
+        None | Some(Value::String(_)) => Vec::new(),
+        Some(other) => vec![format!(
+            "{key}: Expected string, received {}",
+            schema_type(other)
+        )],
+    }
+}
+
+/// An optional member of a fixed set. A value of the wrong type is reported
+/// differently from a string that is simply not one of the members — the
+/// reference says "Invalid enum value" only when it had a string to compare.
+fn enumerated(arguments: &Map<String, Value>, key: &str, members: &[&str]) -> Vec<String> {
+    let expected = members
+        .iter()
+        .map(|member| format!("'{member}'"))
+        .collect::<Vec<_>>()
+        .join(" | ");
+    match arguments.get(key) {
+        None => Vec::new(),
+        Some(Value::String(value)) if members.contains(&value.as_str()) => Vec::new(),
+        Some(Value::String(value)) => vec![format!(
+            "{key}: Invalid enum value. Expected {expected}, received '{value}'"
+        )],
+        Some(other) => vec![format!(
+            "{key}: Expected {expected}, received {}",
+            schema_type(other)
+        )],
+    }
+}
+
+/// What an array of strings has to satisfy beyond being one.
+struct ArrayShape {
+    /// Whether the array itself may be empty.
+    allow_empty: bool,
+    /// Whether an individual member may be the empty string.
+    allow_empty_members: bool,
+}
+
+impl ArrayShape {
+    /// `z.array(z.string())` — `args`, whose members are passed to a program
+    /// verbatim and so may be anything a program accepts, empty included.
+    const ANY: Self = Self {
+        allow_empty: true,
+        allow_empty_members: true,
+    };
+    /// `z.array(z.string().min(1)).min(1)` — a bundle's members, each of which
+    /// has to name something.
+    const NAMES: Self = Self {
+        allow_empty: false,
+        allow_empty_members: false,
+    };
+}
+
+/// An optional array of strings. Every member is reported, not just the first,
+/// and each is addressed by its index the way the reference addresses it.
+fn string_array(arguments: &Map<String, Value>, key: &str, shape: ArrayShape) -> Vec<String> {
+    let Some(value) = arguments.get(key) else {
+        return if shape.allow_empty {
+            Vec::new()
+        } else {
+            vec![format!("{key}: Required")]
+        };
+    };
+    let Some(members) = value.as_array() else {
+        return vec![format!(
+            "{key}: Expected array, received {}",
+            schema_type(value)
+        )];
+    };
+    if members.is_empty() && !shape.allow_empty {
+        return vec![format!("{key}: Array must contain at least 1 element(s)")];
+    }
+    members
+        .iter()
+        .enumerate()
+        .filter_map(|(index, member)| match member {
+            Value::String(member) if member.is_empty() && !shape.allow_empty_members => Some(
+                format!("{key}.{index}: String must contain at least 1 character(s)"),
+            ),
+            Value::String(_) => None,
+            other => Some(format!(
+                "{key}.{index}: Expected string, received {}",
+                schema_type(other)
+            )),
+        })
+        .collect()
+}
+
+/// An optional map of string values, addressed by key.
+///
+/// The reference walks the map in insertion order; `serde_json` sorts object
+/// keys, so two bad entries are reported alphabetically rather than as written.
+/// Which entries are reported, and what is said about each, is the same.
+fn string_map(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    let Some(value) = arguments.get(key) else {
+        return Vec::new();
+    };
+    let Some(entries) = value.as_object() else {
+        return vec![format!(
+            "{key}: Expected object, received {}",
+            schema_type(value)
+        )];
+    };
+    entries
+        .iter()
+        .filter(|(_, value)| !value.is_string())
+        .map(|(name, value)| {
+            format!(
+                "{key}.{name}: Expected string, received {}",
+                schema_type(value)
+            )
+        })
+        .collect()
 }
 
 fn schema_type(value: &Value) -> &'static str {

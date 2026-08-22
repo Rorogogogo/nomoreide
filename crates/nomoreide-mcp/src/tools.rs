@@ -1,4 +1,5 @@
 mod diagnostics;
+mod registration;
 
 use nomoreide_core::config::ConfigStore;
 use nomoreide_daemon_client::protocol::{ServiceRuntimeState, ServiceRuntimeStatus};
@@ -42,88 +43,110 @@ impl Default for NativeToolExecutor {
 impl ToolExecutor for NativeToolExecutor {
     fn execute<'a>(&'a self, name: &'a str, arguments: &'a Map<String, Value>) -> ToolFuture<'a> {
         Box::pin(async move {
-            let tool = NativeTool::parse(name, arguments)?;
-            let client = DaemonClient::discover(&self.paths, self.port, env!("CARGO_PKG_VERSION"))
-                .await
-                .map_err(|error| error.to_string())?;
-            match tool {
-                NativeTool::ListServices => {
-                    let discovery = client.list_services().await.map_err(daemon_message)?;
-                    render(&discovery)
+            match NativeTool::parse(name, arguments)? {
+                // Registration writes config and never touches the runtime, so
+                // it is served without a daemon. Requiring one would make
+                // registering a service depend on something the service does
+                // not need in order to be registered.
+                NativeTool::RegisterService => {
+                    registration::register_service(&self.config, arguments).await
                 }
-                NativeTool::StartService(service) => {
-                    let status = client
-                        .start_service(service)
-                        .await
-                        .map_err(daemon_message)?;
-                    render(&ServiceStatusView::of(&status))
+                NativeTool::RegisterBundle => {
+                    registration::register_bundle(&self.config, arguments).await
                 }
-                NativeTool::StopService(service) => {
-                    let status = client.stop_service(service).await.map_err(daemon_message)?;
-                    render(&ServiceStatusView::of(&status))
-                }
-                NativeTool::RestartService(service) => {
-                    let status = client
-                        .restart_service(service)
-                        .await
-                        .map_err(daemon_message)?;
-                    render(&ServiceStatusView::of(&status))
-                }
-                NativeTool::ReadLogs { service, limit } => {
-                    let logs = client.logs(service, limit).await.map_err(daemon_message)?;
-                    render(&logs)
-                }
-                NativeTool::Timeline { service, limit } => {
-                    // The reference asks for the whole buffer and narrows it
-                    // here, so filtering by service still returns the newest
-                    // `limit` events *for that service* rather than whatever
-                    // survived a filter applied to an already-truncated read.
-                    let events = client
-                        .timeline(TIMELINE_READ_SIZE)
-                        .await
-                        .map_err(daemon_message)?;
-                    let matched = events
-                        .into_iter()
-                        .filter(|event| {
-                            // `is_none_or` would read better but postdates the
-                            // workspace MSRV.
-                            service
-                                .map_or(true, |service| event.service.as_deref() == Some(service))
-                        })
-                        .collect::<Vec<_>>();
-                    let start = matched.len().saturating_sub(limit);
-                    render(&matched[start..])
-                }
-                NativeTool::Status => {
-                    let statuses = client.status().await.map_err(daemon_message)?;
-                    render(&StatusView::of(&statuses))
-                }
-                NativeTool::StartBundle(bundle) => {
-                    let statuses = client.start_bundle(bundle).await.map_err(daemon_message)?;
-                    render(&status_views(&statuses))
-                }
-                NativeTool::StopBundle(bundle) => {
-                    let statuses = client.stop_bundle(bundle).await.map_err(daemon_message)?;
-                    render(&status_views(&statuses))
-                }
-                NativeTool::ServiceContext(service) => {
-                    let config = self
-                        .config
-                        .load()
-                        .await
-                        .map_err(|error| error.to_string())?;
-                    diagnostics::service_context(&client, &config, service).await
-                }
-                NativeTool::ServiceHealth(service) => {
-                    let config = self
-                        .config
-                        .load()
-                        .await
-                        .map_err(|error| error.to_string())?;
-                    diagnostics::service_health(&client, &config, service).await
-                }
+                runtime => self.serve_runtime(runtime).await,
             }
         })
+    }
+}
+
+impl NativeToolExecutor {
+    /// Everything the daemon owns. The daemon has to be reachable first,
+    /// because none of these questions has an answer without it.
+    async fn serve_runtime(&self, tool: NativeTool<'_>) -> Result<String, String> {
+        let client = DaemonClient::discover(&self.paths, self.port, env!("CARGO_PKG_VERSION"))
+            .await
+            .map_err(|error| error.to_string())?;
+        match tool {
+            NativeTool::ListServices => {
+                let discovery = client.list_services().await.map_err(daemon_message)?;
+                render(&discovery)
+            }
+            NativeTool::StartService(service) => {
+                let status = client
+                    .start_service(service)
+                    .await
+                    .map_err(daemon_message)?;
+                render(&ServiceStatusView::of(&status))
+            }
+            NativeTool::StopService(service) => {
+                let status = client.stop_service(service).await.map_err(daemon_message)?;
+                render(&ServiceStatusView::of(&status))
+            }
+            NativeTool::RestartService(service) => {
+                let status = client
+                    .restart_service(service)
+                    .await
+                    .map_err(daemon_message)?;
+                render(&ServiceStatusView::of(&status))
+            }
+            NativeTool::ReadLogs { service, limit } => {
+                let logs = client.logs(service, limit).await.map_err(daemon_message)?;
+                render(&logs)
+            }
+            NativeTool::Timeline { service, limit } => {
+                // The reference asks for the whole buffer and narrows it
+                // here, so filtering by service still returns the newest
+                // `limit` events *for that service* rather than whatever
+                // survived a filter applied to an already-truncated read.
+                let events = client
+                    .timeline(TIMELINE_READ_SIZE)
+                    .await
+                    .map_err(daemon_message)?;
+                let matched = events
+                    .into_iter()
+                    .filter(|event| {
+                        // `is_none_or` would read better but postdates the
+                        // workspace MSRV.
+                        service.map_or(true, |service| event.service.as_deref() == Some(service))
+                    })
+                    .collect::<Vec<_>>();
+                let start = matched.len().saturating_sub(limit);
+                render(&matched[start..])
+            }
+            NativeTool::Status => {
+                let statuses = client.status().await.map_err(daemon_message)?;
+                render(&StatusView::of(&statuses))
+            }
+            NativeTool::StartBundle(bundle) => {
+                let statuses = client.start_bundle(bundle).await.map_err(daemon_message)?;
+                render(&status_views(&statuses))
+            }
+            NativeTool::StopBundle(bundle) => {
+                let statuses = client.stop_bundle(bundle).await.map_err(daemon_message)?;
+                render(&status_views(&statuses))
+            }
+            NativeTool::ServiceContext(service) => {
+                let config = self
+                    .config
+                    .load()
+                    .await
+                    .map_err(|error| error.to_string())?;
+                diagnostics::service_context(&client, &config, service).await
+            }
+            NativeTool::ServiceHealth(service) => {
+                let config = self
+                    .config
+                    .load()
+                    .await
+                    .map_err(|error| error.to_string())?;
+                diagnostics::service_health(&client, &config, service).await
+            }
+            // Both were served before the daemon was ever asked for.
+            NativeTool::RegisterService | NativeTool::RegisterBundle => {
+                unreachable!("registration is served locally")
+            }
+        }
     }
 }
 
@@ -147,6 +170,11 @@ enum NativeTool<'a> {
     StopBundle(&'a str),
     Status,
     ServiceContext(&'a str),
+    /// Registration reads its own arguments: the definition it assembles has
+    /// eleven possible fields and three readings, so naming them here would be
+    /// a second copy of that contract.
+    RegisterService,
+    RegisterBundle,
     /// An absent service asks about every registered one, so `None` is a wider
     /// question rather than a missing answer.
     ServiceHealth(Option<&'a str>),
@@ -175,6 +203,8 @@ impl<'a> NativeTool<'a> {
             "nomoreide_start_bundle" => Ok(Self::StartBundle(bundle_name(arguments)?)),
             "nomoreide_stop_bundle" => Ok(Self::StopBundle(bundle_name(arguments)?)),
             "nomoreide_service_context" => Ok(Self::ServiceContext(service_name(arguments)?)),
+            "nomoreide_register_service" => Ok(Self::RegisterService),
+            "nomoreide_register_bundle" => Ok(Self::RegisterBundle),
             "nomoreide_service_health" => Ok(Self::ServiceHealth(
                 arguments.get("service").and_then(Value::as_str),
             )),

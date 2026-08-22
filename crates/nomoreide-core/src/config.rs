@@ -193,6 +193,9 @@ pub struct ProviderConnectionDef {
     pub legacy_team_slug: Option<String>,
 }
 
+/// Field order is the reference's, not this struct's convenience: the same
+/// document is rendered by both runtimes and compared between them, so the keys
+/// have to come out in the same sequence.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PublicServiceDef<'a> {
@@ -200,21 +203,21 @@ struct PublicServiceDef<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     kind: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    port: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    test: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    depends_on: Option<&'a Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_path: Option<&'a String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     command: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     args: Option<&'a Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     cwd: Option<&'a String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    port: Option<u16>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<&'a String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    project_path: Option<&'a String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    test: Option<&'a String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    depends_on: Option<&'a Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     compose_file: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -281,11 +284,11 @@ struct PublicConfig<'a> {
     workflows: &'a [serde_json::Value],
     workflow_triggers: &'a [serde_json::Value],
     #[serde(skip_serializing_if = "Option::is_none")]
-    preferences: Option<&'a serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     chat_provider: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     chat_models: Option<&'a ChatModelsDef>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preferences: Option<&'a serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -353,11 +356,21 @@ pub struct Config {
 pub const LEGACY_PROVIDER_ID: &str = "vercel";
 
 impl Config {
+    /// Configuration metadata safe to serialize to the dashboard, as a value.
+    ///
+    /// Convenient, and lossy in one way that matters to nobody who reads it by
+    /// key: `serde_json::Value` sorts object keys, so the field order below
+    /// does not survive. Anything rendering this document for comparison
+    /// against the reference must serialize [`Config::public_view`] instead.
+    pub fn public_value(&self) -> serde_json::Value {
+        serde_json::to_value(self.public_view()).expect("Public config must serialize")
+    }
+
     /// Configuration metadata safe to serialize to the dashboard.
     /// Runtime code must continue to use `Config` so credentials never have to
     /// make a round trip through a webview merely to start a service.
-    pub fn public_value(&self) -> serde_json::Value {
-        let public = PublicConfig {
+    pub fn public_view(&self) -> impl Serialize + '_ {
+        PublicConfig {
             version: self.version,
             services: self
                 .services
@@ -431,8 +444,7 @@ impl Config {
             preferences: self.preferences.as_ref(),
             chat_provider: self.chat_provider.as_ref(),
             chat_models: self.chat_models.as_ref(),
-        };
-        serde_json::to_value(public).expect("Public config must serialize")
+        }
     }
 
     /// Lift the pre-registry Vercel fields into their provider-keyed homes:
