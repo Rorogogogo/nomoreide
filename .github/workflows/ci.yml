@@ -90,11 +90,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
 
-      # The Phase 2 exit gate: run the TypeScript reference and the native
-      # binary side by side and compare what each reports through MCP. It needs
-      # the binary on disk, which `cargo test` only builds incidentally, and the
+      # The parity gates: run the TypeScript reference and the native binary
+      # side by side and compare what each reports through MCP. They need the
+      # binary on disk, which `cargo test` only builds incidentally, and the
       # reference runs from source via tsx (`npm ci` above), against the client
       # `npm run build` already produced.
       - run: cargo build --workspace
       - name: MCP runtime parity
         run: npm run mcp:runtime-parity -- ./target/debug/nomoreide
+      - name: MCP git parity
+        run: npm run mcp:git-parity -- ./target/debug/nomoreide

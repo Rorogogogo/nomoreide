@@ -1,4 +1,5 @@
 mod diagnostics;
+mod git;
 mod registration;
 
 use nomoreide_core::config::ConfigStore;
@@ -53,6 +54,14 @@ impl ToolExecutor for NativeToolExecutor {
                 }
                 NativeTool::RegisterBundle => {
                     registration::register_bundle(&self.config, arguments).await
+                }
+                // Repository registration and selection write config too, so
+                // they are served without a daemon for the same reason.
+                NativeTool::GitRegisterRepository { name, path } => {
+                    git::register_repository(&self.config, name, path).await
+                }
+                NativeTool::GitSelectRepository(name) => {
+                    git::select_repository(&self.config, name).await
                 }
                 runtime => self.serve_runtime(runtime).await,
             }
@@ -142,9 +151,12 @@ impl NativeToolExecutor {
                     .map_err(|error| error.to_string())?;
                 diagnostics::service_health(&client, &config, service).await
             }
-            // Both were served before the daemon was ever asked for.
-            NativeTool::RegisterService | NativeTool::RegisterBundle => {
-                unreachable!("registration is served locally")
+            // All four were served before the daemon was ever asked for.
+            NativeTool::RegisterService
+            | NativeTool::RegisterBundle
+            | NativeTool::GitRegisterRepository { .. }
+            | NativeTool::GitSelectRepository(_) => {
+                unreachable!("config writes are served locally")
             }
         }
     }
@@ -178,6 +190,11 @@ enum NativeTool<'a> {
     /// An absent service asks about every registered one, so `None` is a wider
     /// question rather than a missing answer.
     ServiceHealth(Option<&'a str>),
+    GitRegisterRepository {
+        name: &'a str,
+        path: &'a str,
+    },
+    GitSelectRepository(&'a str),
 }
 
 impl<'a> NativeTool<'a> {
@@ -208,6 +225,14 @@ impl<'a> NativeTool<'a> {
             "nomoreide_service_health" => Ok(Self::ServiceHealth(
                 arguments.get("service").and_then(Value::as_str),
             )),
+            "nomoreide_git_register_repository" => Ok(Self::GitRegisterRepository {
+                name: required_name(arguments, "repository")?,
+                path: repository_path(arguments)?,
+            }),
+            "nomoreide_git_select_repository" => Ok(Self::GitSelectRepository(required_name(
+                arguments,
+                "repository",
+            )?)),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -240,12 +265,25 @@ fn log_limit(arguments: &Map<String, Value>) -> u32 {
 const TIMELINE_READ_SIZE: u32 = 200;
 const DEFAULT_TIMELINE_LIMIT: usize = 80;
 
+/// The `name` argument. `kind` is the noun for the refusal — *not* the key
+/// read, which is always `name`.
 fn required_name<'a>(arguments: &'a Map<String, Value>, kind: &str) -> Result<&'a str, String> {
     arguments
         .get("name")
         .and_then(Value::as_str)
         .filter(|name| !name.is_empty())
         .ok_or_else(|| format!("Registered {kind} name is required."))
+}
+
+/// The `path` of a repository registration. Like [`required_name`], this cannot
+/// fail in practice — `ArgumentContract::RepositoryRegistration` has already
+/// rejected a missing or empty path — so the wording is only a fallback.
+fn repository_path(arguments: &Map<String, Value>) -> Result<&str, String> {
+    arguments
+        .get("path")
+        .and_then(Value::as_str)
+        .filter(|path| !path.is_empty())
+        .ok_or_else(|| "A repository path is required.".to_string())
 }
 
 /// The reference reports runtime status as an object keyed by service name.

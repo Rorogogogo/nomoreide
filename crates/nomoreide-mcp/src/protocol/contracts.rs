@@ -37,6 +37,11 @@ pub(super) enum ArgumentContract {
     /// Its second gate is strictly weaker than this one, so a bundle that
     /// reaches the executor always registers.
     BundleRegistration,
+    /// `nomoreide_git_register_repository`: a name and a path, both required
+    /// and non-empty. Whether the path is absolute and actually a worktree is
+    /// the executor's question, not this one's — the reference asks it in
+    /// `ConfigStore`, after zod has passed.
+    RepositoryRegistration,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -57,12 +62,14 @@ impl ArgumentContract {
             | "nomoreide_restart_service"
             | "nomoreide_start_bundle"
             | "nomoreide_stop_bundle"
-            | "nomoreide_service_context" => Some(Self::RequiredName),
+            | "nomoreide_service_context"
+            | "nomoreide_git_select_repository" => Some(Self::RequiredName),
             "nomoreide_service_health" => Some(Self::OptionalService),
             "nomoreide_register_service" => Some(Self::ServiceRegistration),
             "nomoreide_register_bundle" => Some(Self::BundleRegistration),
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
             "nomoreide_timeline" => Some(Self::Timeline),
+            "nomoreide_git_register_repository" => Some(Self::RepositoryRegistration),
             _ => None,
         }
     }
@@ -82,6 +89,11 @@ impl ArgumentContract {
                 collect(failures)
             }
             Self::OptionalService => collect(optional_name(arguments, "service")),
+            Self::RepositoryRegistration => {
+                let mut failures = required_name(arguments).err().unwrap_or_default();
+                failures.extend(required_string(arguments, "path").err().unwrap_or_default());
+                collect(failures)
+            }
             // In the reference's own key order, which is the order it reports
             // failures in.
             Self::ServiceRegistration => {
@@ -116,13 +128,18 @@ fn collect(failures: Vec<String>) -> Result<(), String> {
 }
 
 fn required_name(arguments: &Map<String, Value>) -> Result<(), Vec<String>> {
-    let failure = match arguments.get("name") {
-        None => "name: Required".to_string(),
-        Some(Value::String(name)) if name.is_empty() => {
-            "name: String must contain at least 1 character(s)".to_string()
+    required_string(arguments, "name")
+}
+
+/// A required non-empty string under `key`, reported the way zod reports it.
+fn required_string(arguments: &Map<String, Value>, key: &str) -> Result<(), Vec<String>> {
+    let failure = match arguments.get(key) {
+        None => format!("{key}: Required"),
+        Some(Value::String(value)) if value.is_empty() => {
+            format!("{key}: String must contain at least 1 character(s)")
         }
         Some(Value::String(_)) => return Ok(()),
-        Some(other) => format!("name: Expected string, received {}", schema_type(other)),
+        Some(other) => format!("{key}: Expected string, received {}", schema_type(other)),
     };
     Err(vec![failure])
 }

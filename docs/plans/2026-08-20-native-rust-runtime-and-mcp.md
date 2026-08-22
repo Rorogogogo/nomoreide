@@ -337,6 +337,36 @@ error where the TypeScript `checkoutDefaultAndPull` uses `switch` and reports
 one, and the Rust `default_branch` has no fallback to a local `main`/`master`
 when `origin/HEAD` is unset.
 
+**Slice 2 (done): repository registration and selection.**
+`nomoreide_git_register_repository` and `nomoreide_git_select_repository` are
+the first two of the 19 git tools, and every other one needs "which repository
+am I acting on" resolved first. Both write config and never touch the runtime,
+so they are served locally without a daemon, like service registration.
+
+Diffing against the running reference — rather than reading its source — found
+three gaps that reading had missed. The Rust `ConfigStore` registered a
+repository without selecting it (the reference always selects, so re-registering
+a known name also brings it forward), let `select_git_repository` name a
+repository that was never registered, and validated neither that the path is
+absolute nor that it is inside a worktree. The first two are fixed in
+`config.rs` with tests; the last two live in the tool, which is where the
+reference puts them.
+
+The gate is `npm run mcp:git-parity -- ./target/debug/nomoreide`
+(`scripts/check-mcp-git-parity.ts` + `test/fixtures/mcp-git-parity-v1.json`),
+now on every PR. It gives each runtime a private home and its own copy of every
+fixture repository, then walks an ordered plan of MCP calls and diffs the
+payloads. No daemon is involved — these tools write `config.json` directly.
+Placeholders (`{{repo:demo}}`, `{{dir:...}}`, `{{home}}`) become each runtime's
+own paths, and those paths are the only thing normalized away; message text and
+every field are compared verbatim. Payloads are compared parsed, so key *order*
+— which `serde_json` sorts and the reference does not — is not a difference.
+**17 steps, no accepted divergences.** Verified to bite by removing the
+auto-select and watching it fail.
+
+Add steps to the fixture as each remaining git slice lands, rather than building
+the whole Phase 3 gate at the end.
+
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.
 - Port snapshots, repository selection, worktree management, context assembly, and onboarding.

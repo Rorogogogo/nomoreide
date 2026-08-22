@@ -602,6 +602,11 @@ impl ConfigStore {
             repo.provider_projects = existing.and_then(|r| r.provider_projects.clone());
         }
         config.git_repositories.retain(|r| r.name != repo.name);
+        // Registering is how a repository becomes the one on screen. Selecting
+        // it here rather than leaving that to the caller is what the reference
+        // does, and it means re-registering an existing repository also brings
+        // it back to the front.
+        config.selected_git_repository = Some(repo.name.clone());
         config.git_repositories.push(repo);
         self.save(&config).await?;
         Ok(config)
@@ -633,8 +638,14 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// `None` clears the selection; a name must be one that is registered.
     pub async fn select_git_repository(&self, name: Option<String>) -> Result<Config> {
         let mut config = self.load().await?;
+        if let Some(name) = &name {
+            if !config.git_repositories.iter().any(|r| &r.name == name) {
+                anyhow::bail!("Git repository \"{name}\" is not registered.");
+            }
+        }
         config.selected_git_repository = name;
         self.save(&config).await?;
         Ok(config)
@@ -998,6 +1009,86 @@ mod tests {
         assert_eq!(explicit.kind.as_deref(), Some("local"));
         assert_eq!(explicit.effective_kind(), "local");
         assert_eq!(serde_json::to_value(&explicit).unwrap()["kind"], "local");
+    }
+
+    /// A store over a throwaway config file.
+    fn scratch_store(label: &str) -> ConfigStore {
+        let dir = std::env::temp_dir().join(format!(
+            "nomoreide-{label}-{}-{}",
+            std::process::id(),
+            Uuid::new_v4()
+        ));
+        ConfigStore::new(dir.join("config.json"))
+    }
+
+    fn repo(name: &str, path: &str) -> GitRepoDef {
+        GitRepoDef {
+            name: name.to_string(),
+            path: path.to_string(),
+            active_worktree_path: None,
+            github_credential: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn registering_a_repository_also_selects_it() {
+        let store = scratch_store("register-selects");
+
+        let config = store
+            .register_git_repository(repo("demo", "/demo"))
+            .await
+            .unwrap();
+        assert_eq!(config.selected_git_repository.as_deref(), Some("demo"));
+
+        // A second registration takes the selection, and re-registering the
+        // first brings it back — registering is how a repository comes forward.
+        let config = store
+            .register_git_repository(repo("other", "/other"))
+            .await
+            .unwrap();
+        assert_eq!(config.selected_git_repository.as_deref(), Some("other"));
+        let config = store
+            .register_git_repository(repo("demo", "/demo"))
+            .await
+            .unwrap();
+        assert_eq!(config.selected_git_repository.as_deref(), Some("demo"));
+        assert_eq!(config.git_repositories.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn selecting_an_unregistered_repository_is_refused() {
+        let store = scratch_store("select-unknown");
+        store
+            .register_git_repository(repo("demo", "/demo"))
+            .await
+            .unwrap();
+
+        let error = store
+            .select_git_repository(Some("ghost".to_string()))
+            .await
+            .expect_err("an unregistered name should be refused");
+        assert_eq!(
+            error.to_string(),
+            "Git repository \"ghost\" is not registered."
+        );
+
+        // The refusal leaves the previous selection alone rather than clearing it.
+        let config = store.load().await.unwrap();
+        assert_eq!(config.selected_git_repository.as_deref(), Some("demo"));
+    }
+
+    #[tokio::test]
+    async fn selecting_nothing_clears_the_selection() {
+        let store = scratch_store("select-none");
+        store
+            .register_git_repository(repo("demo", "/demo"))
+            .await
+            .unwrap();
+
+        let config = store.select_git_repository(None).await.unwrap();
+        assert_eq!(config.selected_git_repository, None);
     }
 
     #[cfg(unix)]
