@@ -262,6 +262,46 @@ Each phase should be a reviewable vertical slice with tests. Do not perform a bi
 
 **Exit gate:** a clean-machine black-box suite produces equivalent service states, logs, health, and errors through TypeScript and Rust.
 
+**Exit gate met** by `npm run mcp:runtime-parity -- ./target/debug/nomoreide`
+(`scripts/check-mcp-runtime-parity.ts`). It gives each runtime a private
+throwaway home, an identical service config, and one ordered walk of 55 MCP
+calls covering every state a service reaches — running, exited, stopped after
+running, never started, restarted, bundled, refused — across all three kinds
+(`local`, `ssh`, `docker-compose`). Pass `--dump` to print both payloads per
+step.
+
+The suite compares payloads rather than reading either implementation, and
+normalizes only what cannot repeat between two equivalent runs: pids, ports,
+wall-clock times, and each runtime's own paths. States, exit codes, signal
+names, and message text are compared verbatim.
+
+Hermetic by construction: `ssh` and `docker` are stubs planted in each
+runtime's workspace. A stub needs `SHELL` as well as `PATH`, because
+`service_path()` asks the login shell what PATH to hand a service and appends
+the inherited one last — a stub reachable only through `PATH` loses to a real
+`/usr/local/bin/docker`.
+
+**Four accepted divergences.** Each is erased by the narrowest rule that
+describes it, so every other field in those steps is still compared; the two
+that can be stated exactly are pinned on *both* sides, so the gate fails if
+either runtime changes.
+
+| # | Difference | How the gate treats it |
+| --- | --- | --- |
+| D1 | A stop that finds no live child makes the reference replace the whole status record with a bare `{name, state}`, discarding the exit code, signal, pid, and URL it had just reported. The native runtime carries the record forward. | Reconciled: where the reference collapsed a record, only what it kept is compared. |
+| D2 | The reference answers a stop for an unregistered name by *inventing* a runtime entry and timeline event for it, which then persist in every later read. The native runtime refuses — stop is a remediation capability, but only for names that were once registered (`require_stop_allowed`). | Pinned at `error/stop-unregistered`; the invented name is dropped from later reads. |
+| D3 | The reference records every stop twice — once from the exit watcher (carrying exit code and signal) and once more from `stopService` itself (carrying no `data`). The native runtime records only the authoritative one. | Reconciled: the data-less twin is dropped. |
+| D4 | An ssh service's environment is emitted as shell assignments before `exec`. The reference emits them in config-file order; the native runtime parses `env` into a hash map and emits them sorted. Same environment, different argv text. | Pinned at `logs/ssh-argv`; assignments are sorted elsewhere, so which variables are exported and with what quoting is still compared exactly. |
+
+In all four the native behavior was judged the better one, so the reference is
+the side that would change. Two further differences are races present in both
+runtimes, not divergences: a service's URL is parsed out of stdout
+asynchronously, so a *start* call may return before or after it lands (the
+`status` step after each start compares it once settled); and the stdout and
+stderr readers race, so timeline events belonging to different services can
+interleave either way (order within one service is deterministic and still
+compared).
+
 ### Phase 3 — Git, GitHub, worktrees, snapshots, and onboarding
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
