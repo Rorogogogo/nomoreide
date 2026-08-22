@@ -1,5 +1,6 @@
 mod diagnostics;
 mod git;
+mod github;
 mod registration;
 
 use nomoreide_core::config::ConfigStore;
@@ -91,6 +92,11 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GitCreateBranch { cwd, name } => git::create_branch(cwd, name).await,
                 NativeTool::GitSwitchBranch { cwd, name } => git::switch_branch(cwd, name).await,
                 NativeTool::GitFetch(cwd) => git::fetch(cwd).await,
+                NativeTool::GitPush { cwd, remote } => git::push(&self.config, cwd, remote).await,
+                NativeTool::GitClone(url) => git::clone(&self.config, url).await,
+                NativeTool::GithubSetToken { token, host } => {
+                    github::set_token(&self.config, token, host).await
+                }
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -199,7 +205,10 @@ impl NativeToolExecutor {
             | NativeTool::GitCommit { .. }
             | NativeTool::GitCreateBranch { .. }
             | NativeTool::GitSwitchBranch { .. }
-            | NativeTool::GitFetch(_) => {
+            | NativeTool::GitFetch(_)
+            | NativeTool::GitPush { .. }
+            | NativeTool::GitClone(_)
+            | NativeTool::GithubSetToken { .. } => {
                 unreachable!("config writes and git operations are served locally")
             }
         }
@@ -294,6 +303,15 @@ enum NativeTool<'a> {
         name: &'a str,
     },
     GitFetch(Option<&'a str>),
+    GitPush {
+        cwd: Option<&'a str>,
+        remote: Option<&'a str>,
+    },
+    GitClone(&'a str),
+    GithubSetToken {
+        token: &'a str,
+        host: &'a str,
+    },
 }
 
 impl<'a> NativeTool<'a> {
@@ -393,10 +411,24 @@ impl<'a> NativeTool<'a> {
                 name: required_name(arguments, "branch")?,
             }),
             "nomoreide_git_fetch" => Ok(Self::GitFetch(optional_text(arguments, "cwd"))),
+            "nomoreide_git_push" => Ok(Self::GitPush {
+                cwd: optional_text(arguments, "cwd"),
+                remote: optional_text(arguments, "remote"),
+            }),
+            "nomoreide_git_clone" => Ok(Self::GitClone(required_text(arguments, "url")?)),
+            "nomoreide_github_set_token" => Ok(Self::GithubSetToken {
+                token: required_text(arguments, "token")?,
+                // The reference's schema defaults this, so an absent host is
+                // github.com rather than a missing argument.
+                host: optional_text(arguments, "host").unwrap_or(DEFAULT_GITHUB_HOST),
+            }),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
 }
+
+/// The reference's `z.string().min(1).default("github.com")`.
+const DEFAULT_GITHUB_HOST: &str = "github.com";
 
 fn service_name(arguments: &Map<String, Value>) -> Result<&str, String> {
     required_name(arguments, "service")

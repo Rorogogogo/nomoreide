@@ -15,6 +15,7 @@ pub mod one_time_skills;
 pub mod port_utils;
 pub mod process_manager;
 pub mod repo_match;
+pub mod repo_onboard;
 pub mod runtime_registry;
 pub mod service_graph;
 pub mod service_health;

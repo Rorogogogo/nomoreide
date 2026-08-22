@@ -491,8 +491,54 @@ bite on four seeded regressions: the swallowed `unstage` status, the missing
 blank-message check, the mislabelled option-shaped branch, and blank paths
 reaching git.
 
-Remaining in Phase 3's git group: `push` and `clone`, both of which need
-credential resolution, so they land with the GitHub slice.
+**Slice 6 (done): push, clone, and storing a GitHub token.** The last two git
+tools plus `nomoreide_github_set_token`, which is the config write the other
+twelve GitHub tools will read. Nothing here talks to api.github.com, so the
+whole slice is diffable against bare origins in the fixture's own tree — the
+twelve API tools need a different arrangement and land next.
+
+Two credential leaks in the *reference* were found by this slice and fixed in
+both runtimes rather than replicated:
+
+- `nomoreide_git_register_repository`, `_select_repository`, and
+  `_select_worktree` answered with the raw config, which holds every stored
+  GitHub PAT. The dashboard's own API has always sent `publicConfig(...)`, and
+  the service registration tools already did too — these three were the
+  oversight. The Rust port had been redacting from the start, which is how the
+  gate found it: the divergence only appears once a token is stored, and this
+  is the first slice that stores one. `test/mcp-git-config-redaction.test.ts`
+  covers it directly.
+- A clone of a private github.com repository puts the token in a `-c
+  http.…extraheader=Authorization: Basic …` argument, and git's failure text
+  quotes the command back. The encoded value is now blanked on the way out.
+  Not reachable from the fixture (it needs a real github.com URL), so it is
+  covered by a unit test rather than by the gate.
+
+Aligned to the reference besides: `GitActions`' runner named a spawn failure in
+prose where the reference reports Node's `spawn git ENOENT`, and had no wording
+at all for a command that failed while printing nothing.
+
+`repo-onboard.ts`'s clone half is ported as
+`crates/nomoreide-core/src/repo_onboard.rs` — URL parsing, the managed repos
+directory, and the clone itself. The scan/profile half stays in TypeScript
+until the onboarding slice.
+
+The fixture is at **140 steps**, with a `pushes` repository nothing else
+touches and a bare origin named `~~Odd~~Name~~` whose only job is to be
+sanitised — project naming is otherwise invisible to the gate, because every
+other fixture name is already a legal one. Verified to bite on eleven seeded
+regressions across push (no upstream, detached HEAD allowed, prose spawn
+failure, untrimmed error), clone (no registration, no destination check, no
+lowercasing, per-character dashes, untrimmed dashes), and the token
+(repository not pointed at it, appended rather than replaced).
+
+One thing the gate cannot show: `parse_repo_url` strips a trailing `.git/` and
+`sanitize_name` strips `.git` again, so removing either leaves the other to
+produce the same name. That redundancy is in the reference too, and no fixture
+step can tell the two apart.
+
+Remaining in Phase 3's GitHub group: the twelve API tools, which need the HTTP
+surface stubbed to be diffable at all.
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.

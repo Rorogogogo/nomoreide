@@ -5,6 +5,7 @@ import {
   resolveGitIdentityForCwd,
   resolvePushCredential,
 } from "../../core/git-identity.js";
+import { publicConfig } from "../../core/public-config.js";
 import { cloneRepository } from "../../core/repo-onboard.js";
 import { GitWorktreeManager } from "../../core/git-worktrees.js";
 import { git, gitActions, stringify, type ToolContext } from "./context.js";
@@ -183,7 +184,7 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
       name: z.string().min(1),
       path: z.string().min(1),
     }),
-    execute: async (args) => stringify(await configStore.registerGitRepository(args)),
+    execute: async (args) => stringify(publicConfig(await configStore.registerGitRepository(args))),
   });
 
   server.addTool({
@@ -193,7 +194,7 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
       name: z.string().min(1),
     }),
     execute: async ({ name }) =>
-      stringify(await configStore.selectGitRepository(name)),
+      stringify(publicConfig(await configStore.selectGitRepository(name))),
   });
 
   server.addTool({
@@ -235,7 +236,7 @@ export function registerGitTools(server: FastMCP, ctx: ToolContext): void {
       path: z.string().min(1).describe("Path returned by nomoreide_git_worktrees."),
     }),
     execute: async ({ repository, path }) =>
-      stringify(await configStore.selectGitWorktree(repository, path)),
+      stringify(publicConfig(await configStore.selectGitWorktree(repository, path))),
   });
 
   server.addTool({

@@ -2410,6 +2410,7 @@ name = "nomoreide-mcp"
 version = "0.1.103"
 dependencies = [
  "chrono",
+ "nomoreide-actions",
  "nomoreide-core",
  "nomoreide-daemon-client",
  "serde",

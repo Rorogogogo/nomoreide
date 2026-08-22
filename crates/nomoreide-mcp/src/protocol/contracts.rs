@@ -71,6 +71,18 @@ pub(super) enum ArgumentContract {
     /// `nomoreide_git_commit`: the `cwd` base plus a required `message`. A
     /// blank one likewise gets past here.
     GitCommit,
+    /// `nomoreide_git_push`: the `cwd` base plus an optional non-empty
+    /// `remote`. Absent means `origin`, which is a default rather than a
+    /// missing argument.
+    GitPush,
+    /// `nomoreide_git_clone`: one required non-empty `url`. Whether it is a URL
+    /// of a shape git could clone is decided by the clone itself, which names
+    /// the part that was wrong.
+    RepositoryClone,
+    /// `nomoreide_github_set_token`: a required `token` and a `host` that
+    /// defaults to github.com — so an absent host is valid and an empty one is
+    /// still too short.
+    GithubToken,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -113,6 +125,9 @@ impl ArgumentContract {
             "nomoreide_git_stage" | "nomoreide_git_unstage" => Some(Self::GitPaths),
             "nomoreide_git_commit" => Some(Self::GitCommit),
             "nomoreide_git_create_worktree" => Some(Self::WorktreeCreation),
+            "nomoreide_git_push" => Some(Self::GitPush),
+            "nomoreide_git_clone" => Some(Self::RepositoryClone),
+            "nomoreide_github_set_token" => Some(Self::GithubToken),
             "nomoreide_git_select_worktree" => Some(Self::WorktreeSelection),
             _ => None,
         }
@@ -182,6 +197,21 @@ impl ArgumentContract {
                         .err()
                         .unwrap_or_default(),
                 );
+                collect(failures)
+            }
+            Self::GitPush => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(optional_name(arguments, "remote"));
+                collect(failures)
+            }
+            Self::RepositoryClone => {
+                collect(required_string(arguments, "url").err().unwrap_or_default())
+            }
+            Self::GithubToken => {
+                let mut failures = required_string(arguments, "token")
+                    .err()
+                    .unwrap_or_default();
+                failures.extend(optional_name(arguments, "host"));
                 collect(failures)
             }
             Self::WorktreeSelection => {

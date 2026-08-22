@@ -10,9 +10,13 @@
 //!
 
 use super::render;
+use nomoreide_actions::git::{GitActions, PushCredential};
 use nomoreide_core::config::{ConfigStore, GitRepoDef};
-use nomoreide_core::git_identity::resolve_identity_for_cwd;
+use nomoreide_core::git_identity::{
+    repository_for_cwd, resolve_identity_for_cwd, resolve_push_credential,
+};
 use nomoreide_core::git_manager::GitManager;
+use nomoreide_core::repo_onboard::clone_repository;
 
 pub(super) async fn status(cwd: Option<&str>) -> Result<String, String> {
     let status = GitManager::status(&working_directory(cwd)?)
@@ -188,4 +192,61 @@ pub(super) async fn fetch(cwd: Option<&str>) -> Result<String, String> {
     GitManager::fetch(&working_directory(cwd)?)
         .await
         .map_err(|error| error.to_string())
+}
+
+/// Push the current branch, as the GitHub account selected for this repository
+/// when one is selected and the remote is an HTTPS one on that account's host.
+///
+/// The token never reaches `argv`: it travels through the environment into a
+/// throwaway credential helper, installed after an empty `credential.helper=`
+/// that resets the inherited chain — otherwise the machine's keychain could
+/// answer first and push as an account the user did not choose.
+pub(super) async fn push(
+    store: &ConfigStore,
+    cwd: Option<&str>,
+    remote: Option<&str>,
+) -> Result<String, String> {
+    let directory = working_directory(cwd)?;
+    let config = store.load().await.map_err(|error| error.to_string())?;
+    let repository = repository_for_cwd(&config, &directory).await;
+    let remote_url = GitManager::remote_url(&directory, remote.unwrap_or("origin"))
+        .await
+        .map_err(|error| error.to_string())?;
+    let credential = resolve_push_credential(&config, repository, remote_url.as_deref()).await;
+    let result = GitActions::new(directory)
+        .push(
+            remote,
+            credential.as_ref().map(|(token, login)| PushCredential {
+                token,
+                username: login.as_deref(),
+            }),
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&result)
+}
+
+/// Clone into the managed repositories directory and register what landed.
+///
+/// The token handed to the clone is the legacy github.com one rather than the
+/// repository's selected account: there is no repository yet to have selected
+/// an account for.
+pub(super) async fn clone(store: &ConfigStore, url: &str) -> Result<String, String> {
+    let config = store.load().await.map_err(|error| error.to_string())?;
+    let token = store.get_github_token(&config, "github.com");
+    let cloned = clone_repository(url, None, token)
+        .await
+        .map_err(|error| error.to_string())?;
+    store
+        .register_git_repository(GitRepoDef {
+            name: cloned.name.clone(),
+            path: cloned.clone_path.clone(),
+            active_worktree_path: None,
+            github_credential: None,
+            provider_projects: None,
+            legacy_vercel_project_id: None,
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+    render(&serde_json::json!({ "name": cloned.name, "path": cloned.clone_path }))
 }

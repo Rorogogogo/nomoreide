@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 chrono.workspace = true
+nomoreide-actions = { path = "../nomoreide-actions" }
 nomoreide-core = { path = "../nomoreide-core" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
 serde.workspace = true

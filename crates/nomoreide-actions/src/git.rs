@@ -74,6 +74,17 @@ pub fn credential_config_args() -> Vec<String> {
     ]
 }
 
+/// How Node names a spawn that never happened. A `cwd` that does not exist and
+/// a missing `git` are the same failure to the kernel, and the reference
+/// reports both as `spawn git ENOENT` — the errno, not prose.
+fn spawn_failure(error: &std::io::Error) -> String {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "spawn git ENOENT".to_string(),
+        std::io::ErrorKind::PermissionDenied => "spawn git EACCES".to_string(),
+        _ => format!("spawn git failed: {error}"),
+    }
+}
+
 /// Push output and git's error text are surfaced in the UI, so scrub the token
 /// on the way out even though the helper keeps it off the command line.
 pub fn redact(text: &str, secret: Option<&str>) -> String {
@@ -253,14 +264,19 @@ impl GitActions {
         let out = command
             .output()
             .await
-            .map_err(|error| anyhow::anyhow!("git {} failed to start: {error}", args.join(" ")))?;
+            .map_err(|error| anyhow::anyhow!("{}", spawn_failure(&error)))?;
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
         let stderr = String::from_utf8_lossy(&out.stderr).into_owned();
         if !out.status.success() {
-            let message = if stderr.trim().is_empty() {
+            // What the reference reports, in its own order of preference: git's
+            // complaint, then whatever it managed to print, and only when it
+            // said nothing at all the rejection Node itself would raise.
+            let message = if !stderr.is_empty() {
+                stderr
+            } else if !stdout.is_empty() {
                 stdout
             } else {
-                stderr
+                format!("Command failed: git {}", args.join(" "))
             };
             anyhow::bail!("{}", redact(message.trim(), secret));
         }

@@ -65,6 +65,12 @@ interface Fixture {
     initialBranch: string;
     setup: Setup[];
   }>;
+  /**
+   * Extra bare repositories under `remotes/`, named however the fixture likes.
+   * A clone derives its project name from the URL, so a name that has to be
+   * sanitised is the only way to compare that derivation.
+   */
+  bareOrigins: string[];
   plainDirectories: string[];
   plan: Array<{
     id: string;
@@ -98,6 +104,7 @@ interface Runtime {
   args: string[];
   home: string;
   worktrees: string;
+  clones: string;
   /** Fixture id -> absolute path in this runtime's own tree. */
   paths: Map<string, string>;
 }
@@ -174,6 +181,17 @@ async function prepare(spec: { label: string; command: string; args: string[] })
   await mkdir(worktrees, { recursive: true });
   paths.set("worktrees", worktrees);
   paths.set("home", home);
+  // The bare origins the `remote` setup step creates. A clone step names one
+  // as its source, so the fixture needs a way to spell where they are.
+  const remotes = join(base, "remotes");
+  await mkdir(remotes, { recursive: true });
+  paths.set("remotes", remotes);
+  for (const name of fixture.bareOrigins) {
+    await git(remotes, ["init", "--quiet", "--bare", join(remotes, `${name}.git`)]);
+  }
+  // And clones land here rather than in the real ~/.nomoreide/repos.
+  const clones = join(base, "clones");
+  paths.set("clones", clones);
 
   // git reports the resolved path of a worktree, so on a machine where the
   // temporary root is itself a symlink (macOS /var -> /private/var) the path it
@@ -185,7 +203,7 @@ async function prepare(spec: { label: string; command: string; args: string[] })
     }
   }
 
-  return { ...spec, home, worktrees, paths };
+  return { ...spec, home, worktrees, clones, paths };
 }
 
 async function git(cwd: string, args: string[]): Promise<void> {
@@ -252,6 +270,10 @@ function command(runtime: Runtime): McpCommand {
       XDG_CONFIG_HOME: join(runtime.home, ".config"),
       NOMOREIDE_AUTO_UI: "0",
       NOMOREIDE_WORKTREES_DIR: runtime.worktrees,
+      NOMOREIDE_REPOS_DIR: runtime.clones,
+      // A clone must not be able to reach the network or wait on a prompt: the
+      // fixture's only remotes are bare directories in its own tree.
+      GIT_TERMINAL_PROMPT: "0",
       // A commit the *tool* makes is stamped from this environment. Without
       // it the two runtimes commit at different instants and every hash they
       // report differs, which would make `nomoreide_git_commit` uncomparable.
