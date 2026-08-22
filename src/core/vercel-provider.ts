@@ -1,6 +1,8 @@
 import { PRODUCTION_AFFECTING_ACTIONS, VERCEL_ACTIONS, type VercelActions } from "./vercel-actions.js";
 import { VERCEL_PROVIDER_ID } from "./vercel-auth.js";
+import { providerApiHost } from "./providers/api-base.js";
 import {
+  vercelApiBase,
   vercelRepoUrl,
   type VercelBuildLogLine,
   type VercelDeployment,
@@ -82,7 +84,11 @@ export const VERCEL_MANIFEST: DeployProviderManifest = {
   // One host: the REST API and the OIDC userinfo endpoint a browser sign-in
   // uses are both on it. Notably *not* `vercel.com` — that is where the
   // dashboard links point, and a link is not a request.
-  api: { hosts: ["api.vercel.com"] },
+  //
+  // Derived from the base URL rather than written out, so the allowlist and the
+  // place requests actually go cannot drift apart — including when
+  // `NOMOREIDE_VERCEL_API_BASE` points them at a loopback stub.
+  api: { hosts: [providerApiHost(vercelApiBase())] },
 };
 
 export const VERCEL_HOOKS: DeployProviderHooks = {

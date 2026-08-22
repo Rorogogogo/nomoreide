@@ -105,6 +105,47 @@ describe("createProviderFetch", () => {
     },
   );
 
+  /**
+   * The one `http:` opening, and the reason it is not a hole: a loopback host
+   * is reachable only because `providerApiBase()` accepted an override naming
+   * one, and a request that never leaves the loopback interface has no wire to
+   * be read off. A stand-in has no certificate, so requiring https would mean
+   * requiring one.
+   */
+  describe("a loopback stand-in", () => {
+    const loopback = { id: "acme", api: { hosts: ["127.0.0.1"] } };
+
+    test.each([
+      "http://127.0.0.1:8080/v1/projects",
+      "https://127.0.0.1:8443/v1/projects",
+    ])("passes %s through when the manifest declares it", async (url) => {
+      const base = spyFetch();
+      const fetch = createProviderFetch(loopback, base.impl);
+
+      await fetch(url);
+
+      expect(base.calls[0]?.url).toBe(url);
+    });
+
+    test("is still only reachable when the manifest declares it", async () => {
+      const base = spyFetch();
+      const fetch = createProviderFetch(manifest, base.impl);
+
+      await expect(fetch("http://127.0.0.1:8080/v1")).rejects.toThrow(ProviderEgressError);
+      expect(base.calls).toHaveLength(0);
+    });
+
+    test("does not open http for anything that is not loopback", async () => {
+      const base = spyFetch();
+      const fetch = createProviderFetch(loopback, base.impl);
+
+      // Declared or not, the scheme is checked first — and this host is not
+      // loopback however much its name suggests it.
+      await expect(fetch("http://127.0.0.1.evil.example/v1")).rejects.toThrow(ProviderEgressError);
+      expect(base.calls).toHaveLength(0);
+    });
+  });
+
   test("refuses a relative URL rather than resolving it somewhere", async () => {
     const fetch = createProviderFetch(manifest, spyFetch().impl);
 

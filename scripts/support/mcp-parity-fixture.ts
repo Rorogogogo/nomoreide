@@ -87,6 +87,17 @@ export interface FixtureTree {
    */
   bareOrigins?: string[];
   plainDirectories?: string[];
+  /**
+   * A `config.json` planted before either runtime starts, with `{{repo:…}}`
+   * placeholders resolved against that runtime's own tree.
+   *
+   * Some state has no tool that reaches it. A *deploy-provider connection* is
+   * written by an OAuth callback or a dashboard form, and a gate driving the
+   * MCP surface can drive neither — so a gate for the deploy tools would have
+   * nothing but the disconnected path to compare. Planting the file is also the
+   * honest way to say it: this is the file those flows leave behind.
+   */
+  config?: Record<string, unknown>;
 }
 
 export interface RuntimeSpec {
@@ -182,7 +193,36 @@ export async function prepareRuntime(
     }
   }
 
+  if (fixture.config) {
+    await writeFile(
+      join(home, ".config", "nomoreide", "config.json"),
+      `${JSON.stringify(resolvePlaceholders(fixture.config, paths), null, 2)}\n`,
+    );
+  }
+
   return { ...spec, home, worktrees, clones, paths, env: {} };
+}
+
+/** `{{repo:demo}}` and friends, resolved anywhere inside a planted config. */
+function resolvePlaceholders(value: unknown, paths: Map<string, string>): unknown {
+  if (typeof value === "string") {
+    return value.replace(/\{\{([^}]+)\}\}/g, (whole, key: string) => {
+      const path = paths.get(key);
+      if (path === undefined) {
+        throw new Error(`Unknown fixture placeholder ${whole}`);
+      }
+      return path;
+    });
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => resolvePlaceholders(entry, paths));
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, resolvePlaceholders(entry, paths)]),
+  );
 }
 
 export async function git(cwd: string, args: string[]): Promise<void> {

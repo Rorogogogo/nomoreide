@@ -4,7 +4,9 @@ import {
   type CloudflareActions,
 } from "./cloudflare-actions.js";
 import { CLOUDFLARE_PROVIDER_ID } from "./cloudflare-auth.js";
+import { providerApiHost } from "./providers/api-base.js";
 import {
+  cloudflareApiBase,
   cloudflareRepoUrl,
   type CloudflareBuildLogLine,
   type CloudflareDeployment,
@@ -95,7 +97,11 @@ export const CLOUDFLARE_MANIFEST: DeployProviderManifest = {
   // `dash.cloudflare.com` is deliberately absent: the manager builds dashboard
   // and deployment URLs as strings for the UI to link to, and never fetches
   // them. An allowlist covers what is requested, not what is displayed.
-  api: { hosts: ["api.cloudflare.com"] },
+  //
+  // Derived from the base URL rather than written out, so the allowlist and the
+  // place requests actually go cannot drift apart — including when
+  // `NOMOREIDE_CLOUDFLARE_API_BASE` points them at a loopback stub.
+  api: { hosts: [providerApiHost(cloudflareApiBase())] },
 };
 
 /**

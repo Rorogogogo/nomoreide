@@ -7,6 +7,7 @@
  * so an agent holding these tools can observe a deploy but never ship one.
  */
 
+import { providerApiBase } from "./providers/api-base.js";
 import type { ProviderFetch } from "./providers/egress.js";
 
 export type VercelDeploymentState =
@@ -185,11 +186,16 @@ export interface VercelManagerOptions {
   fetch?: ProviderFetch;
 }
 
+/** Vercel's API, or the loopback stand-in an environment override names. */
+export function vercelApiBase(): string {
+  return providerApiBase("NOMOREIDE_VERCEL_API_BASE", "https://api.vercel.com");
+}
+
 export class VercelManager {
   constructor(
     private readonly token: string,
     private readonly teamId?: string,
-    private readonly baseUrl = "https://api.vercel.com",
+    private readonly baseUrl = vercelApiBase(),
     private readonly options: VercelManagerOptions = {},
   ) {}
 
@@ -409,7 +415,7 @@ export async function vercelRequest<T>(
   opts?: { method?: string; body?: unknown; accept?: string },
 ): Promise<T> {
   const url = new URL(
-    path.startsWith("http") ? path : `${auth.baseUrl ?? "https://api.vercel.com"}${path}`,
+    path.startsWith("http") ? path : `${auth.baseUrl ?? vercelApiBase()}${path}`,
   );
   if (auth.teamId) url.searchParams.set("teamId", auth.teamId);
 
