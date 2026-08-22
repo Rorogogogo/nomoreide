@@ -123,7 +123,7 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     assert_eq!(started[1]["result"]["isError"], true);
     assert_eq!(
         started[1]["result"]["content"][0]["text"],
-        "Tool 'nomoreide_start_service' execution failed: Service is not registered."
+        "Tool 'nomoreide_start_service' execution failed: Service \"missing\" is not registered."
     );
 
     // A second session reaches the same daemon, so it sees the service it did
@@ -214,7 +214,7 @@ fn mcp_tools_restart_a_service_in_the_shared_daemon() {
     assert_eq!(restarted[1]["result"]["isError"], true);
     assert_eq!(
         restarted[1]["result"]["content"][0]["text"],
-        "Tool 'nomoreide_restart_service' execution failed: Service is not registered."
+        "Tool 'nomoreide_restart_service' execution failed: Service \"missing\" is not registered."
     );
 
     // Restarting a stopped service starts it.
@@ -276,7 +276,7 @@ fn mcp_tools_start_and_stop_a_bundle_in_the_shared_daemon() {
     assert_eq!(started[1]["result"]["isError"], true);
     assert_eq!(
         started[1]["result"]["content"][0]["text"],
-        "Tool 'nomoreide_start_bundle' execution failed: Bundle is not registered."
+        "Tool 'nomoreide_start_bundle' execution failed: Bundle \"missing\" is not registered."
     );
 
     // Stopping is scoped to the bundle's own members, so the dependency it

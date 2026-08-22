@@ -25,7 +25,9 @@ const PHASE_CLEANUP_FAILED: u8 = 2;
 
 #[derive(Debug)]
 pub(crate) enum RuntimeMutationError {
-    ServiceNotFound,
+    /// Carries the requested name so the refusal can echo it back, as the
+    /// reference does — the caller supplied it, so repeating it leaks nothing.
+    ServiceNotFound(String),
     UnsupportedServiceKind,
     PortConflict {
         message: String,
@@ -36,7 +38,7 @@ pub(crate) enum RuntimeMutationError {
     ConfigLoadFailed,
     ServiceStartFailed,
     CleanupFailed,
-    BundleNotFound,
+    BundleNotFound(String),
     DependencyCycle(String),
 }
 
@@ -243,7 +245,7 @@ fn startable_service<'a>(
         .services
         .iter()
         .find(|service| service.name == name)
-        .ok_or(RuntimeMutationError::ServiceNotFound)?;
+        .ok_or_else(|| RuntimeMutationError::ServiceNotFound(name.to_string()))?;
     if !matches!(service.effective_kind(), "local" | "ssh" | "docker-compose") {
         return Err(RuntimeMutationError::UnsupportedServiceKind);
     }
@@ -402,7 +404,7 @@ mod tests {
         ));
         assert!(matches!(
             runtime.stop_service("missing").await,
-            Err(RuntimeMutationError::ServiceNotFound)
+            Err(RuntimeMutationError::ServiceNotFound(name)) if name == "missing"
         ));
         assert_eq!(runtime.shutdown_with(async { Ok(()) }).await, Ok(()));
     }

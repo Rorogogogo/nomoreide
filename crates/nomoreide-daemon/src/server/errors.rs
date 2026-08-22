@@ -28,10 +28,10 @@ pub(crate) fn error(status: StatusCode, message: &str) -> Response {
 
 pub(crate) fn mutation_error(error: RuntimeMutationError) -> Response {
     let (status, code, message, conflict) = match error {
-        RuntimeMutationError::ServiceNotFound => (
+        RuntimeMutationError::ServiceNotFound(name) => (
             StatusCode::NOT_FOUND,
             DaemonErrorCode::ServiceNotFound,
-            "Service is not registered.".to_string(),
+            format!("Service \"{name}\" is not registered."),
             None,
         ),
         RuntimeMutationError::UnsupportedServiceKind => (
@@ -72,10 +72,10 @@ pub(crate) fn mutation_error(error: RuntimeMutationError) -> Response {
             "Failed to start the registered service.".to_string(),
             None,
         ),
-        RuntimeMutationError::BundleNotFound => (
+        RuntimeMutationError::BundleNotFound(name) => (
             StatusCode::NOT_FOUND,
             DaemonErrorCode::BundleNotFound,
-            "Bundle is not registered.".to_string(),
+            format!("Bundle \"{name}\" is not registered."),
             None,
         ),
         RuntimeMutationError::DependencyCycle(message) => (

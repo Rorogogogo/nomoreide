@@ -24,7 +24,7 @@ impl DaemonRuntime {
         let _permit = self.mutation_gate.read().await;
         self.require_start_allowed()?;
         let config = self.config().await?;
-        let order = bundle::start_order(&config, name).map_err(order_error)?;
+        let order = bundle::start_order(&config, name).map_err(|error| order_error(name, error))?;
         let admitted = order
             .iter()
             .map(|service| startable_service(&config, service))
@@ -60,7 +60,7 @@ impl DaemonRuntime {
         let _permit = self.mutation_gate.read().await;
         self.require_stop_allowed()?;
         let config = self.config().await?;
-        let order = bundle::stop_order(&config, name).map_err(order_error)?;
+        let order = bundle::stop_order(&config, name).map_err(|error| order_error(name, error))?;
 
         let mut statuses = Vec::with_capacity(order.len());
         let mut failed = false;
@@ -99,9 +99,9 @@ impl DaemonRuntime {
     }
 }
 
-fn order_error(error: BundleOrderError) -> RuntimeMutationError {
+fn order_error(name: &str, error: BundleOrderError) -> RuntimeMutationError {
     match error {
-        BundleOrderError::NotRegistered => RuntimeMutationError::BundleNotFound,
+        BundleOrderError::NotRegistered => RuntimeMutationError::BundleNotFound(name.to_string()),
         BundleOrderError::DependencyCycle(message) => {
             RuntimeMutationError::DependencyCycle(message)
         }
