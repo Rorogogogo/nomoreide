@@ -280,36 +280,37 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
             ServiceState::Stopping => ServiceRuntimeState::Stopping,
             ServiceState::Exited => ServiceRuntimeState::Exited,
         },
+        kind: Some(status.kind),
         pid: status.pid,
         pgid: status.pgid,
         exit_code: status.exit_code,
         url: status.url,
-        started_at: status
-            .started_at
-            .map(|at| at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)),
+        started_at: status.started_at.map(iso_millis),
+        exited_at: status.exited_at.map(iso_millis),
+        signal: status.signal,
     }
 }
 
 /// Timestamps cross the wire the way the reference writes them — an ISO string
 /// with millisecond precision — rather than in chrono's default nanosecond
 /// form, which no reference client has ever seen.
+fn iso_millis(at: chrono::DateTime<chrono::Utc>) -> String {
+    at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
 fn log_entry(entry: LogEntry) -> ServiceLogEntry {
     ServiceLogEntry {
         service: entry.service,
         stream: entry.stream,
         text: entry.text,
-        timestamp: entry
-            .timestamp
-            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        timestamp: iso_millis(entry.timestamp),
     }
 }
 
 fn timeline_event(event: CoreTimelineEvent) -> TimelineEvent {
     TimelineEvent {
         id: event.id,
-        timestamp: event
-            .timestamp
-            .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        timestamp: iso_millis(event.timestamp),
         kind: match event.kind {
             CoreKind::ServiceLifecycle => TimelineEventKind::ServiceLifecycle,
             CoreKind::ServiceLog => TimelineEventKind::ServiceLog,
@@ -336,11 +337,14 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
     ServiceRuntimeStatus {
         name: name.to_string(),
         state: ServiceRuntimeState::Stopped,
+        kind: None,
         pid: None,
         pgid: None,
         exit_code: None,
         url: None,
         started_at: None,
+        exited_at: None,
+        signal: None,
     }
 }
 

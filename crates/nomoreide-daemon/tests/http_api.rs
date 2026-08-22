@@ -844,10 +844,8 @@ async fn the_timeline_records_lifecycle_moments_and_notable_log_lines() {
     assert_eq!(stopped.kind, TimelineEventKind::ServiceLifecycle);
     // A service that was asked to stop is not an error however it died.
     assert_eq!(stopped.severity, TimelineSeverity::Info);
-    assert_eq!(
-        stopped.data.as_ref().unwrap()["signal"],
-        json!(libc::SIGTERM)
-    );
+    // Signals are reported by name, the way the reference reports them.
+    assert_eq!(stopped.data.as_ref().unwrap()["signal"], json!("SIGTERM"));
 
     // Every event carries an id and a millisecond ISO timestamp.
     let events = client.timeline(200).await.unwrap();

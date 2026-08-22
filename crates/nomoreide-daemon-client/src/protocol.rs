@@ -127,6 +127,10 @@ pub enum ServiceRuntimeState {
 pub struct ServiceRuntimeStatus {
     pub name: String,
     pub state: ServiceRuntimeState,
+    /// What the service was launched as. Absent only for a service the daemon
+    /// has never run — nothing was launched, so nothing has a kind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -140,6 +144,15 @@ pub struct ServiceRuntimeStatus {
     /// so a reader can tell this run's output from an earlier run's.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub started_at: Option<String>,
+    /// ISO-8601 UTC for when this launch ended. Present exactly when the
+    /// launch has ended, which is what tells a reader that `exitCode` and
+    /// `signal` being empty means "killed the other way" rather than "still
+    /// running".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exited_at: Option<String>,
+    /// The name of the signal that killed the process, never its number.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signal: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

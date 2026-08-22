@@ -106,6 +106,15 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     assert_eq!(status["state"], "running");
     assert_eq!(status["name"], "sleeper");
     assert!(status.get("pgid").is_none(), "{status}");
+    // What the reference reports for a running service it launched. The
+    // fixture child announces no URL, so that one field is absent; nothing
+    // has ended, so nothing describes an ending. (Keys come back sorted here,
+    // because a parsed object is; the declared order is a unit test.)
+    assert_eq!(
+        keys(&status),
+        vec!["kind", "name", "pid", "startedAt", "state"]
+    );
+    assert_eq!(status["kind"], "local");
     let pid = status["pid"].as_u64().unwrap() as u32;
     assert!(process_exists(pid));
 
@@ -134,7 +143,28 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     );
     assert_eq!(reported["services"]["sleeper"]["pid"], pid);
     assert!(reported["services"]["sleeper"].get("pgid").is_none());
-    assert_eq!(status_of(&stopped[1])["state"], "stopped");
+    let ended = status_of(&stopped[1]);
+    assert_eq!(ended["state"], "stopped");
+    // A run that ended reports when and how, and the exit code and signal are
+    // a pair: this process was signalled, so it has no exit code at all and
+    // says so explicitly rather than by omission. The pid of the run that
+    // ended stays readable, as it does in the reference.
+    assert_eq!(
+        keys(&ended),
+        vec![
+            "exitCode",
+            "exitedAt",
+            "kind",
+            "name",
+            "pid",
+            "signal",
+            "startedAt",
+            "state"
+        ]
+    );
+    assert_eq!(ended["exitCode"], Value::Null);
+    assert_eq!(ended["signal"], "SIGTERM");
+    assert!(ended["exitedAt"].as_str().unwrap() >= ended["startedAt"].as_str().unwrap());
     assert!(!process_exists(pid));
 
     daemon.shutdown();
@@ -542,6 +572,18 @@ fn statuses_of(response: &Value) -> Vec<Value> {
         Value::Array(statuses) => statuses,
         other => panic!("expected an array of statuses, got {other}"),
     }
+}
+
+/// The field names a status came back with. A parsed object sorts its keys, so
+/// this answers "which fields", not "in what order" — the declared order is
+/// asserted where the text is rendered.
+fn keys(status: &Value) -> Vec<&str> {
+    status
+        .as_object()
+        .unwrap_or_else(|| panic!("expected a status object, got {status}"))
+        .keys()
+        .map(String::as_str)
+        .collect()
 }
 
 /// The raw text a tool answered with, for the tools that answer in prose.

@@ -125,6 +125,10 @@ pub enum ServiceState {
 pub struct ServiceStatus {
     pub name: String,
     pub state: ServiceState,
+    /// The kind this generation was launched as, stamped at launch rather than
+    /// joined from config at read time: a service dropped from config after it
+    /// started is still running, and still ran as something.
+    pub kind: String,
     pub pid: Option<u32>,
     pub pgid: Option<u32>,
     pub exit_code: Option<i32>,
@@ -135,6 +139,13 @@ pub struct ServiceStatus {
     /// clearing it on exit would take that answer away exactly when it is
     /// wanted. `None` means this manager has never launched the service.
     pub started_at: Option<DateTime<Utc>>,
+    /// When this generation terminated. `Some` is the one honest answer to
+    /// "has it ended?" — `exit_code` and `signal` are each absent on their own
+    /// for a process killed the other way.
+    pub exited_at: Option<DateTime<Utc>>,
+    /// The name of the signal that killed the process ("SIGTERM"), not its
+    /// number: the name is what the reference reports and what a reader knows.
+    pub signal: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -171,14 +182,34 @@ impl std::error::Error for PortConflictError {}
 
 struct ManagedProcess {
     generation: u64,
+    kind: String,
     pid: Option<u32>,
     pgid: Option<u32>,
     state: ServiceState,
     exit_code: Option<i32>,
+    signal: Option<String>,
     url: Option<String>,
     started_at: Option<DateTime<Utc>>,
+    exited_at: Option<DateTime<Utc>>,
     cleanup_confirmed: bool,
     controller: Option<mpsc::Sender<SupervisorCommand>>,
+}
+
+/// One place turns a tracked process into the status readers see, so the
+/// whole-runtime read and the single-service read cannot drift apart.
+fn status_of(name: &str, process: &ManagedProcess) -> ServiceStatus {
+    ServiceStatus {
+        name: name.to_string(),
+        state: process.state.clone(),
+        kind: process.kind.clone(),
+        pid: process.pid,
+        pgid: process.pgid,
+        exit_code: process.exit_code,
+        url: process.url.clone(),
+        started_at: process.started_at,
+        exited_at: process.exited_at,
+        signal: process.signal.clone(),
+    }
 }
 
 enum SupervisorCommand {
@@ -214,7 +245,7 @@ impl SupervisorContext {
             .service(self.name.clone())
             .data(json!({
                 "exitCode": termination.exit_code,
-                "signal": termination.signal,
+                "signal": termination.signal_name(),
             })),
         );
     }
@@ -462,31 +493,12 @@ impl ProcessManager {
 
     pub fn status(&self) -> Vec<ServiceStatus> {
         let procs = self.processes.lock().unwrap();
-        procs
-            .iter()
-            .map(|(name, p)| ServiceStatus {
-                name: name.clone(),
-                state: p.state.clone(),
-                pid: p.pid,
-                pgid: p.pgid,
-                exit_code: p.exit_code,
-                url: p.url.clone(),
-                started_at: p.started_at,
-            })
-            .collect()
+        procs.iter().map(|(name, p)| status_of(name, p)).collect()
     }
 
     pub fn service_status(&self, name: &str) -> Option<ServiceStatus> {
         let procs = self.processes.lock().unwrap();
-        procs.get(name).map(|p| ServiceStatus {
-            name: name.to_string(),
-            state: p.state.clone(),
-            pid: p.pid,
-            pgid: p.pgid,
-            exit_code: p.exit_code,
-            url: p.url.clone(),
-            started_at: p.started_at,
-        })
+        procs.get(name).map(|p| status_of(name, p))
     }
 
     /// The tail of a service's buffered output. Reading goes through the
@@ -914,12 +926,15 @@ impl ProcessManager {
             def.name.clone(),
             ManagedProcess {
                 generation,
+                kind: def.effective_kind().to_string(),
                 pid: Some(pid),
                 pgid,
                 state: ServiceState::Running,
                 exit_code: None,
+                signal: None,
                 url: None,
                 started_at: Some(Utc::now()),
+                exited_at: None,
                 cleanup_confirmed: false,
                 controller: Some(controller),
             },
@@ -1602,7 +1617,6 @@ async fn supervise_child(
         tokio::select! {
             status = child.wait() => {
                 let termination = status.map(Termination::of).unwrap_or_default();
-                let exit_code = termination.exit_code;
                 let group_cleanup = cleanup_after_natural_exit(
                     context.pgid,
                     context.policy,
@@ -1634,7 +1648,7 @@ async fn supervise_child(
                     &context.name,
                     context.generation,
                     state.clone(),
-                    exit_code,
+                    termination,
                     group_cleanup && registry_cleanup,
                 );
                 context.record_termination(state, termination);
@@ -1662,7 +1676,7 @@ async fn supervise_child(
                             &context.name,
                             context.generation,
                             ServiceState::Stopped,
-                            termination.exit_code,
+                            termination,
                             registry_cleanup,
                         );
                         context.record_termination(ServiceState::Stopped, termination);
@@ -1719,7 +1733,7 @@ async fn await_reaped_child_cleanup(
             &context.name,
             context.generation,
             ServiceState::Stopped,
-            termination.exit_code,
+            termination,
             registry_cleanup,
         );
         context.record_termination(ServiceState::Stopped, termination);
@@ -1745,19 +1759,27 @@ fn mark_generation_cleanup_failed(
     }
 }
 
+/// The one place a generation's terminal state settles. Everything a reader
+/// needs to describe the end of a run — when, and how — is stamped here
+/// together, because a caller that recorded only half of it would leave a
+/// status that cannot say whether the process ended at all. The timestamp is
+/// when this runtime settled the ending, which for a process tree whose
+/// cleanup had to be retried is later than the root's own exit.
 fn finish_generation(
     processes: &Arc<Mutex<HashMap<String, ManagedProcess>>>,
     name: &str,
     generation: u64,
     state: ServiceState,
-    exit_code: Option<i32>,
+    termination: Termination,
     cleanup_confirmed: bool,
 ) {
     let mut entries = processes.lock().unwrap();
     if let Some(process) = entries.get_mut(name) {
         if process.generation == generation {
             process.state = state;
-            process.exit_code = exit_code;
+            process.exit_code = termination.exit_code;
+            process.signal = termination.signal_name();
+            process.exited_at = Some(Utc::now());
             process.cleanup_confirmed = cleanup_confirmed;
             process.controller = None;
         }
@@ -1780,6 +1802,62 @@ impl Termination {
             signal: exit_signal(&status),
         }
     }
+
+    /// Signals are reported by name, the way every reader of a status or a
+    /// timeline entry already thinks of them. An unrecognised number — nothing
+    /// in the table below, so a real-time signal no service is plausibly killed
+    /// with — reports as no signal rather than as an invented name.
+    fn signal_name(&self) -> Option<String> {
+        self.signal.and_then(signal_name).map(str::to_string)
+    }
+}
+
+/// Signal numbers are platform-specific (`SIGUSR1` is 10 on Linux and 30 on
+/// macOS), so the table is built from the target's own constants rather than
+/// from numbers written out here. A lookup rather than a `match` because
+/// several names share a number on some targets.
+#[cfg(unix)]
+fn signal_name(signal: i32) -> Option<&'static str> {
+    const NAMES: &[(libc::c_int, &str)] = &[
+        (libc::SIGHUP, "SIGHUP"),
+        (libc::SIGINT, "SIGINT"),
+        (libc::SIGQUIT, "SIGQUIT"),
+        (libc::SIGILL, "SIGILL"),
+        (libc::SIGTRAP, "SIGTRAP"),
+        (libc::SIGABRT, "SIGABRT"),
+        (libc::SIGBUS, "SIGBUS"),
+        (libc::SIGFPE, "SIGFPE"),
+        (libc::SIGKILL, "SIGKILL"),
+        (libc::SIGUSR1, "SIGUSR1"),
+        (libc::SIGSEGV, "SIGSEGV"),
+        (libc::SIGUSR2, "SIGUSR2"),
+        (libc::SIGPIPE, "SIGPIPE"),
+        (libc::SIGALRM, "SIGALRM"),
+        (libc::SIGTERM, "SIGTERM"),
+        (libc::SIGCHLD, "SIGCHLD"),
+        (libc::SIGCONT, "SIGCONT"),
+        (libc::SIGSTOP, "SIGSTOP"),
+        (libc::SIGTSTP, "SIGTSTP"),
+        (libc::SIGTTIN, "SIGTTIN"),
+        (libc::SIGTTOU, "SIGTTOU"),
+        (libc::SIGURG, "SIGURG"),
+        (libc::SIGXCPU, "SIGXCPU"),
+        (libc::SIGXFSZ, "SIGXFSZ"),
+        (libc::SIGVTALRM, "SIGVTALRM"),
+        (libc::SIGPROF, "SIGPROF"),
+        (libc::SIGWINCH, "SIGWINCH"),
+        (libc::SIGIO, "SIGIO"),
+        (libc::SIGSYS, "SIGSYS"),
+    ];
+    NAMES
+        .iter()
+        .find(|(number, _)| *number == signal)
+        .map(|(_, name)| *name)
+}
+
+#[cfg(not(unix))]
+fn signal_name(_signal: i32) -> Option<&'static str> {
+    None
 }
 
 #[cfg(unix)]
@@ -2137,6 +2215,11 @@ mod tests {
 
         let status = manager.service_status("crasher").unwrap();
         assert_eq!(status.exit_code, Some(7));
+        // A run that ended of its own accord says so, and says when — the
+        // launch it belongs to is still readable afterwards.
+        assert_eq!(status.kind, "local");
+        assert_eq!(status.signal, None);
+        assert!(status.started_at.unwrap() <= status.exited_at.unwrap());
         let mut wait_status = 0;
         assert_eq!(
             unsafe { libc::waitpid(pid as libc::pid_t, &mut wait_status, libc::WNOHANG) },
@@ -2147,6 +2230,33 @@ mod tests {
             std::io::Error::last_os_error().raw_os_error(),
             Some(libc::ECHILD)
         );
+        let _ = tokio::fs::remove_dir_all(test_dir).await;
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_stopped_run_reports_the_signal_that_ended_it_by_name() {
+        let test_dir = test_dir("stop-signal");
+        tokio::fs::create_dir_all(&test_dir).await.unwrap();
+        let manager = ProcessManager::new(LogStore::new(test_dir.join("logs")));
+        let service = test_service("sleeper", &test_dir, "exec sleep 30");
+
+        manager.start_service(&service).await.unwrap();
+        let running = manager.service_status("sleeper").unwrap();
+        assert_eq!(running.kind, "local");
+        assert!(running.started_at.is_some());
+        // Nothing has ended, so nothing describes an ending.
+        assert_eq!(running.exited_at, None);
+        assert_eq!(running.signal, None);
+
+        manager.stop_service("sleeper").await.unwrap();
+
+        let stopped = manager.service_status("sleeper").unwrap();
+        // A process killed by a signal has no exit code at all, so the signal
+        // is the only account of how it died — and it reads as its name.
+        assert_eq!(stopped.exit_code, None);
+        assert_eq!(stopped.signal.as_deref(), Some("SIGTERM"));
+        assert!(stopped.exited_at.unwrap() >= stopped.started_at.unwrap());
         let _ = tokio::fs::remove_dir_all(test_dir).await;
     }
 
@@ -2568,12 +2678,15 @@ mod tests {
             "unconfirmed".into(),
             ManagedProcess {
                 generation: 1,
+                kind: "local".into(),
                 pid: Some(pid),
                 pgid: Some(pid),
                 state: ServiceState::Stopping,
                 exit_code: None,
+                signal: None,
                 url: None,
                 started_at: Some(Utc::now()),
+                exited_at: None,
                 cleanup_confirmed: false,
                 controller: None,
             },

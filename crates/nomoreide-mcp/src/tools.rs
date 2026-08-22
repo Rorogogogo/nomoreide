@@ -287,9 +287,6 @@ fn daemon_message(error: DaemonClientError) -> String {
     }
 }
 
-/// The status shape the reference implementation returns for these tools. The
-/// process-group id the daemon tracks is an ownership detail agents have no use
-/// for, so it stays inside the daemon boundary.
 /// How a runtime state reads to an agent. The reference has no distinct
 /// stopping state, so a service on its way down reports as stopped.
 fn state_label(state: ServiceRuntimeState) -> &'static str {
@@ -301,27 +298,54 @@ fn state_label(state: ServiceRuntimeState) -> &'static str {
     }
 }
 
+/// The status shape the reference implementation returns for these tools:
+/// these nine keys, in this order, with absent ones skipped. The
+/// process-group id the daemon tracks is an ownership detail agents have no
+/// use for, so it stays inside the daemon boundary. `host` (ssh) and
+/// `containerId` (compose) belong to the same shape but can never appear
+/// here — the native runtime refuses both kinds.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServiceStatusView<'a> {
     name: &'a str,
     state: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
+    kind: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pid: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    started_at: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    exit_code: Option<i32>,
+    exited_at: Option<&'a str>,
+    /// Once a process has terminated the reference reports the pair, with
+    /// whichever half does not apply explicitly `null` — a process killed by a
+    /// signal has no exit code, and reporting only the code would say nothing
+    /// about the most interesting way for a service to die. Hence the nesting:
+    /// the outer `None` skips the key, `Some(None)` writes `null`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exit_code: Option<Option<i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    signal: Option<Option<&'a str>>,
 }
 
 impl<'a> ServiceStatusView<'a> {
     fn of(status: &'a ServiceRuntimeStatus) -> Self {
+        // `exitedAt` is the one field the runtime stamps for every ending,
+        // whatever it was, so it — not the exit code — decides whether this
+        // run has an ending to report at all.
+        let ended = status.exited_at.is_some();
         Self {
             name: &status.name,
             state: state_label(status.state),
+            kind: status.kind.as_deref(),
             pid: status.pid,
+            started_at: status.started_at.as_deref(),
             url: status.url.as_deref(),
-            exit_code: status.exit_code,
+            exited_at: status.exited_at.as_deref(),
+            exit_code: ended.then_some(status.exit_code),
+            signal: ended.then_some(status.signal.as_deref()),
         }
     }
 }
@@ -348,11 +372,14 @@ mod tests {
         ServiceRuntimeStatus {
             name: "api".into(),
             state,
+            kind: Some("local".into()),
             pid: Some(4321),
             pgid: Some(4321),
             exit_code: None,
             url: Some("http://localhost:3000".into()),
             started_at: Some("2026-08-21T10:00:00.000Z".into()),
+            exited_at: None,
+            signal: None,
         }
     }
 
@@ -364,9 +391,56 @@ mod tests {
         .unwrap();
         assert_eq!(
             rendered,
-            "{\n  \"name\": \"api\",\n  \"state\": \"running\",\n  \"pid\": 4321,\n  \"url\": \"http://localhost:3000\"\n}"
+            concat!(
+                "{\n",
+                "  \"name\": \"api\",\n",
+                "  \"state\": \"running\",\n",
+                "  \"kind\": \"local\",\n",
+                "  \"pid\": 4321,\n",
+                "  \"startedAt\": \"2026-08-21T10:00:00.000Z\",\n",
+                "  \"url\": \"http://localhost:3000\"\n",
+                "}"
+            )
         );
         assert!(!rendered.contains("pgid"));
+        // Still running, so there is no ending to report.
+        assert!(!rendered.contains("exitCode"));
+        assert!(!rendered.contains("signal"));
+    }
+
+    #[test]
+    fn an_ended_run_reports_the_exit_code_and_signal_as_a_pair() {
+        let exited = ServiceRuntimeStatus {
+            pid: None,
+            url: None,
+            exit_code: Some(3),
+            exited_at: Some("2026-08-21T10:05:00.000Z".into()),
+            ..status(ServiceRuntimeState::Exited)
+        };
+        assert_eq!(
+            render(&ServiceStatusView::of(&exited)).unwrap(),
+            concat!(
+                "{\n",
+                "  \"name\": \"api\",\n",
+                "  \"state\": \"exited\",\n",
+                "  \"kind\": \"local\",\n",
+                "  \"startedAt\": \"2026-08-21T10:00:00.000Z\",\n",
+                "  \"exitedAt\": \"2026-08-21T10:05:00.000Z\",\n",
+                "  \"exitCode\": 3,\n",
+                "  \"signal\": null\n",
+                "}"
+            )
+        );
+
+        // Killed by a signal instead: the same pair, the other half filled in.
+        let signalled = ServiceRuntimeStatus {
+            exit_code: None,
+            signal: Some("SIGTERM".into()),
+            ..exited
+        };
+        let rendered = render(&ServiceStatusView::of(&signalled)).unwrap();
+        assert!(rendered.contains("\"exitCode\": null"), "{rendered}");
+        assert!(rendered.contains("\"signal\": \"SIGTERM\""), "{rendered}");
     }
 
     #[test]
@@ -391,17 +465,18 @@ mod tests {
     }
 
     #[test]
-    fn a_stopped_service_reports_only_what_the_reference_reports() {
-        let stopped = ServiceRuntimeStatus {
+    fn a_service_that_never_ran_reports_only_what_the_reference_reports() {
+        let never_ran = ServiceRuntimeStatus {
+            kind: None,
             pid: None,
             pgid: None,
-            exit_code: Some(0),
             url: None,
+            started_at: None,
             ..status(ServiceRuntimeState::Stopped)
         };
         assert_eq!(
-            render(&ServiceStatusView::of(&stopped)).unwrap(),
-            "{\n  \"name\": \"api\",\n  \"state\": \"stopped\",\n  \"exitCode\": 0\n}"
+            render(&ServiceStatusView::of(&never_ran)).unwrap(),
+            "{\n  \"name\": \"api\",\n  \"state\": \"stopped\"\n}"
         );
         // The reference has no distinct stopping state to report.
         assert_eq!(
