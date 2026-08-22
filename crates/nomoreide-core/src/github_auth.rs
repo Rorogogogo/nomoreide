@@ -90,7 +90,9 @@ pub async fn resolve(
             if host != remote_host {
                 return Err(format!("The selected GitHub credential is for {host}, but this repository uses {remote_host}."));
             }
-            let value = stored_token(config, &host)?;
+            // Named in the refusal, because a repository that picked this host
+            // is telling the user which one to connect.
+            let value = stored_token(config, &host, true)?;
             Ok((
                 value,
                 host.clone(),
@@ -98,29 +100,40 @@ pub async fn resolve(
             ))
         }
         None => {
-            let entry = config
-                .github_tokens
-                .iter()
-                .find(|entry| entry.host == remote_host)
-                .ok_or_else(|| format!("No stored GitHub token configured for {remote_host}."))?;
+            let value = stored_token(config, remote_host, false)?;
             Ok((
-                entry.token.clone(),
-                entry.host.clone(),
+                value,
+                remote_host.to_string(),
                 GithubCredentialSelection::Stored {
-                    host: entry.host.clone(),
+                    host: remote_host.to_string(),
                 },
             ))
         }
     }
 }
 
-fn stored_token(config: &Config, host: &str) -> Result<String, String> {
+/// The stored token for `host`.
+///
+/// `name_the_host` decides how a missing one reads: a repository that chose a
+/// stored credential is told which host it chose, and a repository that chose
+/// nothing is only told that nothing is connected — naming a host it never
+/// picked would look like a setting it had got wrong.
+fn stored_token(config: &Config, host: &str, name_the_host: bool) -> Result<String, String> {
     config
         .github_tokens
         .iter()
         .find(|entry| entry.host == host)
         .map(|entry| entry.token.clone())
-        .ok_or_else(|| format!("No stored GitHub token configured for {host}."))
+        .ok_or_else(|| {
+            let suffix = if name_the_host {
+                format!(" for {host}")
+            } else {
+                String::new()
+            };
+            format!(
+                "No stored GitHub token configured{suffix}. Choose a GitHub CLI account or connect GitHub."
+            )
+        })
 }
 
 fn parse_accounts(raw: &str) -> Result<Vec<GithubCliAccount>, String> {

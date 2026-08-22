@@ -235,9 +235,7 @@ fn parse_absolute(input: &str, scheme: &str, rest: &str) -> Result<(Option<Strin
     } else {
         rest
     };
-    let end = rest
-        .find(['/', '?', '#'])
-        .unwrap_or(rest.len());
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     let (authority, remainder) = rest.split_at(end);
     if authority.contains(char::is_whitespace) {
         bail!("Invalid repository URL: {input}");

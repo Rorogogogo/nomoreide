@@ -83,6 +83,30 @@ pub(super) enum ArgumentContract {
     /// defaults to github.com — so an absent host is valid and an empty one is
     /// still too short.
     GithubToken,
+    /// `nomoreide_github_list_prs` and `_list_issues`: the `cwd` base, a state
+    /// out of three, and a page. Both are defaulted, so absent is valid.
+    GithubListing,
+    /// `nomoreide_github_get_pr`, `_get_pr_diff`, `_get_issue`, and
+    /// `_list_issue_comments`: the `cwd` base plus a required positive number.
+    GithubNumber,
+    /// `nomoreide_github_create_pr`: a title, a head, and a base, with an
+    /// optional body and a defaulted `draft`. The body may be empty — a pull
+    /// request with no description is a real thing to open.
+    GithubPrCreation,
+    /// `nomoreide_github_merge_pr`: the number, a defaulted method, and two
+    /// optional commit overrides.
+    GithubPrMerge,
+    /// `nomoreide_github_add_issue_comment`: the number plus a non-empty body.
+    /// A comment saying nothing is not one.
+    GithubComment,
+    /// `nomoreide_github_create_issue`: a required title and an optional body.
+    GithubIssueCreation,
+    /// `nomoreide_github_get_commit_ci`: a SHA long enough for git to resolve —
+    /// seven characters, the abbreviation git itself prints.
+    GithubCommitSha,
+    /// `nomoreide_github_list_workflow_runs`: the `cwd` base, an optional
+    /// branch filter, and a page.
+    GithubWorkflowRuns,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -93,6 +117,15 @@ const COMMIT_LIMIT_MAX: f64 = 50.0;
 const TIMELINE_LIMIT_MAX: f64 = 200.0;
 /// The reference's `z.number().int().positive().max(65535)`.
 const PORT_MAX: f64 = 65535.0;
+/// The reference's `z.enum(["open", "closed", "all"])`.
+const ISSUE_STATES: &[&str] = &["open", "closed", "all"];
+/// The reference's `z.enum(["merge", "squash", "rebase"])`.
+const MERGE_METHODS: &[&str] = &["merge", "squash", "rebase"];
+/// The reference's `z.string().min(7)` — the abbreviation git itself prints.
+const SHA_MIN_LENGTH: usize = 7;
+/// A page number is `z.number().int().positive()` with no ceiling of its own,
+/// so this only has to be something no real page reaches.
+const PAGE_MAX: f64 = f64::MAX;
 /// The kinds of service the reference knows how to run.
 const SERVICE_KINDS: &[&str] = &["local", "docker-compose", "ssh"];
 
@@ -128,6 +161,19 @@ impl ArgumentContract {
             "nomoreide_git_push" => Some(Self::GitPush),
             "nomoreide_git_clone" => Some(Self::RepositoryClone),
             "nomoreide_github_set_token" => Some(Self::GithubToken),
+            "nomoreide_github_list_prs" | "nomoreide_github_list_issues" => {
+                Some(Self::GithubListing)
+            }
+            "nomoreide_github_get_pr"
+            | "nomoreide_github_get_pr_diff"
+            | "nomoreide_github_get_issue"
+            | "nomoreide_github_list_issue_comments" => Some(Self::GithubNumber),
+            "nomoreide_github_create_pr" => Some(Self::GithubPrCreation),
+            "nomoreide_github_merge_pr" => Some(Self::GithubPrMerge),
+            "nomoreide_github_add_issue_comment" => Some(Self::GithubComment),
+            "nomoreide_github_create_issue" => Some(Self::GithubIssueCreation),
+            "nomoreide_github_get_commit_ci" => Some(Self::GithubCommitSha),
+            "nomoreide_github_list_workflow_runs" => Some(Self::GithubWorkflowRuns),
             "nomoreide_git_select_worktree" => Some(Self::WorktreeSelection),
             _ => None,
         }
@@ -214,6 +260,67 @@ impl ArgumentContract {
                 failures.extend(optional_name(arguments, "host"));
                 collect(failures)
             }
+            // Every one of these starts from the same optional `cwd`, and
+            // reports it first, because it is the base schema the rest extends.
+            Self::GithubListing => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(enumerated(arguments, "state", ISSUE_STATES));
+                failures.extend(bounded_integer(arguments, "page", PAGE_MAX));
+                collect(failures)
+            }
+            Self::GithubNumber => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(required_integer(arguments, "number"));
+                collect(failures)
+            }
+            Self::GithubPrCreation => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(
+                    required_string(arguments, "title")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                failures.extend(optional_string(arguments, "body"));
+                failures.extend(required_string(arguments, "head").err().unwrap_or_default());
+                failures.extend(required_string(arguments, "base").err().unwrap_or_default());
+                failures.extend(boolean(arguments, "draft"));
+                collect(failures)
+            }
+            Self::GithubPrMerge => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(required_integer(arguments, "number"));
+                failures.extend(enumerated(arguments, "method", MERGE_METHODS));
+                failures.extend(optional_string(arguments, "commitTitle"));
+                failures.extend(optional_string(arguments, "commitMessage"));
+                collect(failures)
+            }
+            Self::GithubComment => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(required_integer(arguments, "number"));
+                failures.extend(required_string(arguments, "body").err().unwrap_or_default());
+                collect(failures)
+            }
+            Self::GithubIssueCreation => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(
+                    required_string(arguments, "title")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                failures.extend(optional_string(arguments, "body"));
+                collect(failures)
+            }
+            Self::GithubCommitSha => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(required_string_of(arguments, "sha", SHA_MIN_LENGTH));
+                collect(failures)
+            }
+            Self::GithubWorkflowRuns => {
+                let mut failures = optional_name(arguments, "cwd");
+                failures.extend(optional_string(arguments, "branch"));
+                failures.extend(bounded_integer(arguments, "page", PAGE_MAX));
+                collect(failures)
+            }
             Self::WorktreeSelection => {
                 let mut failures = required_string(arguments, "repository")
                     .err()
@@ -269,6 +376,30 @@ fn required_string(arguments: &Map<String, Value>, key: &str) -> Result<(), Vec<
         Some(other) => format!("{key}: Expected string, received {}", schema_type(other)),
     };
     Err(vec![failure])
+}
+
+/// A required positive integer with no upper bound of its own.
+fn required_integer(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    if arguments.get(key).is_none() {
+        return vec![format!("{key}: Required")];
+    }
+    bounded_integer(arguments, key, PAGE_MAX)
+}
+
+/// A required string of at least `minimum` characters, counted the way zod
+/// counts them — by UTF-16 code unit, not by byte.
+fn required_string_of(arguments: &Map<String, Value>, key: &str, minimum: usize) -> Vec<String> {
+    match arguments.get(key) {
+        None => vec![format!("{key}: Required")],
+        Some(Value::String(value)) if value.encode_utf16().count() >= minimum => Vec::new(),
+        Some(Value::String(_)) => vec![format!(
+            "{key}: String must contain at least {minimum} character(s)"
+        )],
+        Some(other) => vec![format!(
+            "{key}: Expected string, received {}",
+            schema_type(other)
+        )],
+    }
 }
 
 /// An optional non-empty string. Absent is valid; present and empty is not,

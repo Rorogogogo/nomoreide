@@ -213,12 +213,40 @@ export class GitHubApiError extends Error {
   }
 }
 
+const GITHUB_API = "https://api.github.com";
+
+/**
+ * Where API calls go. GitHub itself, unless `NOMOREIDE_GITHUB_API_BASE` names
+ * a loopback address — which exists so the parity gate can point a runtime at
+ * a stub it controls.
+ *
+ * Only loopback is honoured, and anything unparseable falls back rather than
+ * failing: every request carries a bearer token, and an override that could
+ * name any host would turn one environment variable into a way to post the
+ * user's credential somewhere else.
+ */
+export function githubApiBase(): string {
+  const override = process.env.NOMOREIDE_GITHUB_API_BASE?.trim();
+  if (!override) return GITHUB_API;
+  let parsed: URL;
+  try {
+    parsed = new URL(override);
+  } catch {
+    return GITHUB_API;
+  }
+  const loopback = ["127.0.0.1", "localhost", "[::1]", "::1"].includes(parsed.hostname);
+  if (!loopback || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
+    return GITHUB_API;
+  }
+  return override.replace(/\/+$/, "");
+}
+
 export class GitHubManager {
   constructor(
     private readonly token: string,
     private readonly owner: string,
     private readonly repo: string,
-    private readonly baseUrl = "https://api.github.com",
+    private readonly baseUrl = githubApiBase(),
   ) {}
 
   static parseRemoteUrl(remoteUrl: string): { owner: string; repo: string } | null {

@@ -537,8 +537,62 @@ One thing the gate cannot show: `parse_repo_url` strips a trailing `.git/` and
 produce the same name. That redundancy is in the reference too, and no fixture
 step can tell the two apart.
 
-Remaining in Phase 3's GitHub group: the twelve API tools, which need the HTTP
-surface stubbed to be diffable at all.
+**Slice 7 (done): the twelve GitHub API tools.** The first tools that reach
+outward, so the first that could not be diffed by running both runtimes and
+watching. Each runtime is now pointed at **its own loopback stand-in for
+api.github.com** (`scripts/support/github-api-stub.ts`), and the gate compares
+two things per step: what the tool reported, and every request it made to get
+there — method, path and query, headers, and body. Without the second half a
+runtime that built `?branch=main&per_page=30` instead of `?per_page=30&branch=main`
+would only show up as a 404 against a real API, which is not a failure anyone
+could read.
+
+That needed one seam in the reference: `githubApiBase()` honours
+`NOMOREIDE_GITHUB_API_BASE`, **but only when it names a loopback address**.
+Every request through that base carries a bearer token, so an override that
+could name any host would turn one environment variable into a way to post the
+user's credential somewhere else. Anything else — another host, another scheme,
+an unparseable value — falls back to GitHub rather than failing, and both
+runtimes have a unit test for the refusal list.
+
+The gate found one wording divergence in Rust's credential precedence, which
+had been there since before this port: `github_auth::resolve` named the host in
+"No stored GitHub token configured for github.com." even when the repository
+had never chosen a host. The reference names it only when a *stored* selection
+picked it, because naming a host the user never picked reads like a setting
+they had got wrong.
+
+`GithubManager` deliberately passes most responses through as GitHub sent them.
+The reference reshapes only two things — a pull request, and a commit's checks
+— and a Rust struct for the rest would silently drop every field GitHub adds
+later. So issues, comments, merges, and workflow runs travel as `Value`.
+
+The fixture is **46 steps against 25 canned routes**, covering all five check
+states, a merged pull request reported as "closed", the two fields a list
+response omits, the pull requests GitHub mixes into the issues endpoint, the
+404 that is answered rather than raised, and both error shapes (GitHub's own
+`message`, and the status line when the body is not JSON). Verified to bite on
+fourteen seeded regressions.
+
+Two things this slice does not do, both recorded rather than hidden:
+
+- **The ETag revalidation cache is not ported.** The only Rust caller is the
+  MCP server, which is a fresh process per tool call, so a cache could never be
+  read there. It belongs with the daemon's GitHub routes, where it is what
+  keeps the dashboard's polling inside GitHub's rate limit.
+- **`crates/nomoreide-tauri/src/commands/github.rs` still has its own client**,
+  with a different auth scheme (`token` rather than `Bearer`) and different
+  error wording. Pointing it at `GithubManager` is a Phase 6 call-site change,
+  not a manager replacement.
+
+The gate does not compare `User-Agent`: undici and reqwest each send their own,
+both non-empty, and neither is something this port chooses.
+
+The two Phase 3 gates now share `scripts/support/mcp-parity-fixture.ts` — the
+throwaway repository tree, the path tokens, and the payload normalization — so
+a third gate is a plan and a stub, not another copy of the harness.
+
+Remaining in Phase 3: snapshots and onboarding.
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.

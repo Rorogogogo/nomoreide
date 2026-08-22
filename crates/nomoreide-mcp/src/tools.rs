@@ -97,6 +97,61 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GithubSetToken { token, host } => {
                     github::set_token(&self.config, token, host).await
                 }
+                NativeTool::GithubListPrs { cwd, state, page } => {
+                    github::list_prs(&self.config, cwd, state, page).await
+                }
+                NativeTool::GithubGetPr { cwd, number } => {
+                    github::get_pr(&self.config, cwd, number).await
+                }
+                NativeTool::GithubGetPrDiff { cwd, number } => {
+                    github::get_pr_diff(&self.config, cwd, number).await
+                }
+                NativeTool::GithubCreatePr {
+                    cwd,
+                    title,
+                    body,
+                    head,
+                    base,
+                    draft,
+                } => github::create_pr(&self.config, cwd, title, body, head, base, draft).await,
+                NativeTool::GithubMergePr {
+                    cwd,
+                    number,
+                    method,
+                    commit_title,
+                    commit_message,
+                } => {
+                    github::merge_pr(
+                        &self.config,
+                        cwd,
+                        number,
+                        method,
+                        commit_title,
+                        commit_message,
+                    )
+                    .await
+                }
+                NativeTool::GithubListIssues { cwd, state, page } => {
+                    github::list_issues(&self.config, cwd, state, page).await
+                }
+                NativeTool::GithubGetIssue { cwd, number } => {
+                    github::get_issue(&self.config, cwd, number).await
+                }
+                NativeTool::GithubListIssueComments { cwd, number } => {
+                    github::list_issue_comments(&self.config, cwd, number).await
+                }
+                NativeTool::GithubAddIssueComment { cwd, number, body } => {
+                    github::add_issue_comment(&self.config, cwd, number, body).await
+                }
+                NativeTool::GithubCreateIssue { cwd, title, body } => {
+                    github::create_issue(&self.config, cwd, title, body).await
+                }
+                NativeTool::GithubGetCommitCi { cwd, sha } => {
+                    github::get_commit_ci(&self.config, cwd, sha).await
+                }
+                NativeTool::GithubListWorkflowRuns { cwd, branch, page } => {
+                    github::list_workflow_runs(&self.config, cwd, branch, page).await
+                }
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -208,7 +263,19 @@ impl NativeToolExecutor {
             | NativeTool::GitFetch(_)
             | NativeTool::GitPush { .. }
             | NativeTool::GitClone(_)
-            | NativeTool::GithubSetToken { .. } => {
+            | NativeTool::GithubSetToken { .. }
+            | NativeTool::GithubListPrs { .. }
+            | NativeTool::GithubGetPr { .. }
+            | NativeTool::GithubGetPrDiff { .. }
+            | NativeTool::GithubCreatePr { .. }
+            | NativeTool::GithubMergePr { .. }
+            | NativeTool::GithubListIssues { .. }
+            | NativeTool::GithubGetIssue { .. }
+            | NativeTool::GithubListIssueComments { .. }
+            | NativeTool::GithubAddIssueComment { .. }
+            | NativeTool::GithubCreateIssue { .. }
+            | NativeTool::GithubGetCommitCi { .. }
+            | NativeTool::GithubListWorkflowRuns { .. } => {
                 unreachable!("config writes and git operations are served locally")
             }
         }
@@ -311,6 +378,66 @@ enum NativeTool<'a> {
     GithubSetToken {
         token: &'a str,
         host: &'a str,
+    },
+    GithubListPrs {
+        cwd: Option<&'a str>,
+        state: &'a str,
+        page: u64,
+    },
+    GithubGetPr {
+        cwd: Option<&'a str>,
+        number: i64,
+    },
+    GithubGetPrDiff {
+        cwd: Option<&'a str>,
+        number: i64,
+    },
+    GithubCreatePr {
+        cwd: Option<&'a str>,
+        title: &'a str,
+        body: Option<&'a str>,
+        head: &'a str,
+        base: &'a str,
+        draft: bool,
+    },
+    GithubMergePr {
+        cwd: Option<&'a str>,
+        number: i64,
+        method: &'a str,
+        commit_title: Option<&'a str>,
+        commit_message: Option<&'a str>,
+    },
+    GithubListIssues {
+        cwd: Option<&'a str>,
+        state: &'a str,
+        page: u64,
+    },
+    GithubGetIssue {
+        cwd: Option<&'a str>,
+        number: i64,
+    },
+    GithubListIssueComments {
+        cwd: Option<&'a str>,
+        number: i64,
+    },
+    GithubAddIssueComment {
+        cwd: Option<&'a str>,
+        number: i64,
+        body: &'a str,
+    },
+    GithubCreateIssue {
+        cwd: Option<&'a str>,
+        title: &'a str,
+        body: Option<&'a str>,
+    },
+    GithubGetCommitCi {
+        cwd: Option<&'a str>,
+        sha: &'a str,
+    },
+    GithubListWorkflowRuns {
+        cwd: Option<&'a str>,
+        branch: Option<&'a str>,
+        page: u64,
     },
 }
 
@@ -422,6 +549,71 @@ impl<'a> NativeTool<'a> {
                 // github.com rather than a missing argument.
                 host: optional_text(arguments, "host").unwrap_or(DEFAULT_GITHUB_HOST),
             }),
+            "nomoreide_github_list_prs" => Ok(Self::GithubListPrs {
+                cwd: optional_text(arguments, "cwd"),
+                state: enum_or(arguments, "state", DEFAULT_ISSUE_STATE),
+                page: page(arguments),
+            }),
+            "nomoreide_github_get_pr" => Ok(Self::GithubGetPr {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+            }),
+            "nomoreide_github_get_pr_diff" => Ok(Self::GithubGetPrDiff {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+            }),
+            "nomoreide_github_create_pr" => Ok(Self::GithubCreatePr {
+                cwd: optional_text(arguments, "cwd"),
+                title: required_text(arguments, "title")?,
+                // Absent stays absent all the way to GitHub: an empty body and
+                // no body are different things to a pull request.
+                body: optional_text(arguments, "body"),
+                head: required_text(arguments, "head")?,
+                base: required_text(arguments, "base")?,
+                draft: arguments
+                    .get("draft")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            }),
+            "nomoreide_github_merge_pr" => Ok(Self::GithubMergePr {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+                method: enum_or(arguments, "method", DEFAULT_MERGE_METHOD),
+                commit_title: optional_text(arguments, "commitTitle"),
+                commit_message: optional_text(arguments, "commitMessage"),
+            }),
+            "nomoreide_github_list_issues" => Ok(Self::GithubListIssues {
+                cwd: optional_text(arguments, "cwd"),
+                state: enum_or(arguments, "state", DEFAULT_ISSUE_STATE),
+                page: page(arguments),
+            }),
+            "nomoreide_github_get_issue" => Ok(Self::GithubGetIssue {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+            }),
+            "nomoreide_github_list_issue_comments" => Ok(Self::GithubListIssueComments {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+            }),
+            "nomoreide_github_add_issue_comment" => Ok(Self::GithubAddIssueComment {
+                cwd: optional_text(arguments, "cwd"),
+                number: number(arguments, "number"),
+                body: required_text(arguments, "body")?,
+            }),
+            "nomoreide_github_create_issue" => Ok(Self::GithubCreateIssue {
+                cwd: optional_text(arguments, "cwd"),
+                title: required_text(arguments, "title")?,
+                body: optional_text(arguments, "body"),
+            }),
+            "nomoreide_github_get_commit_ci" => Ok(Self::GithubGetCommitCi {
+                cwd: optional_text(arguments, "cwd"),
+                sha: required_text(arguments, "sha")?,
+            }),
+            "nomoreide_github_list_workflow_runs" => Ok(Self::GithubListWorkflowRuns {
+                cwd: optional_text(arguments, "cwd"),
+                branch: optional_text(arguments, "branch"),
+                page: page(arguments),
+            }),
             _ => Err(format!("Tool '{name}' is not implemented.")),
         }
     }
@@ -429,6 +621,37 @@ impl<'a> NativeTool<'a> {
 
 /// The reference's `z.string().min(1).default("github.com")`.
 const DEFAULT_GITHUB_HOST: &str = "github.com";
+/// The reference's `z.enum(["open", "closed", "all"]).default("open")`.
+const DEFAULT_ISSUE_STATE: &str = "open";
+/// The reference's `z.enum(["merge", "squash", "rebase"]).default("squash")`.
+const DEFAULT_MERGE_METHOD: &str = "squash";
+/// The reference's `z.number().int().positive().default(1)`.
+const DEFAULT_PAGE: u64 = 1;
+
+/// A defaulted enum. The protocol layer has already rejected any value that is
+/// not one of the choices, so an absent one is the only thing left to fill in.
+fn enum_or<'a>(arguments: &'a Map<String, Value>, key: &str, fallback: &'a str) -> &'a str {
+    arguments
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or(fallback)
+}
+
+fn page(arguments: &Map<String, Value>) -> u64 {
+    arguments
+        .get("page")
+        .and_then(Value::as_u64)
+        .unwrap_or(DEFAULT_PAGE)
+}
+
+/// A required positive integer the protocol layer has already checked, so
+/// anything unreadable here could not have reached this point.
+fn number(arguments: &Map<String, Value>, key: &str) -> i64 {
+    arguments
+        .get(key)
+        .and_then(Value::as_i64)
+        .unwrap_or_default()
+}
 
 fn service_name(arguments: &Map<String, Value>) -> Result<&str, String> {
     required_name(arguments, "service")

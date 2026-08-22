@@ -10,6 +10,8 @@ pub mod filesystem;
 pub mod git_identity;
 pub mod git_manager;
 pub mod github_auth;
+pub mod github_context;
+pub mod github_manager;
 pub mod log_store;
 pub mod one_time_skills;
 pub mod port_utils;

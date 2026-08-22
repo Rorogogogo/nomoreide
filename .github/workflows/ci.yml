@@ -100,3 +100,5 @@ jobs:
         run: npm run mcp:runtime-parity -- ./target/debug/nomoreide
       - name: MCP git parity
         run: npm run mcp:git-parity -- ./target/debug/nomoreide
+      - name: MCP GitHub parity
+        run: npm run mcp:github-parity -- ./target/debug/nomoreide

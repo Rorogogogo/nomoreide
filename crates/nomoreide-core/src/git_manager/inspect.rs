@@ -276,6 +276,16 @@ impl GitManager {
             .collect())
     }
 
+    /// The working tree's top level. Unlike the remote read below this one
+    /// propagates git's complaint, so a directory that is not a repository is
+    /// named as that rather than as a repository missing a remote.
+    pub async fn root(cwd: &str) -> Result<String> {
+        Ok(exec::checked(cwd, &["rev-parse", "--show-toplevel"])
+            .await?
+            .trim()
+            .to_string())
+    }
+
     pub async fn remote_url(cwd: &str, remote: &str) -> Result<Option<String>> {
         let url = exec::checked(cwd, &["remote", "get-url", remote])
             .await
