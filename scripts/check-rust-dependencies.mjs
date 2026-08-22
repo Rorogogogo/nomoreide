@@ -18,6 +18,7 @@ const workspacePackages = new Map(
   metadata.packages.map((package_) => [package_.name, package_]),
 );
 const expectedPackages = [
+  "nomoreide-actions",
   "nomoreide-cli",
   "nomoreide-core",
   "nomoreide-daemon",
@@ -49,12 +50,33 @@ function reachesWorkspacePackage(packageName, targetName, visited = new Set()) {
     );
 }
 
-if (reachesWorkspacePackage("nomoreide-daemon-client", "nomoreide-core")) {
-  throw new Error(
-    "nomoreide-daemon-client must remain stateless and cannot depend directly or transitively on nomoreide-core",
-  );
+// The one boundary the crate graph enforces: nomoreide-daemon-client holds no
+// state, so it cannot reach core.
+//
+// Note what is deliberately *not* here. nomoreide-actions holds the
+// write-capable git operations, but the crate graph is the wrong place to
+// restrict who may call them: the reference MCP surface exposes
+// `nomoreide_git_push`, so nomoreide-mcp must be able to reach at least part of
+// that crate. What an agent may do with git is defined by the MCP tool surface
+// and gated by `npm run mcp:parity -- --surface-only`, which diffs the exposed
+// tool list against the frozen 90-tool manifest. See nomoreide-actions/src/lib.rs.
+const forbidden = [
+  {
+    from: "nomoreide-daemon-client",
+    to: "nomoreide-core",
+    reason:
+      "nomoreide-daemon-client must remain stateless and cannot depend directly or transitively on nomoreide-core",
+  },
+];
+
+for (const { from, to, reason } of forbidden) {
+  if (reachesWorkspacePackage(from, to)) {
+    throw new Error(reason);
+  }
 }
 
 console.log(
-  "Rust workspace boundaries are valid; nomoreide-daemon-client does not depend on nomoreide-core.",
+  `Rust workspace boundaries are valid; ${forbidden
+    .map(({ from, to }) => `${from} does not depend on ${to}`)
+    .join(", and ")}.`,
 );

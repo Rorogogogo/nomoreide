@@ -18,6 +18,7 @@ base64.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 futures-util.workspace = true
+nomoreide-actions = { path = "../nomoreide-actions" }
 nomoreide-core = { path = "../nomoreide-core" }
 portable-pty = "0.8"
 regex.workspace = true

@@ -1,9 +1,9 @@
 use crate::AppState;
+use nomoreide_actions::git::{GitActions, GitPushResult, PushCredential};
 use nomoreide_core::config::{Config, GitRepoDef};
 use nomoreide_core::git_identity;
 use nomoreide_core::git_manager::{
-    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitPushResult, GitStatus,
-    GitWorktree,
+    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitStatus, GitWorktree,
 };
 use nomoreide_core::process_manager::ServiceState;
 use std::path::Path;
@@ -376,15 +376,16 @@ pub async fn git_push(
     let credential =
         git_identity::resolve_push_credential(&config, repository.as_ref(), remote_url.as_deref())
             .await;
-    GitManager::push_with_credential(
-        &cwd,
-        remote.as_deref(),
-        credential
-            .as_ref()
-            .map(|(token, login)| (token.as_str(), login.as_deref())),
-    )
-    .await
-    .map_err(|e| e.to_string())
+    GitActions::new(cwd)
+        .push(
+            remote.as_deref(),
+            credential.as_ref().map(|(token, login)| PushCredential {
+                token: token.as_str(),
+                username: login.as_deref(),
+            }),
+        )
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -396,7 +397,7 @@ pub async fn git_fetch(state: State<'_, AppState>, repo: Option<String>) -> Resu
 #[tauri::command]
 pub async fn git_pull(state: State<'_, AppState>, repo: Option<String>) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::pull(&cwd).await.map_err(|e| e.to_string())
+    GitActions::new(cwd).pull().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -406,7 +407,8 @@ pub async fn git_merge(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::merge(&cwd, &branch)
+    GitActions::new(cwd)
+        .merge(&branch)
         .await
         .map_err(|e| e.to_string())
 }
@@ -418,7 +420,8 @@ pub async fn git_rebase(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::rebase(&cwd, &branch)
+    GitActions::new(cwd)
+        .rebase(&branch)
         .await
         .map_err(|e| e.to_string())
 }
@@ -475,7 +478,8 @@ pub async fn git_pull_default(
     repo: Option<String>,
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
-    GitManager::pull_default(&cwd)
+    GitActions::new(cwd)
+        .pull_default()
         .await
         .map_err(|e| e.to_string())
 }

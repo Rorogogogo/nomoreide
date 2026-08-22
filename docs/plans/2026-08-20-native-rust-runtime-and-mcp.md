@@ -48,6 +48,7 @@ Create a root Cargo workspace. `src-tauri` becomes a member and is renamed `crat
 Cargo.toml
 crates/
   nomoreide-core/       logic and domain types; no server, no transport
+  nomoreide-actions/    write-capable operations core deliberately excludes
   nomoreide-daemon/     wraps core in the loopback HTTP API; the only crate that holds state
   nomoreide-daemon-client/     talks to the daemon: discovery, authentication, typed calls; stateless
   nomoreide-mcp/        stdio MCP protocol and the 90 tool adapters
@@ -60,6 +61,7 @@ crates/
 | Crate | Owns | Replaces |
 | --- | --- | --- |
 | `nomoreide-core` | The actual work: spawn a process, read a repository, query a database, write config. Domain types and safety policy. | `src/core/*` and `src-tauri/src/core/*` |
+| `nomoreide-actions` | The write-capable half of the safety split: `git push/pull/merge/rebase` and, later, guarded database writes and provider mutations. | `src/core/git-actions.ts`, `src/core/db-write.ts`, `src/core/vercel-actions.ts` |
 | `nomoreide-daemon` | The machine-global runtime and the loopback server on `127.0.0.1:4317`. The single owner of live state. | `src/web/server.ts`, `src/web/routes/*` |
 | `nomoreide-daemon-client` | Daemon discovery, lock/health negotiation, local credential, and typed method calls over loopback. Holds no state and spawns nothing. | `src/core/daemon-client.ts`, `src/core/daemon-lifecycle.ts` |
 | `nomoreide-mcp` | MCP protocol framing and the 90 tool adapters. | `src/mcp/*` |
@@ -92,6 +94,14 @@ nomoreide            the one installed binary, built by nomoreide-cli
 This direction is load-bearing, not stylistic. Today `src-tauri/src/lib.rs:22` constructs its own `ConfigStore`, `LogStore`, and `ProcessManager`, so the desktop app and the daemon each own services and neither observes the other. Keeping `nomoreide-daemon-client` unable to reach `nomoreide-core` converts that class of bug from a review-discipline problem into a compile error.
 
 **Known nuance:** `nomoreide-mcp` will depend on both crates, mirroring today's behavior — service runtime tools go through `nomoreide-daemon-client`, while config, Git, and database tools run locally against `nomoreide-core`. The guarantee that MCP cannot spawn services therefore comes from *which* core modules it links, not from the crate graph alone. Record that dependency list explicitly and gate it in CI.
+
+**The write side is a crate, not a module** — but not a wall against agents. The read-safe / write-capable split that `src/core/git-manager.ts` vs `git-actions.ts` draws by convention becomes `nomoreide-core` vs `nomoreide-actions` here, keeping the credential handling and the destructive-operation guards in one place instead of scattered through core.
+
+**What it deliberately does not do is restrict who may call it.** The obvious move — forbid `nomoreide-mcp` from depending on `nomoreide-actions`, making an agent write a compile error — is wrong, and was tried and reverted during Phase 3 slice 1. The frozen 90-tool manifest includes `nomoreide_git_push`, which the reference implements by calling `GitActions.push` directly (`src/mcp/tools/git.ts`). A crate-level ban makes that tool unimplementable and breaks parity.
+
+What an agent may do with git is defined by the **MCP tool surface**, gated by `npm run mcp:parity -- --surface-only` against that manifest — adding a write tool fails the gate. The line the reference draws is narrower than "no writes": agents get `push` (local tree untouched) and even `github_merge_pr` (server-side), but not `pull`, `merge`, `rebase`, or `checkoutDefaultAndPull` — the four that can halt mid-conflict and need a human. The reference does not document this; it is derived from the manifest and the call sites, and recorded in `crates/nomoreide-actions/src/lib.rs`.
+
+`scripts/check-rust-dependencies.mjs` therefore still gates exactly one edge, `daemon-client → core`. When `db-write` and `vercel-actions` land in this crate, *those* are genuinely MCP-unreachable (`vercel-actions` is dashboard-only, `db-write` human-only) — but that is a per-module property the crate graph cannot express, so it needs its own gate rather than a blanket crate ban.
 
 **Naming decision:** use `nomoreide-daemon-client` so the crate cannot be confused with the web client (`apps/dashboard`), accepting the longer path in each consumer.
 
@@ -303,6 +313,29 @@ interleave either way (order within one service is deterministic and still
 compared).
 
 ### Phase 3 — Git, GitHub, worktrees, snapshots, and onboarding
+
+**Slice 1 (done): the read/write split, before anything is built on it.** The
+Rust `git_manager.rs` inherited from Tauri had collapsed the boundary the
+TypeScript keeps — 857 lines with `push`, `pull`, `merge`, and `rebase` sitting
+beside `status` and `diff`. `push_with_credential`, `pull`, `merge`, `rebase`,
+and `pull_default` moved to `nomoreide-actions`, taking the credential helper
+and the redaction with them; the read-safe remainder split by responsibility into
+`git_manager/{types,exec,inspect,branches,files,worktrees}.rs`, each inside the
+~300-line budget. `nomoreide-actions/tests/git.rs` ports
+`test/git-actions.test.ts` so both runtimes answer to the same cases.
+
+One thing this slice got wrong and corrected: it first forbade `nomoreide-mcp`
+from depending on the new crate, on the assumption that the read-safe /
+write-capable table in `CLAUDE.md` meant agents cannot write. Checking the
+frozen manifest instead of the table showed `nomoreide_git_push` is an MCP tool,
+so the ban would have broken parity. See "Dependency direction is the safety
+mechanism" above for where the boundary actually lives.
+
+Two behaviours are carried over verbatim rather than reconciled, and belong to
+the parity pass below: `pull_default` still uses `checkout` and swallows its
+error where the TypeScript `checkoutDefaultAndPull` uses `switch` and reports
+one, and the Rust `default_branch` has no fallback to a local `main`/`master`
+when `origin/HEAD` is unset.
 
 - Extract/port the existing Rust Git/Tauri work, then fill gaps against the TypeScript reference.
 - Port GitHub authentication and API operations without changing credential precedence.

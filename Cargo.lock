@@ -2331,6 +2331,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nomoreide-actions"
+version = "0.1.103"
+dependencies = [
+ "anyhow",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "nomoreide-cli"
 version = "0.1.103"
 dependencies = [
@@ -2418,6 +2427,7 @@ dependencies = [
  "dirs 5.0.1",
  "futures-util",
  "libc",
+ "nomoreide-actions",
  "nomoreide-core",
  "portable-pty",
  "regex",
