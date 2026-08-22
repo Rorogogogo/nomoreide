@@ -1,4 +1,5 @@
 mod database;
+mod deploy;
 mod diagnostics;
 pub(crate) mod docs;
 mod errors;
@@ -199,6 +200,31 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::GithubListWorkflowRuns { cwd, branch, page } => {
                     github::list_workflow_runs(&self.config, cwd, branch, page).await
                 }
+                // A deploy provider is reached over the network from wherever
+                // the caller is, so these need no daemon either — what they
+                // need is a connection in config and a repository to ask about.
+                NativeTool::DeployListProjects {
+                    provider,
+                    cwd,
+                    search,
+                } => deploy::list_projects(&self.config, provider, cwd, search).await,
+                NativeTool::DeployListDeployments {
+                    provider,
+                    cwd,
+                    target,
+                    limit,
+                } => deploy::list_deployments(&self.config, provider, cwd, target, limit).await,
+                NativeTool::DeployGetDeployment {
+                    provider,
+                    cwd,
+                    deployment,
+                } => deploy::get_deployment(&self.config, provider, cwd, deployment).await,
+                NativeTool::DeployLogs {
+                    provider,
+                    cwd,
+                    deployment,
+                    limit,
+                } => deploy::logs(&self.config, provider, cwd, deployment, limit).await,
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -337,6 +363,10 @@ impl NativeToolExecutor {
             | NativeTool::GithubCreateIssue { .. }
             | NativeTool::GithubGetCommitCi { .. }
             | NativeTool::GithubListWorkflowRuns { .. }
+            | NativeTool::DeployListProjects { .. }
+            | NativeTool::DeployListDeployments { .. }
+            | NativeTool::DeployGetDeployment { .. }
+            | NativeTool::DeployLogs { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -360,6 +390,30 @@ enum NativeTool<'a> {
     },
     ErrorPrompt {
         id: u64,
+    },
+    /// The four deploy-provider reads. `provider` defaults rather than being
+    /// required, so an absent one is a valid request for Vercel.
+    DeployListProjects {
+        provider: Option<&'a str>,
+        cwd: Option<&'a str>,
+        search: Option<&'a str>,
+    },
+    DeployListDeployments {
+        provider: Option<&'a str>,
+        cwd: Option<&'a str>,
+        target: Option<&'a str>,
+        limit: u32,
+    },
+    DeployGetDeployment {
+        provider: Option<&'a str>,
+        cwd: Option<&'a str>,
+        deployment: &'a str,
+    },
+    DeployLogs {
+        provider: Option<&'a str>,
+        cwd: Option<&'a str>,
+        deployment: &'a str,
+        limit: u32,
     },
     ListServices,
     StartService(&'a str),
@@ -562,6 +616,28 @@ impl<'a> NativeTool<'a> {
             }),
             "nomoreide_error_prompt" => Ok(Self::ErrorPrompt {
                 id: arguments.get("id").and_then(Value::as_u64).unwrap_or(0),
+            }),
+            "nomoreide_deploy_list_projects" => Ok(Self::DeployListProjects {
+                provider: arguments.get("provider").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+                search: arguments.get("search").and_then(Value::as_str),
+            }),
+            "nomoreide_deploy_list_deployments" => Ok(Self::DeployListDeployments {
+                provider: arguments.get("provider").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+                target: arguments.get("target").and_then(Value::as_str),
+                limit: bounded_u32(arguments, "limit", deploy::DEFAULT_DEPLOYMENT_LIMIT),
+            }),
+            "nomoreide_deploy_get_deployment" => Ok(Self::DeployGetDeployment {
+                provider: arguments.get("provider").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+                deployment: required_text(arguments, "deployment")?,
+            }),
+            "nomoreide_deploy_logs" => Ok(Self::DeployLogs {
+                provider: arguments.get("provider").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+                deployment: required_text(arguments, "deployment")?,
+                limit: bounded_u32(arguments, "limit", deploy::DEFAULT_LOG_LIMIT),
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),
             "nomoreide_close_ui" => Ok(Self::CloseUi),
@@ -842,11 +918,20 @@ fn bundle_name(arguments: &Map<String, Value>) -> Result<&str, String> {
 const DEFAULT_LOG_LIMIT: u32 = 500;
 
 fn log_limit(arguments: &Map<String, Value>) -> u32 {
+    bounded_u32(arguments, "limit", DEFAULT_LOG_LIMIT)
+}
+
+/// A limit the protocol layer has already bounded, or the tool's own default.
+///
+/// The fallback covers an absent argument and nothing else: a value that
+/// reaches here has already cleared `(0, max]`, so a `try_from` that fails
+/// cannot happen and would mean the same thing as "not given" if it did.
+fn bounded_u32(arguments: &Map<String, Value>, key: &str, default: u32) -> u32 {
     arguments
-        .get("limit")
+        .get(key)
         .and_then(Value::as_u64)
-        .and_then(|limit| u32::try_from(limit).ok())
-        .unwrap_or(DEFAULT_LOG_LIMIT)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(default)
 }
 
 /// The reference reads 200 events and narrows them, and reports at most 80 when

@@ -4,7 +4,7 @@
  * The twelve GitHub API tools are the first that reach outward, so unlike the
  * git gate this one cannot simply run both runtimes and watch. Each runtime is
  * pointed at its own loopback stand-in for api.github.com (see
- * `support/github-api-stub.ts`), and the gate compares two things per step:
+ * `support/http-api-stub.ts`), and the gate compares two things per step:
  * what the tool reported, and every request it made to get there — method,
  * path and query, headers, and body.
  *
@@ -29,7 +29,7 @@ import {
   repositoryRoot,
   substitute,
 } from "./support/mcp-parity-fixture.js";
-import { type GithubStub, type StubRoute, startGithubStub } from "./support/github-api-stub.js";
+import { type ApiStub, type StubRoute, startApiStub } from "./support/http-api-stub.js";
 
 const argv = process.argv.slice(2);
 const dump = argv.includes("--dump");
@@ -59,12 +59,12 @@ const specs = [
 ];
 
 const roots: string[] = [];
-const stubs: GithubStub[] = [];
+const stubs: ApiStub[] = [];
 try {
   const runtimes: Runtime[] = [];
   for (const spec of specs) {
     const runtime = await prepareRuntime(spec, fixture, roots);
-    const stub = await startGithubStub(fixture.api);
+    const stub = await startApiStub(fixture.api);
     stubs.push(stub);
     runtime.env.NOMOREIDE_GITHUB_API_BASE = stub.base;
     runtimes.push(runtime);
@@ -104,7 +104,7 @@ try {
 
 async function call(
   runtime: Runtime,
-  stub: GithubStub,
+  stub: ApiStub,
   step: Fixture["plan"][number],
 ): Promise<unknown> {
   const args = Object.fromEntries(

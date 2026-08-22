@@ -27,6 +27,27 @@ pub async fn require_context(
     config: &Config,
     git_cwd: &str,
 ) -> Result<VercelContext, String> {
+    let (manager, credential) = require_client(store, config).await?;
+    let project = resolve_project(config, &manager, git_cwd).await;
+
+    Ok(VercelContext {
+        manager,
+        credential,
+        project,
+    })
+}
+
+/// A connected client and the credential behind it, with no repository in the
+/// picture.
+///
+/// Split out of {@link require_context} because *which project* a repository
+/// deploys is answered differently by the desktop app and by the provider
+/// layer — the two want the same account and the same team scope, and nothing
+/// else in common.
+pub async fn require_client(
+    store: &ConfigStore,
+    config: &Config,
+) -> Result<(VercelManager, ResolvedCredential), String> {
     let credential = resolve(store, config).await?;
     let identity = if credential.is_oauth() {
         Identity::Oidc
@@ -39,16 +60,13 @@ pub async fn require_context(
         None => adopt_default_team(store, &credential, identity).await,
     };
     let manager = VercelManager::new(credential.token.clone(), team_id.clone(), identity);
-    let project = resolve_project(config, &manager, git_cwd).await;
-
-    Ok(VercelContext {
+    Ok((
         manager,
-        credential: ResolvedCredential {
+        ResolvedCredential {
             team_id,
             ..credential
         },
-        project,
-    })
+    ))
 }
 
 /// Write-capable counterpart, resolved the same way but returned separately so

@@ -108,6 +108,11 @@ jobs:
       # no server. Node 22 is what runs here, which is what `node:sqlite` needs.
       - name: MCP database parity
         run: npm run mcp:database-parity -- ./target/debug/nomoreide
+      # Each runtime gets its own loopback stand-in for the vendor API, so this
+      # reaches no network — and the gate compares the requests as well as the
+      # answers, which is the only way a wrongly built query is visible.
+      - name: MCP deploy-provider parity
+        run: npm run mcp:deploy-parity -- ./target/debug/nomoreide
       # The docs half needs no daemon; the UI half starts one per runtime and
       # takes it back down, so it runs after everything that needs one.
       - name: MCP docs and UI parity

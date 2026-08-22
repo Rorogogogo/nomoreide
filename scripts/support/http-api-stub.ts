@@ -1,12 +1,13 @@
 /**
- * A loopback stand-in for api.github.com, so the GitHub tools can be diffed
- * without a token, a network, or a repository that really exists.
+ * A loopback stand-in for a vendor API, so the tools that reach one can be
+ * diffed without a token, a network, or an account that really exists.
  *
- * Each runtime gets its own instance. That keeps the two request logs apart
- * while the gate still runs both runtimes concurrently, and it means the gate
- * compares not only what a tool reported but what it asked for — the method,
- * the path and query, the headers, and the body. A runtime that built the query
- * differently would otherwise only be visible as a 404.
+ * Used by the GitHub gate and the deploy-provider gate. Each runtime gets its
+ * own instance. That keeps the two request logs apart while the gate still runs
+ * both runtimes concurrently, and it means the gate compares not only what a
+ * tool reported but what it asked for — the method, the path and query, the
+ * headers, and the body. A runtime that built the query differently would
+ * otherwise only be visible as a 404.
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -35,7 +36,7 @@ export interface RecordedRequest {
   matched: boolean;
 }
 
-export interface GithubStub {
+export interface ApiStub {
   /** Base URL to hand a runtime, e.g. `http://127.0.0.1:53312`. */
   base: string;
   /** Everything recorded since the last call, and reset. */
@@ -45,7 +46,7 @@ export interface GithubStub {
 
 const NOT_FOUND = { message: "Not Found" };
 
-export async function startGithubStub(routes: StubRoute[]): Promise<GithubStub> {
+export async function startApiStub(routes: StubRoute[]): Promise<ApiStub> {
   let recorded: RecordedRequest[] = [];
 
   const server: Server = createServer((request, response) => {

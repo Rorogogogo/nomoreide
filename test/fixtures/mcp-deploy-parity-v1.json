@@ -1,0 +1,1483 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "app",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# app\n"
+            },
+            "message": "init"
+          }
+        },
+        {
+          "originUrl": "https://github.com/acme/app.git"
+        }
+      ]
+    },
+    {
+      "id": "linked",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# linked\n",
+              ".vercel/project.json": "{\"projectId\":\"prj_linkfile\",\"orgId\":\"team_acme\"}\n"
+            },
+            "message": "init"
+          }
+        },
+        {
+          "originUrl": "https://github.com/acme/linked.git"
+        }
+      ]
+    },
+    {
+      "id": "pinned",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# pinned\n"
+            },
+            "message": "init"
+          }
+        },
+        {
+          "originUrl": "https://github.com/acme/pinned.git"
+        }
+      ]
+    },
+    {
+      "id": "stale",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# stale\n"
+            },
+            "message": "init"
+          }
+        },
+        {
+          "originUrl": "https://github.com/acme/stale.git"
+        }
+      ]
+    },
+    {
+      "id": "solo",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# solo\n"
+            },
+            "message": "init"
+          }
+        }
+      ]
+    }
+  ],
+  "plainDirectories": [
+    "not-a-repo"
+  ],
+  "config": {
+    "version": 1,
+    "services": [],
+    "bundles": [],
+    "databases": [],
+    "logSources": [],
+    "sshServers": [],
+    "githubTokens": [],
+    "githubIdentities": [],
+    "workflows": [],
+    "workflowTriggers": [],
+    "gitRepositories": [
+      {
+        "name": "app",
+        "path": "{{repo:app}}"
+      },
+      {
+        "name": "linked",
+        "path": "{{repo:linked}}"
+      },
+      {
+        "name": "pinned",
+        "path": "{{repo:pinned}}",
+        "providerProjects": {
+          "vercel": "prj_pinned"
+        }
+      },
+      {
+        "name": "stale",
+        "path": "{{repo:stale}}",
+        "providerProjects": {
+          "vercel": "prj_gone"
+        }
+      },
+      {
+        "name": "solo",
+        "path": "{{repo:solo}}"
+      }
+    ],
+    "selectedGitRepository": "app",
+    "connections": {
+      "vercel": {
+        "source": "stored",
+        "token": "vercel-parity-token"
+      }
+    }
+  },
+  "api": [
+    {
+      "method": "GET",
+      "path": "/v2/teams?limit=100",
+      "body": {
+        "teams": [
+          {
+            "id": "team_acme",
+            "slug": "acme",
+            "name": "Acme"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=50&teamId=team_acme",
+      "body": {
+        "projects": [
+          {
+            "id": "prj_app",
+            "name": "app",
+            "framework": "nextjs",
+            "updatedAt": 1700000001000,
+            "link": {
+              "type": "github",
+              "org": "acme",
+              "repo": "app",
+              "repoId": 42,
+              "productionBranch": "main"
+            },
+            "buildCommand": "npm run build",
+            "devCommand": null,
+            "installCommand": null,
+            "outputDirectory": ".next",
+            "rootDirectory": "apps/web",
+            "nodeVersion": "20.x",
+            "targets": {
+              "production": {
+                "id": "dpl_ready"
+              }
+            }
+          },
+          {
+            "id": "prj_docs",
+            "name": "docs"
+          },
+          {
+            "id": "prj_link_empty",
+            "name": "link-empty",
+            "link": {}
+          },
+          {
+            "id": "prj_link_null",
+            "name": "link-null",
+            "link": null
+          },
+          {
+            "id": "prj_link_text",
+            "name": "link-text",
+            "link": "github"
+          },
+          {
+            "id": "prj_link_gitlab",
+            "name": "link-gitlab",
+            "link": {
+              "type": "gitlab",
+              "projectNamespace": "ns",
+              "projectName": "pn",
+              "productionBranch": "trunk"
+            }
+          },
+          {
+            "id": "prj_updated_null",
+            "name": "updated-null",
+            "updatedAt": null
+          },
+          {
+            "name": "no-id"
+          },
+          {
+            "id": "prj_name_null",
+            "name": null
+          },
+          {
+            "id": "prj_framework_number",
+            "name": "framework-number",
+            "framework": 7
+          },
+          {
+            "id": "prj_cleared",
+            "name": "cleared",
+            "buildCommand": null,
+            "rootDirectory": ""
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=50&search=doc&teamId=team_acme",
+      "body": {
+        "projects": [
+          {
+            "id": "prj_docs",
+            "name": "docs"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=50&search=%20%20&teamId=team_acme",
+      "body": {
+        "projects": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=50&search=a%20b%21&teamId=team_acme",
+      "body": {
+        "projects": [
+          {
+            "id": "prj_app",
+            "name": "app",
+            "framework": "nextjs",
+            "updatedAt": 1700000001000,
+            "link": {
+              "type": "github",
+              "org": "acme",
+              "repo": "app",
+              "repoId": 42,
+              "productionBranch": "main"
+            },
+            "buildCommand": "npm run build",
+            "devCommand": null,
+            "installCommand": null,
+            "outputDirectory": ".next",
+            "rootDirectory": "apps/web",
+            "nodeVersion": "20.x",
+            "targets": {
+              "production": {
+                "id": "dpl_ready"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fapp&teamId=team_acme",
+      "body": {
+        "projects": [
+          {
+            "id": "prj_app",
+            "name": "app",
+            "framework": "nextjs",
+            "updatedAt": 1700000001000,
+            "link": {
+              "type": "github",
+              "org": "acme",
+              "repo": "app",
+              "repoId": 42,
+              "productionBranch": "main"
+            },
+            "buildCommand": "npm run build",
+            "devCommand": null,
+            "installCommand": null,
+            "outputDirectory": ".next",
+            "rootDirectory": "apps/web",
+            "nodeVersion": "20.x",
+            "targets": {
+              "production": {
+                "id": "dpl_ready"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Flinked&teamId=team_acme",
+      "body": {
+        "projects": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fpinned&teamId=team_acme",
+      "body": {
+        "projects": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v10/projects?limit=2&repoUrl=https%3A%2F%2Fgithub.com%2Facme%2Fstale&teamId=team_acme",
+      "body": {
+        "projects": [
+          {
+            "id": "prj_docs",
+            "name": "docs"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v9/projects/prj_linkfile?teamId=team_acme",
+      "body": {
+        "id": "prj_linkfile",
+        "name": "from-link-file"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v9/projects/prj_pinned?teamId=team_acme",
+      "body": {
+        "id": "prj_pinned",
+        "name": "from-the-pin"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v9/projects/prj_gone?teamId=team_acme",
+      "body": {
+        "error": {
+          "code": "not_found",
+          "message": "Project not found"
+        }
+      },
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v7/deployments?projectId=prj_app&limit=20&teamId=team_acme",
+      "body": {
+        "deployments": [
+          {
+            "uid": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "created": 1700000500000,
+            "createdAt": 1700000500000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+              "githubCommitMessage": "feat: ship it",
+              "githubCommitAuthorName": "Robert",
+              "githubCommitRef": "main"
+            }
+          },
+          {
+            "uid": "dpl_failed",
+            "name": "app",
+            "url": "app-failed.vercel.app",
+            "created": 1700000400000,
+            "createdAt": 1700000400000,
+            "readyState": "ERROR",
+            "target": "preview",
+            "ready": null,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": false,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "gitlabCommitRef": "feature/x",
+              "githubCommitSha": "89abcdef",
+              "bitbucketCommitMessage": "wip: break the build"
+            },
+            "errorMessage": "Command \"npm run build\" exited with 1",
+            "errorCode": "BUILD_FAILED",
+            "errorStep": "build"
+          },
+          {
+            "uid": "dpl_staged",
+            "name": "app",
+            "url": "app-staged.vercel.app",
+            "created": 1700000300000,
+            "createdAt": 1700000300000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "STAGED"
+          },
+          {
+            "uid": "dpl_promoted",
+            "name": "app",
+            "url": "app-promoted.vercel.app",
+            "created": 1700000200000,
+            "createdAt": 1700000200000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "PROMOTED"
+          },
+          {
+            "uid": "dpl_state_0",
+            "created": 1700000100000,
+            "readyState": "QUEUED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_1",
+            "created": 1700000100001,
+            "readyState": "BUILDING",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_2",
+            "created": 1700000100002,
+            "readyState": "INITIALIZING",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_3",
+            "created": 1700000100003,
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_4",
+            "created": 1700000100004,
+            "readyState": "ERROR",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_5",
+            "created": 1700000100005,
+            "readyState": "CANCELED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_6",
+            "created": 1700000100006,
+            "readyState": "DELETED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_7",
+            "created": 1700000100007,
+            "readyState": "SOMETHING_NEW",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_pair",
+            "created": 1700000090000,
+            "state": "BUILDING",
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_only",
+            "created": 1700000089000,
+            "state": "CANCELED",
+            "target": "preview"
+          },
+          {
+            "created": 1700000088000,
+            "id": "dpl_by_id",
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_target_null",
+            "created": 1700000087000,
+            "readyState": "READY",
+            "target": null
+          },
+          {
+            "uid": "dpl_target_absent",
+            "created": 1700000086000,
+            "readyState": "READY"
+          },
+          {
+            "uid": "dpl_target_other",
+            "created": 1700000085000,
+            "readyState": "READY",
+            "target": "staging"
+          },
+          {
+            "uid": "dpl_created_only",
+            "created": 1700000084000,
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_created_both",
+            "created": 1,
+            "createdAt": 1700000083000,
+            "readyState": "READY",
+            "target": "preview"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v7/deployments?projectId=prj_app&limit=100&teamId=team_acme",
+      "body": {
+        "deployments": [
+          {
+            "uid": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "created": 1700000500000,
+            "createdAt": 1700000500000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+              "githubCommitMessage": "feat: ship it",
+              "githubCommitAuthorName": "Robert",
+              "githubCommitRef": "main"
+            }
+          },
+          {
+            "uid": "dpl_failed",
+            "name": "app",
+            "url": "app-failed.vercel.app",
+            "created": 1700000400000,
+            "createdAt": 1700000400000,
+            "readyState": "ERROR",
+            "target": "preview",
+            "ready": null,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": false,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "gitlabCommitRef": "feature/x",
+              "githubCommitSha": "89abcdef",
+              "bitbucketCommitMessage": "wip: break the build"
+            },
+            "errorMessage": "Command \"npm run build\" exited with 1",
+            "errorCode": "BUILD_FAILED",
+            "errorStep": "build"
+          },
+          {
+            "uid": "dpl_staged",
+            "name": "app",
+            "url": "app-staged.vercel.app",
+            "created": 1700000300000,
+            "createdAt": 1700000300000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "STAGED"
+          },
+          {
+            "uid": "dpl_promoted",
+            "name": "app",
+            "url": "app-promoted.vercel.app",
+            "created": 1700000200000,
+            "createdAt": 1700000200000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "PROMOTED"
+          },
+          {
+            "uid": "dpl_state_0",
+            "created": 1700000100000,
+            "readyState": "QUEUED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_1",
+            "created": 1700000100001,
+            "readyState": "BUILDING",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_2",
+            "created": 1700000100002,
+            "readyState": "INITIALIZING",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_3",
+            "created": 1700000100003,
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_4",
+            "created": 1700000100004,
+            "readyState": "ERROR",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_5",
+            "created": 1700000100005,
+            "readyState": "CANCELED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_6",
+            "created": 1700000100006,
+            "readyState": "DELETED",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_7",
+            "created": 1700000100007,
+            "readyState": "SOMETHING_NEW",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_pair",
+            "created": 1700000090000,
+            "state": "BUILDING",
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_state_only",
+            "created": 1700000089000,
+            "state": "CANCELED",
+            "target": "preview"
+          },
+          {
+            "created": 1700000088000,
+            "id": "dpl_by_id",
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_target_null",
+            "created": 1700000087000,
+            "readyState": "READY",
+            "target": null
+          },
+          {
+            "uid": "dpl_target_absent",
+            "created": 1700000086000,
+            "readyState": "READY"
+          },
+          {
+            "uid": "dpl_target_other",
+            "created": 1700000085000,
+            "readyState": "READY",
+            "target": "staging"
+          },
+          {
+            "uid": "dpl_created_only",
+            "created": 1700000084000,
+            "readyState": "READY",
+            "target": "preview"
+          },
+          {
+            "uid": "dpl_created_both",
+            "created": 1,
+            "createdAt": 1700000083000,
+            "readyState": "READY",
+            "target": "preview"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v7/deployments?projectId=prj_app&limit=3&target=production&teamId=team_acme",
+      "body": {
+        "deployments": [
+          {
+            "uid": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "created": 1700000500000,
+            "createdAt": 1700000500000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+              "githubCommitMessage": "feat: ship it",
+              "githubCommitAuthorName": "Robert",
+              "githubCommitRef": "main"
+            }
+          },
+          {
+            "uid": "dpl_staged",
+            "name": "app",
+            "url": "app-staged.vercel.app",
+            "created": 1700000300000,
+            "createdAt": 1700000300000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "STAGED"
+          },
+          {
+            "uid": "dpl_promoted",
+            "name": "app",
+            "url": "app-promoted.vercel.app",
+            "created": 1700000200000,
+            "createdAt": 1700000200000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {},
+            "readySubstate": "PROMOTED"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v7/deployments?projectId=prj_app&limit=1&teamId=team_acme",
+      "body": {
+        "deployments": [
+          {
+            "uid": "dpl_ready",
+            "name": "app",
+            "url": "app-ready.vercel.app",
+            "created": 1700000500000,
+            "createdAt": 1700000500000,
+            "readyState": "READY",
+            "target": "production",
+            "ready": 1700000560000,
+            "buildingAt": 1700000505000,
+            "alias": [
+              "app.vercel.app",
+              "www.acme.test"
+            ],
+            "aliasAssigned": true,
+            "inspectorUrl": "https://vercel.com/acme/app/ready",
+            "creator": {
+              "uid": "usr_1",
+              "username": "robert",
+              "email": "robert@acme.test"
+            },
+            "meta": {
+              "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+              "githubCommitMessage": "feat: ship it",
+              "githubCommitAuthorName": "Robert",
+              "githubCommitRef": "main"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl_ready?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl_ready",
+        "name": "app",
+        "url": "app-ready.vercel.app",
+        "created": 1700000500000,
+        "createdAt": 1700000500000,
+        "readyState": "READY",
+        "target": "production",
+        "ready": 1700000560000,
+        "buildingAt": 1700000505000,
+        "alias": [
+          "app.vercel.app",
+          "www.acme.test"
+        ],
+        "aliasAssigned": true,
+        "inspectorUrl": "https://vercel.com/acme/app/ready",
+        "creator": {
+          "uid": "usr_1",
+          "username": "robert",
+          "email": "robert@acme.test"
+        },
+        "meta": {
+          "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+          "githubCommitMessage": "feat: ship it",
+          "githubCommitAuthorName": "Robert",
+          "githubCommitRef": "main"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl_failed?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl_failed",
+        "name": "app",
+        "url": "app-failed.vercel.app",
+        "created": 1700000400000,
+        "createdAt": 1700000400000,
+        "readyState": "ERROR",
+        "target": "preview",
+        "ready": null,
+        "buildingAt": 1700000505000,
+        "alias": [],
+        "aliasAssigned": false,
+        "inspectorUrl": "https://vercel.com/acme/app/ready",
+        "creator": {
+          "uid": "usr_1",
+          "username": "robert",
+          "email": "robert@acme.test"
+        },
+        "meta": {
+          "gitlabCommitRef": "feature/x",
+          "githubCommitSha": "89abcdef",
+          "bitbucketCommitMessage": "wip: break the build"
+        },
+        "errorMessage": "Command \"npm run build\" exited with 1",
+        "errorCode": "BUILD_FAILED",
+        "errorStep": "build"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl_bare?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl_bare",
+        "created": 1,
+        "readyState": "READY"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/app-ready.vercel.app?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl_ready",
+        "name": "app",
+        "url": "app-ready.vercel.app",
+        "created": 1700000500000,
+        "createdAt": 1700000500000,
+        "readyState": "READY",
+        "target": "production",
+        "ready": 1700000560000,
+        "buildingAt": 1700000505000,
+        "alias": [
+          "app.vercel.app",
+          "www.acme.test"
+        ],
+        "aliasAssigned": true,
+        "inspectorUrl": "https://vercel.com/acme/app/ready",
+        "creator": {
+          "uid": "usr_1",
+          "username": "robert",
+          "email": "robert@acme.test"
+        },
+        "meta": {
+          "githubCommitSha": "0123456789abcdef0123456789abcdef01234567",
+          "githubCommitMessage": "feat: ship it",
+          "githubCommitAuthorName": "Robert",
+          "githubCommitRef": "main"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl%20space?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl space",
+        "created": 2,
+        "readyState": "READY"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl_missing?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "error": {
+          "code": "not_found",
+          "message": "Deployment not found"
+        }
+      },
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/v13/deployments/dpl_unhelpful?withGitRepoInfo=true&teamId=team_acme",
+      "body": "plain text, not json",
+      "status": 500
+    },
+    {
+      "method": "GET",
+      "path": "/v3/deployments/dpl_ready/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+      "body": [
+        {
+          "type": "stdout",
+          "created": 300,
+          "payload": {
+            "text": "third by created, first in body"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 100,
+          "payload": {
+            "text": "first by created"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 200,
+          "payload": {
+            "text": "  padded both sides  "
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 400,
+          "payload": {
+            "text": "\u001b[32mgreen\u001b[0m text"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 500,
+          "payload": {
+            "text": "   "
+          }
+        },
+        {
+          "type": "stdout",
+          "payload": {
+            "text": "dated, never created",
+            "date": 50
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 600,
+          "payload": {
+            "date": 250,
+            "text": "date beats created"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 700,
+          "payload": {
+            "text": 123
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 800,
+          "text": "top level text"
+        },
+        {
+          "type": "delimiter",
+          "created": 900,
+          "payload": {
+            "text": "a delimiter is still a line"
+          }
+        },
+        "not an object",
+        {
+          "type": "stderr",
+          "created": 1000,
+          "payload": {
+            "text": "err line"
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v3/deployments/dpl_ready/events?builds=1&direction=backward&limit=7&teamId=team_acme",
+      "body": [
+        {
+          "type": "stdout",
+          "created": 300,
+          "payload": {
+            "text": "third by created, first in body"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 100,
+          "payload": {
+            "text": "first by created"
+          }
+        },
+        {
+          "type": "stdout",
+          "created": 200,
+          "payload": {
+            "text": "  padded both sides  "
+          }
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v3/deployments/dpl_empty/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+      "body": []
+    },
+    {
+      "method": "GET",
+      "path": "/v3/deployments/dpl_wrapped/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+      "body": {
+        "events": [
+          {
+            "type": "stdout",
+            "created": 1,
+            "payload": {
+              "text": "wrapped in an object"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/v3/deployments/dpl_ndjson/events?builds=1&direction=backward&limit=500&teamId=team_acme",
+      "contentType": "text/plain",
+      "body": "{\"type\":\"stdout\",\"created\":2,\"payload\":{\"text\":\"ndjson two\"}}\nnot json at all\n{\"type\":\"stdout\",\"created\":1,\"payload\":{\"text\":\"ndjson one\"}}"
+    }
+  ],
+  "plan": [
+    {
+      "id": "projects/all",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {}
+    },
+    {
+      "id": "projects/search",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "search": "doc"
+      }
+    },
+    {
+      "id": "projects/search-only-spaces",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "search": "  "
+      }
+    },
+    {
+      "id": "projects/search-needs-encoding",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "search": "a b!"
+      }
+    },
+    {
+      "id": "projects/from-a-link-file",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:linked}}"
+      }
+    },
+    {
+      "id": "projects/from-a-pin",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:pinned}}"
+      }
+    },
+    {
+      "id": "projects/from-a-pin-that-is-gone",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:stale}}"
+      }
+    },
+    {
+      "id": "projects/no-remote-at-all",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:solo}}"
+      }
+    },
+    {
+      "id": "projects/not-a-repository",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{dir:not-a-repo}}"
+      }
+    },
+    {
+      "id": "projects/unknown-provider",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "provider": "heroku"
+      }
+    },
+    {
+      "id": "projects/named-provider",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "provider": "vercel"
+      }
+    },
+    {
+      "id": "projects/an-unknown-key-is-ignored",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "nope": 1
+      }
+    },
+    {
+      "id": "deployments/default",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {}
+    },
+    {
+      "id": "deployments/limit-at-the-bound",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 100
+      }
+    },
+    {
+      "id": "deployments/limit-one",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 1
+      }
+    },
+    {
+      "id": "deployments/production",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "target": "production",
+        "limit": 3
+      }
+    },
+    {
+      "id": "deployments/preview",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "target": "preview"
+      }
+    },
+    {
+      "id": "deployments/no-project-linked",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "cwd": "{{repo:solo}}"
+      }
+    },
+    {
+      "id": "get/ready",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_ready"
+      }
+    },
+    {
+      "id": "get/failed",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_failed"
+      }
+    },
+    {
+      "id": "get/bare",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_bare"
+      }
+    },
+    {
+      "id": "get/by-hostname",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "app-ready.vercel.app"
+      }
+    },
+    {
+      "id": "get/id-with-a-space",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl space"
+      }
+    },
+    {
+      "id": "get/not-found",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_missing"
+      }
+    },
+    {
+      "id": "get/no-message-in-the-body",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_unhelpful"
+      }
+    },
+    {
+      "id": "logs/default",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_ready"
+      }
+    },
+    {
+      "id": "logs/limit",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_ready",
+        "limit": 7
+      }
+    },
+    {
+      "id": "logs/empty",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_empty"
+      }
+    },
+    {
+      "id": "logs/wrapped-in-an-object",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_wrapped"
+      }
+    },
+    {
+      "id": "logs/newline-delimited",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_ndjson"
+      }
+    },
+    {
+      "id": "refuse/blank-provider",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "provider": ""
+      }
+    },
+    {
+      "id": "refuse/every-field-at-once",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "provider": "",
+        "cwd": "",
+        "target": "staging",
+        "limit": 0
+      }
+    },
+    {
+      "id": "refuse/wrong-types",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "provider": true,
+        "cwd": 123,
+        "limit": 9999
+      }
+    },
+    {
+      "id": "refuse/limit-past-the-bound",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 101
+      }
+    },
+    {
+      "id": "refuse/limit-is-a-float",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 1.5
+      }
+    },
+    {
+      "id": "refuse/log-limit-past-the-bound",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "dpl_ready",
+        "limit": 2001
+      }
+    },
+    {
+      "id": "refuse/deployment-is-required",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {}
+    },
+    {
+      "id": "refuse/deployment-is-blank",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": ""
+      }
+    }
+  ],
+  "disconnected": {
+    "config": {
+      "version": 1,
+      "services": [],
+      "bundles": [],
+      "databases": [],
+      "logSources": [],
+      "sshServers": [],
+      "githubTokens": [],
+      "githubIdentities": [],
+      "workflows": [],
+      "workflowTriggers": [],
+      "gitRepositories": [
+        {
+          "name": "app",
+          "path": "{{repo:app}}"
+        },
+        {
+          "name": "linked",
+          "path": "{{repo:linked}}"
+        },
+        {
+          "name": "pinned",
+          "path": "{{repo:pinned}}",
+          "providerProjects": {
+            "vercel": "prj_pinned"
+          }
+        },
+        {
+          "name": "stale",
+          "path": "{{repo:stale}}",
+          "providerProjects": {
+            "vercel": "prj_gone"
+          }
+        },
+        {
+          "name": "solo",
+          "path": "{{repo:solo}}"
+        }
+      ],
+      "selectedGitRepository": "app",
+      "connections": {}
+    },
+    "plan": [
+      {
+        "id": "disconnected/vercel",
+        "tool": "nomoreide_deploy_list_projects",
+        "arguments": {}
+      },
+      {
+        "id": "disconnected/deployments",
+        "tool": "nomoreide_deploy_list_deployments",
+        "arguments": {}
+      }
+    ]
+  }
+}

@@ -818,6 +818,70 @@ store back to build an excerpt — deadlocked the thread delivering the line. Th
 inbox now keeps its own twelve-line window per service, which is also a better
 description of what an excerpt is.
 
+**Slice 5a (done): the deploy tools, Vercel half.** The four provider tools
+end to end for `provider: "vercel"`, gated by `npm run mcp:deploy-parity` — 40
+steps, each comparing both what the tool reported *and* every request it made
+to get there. Cloudflare is slice 5b; until it lands, `provider: "cloudflare"`
+answers `Unknown provider` natively where the reference says it is not
+connected, and the gate does not yet ask.
+
+Three things had to exist before anything could be diffed:
+
+- **A loopback seam.** These tools reach a vendor over HTTPS, so — unlike git
+  or the database — they cannot be diffed by running both runtimes and
+  watching. `providers/api-base.ts` and its Rust twin hoist the seam
+  `githubApiBase()` opened into the provider layer, loopback-only for the same
+  reason: every request carries a bearer token, and an override that could name
+  any host would turn one environment variable into a way to post the user's
+  credential somewhere else.
+- **The egress boundary, in Rust.** The TypeScript daemon scopes each provider's
+  `fetch` to its manifest's hosts and follows redirects by hand so every hop is
+  checked. The native daemon had none of that, which would have made this
+  migration quietly delete a security control. `providers/egress.rs` is the same
+  two rules and the same manual redirect walk. Each manifest's host list is now
+  *derived* from its base URL rather than written out beside it, so the
+  allowlist and the place requests actually go cannot drift apart.
+- **A way to start connected.** A provider connection is written by an OAuth
+  callback or a dashboard form, and a gate driving the MCP surface can drive
+  neither — so a parity fixture can now plant a `config.json`. The gate walks
+  its plan twice, once connected and once not, because "not connected" is the
+  state most users are in and its message is the one they read.
+
+What the probing settled, none of it from reading the reference:
+
+- A project's `settings` is a fixed, labelled list, and an entry appears only
+  when the vendor carries that key **at all**. Present-but-null is a setting the
+  user cleared; absent is one Vercel does not have for this project. The
+  desktop app's own normalization flattens both to `null`, which is why the
+  provider layer is a second normalization rather than a reuse of the first.
+- `link` is reported only when it names a git host. Vercel sends `link: {}` for
+  a project imported without one.
+- `isCurrentProduction` is `target === "production"` *and not* `readySubstate
+  === "STAGED"` — built for production but not serving it is not current.
+- A `preview` filter is applied client-side. Vercel has no preview target, so
+  the request is unfiltered and everything not `production` is kept.
+- Build log lines sort by `payload.date ?? created ?? 0`, keep leading
+  whitespace and drop trailing, strip ANSI, and skip anything whose text is
+  empty after that. A top-level `text` is not read; the event `type` is ignored
+  entirely, so a delimiter is still a line.
+- **The query encoding is `URLSearchParams`, not `encodeURIComponent`.** Setting
+  the team scope re-serializes the whole query as form-encoded, so a search for
+  something with a space in it goes out as `+` and not `%20` — and that string
+  is quoted verbatim in the error a failed request reports, so it is visible to
+  the caller and not only to the vendor.
+
+One defect fixed in the reference rather than replicated: a build event whose
+`text` was not a string threw `.replace is not a function` out of the whole log
+read — an unreadable failure in place of the one line it could not use.
+
+Two things the errors gate turned up while re-running everything, both fixture
+problems rather than port problems, and both now fixed: its flood step waited a
+fixed six seconds for a hundred and five lines (now it waits for the condition
+it actually needs), and the reference occasionally delivers two adjacent stderr
+lines out of order, which reorders the pair in a listing sorted by when each was
+last seen. The native runtime was never the one that varied. The two emitters
+where it showed up now space their lines further apart.
+
 - Port database registration, catalog inspection, sampling, masking, and guarded queries.
 - Support the same database engines and URL redaction behavior as today.
 - Port the provider registry and Vercel/Cloudflare/Vultr HTTP behavior used by MCP and dashboard APIs.

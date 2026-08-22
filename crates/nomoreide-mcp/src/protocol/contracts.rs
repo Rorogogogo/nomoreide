@@ -150,6 +150,27 @@ pub(super) enum ArgumentContract {
     /// `nomoreide_github_list_workflow_runs`: the `cwd` base, an optional
     /// branch filter, and a page.
     GithubWorkflowRuns,
+
+    /// The base every deploy tool extends: an optional `provider` and an
+    /// optional `cwd`, both defaulted. `nomoreide_deploy_list_projects` adds
+    /// only a `search`, so it uses this shape plus that one field.
+    ///
+    /// Failures are reported in schema order — provider, then cwd, then
+    /// whatever the tool added — which is the order the reference's `.extend()`
+    /// produces and not the order the arguments arrived in.
+    DeployProjects,
+    /// `nomoreide_deploy_list_deployments`: that base plus a target out of two
+    /// and a limit in `(0, 100]`. An absent target is both environments rather
+    /// than a missing argument.
+    DeployDeployments,
+    /// `nomoreide_deploy_get_deployment`: that base plus a required
+    /// `deployment`, which may be an id or a hostname. Which one it is, and
+    /// whether it exists, is the provider's question.
+    DeployDeployment,
+    /// `nomoreide_deploy_logs`: the same required `deployment` plus a line cap
+    /// in `(0, 2000]` — far above the log-line bound, because a build log is
+    /// read to find the one line that failed.
+    DeployLogs,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -178,6 +199,12 @@ const INCIDENT_LIMIT_MAX: f64 = 200.0;
 /// The reference's `z.number().int().positive().max(1000)`, for rows rather
 /// than for log lines.
 const ROW_LIMIT_MAX: f64 = 1000.0;
+/// The reference's `z.number().int().positive().max(100).default(20)`.
+const DEPLOYMENT_LIMIT_MAX: f64 = 100.0;
+/// The reference's `z.number().int().positive().max(2000).default(500)`.
+const BUILD_LOG_LIMIT_MAX: f64 = 2000.0;
+/// The reference's `z.enum(["production", "preview"])`.
+const DEPLOY_TARGETS: &[&str] = &["production", "preview"];
 
 impl ArgumentContract {
     pub(super) fn of(tool: &str) -> Option<Self> {
@@ -240,6 +267,10 @@ impl ArgumentContract {
             "nomoreide_list_errors" => Some(Self::IncidentList),
             "nomoreide_error_prompt" => Some(Self::IncidentPrompt),
             "nomoreide_docs" => Some(Self::DocsTopic),
+            "nomoreide_deploy_list_projects" => Some(Self::DeployProjects),
+            "nomoreide_deploy_list_deployments" => Some(Self::DeployDeployments),
+            "nomoreide_deploy_get_deployment" => Some(Self::DeployDeployment),
+            "nomoreide_deploy_logs" => Some(Self::DeployLogs),
             "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
         }
@@ -475,8 +506,45 @@ impl ArgumentContract {
                 failures.extend(string_array(arguments, "services", ArrayShape::NAMES));
                 collect(failures)
             }
+            Self::DeployProjects => {
+                let mut failures = deploy_base(arguments);
+                failures.extend(optional_name(arguments, "search"));
+                collect(failures)
+            }
+            Self::DeployDeployments => {
+                let mut failures = deploy_base(arguments);
+                failures.extend(enumerated(arguments, "target", DEPLOY_TARGETS));
+                failures.extend(bounded_integer(arguments, "limit", DEPLOYMENT_LIMIT_MAX));
+                collect(failures)
+            }
+            Self::DeployDeployment => {
+                let mut failures = deploy_base(arguments);
+                failures.extend(
+                    required_string(arguments, "deployment")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                collect(failures)
+            }
+            Self::DeployLogs => {
+                let mut failures = deploy_base(arguments);
+                failures.extend(
+                    required_string(arguments, "deployment")
+                        .err()
+                        .unwrap_or_default(),
+                );
+                failures.extend(bounded_integer(arguments, "limit", BUILD_LOG_LIMIT_MAX));
+                collect(failures)
+            }
         }
     }
+}
+
+/// The two fields every deploy tool starts with, reported in that order.
+fn deploy_base(arguments: &Map<String, Value>) -> Vec<String> {
+    let mut failures = optional_name(arguments, "provider");
+    failures.extend(optional_name(arguments, "cwd"));
+    failures
 }
 
 fn collect(failures: Vec<String>) -> Result<(), String> {

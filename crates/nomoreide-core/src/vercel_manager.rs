@@ -11,6 +11,9 @@
 
 use serde_json::Value;
 
+use crate::providers::api_base::{provider_api_base, provider_api_host};
+use crate::providers::egress::ProviderEgress;
+
 /// Where account identity comes from. `User` is Vercel's `/v2/user`; `Oidc` is
 /// the issuer's userinfo endpoint, which is what an OAuth browser sign-in
 /// answers on — a browser sign-in has no legacy user record and 404s on
@@ -23,6 +26,20 @@ pub enum Identity {
 }
 
 const API_BASE: &str = "https://api.vercel.com";
+
+/// Vercel's API, or the loopback stand-in an environment override names.
+///
+/// One host covers everything this client asks for: the REST API and the OIDC
+/// userinfo endpoint a browser sign-in uses are both on it.
+pub fn api_base() -> String {
+    provider_api_base("NOMOREIDE_VERCEL_API_BASE", API_BASE)
+}
+
+/// The scoped sender every Vercel request goes through, with its allowlist
+/// derived from the base URL so the two cannot drift apart.
+fn egress() -> ProviderEgress {
+    ProviderEgress::new("vercel", vec![provider_api_host(&api_base())])
+}
 
 #[derive(Debug, Clone)]
 pub struct VercelApiError {
@@ -69,26 +86,41 @@ pub async fn request_text(
     let mut url = if path.starts_with("http") {
         path.to_string()
     } else {
-        format!("{API_BASE}{path}")
+        format!("{}{path}", api_base())
     };
     if let Some(team_id) = auth.team_id.as_ref() {
-        let separator = if url.contains('?') { '&' } else { '?' };
-        url.push(separator);
-        url.push_str(&format!("teamId={}", urlencoding::encode(team_id)));
+        url = with_team_scope(&url, team_id);
     }
 
-    let client = reqwest::Client::new();
-    let builder = match method {
-        "POST" => client.post(&url),
-        "PATCH" => client.patch(&url),
-        "DELETE" => client.delete(&url),
-        _ => client.get(&url),
+    // `redirect(Policy::none())` so a 3xx comes back to be inspected rather
+    // than being followed past the allowlist; `egress` then checks every hop.
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|error| VercelApiError {
+            message: format!("Vercel request failed: {error}"),
+            status: 0,
+        })?;
+    let verb = match method {
+        "POST" => reqwest::Method::POST,
+        "PATCH" => reqwest::Method::PATCH,
+        "DELETE" => reqwest::Method::DELETE,
+        _ => reqwest::Method::GET,
     };
-
-    let response = builder
-        .header("Authorization", format!("Bearer {}", auth.token))
-        .header("Accept", accept.unwrap_or("application/json"))
-        .send()
+    let token = auth.token.clone();
+    let accept_header = accept.unwrap_or("application/json").to_string();
+    let response = egress()
+        .send(
+            &client,
+            &url,
+            |client, verb, target| {
+                client
+                    .request(verb, target)
+                    .header("Authorization", format!("Bearer {token}"))
+                    .header("Accept", accept_header.clone())
+            },
+            verb,
+        )
         .await
         .map_err(|error| VercelApiError {
             message: format!("Vercel request failed: {error}"),
@@ -101,16 +133,60 @@ pub async fn request_text(
         return Ok(text);
     }
     Err(VercelApiError {
-        message: api_error_message(&text, status.as_u16(), path),
+        message: api_error_message(
+            &text,
+            status.as_u16(),
+            status.canonical_reason().unwrap_or_default(),
+            path,
+        ),
         status: status.as_u16(),
     })
+}
+
+/// One query-string value, encoded the way `URLSearchParams` encodes it.
+///
+/// Not `urlencoding::encode`, which is `encodeURIComponent` and writes a space
+/// as `%20`. The reference builds these queries with `URLSearchParams`, whose
+/// `application/x-www-form-urlencoded` serialization writes a space as `+` —
+/// and that string is quoted verbatim in the error a failed request reports,
+/// so it is visible to a caller and not only to the vendor.
+fn query_value(value: &str) -> String {
+    url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
+}
+
+/// Adds the team scope to a request, the way the reference adds it.
+///
+/// Not a string append: the reference reaches for `URL.searchParams.set`, which
+/// **re-serializes the whole query** as `application/x-www-form-urlencoded` —
+/// so a space that was written `%20` in the path comes back out as `+`. That is
+/// invisible until a caller searches for something with a space in it, and it
+/// is the difference between two runtimes asking a vendor the same question and
+/// two runtimes asking different ones. `query_pairs_mut` does the same encoding.
+///
+/// An existing `teamId` is dropped rather than kept beside the new one, which
+/// is what `set` means.
+fn with_team_scope(url: &str, team_id: &str) -> String {
+    let Ok(mut parsed) = url::Url::parse(url) else {
+        return url.to_string();
+    };
+    let existing: Vec<(String, String)> = parsed
+        .query_pairs()
+        .filter(|(key, _)| key != "teamId")
+        .map(|(key, value)| (key.into_owned(), value.into_owned()))
+        .collect();
+    parsed
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(existing)
+        .append_pair("teamId", team_id);
+    parsed.to_string()
 }
 
 /// Vercel wraps its failures in `{ error: { code, message } }`. When it sends
 /// no message the bare status says nothing about what was being asked, so the
 /// request is named instead — that string is what the dashboard shows, and it
 /// is the only clue the user gets.
-fn api_error_message(body: &str, status: u16, path: &str) -> String {
+fn api_error_message(body: &str, status: u16, reason: &str, path: &str) -> String {
     serde_json::from_str::<Value>(body)
         .ok()
         .and_then(|value| {
@@ -120,7 +196,7 @@ fn api_error_message(body: &str, status: u16, path: &str) -> String {
                 .and_then(Value::as_str)
                 .map(str::to_string)
         })
-        .unwrap_or_else(|| format!("Vercel returned {status} for {path}"))
+        .unwrap_or_else(|| format!("Vercel returned {status} {reason} for {path}"))
 }
 
 pub struct VercelManager {
@@ -175,39 +251,57 @@ impl VercelManager {
             .unwrap_or_default())
     }
 
-    pub async fn list_projects(
+    /// Vercel's own project records, exactly as it sent them.
+    ///
+    /// The desktop app reads {@link Self::list_projects}, whose shape it has
+    /// always had; the provider layer reads these, because the vendor-neutral
+    /// shape needs to tell a setting the user *cleared* from one this vendor
+    /// does not have — a distinction the desktop shape flattens to `null`.
+    pub async fn list_projects_raw(
         &self,
         search: Option<&str>,
         repo_url: Option<&str>,
         limit: Option<u32>,
     ) -> Result<Vec<Value>, VercelApiError> {
         let mut path = format!("/v10/projects?limit={}", limit.unwrap_or(50));
-        if let Some(search) = search.filter(|value| !value.trim().is_empty()) {
-            path.push_str(&format!("&search={}", urlencoding::encode(search)));
+        if let Some(search) = search.filter(|value| !value.is_empty()) {
+            path.push_str(&format!("&search={}", query_value(search)));
         }
         if let Some(repo_url) = repo_url {
-            path.push_str(&format!("&repoUrl={}", urlencoding::encode(repo_url)));
+            path.push_str(&format!("&repoUrl={}", query_value(repo_url)));
         }
         let data = request(&self.auth, "GET", &path, None).await?;
-        let projects = match &data {
+        Ok(match &data {
             Value::Array(items) => items.clone(),
             _ => data
                 .get("projects")
                 .and_then(Value::as_array)
                 .cloned()
                 .unwrap_or_default(),
-        };
+        })
+    }
+
+    pub async fn list_projects(
+        &self,
+        search: Option<&str>,
+        repo_url: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<Vec<Value>, VercelApiError> {
+        let projects = self.list_projects_raw(search, repo_url, limit).await?;
         Ok(projects.iter().map(normalize_project).collect())
     }
 
-    pub async fn get_project(&self, id_or_name: &str) -> Result<Value, VercelApiError> {
+    pub async fn get_project_raw(&self, id_or_name: &str) -> Result<Value, VercelApiError> {
         let path = format!("/v9/projects/{}", urlencoding::encode(id_or_name));
-        Ok(normalize_project(
-            &request(&self.auth, "GET", &path, None).await?,
-        ))
+        request(&self.auth, "GET", &path, None).await
     }
 
-    pub async fn list_deployments(
+    pub async fn get_project(&self, id_or_name: &str) -> Result<Value, VercelApiError> {
+        Ok(normalize_project(&self.get_project_raw(id_or_name).await?))
+    }
+
+    /// Vercel's own deployment records, filtered but not reshaped.
+    pub async fn list_deployments_raw(
         &self,
         project_id: &str,
         target: Option<&str>,
@@ -215,7 +309,7 @@ impl VercelManager {
     ) -> Result<Vec<Value>, VercelApiError> {
         let mut path = format!(
             "/v7/deployments?projectId={}&limit={}",
-            urlencoding::encode(project_id),
+            query_value(project_id),
             limit.unwrap_or(20)
         );
         // Vercel has no `preview` target filter — preview deployments are the
@@ -224,10 +318,10 @@ impl VercelManager {
             path.push_str("&target=production");
         }
         let data = request(&self.auth, "GET", &path, None).await?;
-        let deployments: Vec<Value> = data
+        let deployments = data
             .get("deployments")
             .and_then(Value::as_array)
-            .map(|items| items.iter().map(normalize_deployment).collect())
+            .cloned()
             .unwrap_or_default();
 
         if target == Some("preview") {
@@ -241,12 +335,26 @@ impl VercelManager {
         Ok(deployments)
     }
 
-    pub async fn get_deployment(&self, id_or_url: &str) -> Result<Value, VercelApiError> {
+    pub async fn list_deployments(
+        &self,
+        project_id: &str,
+        target: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<Vec<Value>, VercelApiError> {
+        let deployments = self.list_deployments_raw(project_id, target, limit).await?;
+        Ok(deployments.iter().map(normalize_deployment).collect())
+    }
+
+    pub async fn get_deployment_raw(&self, id_or_url: &str) -> Result<Value, VercelApiError> {
         let path = format!(
             "/v13/deployments/{}?withGitRepoInfo=true",
             urlencoding::encode(id_or_url)
         );
-        let raw = request(&self.auth, "GET", &path, None).await?;
+        request(&self.auth, "GET", &path, None).await
+    }
+
+    pub async fn get_deployment(&self, id_or_url: &str) -> Result<Value, VercelApiError> {
+        let raw = self.get_deployment_raw(id_or_url).await?;
         let mut deployment = normalize_deployment(&raw);
         if let Some(object) = deployment.as_object_mut() {
             object.insert(
@@ -755,14 +863,21 @@ mod tests {
         assert!(logs.is_empty());
     }
 
+    /// The status *and* its reason phrase: a bare number says nothing about
+    /// what went wrong, and this string is the only clue the caller gets.
     #[test]
     fn an_error_body_without_a_message_names_the_request() {
         assert_eq!(
-            api_error_message("not json", 404, "/v2/user"),
-            "Vercel returned 404 for /v2/user"
+            api_error_message("not json", 404, "Not Found", "/v2/user"),
+            "Vercel returned 404 Not Found for /v2/user"
         );
         assert_eq!(
-            api_error_message(r#"{"error":{"message":"Forbidden"}}"#, 403, "/v2/user"),
+            api_error_message(
+                r#"{"error":{"message":"Forbidden"}}"#,
+                403,
+                "Forbidden",
+                "/v2/user"
+            ),
             "Forbidden"
         );
     }

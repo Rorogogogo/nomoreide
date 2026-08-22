@@ -29,6 +29,13 @@
  * so they are dropped rather than compared. The *order* they impose is still
  * compared, because the listing is returned in it.
  *
+ * Two emitters ask for more space between their lines than the rest, and the
+ * reason is a race in the reference rather than in the fixture — see
+ * {@link Emitter.spacing}. The flood is waited for by condition instead of by
+ * clock, for the same kind of reason: a sleep long enough on an idle machine is
+ * not long enough on a busy one, and a gate that has to be re-run is a gate
+ * people stop believing.
+ *
  * Nothing here reads either implementation.
  *
  * Usage:
@@ -65,13 +72,34 @@ if (candidateArgv.length === 0) {
 }
 
 /** Wall-clock fields that cannot repeat. The order they impose still is. */
+/** How far apart an emitter's lines are, unless it asks for more room. */
+const DEFAULT_SPACING = 40;
+
 const VOLATILE = ["firstSeen", "lastSeen"];
+
 
 interface Emitter {
   readonly name: string;
   readonly lines: string[];
   /** Milliseconds to wait after starting it, before the next one begins. */
   readonly settle: number;
+  /**
+   * Milliseconds between lines, for the two emitters that need more room than
+   * the default.
+   *
+   * The reference occasionally delivers two adjacent stderr lines out of order
+   * — the later one is seen first, so it takes the lower incident id *and* the
+   * earlier timestamp, and the listing (newest activity first, ties by id
+   * descending) then reports the pair the wrong way round. It is the reference
+   * that varies run to run; the native runtime has never been observed to. The
+   * two emitters it shows up on are the ones that make it likely: `long`, whose
+   * lines are long enough to straddle a read, and `flood`, which has a hundred
+   * and five chances to hit it.
+   *
+   * Widening the gap is a fixture fix, not a reconciliation. The order is still
+   * compared, and a runtime that got it wrong still fails.
+   */
+  readonly spacing?: number;
 }
 
 /** `{{file}}` becomes the workspace's own `broken.js` in each runtime. */
@@ -174,6 +202,7 @@ const emitters: Emitter[] = [
   {
     name: "long",
     settle: 1_200,
+    spacing: 150,
     lines: [`Error: ${"y".repeat(400)}`, `Error: ${"num 1234567890 ".repeat(30)}`],
   },
   {
@@ -183,12 +212,61 @@ const emitters: Emitter[] = [
   },
 ];
 
-/** Emitted last: 105 distinct signatures push the inbox past its cap. */
+/**
+ * Emitted last: 105 distinct signatures push the inbox past its cap.
+ *
+ * Its `settle` is unused — this one is waited for by condition rather than by
+ * clock, because it is the only emitter whose output is large enough for a
+ * fixed wait to be a coin flip on a loaded machine.
+ */
 const flood: Emitter = {
   name: "flood",
-  settle: 6_000,
+  settle: 0,
+  spacing: 150,
   lines: Array.from({ length: 105 }, (_, index) => `Error: distinct ${label(index)}`),
 };
+
+/**
+ * Waits for the flood to have filled the inbox, rather than for a fixed number
+ * of seconds.
+ *
+ * A sleep long enough on an idle machine is not long enough on a busy one, and
+ * a gate that has to be re-run is a gate people stop believing. The condition is
+ * exact — the cap, reached, with nothing but flood incidents left — so waiting
+ * on it cannot mask a runtime that produced the wrong answer: a candidate that
+ * never reaches it fails on the deadline instead of on the diff, and one that
+ * reaches a *different* answer still fails the comparison that follows.
+ */
+async function waitForTheFlood(runtime: Runtime): Promise<void> {
+  const deadline = Date.now() + FLOOD_DEADLINE;
+  while (Date.now() < deadline) {
+    const { payload } = toolPayload(
+      await harness.call(runtime, "nomoreide_list_errors", { limit: 200 }),
+    ) as { payload?: unknown };
+    const incidents = (Array.isArray(payload) ? payload : []) as Array<{
+      service?: string;
+      title?: string;
+    }>;
+    // Reaching the cap is not enough: the flood passes through "100 flood
+    // incidents" while it is still emitting, so two runtimes read at that
+    // moment are each holding a different hundred. The *last* line having
+    // arrived is the terminal condition, and the listing is newest first.
+    const settled =
+      incidents.length === INBOX_CAP &&
+      incidents.every((incident) => incident.service === flood.name) &&
+      incidents[0]?.title === flood.lines.at(-1);
+    if (settled) return;
+    await delay(FLOOD_POLL);
+  }
+  throw new Error(
+    `[${runtime.label}] the inbox never filled with ${INBOX_CAP} flood incidents within ${FLOOD_DEADLINE}ms.`,
+  );
+}
+
+/** What the inbox keeps, which the flood is sized to exceed. */
+const INBOX_CAP = 100;
+const FLOOD_POLL = 250;
+const FLOOD_DEADLINE = 60_000;
 
 function label(index: number): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";
@@ -266,14 +344,18 @@ try {
   await Promise.all(
     runtimes.map((runtime) => harness.call(runtime, "nomoreide_start_service", { name: flood.name })),
   );
-  await delay(flood.settle);
-  await compare(runtimes, "errors/after-the-cap-is-reached", (runtime) =>
-    harness.call(runtime, "nomoreide_list_errors", { limit: 200 }),
+  await Promise.all(runtimes.map((runtime) => waitForTheFlood(runtime)));
+  await compare(
+    runtimes,
+    "errors/after-the-cap-is-reached",
+    (runtime) => harness.call(runtime, "nomoreide_list_errors", { limit: 200 }),
   );
   // Only here is the default visible: below the cap the inbox holds fewer
   // incidents than any plausible default would return.
-  await compare(runtimes, "errors/the-default-limit", (runtime) =>
-    harness.call(runtime, "nomoreide_list_errors"),
+  await compare(
+    runtimes,
+    "errors/the-default-limit",
+    (runtime) => harness.call(runtime, "nomoreide_list_errors"),
   );
 
   console.log(`MCP error-inbox parity passed (${compared} steps).`);
@@ -298,10 +380,11 @@ async function compare(
   runtimes: readonly Runtime[],
   name: string,
   call: (runtime: Runtime) => Promise<unknown>,
+  volatile: readonly string[] = VOLATILE,
 ): Promise<void> {
   const observed = await Promise.all(
     runtimes.map(async (runtime) =>
-      normalizeRuntimePayload(toolPayload(await call(runtime)), runtimes, VOLATILE),
+      normalizeRuntimePayload(toolPayload(await call(runtime)), runtimes, [...volatile]),
     ),
   );
   if (dump) {
@@ -346,7 +429,10 @@ function files(runtime: Omit<Runtime, "port">): WorkspaceFile[] {
     { path: "broken.js", contents: "committed 1\ncommitted 2\ncommitted 3\n" },
     ...[...emitters, flood].map((emitter) => ({
       path: `${emitter.name}.js`,
-      contents: emitterScript(emitter.lines.map((line) => line.replaceAll("{{file}}", broken))),
+      contents: emitterScript(
+        emitter.lines.map((line) => line.replaceAll("{{file}}", broken)),
+        emitter.spacing,
+      ),
     })),
   ];
 }
@@ -356,14 +442,14 @@ function files(runtime: Omit<Runtime, "port">): WorkspaceFile[] {
  * a burst delivered in one chunk would make the order the two runtimes observe
  * depend on how each drains its pipe.
  */
-function emitterScript(lines: string[]): string {
+function emitterScript(lines: string[], spacing = DEFAULT_SPACING): string {
   return [
     `const lines = ${JSON.stringify(lines)};`,
     "let index = 0;",
     "const timer = setInterval(() => {",
     "  if (index >= lines.length) { clearInterval(timer); setInterval(() => {}, 1000); return; }",
     "  process.stderr.write(lines[index++] + '\\n');",
-    "}, 40);",
+    `}, ${spacing});`,
   ].join("\n");
 }
 

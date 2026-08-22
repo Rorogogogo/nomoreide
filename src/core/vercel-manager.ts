@@ -486,8 +486,16 @@ export function parseBuildLogEvents(raw: string): VercelBuildLogLine[] {
       type: event.type ?? "stdout",
       // Build output is ANSI-colored; strip the SGR codes so the log renders
       // as plain text rather than as escape soup. The ESC is the point here.
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: matching an ANSI escape sequence requires the ESC character.
-      text: (event.payload?.text ?? "").replace(/\u001b\[[0-9;]*m/g, "").trimEnd(),
+      //
+      // The `typeof` guard is not belt-and-braces: `?? ""` passes a number
+      // through, and a build event whose `text` is not a string used to throw
+      // `.replace is not a function` out of a log read — an unreadable failure
+      // in place of the one line it could not use.
+      text:
+        typeof event.payload?.text === "string"
+          ? // biome-ignore lint/suspicious/noControlCharactersInRegex: matching an ANSI escape sequence requires the ESC character.
+            event.payload.text.replace(/\u001b\[[0-9;]*m/g, "").trimEnd()
+          : "",
     }))
     .filter((line) => line.text.length > 0)
     .sort((a, b) => a.createdAt - b.createdAt);
