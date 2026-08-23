@@ -28,6 +28,8 @@ struct RawServer {
     http_url: Option<String>,
     #[serde(rename = "type")]
     declared_transport: Option<String>,
+    /// How the project-scope store spells the same idea.
+    transport: Option<String>,
     headers: Option<OrderedMap<Value>>,
 }
 
@@ -73,6 +75,14 @@ impl Reader {
             }),
             // Codex reads a declared type and then ignores it.
             Self::CodexToml => url(&raw.url).map(|url| ("http", url)),
+            Self::ProjectStore => url(&raw.url).map(|url| {
+                let transport = if raw.transport.as_deref() == Some("sse") {
+                    "sse"
+                } else {
+                    "http"
+                };
+                (transport, url)
+            }),
             Self::AntigravityJson => url(&raw.http_url)
                 .map(|url| ("http", url))
                 .or_else(|| url(&raw.url).map(|url| ("sse", url))),
@@ -84,7 +94,8 @@ impl Reader {
         !matches!(self, Self::CodexToml)
     }
 
-    /// Only Claude records anything per project.
+    /// Only Claude records anything per project *in its own config*. The
+    /// other two have their project servers read out of the store instead.
     fn has_project_scope(self) -> bool {
         matches!(self, Self::ClaudeJson)
     }
@@ -138,7 +149,17 @@ pub(super) fn read(agent: Agent, home: &Path, cwd: &Path) -> AgentConfigView {
     };
 
     let (mcp_servers, remote_mcp_servers) = split(user_entries, reader);
-    let (project_mcp_servers, project_remote_mcp_servers) = split(project_entries, reader);
+    // An agent with no project scope of its own still has whatever was
+    // recorded for it in the project, and reports it here — otherwise adding
+    // a project-scoped server to Codex would leave no trace a listing shows.
+    let (project_mcp_servers, project_remote_mcp_servers) = if reader.has_project_scope() {
+        split(project_entries, reader)
+    } else {
+        split(
+            super::store::project_entries(cwd, agent),
+            Reader::ProjectStore,
+        )
+    };
     AgentConfigView {
         agent: agent.id(),
         config_path: path.to_string_lossy().into_owned(),

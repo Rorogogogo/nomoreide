@@ -13,7 +13,8 @@
               "nested/keep.md": "# nested\n",
               ".codex/config.toml": "[mcp_servers.project-codex]\ncommand = \"true\"\n",
               ".mcp.json": "{\n  \"mcpServers\": {\n    \"dot-mcp\": {\n      \"command\": \"true\"\n    }\n  }\n}\n",
-              ".agents/skills/project-codex-skill/SKILL.md": "---\nname: project-codex-skill\ndescription: P.\n---\n\nP.\n"
+              ".agents/skills/project-codex-skill/SKILL.md": "---\nname: project-codex-skill\ndescription: P.\n---\n\nP.\n",
+              ".brainctl/project-mcps.json": "{\n  \"claude\": {\n    \"mcpServers\": {\n      \"store-claude\": {\n        \"command\": \"true\"\n      }\n    }\n  },\n  \"codex\": {\n    \"mcpServers\": {\n      \"store-codex\": {\n        \"command\": \"true\"\n      },\n      \"store-codex-remote\": {\n        \"transport\": \"sse\",\n        \"url\": \"https://sc.example.test/mcp\"\n      },\n      \"store-codex-plain\": {\n        \"url\": \"https://sp.example.test/mcp\"\n      }\n    }\n  },\n  \"antigravity\": {\n    \"mcpServers\": {\n      \"store-ag\": {\n        \"command\": \"true\"\n      }\n    }\n  }\n}\n"
             },
             "message": "init"
           }
@@ -238,6 +239,508 @@
     {
       "id": "doctor/with-the-planted-stubs-removed",
       "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "write/replant",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {},
+      "writeHomeFiles": [
+        {
+          "path": ".claude.json",
+          "contents": "{\n  \"numStartups\": 7,\n  \"mcpServers\": {\n    \"kept\": {\n      \"command\": \"true\"\n    },\n    \"doomed\": {\n      \"command\": \"false\"\n    },\n    \"remote-kept\": {\n      \"type\": \"http\",\n      \"url\": \"https://k.example.test/mcp\"\n    }\n  },\n  \"projects\": {\n    \"{{repo:demo}}\": {\n      \"allowedTools\": [\n        \"Bash\"\n      ],\n      \"history\": [\n        {\n          \"display\": \"x\"\n        }\n      ],\n      \"mcpServers\": {\n        \"scoped\": {\n          \"command\": \"python3\"\n        }\n      }\n    },\n    \"/somewhere/else\": {\n      \"mcpServers\": {\n        \"elsewhere\": {\n          \"command\": \"true\"\n        }\n      }\n    }\n  },\n  \"tipsHistory\": {\n    \"a\": 1\n  }\n}\n"
+        },
+        {
+          "path": ".codex/config.toml",
+          "contents": "# a comment the writer should not eat\nmodel = \"gpt-5\"\napproval_policy = \"on-request\"\n\n[mcp_servers.kept]\ncommand = \"true\"\n\n[mcp_servers.doomed]\ncommand = \"false\"\n\n[sandbox_workspace_write]\nnetwork_access = true\n"
+        },
+        {
+          "path": ".gemini/antigravity-cli/mcp_config.json",
+          "contents": "{\n  \"schemaVersion\": 2,\n  \"mcpServers\": {\n    \"kept\": {\n      \"command\": \"true\"\n    }\n  }\n}\n"
+        }
+      ]
+    },
+    {
+      "id": "write/add-stdio",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "added",
+        "command": "node",
+        "args": [
+          "a.js"
+        ],
+        "env": {
+          "T": "1"
+        }
+      }
+    },
+    {
+      "id": "write/add-remote",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "added-remote",
+        "url": "https://a.example.test/mcp",
+        "transport": "sse"
+      }
+    },
+    {
+      "id": "write/add-project-scoped",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "added-project",
+        "command": "true",
+        "scope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/add-to-codex",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "added",
+        "command": "node",
+        "args": [
+          "a.js"
+        ]
+      }
+    },
+    {
+      "id": "write/add-to-antigravity",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "added",
+        "url": "https://ag.example.test/mcp"
+      }
+    },
+    {
+      "id": "write/add-remote-to-codex",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "added-remote",
+        "url": "https://c.example.test/mcp"
+      }
+    },
+    {
+      "id": "write/add-codex-with-env",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "added-env",
+        "command": "true",
+        "env": {
+          "K": "v"
+        }
+      }
+    },
+    {
+      "id": "write/add-antigravity-stdio",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "added-stdio",
+        "command": "true",
+        "args": [
+          "--x"
+        ],
+        "env": {
+          "K": "v"
+        }
+      }
+    },
+    {
+      "id": "write/add-antigravity-sse",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "added-sse",
+        "url": "https://s.example.test/mcp",
+        "transport": "sse"
+      }
+    },
+    {
+      "id": "write/add-overwrites",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "added",
+        "command": "other"
+      }
+    },
+    {
+      "id": "write/add-with-neither",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "shapeless"
+      }
+    },
+    {
+      "id": "write/add-to-a-missing-scope",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "nope",
+        "command": "true",
+        "scope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/add-project-remote-to-codex",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "proj-remote",
+        "url": "https://p.example.test/mcp",
+        "transport": "sse",
+        "scope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/add-claude-remote-with-no-transport",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "added-default",
+        "url": "https://d.example.test/mcp"
+      }
+    },
+    {
+      "id": "write/add-antigravity-with-two-env-keys",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "added-two-env",
+        "command": "true",
+        "env": {
+          "AAA": "1",
+          "BBB": "2"
+        }
+      }
+    },
+    {
+      "id": "write/after-the-adds",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/remove",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "doomed"
+      }
+    },
+    {
+      "id": "write/remove-missing",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "never-there"
+      }
+    },
+    {
+      "id": "write/move-to-project",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "kept",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-back",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "scoped",
+        "fromScope": "project",
+        "toScope": "user",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-missing",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "never-there",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/remove-from-codex",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "doomed"
+      }
+    },
+    {
+      "id": "write/remove-missing-from-codex",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "never-there"
+      }
+    },
+    {
+      "id": "write/remove-missing-from-antigravity",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "never-there"
+      }
+    },
+    {
+      "id": "write/move-codex-to-project",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "codex",
+        "key": "kept",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-antigravity-to-project",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "antigravity",
+        "key": "kept",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-to-the-same-scope",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "added",
+        "fromScope": "user",
+        "toScope": "user",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-codex-skill",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "codex",
+        "skillName": "refactor",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/snapshot-antigravity",
+      "tool": "nomoreide_agents_snapshot_agent",
+      "arguments": {
+        "agent": "antigravity"
+      }
+    },
+    {
+      "id": "write/after-the-moves",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/snapshot",
+      "tool": "nomoreide_agents_snapshot_agent",
+      "arguments": {
+        "agent": "claude"
+      }
+    },
+    {
+      "id": "write/snapshot-codex",
+      "tool": "nomoreide_agents_snapshot_agent",
+      "arguments": {
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "write/move-skill",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "claude",
+        "skillName": "summarise",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      },
+      "writeHomeFiles": [
+        {
+          "path": ".claude/skills/summarise/SKILL.md",
+          "contents": "---\nname: summarise\n---\n\nS.\n"
+        }
+      ]
+    },
+    {
+      "id": "write/move-skill-back",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "claude",
+        "skillName": "summarise",
+        "fromScope": "project",
+        "toScope": "user",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-skill-missing",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "claude",
+        "skillName": "nope",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/move-skill-antigravity",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "antigravity",
+        "skillName": "summarise",
+        "fromScope": "user",
+        "toScope": "project",
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/finally",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "write/reject-a-missing-agent",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "key": "x",
+        "command": "true"
+      }
+    },
+    {
+      "id": "write/reject-an-unknown-agent",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "nano",
+        "key": "x",
+        "command": "true"
+      }
+    },
+    {
+      "id": "write/reject-an-empty-key",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "",
+        "command": "true"
+      }
+    },
+    {
+      "id": "write/reject-a-bad-transport",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "x",
+        "url": "https://e.test",
+        "transport": "grpc"
+      }
+    },
+    {
+      "id": "write/reject-a-bad-scope",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "x",
+        "command": "true",
+        "scope": "global"
+      }
+    },
+    {
+      "id": "write/reject-bad-args",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "x",
+        "command": "true",
+        "args": [
+          1
+        ]
+      }
+    },
+    {
+      "id": "write/reject-bad-env",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "claude",
+        "key": "x",
+        "command": "true",
+        "env": {
+          "A": 2
+        }
+      }
+    },
+    {
+      "id": "write/reject-remove-without-a-key",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "claude"
+      }
+    },
+    {
+      "id": "write/reject-a-missing-scope-pair",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "x"
+      }
+    },
+    {
+      "id": "write/reject-a-bad-scope-pair",
+      "tool": "nomoreide_agents_move_mcp_scope",
+      "arguments": {
+        "agent": "claude",
+        "key": "x",
+        "fromScope": "user",
+        "toScope": "nowhere"
+      }
+    },
+    {
+      "id": "write/reject-a-skill-move-without-a-name",
+      "tool": "nomoreide_agents_move_skill_scope",
+      "arguments": {
+        "agent": "claude",
+        "fromScope": "user",
+        "toScope": "project"
+      }
+    },
+    {
+      "id": "write/reject-a-snapshot-without-an-agent",
+      "tool": "nomoreide_agents_snapshot_agent",
       "arguments": {}
     }
   ]

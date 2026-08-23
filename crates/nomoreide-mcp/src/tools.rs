@@ -232,6 +232,23 @@ impl ToolExecutor for NativeToolExecutor {
                 NativeTool::AgentsStatus => agent_env::status(),
                 NativeTool::AgentsReadConfigs { cwd } => agent_env::read_configs(cwd),
                 NativeTool::AgentsDoctor { cwd } => agent_env::doctor(cwd),
+                NativeTool::AgentsAddMcp { target, key, spec } => {
+                    agent_env::add_mcp(target, key, &spec)
+                }
+                NativeTool::AgentsRemoveMcp { target, key } => agent_env::remove_mcp(target, key),
+                NativeTool::AgentsMoveMcpScope {
+                    target,
+                    key,
+                    from,
+                    to,
+                } => agent_env::move_mcp_scope(target, key, from, to),
+                NativeTool::AgentsMoveSkillScope {
+                    target,
+                    name,
+                    from,
+                    to,
+                } => agent_env::move_skill_scope(target, name, from, to),
+                NativeTool::AgentsSnapshotAgent { target } => agent_env::snapshot_agent(target),
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -377,6 +394,11 @@ impl NativeToolExecutor {
             | NativeTool::AgentsStatus
             | NativeTool::AgentsReadConfigs { .. }
             | NativeTool::AgentsDoctor { .. }
+            | NativeTool::AgentsAddMcp { .. }
+            | NativeTool::AgentsRemoveMcp { .. }
+            | NativeTool::AgentsMoveMcpScope { .. }
+            | NativeTool::AgentsMoveSkillScope { .. }
+            | NativeTool::AgentsSnapshotAgent { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -433,6 +455,32 @@ enum NativeTool<'a> {
     },
     AgentsDoctor {
         cwd: Option<&'a str>,
+    },
+    /// The five writes. Each carries the agent it acts on and where project
+    /// scope is resolved from; the rest is what the particular write needs.
+    AgentsAddMcp {
+        target: agent_env::Target<'a>,
+        key: &'a str,
+        spec: nomoreide_core::agent_env::ServerSpec,
+    },
+    AgentsRemoveMcp {
+        target: agent_env::Target<'a>,
+        key: &'a str,
+    },
+    AgentsMoveMcpScope {
+        target: agent_env::Target<'a>,
+        key: &'a str,
+        from: &'a str,
+        to: &'a str,
+    },
+    AgentsMoveSkillScope {
+        target: agent_env::Target<'a>,
+        name: &'a str,
+        from: &'a str,
+        to: &'a str,
+    },
+    AgentsSnapshotAgent {
+        target: agent_env::Target<'a>,
     },
     ListServices,
     StartService(&'a str),
@@ -664,6 +712,30 @@ impl<'a> NativeTool<'a> {
             }),
             "nomoreide_agents_doctor" => Ok(Self::AgentsDoctor {
                 cwd: arguments.get("cwd").and_then(Value::as_str),
+            }),
+            "nomoreide_agents_add_mcp" => Ok(Self::AgentsAddMcp {
+                target: agent_target(arguments),
+                key: required_text(arguments, "key")?,
+                spec: server_spec(arguments),
+            }),
+            "nomoreide_agents_remove_mcp" => Ok(Self::AgentsRemoveMcp {
+                target: agent_target(arguments),
+                key: required_text(arguments, "key")?,
+            }),
+            "nomoreide_agents_move_mcp_scope" => Ok(Self::AgentsMoveMcpScope {
+                target: agent_target(arguments),
+                key: required_text(arguments, "key")?,
+                from: required_text(arguments, "fromScope")?,
+                to: required_text(arguments, "toScope")?,
+            }),
+            "nomoreide_agents_move_skill_scope" => Ok(Self::AgentsMoveSkillScope {
+                target: agent_target(arguments),
+                name: required_text(arguments, "skillName")?,
+                from: required_text(arguments, "fromScope")?,
+                to: required_text(arguments, "toScope")?,
+            }),
+            "nomoreide_agents_snapshot_agent" => Ok(Self::AgentsSnapshotAgent {
+                target: agent_target(arguments),
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),
             "nomoreide_close_ui" => Ok(Self::CloseUi),
@@ -1154,6 +1226,59 @@ pub(crate) struct StaticToolExecutor {
 impl ToolExecutor for StaticToolExecutor {
     fn execute<'a>(&'a self, _name: &'a str, _arguments: &'a Map<String, Value>) -> ToolFuture<'a> {
         Box::pin(async move { self.result.clone() })
+    }
+}
+
+fn agent_target(arguments: &Map<String, Value>) -> agent_env::Target<'_> {
+    agent_env::Target {
+        agent: arguments.get("agent").and_then(Value::as_str).unwrap_or(""),
+        scope: arguments.get("scope").and_then(Value::as_str),
+        cwd: arguments.get("cwd").and_then(Value::as_str),
+    }
+}
+
+/// The server an `agents_add_mcp` call describes. Which of the two shapes it
+/// is stays undecided here: the contract has already accepted an argument set
+/// that names neither, and refusing that one is the executor's job.
+fn server_spec(arguments: &Map<String, Value>) -> nomoreide_core::agent_env::ServerSpec {
+    let text = |key: &str| {
+        arguments
+            .get(key)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    };
+    nomoreide_core::agent_env::ServerSpec {
+        command: text("command"),
+        args: arguments
+            .get("args")
+            .and_then(Value::as_array)
+            .map(|members| {
+                members
+                    .iter()
+                    .filter_map(|member| member.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        // An MCP request reaches this adapter already parsed into a sorted
+        // map, so an `env` of more than one key is written in name order
+        // rather than in the order the caller spelled it. Everything else
+        // about the entry is carried across as given.
+        env: arguments
+            .get("env")
+            .and_then(Value::as_object)
+            .map(|entries| {
+                let mut env = nomoreide_core::agent_env::OrderedMap::new();
+                for (key, value) in entries {
+                    env.insert(
+                        key.clone(),
+                        serde_json::from_value(value.clone())
+                            .unwrap_or(nomoreide_core::agent_env::Json::Null),
+                    );
+                }
+                env
+            }),
+        url: text("url"),
+        transport: text("transport"),
     }
 }
 

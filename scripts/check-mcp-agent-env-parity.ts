@@ -31,6 +31,7 @@ import {
   normalize,
   prepareRuntime,
   repositoryRoot,
+  rewritePaths,
   substitute,
 } from "./support/mcp-parity-fixture.js";
 
@@ -149,13 +150,36 @@ try {
     for (const relative of [".claude.json", ".codex/config.toml", ".gemini/antigravity-cli/mcp_config.json"]) {
       const target = join(runtimes[0].home, relative);
       console.log(`\n=== FILE ${relative}`);
-      console.log(await readFile(target, "utf8").catch(() => "<absent>"));
+      const body = await readFile(target, "utf8").catch(() => "<absent>");
+      console.log(body);
+    }
+    {
+      // Project scope lands in the repository, not in the home.
+      const repo = runtimes[0].paths.get("repo:demo") ?? "";
+      const { execFileSync } = await import("node:child_process");
+      console.log("\n=== REPO TREE");
+      console.log(execFileSync("find", [repo, "-not", "-path", "*/.git/*", "-not", "-name", ".git"], { encoding: "utf8" })
+        .split("\n").map((line) => line.replace(repo, "")).sort().join("\n"));
+      for (const relative of [".mcp.json", ".codex/config.toml", ".brainctl/project-mcps.json"]) {
+        const body = await readFile(join(repo, relative), "utf8").catch(() => null);
+        if (body !== null) {
+          console.log(`\n=== REPO FILE ${relative}`);
+          console.log(body);
+        }
+      }
     }
     for (const relative of [".claude/skills", ".config/nomoreide/agent-env-backups"]) {
       const target = join(runtimes[0].home, relative);
       console.log(`\n=== DIR ${relative}`);
       console.log((await readdir(target).catch(() => [])).sort().join("\n"));
     }
+  }
+  if (!probe) {
+    // The gate compares what each tool *said*. What the agents will actually
+    // read is what each runtime left on disk, and two runtimes that answered
+    // identically can still have written different files — so the trees are
+    // compared too, once every step has run.
+    await assertTreesMatch(runtimes);
   }
   console.log(
     probe
@@ -202,4 +226,62 @@ function maskBackupStamps(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [key, maskBackupStamps(entry)]),
   );
+}
+
+/**
+ * Every file both runtimes wrote, compared byte for byte.
+ *
+ * The two homes and the two repositories hold the same fixture, so after the
+ * same plan they must hold the same bytes — modulo each runtime's own paths
+ * and the backup stamps, which are rewritten the way a payload's are.
+ */
+async function assertTreesMatch(runtimes: Runtime[]): Promise<void> {
+  const [reference, candidate] = runtimes;
+  for (const [label, of] of [
+    ["home", (runtime: Runtime) => runtime.home],
+    ["repository", (runtime: Runtime) => runtime.paths.get("repo:demo") ?? ""],
+  ] as const) {
+    const left = await readTree(of(reference), reference);
+    const right = await readTree(of(candidate), candidate);
+    try {
+      assert.deepStrictEqual(right, left);
+    } catch (error) {
+      console.error(`\nThe two runtimes wrote different files under the ${label}.`);
+      for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
+        if (left[key] !== right[key]) {
+          console.error(`\n--- ${key}`);
+          console.error(`reference: ${JSON.stringify(left[key])}`);
+          console.error(`candidate: ${JSON.stringify(right[key])}`);
+        }
+      }
+      throw error;
+    }
+  }
+}
+
+async function readTree(root: string, runtime: Runtime): Promise<Record<string, string>> {
+  const { readdir } = await import("node:fs/promises");
+  const rewrite = rewritePaths(runtime);
+  const files: Record<string, string> = {};
+  const walk = async (directory: string, prefix: string): Promise<void> => {
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+          // `.git` is the fixture's own bookkeeping, and its object names differ
+      // between two runs. `.nomoreide` is the *server's* — session records it
+      // writes whatever tool was called — and nothing here owns it.
+      if (entry.name === ".git" || entry.name === ".nomoreide") continue;
+      const path = join(directory, entry.name);
+      const key = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await walk(path, key);
+      } else {
+        const body = await readFile(path, "utf8").catch(() => "<unreadable>");
+        // The stamp in a backup's *name* is a race, so the name is
+        // normalised; the bytes inside it still have to match.
+        files[key.replace(/\d{8}-\d{6}(-\d+)?/g, "<stamp>")] = rewrite(body);
+      }
+    }
+  };
+  await walk(root, "");
+  return files;
 }

@@ -42,6 +42,22 @@ pub(super) enum ArgumentContract {
     /// the executor's question, not this one's — the reference asks it in
     /// `ConfigStore`, after zod has passed.
     RepositoryRegistration,
+    /// `nomoreide_agents_add_mcp`: an agent, a key, and one of the two server
+    /// shapes. Whether the shape given is usable is the executor's question —
+    /// this one only checks that each field it was given is well formed, which
+    /// is why an argument set naming neither a command nor a URL clears it.
+    AgentMcpAddition,
+    /// `nomoreide_agents_remove_mcp`: the agent and key alone, plus the scope
+    /// and directory every agent-environment write takes.
+    AgentMcpRemoval,
+    /// `nomoreide_agents_move_mcp_scope`: both scopes required rather than
+    /// defaulted, since a move with one end missing has no sensible reading.
+    AgentMcpMove,
+    /// `nomoreide_agents_move_skill_scope`: the same, for a skill's directory.
+    AgentSkillMove,
+    /// `nomoreide_agents_snapshot_agent`: one agent, and where to resolve
+    /// project scope from.
+    AgentSnapshot,
     /// One optional non-empty `cwd`, and nothing else. Absent means the
     /// directory the server was started in, so it is a default rather than a
     /// missing argument. Shared by the git reads and by the agent-environment
@@ -206,6 +222,12 @@ const DEPLOYMENT_LIMIT_MAX: f64 = 100.0;
 const BUILD_LOG_LIMIT_MAX: f64 = 2000.0;
 /// The reference's `z.enum(["production", "preview"])`.
 const DEPLOY_TARGETS: &[&str] = &["production", "preview"];
+/// The agents an agent-environment write can name.
+const AGENTS: &[&str] = &["claude", "codex", "antigravity"];
+/// Where a server or a skill lives, for the writes that move one.
+const SCOPES: &[&str] = &["user", "project"];
+/// How a remote MCP server is reached.
+const TRANSPORTS: &[&str] = &["http", "sse"];
 
 impl ArgumentContract {
     pub(super) fn of(tool: &str) -> Option<Self> {
@@ -273,6 +295,11 @@ impl ArgumentContract {
             "nomoreide_deploy_get_deployment" => Some(Self::DeployDeployment),
             "nomoreide_deploy_logs" => Some(Self::DeployLogs),
             "nomoreide_agents_status" => Some(Self::Empty),
+            "nomoreide_agents_add_mcp" => Some(Self::AgentMcpAddition),
+            "nomoreide_agents_remove_mcp" => Some(Self::AgentMcpRemoval),
+            "nomoreide_agents_move_mcp_scope" => Some(Self::AgentMcpMove),
+            "nomoreide_agents_move_skill_scope" => Some(Self::AgentSkillMove),
+            "nomoreide_agents_snapshot_agent" => Some(Self::AgentSnapshot),
             "nomoreide_agents_read_configs" | "nomoreide_agents_doctor" => Some(Self::OptionalCwd),
             "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
@@ -347,6 +374,34 @@ impl ArgumentContract {
                 &crate::tools::docs::TOPIC_IDS,
             )),
             Self::OptionalCwd => collect(optional_name(arguments, "cwd")),
+            // Schema order, because zod reports failures in it: the fields a
+            // tool declares first are the ones a caller is told about first.
+            Self::AgentMcpAddition => {
+                let mut failures = required_enumerated(arguments, "agent", AGENTS);
+                failures.extend(required_string_of(arguments, "key", 1));
+                failures.extend(optional_string(arguments, "command"));
+                failures.extend(string_array(arguments, "args", ArrayShape::ANY));
+                failures.extend(string_map(arguments, "env"));
+                failures.extend(optional_string(arguments, "url"));
+                failures.extend(enumerated(arguments, "transport", TRANSPORTS));
+                failures.extend(enumerated(arguments, "scope", SCOPES));
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::AgentMcpRemoval => {
+                let mut failures = required_enumerated(arguments, "agent", AGENTS);
+                failures.extend(required_string_of(arguments, "key", 1));
+                failures.extend(enumerated(arguments, "scope", SCOPES));
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::AgentMcpMove => collect(scope_move(arguments, "key")),
+            Self::AgentSkillMove => collect(scope_move(arguments, "skillName")),
+            Self::AgentSnapshot => {
+                let mut failures = required_enumerated(arguments, "agent", AGENTS);
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
             // `cwd` first: it is the base schema the path is extended onto, so
             // it is also the first failure the reference reports.
             Self::GitPath => {
@@ -688,6 +743,17 @@ fn optional_string(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
 /// An optional member of a fixed set. A value of the wrong type is reported
 /// differently from a string that is simply not one of the members — the
 /// reference says "Invalid enum value" only when it had a string to compare.
+/// The shared shape of the two moves: an agent, the thing being moved, and
+/// both ends of the move. Only the name of the thing differs between them.
+fn scope_move(arguments: &Map<String, Value>, name: &str) -> Vec<String> {
+    let mut failures = required_enumerated(arguments, "agent", AGENTS);
+    failures.extend(required_string_of(arguments, name, 1));
+    failures.extend(required_enumerated(arguments, "fromScope", SCOPES));
+    failures.extend(required_enumerated(arguments, "toScope", SCOPES));
+    failures.extend(optional_name(arguments, "cwd"));
+    failures
+}
+
 fn enumerated(arguments: &Map<String, Value>, key: &str, members: &[&str]) -> Vec<String> {
     let expected = members
         .iter()

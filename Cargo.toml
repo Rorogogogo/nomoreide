@@ -32,6 +32,8 @@ thiserror = "2"
 # `preserve_order` because an agent config reports its MCP servers in file
 # order, which a sorted table would lose.
 toml = { version = "0.8", features = ["preserve_order"] }
+# Edits Codex's config in place, so its comments and layout survive a write.
+toml_edit = "0.20"
 tokio = { version = "1", features = ["full"] }
 url = "2"
 urlencoding = "2"

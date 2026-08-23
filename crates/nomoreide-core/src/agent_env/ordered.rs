@@ -43,6 +43,33 @@ impl<T> OrderedMap<T> {
         self.0.iter().map(|(key, value)| (key.as_str(), value))
     }
 
+    /// Replace the value at `key`, keeping its place, or append it.
+    pub fn set(&mut self, key: String, value: T) {
+        match self.0.iter_mut().find(|(candidate, _)| *candidate == key) {
+            Some(entry) => entry.1 = value,
+            None => self.0.push((key, value)),
+        }
+    }
+
+    /// Remove `key`, returning whether it was there. Everything else keeps
+    /// the order it had.
+    pub fn remove(&mut self, key: &str) -> bool {
+        let before = self.0.len();
+        self.0.retain(|(candidate, _)| candidate != key);
+        self.0.len() != before
+    }
+
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.0.iter().any(|(candidate, _)| candidate == key)
+    }
+
+    pub fn get_mut(&mut self, key: &str) -> Option<&mut T> {
+        self.0
+            .iter_mut()
+            .find(|(candidate, _)| candidate == key)
+            .map(|(_, value)| value)
+    }
+
     pub fn get(&self, key: &str) -> Option<&T> {
         self.0
             .iter()
@@ -96,6 +123,143 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for OrderedMap<T> {
     }
 }
 
+/// A JSON document that keeps every object's key order, at every depth.
+///
+/// `serde_json::Value` cannot be edited and written back here: its objects are
+/// sorted, so re-saving a user's config would silently rearrange a file they
+/// wrote by hand. This carries the same shapes with [`OrderedMap`] underneath,
+/// which is what makes an edit touch only the entry it was asked to touch.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Json {
+    Null,
+    Bool(bool),
+    Number(serde_json::Number),
+    String(String),
+    Array(Vec<Json>),
+    Object(OrderedMap<Json>),
+}
+
+impl Json {
+    pub fn object() -> Self {
+        Self::Object(OrderedMap::new())
+    }
+
+    pub fn as_object(&self) -> Option<&OrderedMap<Json>> {
+        match self {
+            Self::Object(map) => Some(map),
+            _ => None,
+        }
+    }
+
+    pub fn as_object_mut(&mut self) -> Option<&mut OrderedMap<Json>> {
+        match self {
+            Self::Object(map) => Some(map),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// The entry at `key`, creating an empty object there when the key is
+    /// absent or holds something that is not an object.
+    pub fn object_at(&mut self, key: &str) -> &mut OrderedMap<Json> {
+        let map = match self {
+            Self::Object(map) => map,
+            other => {
+                *other = Self::object();
+                other.as_object_mut().expect("just replaced with an object")
+            }
+        };
+        if !matches!(map.get(key), Some(Json::Object(_))) {
+            map.set(key.to_string(), Json::object());
+        }
+        map.get_mut(key)
+            .and_then(Json::as_object_mut)
+            .expect("just ensured an object is there")
+    }
+}
+
+impl Serialize for Json {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Null => serializer.serialize_unit(),
+            Self::Bool(value) => serializer.serialize_bool(*value),
+            Self::Number(value) => value.serialize(serializer),
+            Self::String(value) => serializer.serialize_str(value),
+            Self::Array(values) => values.serialize(serializer),
+            Self::Object(map) => map.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Json {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct AnyJson;
+
+        impl<'de> Visitor<'de> for AnyJson {
+            type Value = Json;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("any JSON value")
+            }
+
+            fn visit_unit<E>(self) -> Result<Json, E> {
+                Ok(Json::Null)
+            }
+            fn visit_none<E>(self) -> Result<Json, E> {
+                Ok(Json::Null)
+            }
+            fn visit_some<D: Deserializer<'de>>(self, d: D) -> Result<Json, D::Error> {
+                Json::deserialize(d)
+            }
+            fn visit_bool<E>(self, value: bool) -> Result<Json, E> {
+                Ok(Json::Bool(value))
+            }
+            fn visit_i64<E>(self, value: i64) -> Result<Json, E> {
+                Ok(Json::Number(value.into()))
+            }
+            fn visit_u64<E>(self, value: u64) -> Result<Json, E> {
+                Ok(Json::Number(value.into()))
+            }
+            fn visit_f64<E>(self, value: f64) -> Result<Json, E> {
+                Ok(serde_json::Number::from_f64(value)
+                    .map(Json::Number)
+                    .unwrap_or(Json::Null))
+            }
+            fn visit_str<E>(self, value: &str) -> Result<Json, E> {
+                Ok(Json::String(value.to_string()))
+            }
+            fn visit_string<E>(self, value: String) -> Result<Json, E> {
+                Ok(Json::String(value))
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(
+                self,
+                mut access: A,
+            ) -> Result<Json, A::Error> {
+                let mut values = Vec::with_capacity(access.size_hint().unwrap_or(0));
+                while let Some(value) = access.next_element()? {
+                    values.push(value);
+                }
+                Ok(Json::Array(values))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Json, A::Error> {
+                let mut map = OrderedMap::new();
+                while let Some((key, value)) = access.next_entry::<String, Json>()? {
+                    map.insert(key, value);
+                }
+                Ok(Json::Object(map))
+            }
+        }
+
+        deserializer.deserialize_any(AnyJson)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,6 +274,26 @@ mod tests {
             ["zulu", "alpha", "mike"]
         );
         assert_eq!(serde_json::to_string(&map).unwrap(), source);
+    }
+
+    #[test]
+    fn an_edit_leaves_every_other_key_where_it_was() {
+        let mut map: OrderedMap<Value> = serde_json::from_str(r#"{"a":1,"b":2,"c":3}"#).unwrap();
+        map.set("b".into(), Value::from(9));
+        map.set("d".into(), Value::from(4));
+        assert!(map.remove("a"));
+        assert!(!map.remove("a"));
+        assert_eq!(
+            serde_json::to_string(&map).unwrap(),
+            r#"{"b":9,"c":3,"d":4}"#
+        );
+    }
+
+    #[test]
+    fn a_document_keeps_its_order_at_every_depth() {
+        let source = r#"{"z":{"inner":{"q":1,"a":2}},"a":[{"y":true,"b":null}],"n":1.5}"#;
+        let document: Json = serde_json::from_str(source).unwrap();
+        assert_eq!(serde_json::to_string(&document).unwrap(), source);
     }
 
     #[test]

@@ -12,11 +12,21 @@
 //! smoothing them away is exactly how this drifts from what the agents do.
 
 mod availability;
+mod backup;
+mod documents;
 mod ordered;
 mod readers;
 mod skills;
+mod spec;
+mod store;
+mod writers;
 
-pub use ordered::OrderedMap;
+pub use ordered::{Json, OrderedMap};
+pub use spec::{Scope, ServerSpec};
+pub use writers::SnapshotOutcome;
+pub use writers::{
+    add_mcp, move_mcp_scope, move_skill_scope, remove_mcp, snapshot_agent, AddOutcome, ChangeReport,
+};
 
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -49,6 +59,11 @@ pub(crate) enum Reader {
     /// Antigravity's JSON: every remote server `sse`, `headers` kept, no
     /// project scope.
     AntigravityJson,
+    /// Not an agent's format at all: the project-scope store this program
+    /// keeps for the agents that have nowhere of their own to record one.
+    /// It spells the transport out in a `transport` key, because nothing here
+    /// has to guess what an agent would have meant.
+    ProjectStore,
 }
 
 impl Agent {
@@ -88,6 +103,19 @@ impl Agent {
 
     pub fn config_path(self, home: &Path) -> PathBuf {
         home.join(self.config_relative_path())
+    }
+
+    /// Where this agent keeps the user's skills, for the agents that have any.
+    pub(super) fn user_skills_directory(self, home: &Path) -> Option<PathBuf> {
+        self.user_skills_relative_path()
+            .map(|relative| home.join(relative))
+    }
+
+    /// Where a *write* puts a project-scoped skill: in the project itself,
+    /// not wherever a read might have walked up to.
+    pub(super) fn project_skills_directory(self, project: &Path) -> Option<PathBuf> {
+        self.project_skills_relative_path()
+            .map(|relative| project.join(relative))
     }
 
     /// The skills directory in the user's home, for the agents that have one.
@@ -186,7 +214,7 @@ pub struct DoctorReport {
     pub has_issues: bool,
 }
 
-fn home() -> PathBuf {
+pub(crate) fn home() -> PathBuf {
     dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
