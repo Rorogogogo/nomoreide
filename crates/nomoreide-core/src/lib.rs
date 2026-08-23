@@ -1,6 +1,10 @@
 pub mod agent_context;
 pub mod agent_transcripts;
 pub mod bundle;
+pub mod cloudflare_auth;
+pub mod cloudflare_context;
+pub mod cloudflare_manager;
+pub mod cloudflare_provider;
 pub mod compose;
 pub mod config;
 pub mod context_library;

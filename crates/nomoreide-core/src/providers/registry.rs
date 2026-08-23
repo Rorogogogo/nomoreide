@@ -12,6 +12,10 @@
 //! divergence between them a thing you notice rather than a thing you go
 //! looking for.
 
+use crate::cloudflare_context::require_client as require_cloudflare_client;
+use crate::cloudflare_provider::{
+    cloudflare_repo_url, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE, CLOUDFLARE_PROVIDER_ID,
+};
 use crate::config::{Config, ConfigStore};
 use crate::providers::deploy::{BuildLogLine, Deployment, DeploymentDetail, ProviderProject};
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
@@ -22,11 +26,12 @@ use crate::vercel_provider::{
 
 /// Every provider a `provider` argument may name, in the order the tool
 /// descriptions list them.
-pub const DEPLOY_PROVIDER_IDS: &[&str] = &[VERCEL_PROVIDER_ID];
+pub const DEPLOY_PROVIDER_IDS: &[&str] = &[VERCEL_PROVIDER_ID, CLOUDFLARE_PROVIDER_ID];
 
 /// A connected provider client, whichever provider it is.
 pub enum DeployClient {
     Vercel(VercelDeployProvider),
+    Cloudflare(CloudflareDeployProvider),
 }
 
 impl DeployClient {
@@ -36,6 +41,7 @@ impl DeployClient {
     ) -> Result<Vec<ProviderProject>, String> {
         match self {
             Self::Vercel(provider) => provider.list_projects(search).await.map_err(message),
+            Self::Cloudflare(provider) => provider.list_projects(search).await.map_err(message),
         }
     }
 
@@ -50,18 +56,51 @@ impl DeployClient {
                 .list_deployments(project_id, target, limit)
                 .await
                 .map_err(message),
+            Self::Cloudflare(provider) => provider
+                .list_deployments(project_id, target, limit)
+                .await
+                .map_err(message),
         }
     }
 
-    pub async fn get_deployment(&self, id: &str) -> Result<DeploymentDetail, String> {
+    /// Cloudflare addresses a deployment *within a project*, so it needs one
+    /// resolved before it can answer at all — Vercel's ids are global.
+    pub async fn get_deployment(
+        &self,
+        project: Option<&str>,
+        id: &str,
+    ) -> Result<DeploymentDetail, String> {
         match self {
             Self::Vercel(provider) => provider.get_deployment(id).await.map_err(message),
+            Self::Cloudflare(provider) => provider
+                .get_deployment(project.ok_or(WITHIN_A_PROJECT)?, id)
+                .await
+                .map_err(message),
         }
     }
 
-    pub async fn build_logs(&self, id: &str, limit: u32) -> Result<Vec<BuildLogLine>, String> {
+    pub async fn build_logs(
+        &self,
+        project: Option<&str>,
+        id: &str,
+        limit: u32,
+    ) -> Result<Vec<BuildLogLine>, String> {
         match self {
             Self::Vercel(provider) => provider.build_logs(id, limit).await.map_err(message),
+            // Pages serves the whole build history in one document, so there is
+            // no line cap to pass on — it is applied to what came back, and it
+            // keeps the *end*. A capped build log is read to find out why the
+            // build failed, and that is the last thing it says. (Vercel gets
+            // the same answer from the vendor, which reads its events
+            // backwards.)
+            Self::Cloudflare(provider) => provider
+                .build_logs(project.ok_or(WITHIN_A_PROJECT)?, id)
+                .await
+                .map(|lines| {
+                    let skip = lines.len().saturating_sub(limit as usize);
+                    lines.into_iter().skip(skip).collect()
+                })
+                .map_err(message),
         }
     }
 
@@ -70,27 +109,38 @@ impl DeployClient {
     async fn project_by_id(&self, id: &str) -> Option<ProviderProject> {
         match self {
             Self::Vercel(provider) => provider.get_project(id).await.ok(),
+            Self::Cloudflare(provider) => provider.get_project(id).await.ok(),
         }
     }
 
     async fn project_by_repo_url(&self, repo_url: &str) -> Option<ProviderProject> {
         match self {
             Self::Vercel(provider) => provider.find_by_repo_url(repo_url).await.ok().flatten(),
+            Self::Cloudflare(provider) => provider.find_by_repo_url(repo_url).await.ok().flatten(),
         }
     }
 
     fn link_file(&self) -> Option<&'static LinkFile> {
         match self {
             Self::Vercel(_) => Some(&VERCEL_LINK_FILE),
+            // Wrangler records its binding in `wrangler.toml`, not in a JSON
+            // link file, so Pages has no equivalent rung on the ladder.
+            Self::Cloudflare(_) => CLOUDFLARE_LINK_FILE,
         }
     }
 
     fn repo_url_of(&self) -> fn(&str) -> Option<String> {
         match self {
             Self::Vercel(_) => vercel_repo_url,
+            Self::Cloudflare(_) => cloudflare_repo_url,
         }
     }
 }
+
+/// What a deployment read answers when the provider needs a project and the
+/// repository resolved to none.
+const WITHIN_A_PROJECT: &str =
+    "Cloudflare addresses deployments within a project. Link this repository to a Pages project first.";
 
 fn message(error: impl std::fmt::Display) -> String {
     error.to_string()
@@ -104,6 +154,16 @@ pub struct ProviderContext {
 }
 
 impl ProviderContext {
+    /// The project a repository resolved to, if any. Unlike
+    /// {@link Self::require_project} this is not an error when absent — the
+    /// provider decides whether it needed one.
+    pub fn linked_project(&self) -> Option<String> {
+        self.project
+            .as_ref()
+            .and_then(ProviderProject::identifier)
+            .map(str::to_string)
+    }
+
     /// The project id deployment reads need, or the message saying which knob
     /// fixes it when there is none.
     pub fn require_project(&self) -> Result<&str, String> {
@@ -132,6 +192,10 @@ pub async fn require_provider_context(
         VERCEL_PROVIDER_ID => {
             let (manager, _) = require_client(store, config).await?;
             DeployClient::Vercel(VercelDeployProvider::new(manager))
+        }
+        CLOUDFLARE_PROVIDER_ID => {
+            let (manager, _) = require_cloudflare_client(store, config).await?;
+            DeployClient::Cloudflare(CloudflareDeployProvider::new(manager))
         }
         other => return Err(format!("Unknown provider \"{other}\".")),
     };

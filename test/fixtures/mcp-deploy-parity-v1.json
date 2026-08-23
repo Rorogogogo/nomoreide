@@ -83,6 +83,23 @@
           }
         }
       ]
+    },
+    {
+      "id": "mixedcase",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# mixedcase\n"
+            },
+            "message": "init"
+          }
+        },
+        {
+          "originUrl": "https://github.com/Acme/App.git"
+        }
+      ]
     }
   ],
   "plainDirectories": [
@@ -132,6 +149,10 @@
       "vercel": {
         "source": "stored",
         "token": "vercel-parity-token"
+      },
+      "cloudflare": {
+        "source": "stored",
+        "token": "cloudflare-parity-token"
       }
     }
   },
@@ -1019,6 +1040,24 @@
     },
     {
       "method": "GET",
+      "path": "/v13/deployments/dpl_dual?withGitRepoInfo=true&teamId=team_acme",
+      "body": {
+        "uid": "dpl_dual_uid",
+        "id": "dpl_dual_id",
+        "name": "app",
+        "url": "app-dual.vercel.app",
+        "created": 1700000100000,
+        "createdAt": 1700000100000,
+        "readyState": "ERROR",
+        "target": "preview",
+        "ready": null,
+        "alias": [],
+        "errorMessage": null,
+        "errorCode": "BUILD_FAILED"
+      }
+    },
+    {
+      "method": "GET",
       "path": "/v3/deployments/dpl_ready/events?builds=1&direction=backward&limit=500&teamId=team_acme",
       "body": [
         {
@@ -1152,6 +1191,903 @@
       "path": "/v3/deployments/dpl_ndjson/events?builds=1&direction=backward&limit=500&teamId=team_acme",
       "contentType": "text/plain",
       "body": "{\"type\":\"stdout\",\"created\":2,\"payload\":{\"text\":\"ndjson two\"}}\nnot json at all\n{\"type\":\"stdout\",\"created\":1,\"payload\":{\"text\":\"ndjson one\"}}"
+    },
+    {
+      "method": "GET",
+      "path": "/accounts?per_page=50",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "acc_acme",
+            "name": "Acme Account"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects?per_page=10&page=1",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "prj_opaque",
+            "name": "app",
+            "production_branch": "main",
+            "created_on": "2026-01-01T00:00:00Z",
+            "source": {
+              "type": "github",
+              "config": {
+                "owner": "Acme",
+                "repo_name": "App",
+                "production_branch": "main"
+              }
+            },
+            "build_config": {
+              "build_command": "npm run build",
+              "destination_dir": "dist",
+              "root_dir": "web"
+            },
+            "canonical_deployment": {
+              "id": "cf_canonical"
+            }
+          },
+          {
+            "id": "prj_docs_opaque",
+            "name": "docs"
+          },
+          {
+            "id": "x",
+            "name": "no-source-config",
+            "source": {
+              "type": "github"
+            }
+          },
+          {
+            "id": "x",
+            "name": "source-without-type",
+            "source": {
+              "config": {
+                "owner": "a",
+                "repo_name": "b"
+              }
+            }
+          },
+          {
+            "id": "x",
+            "name": "empty-build-config",
+            "build_config": {}
+          },
+          {
+            "id": "x",
+            "name": "created-on-nonsense",
+            "created_on": "not a date"
+          },
+          {
+            "id": "prj_api_docs",
+            "name": "API-Docs"
+          }
+        ],
+        "result_info": {
+          "total_count": 7,
+          "page": 1,
+          "per_page": 10
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "id": "prj_opaque",
+          "name": "app",
+          "production_branch": "main",
+          "created_on": "2026-01-01T00:00:00Z",
+          "source": {
+            "type": "github",
+            "config": {
+              "owner": "Acme",
+              "repo_name": "App",
+              "production_branch": "main"
+            }
+          },
+          "build_config": {
+            "build_command": "npm run build",
+            "destination_dir": "dist",
+            "root_dir": "web"
+          },
+          "canonical_deployment": {
+            "id": "cf_canonical"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/docs",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "id": "prj_docs_opaque",
+          "name": "docs"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/pinned-and-gone",
+      "body": {
+        "success": false,
+        "errors": [
+          {
+            "code": 8000007,
+            "message": "Project not found."
+          }
+        ],
+        "messages": [],
+        "result": null
+      },
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments?per_page=10&page=1",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "cf_canonical",
+            "project_name": "app",
+            "environment": "production",
+            "url": "https://cf_canonical.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": [
+              "https://main.app.pages.dev",
+              "app.pages.dev"
+            ]
+          },
+          {
+            "id": "cf_failed",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_failed.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "failure",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_0",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_0.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "canceled",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_1",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_1.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "skipped",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_2",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_2.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "active",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_3",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_3.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "idle",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_4",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_4.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "building",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_5",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_5.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "queued",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_6",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_6.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "something_new",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_skipped",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_skipped.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": [],
+            "is_skipped": true
+          }
+        ],
+        "result_info": {
+          "total_count": 14,
+          "page": 1,
+          "per_page": 10
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments?per_page=10&page=2",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "cf_no_stage",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_no_stage.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_no_url",
+            "project_name": "app",
+            "environment": "preview",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_no_trigger",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_no_trigger.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_env_null",
+            "project_name": "app",
+            "environment": null,
+            "url": "https://cf_env_null.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_env_absent",
+            "project_name": "app",
+            "url": "https://cf_no_stage.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_rolled_forward",
+            "project_name": "app",
+            "environment": "production",
+            "url": "https://cf_rolled_forward.app.pages.dev",
+            "created_on": "2026-02-02T10:00:00Z",
+            "modified_on": "2026-02-02T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-02T10:01:00Z",
+              "ended_on": "2026-02-02T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "def456",
+                "commit_message": "feat: newer"
+              }
+            },
+            "aliases": []
+          }
+        ],
+        "result_info": {
+          "total_count": 16,
+          "page": 2,
+          "per_page": 10
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments?env=production&per_page=10&page=1",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "cf_canonical",
+            "project_name": "app",
+            "environment": "production",
+            "url": "https://cf_canonical.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": [
+              "https://main.app.pages.dev",
+              "app.pages.dev"
+            ]
+          },
+          {
+            "id": "cf_rolled_forward",
+            "project_name": "app",
+            "environment": "production",
+            "url": "https://cf_rolled_forward.app.pages.dev",
+            "created_on": "2026-02-02T10:00:00Z",
+            "modified_on": "2026-02-02T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "success",
+              "started_on": "2026-02-02T10:01:00Z",
+              "ended_on": "2026-02-02T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "def456",
+                "commit_message": "feat: newer"
+              }
+            },
+            "aliases": []
+          }
+        ],
+        "result_info": {
+          "total_count": 2,
+          "page": 1,
+          "per_page": 10
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments?env=preview&per_page=10&page=1",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": [
+          {
+            "id": "cf_failed",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_failed.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "failure",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_0",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_0.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "canceled",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_1",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_1.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "skipped",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_2",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_2.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "active",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          },
+          {
+            "id": "cf_state_3",
+            "project_name": "app",
+            "environment": "preview",
+            "url": "https://cf_state_3.app.pages.dev",
+            "created_on": "2026-02-01T10:00:00Z",
+            "modified_on": "2026-02-01T10:05:00Z",
+            "latest_stage": {
+              "name": "deploy",
+              "status": "idle",
+              "started_on": "2026-02-01T10:01:00Z",
+              "ended_on": "2026-02-01T10:05:00Z"
+            },
+            "deployment_trigger": {
+              "type": "github:push",
+              "metadata": {
+                "branch": "main",
+                "commit_hash": "abc123",
+                "commit_message": "feat: ship it"
+              }
+            },
+            "aliases": []
+          }
+        ],
+        "result_info": {
+          "total_count": 5,
+          "page": 1,
+          "per_page": 10
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_canonical",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "id": "cf_canonical",
+          "project_name": "app",
+          "environment": "production",
+          "url": "https://cf_canonical.app.pages.dev",
+          "created_on": "2026-02-01T10:00:00Z",
+          "modified_on": "2026-02-01T10:05:00Z",
+          "latest_stage": {
+            "name": "deploy",
+            "status": "success",
+            "started_on": "2026-02-01T10:01:00Z",
+            "ended_on": "2026-02-01T10:05:00Z"
+          },
+          "deployment_trigger": {
+            "type": "github:push",
+            "metadata": {
+              "branch": "main",
+              "commit_hash": "abc123",
+              "commit_message": "feat: ship it"
+            }
+          },
+          "aliases": [
+            "https://main.app.pages.dev",
+            "app.pages.dev"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_failed",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "id": "cf_failed",
+          "project_name": "app",
+          "environment": "preview",
+          "url": "https://cf_failed.app.pages.dev",
+          "created_on": "2026-02-01T10:00:00Z",
+          "modified_on": "2026-02-01T10:05:00Z",
+          "latest_stage": {
+            "name": "deploy",
+            "status": "failure",
+            "started_on": "2026-02-01T10:01:00Z",
+            "ended_on": "2026-02-01T10:05:00Z"
+          },
+          "deployment_trigger": {
+            "type": "github:push",
+            "metadata": {
+              "branch": "main",
+              "commit_hash": "abc123",
+              "commit_message": "feat: ship it"
+            }
+          },
+          "aliases": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf%20space",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "id": "cf space",
+          "project_name": "app",
+          "environment": "preview",
+          "url": "https://cf space.app.pages.dev",
+          "created_on": "2026-02-01T10:00:00Z",
+          "modified_on": "2026-02-01T10:05:00Z",
+          "latest_stage": {
+            "name": "deploy",
+            "status": "success",
+            "started_on": "2026-02-01T10:01:00Z",
+            "ended_on": "2026-02-01T10:05:00Z"
+          },
+          "deployment_trigger": {
+            "type": "github:push",
+            "metadata": {
+              "branch": "main",
+              "commit_hash": "abc123",
+              "commit_message": "feat: ship it"
+            }
+          },
+          "aliases": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_missing",
+      "body": {
+        "success": false,
+        "errors": [
+          {
+            "code": 8000007,
+            "message": "Deployment not found."
+          }
+        ],
+        "messages": [],
+        "result": null
+      },
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_unhelpful",
+      "body": "not json at all",
+      "status": 500
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_canonical/history/logs",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "total": 4,
+          "includes_container_logs": true,
+          "data": [
+            {
+              "ts": "2026-02-01T10:01:00Z",
+              "line": "Cloning repository..."
+            },
+            {
+              "ts": "2026-02-01T10:02:00Z",
+              "line": "  indented and kept  "
+            },
+            {
+              "ts": "2026-02-01T10:03:00Z",
+              "line": ""
+            },
+            {
+              "ts": "2026-02-01T10:04:00Z"
+            },
+            {
+              "line": "no timestamp"
+            },
+            {
+              "ts": "2026-02-01T10:05:00Z",
+              "line": "Build failed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/accounts/acc_acme/pages/projects/app/deployments/cf_empty/history/logs",
+      "body": {
+        "success": true,
+        "errors": [],
+        "messages": [],
+        "result": {
+          "total": 0,
+          "data": []
+        }
+      }
     }
   ],
   "plan": [
@@ -1328,6 +2264,13 @@
       }
     },
     {
+      "id": "get/both-ids-and-a-null-message",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "dpl_dual"
+      }
+    },
+    {
       "id": "logs/default",
       "tool": "nomoreide_deploy_logs",
       "arguments": {
@@ -1422,6 +2365,185 @@
       "arguments": {
         "deployment": ""
       }
+    },
+    {
+      "id": "cloudflare/projects",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/search-is-case-insensitive",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "search": "DOC",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/search-matches-nothing",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "search": "zzz",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/from-a-pin-that-is-gone",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:stale}}",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/no-remote-at-all",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:solo}}",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/deployments",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 15,
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/deployments-truncated",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "limit": 3,
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/production",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "target": "production",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/preview",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "target": "preview",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/no-project-linked",
+      "tool": "nomoreide_deploy_list_deployments",
+      "arguments": {
+        "cwd": "{{repo:solo}}",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/get-canonical",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf_canonical",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/get-failed",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf_failed",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/get-id-with-a-space",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf space",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/get-not-found",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf_missing",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/get-no-message-in-the-body",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf_unhelpful",
+        "provider": "cloudflare"
+      },
+      "concurrentRequests": true
+    },
+    {
+      "id": "cloudflare/get-without-a-project",
+      "tool": "nomoreide_deploy_get_deployment",
+      "arguments": {
+        "deployment": "cf_canonical",
+        "cwd": "{{repo:solo}}",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/logs",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "cf_canonical",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/logs-truncated",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "cf_canonical",
+        "limit": 2,
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/logs-empty",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "cf_empty",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/logs-without-a-project",
+      "tool": "nomoreide_deploy_logs",
+      "arguments": {
+        "deployment": "cf_canonical",
+        "cwd": "{{repo:solo}}",
+        "provider": "cloudflare"
+      }
+    },
+    {
+      "id": "cloudflare/from-a-mixed-case-remote",
+      "tool": "nomoreide_deploy_list_projects",
+      "arguments": {
+        "cwd": "{{repo:mixedcase}}",
+        "provider": "cloudflare"
+      }
     }
   ],
   "disconnected": {
@@ -1477,6 +2599,13 @@
         "id": "disconnected/deployments",
         "tool": "nomoreide_deploy_list_deployments",
         "arguments": {}
+      },
+      {
+        "id": "disconnected/cloudflare",
+        "tool": "nomoreide_deploy_list_projects",
+        "arguments": {
+          "provider": "cloudflare"
+        }
       }
     ]
   }

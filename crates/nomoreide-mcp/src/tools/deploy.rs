@@ -100,7 +100,15 @@ pub(crate) async fn get_deployment(
     deployment: &str,
 ) -> Result<String, String> {
     let context = context(config, provider, cwd).await?;
-    super::render(&context.client.get_deployment(deployment).await?)
+    // The linked project is passed rather than required: Vercel's deployment
+    // ids are global and need none, and Cloudflare says so in its own words.
+    let project = context.linked_project();
+    super::render(
+        &context
+            .client
+            .get_deployment(project.as_deref(), deployment)
+            .await?,
+    )
 }
 
 pub(crate) async fn logs(
@@ -111,7 +119,11 @@ pub(crate) async fn logs(
     limit: u32,
 ) -> Result<String, String> {
     let context = context(config, provider, cwd).await?;
-    let lines = context.client.build_logs(deployment, limit).await?;
+    let project = context.linked_project();
+    let lines = context
+        .client
+        .build_logs(project.as_deref(), deployment, limit)
+        .await?;
     if lines.is_empty() {
         return Ok("No build logs available for this deployment.".to_string());
     }

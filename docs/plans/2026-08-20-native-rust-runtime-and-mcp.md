@@ -818,12 +818,10 @@ store back to build an excerpt — deadlocked the thread delivering the line. Th
 inbox now keeps its own twelve-line window per service, which is also a better
 description of what an excerpt is.
 
-**Slice 5a (done): the deploy tools, Vercel half.** The four provider tools
-end to end for `provider: "vercel"`, gated by `npm run mcp:deploy-parity` — 40
-steps, each comparing both what the tool reported *and* every request it made
-to get there. Cloudflare is slice 5b; until it lands, `provider: "cloudflare"`
-answers `Unknown provider` natively where the reference says it is not
-connected, and the gate does not yet ask.
+**Slice 5 (done): the deploy tools.** The four provider tools end to end for
+both registered providers, gated by `npm run mcp:deploy-parity` — 63 steps,
+each comparing both what the tool reported *and* every request it made to get
+there. It landed in two commits, Vercel then Cloudflare.
 
 Three things had to exist before anything could be diffed:
 
@@ -873,6 +871,67 @@ What the probing settled, none of it from reading the reference:
 One defect fixed in the reference rather than replicated: a build event whose
 `text` was not a string threw `.replace is not a function` out of the whole log
 read — an unreadable failure in place of the one line it could not use.
+
+**The Cloudflare half** is a port from nothing — the Rust core had no
+Cloudflare at all, only Vercel inherited from the desktop app. Pages describes
+a deployment in nothing like Vercel's terms, and the vendor-neutral shapes are
+where that stops being every caller's problem:
+
+- A project's id **is its name**. Pages addresses projects by name, and the
+  opaque `id` it also carries addresses nothing.
+- Its four settings are *always* reported, where Vercel's six appear only when
+  the vendor carries the key. Pages nests them under `build_config` and omits
+  the whole object for a project it has never built, so "absent" there would
+  mean "never built" rather than "this setting does not exist".
+- A deployment reports a *stage* and its *status* rather than a ready state.
+  Three statuses mean something a person acts on and the rest are work in
+  progress — but a deployment with **no stage at all** is queued rather than
+  building, which is why the mapping takes an option rather than a defaulted
+  status: `idle` on a real stage means the stage is running.
+- `is_skipped` is its own state (`canceled`, raw `skipped`), because a skipped
+  deployment never ran and its stage says nothing useful.
+- Current production is the project's `canonical_deployment`, not the newest
+  production-targeted build: Pages serves an older one after a rollback, and
+  can serve a preview URL as the canonical one. That read is issued *alongside*
+  the listing rather than after it — which the gate compares, so the native
+  runtime had to be concurrent too.
+- Only a finished build has a ready moment. For anything else `modified_on` is
+  just the last time the record changed.
+- A capped build log keeps its **end**. A capped log is read to find out why a
+  build failed, and that is the last thing it says. (Vercel gets the same answer
+  from the vendor, which reads its events backwards.)
+- Pages records no failure message on the deployment — the reason is in the
+  build log — so the detail names the stage that failed, which is what tells
+  "the build broke" apart from "the deploy broke".
+- Everything paginates ten at a time with no way to ask for more, so a listing
+  is a walk. It stops at a short page or a hundred items.
+
+One narrowing in the gate, and it is worth being precise about: nine Cloudflare
+steps compare their requests as a sorted list rather than in arrival order,
+because each issues two requests deliberately at the same time and which
+reaches the socket first is decided by connection setup rather than by either
+implementation. The method, the full path and query, the headers, the body, and
+the *number* of requests are all still compared.
+
+**A fifty-seed sweep says the gate bites.** Each seed changes one behaviour in
+the Rust source, rebuilds, and runs the gate; a seed the gate does not notice is
+a hole in the gate, not a passing test. Seven survived the first pass, and every
+one of them was a missing *case* rather than a wrong port — the fixture had no
+input that could tell the mutation apart:
+
+- No deployment carried both `uid` and `id`, so which one wins was unobservable.
+- None carried an explicit `errorMessage: null`, so dropping a null was
+  indistinguishable from dropping an absent key.
+- `cf_canonical` was the only production Pages build, so "the canonical one" and
+  "the newest production one" agreed. A rollback fixture now separates them.
+- Every Pages project name and every git remote in the fixture was already
+  lowercase, so both case-folding rules were free to disappear.
+- One seed is retired rather than fixed: Cloudflare account ids are 32 hex
+  characters, so interpolating one raw and encoding it produce the same string.
+  A fixture with a space in the account id would be testing something the vendor
+  never issues.
+
+With those cases added the gate catches all forty-nine remaining seeds.
 
 Two things the errors gate turned up while re-running everything, both fixture
 problems rather than port problems, and both now fixed: its flood step waited a

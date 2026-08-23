@@ -50,6 +50,22 @@ interface Step {
   id: string;
   tool: string;
   arguments: Record<string, unknown>;
+  /**
+   * Compare this step's requests as a sorted list rather than in the order they
+   * arrived.
+   *
+   * For steps that issue two requests **deliberately at the same time** — every
+   * Cloudflare deployment read asks which deployment is canonical alongside the
+   * listing, rather than after it, to save a round trip. Which of the two
+   * reaches the socket first is decided by the runtime's connection setup and
+   * is not a property of either implementation.
+   *
+   * It narrows what is compared and nothing else: the method, the full path and
+   * query, the headers, and the body of every request are still compared, and
+   * so is how many there were. A runtime that asked for the wrong thing, or
+   * asked one time too many, still fails.
+   */
+  concurrentRequests?: boolean;
 }
 
 interface Fixture extends FixtureTree {
@@ -138,11 +154,20 @@ async function pass(
   return plan.length;
 }
 
+/** A total order over recorded requests, for the concurrent steps. */
+function byRequest(left: { method: string; path: string }, right: { method: string; path: string }) {
+  return `${left.method} ${left.path}`.localeCompare(`${right.method} ${right.path}`);
+}
+
 async function call(runtime: Runtime, stub: ApiStub, step: Step): Promise<unknown> {
   const args = Object.fromEntries(
     Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
   );
   stub.take();
   const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
-  return { reported: normalize(response, runtime), requests: stub.take() };
+  const requests = stub.take();
+  return {
+    reported: normalize(response, runtime),
+    requests: step.concurrentRequests ? [...requests].sort(byRequest) : requests,
+  };
 }
