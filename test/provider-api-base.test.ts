@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { cloudflareApiBase } from "../src/core/cloudflare-manager.js";
 import { providerApiBase, providerApiHost } from "../src/core/providers/api-base.js";
 import { vercelApiBase } from "../src/core/vercel-manager.js";
+import { vultrApiBase } from "../src/core/vultr-manager.js";
+import { VULTR_MANIFEST } from "../src/core/vultr-provider.js";
 
 /**
  * The loopback-only override the deploy-provider gates need, and the reason it
@@ -21,6 +23,7 @@ afterEach(() => {
   delete process.env[VARIABLE];
   delete process.env.NOMOREIDE_VERCEL_API_BASE;
   delete process.env.NOMOREIDE_CLOUDFLARE_API_BASE;
+  delete process.env.NOMOREIDE_VULTR_API_BASE;
 });
 
 describe("providerApiBase", () => {
@@ -73,11 +76,27 @@ describe("the providers that use it", () => {
   test("default to their vendor", () => {
     expect(vercelApiBase()).toBe("https://api.vercel.com");
     expect(cloudflareApiBase()).toBe("https://api.cloudflare.com/client/v4");
+    expect(vultrApiBase()).toBe("https://api.vultr.com/v2");
   });
 
   test("follow their own variable and no one else's", () => {
     process.env.NOMOREIDE_VERCEL_API_BASE = "http://127.0.0.1:7001";
     expect(vercelApiBase()).toBe("http://127.0.0.1:7001");
     expect(cloudflareApiBase()).toBe("https://api.cloudflare.com/client/v4");
+    expect(vultrApiBase()).toBe("https://api.vultr.com/v2");
+  });
+
+  /**
+   * The allowlist is *derived* from the base rather than written beside it, so
+   * the host a request may reach and the host it actually goes to cannot drift
+   * apart — including when the base is a loopback stand-in.
+   */
+  test("keep the egress allowlist in step with the base", async () => {
+    expect(VULTR_MANIFEST.api.hosts).toEqual(["api.vultr.com"]);
+
+    process.env.NOMOREIDE_VULTR_API_BASE = "http://127.0.0.1:7003";
+    vi.resetModules();
+    const { VULTR_MANIFEST: reloaded } = await import("../src/core/vultr-provider.js");
+    expect(reloaded.api.hosts).toEqual(["127.0.0.1"]);
   });
 });
