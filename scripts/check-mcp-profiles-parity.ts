@@ -140,6 +140,12 @@ try {
       throw error;
     }
   }
+  if (!probe) {
+    // The gate compares what each tool *said*. A profile is a directory tree,
+    // and two runtimes that answered identically can still have built a
+    // different one — so the trees are compared too, once every step has run.
+    await assertTreesMatch(runtimes);
+  }
   if (probe && process.env.NOMOREIDE_DUMP_HOME) {
     // The profile store the tools built up, which no payload shows in full.
     const root = join(runtimes[0].home, ".config/nomoreide/agent-profiles");

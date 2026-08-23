@@ -26,8 +26,7 @@ pub use ordered::{Json, OrderedMap};
 pub use spec::{Scope, ServerSpec};
 pub use writers::SnapshotOutcome;
 pub use writers::{
-    add_mcp, apply_mcp, move_mcp_scope, move_skill_scope, remove_mcp, snapshot_agent, AddOutcome,
-    ChangeReport,
+    add_mcp, move_mcp_scope, move_skill_scope, remove_mcp, snapshot_agent, AddOutcome, ChangeReport,
 };
 
 use serde::Serialize;

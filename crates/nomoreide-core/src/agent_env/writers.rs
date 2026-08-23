@@ -9,7 +9,7 @@
 //!
 //! Every write backs the file up first — see [`super::backup`].
 
-use super::documents::{stored_entry, Document, Rewrite};
+use super::documents::{stored_entry, Document};
 use super::spec::{Scope, ServerSpec};
 use super::{backup, readers, store, Agent};
 use serde::Serialize;
@@ -112,29 +112,6 @@ pub fn add_mcp(
     scope: Scope,
     cwd: &Path,
 ) -> Result<AddOutcome, String> {
-    add_mcp_with(agent, key, spec, scope, cwd, Rewrite::SortSection)
-}
-
-/// The same write, told how to leave the section it wrote into. Applying a
-/// profile appends rather than rebuilding — see [`Rewrite`].
-pub fn apply_mcp(
-    agent: Agent,
-    key: &str,
-    spec: &ServerSpec,
-    scope: Scope,
-    cwd: &Path,
-) -> Result<AddOutcome, String> {
-    add_mcp_with(agent, key, spec, scope, cwd, Rewrite::Append)
-}
-
-fn add_mcp_with(
-    agent: Agent,
-    key: &str,
-    spec: &ServerSpec,
-    scope: Scope,
-    cwd: &Path,
-    rewrite: Rewrite,
-) -> Result<AddOutcome, String> {
     let has_command = !spec.command.as_deref().unwrap_or_default().is_empty();
     if !has_command && !spec.is_remote() {
         return Err("Provide either command (stdio server) or url (remote server).".to_string());
@@ -150,7 +127,7 @@ fn add_mcp_with(
             let taken = backup::file(&path)?;
             let mut document = Document::load(agent, &path);
             match scope {
-                Scope::User => document.set_user(agent, key, spec, rewrite),
+                Scope::User => document.set_user(agent, key, spec),
                 Scope::Project => document.claude_project(&cwd.to_string_lossy()).set(
                     key.to_string(),
                     super::documents::project_entry(agent, spec),

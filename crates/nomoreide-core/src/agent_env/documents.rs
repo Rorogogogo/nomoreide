@@ -1,9 +1,11 @@
 //! Editing an agent's config file without rewriting the rest of it.
 //!
-//! These are files the user owns. A tool that adds one MCP server must leave
-//! every other key, every other project, and — for Codex — every comment
-//! exactly where it found them, so each format is edited in place rather than
-//! re-serialised from a model of what this program happens to understand.
+//! These are files the user owns, so everything outside the server section is
+//! edited in place: every other key, every other project, and — for Codex —
+//! every comment stays where it was found.
+//!
+//! The server section itself is the exception, because the reference does not
+//! edit it, it rebuilds it. See `rebuild_servers`.
 //!
 //! The written shape of an entry is per-agent and is the other half of the
 //! reading rules: Claude stamps a `type` on everything it writes, Codex omits
@@ -15,20 +17,6 @@ use super::spec::ServerSpec;
 use super::{Agent, Reader};
 use std::path::Path;
 use toml_edit::{Item, Table, Value as TomlValue};
-
-/// Whether a write rebuilds the server section or just appends to it.
-///
-/// The two are not interchangeable, because the reference's two writers are
-/// not the same code. Adding a server through the agent-environment tools
-/// rebuilds the section — which sorts it and moves it below the file's other
-/// tables — while applying a profile appends in the order the profile lists
-/// them. A file written by one and then the other has to end up as the
-/// reference leaves it, so the distinction is carried rather than smoothed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Rewrite {
-    SortSection,
-    Append,
-}
 
 pub(super) enum Document {
     Json(Json),
@@ -77,13 +65,7 @@ impl Document {
         }
     }
 
-    pub(super) fn set_user(
-        &mut self,
-        agent: Agent,
-        key: &str,
-        spec: &ServerSpec,
-        rewrite: Rewrite,
-    ) {
+    pub(super) fn set_user(&mut self, agent: Agent, key: &str, spec: &ServerSpec) {
         match self {
             Self::Json(document) => {
                 document
@@ -93,9 +75,7 @@ impl Document {
             Self::Toml(document) => {
                 let servers = toml_table(document.as_table_mut(), Self::servers_key(agent));
                 servers.insert(key, Item::Table(toml_entry(spec)));
-                if matches!(rewrite, Rewrite::SortSection) {
-                    settle_servers(document.as_table_mut(), Self::servers_key(agent));
-                }
+                rebuild_servers(document.as_table_mut(), Self::servers_key(agent));
             }
         }
     }
@@ -106,7 +86,7 @@ impl Document {
             Self::Toml(document) => {
                 let servers = toml_table(document.as_table_mut(), Self::servers_key(agent));
                 let removed = servers.remove(key).is_some();
-                settle_servers(document.as_table_mut(), Self::servers_key(agent));
+                rebuild_servers(document.as_table_mut(), Self::servers_key(agent));
                 removed
             }
         }
@@ -130,28 +110,102 @@ impl Document {
     }
 }
 
-/// Put the server table back the way a write leaves it: its entries in name
-/// order, and the whole section after everything else in the file.
+/// Put the server section back the way the reference leaves it.
 ///
-/// Neither is cosmetic. The reference rewrites this section wholesale on every
-/// write, so a config it has touched has both properties — and a config this
-/// port has touched has to be the same file, or the two diverge the moment a
-/// user edits with one and reads with the other.
-fn settle_servers(document: &mut Table, key: &str) {
+/// The reference does not edit this section, it re-serialises it from what it
+/// parsed — so a write is lossy and reordering in ways no in-place edit is,
+/// and all three effects have to be reproduced together:
+///
+/// * Every entry is round-tripped through `ServerSpec`, which drops whatever
+///   the reference has no field for (`startup_timeout_ms`, `bearer_token`,
+///   `http_headers`, and any key the user added), stringifies `args`, and
+///   fills in `command = ""` for an entry that names neither a command nor a
+///   URL.
+/// * The section is stably partitioned, stdio servers before remote ones,
+///   which reorders entries that were already in the file.
+/// * The whole section is removed and re-inserted, which moves it below every
+///   other table.
+///
+/// None of it is cosmetic: a config this port has touched has to be the same
+/// file the reference would have left, or the two diverge the moment a user
+/// edits with one and reads with the other.
+fn rebuild_servers(document: &mut Table, key: &str) {
     let Some(table) = document.get(key).and_then(Item::as_table).cloned() else {
         return;
     };
-    let mut entries: Vec<(String, Item)> = table
+    let specs: Vec<(String, ServerSpec)> = table
         .iter()
-        .map(|(name, item)| (name.to_string(), item.clone()))
+        .map(|(name, item)| (name.to_string(), spec_from_toml(item)))
         .collect();
-    entries.sort_by(|left, right| left.0.cmp(&right.0));
     document.remove(key);
-    // Removed and re-inserted rather than sorted in place, which is also what
-    // moves it to the end.
     let servers = toml_table(document, key);
-    for (name, item) in entries {
-        servers.insert(&name, item);
+    // Two passes rather than a sort, so each half keeps the order it had.
+    for remote in [false, true] {
+        for (name, spec) in specs.iter().filter(|(_, spec)| spec.is_remote() == remote) {
+            servers.insert(name, Item::Table(toml_entry(spec)));
+        }
+    }
+}
+
+/// Read one Codex entry back into the neutral shape.
+///
+/// A `url` decides the entry is remote, and it outranks a `command` written
+/// beside it — but only when it says something: an empty one is no URL at all,
+/// and the entry falls back to being a stdio server.
+fn spec_from_toml(item: &Item) -> ServerSpec {
+    let Some(table) = item.as_table_like() else {
+        return ServerSpec::default();
+    };
+    let text = |key: &str| {
+        table
+            .get(key)
+            .and_then(Item::as_str)
+            .map(str::to_string)
+            .filter(|value| !value.is_empty())
+    };
+    if let Some(url) = text("url") {
+        return ServerSpec {
+            url: Some(url),
+            ..ServerSpec::default()
+        };
+    }
+    ServerSpec {
+        command: Some(
+            table
+                .get("command")
+                .and_then(Item::as_str)
+                .unwrap_or("")
+                .to_string(),
+        ),
+        args: table
+            .get("args")
+            .and_then(Item::as_array)
+            .map(|values| values.iter().map(toml_scalar).collect())
+            .unwrap_or_default(),
+        env: table
+            .get("env")
+            .and_then(Item::as_table_like)
+            .map(|values| {
+                let mut env = OrderedMap::new();
+                for (name, value) in values.iter() {
+                    env.insert(
+                        name.to_string(),
+                        Json::String(value.as_value().map(toml_scalar).unwrap_or_default()),
+                    );
+                }
+                env
+            }),
+        ..ServerSpec::default()
+    }
+}
+
+/// What the reference makes of a TOML scalar that should have been a string.
+/// It stringifies rather than dropping, so `args = [1, true]` survives as
+/// `["1", "true"]`.
+fn toml_scalar(value: &TomlValue) -> String {
+    match value {
+        TomlValue::String(text) => text.value().to_string(),
+        other => other.to_string().trim().to_string(),
     }
 }
 

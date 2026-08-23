@@ -182,7 +182,7 @@ fn run(
             skipped.push(format!("mcp \"{key}\""));
             continue;
         }
-        let outcome = agent_env::apply_mcp(agent, key, &spec_of(entry), Scope::User, cwd)?;
+        let outcome = agent_env::add_mcp(agent, key, &spec_of(entry), Scope::User, cwd)?;
         backups.extend(outcome.backups);
         applied.push(key.to_string());
     }

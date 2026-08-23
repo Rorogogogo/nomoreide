@@ -643,6 +643,43 @@
       }
     },
     {
+      "id": "write/rebuilds-the-codex-section",
+      "tool": "nomoreide_agents_add_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "nnn-added",
+        "command": "true"
+      },
+      "writeHomeFiles": [
+        {
+          "path": ".codex/config.toml",
+          "contents": "model = \"gpt-5\"\n\n[mcp_servers.aaa-remote]\nurl = \"https://aaa.example.test/mcp\"\nbearer_token = \"not-a-field-the-reference-keeps\"\n\n[mcp_servers.aaa-remote.http_headers]\nX-Trace = \"1\"\n\n[mcp_servers.zzz-stdio]\ncommand = \"true\"\nargs = [1, true]\nstartup_timeout_ms = 5000\n\n[mcp_servers.mmm-neither]\nnote = \"names no command and no url\"\n\n[mcp_servers.bbb-both]\ncommand = \"ignored\"\nurl = \"https://bbb.example.test/mcp\"\n\n[tui]\ntheme = \"dark\"\n"
+        }
+      ]
+    },
+    {
+      "id": "read/the-rebuilt-codex-section",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "agent": "codex"
+      }
+    },
+    {
+      "id": "write/rebuilds-again-on-removal",
+      "tool": "nomoreide_agents_remove_mcp",
+      "arguments": {
+        "agent": "codex",
+        "key": "mmm-neither"
+      }
+    },
+    {
+      "id": "read/after-the-removal",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "agent": "codex"
+      }
+    },
+    {
       "id": "write/reject-a-missing-agent",
       "tool": "nomoreide_agents_add_mcp",
       "arguments": {
