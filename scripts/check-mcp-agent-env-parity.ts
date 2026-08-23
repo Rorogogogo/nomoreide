@@ -143,6 +143,20 @@ try {
       throw error;
     }
   }
+  if (probe && process.env.NOMOREIDE_DUMP_HOME) {
+    // What the writers left on disk, which no tool reports back.
+    const { readdir } = await import("node:fs/promises");
+    for (const relative of [".claude.json", ".codex/config.toml", ".gemini/antigravity-cli/mcp_config.json"]) {
+      const target = join(runtimes[0].home, relative);
+      console.log(`\n=== FILE ${relative}`);
+      console.log(await readFile(target, "utf8").catch(() => "<absent>"));
+    }
+    for (const relative of [".claude/skills", ".config/nomoreide/agent-env-backups"]) {
+      const target = join(runtimes[0].home, relative);
+      console.log(`\n=== DIR ${relative}`);
+      console.log((await readdir(target).catch(() => [])).sort().join("\n"));
+    }
+  }
   console.log(
     probe
       ? `Agent-environment probe finished (${fixture.plan.length} steps against the reference only).`
@@ -161,5 +175,31 @@ async function call(runtime: Runtime, step: Step): Promise<unknown> {
     Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
   );
   const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
-  return normalize(response, runtime);
+  return maskBackupStamps(normalize(response, runtime));
+}
+
+/**
+ * Blank the timestamp out of every backup path.
+ *
+ * A backup is named for the second it was taken in, with a counter appended
+ * when one second holds more than one. Two runtimes are asked the same
+ * question milliseconds apart, so which side of a second boundary each lands
+ * on — and therefore whether it collides with its own previous backup — is a
+ * race, not a behaviour. The *number* of backups a change takes is still
+ * compared, because the array keeps its length; the format of the stamp and
+ * the collision counter are pinned by unit tests instead.
+ */
+function maskBackupStamps(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.replace(/\d{8}-\d{6}(-\d+)?/g, "<stamp>");
+  }
+  if (Array.isArray(value)) {
+    return value.map(maskBackupStamps);
+  }
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, maskBackupStamps(entry)]),
+  );
 }

@@ -21,6 +21,11 @@ struct RawServer {
     args: Option<Vec<String>>,
     env: Option<OrderedMap<Value>>,
     url: Option<String>,
+    /// Antigravity's spelling for a streamable-HTTP server. The other two
+    /// readers do not know the key, so an entry using it is not remote to
+    /// them at all.
+    #[serde(rename = "httpUrl")]
+    http_url: Option<String>,
     #[serde(rename = "type")]
     declared_transport: Option<String>,
     headers: Option<OrderedMap<Value>>,
@@ -47,19 +52,30 @@ struct TomlConfig {
 }
 
 impl Reader {
-    /// What a remote server's transport is *reported* as. Only Claude asks the
-    /// entry; the other two answer the same thing however the entry is written.
-    fn transport_of(self, declared: Option<&str>) -> &'static str {
+    /// The URL a remote server is reached at and the transport it is reported
+    /// as, or `None` when this entry is not remote to this reader.
+    ///
+    /// Which key holds the URL is itself per-reader. Claude and Codex know
+    /// only `url`; Antigravity also knows `httpUrl`, and prefers it — an
+    /// entry carrying both is reached over HTTP at the `httpUrl`.
+    fn remote_of(self, raw: &RawServer) -> Option<(&'static str, String)> {
+        let url = |value: &Option<String>| value.clone().filter(|url| !url.is_empty());
         match self {
-            Self::ClaudeJson => {
-                if declared == Some("sse") {
+            Self::ClaudeJson => url(&raw.url).map(|url| {
+                // The one reader that asks the entry what it is. Anything
+                // other than an explicit `sse` is reported as HTTP.
+                let transport = if raw.declared_transport.as_deref() == Some("sse") {
                     "sse"
                 } else {
                     "http"
-                }
-            }
-            Self::CodexToml => "http",
-            Self::AntigravityJson => "sse",
+                };
+                (transport, url)
+            }),
+            // Codex reads a declared type and then ignores it.
+            Self::CodexToml => url(&raw.url).map(|url| ("http", url)),
+            Self::AntigravityJson => url(&raw.http_url)
+                .map(|url| ("http", url))
+                .or_else(|| url(&raw.url).map(|url| ("sse", url))),
         }
     }
 
@@ -148,13 +164,13 @@ fn split(
     let mut stdio = OrderedMap::new();
     let mut remote = OrderedMap::new();
     for (key, raw) in entries {
-        let command = raw.command.unwrap_or_default();
+        let command = raw.command.clone().unwrap_or_default();
         if command.is_empty() {
-            if let Some(url) = raw.url.filter(|url| !url.is_empty()) {
+            if let Some((transport, url)) = reader.remote_of(&raw) {
                 remote.insert(
                     key,
                     RemoteServer {
-                        transport: reader.transport_of(raw.declared_transport.as_deref()),
+                        transport,
                         url,
                         headers: raw.headers.filter(|_| reader.keeps_headers()),
                     },
@@ -223,6 +239,40 @@ mod tests {
         let transport = |reader| split(entries(http), reader).1.get("one").unwrap().transport;
         assert_eq!(transport(Reader::ClaudeJson), "http");
         assert_eq!(transport(Reader::AntigravityJson), "sse");
+    }
+
+    #[test]
+    fn only_antigravity_knows_what_an_http_url_is() {
+        let source = r#"{"one": {"httpUrl": "https://h.test", "url": "https://s.test"}}"#;
+        let remote = |reader| split(entries(source), reader).1;
+
+        let antigravity = remote(Reader::AntigravityJson);
+        let one = antigravity.get("one").unwrap();
+        // `httpUrl` wins, and brings its own transport with it.
+        assert_eq!(
+            (one.transport, one.url.as_str()),
+            ("http", "https://h.test")
+        );
+
+        // To the other two the key means nothing, so `url` still decides.
+        assert_eq!(
+            remote(Reader::ClaudeJson).get("one").unwrap().url,
+            "https://s.test"
+        );
+        assert_eq!(
+            remote(Reader::CodexToml).get("one").unwrap().url,
+            "https://s.test"
+        );
+    }
+
+    #[test]
+    fn an_http_url_alone_is_not_remote_to_claude_or_codex() {
+        let source = r#"{"one": {"httpUrl": "https://h.test"}}"#;
+        for reader in [Reader::ClaudeJson, Reader::CodexToml] {
+            let (stdio, remote) = split(entries(source), reader);
+            assert!(remote.is_empty());
+            assert_eq!(stdio.get("one").unwrap().command, "");
+        }
     }
 
     #[test]
