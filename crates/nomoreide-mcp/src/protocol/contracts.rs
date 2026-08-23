@@ -71,6 +71,13 @@ pub(super) enum ArgumentContract {
     ProfileUpdate,
     /// `nomoreide_profiles_copy_items`: two profile names and what to copy.
     ProfileCopy,
+    /// `nomoreide_profiles_snapshot`: the agent to capture and what to call
+    /// the profile it becomes.
+    ProfileSnapshot,
+    /// `nomoreide_profiles_apply`: which profile, onto which agent, and what
+    /// to leave out. Each `skip` is a list of names rather than a flag — a
+    /// caller skips particular items, not a whole category.
+    ProfileApply,
     /// One optional non-empty `cwd`, and nothing else. Absent means the
     /// directory the server was started in, so it is a default rather than a
     /// missing argument. Shared by the git reads and by the agent-environment
@@ -312,6 +319,8 @@ impl ArgumentContract {
             "nomoreide_profiles_create" => Some(Self::ProfileCreation),
             "nomoreide_profiles_update" => Some(Self::ProfileUpdate),
             "nomoreide_profiles_copy_items" => Some(Self::ProfileCopy),
+            "nomoreide_profiles_snapshot" => Some(Self::ProfileSnapshot),
+            "nomoreide_profiles_apply" => Some(Self::ProfileApply),
             "nomoreide_agents_status" => Some(Self::Empty),
             "nomoreide_agents_add_mcp" => Some(Self::AgentMcpAddition),
             "nomoreide_agents_remove_mcp" => Some(Self::AgentMcpRemoval),
@@ -411,6 +420,23 @@ impl ArgumentContract {
                 for key in ["mcps", "skills", "plugins"] {
                     failures.extend(string_array(arguments, key, ArrayShape::ANY));
                 }
+                collect(failures)
+            }
+            Self::ProfileSnapshot => {
+                let mut failures = required_enumerated(arguments, "agent", AGENTS);
+                failures.extend(required_string_of(arguments, "name", 1));
+                failures.extend(optional_string(arguments, "description"));
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::ProfileApply => {
+                let mut failures = required_string_of(arguments, "name", 1);
+                failures.extend(required_enumerated(arguments, "agent", AGENTS));
+                failures.extend(boolean(arguments, "dryRun"));
+                for key in ["skipMcps", "skipSkills", "skipPlugins"] {
+                    failures.extend(string_array(arguments, key, ArrayShape::ANY));
+                }
+                failures.extend(optional_name(arguments, "cwd"));
                 collect(failures)
             }
             Self::OptionalCwd => collect(optional_name(arguments, "cwd")),

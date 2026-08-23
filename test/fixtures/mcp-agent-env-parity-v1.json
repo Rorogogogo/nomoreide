@@ -83,6 +83,14 @@
     {
       "path": ".claude/skills/dirname-x/SKILL.md",
       "contents": "---\nname: frontmatter-y\ndescription: Named twice.\n---\n\nBody.\n"
+    },
+    {
+      "path": ".agents/skills/portable/SKILL.md",
+      "contents": "---\nname: portable\ndescription: P.\n---\n\nP.\n"
+    },
+    {
+      "path": ".agents/skills/aaa-first/SKILL.md",
+      "contents": "---\nname: aaa-first\ndescription: A.\n---\n\nA.\n"
     }
   ],
   "plan": [

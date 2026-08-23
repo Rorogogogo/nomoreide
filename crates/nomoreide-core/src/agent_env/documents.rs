@@ -16,6 +16,20 @@ use super::{Agent, Reader};
 use std::path::Path;
 use toml_edit::{Item, Table, Value as TomlValue};
 
+/// Whether a write rebuilds the server section or just appends to it.
+///
+/// The two are not interchangeable, because the reference's two writers are
+/// not the same code. Adding a server through the agent-environment tools
+/// rebuilds the section — which sorts it and moves it below the file's other
+/// tables — while applying a profile appends in the order the profile lists
+/// them. A file written by one and then the other has to end up as the
+/// reference leaves it, so the distinction is carried rather than smoothed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Rewrite {
+    SortSection,
+    Append,
+}
+
 pub(super) enum Document {
     Json(Json),
     Toml(Box<toml_edit::Document>),
@@ -63,7 +77,13 @@ impl Document {
         }
     }
 
-    pub(super) fn set_user(&mut self, agent: Agent, key: &str, spec: &ServerSpec) {
+    pub(super) fn set_user(
+        &mut self,
+        agent: Agent,
+        key: &str,
+        spec: &ServerSpec,
+        rewrite: Rewrite,
+    ) {
         match self {
             Self::Json(document) => {
                 document
@@ -73,7 +93,9 @@ impl Document {
             Self::Toml(document) => {
                 let servers = toml_table(document.as_table_mut(), Self::servers_key(agent));
                 servers.insert(key, Item::Table(toml_entry(spec)));
-                settle_servers(document.as_table_mut(), Self::servers_key(agent));
+                if matches!(rewrite, Rewrite::SortSection) {
+                    settle_servers(document.as_table_mut(), Self::servers_key(agent));
+                }
             }
         }
     }

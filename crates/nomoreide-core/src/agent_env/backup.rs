@@ -81,7 +81,7 @@ fn store_directory() -> PathBuf {
     base.join("nomoreide").join("agent-env-backups")
 }
 
-pub(super) fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
+pub(crate) fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     std::fs::create_dir_all(target)
         .map_err(|error| format!("Failed to create {}: {error}", target.display()))?;
     let listing = std::fs::read_dir(source)

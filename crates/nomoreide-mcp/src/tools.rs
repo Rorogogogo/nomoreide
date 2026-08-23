@@ -266,6 +266,17 @@ impl ToolExecutor for NativeToolExecutor {
                     to,
                     arguments,
                 } => profiles::copy_items(from, to, arguments),
+                NativeTool::ProfilesSnapshot {
+                    agent,
+                    name,
+                    description,
+                    cwd,
+                } => profiles::snapshot(agent, name, description, cwd),
+                NativeTool::ProfilesApply {
+                    name,
+                    agent,
+                    arguments,
+                } => profiles::apply(name, agent, arguments),
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -422,6 +433,8 @@ impl NativeToolExecutor {
             | NativeTool::ProfilesUpdate { .. }
             | NativeTool::ProfilesDelete { .. }
             | NativeTool::ProfilesCopyItems { .. }
+            | NativeTool::ProfilesSnapshot { .. }
+            | NativeTool::ProfilesApply { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -527,6 +540,17 @@ enum NativeTool<'a> {
     ProfilesCopyItems {
         from: &'a str,
         to: &'a str,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesSnapshot {
+        agent: &'a str,
+        name: &'a str,
+        description: Option<&'a str>,
+        cwd: Option<&'a str>,
+    },
+    ProfilesApply {
+        name: &'a str,
+        agent: &'a str,
         arguments: &'a Map<String, Value>,
     },
     ListServices,
@@ -803,6 +827,17 @@ impl<'a> NativeTool<'a> {
             "nomoreide_profiles_copy_items" => Ok(Self::ProfilesCopyItems {
                 from: required_text(arguments, "from")?,
                 to: required_text(arguments, "to")?,
+                arguments,
+            }),
+            "nomoreide_profiles_snapshot" => Ok(Self::ProfilesSnapshot {
+                agent: required_text(arguments, "agent")?,
+                name: required_text(arguments, "name")?,
+                description: arguments.get("description").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+            }),
+            "nomoreide_profiles_apply" => Ok(Self::ProfilesApply {
+                name: required_text(arguments, "name")?,
+                agent: required_text(arguments, "agent")?,
                 arguments,
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),

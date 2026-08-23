@@ -21,11 +21,13 @@ mod spec;
 mod store;
 mod writers;
 
+pub(crate) use backup::copy_tree;
 pub use ordered::{Json, OrderedMap};
 pub use spec::{Scope, ServerSpec};
 pub use writers::SnapshotOutcome;
 pub use writers::{
-    add_mcp, move_mcp_scope, move_skill_scope, remove_mcp, snapshot_agent, AddOutcome, ChangeReport,
+    add_mcp, apply_mcp, move_mcp_scope, move_skill_scope, remove_mcp, snapshot_agent, AddOutcome,
+    ChangeReport,
 };
 
 use serde::Serialize;
@@ -105,10 +107,24 @@ impl Agent {
         home.join(self.config_relative_path())
     }
 
-    /// Where this agent keeps the user's skills, for the agents that have any.
+    /// Where a skill installed for this agent goes: the first of its user
+    /// directories, which for Codex is the portable one.
     pub(super) fn user_skills_directory(self, home: &Path) -> Option<PathBuf> {
-        self.user_skills_relative_path()
+        self.user_skills_relative_paths()
+            .first()
             .map(|relative| home.join(relative))
+    }
+
+    /// Where a named skill already is, among this agent's user directories.
+    ///
+    /// Reading and writing are not symmetric for Codex: a skill is installed
+    /// into the first directory but may be found in either, so anything acting
+    /// on an existing skill has to look in both.
+    pub(super) fn installed_user_skill(self, home: &Path, name: &str) -> Option<PathBuf> {
+        self.user_skills_relative_paths()
+            .iter()
+            .map(|relative| home.join(relative).join(name))
+            .find(|candidate| candidate.is_dir())
     }
 
     /// Where a *write* puts a project-scoped skill: in the project itself,
@@ -118,13 +134,19 @@ impl Agent {
             .map(|relative| project.join(relative))
     }
 
-    /// The skills directory in the user's home, for the agents that have one.
-    fn user_skills_relative_path(self) -> Option<&'static str> {
+    /// The skills directories in the user's home, in the order a listing
+    /// reports them.
+    ///
+    /// Codex has two: the portable `~/.agents/skills`, which is also where a
+    /// skill installed *into* Codex goes, and its own `~/.codex/skills`. Both
+    /// are user scope, listed in that order with each sorted on its own — so
+    /// the combined listing is not sorted overall.
+    fn user_skills_relative_paths(self) -> &'static [&'static str] {
         match self {
-            Self::Claude => Some(".claude/skills"),
-            Self::Codex => Some(".codex/skills"),
+            Self::Claude => &[".claude/skills"],
+            Self::Codex => &[".agents/skills", ".codex/skills"],
             // Antigravity has no skills of its own to find.
-            Self::Antigravity => None,
+            Self::Antigravity => &[],
         }
     }
 
@@ -212,6 +234,24 @@ pub struct DoctorCheck {
 pub struct DoctorReport {
     pub checks: Vec<DoctorCheck>,
     pub has_issues: bool,
+}
+
+/// Put a skill into an agent's own user-scope skills directory, replacing
+/// whatever was installed under that name.
+///
+/// An agent with no skills directory of its own — Antigravity — has nowhere
+/// for one to go, and says so rather than writing somewhere it invented.
+pub fn install_user_skill(agent: Agent, name: &str, source: &Path) -> Result<(), String> {
+    let directory = agent
+        .user_skills_directory(&home())
+        .ok_or_else(|| format!("{} has no skills directory.", agent.display_name()))?
+        .join(name);
+    // Replaced rather than merged: a skill is the directory, and leaving files
+    // from an older version beside the new ones would make it neither.
+    std::fs::remove_dir_all(&directory).ok();
+    std::fs::create_dir_all(&directory)
+        .map_err(|error| format!("Failed to create {}: {error}", directory.display()))?;
+    copy_tree(source, &directory)
 }
 
 pub(crate) fn home() -> PathBuf {
@@ -319,6 +359,29 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&absent).unwrap(),
             r#"{"agent":"antigravity","command":"antigravity","available":false}"#
+        );
+    }
+
+    #[test]
+    fn codex_keeps_user_skills_in_two_places_and_installs_into_the_first() {
+        // The portable directory comes first, and is the one a write targets;
+        // Codex's own is still read, after it.
+        assert_eq!(
+            Agent::Codex.user_skills_relative_paths(),
+            [".agents/skills", ".codex/skills"]
+        );
+        assert_eq!(
+            Agent::Codex.user_skills_directory(Path::new("/h")),
+            Some(PathBuf::from("/h/.agents/skills"))
+        );
+        assert_eq!(
+            Agent::Claude.user_skills_relative_paths(),
+            [".claude/skills"]
+        );
+        assert!(Agent::Antigravity.user_skills_relative_paths().is_empty());
+        assert_eq!(
+            Agent::Antigravity.user_skills_directory(Path::new("/h")),
+            None
         );
     }
 

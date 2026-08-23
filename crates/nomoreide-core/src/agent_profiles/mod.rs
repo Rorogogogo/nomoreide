@@ -7,20 +7,29 @@
 //! only has to hand back exactly what it was given. Modelling it twice would
 //! give the two layers a chance to disagree.
 
+mod apply;
+mod snapshot;
 mod store;
 
 use crate::agent_env::{Json, OrderedMap};
 use serde::{Deserialize, Serialize};
 
+pub use apply::{apply, ApplyOutcome, ApplyPreview};
+pub use snapshot::snapshot;
 pub use store::profiles_root;
 
 /// One saved profile, as its own file holds it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub name: String,
     /// Absent rather than empty when the profile was created without one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Which agent a snapshot was taken from. Absent on a profile that was
+    /// built by hand rather than captured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_agent: Option<String>,
     #[serde(default)]
     pub mcps: OrderedMap<Json>,
     #[serde(default)]
@@ -198,7 +207,10 @@ pub fn copy_items(
         ok: true,
         copied_mcps: taken_mcps.into_iter().map(|(key, _)| key).collect(),
         copied_skills: skills.to_vec(),
-        copied_plugins: plugins.to_vec(),
+        // A plugin is reported by its id rather than its name — the name alone
+        // does not say which agent it came from, and two agents may each have
+        // one called the same thing.
+        copied_plugins: taken_plugins.iter().map(apply::plugin_id).collect(),
     })
 }
 

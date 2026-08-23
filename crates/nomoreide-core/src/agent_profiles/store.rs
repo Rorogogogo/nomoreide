@@ -1,7 +1,7 @@
 //! Where profiles live on disk, and nothing about what they mean.
 
 use super::{Profile, ProfileSummary};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 /// `~/.config/nomoreide/agent-profiles`, honouring `XDG_CONFIG_HOME` the way
@@ -97,6 +97,26 @@ pub(super) fn summaries() -> Result<Vec<(ProfileSummary, SystemTime)>, String> {
         ));
     }
     Ok(summaries)
+}
+
+/// Where a profile keeps the skill directories it carries.
+fn skills_directory(name: &str) -> PathBuf {
+    directory(name).join("skills")
+}
+
+/// Copy a skill's directory into the profile, so the profile carries the
+/// skill rather than only its name.
+pub(super) fn bundle_skill(profile: &str, skill: &str, source: &Path) -> Result<(), String> {
+    let target = skills_directory(profile).join(skill);
+    std::fs::create_dir_all(&target)
+        .map_err(|error| format!("Failed to create {}: {error}", target.display()))?;
+    crate::agent_env::copy_tree(source, &target)
+}
+
+/// The directory a profile carries for `skill`, if it carries one at all.
+pub(super) fn bundled_skill(profile: &str, skill: &str) -> Option<PathBuf> {
+    let path = skills_directory(profile).join(skill);
+    path.is_dir().then_some(path)
 }
 
 /// An ISO-8601 instant in UTC to the millisecond, which is what the reference's

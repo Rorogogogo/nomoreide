@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 /// User-scope skills first, then project-scope, each sorted by name.
 pub(super) fn discover(agent: Agent, home: &Path, cwd: &Path) -> Vec<SkillEntry> {
     let mut skills = Vec::new();
-    if let Some(relative) = agent.user_skills_relative_path() {
+    for relative in agent.user_skills_relative_paths() {
         skills.extend(entries_in(&home.join(relative), "user"));
     }
     if let Some(relative) = agent.project_skills_relative_path() {
