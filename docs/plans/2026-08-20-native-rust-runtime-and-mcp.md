@@ -947,6 +947,46 @@ where it showed up now space their lines further apart.
 - Port error inbox/prompt generation and embedded documentation/UI lifecycle tools.
 - Implement the 18 MCP tools in these domains.
 
+**Slice 6 (done): the host provider.** Vultr, gated by `npm run host-parity` —
+14 steps. It is the first thing gated here that **no MCP tool reaches** and that
+the native daemon does not serve either: `/api/hosts/*` is Phase 8. So it
+follows the pattern `check-git-actions-parity.ts` already set for exactly this
+case — run the TypeScript provider and the Rust one against their own loopback
+stand-ins and diff both what each returned and every request it made, with the
+Rust side reached through `examples/vultr-probe.rs`.
+
+What the probing settled, and one thing it corrected:
+
+- **One vendor word decides a machine's state, and `rawState` is that word.**
+  Vultr spreads the answer over `status`, `server_status`, and `power_status`,
+  and the first port modelled that as three inputs to one mapping. It is not:
+  the subscription's lifecycle outranks everything, then `installingbooting` or
+  `locked`, then power — and whichever field decided is the one reported. That
+  is why `installingbooting` surfaces as `installing`, and why `server_status:
+  "none"` falls through to power rather than meaning "provisioning".
+- A machine with no label is shown by the hostname it answers to; an empty row
+  is worse than a technical one.
+- `0.0.0.0` is not an address. Vultr reports an address it has not assigned yet
+  as that rather than as nothing.
+- The status panel's credential half — the connection stripped to its `source`,
+  and the account behind the key — is core. The `auth_error` / `connection_error`
+  split and the ambient `{ source: "cli" }` fallback are the *route's* assembly
+  and are **not** covered yet; they arrive with the route in Phase 8.
+
+Two bugs in the gate itself, both of which invented divergences rather than
+hiding them: `deepStrictEqual` counts `{ hostname: undefined }` — how the
+reference builds an optional field — as different from an omitted key, so every
+hostname-less instance failed over something no client could observe (it now
+compares the serialised form, which is what anyone actually reads); and the
+manifest, and with it the egress allowlist, is frozen at import time, so a
+loopback base exported after the import left the reference refusing to reach its
+own stub.
+
+A fifteen-seed sweep catches all fifteen. One needed a better case first: "id
+not encoded" survived because `reqwest` percent-encodes a space while parsing
+the URL anyway, so a space proves nothing about explicit encoding. An id
+containing `#` does — unencoded it truncates the path at a fragment.
+
 **Exit gate:** write-lock tests, secret-redaction tests, provider fixture tests, and all domain parity cases pass without Node.js.
 
 ### Phase 5 — Agents, profiles, registry, and terminals

@@ -36,3 +36,7 @@ pub mod vercel_context;
 pub mod vercel_manager;
 pub mod vercel_oauth;
 pub mod vercel_provider;
+pub mod vultr_auth;
+pub mod vultr_context;
+pub mod vultr_manager;
+pub mod vultr_provider;

@@ -41,6 +41,7 @@
     "mcp:git-parity": "node --import tsx scripts/check-mcp-git-parity.ts",
     "mcp:github-parity": "node --import tsx scripts/check-mcp-github-parity.ts",
     "git-actions-parity": "node --import tsx scripts/check-git-actions-parity.ts",
+    "host-parity": "node --import tsx scripts/check-host-parity.ts",
     "mcp:onboard-parity": "node --import tsx scripts/check-mcp-onboard-parity.ts",
     "mcp:database-parity": "node --import tsx scripts/check-mcp-database-parity.ts",
     "mcp:deploy-parity": "node --import tsx scripts/check-mcp-deploy-parity.ts",

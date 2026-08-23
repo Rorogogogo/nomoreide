@@ -11,6 +11,10 @@ serde.workspace = true
 tokio.workspace = true
 sqlx.workspace = true
 serde_json.workspace = true
+# The host actions post to the vendor through the same egress-bounded path
+# the read half uses, so this crate needs the HTTP client and the encoder.
+reqwest.workspace = true
+urlencoding.workspace = true
 nomoreide-core = { path = "../nomoreide-core" }
 
 # Only the parity probe in `examples/` needs to print JSON; the crate itself

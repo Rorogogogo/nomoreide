@@ -14,5 +14,6 @@
 pub mod api_base;
 pub mod deploy;
 pub mod egress;
+pub mod host;
 pub mod project_resolution;
 pub mod registry;

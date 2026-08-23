@@ -1,0 +1,667 @@
+{
+  "fixtureVersion": 2,
+  "config": {
+    "version": 1,
+    "connections": {
+      "vultr": {
+        "source": "stored",
+        "token": "vultr-test-token"
+      }
+    },
+    "services": [],
+    "bundles": []
+  },
+  "api": [
+    {
+      "method": "GET",
+      "path": "/account",
+      "body": {
+        "account": {
+          "name": "Acme Ops",
+          "email": "ops@acme.test",
+          "balance": -12.5,
+          "pending_charges": 3.25,
+          "acls": [
+            "manage_users",
+            "subscriptions"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances?per_page=500",
+      "body": {
+        "instances": [
+          {
+            "id": "inst_running",
+            "label": "label-inst_running",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_running.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_stopped",
+            "label": "label-inst_stopped",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "stopped",
+            "server_status": "ok",
+            "hostname": "inst_stopped.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_installing",
+            "label": "label-inst_installing",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "installingbooting",
+            "hostname": "inst_installing.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_locked",
+            "label": "label-inst_locked",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "locked",
+            "hostname": "inst_locked.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_pending",
+            "label": "label-inst_pending",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "pending",
+            "power_status": "stopped",
+            "server_status": "none",
+            "hostname": "inst_pending.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_suspended",
+            "label": "label-inst_suspended",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "suspended",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_suspended.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_resizing",
+            "label": "label-inst_resizing",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "resizing",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_resizing.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_status_new",
+            "label": "label-inst_status_new",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "something_new",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_status_new.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_power_new",
+            "label": "label-inst_power_new",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "something_new",
+            "server_status": "ok",
+            "hostname": "inst_power_new.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_no_hostname",
+            "label": "label-inst_no_hostname",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          }
+        ],
+        "meta": {
+          "total": 13,
+          "links": {
+            "next": "CURSOR2",
+            "prev": ""
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances?per_page=500&cursor=CURSOR2",
+      "body": {
+        "instances": [
+          {
+            "id": "inst space",
+            "label": "",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst space.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_no_ip",
+            "label": "label-inst_no_ip",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "0.0.0.0",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_no_ip.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_tagless",
+            "label": "label-inst_tagless",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "ok",
+            "hostname": "inst_tagless.example.test",
+            "tags": [],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_server_none",
+            "label": "label-inst_server_none",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "none",
+            "hostname": "inst_server_none.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_server_new",
+            "label": "label-inst_server_new",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "running",
+            "server_status": "something_new",
+            "hostname": "inst_server_new.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          },
+          {
+            "id": "inst_server_ok_stopped",
+            "label": "label-inst_server_ok_stopped",
+            "os": "Ubuntu 24.04 LTS",
+            "ram": 2048,
+            "disk": 55,
+            "main_ip": "203.0.113.10",
+            "vcpu_count": 1,
+            "region": "ewr",
+            "plan": "vc2-1c-2gb",
+            "date_created": "2026-01-01T00:00:00+00:00",
+            "status": "active",
+            "power_status": "stopped",
+            "server_status": "ok",
+            "hostname": "inst_server_ok_stopped.example.test",
+            "tags": [
+              "web"
+            ],
+            "v6_main_ip": "",
+            "internal_ip": "",
+            "os_id": 2284,
+            "app_id": 0,
+            "image_id": ""
+          }
+        ],
+        "meta": {
+          "total": 16,
+          "links": {
+            "next": "",
+            "prev": "CURSOR1"
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances/inst_running",
+      "body": {
+        "instance": {
+          "id": "inst_running",
+          "label": "label-inst_running",
+          "os": "Ubuntu 24.04 LTS",
+          "ram": 2048,
+          "disk": 55,
+          "main_ip": "203.0.113.10",
+          "vcpu_count": 1,
+          "region": "ewr",
+          "plan": "vc2-1c-2gb",
+          "date_created": "2026-01-01T00:00:00+00:00",
+          "status": "active",
+          "power_status": "running",
+          "server_status": "ok",
+          "hostname": "inst_running.example.test",
+          "tags": [
+            "web"
+          ],
+          "v6_main_ip": "",
+          "internal_ip": "",
+          "os_id": 2284,
+          "app_id": 0,
+          "image_id": ""
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances/inst%20space",
+      "body": {
+        "instance": {
+          "id": "inst space",
+          "label": "",
+          "os": "Ubuntu 24.04 LTS",
+          "ram": 2048,
+          "disk": 55,
+          "main_ip": "203.0.113.10",
+          "vcpu_count": 1,
+          "region": "ewr",
+          "plan": "vc2-1c-2gb",
+          "date_created": "2026-01-01T00:00:00+00:00",
+          "status": "active",
+          "power_status": "running",
+          "server_status": "ok",
+          "hostname": "inst space.example.test",
+          "tags": [
+            "web"
+          ],
+          "v6_main_ip": "",
+          "internal_ip": "",
+          "os_id": 2284,
+          "app_id": 0,
+          "image_id": ""
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances/inst_missing",
+      "status": 404,
+      "body": {
+        "error": "Instance not found",
+        "status": 404
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/instances/inst_unhelpful",
+      "status": 500,
+      "body": "plain text, not json",
+      "contentType": "text/plain"
+    },
+    {
+      "method": "POST",
+      "path": "/instances/inst_running/reboot",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/instances/inst_running/halt",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/instances/inst_running/start",
+      "status": 204
+    },
+    {
+      "method": "GET",
+      "path": "/instances/inst%231",
+      "body": {
+        "instance": {
+          "id": "inst#1",
+          "label": "label-inst#1",
+          "os": "Ubuntu 24.04 LTS",
+          "ram": 2048,
+          "disk": 55,
+          "main_ip": "203.0.113.10",
+          "vcpu_count": 1,
+          "region": "ewr",
+          "plan": "vc2-1c-2gb",
+          "date_created": "2026-01-01T00:00:00+00:00",
+          "status": "active",
+          "power_status": "running",
+          "server_status": "ok",
+          "hostname": "odd.example.test",
+          "tags": [
+            "web"
+          ],
+          "v6_main_ip": "",
+          "internal_ip": "",
+          "os_id": 2284,
+          "app_id": 0,
+          "image_id": ""
+        }
+      }
+    }
+  ],
+  "plan": [
+    {
+      "id": "status/connected",
+      "op": "status"
+    },
+    {
+      "id": "instances/all",
+      "op": "instances"
+    },
+    {
+      "id": "instance/one",
+      "op": "instance",
+      "args": [
+        "inst_running"
+      ]
+    },
+    {
+      "id": "instance/id-with-a-space",
+      "op": "instance",
+      "args": [
+        "inst space"
+      ]
+    },
+    {
+      "id": "instance/missing",
+      "op": "instance",
+      "args": [
+        "inst_missing"
+      ]
+    },
+    {
+      "id": "instance/no-message-in-the-body",
+      "op": "instance",
+      "args": [
+        "inst_unhelpful"
+      ]
+    },
+    {
+      "id": "instance/id-that-changes-the-url",
+      "op": "instance",
+      "args": [
+        "inst#1"
+      ]
+    },
+    {
+      "id": "action/reboot",
+      "op": "action",
+      "args": [
+        "reboot",
+        "inst_running"
+      ]
+    },
+    {
+      "id": "action/halt",
+      "op": "action",
+      "args": [
+        "halt",
+        "inst_running"
+      ]
+    },
+    {
+      "id": "action/start",
+      "op": "action",
+      "args": [
+        "start",
+        "inst_running"
+      ]
+    },
+    {
+      "id": "action/unknown-name",
+      "op": "action",
+      "args": [
+        "destroy",
+        "inst_running"
+      ]
+    }
+  ],
+  "disconnected": {
+    "config": {
+      "version": 1,
+      "services": [],
+      "bundles": []
+    },
+    "plan": [
+      {
+        "id": "disconnected/status",
+        "op": "status"
+      },
+      {
+        "id": "disconnected/instances",
+        "op": "instances"
+      },
+      {
+        "id": "disconnected/action",
+        "op": "action",
+        "args": [
+          "reboot",
+          "inst_running"
+        ]
+      }
+    ]
+  }
+}

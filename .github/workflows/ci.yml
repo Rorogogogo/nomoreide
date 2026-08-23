@@ -128,3 +128,10 @@ jobs:
         run: |
           cargo build --example git-actions-probe -p nomoreide-actions
           npm run git-actions-parity
+      # Also not an MCP surface, and not yet an HTTP one either: the daemon's
+      # `/api/hosts/*` routes are Phase 8, so this drives the crate's own probe
+      # example the way the GitActions gate does.
+      - name: Host-provider parity
+        run: |
+          cargo build --example vultr-probe -p nomoreide-actions
+          npm run host-parity
