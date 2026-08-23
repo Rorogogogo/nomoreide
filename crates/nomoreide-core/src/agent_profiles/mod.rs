@@ -8,8 +8,10 @@
 //! give the two layers a chance to disagree.
 
 mod apply;
+mod credentials;
 mod snapshot;
 mod store;
+mod transfer;
 
 use crate::agent_env::{Json, OrderedMap};
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,7 @@ use serde::{Deserialize, Serialize};
 pub use apply::{apply, ApplyOutcome, ApplyPreview};
 pub use snapshot::snapshot;
 pub use store::profiles_root;
+pub use transfer::{export, import, ExportOutcome, ImportOutcome};
 
 /// One saved profile, as its own file holds it.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -45,6 +48,10 @@ pub struct ProfileSummary {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Carried into the listing, not only into the profile: which agent a
+    /// bundle came from is how anyone tells two snapshots apart.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_agent: Option<String>,
     pub mcp_count: usize,
     pub skill_count: usize,
     pub plugin_count: usize,
@@ -109,8 +116,13 @@ pub fn list() -> Result<Vec<ProfileSummary>, String> {
     Ok(summaries.into_iter().map(|(summary, _)| summary).collect())
 }
 
+/// Read a profile back.
+///
+/// The *asked-for* name is not checked, only the stored one. A profile that
+/// only [`import`] could have created — its name is whatever the archive or
+/// the `as` argument said — is still found, and is refused for what is in it
+/// rather than for what it was called.
 pub fn get(name: &str) -> Result<Profile, String> {
-    check_name(name)?;
     store::load(name)?.ok_or_else(|| not_found(name))
 }
 
@@ -143,7 +155,7 @@ pub fn update(
         profile.description = Some(description.to_string());
     }
     if let Some(mcps) = mcps {
-        profile.mcps = mcps;
+        profile.mcps = canonical_servers(&mcps);
     }
     if let Some(skills) = skills {
         profile.skills = skills;
@@ -155,8 +167,45 @@ pub fn update(
     Ok(profile)
 }
 
+/// Every server rebuilt in the shape a profile stores.
+///
+/// A caller's own field order does not survive, and neither do fields the
+/// other kind of server uses — a `remote` sent with a `command` is stored
+/// without one. Two profiles holding the same servers are then the same file,
+/// however the callers that built them happened to spell it.
+fn canonical_servers(mcps: &OrderedMap<Json>) -> OrderedMap<Json> {
+    let mut out = OrderedMap::new();
+    for (name, entry) in mcps.iter() {
+        out.insert(name.to_string(), canonical_server(entry));
+    }
+    out
+}
+
+fn canonical_server(entry: &Json) -> Json {
+    let Some(fields) = entry.as_object() else {
+        return entry.clone();
+    };
+    let mut server = OrderedMap::new();
+    let carry = |server: &mut OrderedMap<Json>, key: &str| {
+        if let Some(value) = fields.get(key) {
+            server.insert(key.to_string(), value.clone());
+        }
+    };
+    let remote = matches!(fields.get("kind"), Some(Json::String(kind)) if kind == "remote");
+    carry(&mut server, "kind");
+    if remote {
+        for key in ["transport", "url", "headers", "env"] {
+            carry(&mut server, key);
+        }
+    } else {
+        for key in ["command", "args", "env"] {
+            carry(&mut server, key);
+        }
+    }
+    Json::Object(server)
+}
+
 pub fn delete(name: &str) -> Result<DeleteOutcome, String> {
-    check_name(name)?;
     if !store::exists(name) {
         return Err(not_found(name));
     }

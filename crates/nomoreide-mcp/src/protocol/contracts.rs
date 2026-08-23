@@ -78,6 +78,8 @@ pub(super) enum ArgumentContract {
     /// to leave out. Each `skip` is a list of names rather than a flag — a
     /// caller skips particular items, not a whole category.
     ProfileApply,
+    ProfileExport,
+    ProfileImport,
     /// One optional non-empty `cwd`, and nothing else. Absent means the
     /// directory the server was started in, so it is a default rather than a
     /// missing argument. Shared by the git reads and by the agent-environment
@@ -321,6 +323,8 @@ impl ArgumentContract {
             "nomoreide_profiles_copy_items" => Some(Self::ProfileCopy),
             "nomoreide_profiles_snapshot" => Some(Self::ProfileSnapshot),
             "nomoreide_profiles_apply" => Some(Self::ProfileApply),
+            "nomoreide_profiles_export" => Some(Self::ProfileExport),
+            "nomoreide_profiles_import" => Some(Self::ProfileImport),
             "nomoreide_agents_status" => Some(Self::Empty),
             "nomoreide_agents_add_mcp" => Some(Self::AgentMcpAddition),
             "nomoreide_agents_remove_mcp" => Some(Self::AgentMcpRemoval),
@@ -437,6 +441,19 @@ impl ArgumentContract {
                     failures.extend(string_array(arguments, key, ArrayShape::ANY));
                 }
                 failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::ProfileExport => {
+                let mut failures = required_string_of(arguments, "name", 1);
+                failures.extend(optional_string(arguments, "outputPath"));
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::ProfileImport => {
+                let mut failures = required_string_of(arguments, "archivePath", 1);
+                failures.extend(boolean(arguments, "force"));
+                failures.extend(optional_string(arguments, "as"));
+                failures.extend(string_map(arguments, "credentials"));
                 collect(failures)
             }
             Self::OptionalCwd => collect(optional_name(arguments, "cwd")),
@@ -836,6 +853,15 @@ fn profile_mcps(arguments: &Map<String, Value>) -> Vec<String> {
                 ));
             }
             Some("remote") => {
+                // Schema order: a remote server declares how to reach it
+                // before it declares where, so a caller missing both is told
+                // about the transport first.
+                failures.extend(nested_string(
+                    entry,
+                    &format!("mcps.{name}"),
+                    "transport",
+                    true,
+                ));
                 failures.extend(nested_string(entry, &format!("mcps.{name}"), "url", true));
             }
             _ => failures.push(format!(

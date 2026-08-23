@@ -7,7 +7,7 @@ use crate::tools::render;
 use nomoreide_core::agent_env::{Agent, Json, OrderedMap};
 use nomoreide_core::agent_profiles;
 use serde_json::{Map, Value};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn list() -> Result<String, String> {
     render(&agent_profiles::list()?)
@@ -141,4 +141,40 @@ pub(crate) fn apply(
 fn project_directory(cwd: Option<&str>) -> PathBuf {
     cwd.map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+pub(crate) fn export(
+    name: &str,
+    output_path: Option<&str>,
+    cwd: Option<&str>,
+) -> Result<String, String> {
+    render(&agent_profiles::export(
+        name,
+        output_path,
+        &project_directory(cwd),
+    )?)
+}
+
+pub(crate) fn import(archive_path: &str, arguments: &Map<String, Value>) -> Result<String, String> {
+    let force = arguments
+        .get("force")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let supplied = arguments
+        .get("credentials")
+        .and_then(Value::as_object)
+        .map(|map| {
+            map.iter()
+                .filter_map(|(key, value)| {
+                    value.as_str().map(|text| (key.clone(), text.to_string()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    render(&agent_profiles::import(
+        Path::new(archive_path),
+        force,
+        arguments.get("as").and_then(Value::as_str),
+        &supplied,
+    )?)
 }

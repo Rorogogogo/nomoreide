@@ -19,10 +19,23 @@ pub fn profiles_root() -> PathBuf {
     base.join("nomoreide").join("agent-profiles")
 }
 
-/// A profile's own directory. The name has already been checked against
-/// [`super::valid_name`], so it cannot reach outside the root.
+/// A profile's own directory.
+///
+/// Every name that reaches here through `create` has been checked against
+/// [`super::valid_name`], but an *imported* one has not — `as` is passed
+/// straight through — so the name is reduced to its last path segment first.
+/// That is what the reference does, and it is why importing as `../escape`
+/// stores a profile called `../escape` in a directory called `escape`.
 fn directory(name: &str) -> PathBuf {
-    profiles_root().join(name)
+    profiles_root().join(basename(name))
+}
+
+/// The last segment of a path, the way `node:path` reports it — which, for
+/// `..`, is `..`.
+fn basename(name: &str) -> &str {
+    name.rsplit(['/', std::path::MAIN_SEPARATOR])
+        .find(|segment| !segment.is_empty())
+        .unwrap_or(name)
 }
 
 fn file(name: &str) -> PathBuf {
@@ -33,14 +46,23 @@ pub(super) fn exists(name: &str) -> bool {
     file(name).is_file()
 }
 
+/// A profile's file, or `None` when it has none.
+///
+/// The file is validated on the way out, and the name it carries is part of
+/// that: `import` writes whatever name it was given, so a stored profile can
+/// be called something `create` would have refused. It is refused here, when
+/// something tries to read it.
 pub(super) fn load(name: &str) -> Result<Option<Profile>, String> {
     let path = file(name);
     let Ok(text) = std::fs::read_to_string(&path) else {
         return Ok(None);
     };
-    serde_json::from_str(&text)
-        .map(Some)
-        .map_err(|error| format!("Failed to read {}: {error}", path.display()))
+    let invalid = || format!("Profile \"{name}\" has an invalid profile.json.");
+    let profile: Profile = serde_json::from_str(&text).map_err(|_| invalid())?;
+    if !super::valid_name(&profile.name) {
+        return Err(invalid());
+    }
+    Ok(Some(profile))
 }
 
 pub(super) fn save(profile: &Profile) -> Result<(), String> {
@@ -77,7 +99,11 @@ pub(super) fn summaries() -> Result<Vec<(ProfileSummary, SystemTime)>, String> {
             continue;
         }
         let name = entry.file_name().to_string_lossy().into_owned();
-        let Some(profile) = load(&name)? else {
+        // A directory that holds no readable profile is passed over rather
+        // than failing the listing: one bad profile — an import named
+        // something `create` would have refused, say — must not hide every
+        // good one.
+        let Ok(Some(profile)) = load(&name) else {
             continue;
         };
         let path = file(&name);
@@ -88,6 +114,7 @@ pub(super) fn summaries() -> Result<Vec<(ProfileSummary, SystemTime)>, String> {
             ProfileSummary {
                 name: profile.name,
                 description: profile.description,
+                source_agent: profile.source_agent,
                 mcp_count: profile.mcps.len(),
                 skill_count: profile.skills.len(),
                 plugin_count: profile.plugins.len(),

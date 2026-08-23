@@ -277,6 +277,15 @@ impl ToolExecutor for NativeToolExecutor {
                     agent,
                     arguments,
                 } => profiles::apply(name, agent, arguments),
+                NativeTool::ProfilesExport {
+                    name,
+                    output_path,
+                    cwd,
+                } => profiles::export(name, output_path, cwd),
+                NativeTool::ProfilesImport {
+                    archive_path,
+                    arguments,
+                } => profiles::import(archive_path, arguments),
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -435,6 +444,8 @@ impl NativeToolExecutor {
             | NativeTool::ProfilesCopyItems { .. }
             | NativeTool::ProfilesSnapshot { .. }
             | NativeTool::ProfilesApply { .. }
+            | NativeTool::ProfilesExport { .. }
+            | NativeTool::ProfilesImport { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -551,6 +562,15 @@ enum NativeTool<'a> {
     ProfilesApply {
         name: &'a str,
         agent: &'a str,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesExport {
+        name: &'a str,
+        output_path: Option<&'a str>,
+        cwd: Option<&'a str>,
+    },
+    ProfilesImport {
+        archive_path: &'a str,
         arguments: &'a Map<String, Value>,
     },
     ListServices,
@@ -838,6 +858,15 @@ impl<'a> NativeTool<'a> {
             "nomoreide_profiles_apply" => Ok(Self::ProfilesApply {
                 name: required_text(arguments, "name")?,
                 agent: required_text(arguments, "agent")?,
+                arguments,
+            }),
+            "nomoreide_profiles_export" => Ok(Self::ProfilesExport {
+                name: required_text(arguments, "name")?,
+                output_path: arguments.get("outputPath").and_then(Value::as_str),
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+            }),
+            "nomoreide_profiles_import" => Ok(Self::ProfilesImport {
+                archive_path: required_text(arguments, "archivePath")?,
                 arguments,
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),

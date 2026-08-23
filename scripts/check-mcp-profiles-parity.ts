@@ -59,6 +59,31 @@ interface Step {
    * runtimes, like the deletions above.
    */
   writeHomeFiles?: Array<{ path: string; contents: string }>;
+  /**
+   * Home-relative `.tar.gz` archives to build before this step.
+   *
+   * Reading an archive is the only part of this domain that takes input
+   * nobody here wrote, so the malformed ones matter — and none of them can be
+   * produced by exporting a profile. `raw` writes the bytes literally, for an
+   * archive that is not an archive; otherwise `members` are packed into a real
+   * tar, including member paths a well-behaved packer would refuse to write.
+   */
+  writeHomeArchives?: Array<{
+    path: string;
+    raw?: string;
+    members?: Array<{ name: string; contents?: string; link?: string }>;
+  }>;
+  /**
+   * Environment variables for this call only.
+   *
+   * An import fills a credential from the environment when nothing was passed
+   * for it, and the name it looks under is the credential's own key —
+   * `github_token`, not `GITHUB_TOKEN`. Nothing a fixture can plant on disk
+   * reaches that, so a step says it here. Both runtimes are given the same
+   * one, and each call is its own process, so it does not leak into the next
+   * step.
+   */
+  env?: Record<string, string>;
 }
 
 interface Fixture extends FixtureTree {
@@ -111,6 +136,11 @@ try {
         const target = join(runtime.home, file.path);
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, substitute(file.contents, runtime) as string);
+      }
+      for (const archive of step.writeHomeArchives ?? []) {
+        const target = join(runtime.home, archive.path);
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, await buildArchive(archive, runtime));
       }
     }
     const observed = await Promise.all(runtimes.map((runtime) => call(runtime, step)));
@@ -171,7 +201,12 @@ async function call(runtime: Runtime, step: Step): Promise<unknown> {
   const args = Object.fromEntries(
     Object.entries(step.arguments).map(([key, value]) => [key, substitute(value, runtime)]),
   );
-  const response = await callMcpTool(mcpCommand(runtime), step.tool, args);
+  const command = mcpCommand(runtime);
+  const response = await callMcpTool(
+    step.env ? { ...command, env: { ...command.env, ...step.env } } : command,
+    step.tool,
+    args,
+  );
   return maskBackupStamps(normalize(response, runtime));
 }
 
@@ -190,6 +225,10 @@ function maskBackupStamps(value: unknown): unknown {
   if (typeof value === "string") {
     return value
       .replace(/\d{8}-\d{6}(-\d+)?/g, "<stamp>")
+      // An archive is unpacked into a directory named for the moment it was
+      // unpacked, and a message naming a file that was not in it quotes that
+      // path. Which directory it happened to be is not behaviour.
+      .replace(/nomoreide-profile-(import|export)-[A-Za-z0-9]+/g, "nomoreide-profile-$1-<tmp>")
       // `updatedAt` is when a profile was last written, so the two runtimes
       // never agree on it. The *order* it puts a listing in is still compared,
       // because masking the value does not reorder the list.
@@ -252,6 +291,14 @@ async function readTree(root: string, runtime: Runtime): Promise<Record<string, 
       const key = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         await walk(path, key);
+      } else if (entry.name.endsWith(".tar.gz")) {
+        // Two gzip implementations do not produce the same bytes for the same
+        // input, and they are not meant to — what has to match is what comes
+        // back out. So an archive is expanded and each member compared, which
+        // also catches a member the other side did not write at all.
+        for (const [member, body] of Object.entries(await readArchive(path))) {
+          files[`${key}!/${member}`] = rewrite(body);
+        }
       } else {
         const body = await readFile(path, "utf8").catch(() => "<unreadable>");
         // The stamp in a backup's *name* is a race, so the name is
@@ -262,4 +309,82 @@ async function readTree(root: string, runtime: Runtime): Promise<Record<string, 
   };
   await walk(root, "");
   return files;
+}
+
+/**
+ * Every file inside a `.tar.gz`, by member path.
+ *
+ * Shelling out to `tar` rather than reading the format here: both runtimes
+ * wrote a real archive, and the question is whether a third party can get the
+ * same files out of either.
+ */
+async function readArchive(path: string): Promise<Record<string, string>> {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { mkdtemp, readdir } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const run = promisify(execFile);
+  const into = await mkdtemp(join(tmpdir(), "nomoreide-parity-archive-"));
+  try {
+    await run("tar", ["xzf", path, "-C", into]);
+    const files: Record<string, string> = {};
+    const walk = async (directory: string, prefix: string): Promise<void> => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const child = join(directory, entry.name);
+        const key = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) await walk(child, key);
+        else files[key] = await readFile(child, "utf8").catch(() => "<unreadable>");
+      }
+    };
+    await walk(into, "");
+    return files;
+  } catch {
+    return { "<unreadable>": "the archive could not be expanded" };
+  } finally {
+    await rm(into, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Pack an archive by hand, header by header.
+ *
+ * Not `tar(1)`: the point of some of these is a member path a packer refuses
+ * to write — `../escape`, or an absolute one — and that is exactly what an
+ * importer has to defend against. Writing the 512-byte headers directly is the
+ * only way to hand it one.
+ */
+async function buildArchive(
+  archive: { raw?: string; members?: Array<{ name: string; contents?: string; link?: string }> },
+  runtime: Runtime,
+): Promise<Buffer> {
+  if (archive.raw !== undefined) {
+    return Buffer.from(substitute(archive.raw, runtime) as string);
+  }
+  const { gzipSync } = await import("node:zlib");
+  const blocks: Buffer[] = [];
+  for (const member of archive.members ?? []) {
+    const body = member.link
+      ? Buffer.alloc(0)
+      : Buffer.from(substitute(member.contents ?? "", runtime) as string);
+    const header = Buffer.alloc(512);
+    header.write(member.name, 0, 100, "utf8");
+    header.write("000644 \0", 100, 8, "utf8"); // mode
+    header.write("000000 \0", 108, 8, "utf8"); // uid
+    header.write("000000 \0", 116, 8, "utf8"); // gid
+    header.write(`${body.length.toString(8).padStart(11, "0")} `, 124, 12, "utf8");
+    header.write("00000000000 ", 136, 12, "utf8"); // mtime, fixed so two runs agree
+    header.write("        ", 148, 8, "utf8"); // checksum, blanks while computing
+    // A regular file unless the member is a link, which is the one member
+    // type an importer has to refuse: a link pointing out of the directory
+    // turns every later member into a write wherever it points.
+    header.write(member.link ? "2" : "0", 156, 1, "utf8");
+    if (member.link) header.write(member.link, 157, 100, "utf8");
+    header.write("ustar\0" + "00", 257, 8, "utf8");
+    let checksum = 0;
+    for (const byte of header) checksum += byte;
+    header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148, 8, "utf8");
+    blocks.push(header, body, Buffer.alloc((512 - (body.length % 512)) % 512));
+  }
+  blocks.push(Buffer.alloc(1024)); // the two empty blocks that end an archive
+  return gzipSync(Buffer.concat(blocks));
 }

@@ -999,6 +999,55 @@ containing `#` does — unencoded it truncates the path at a fragment.
 
 **Exit gate:** all 90 tools execute in Rust, the parity suite passes, and agent/terminal cleanup and approval-default-deny tests are green.
 
+Eight agent-environment tools, ten profile tools, and the two gates behind them
+have landed. What the probing settled, and three things it corrected:
+
+- **The Codex config is rebuilt on every write, not edited.** The reference
+  re-serialises the whole `mcp_servers` section from what it parsed, which has
+  three effects that only a *file* comparison shows — the section is stably
+  partitioned with stdio servers before remote ones (reordering entries that
+  were already there), it moves below every other table in the file, and every
+  key the reference has no field for is dropped: `startup_timeout_ms`,
+  `bearer_token`, `http_headers`, and anything a user added. A `url` beside a
+  `command` wins unless it is empty; an entry naming neither becomes
+  `command = ""`. The first port had this as an alphabetical sort, and the
+  agent-env gate — which was *written* to catch a sort, and plants
+  `zz-ordered-last` ahead of `aa-ordered-first` to do it — passed anyway,
+  because the sort no-opped on a freshly parsed document and only ran once a
+  write in the same process had rebuilt the section. Discriminating on a first
+  write is what the fixture now does.
+- **`agents_add_mcp` and `profiles_apply` are one writer.** They were modelled
+  as two, sorting and appending respectively; probed side by side against the
+  same planted file they leave byte-identical results.
+- **Only Antigravity reads `httpUrl`,** and there it outranks `url`, with the
+  key that holds the URL standing in for the transport field it does not have.
+- **Codex reads user skills from two directories** — `~/.agents/skills` then
+  `~/.codex/skills`, each sorted internally, so the combined list is not sorted.
+  Reading and writing are not symmetric: a skill is installed into the first but
+  found in either.
+- **A profile's servers are stored in a canonical shape,** rebuilt field by
+  field: `kind, transport, url, headers, env` for a remote and
+  `kind, command, args, env` for a local, with the other kind's fields dropped.
+  A caller's own field order does not survive.
+- **Export redacts by name only.** Five words — `token`, `secret`, `password`,
+  `api_key`, `authorization` — matched against the whole normalised name or its
+  last `_`-separated run. `API_KEY` is a secret and `PRIVATE_KEY` is not;
+  `TOKENIZER`, `TOKENS` and `XTOKEN` are not; `Token` is and `tOkEn` is not,
+  because normalisation is two camel-case splits before a fold rather than a
+  fold. A token pasted into `PLAIN_VALUE` is exported in the clear.
+
+Two things the reference does that are worth changing on the TypeScript side
+rather than only mirroring, and are called out here because parity forbids
+fixing them in Rust alone:
+
+- `profiles_import` does not check the `as` argument the way `create` checks a
+  name. It is reduced to its last path segment, so `../escape` is contained —
+  but `..` is its own last segment, and an import named `..` writes one level
+  above the profiles root.
+- The `.tar.gz` reader refuses a member path that would climb out, and is the
+  only part of this domain that takes input nobody local wrote. It is worth
+  keeping that way.
+
 ### Phase 6 — Dashboard, CLI, and Tauri convergence
 
 - Serve the compiled React assets and compatible loopback API from the Rust daemon.
