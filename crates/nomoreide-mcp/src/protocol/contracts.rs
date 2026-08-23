@@ -42,10 +42,11 @@ pub(super) enum ArgumentContract {
     /// the executor's question, not this one's — the reference asks it in
     /// `ConfigStore`, after zod has passed.
     RepositoryRegistration,
-    /// `nomoreide_git_status` and `nomoreide_git_branches`: one optional
-    /// non-empty `cwd`. Absent means the directory the server was started in,
-    /// so it is a default rather than a missing argument.
-    GitCwd,
+    /// One optional non-empty `cwd`, and nothing else. Absent means the
+    /// directory the server was started in, so it is a default rather than a
+    /// missing argument. Shared by the git reads and by the agent-environment
+    /// reads, which resolve project scope against the same kind of directory.
+    OptionalCwd,
     /// `nomoreide_git_diff` and `nomoreide_git_staged_diff`: that `cwd` plus an
     /// optional non-empty `path` to narrow the patch to.
     GitPath,
@@ -223,11 +224,11 @@ impl ArgumentContract {
             "nomoreide_read_logs" => Some(Self::ServiceLogs),
             "nomoreide_timeline" => Some(Self::Timeline),
             "nomoreide_git_register_repository" => Some(Self::RepositoryRegistration),
-            "nomoreide_git_status" | "nomoreide_git_branches" => Some(Self::GitCwd),
+            "nomoreide_git_status" | "nomoreide_git_branches" => Some(Self::OptionalCwd),
             "nomoreide_git_diff" | "nomoreide_git_staged_diff" => Some(Self::GitPath),
             "nomoreide_git_log" => Some(Self::GitLog),
             "nomoreide_git_worktrees" | "nomoreide_git_prune_worktrees" | "nomoreide_git_fetch" => {
-                Some(Self::GitCwd)
+                Some(Self::OptionalCwd)
             }
             "nomoreide_git_switch_branch" | "nomoreide_git_create_branch" => {
                 Some(Self::GitBranchName)
@@ -271,6 +272,8 @@ impl ArgumentContract {
             "nomoreide_deploy_list_deployments" => Some(Self::DeployDeployments),
             "nomoreide_deploy_get_deployment" => Some(Self::DeployDeployment),
             "nomoreide_deploy_logs" => Some(Self::DeployLogs),
+            "nomoreide_agents_status" => Some(Self::Empty),
+            "nomoreide_agents_read_configs" | "nomoreide_agents_doctor" => Some(Self::OptionalCwd),
             "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
         }
@@ -343,7 +346,7 @@ impl ArgumentContract {
                 "topic",
                 &crate::tools::docs::TOPIC_IDS,
             )),
-            Self::GitCwd => collect(optional_name(arguments, "cwd")),
+            Self::OptionalCwd => collect(optional_name(arguments, "cwd")),
             // `cwd` first: it is the base schema the path is extended onto, so
             // it is also the first failure the reference reports.
             Self::GitPath => {

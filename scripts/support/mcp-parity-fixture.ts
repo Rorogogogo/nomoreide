@@ -9,7 +9,7 @@
  * Nothing here reads either implementation.
  */
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -98,6 +98,20 @@ export interface FixtureTree {
    * honest way to say it: this is the file those flows leave behind.
    */
   config?: Record<string, unknown>;
+  /**
+   * Files planted under the runtime's own `HOME`, path relative to it.
+   *
+   * The agent-environment tools read an agent's *installed* configuration —
+   * `~/.claude.json`, `~/.codex/config.toml` — which no tool writes and which
+   * belongs to whatever the user has installed. Planting them is the only way
+   * two runtimes can be asked the same question, and the honest way to say what
+   * these tools are reading.
+   *
+   * `executable` marks a file that also needs the bit set: agent availability
+   * is a PATH lookup, so a fixture that wants "claude is installed" plants a
+   * runnable stub rather than depending on the machine.
+   */
+  homeFiles?: Array<{ path: string; contents: string; executable?: boolean }>;
 }
 
 export interface RuntimeSpec {
@@ -191,6 +205,13 @@ export async function prepareRuntime(
     if (resolved !== path) {
       paths.set(`${key}#real`, resolved);
     }
+  }
+
+  for (const file of fixture.homeFiles ?? []) {
+    const target = join(home, file.path);
+    await mkdir(join(target, ".."), { recursive: true });
+    await writeFile(target, resolvePlaceholders(file.contents, paths) as string);
+    if (file.executable) await chmod(target, 0o755);
   }
 
   if (fixture.config) {

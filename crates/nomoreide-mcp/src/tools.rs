@@ -1,3 +1,4 @@
+mod agent_env;
 mod database;
 mod deploy;
 mod diagnostics;
@@ -225,6 +226,12 @@ impl ToolExecutor for NativeToolExecutor {
                     deployment,
                     limit,
                 } => deploy::logs(&self.config, provider, cwd, deployment, limit).await,
+                // What agents are installed and how they are configured is a
+                // fact about this machine, so it is read here rather than
+                // asked of a daemon that would only read the same files.
+                NativeTool::AgentsStatus => agent_env::status(),
+                NativeTool::AgentsReadConfigs { cwd } => agent_env::read_configs(cwd),
+                NativeTool::AgentsDoctor { cwd } => agent_env::doctor(cwd),
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -367,6 +374,9 @@ impl NativeToolExecutor {
             | NativeTool::DeployListDeployments { .. }
             | NativeTool::DeployGetDeployment { .. }
             | NativeTool::DeployLogs { .. }
+            | NativeTool::AgentsStatus
+            | NativeTool::AgentsReadConfigs { .. }
+            | NativeTool::AgentsDoctor { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -414,6 +424,15 @@ enum NativeTool<'a> {
         cwd: Option<&'a str>,
         deployment: &'a str,
         limit: u32,
+    },
+    /// The three agent-environment reads. `cwd` is the project directory that
+    /// project scope is resolved against; absent, the server's own.
+    AgentsStatus,
+    AgentsReadConfigs {
+        cwd: Option<&'a str>,
+    },
+    AgentsDoctor {
+        cwd: Option<&'a str>,
     },
     ListServices,
     StartService(&'a str),
@@ -638,6 +657,13 @@ impl<'a> NativeTool<'a> {
                 cwd: arguments.get("cwd").and_then(Value::as_str),
                 deployment: required_text(arguments, "deployment")?,
                 limit: bounded_u32(arguments, "limit", deploy::DEFAULT_LOG_LIMIT),
+            }),
+            "nomoreide_agents_status" => Ok(Self::AgentsStatus),
+            "nomoreide_agents_read_configs" => Ok(Self::AgentsReadConfigs {
+                cwd: arguments.get("cwd").and_then(Value::as_str),
+            }),
+            "nomoreide_agents_doctor" => Ok(Self::AgentsDoctor {
+                cwd: arguments.get("cwd").and_then(Value::as_str),
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),
             "nomoreide_close_ui" => Ok(Self::CloseUi),

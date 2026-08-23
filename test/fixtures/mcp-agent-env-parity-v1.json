@@ -1,0 +1,244 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "demo",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# demo\n",
+              ".claude/skills/review/SKILL.md": "---\nname: review\ndescription: Review code.\n---\n\nDo the review.\n",
+              "nested/keep.md": "# nested\n",
+              ".codex/config.toml": "[mcp_servers.project-codex]\ncommand = \"true\"\n",
+              ".mcp.json": "{\n  \"mcpServers\": {\n    \"dot-mcp\": {\n      \"command\": \"true\"\n    }\n  }\n}\n",
+              ".agents/skills/project-codex-skill/SKILL.md": "---\nname: project-codex-skill\ndescription: P.\n---\n\nP.\n"
+            },
+            "message": "init"
+          }
+        }
+      ]
+    }
+  ],
+  "plainDirectories": [
+    "not-a-repo"
+  ],
+  "pathStubs": [
+    "claude",
+    "codex"
+  ],
+  "homeFiles": [
+    {
+      "path": ".claude.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"linear\": {\n      \"type\": \"http\",\n      \"url\": \"https://mcp.linear.app/mcp\"\n    },\n    \"local-tool\": {\n      \"command\": \"node\",\n      \"args\": [\n        \"server.js\"\n      ],\n      \"env\": {\n        \"TOKEN\": \"shh\"\n      }\n    },\n    \"sse-one\": {\n      \"type\": \"sse\",\n      \"url\": \"https://sse.example.test/x\"\n    },\n    \"url-without-a-type\": {\n      \"url\": \"https://bare.example.test/mcp\"\n    },\n    \"zz-ordered-last\": {\n      \"command\": \"echo\"\n    },\n    \"zz-remote-ordered-last\": {\n      \"type\": \"http\",\n      \"url\": \"https://zz.example.test/mcp\"\n    },\n    \"aa-ordered-first\": {\n      \"command\": \"echo\"\n    },\n    \"aa-remote-ordered-first\": {\n      \"type\": \"sse\",\n      \"url\": \"https://aa.example.test/mcp\"\n    },\n    \"extra-fields\": {\n      \"command\": \"node\",\n      \"args\": [\n        \"x.js\"\n      ],\n      \"cwd\": \"/tmp\",\n      \"disabled\": true\n    },\n    \"extra-remote-fields\": {\n      \"type\": \"http\",\n      \"url\": \"https://hdr.example.test/mcp\",\n      \"headers\": {\n        \"X-Token\": \"shh\"\n      },\n      \"note\": \"kept?\"\n    },\n    \"both-shapes\": {\n      \"command\": \"node\",\n      \"url\": \"https://both.example.test/mcp\"\n    },\n    \"no-shape\": {},\n    \"empty-command\": {\n      \"command\": \"\"\n    },\n    \"empty-url\": {\n      \"url\": \"\"\n    }\n  },\n  \"projects\": {\n    \"{{repo:demo}}\": {\n      \"mcpServers\": {\n        \"scoped\": {\n          \"command\": \"python3\",\n          \"args\": [\n            \"-m\",\n            \"srv\"\n          ]\n        },\n        \"scoped-remote\": {\n          \"type\": \"http\",\n          \"url\": \"https://scoped.example.test/mcp\"\n        }\n      },\n      \"allowedTools\": [\n        \"Bash\"\n      ]\n    },\n    \"/somewhere/else\": {\n      \"mcpServers\": {\n        \"elsewhere\": {\n          \"command\": \"true\"\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".codex/config.toml",
+      "contents": "model = \"gpt-5\"\n\n[mcp_servers.linear]\ncommand = \"npx\"\nargs = [\"-y\", \"linear-mcp\"]\n\n[mcp_servers.docs]\nurl = \"https://docs.example.test/mcp\"\n\n[mcp_servers.zz-ordered-last]\ncommand = \"echo\"\nstartup_timeout_ms = 5000\n\n[mcp_servers.zz-ordered-last.env]\nTOKEN = \"shh\"\n\n[mcp_servers.aa-ordered-first]\ncommand = \"echo\"\n\n[mcp_servers.sse-remote]\nurl = \"https://sse.example.test/codex\"\ntransport = \"sse\"\n\n[mcp_servers.type-sse-remote]\nurl = \"https://type-sse.example.test/codex\"\ntype = \"sse\"\n\n[mcp_servers.headed-remote]\nurl = \"https://hdr.example.test/codex\"\n\n[mcp_servers.headed-remote.headers]\nX-Token = \"shh\"\n"
+    },
+    {
+      "path": ".claude/skills/summarise/SKILL.md",
+      "contents": "---\nname: summarise\ndescription: Summarise a document.\n---\n\nSummarise it.\n"
+    },
+    {
+      "path": ".claude/skills/broken/SKILL.md",
+      "contents": "no frontmatter here\n"
+    },
+    {
+      "path": "bin/claude",
+      "contents": "#!/bin/sh\necho claude-stub\n",
+      "executable": true
+    },
+    {
+      "path": "bin/codex",
+      "contents": "#!/bin/sh\necho codex-stub\n",
+      "executable": true
+    },
+    {
+      "path": ".gemini/antigravity-cli/mcp_config.json",
+      "contents": "{\n  \"mcpServers\": {\n    \"ag-local\": {\n      \"command\": \"ag-server\"\n    },\n    \"ag-remote\": {\n      \"url\": \"https://ag.example.test/mcp\"\n    },\n    \"zz-ordered-last\": {\n      \"command\": \"echo\",\n      \"args\": [\n        \"--x\"\n      ],\n      \"env\": {\n        \"A\": \"b\"\n      },\n      \"unknown\": 1\n    },\n    \"aa-ordered-first\": {\n      \"command\": \"echo\"\n    },\n    \"http-typed\": {\n      \"type\": \"http\",\n      \"url\": \"https://ht.example.test/mcp\"\n    },\n    \"headed-remote\": {\n      \"url\": \"https://hdr.example.test/ag\",\n      \"headers\": {\n        \"X-Token\": \"shh\"\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "path": ".codex/skills/refactor/SKILL.md",
+      "contents": "---\nname: refactor\ndescription: Refactor code.\n---\n\nRefactor.\n"
+    },
+    {
+      "path": "deep/keep.md",
+      "contents": "# deep\n"
+    },
+    {
+      "path": ".claude/skills/zulu/SKILL.md",
+      "contents": "---\nname: zulu\ndescription: Z.\n---\n\nZ.\n"
+    },
+    {
+      "path": ".claude/skills/alpha/SKILL.md",
+      "contents": "---\nname: alpha\ndescription: A.\n---\n\nA.\n"
+    },
+    {
+      "path": ".claude/skills/no-skill-file/notes.txt",
+      "contents": "not a skill\n"
+    },
+    {
+      "path": ".claude/skills/dirname-x/SKILL.md",
+      "contents": "---\nname: frontmatter-y\ndescription: Named twice.\n---\n\nBody.\n"
+    }
+  ],
+  "plan": [
+    {
+      "id": "status/all",
+      "tool": "nomoreide_agents_status",
+      "arguments": {}
+    },
+    {
+      "id": "configs/all",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {}
+    },
+    {
+      "id": "configs/in-a-repo",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "doctor/all",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "doctor/in-a-repo",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {
+        "cwd": "{{repo:demo}}"
+      }
+    },
+    {
+      "id": "configs/in-a-plain-directory",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{dir:not-a-repo}}"
+      }
+    },
+    {
+      "id": "configs/in-a-repo-subdirectory",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{repo:demo}}/nested"
+      }
+    },
+    {
+      "id": "configs/below-a-skills-directory-with-no-repo",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": "{{home}}/deep"
+      }
+    },
+    {
+      "id": "configs/reject-an-empty-cwd",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {
+        "cwd": ""
+      }
+    },
+    {
+      "id": "doctor/reject-a-cwd-of-the-wrong-type",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {
+        "cwd": 5
+      }
+    },
+    {
+      "id": "status/ignore-an-unknown-argument",
+      "tool": "nomoreide_agents_status",
+      "arguments": {
+        "nope": 1
+      }
+    },
+    {
+      "id": "configs/with-configs-that-do-not-parse",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {},
+      "writeHomeFiles": [
+        {
+          "path": ".claude.json",
+          "contents": "{ not json"
+        },
+        {
+          "path": ".codex/config.toml",
+          "contents": "this is not = = toml\n"
+        },
+        {
+          "path": ".gemini/antigravity-cli/mcp_config.json",
+          "contents": "[]"
+        }
+      ]
+    },
+    {
+      "id": "doctor/with-configs-that-do-not-parse",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "configs/with-the-parse-failures-swapped",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {},
+      "writeHomeFiles": [
+        {
+          "path": ".claude.json",
+          "contents": "[]"
+        },
+        {
+          "path": ".gemini/antigravity-cli/mcp_config.json",
+          "contents": "{ not json"
+        }
+      ]
+    },
+    {
+      "id": "doctor/with-the-parse-failures-swapped",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "configs/with-no-claude-config",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {},
+      "removeHomeFiles": [
+        ".claude.json"
+      ]
+    },
+    {
+      "id": "doctor/with-no-claude-config",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "configs/with-no-config-at-all",
+      "tool": "nomoreide_agents_read_configs",
+      "arguments": {},
+      "removeHomeFiles": [
+        ".codex/config.toml",
+        ".gemini"
+      ]
+    },
+    {
+      "id": "doctor/with-no-config-at-all",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    },
+    {
+      "id": "status/with-the-planted-stubs-removed",
+      "tool": "nomoreide_agents_status",
+      "arguments": {},
+      "removeHomeFiles": [
+        "bin"
+      ]
+    },
+    {
+      "id": "doctor/with-the-planted-stubs-removed",
+      "tool": "nomoreide_agents_doctor",
+      "arguments": {}
+    }
+  ]
+}

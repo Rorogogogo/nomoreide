@@ -122,6 +122,12 @@ jobs:
       # comparable if the lines arrive in the same order.
       - name: MCP error-inbox parity
         run: npm run mcp:errors-parity -- ./target/debug/nomoreide
+      # Reads the machine rather than the daemon: which agent CLIs are on PATH
+      # and what each one's config file says. Both runtimes are given the same
+      # planted home and the same PATH, so a `claude` installed on the runner
+      # cannot change the answer.
+      - name: MCP agent-environment parity
+        run: npm run mcp:agent-env-parity -- ./target/debug/nomoreide
       # Not an MCP surface: the dashboard and the desktop app reach these, so
       # the gate drives the crate's own probe example rather than a tool.
       - name: GitActions parity
