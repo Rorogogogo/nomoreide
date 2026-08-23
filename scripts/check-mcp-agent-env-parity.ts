@@ -130,6 +130,11 @@ try {
       // order its config file wrote it, and `deepStrictEqual` compares objects
       // as unordered — so a candidate that sorted these would pass the check
       // above while answering something the reference never says.
+      //
+      // Only this gate asks that, on purpose. Elsewhere an object's keys are
+      // its *fields*, and Rust and TypeScript order those differently for no
+      // observable reason. Here the keys are the user's own server names, so
+      // their order is data.
       assert.strictEqual(JSON.stringify(observed[1]), JSON.stringify(observed[0]));
     } catch (error) {
       console.error(`\nAgent-environment parity failed at step "${step.id}" (${step.tool}).`);
