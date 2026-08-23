@@ -1,0 +1,249 @@
+{
+  "fixtureVersion": 1,
+  "repositories": [
+    {
+      "id": "demo",
+      "initialBranch": "main",
+      "setup": [
+        {
+          "commitFiles": {
+            "files": {
+              "README.md": "# demo\n",
+              ".claude/skills/review/SKILL.md": "---\nname: review\ndescription: Review code.\n---\n\nDo the review.\n"
+            },
+            "message": "init"
+          }
+        }
+      ]
+    }
+  ],
+  "pathStubs": [
+    "claude",
+    "codex"
+  ],
+  "homeFiles": [
+    {
+      "path": "bin/claude",
+      "contents": "#!/bin/sh\necho claude-stub\n",
+      "executable": true
+    },
+    {
+      "path": "bin/codex",
+      "contents": "#!/bin/sh\necho codex-stub\n",
+      "executable": true
+    }
+  ],
+  "plan": [
+    {
+      "id": "list/empty",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "create/first",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "alpha",
+        "description": "The first one."
+      }
+    },
+    {
+      "id": "create/no-description",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "create/duplicate",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "create/reject-a-bad-name",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "-nope"
+      }
+    },
+    {
+      "id": "create/reject-a-path",
+      "tool": "nomoreide_profiles_create",
+      "arguments": {
+        "name": "../escape"
+      }
+    },
+    {
+      "id": "list/after-two",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    },
+    {
+      "id": "get/first",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "get/missing",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "nope"
+      }
+    },
+    {
+      "id": "update/description",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "description": "Changed."
+      }
+    },
+    {
+      "id": "update/mcps",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "mcps": {
+          "zulu": {
+            "kind": "local",
+            "command": "true",
+            "args": [
+              "--x"
+            ],
+            "env": {
+              "K": "v"
+            }
+          },
+          "alpha-mcp": {
+            "kind": "remote",
+            "transport": "sse",
+            "url": "https://a.example.test/mcp"
+          },
+          "http-one": {
+            "kind": "remote",
+            "transport": "http",
+            "url": "https://h.example.test/mcp",
+            "headers": {
+              "X": "y"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "update/missing",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "nope",
+        "description": "x"
+      }
+    },
+    {
+      "id": "update/skills-and-plugins",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha",
+        "skills": [
+          {
+            "name": "zeta"
+          },
+          {
+            "name": "apex"
+          }
+        ],
+        "plugins": [
+          {
+            "name": "plug",
+            "sourceAgent": "claude",
+            "bundleKey": "plug"
+          }
+        ]
+      }
+    },
+    {
+      "id": "update/nothing-at-all",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "update/empty-the-mcps",
+      "tool": "nomoreide_profiles_update",
+      "arguments": {
+        "name": "beta",
+        "mcps": {}
+      }
+    },
+    {
+      "id": "get/after-update",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "alpha"
+      }
+    },
+    {
+      "id": "copy/into-beta",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "zulu"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-source",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "nope",
+        "to": "beta",
+        "mcps": [
+          "zulu"
+        ]
+      }
+    },
+    {
+      "id": "copy/missing-item",
+      "tool": "nomoreide_profiles_copy_items",
+      "arguments": {
+        "from": "alpha",
+        "to": "beta",
+        "mcps": [
+          "ghost"
+        ]
+      }
+    },
+    {
+      "id": "get/beta",
+      "tool": "nomoreide_profiles_get",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "delete/beta",
+      "tool": "nomoreide_profiles_delete",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "delete/missing",
+      "tool": "nomoreide_profiles_delete",
+      "arguments": {
+        "name": "beta"
+      }
+    },
+    {
+      "id": "list/after-delete",
+      "tool": "nomoreide_profiles_list",
+      "arguments": {}
+    }
+  ]
+}

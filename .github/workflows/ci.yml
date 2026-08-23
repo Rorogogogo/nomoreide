@@ -128,6 +128,10 @@ jobs:
       # cannot change the answer.
       - name: MCP agent-environment parity
         run: npm run mcp:agent-env-parity -- ./target/debug/nomoreide
+      # Saved profiles are a directory tree under the user's config, so this
+      # compares what was written as well as what was said.
+      - name: MCP agent-profile parity
+        run: npm run mcp:profiles-parity -- ./target/debug/nomoreide
       # Not an MCP surface: the dashboard and the desktop app reach these, so
       # the gate drives the crate's own probe example rather than a tool.
       - name: GitActions parity

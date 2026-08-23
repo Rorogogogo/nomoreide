@@ -108,11 +108,15 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     assert!(status.get("pgid").is_none(), "{status}");
     // What the reference reports for a running service it launched. The
     // fixture child announces no URL, so that one field is absent; nothing
-    // has ended, so nothing describes an ending. (Keys come back sorted here,
-    // because a parsed object is; the declared order is a unit test.)
+    // has ended, so nothing describes an ending.
+    //
+    // These used to come back sorted, because parsing an object sorted it.
+    // `serde_json`'s `preserve_order` ended that, so this is now the order the
+    // payload is actually written in — and the order the reference writes it
+    // in too, which the runtime parity gate checks against the real thing.
     assert_eq!(
         keys(&status),
-        vec!["kind", "name", "pid", "startedAt", "state"]
+        vec!["name", "state", "kind", "pid", "startedAt"]
     );
     assert_eq!(status["kind"], "local");
     let pid = status["pid"].as_u64().unwrap() as u32;
@@ -152,14 +156,14 @@ fn mcp_tools_start_and_stop_a_service_in_the_shared_daemon() {
     assert_eq!(
         keys(&ended),
         vec![
-            "exitCode",
-            "exitedAt",
-            "kind",
             "name",
+            "state",
+            "kind",
             "pid",
-            "signal",
             "startedAt",
-            "state"
+            "exitedAt",
+            "exitCode",
+            "signal"
         ]
     );
     assert_eq!(ended["exitCode"], Value::Null);

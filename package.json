@@ -48,6 +48,7 @@
     "mcp:docs-ui-parity": "node --import tsx scripts/check-mcp-docs-ui-parity.ts",
     "mcp:errors-parity": "node --import tsx scripts/check-mcp-errors-parity.ts",
     "mcp:agent-env-parity": "node --import tsx scripts/check-mcp-agent-env-parity.ts",
+    "mcp:profiles-parity": "node --import tsx scripts/check-mcp-profiles-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",

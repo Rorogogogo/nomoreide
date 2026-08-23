@@ -58,6 +58,19 @@ pub(super) enum ArgumentContract {
     /// `nomoreide_agents_snapshot_agent`: one agent, and where to resolve
     /// project scope from.
     AgentSnapshot,
+    /// `nomoreide_profiles_list`: nothing at all. Named rather than reusing
+    /// `Empty` so the profile tools read as a set.
+    /// A single required non-empty `name`, for the profile reads and deletes.
+    ProfileName,
+    /// `nomoreide_profiles_create`: that name plus an optional description.
+    ProfileCreation,
+    /// `nomoreide_profiles_update`: the name, and any of the three collections.
+    /// What is *in* those collections is checked here too, because a profile
+    /// stores what it is given — a malformed entry would otherwise be written
+    /// and only fail when something tried to apply it.
+    ProfileUpdate,
+    /// `nomoreide_profiles_copy_items`: two profile names and what to copy.
+    ProfileCopy,
     /// One optional non-empty `cwd`, and nothing else. Absent means the
     /// directory the server was started in, so it is a default rather than a
     /// missing argument. Shared by the git reads and by the agent-environment
@@ -294,6 +307,11 @@ impl ArgumentContract {
             "nomoreide_deploy_list_deployments" => Some(Self::DeployDeployments),
             "nomoreide_deploy_get_deployment" => Some(Self::DeployDeployment),
             "nomoreide_deploy_logs" => Some(Self::DeployLogs),
+            "nomoreide_profiles_list" => Some(Self::Empty),
+            "nomoreide_profiles_get" | "nomoreide_profiles_delete" => Some(Self::ProfileName),
+            "nomoreide_profiles_create" => Some(Self::ProfileCreation),
+            "nomoreide_profiles_update" => Some(Self::ProfileUpdate),
+            "nomoreide_profiles_copy_items" => Some(Self::ProfileCopy),
             "nomoreide_agents_status" => Some(Self::Empty),
             "nomoreide_agents_add_mcp" => Some(Self::AgentMcpAddition),
             "nomoreide_agents_remove_mcp" => Some(Self::AgentMcpRemoval),
@@ -373,6 +391,28 @@ impl ArgumentContract {
                 "topic",
                 &crate::tools::docs::TOPIC_IDS,
             )),
+            Self::ProfileName => collect(required_string_of(arguments, "name", 1)),
+            Self::ProfileCreation => {
+                let mut failures = required_string_of(arguments, "name", 1);
+                failures.extend(optional_string(arguments, "description"));
+                collect(failures)
+            }
+            Self::ProfileUpdate => {
+                let mut failures = required_string_of(arguments, "name", 1);
+                failures.extend(optional_string(arguments, "description"));
+                failures.extend(profile_mcps(arguments));
+                failures.extend(named_objects(arguments, "skills"));
+                failures.extend(named_objects(arguments, "plugins"));
+                collect(failures)
+            }
+            Self::ProfileCopy => {
+                let mut failures = required_string_of(arguments, "from", 1);
+                failures.extend(required_string_of(arguments, "to", 1));
+                for key in ["mcps", "skills", "plugins"] {
+                    failures.extend(string_array(arguments, key, ArrayShape::ANY));
+                }
+                collect(failures)
+            }
             Self::OptionalCwd => collect(optional_name(arguments, "cwd")),
             // Schema order, because zod reports failures in it: the fields a
             // tool declares first are the ones a caller is told about first.
@@ -743,6 +783,76 @@ fn optional_string(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
 /// An optional member of a fixed set. A value of the wrong type is reported
 /// differently from a string that is simply not one of the members — the
 /// reference says "Invalid enum value" only when it had a string to compare.
+/// The `mcps` map a profile update sends: each entry is one of two shapes,
+/// told apart by its `kind`. The reference reports an entry whose `kind` is
+/// neither as a bad discriminator rather than as a bad field, so an entry that
+/// names no shape produces one failure rather than one per missing field.
+fn profile_mcps(arguments: &Map<String, Value>) -> Vec<String> {
+    let Some(value) = arguments.get("mcps") else {
+        return Vec::new();
+    };
+    let Some(entries) = value.as_object() else {
+        return vec![format!(
+            "mcps: Expected object, received {}",
+            schema_type(value)
+        )];
+    };
+    let mut failures = Vec::new();
+    for (name, entry) in entries {
+        let kind = entry.get("kind").and_then(Value::as_str);
+        match kind {
+            Some("local") => {
+                failures.extend(nested_string(
+                    entry,
+                    &format!("mcps.{name}"),
+                    "command",
+                    true,
+                ));
+            }
+            Some("remote") => {
+                failures.extend(nested_string(entry, &format!("mcps.{name}"), "url", true));
+            }
+            _ => failures.push(format!(
+                "mcps.{name}.kind: Invalid discriminator value. Expected 'local' | 'remote'"
+            )),
+        }
+    }
+    failures
+}
+
+fn nested_string(entry: &Value, path: &str, key: &str, required: bool) -> Vec<String> {
+    match entry.get(key) {
+        None if required => vec![format!("{path}.{key}: Required")],
+        None => Vec::new(),
+        Some(Value::String(value)) if value.is_empty() => vec![format!(
+            "{path}.{key}: String must contain at least 1 character(s)"
+        )],
+        Some(Value::String(_)) => Vec::new(),
+        Some(other) => vec![format!(
+            "{path}.{key}: Expected string, received {}",
+            schema_type(other)
+        )],
+    }
+}
+
+/// A list whose entries each carry a non-empty `name`.
+fn named_objects(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
+    let Some(value) = arguments.get(key) else {
+        return Vec::new();
+    };
+    let Some(members) = value.as_array() else {
+        return vec![format!(
+            "{key}: Expected array, received {}",
+            schema_type(value)
+        )];
+    };
+    members
+        .iter()
+        .enumerate()
+        .flat_map(|(index, member)| nested_string(member, &format!("{key}.{index}"), "name", true))
+        .collect()
+}
+
 /// The shared shape of the two moves: an agent, the thing being moved, and
 /// both ends of the move. Only the name of the thing differs between them.
 fn scope_move(arguments: &Map<String, Value>, name: &str) -> Vec<String> {

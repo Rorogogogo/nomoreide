@@ -7,6 +7,7 @@ mod errors;
 mod git;
 mod github;
 mod onboard;
+mod profiles;
 mod registration;
 mod ui;
 
@@ -249,6 +250,22 @@ impl ToolExecutor for NativeToolExecutor {
                     to,
                 } => agent_env::move_skill_scope(target, name, from, to),
                 NativeTool::AgentsSnapshotAgent { target } => agent_env::snapshot_agent(target),
+                NativeTool::ProfilesList => profiles::list(),
+                NativeTool::ProfilesGet { name } => profiles::get(name),
+                NativeTool::ProfilesCreate { name, description } => {
+                    profiles::create(name, description)
+                }
+                NativeTool::ProfilesUpdate {
+                    name,
+                    description,
+                    arguments,
+                } => profiles::update(name, description, arguments),
+                NativeTool::ProfilesDelete { name } => profiles::delete(name),
+                NativeTool::ProfilesCopyItems {
+                    from,
+                    to,
+                    arguments,
+                } => profiles::copy_items(from, to, arguments),
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -399,6 +416,12 @@ impl NativeToolExecutor {
             | NativeTool::AgentsMoveMcpScope { .. }
             | NativeTool::AgentsMoveSkillScope { .. }
             | NativeTool::AgentsSnapshotAgent { .. }
+            | NativeTool::ProfilesList
+            | NativeTool::ProfilesGet { .. }
+            | NativeTool::ProfilesCreate { .. }
+            | NativeTool::ProfilesUpdate { .. }
+            | NativeTool::ProfilesDelete { .. }
+            | NativeTool::ProfilesCopyItems { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -481,6 +504,30 @@ enum NativeTool<'a> {
     },
     AgentsSnapshotAgent {
         target: agent_env::Target<'a>,
+    },
+    /// The saved-profile reads and edits. `arguments` is carried whole for the
+    /// two that take documents, because what they accept is what the profile
+    /// then stores.
+    ProfilesList,
+    ProfilesGet {
+        name: &'a str,
+    },
+    ProfilesCreate {
+        name: &'a str,
+        description: Option<&'a str>,
+    },
+    ProfilesUpdate {
+        name: &'a str,
+        description: Option<&'a str>,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesDelete {
+        name: &'a str,
+    },
+    ProfilesCopyItems {
+        from: &'a str,
+        to: &'a str,
+        arguments: &'a Map<String, Value>,
     },
     ListServices,
     StartService(&'a str),
@@ -736,6 +783,27 @@ impl<'a> NativeTool<'a> {
             }),
             "nomoreide_agents_snapshot_agent" => Ok(Self::AgentsSnapshotAgent {
                 target: agent_target(arguments),
+            }),
+            "nomoreide_profiles_list" => Ok(Self::ProfilesList),
+            "nomoreide_profiles_get" => Ok(Self::ProfilesGet {
+                name: required_text(arguments, "name")?,
+            }),
+            "nomoreide_profiles_create" => Ok(Self::ProfilesCreate {
+                name: required_text(arguments, "name")?,
+                description: arguments.get("description").and_then(Value::as_str),
+            }),
+            "nomoreide_profiles_update" => Ok(Self::ProfilesUpdate {
+                name: required_text(arguments, "name")?,
+                description: arguments.get("description").and_then(Value::as_str),
+                arguments,
+            }),
+            "nomoreide_profiles_delete" => Ok(Self::ProfilesDelete {
+                name: required_text(arguments, "name")?,
+            }),
+            "nomoreide_profiles_copy_items" => Ok(Self::ProfilesCopyItems {
+                from: required_text(arguments, "from")?,
+                to: required_text(arguments, "to")?,
+                arguments,
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),
             "nomoreide_close_ui" => Ok(Self::CloseUi),
