@@ -16,6 +16,7 @@
 mod branches;
 mod exec;
 mod files;
+mod graph_layout;
 mod inspect;
 mod search;
 mod types;
@@ -25,9 +26,12 @@ pub use worktrees::worktree_at;
 
 pub use search::ContentSearchOptions;
 
+pub use graph_layout::{GitGraphEdge, GitGraphEdgeKind, GitGraphLayoutRow};
+
 pub use types::{
     ContentMatch, ContentSearchResult, FileContentMatches, FileNameMatch, FileSizeRank, GitBranch,
-    GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree, TrackedFileContent,
+    GitCommit, GitFileStatus, GitGraphCommit, GitGraphRef, GitGraphRefKind, GitLogEntry, GitStatus,
+    GitWorktree, TrackedFileContent,
 };
 
 /// Read-safe Git operations. Every method takes the working directory it acts

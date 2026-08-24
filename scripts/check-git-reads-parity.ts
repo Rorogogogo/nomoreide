@@ -63,6 +63,12 @@ const steps: readonly Step[] = [
   { name: "diff/missing-file-param", path: "/api/git/diff" },
   { name: "diff/unknown-repo", path: "/api/git/diff?file=a.txt&repo=nope" },
   { name: "diff/no-trailing-newline", path: "/api/git/diff?file=no-newline.txt", text: true },
+  { name: "graph/default", path: "/api/git/graph" },
+  { name: "graph/custom-limit", path: "/api/git/graph?limit=2" },
+  { name: "graph/unparsable-limit", path: "/api/git/graph?limit=not-a-number" },
+  { name: "graph/zero-limit", path: "/api/git/graph?limit=0" },
+  { name: "graph/fractional-limit", path: "/api/git/graph?limit=2.9" },
+  { name: "graph/over-ceiling", path: "/api/git/graph?limit=99999" },
 ];
 // `/api/git/graph` and `/api/git/worktrees` are not served by the native
 // daemon yet — see the note at the end of routes/git.rs for why — so they
@@ -139,7 +145,7 @@ try {
       // same way the terminal and approval gates don't compare it either.
       const normalize = (answer: Answer) => {
         const { contentType: _contentType, ...rest } = normalizePaths(answer, [reference.workspace, candidate.workspace]);
-        return rest;
+        return { ...rest, body: normalizeHashes(rest.body) };
       };
       assert.deepStrictEqual(normalize(answers.candidate), normalize(answers.reference));
       console.log(`ok   ${referenceStep.name}`);
@@ -196,6 +202,35 @@ function normalizePaths(answer: Answer, paths: readonly string[]): Answer {
   let replaced = text;
   for (const path of paths) replaced = replaced.split(path).join("<workspace>");
   return { ...answer, body: JSON.parse(replaced) };
+}
+
+/**
+ * Each runtime seeds its own repo, so commit hashes and author timestamps
+ * differ by construction. Replace each distinct hash with a positional token
+ * (in first-seen order) so *structure* — lane, laneCount, edges, throughLanes,
+ * refs, parent wiring — is still compared exactly, which is the whole point of
+ * gating the graph.
+ */
+function normalizeHashes(value: unknown): unknown {
+  const seen = new Map<string, string>();
+  const token = (hash: string) => {
+    if (!seen.has(hash)) seen.set(hash, `<hash-${seen.size}>`);
+    return seen.get(hash)!;
+  };
+  const walk = (node: unknown): unknown => {
+    if (typeof node === "string") return /^[0-9a-f]{40}$/.test(node) ? token(node) : node;
+    if (Array.isArray(node)) return node.map(walk);
+    if (node && typeof node === "object") {
+      return Object.fromEntries(
+        Object.entries(node).map(([key, entry]) =>
+          // A commit timestamp is wall-clock and cannot match across runs.
+          key === "timestamp" ? [key, "<timestamp>"] : [key, walk(entry)],
+        ),
+      );
+    }
+    return node;
+  };
+  return walk(value);
 }
 
 function workspaceFiles(): WorkspaceFile[] {

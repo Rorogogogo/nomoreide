@@ -36,8 +36,9 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/branches", get(branches))
         .route("/api/git/identity", get(identity))
         .route("/api/git/diff", get(diff))
+        .route("/api/git/graph", get(graph))
 }
-// `/api/git/graph` and `/api/git/worktrees` are deliberately not registered
+// `/api/git/worktrees` is deliberately not registered
 // yet — see the note at the end of this file.
 
 /// How many paths the file palette shows before it stops listing.
@@ -453,13 +454,42 @@ async fn diff(State(state): State<AppState>, Query(query): Query<DiffQuery>) -> 
     }
 }
 
-// `/api/git/graph` is not served yet: the reference computes a git-graph
-// *layout* (lane/edge assignment for the visual DAG, `git-graph-layout.ts`,
-// 126 lines) on top of the raw log, not just the flat commit list
-// `GitManager::graph` already returns for other callers. Porting the layout
-// algorithm is its own increment.
-//
-// `/api/git/worktrees` is not served yet either: the reference route uses
+#[derive(Deserialize)]
+struct GraphQuery {
+    #[serde(default)]
+    limit: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphEnvelope {
+    ok: bool,
+    commits: Vec<nomoreide_core::git_manager::GitGraphCommit>,
+}
+
+/// The graph's own limit, which is not the search endpoints' `clamp`: the
+/// reference parses as a float and floors it, so `1.9` is 1, and anything
+/// unparsable or non-positive falls back to 200 rather than to a shared
+/// default.
+fn graph_limit(value: Option<String>) -> usize {
+    value
+        .and_then(|limit| limit.trim().parse::<f64>().ok())
+        .filter(|limit| limit.is_finite() && *limit > 0.0)
+        .map_or(200, |limit| (limit.floor() as usize).min(2000))
+}
+
+async fn graph(State(state): State<AppState>, Query(query): Query<GraphQuery>) -> Response {
+    let limit = graph_limit(query.limit);
+    let cwd = state.workspace_cwd().await;
+    match GitManager::graph_with_layout(&cwd, limit).await {
+        Ok(commits) => Json(GraphEnvelope { ok: true, commits }).into_response(),
+        // The reference has no try/catch on this route, so a throw surfaces as
+        // the server's own 500 rather than a route-shaped 400.
+        Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+// `/api/git/worktrees` is not served yet: the reference route uses
 // `GitWorktreeManager`, which reports `createdAt`, `primary`, and `dirty`
 // per worktree — none of which `GitManager::worktrees` (built for the
 // simpler `nomoreide_git_worktrees` MCP tool) computes. Serving the plain

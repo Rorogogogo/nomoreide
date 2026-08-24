@@ -3,6 +3,42 @@
 
 use serde::{Deserialize, Serialize};
 
+/// A ref pointing at a commit in the graph. `head` is synthesized from
+/// `rev-parse HEAD` rather than read from `for-each-ref`, and is listed first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitGraphRef {
+    pub name: String,
+    pub kind: GitGraphRefKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GitGraphRefKind {
+    Head,
+    Branch,
+    Remote,
+    Tag,
+}
+
+/// One row of the rendered commit graph: the commit itself, the refs pointing
+/// at it, and where it draws.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitGraphCommit {
+    pub hash: String,
+    pub parents: Vec<String>,
+    pub author: String,
+    pub email: String,
+    pub timestamp: i64,
+    pub subject: String,
+    pub refs: Vec<GitGraphRef>,
+    pub lane: usize,
+    pub lane_count: usize,
+    pub edges: Vec<super::graph_layout::GitGraphEdge>,
+    pub through_lanes: Vec<usize>,
+}
+
 /// What `/api/git/file` hands back for one tracked path: the reference caps
 /// what it reads (`truncated`) and refuses to decode a binary file as text
 /// (`binary`) rather than mangling it.

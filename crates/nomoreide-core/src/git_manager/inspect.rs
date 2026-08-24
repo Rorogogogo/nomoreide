@@ -1,9 +1,14 @@
 //! Reading the repository: working-tree status, diffs, history, branches.
 
 use super::exec;
-use super::types::{GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus};
+use super::graph_layout;
+use super::types::{
+    GitBranch, GitCommit, GitFileStatus, GitGraphCommit, GitGraphRef, GitGraphRefKind, GitLogEntry,
+    GitStatus,
+};
 use super::GitManager;
 use anyhow::{anyhow, Context, Result};
+use std::collections::HashMap;
 
 const LOCAL_PREFIX: &str = "refs/heads/";
 const REMOTE_PREFIX: &str = "refs/remotes/";
@@ -212,6 +217,141 @@ impl GitManager {
             out.push("\\ No newline at end of file".to_string());
         }
         Ok(format!("{}\n", out.join("\n")))
+    }
+
+    /// The commit graph as the history view draws it: every ref's history in
+    /// date order, with refs attached and lanes assigned.
+    ///
+    /// Distinct from [`Self::graph`], which returns a flat list for the MCP
+    /// tool surface. This one reads `--all` (so side branches appear at all),
+    /// carries a raw unix `timestamp` rather than a formatted date, and runs
+    /// the layout pass.
+    pub async fn graph_with_layout(cwd: &str, limit: usize) -> Result<Vec<GitGraphCommit>> {
+        const RECORD_SEP: char = '\x1e';
+        const FIELD_SEP: char = '\x1f';
+        let format = format!(
+            "%H{FIELD_SEP}%P{FIELD_SEP}%an{FIELD_SEP}%ae{FIELD_SEP}%at{FIELD_SEP}%s{RECORD_SEP}"
+        );
+
+        // Bound before the join: a `format!` temporary inside the macro would
+        // be dropped while the borrowed argv slice is still in use.
+        let max_count = format!("--max-count={limit}");
+        let pretty = format!("--pretty=format:{format}");
+        let log_args = ["log", "--all", "--date-order", &max_count, &pretty];
+        let ref_args = [
+            "for-each-ref",
+            "--format=%(refname)%09%(objectname)",
+            "refs/heads",
+            "refs/remotes",
+            "refs/tags",
+        ];
+        let head_args = ["rev-parse", "HEAD"];
+        let (log_output, refs_output, head_hash) = tokio::join!(
+            exec::output(cwd, &log_args),
+            exec::output(cwd, &ref_args),
+            exec::output(cwd, &head_args),
+        );
+        let log_output = log_output?;
+        let refs_output = refs_output?;
+        // A repository with no commits has no HEAD to resolve; that is not an
+        // error here, it simply means no ref is marked as checked out.
+        let head_hash = head_hash.unwrap_or_default();
+
+        let mut refs_by_hash: HashMap<String, Vec<GitGraphRef>> = HashMap::new();
+        for line in refs_output.lines().filter(|line| !line.is_empty()) {
+            let mut parts = line.splitn(2, '\t');
+            let (Some(ref_name), Some(hash)) = (parts.next(), parts.next()) else {
+                continue;
+            };
+            if ref_name.is_empty() || hash.is_empty() || ref_name.ends_with("/HEAD") {
+                continue;
+            }
+            let (name, kind) = if let Some(rest) = ref_name.strip_prefix("refs/heads/") {
+                (rest, GitGraphRefKind::Branch)
+            } else if let Some(rest) = ref_name.strip_prefix("refs/remotes/") {
+                (rest, GitGraphRefKind::Remote)
+            } else if let Some(rest) = ref_name.strip_prefix("refs/tags/") {
+                (rest, GitGraphRefKind::Tag)
+            } else {
+                continue;
+            };
+            refs_by_hash
+                .entry(hash.to_string())
+                .or_default()
+                .push(GitGraphRef {
+                    name: name.to_string(),
+                    kind,
+                });
+        }
+
+        // HEAD goes to the front of its commit's list, so the UI can lead with it.
+        let trimmed_head = head_hash.trim();
+        if !trimmed_head.is_empty() {
+            refs_by_hash
+                .entry(trimmed_head.to_string())
+                .or_default()
+                .insert(
+                    0,
+                    GitGraphRef {
+                        name: "HEAD".to_string(),
+                        kind: GitGraphRefKind::Head,
+                    },
+                );
+        }
+
+        let parsed: Vec<ParsedGraphCommit> = log_output
+            .split(RECORD_SEP)
+            .map(|record| record.strip_prefix('\n').unwrap_or(record))
+            .filter(|record| !record.is_empty())
+            .map(|record| {
+                let fields: Vec<&str> = record.split(FIELD_SEP).collect();
+                let parent_field = fields.get(1).copied().unwrap_or("");
+                ParsedGraphCommit {
+                    hash: fields.first().copied().unwrap_or("").to_string(),
+                    parents: parent_field
+                        .split(' ')
+                        .filter(|parent| !parent.is_empty())
+                        .map(str::to_string)
+                        .collect(),
+                    author: fields.get(2).copied().unwrap_or("").to_string(),
+                    email: fields.get(3).copied().unwrap_or("").to_string(),
+                    timestamp: fields
+                        .get(4)
+                        .and_then(|value| value.parse().ok())
+                        .unwrap_or(0),
+                    subject: fields.get(5).copied().unwrap_or("").to_string(),
+                }
+            })
+            .filter(|commit| !commit.hash.is_empty())
+            .collect();
+
+        let layout = graph_layout::assign_lanes(
+            &parsed
+                .iter()
+                .map(|commit| graph_layout::GraphCommitInput {
+                    hash: commit.hash.clone(),
+                    parents: commit.parents.clone(),
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        Ok(parsed
+            .into_iter()
+            .zip(layout)
+            .map(|(commit, row)| GitGraphCommit {
+                refs: refs_by_hash.get(&commit.hash).cloned().unwrap_or_default(),
+                hash: commit.hash,
+                parents: commit.parents,
+                author: commit.author,
+                email: commit.email,
+                timestamp: commit.timestamp,
+                subject: commit.subject,
+                lane: row.lane,
+                lane_count: row.lane_count,
+                edges: row.edges,
+                through_lanes: row.through_lanes,
+            })
+            .collect())
     }
 
     pub async fn graph(cwd: &str, limit: usize) -> Result<Vec<GitCommit>> {
@@ -647,4 +787,14 @@ mod file_diff_tests {
         assert!(diff.contains("@@ -0,0 +1,1 @@"), "got:\n{diff}");
         tokio::fs::remove_dir_all(&cwd).await.ok();
     }
+}
+
+/// One `git log` record before layout is applied.
+struct ParsedGraphCommit {
+    hash: String,
+    parents: Vec<String>,
+    author: String,
+    email: String,
+    timestamp: i64,
+    subject: String,
 }
