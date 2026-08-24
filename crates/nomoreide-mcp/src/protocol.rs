@@ -135,16 +135,18 @@ impl McpSession {
             };
         }
 
+        // Unreachable for the frozen ninety — every one of them has a contract,
+        // which `every_frozen_tool_is_served_natively` holds. It is kept for
+        // the tool that is added to the manifest before it is implemented: that
+        // tool is advertised by `tools/list`, so answering "unknown tool" would
+        // contradict what this server just said it could do.
         error(
             id,
             -32001,
-            &format!(
-                "Tool '{name}' is not implemented by the native runtime in migration phase 1."
-            ),
+            &format!("Tool '{name}' is advertised by this server but not yet implemented."),
             Some(json!({
                 "kind": "not_implemented",
-                "tool": name,
-                "migrationPhase": 1
+                "tool": name
             })),
         )
     }
@@ -251,22 +253,44 @@ mod tests {
         McpSession::new(Arc::new(StaticToolExecutor { result }))
     }
 
+    /// Every tool in the frozen contract is served natively.
+    ///
+    /// This replaced a test that used `nomoreide_open_terminal` as its example
+    /// of a tool the port had not reached yet — there is no longer one to name.
+    /// Stated as an invariant over the whole manifest rather than as a count,
+    /// so adding a tool without porting it fails here and names it.
+    #[test]
+    fn every_frozen_tool_is_served_natively() {
+        let unported: Vec<&str> = registry()
+            .tools()
+            .iter()
+            .filter_map(|tool| tool.get("name").and_then(Value::as_str))
+            .filter(|name| ArgumentContract::of(name).is_none())
+            .collect();
+        assert!(unported.is_empty(), "not served natively: {unported:?}");
+    }
+
+    /// The migration path itself still works, for a tool the manifest does not
+    /// know at all. Nothing reaches it today; it is what a *new* tool would hit
+    /// between being added to the contract and being implemented.
     #[tokio::test]
-    async fn known_but_unported_tools_have_a_typed_migration_error() {
+    async fn a_tool_outside_the_contract_is_an_unknown_tool() {
         let response = request(
             &mut session(Ok(String::new())),
             json!({
                 "jsonrpc": "2.0",
                 "id": "call-1",
                 "method": "tools/call",
-                "params": { "name": "nomoreide_open_terminal", "arguments": {} }
+                "params": { "name": "nomoreide_not_a_tool", "arguments": {} }
             }),
         )
         .await;
         assert_eq!(response["id"], "call-1");
-        assert_eq!(response["error"]["code"], -32001);
-        assert_eq!(response["error"]["data"]["kind"], "not_implemented");
-        assert_eq!(response["error"]["data"]["tool"], "nomoreide_open_terminal");
+        assert_eq!(response["error"]["code"], -32601);
+        assert_eq!(
+            response["error"]["message"],
+            "MCP error -32601: Unknown tool: nomoreide_not_a_tool"
+        );
     }
 
     #[tokio::test]
