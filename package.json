@@ -50,6 +50,7 @@
     "mcp:agent-env-parity": "node --import tsx scripts/check-mcp-agent-env-parity.ts",
     "mcp:profiles-parity": "node --import tsx scripts/check-mcp-profiles-parity.ts",
     "mcp:registry-parity": "node --import tsx scripts/check-mcp-registry-parity.ts",
+    "mcp:terminal-parity": "node --import tsx scripts/check-mcp-terminal-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",
