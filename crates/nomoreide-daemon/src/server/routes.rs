@@ -2,6 +2,7 @@
 //! — or adding one and merging it here — and never editing the request path in
 //! `server.rs`.
 
+mod agent_chat;
 mod bundles;
 mod errors;
 mod git;
@@ -33,6 +34,7 @@ pub(crate) fn router(state: AppState) -> Router {
 fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(meta::authenticated())
+        .merge(agent_chat::routes())
         .merge(errors::routes())
         .merge(services::routes())
         .merge(bundles::routes())

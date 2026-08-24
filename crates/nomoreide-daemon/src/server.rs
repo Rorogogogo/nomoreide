@@ -10,6 +10,7 @@ use crate::DaemonOwnership;
 use anyhow::{Context, Result};
 use app::AppState;
 use chrono::Utc;
+use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::log_store::LogStore;
@@ -128,6 +129,7 @@ pub async fn serve_with_shutdown_requests(
         terminal: TerminalManager::new(),
         events: Arc::new(app::DiscardingEventSink),
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        approvals: ApprovalBroker::new(),
     });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

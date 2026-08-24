@@ -7,6 +7,7 @@ use axum::extract::{Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
+use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
@@ -39,6 +40,13 @@ pub(crate) struct AppState {
     /// Hands out `term_1`, `term_2`, … the way the reference does. Sessions the
     /// caller named (`svc:<service>`) do not draw from it.
     pub(crate) session_counter: Arc<AtomicU64>,
+    /// Parks a blocked tool-permission hook until a human decides.
+    ///
+    /// No run opens one here yet — the agent event stream is still the
+    /// TypeScript daemon's — so every request this broker sees is one it
+    /// denies. That is the point: the refusals in front of a decision are the
+    /// part a hook depends on, and they answer the same either way.
+    pub(crate) approvals: ApprovalBroker,
 }
 
 /// A sink that drops what it is given.

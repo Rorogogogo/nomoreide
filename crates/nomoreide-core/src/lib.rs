@@ -2,6 +2,7 @@ pub mod agent_context;
 pub mod agent_env;
 pub mod agent_profiles;
 pub mod agent_transcripts;
+pub mod approval_broker;
 pub mod bundle;
 pub mod cloudflare_auth;
 pub mod cloudflare_context;

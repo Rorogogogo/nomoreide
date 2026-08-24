@@ -12,7 +12,7 @@ pub(crate) async fn not_found() -> Response {
 }
 
 pub(crate) async fn method_not_allowed() -> Response {
-    error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed.")
+    error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed")
 }
 
 pub(crate) fn error(status: StatusCode, message: &str) -> Response {
