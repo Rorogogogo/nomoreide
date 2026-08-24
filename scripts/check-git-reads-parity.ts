@@ -1,14 +1,14 @@
 /**
- * Phase 6 parity gate for the read-safe `/api/git/*` routes added to the
- * native daemon: status, files, file-sizes, file, commit, commit/files,
- * branches. (search/files and search/content already have their own
- * coverage via the daemon's HTTP integration test and are not repeated
- * here; graph and worktrees are not served natively yet — see routes/git.rs.)
+ * Phase 6 parity gate for the read-safe `/api/git/*` routes served by the
+ * native daemon: status, overview, files, file-sizes, file, commit,
+ * commit/files, branches, identity, diff, graph, worktrees. (search/files and
+ * search/content have their own coverage via the daemon's HTTP integration
+ * test and are not repeated here.)
  *
  * Nothing here reads either implementation's route handler. Both runtimes get
- * an identical real git repository — planted with the same shell commands in
- * each runtime's own throwaway workspace — registered as the selected
- * repository, and the same ordered sequence of HTTP calls is diffed.
+ * an identical set of real git repositories — planted with the same shell
+ * commands in each runtime's own throwaway home — registered the same way, and
+ * the same ordered sequence of HTTP calls is diffed.
  *
  * Usage:
  *   node --import tsx scripts/check-git-reads-parity.ts <candidate> [args...]
@@ -39,6 +39,7 @@ interface Step {
 
 const steps: readonly Step[] = [
   { name: "status", path: "/api/git/status" },
+  { name: "overview/default-board", path: "/api/git/overview" },
   { name: "files", path: "/api/git/files" },
   { name: "file-sizes", path: "/api/git/file-sizes" },
   { name: "file/tracked", path: "/api/git/file?path=src/main.rs" },
@@ -71,9 +72,6 @@ const steps: readonly Step[] = [
   { name: "graph/over-ceiling", path: "/api/git/graph?limit=99999" },
   { name: "worktrees", path: "/api/git/worktrees" },
 ];
-// `/api/git/graph` and `/api/git/worktrees` are not served by the native
-// daemon yet — see the note at the end of routes/git.rs for why — so they
-// are not gated here either.
 
 const dump = process.argv.includes("--dump");
 const argv = process.argv.slice(2).filter((value) => value !== "--dump");
@@ -103,11 +101,35 @@ try {
         // while `git worktree list` reports the /private/var/... target. The
         // active-worktree match has to see through that, so the fixture keeps
         // them in the two different forms rather than normalizing either.
+        // Five repositories, because `overview` fans out over all of them and
+        // its board defaults to the first four — a cap that is only
+        // observable once a fifth exists to be left out.
         gitRepositories: [
           {
             name: "repo",
             path: partial.workspace,
             activeWorktreePath: join(partial.workspace, "..", "wt-feature"),
+          },
+          // A real second repository, on its own branch with its own dirty
+          // files, so a column that merely echoed the selected repo's status
+          // would show.
+          { name: "second", path: join(partial.home, "second-repo") },
+          // A directory that exists but is not a repository: git answers,
+          // and it answers with a failure.
+          { name: "broken", path: join(partial.home, "not-a-repo") },
+          // A path that is not there at all — the spawn itself fails, which
+          // is a different failure from git refusing.
+          { name: "missing", path: join(partial.home, "no-such-directory") },
+          // Fifth, so the default board has something to cut.
+          { name: "beta", path: join(partial.home, "beta-repo") },
+          // A live repository whose *active worktree* has been removed. The
+          // read fails, and a failing column reports the registered path
+          // rather than the worktree it could not reach — which is only
+          // observable when the two differ, as they do only here.
+          {
+            name: "detached",
+            path: join(partial.home, "beta-repo"),
+            activeWorktreePath: join(partial.home, "gone-worktree"),
           },
         ],
         selectedGitRepository: "repo",
@@ -118,6 +140,7 @@ try {
     // it, so this runs between provisioning and starting the daemon rather
     // than as a step.
     const { commitHash } = await seedRepository(runtime.workspace);
+    await seedOverviewRepositories(runtime.home);
     commitHashByPort.set(runtime.port, commitHash);
     await harness.startDaemon(runtime);
     runtimes.push(runtime);
@@ -140,7 +163,7 @@ try {
     ...commitSteps(reference).map((step, index): [Step, Step] => [step, commitSteps(candidate)[index]]),
   ];
 
-  for (const [referenceStep, candidateStep] of allSteps) {
+  const compare = async (referenceStep: Step, candidateStep: Step) => {
     const answers = {
       reference: await send(reference, referenceStep),
       candidate: await send(candidate, candidateStep),
@@ -177,7 +200,21 @@ try {
       console.log(`  candidate: ${inspect(answers.candidate, { depth: null })}`);
       console.log(`  ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+
+  for (const [referenceStep, candidateStep] of allSteps) {
+    await compare(referenceStep, candidateStep);
   }
+
+  // The board's *pinned* branch cannot coexist with its default branch in one
+  // config, and there is no read-safe route that sets it. Both configs are
+  // rewritten on disk instead — every handler loads config per request, so the
+  // next call sees the new board without a restart.
+  for (const runtime of runtimes) {
+    await pinBoard(runtime, ["beta", "gone", "repo"]);
+  }
+  const pinned: Step = { name: "overview/pinned-board", path: "/api/git/overview" };
+  await compare(pinned, pinned);
 } finally {
   await harness.shutdown();
   await rm(root, { recursive: true, force: true });
@@ -185,7 +222,7 @@ try {
 
 console.log(
   failures === 0
-    ? `\ngit-reads parity: ${steps.length + 3} cases match`
+    ? `\ngit-reads parity: ${steps.length + 4} cases match`
     : `\ngit-reads parity: ${failures} case(s) diverged`,
 );
 process.exit(failures === 0 ? 0 : 1);
@@ -263,6 +300,59 @@ function normalizeHashes(value: unknown): unknown {
 
 function workspaceFiles(): WorkspaceFile[] {
   return [];
+}
+
+/**
+ * Rewrite one runtime's config with a pinned board. `gone` is deliberately not
+ * a registered repository: the effective board has to drop it, and pinning
+ * only names that exist would never show whether it does.
+ */
+async function pinBoard(runtime: Runtime, names: string[]): Promise<void> {
+  const path = join(runtime.home, ".config", "nomoreide", "config.json");
+  const fs = await import("node:fs/promises");
+  const config = JSON.parse(await fs.readFile(path, "utf8"));
+  config.gitBoardRepositories = names;
+  await fs.writeFile(path, `${JSON.stringify(config, null, 2)}\n`);
+}
+
+/**
+ * Plant the other repositories `overview` fans out over, beside the runtime's
+ * workspace. Only two of the four registered here are real: `not-a-repo` and
+ * the absent `no-such-directory` are the failing columns, and they fail in two
+ * different ways on purpose — git refusing versus the spawn never landing.
+ */
+async function seedOverviewRepositories(home: string): Promise<void> {
+  const fs = await import("node:fs/promises");
+  await fs.mkdir(join(home, "not-a-repo"), { recursive: true });
+  await fs.writeFile(join(home, "not-a-repo", "readme.txt"), "not a repository\n");
+
+  // `second` carries a branch name and a dirty working tree unlike the main
+  // repo's, so a column showing the wrong repository is visible rather than
+  // coincidentally identical.
+  const second = join(home, "second-repo");
+  await fs.mkdir(second, { recursive: true });
+  const git = (cwd: string) => (...args: string[]) => run("git", args, { cwd });
+  const inSecond = git(second);
+  await inSecond("init", "--quiet", "--initial-branch", "trunk");
+  await inSecond("config", "user.email", "gate@example.com");
+  await inSecond("config", "user.name", "Gate");
+  await fs.writeFile(join(second, "app.ts"), "export const app = 1;\n");
+  await inSecond("add", "-A");
+  await inSecond("commit", "--quiet", "-m", "second repo");
+  await fs.writeFile(join(second, "app.ts"), "export const app = 2;\n");
+  await fs.writeFile(join(second, "scratch.log"), "untracked\n");
+
+  // `beta` is clean and exists only to be the fifth repository the default
+  // board cuts.
+  const beta = join(home, "beta-repo");
+  await fs.mkdir(beta, { recursive: true });
+  const inBeta = git(beta);
+  await inBeta("init", "--quiet", "--initial-branch", "main");
+  await inBeta("config", "user.email", "gate@example.com");
+  await inBeta("config", "user.name", "Gate");
+  await fs.writeFile(join(beta, "beta.txt"), "beta\n");
+  await inBeta("add", "-A");
+  await inBeta("commit", "--quiet", "-m", "beta repo");
 }
 
 /** Plant an identical repo (files, commits, a branch) in one runtime's

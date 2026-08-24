@@ -3,9 +3,8 @@
 //! Most routes here answer for the *selected* repository. `diff` and
 //! `identity` also take a `?repo=` naming a different registered one, via
 //! [`resolve_repo_cwd`] — the multi-repo board scopes those two per column.
-//! `overview`, which fans a status read across *every* registered repository
-//! at once with per-repo error isolation, is the remaining read and is its own
-//! increment.
+//! `overview` is the exception that reads *every* registered repository at
+//! once, isolating each one's failure to its own column.
 //!
 //! `push`, `pull`, `merge`, `rebase`, and staging live behind `nomoreide-actions`
 //! and are not part of this module — see the crate's own docs for why that is a
@@ -28,6 +27,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/search/files", get(search_files))
         .route("/api/git/search/content", get(search_content))
         .route("/api/git/status", get(status))
+        .route("/api/git/overview", get(overview))
         .route("/api/git/files", get(files))
         .route("/api/git/file-sizes", get(file_sizes))
         .route("/api/git/file", get(file))
@@ -168,6 +168,132 @@ async fn status(State(state): State<AppState>) -> Response {
         Ok(status) => Json(StatusEnvelope { ok: true, status }).into_response(),
         Err(reason) => error(StatusCode::BAD_REQUEST, &reason.to_string()),
     }
+}
+
+/// How many repos the board shows before the user has curated it. Kept below
+/// the UI's 5-column cap so the "Add" tile stays visible and nothing is
+/// stranded.
+const DEFAULT_BOARD_COLUMNS: usize = 4;
+
+/// One board column. Deliberately *not* a `GitStatus`: the reference picks
+/// four fields off the status and drops `upstream`, so a column carries less
+/// than the single-repo `status` route does.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepoOverview {
+    name: String,
+    /// The worktree actually read — except on failure, where it falls back to
+    /// the registered path, since the failure may well be *about* the worktree.
+    path: String,
+    branch: String,
+    ahead: i32,
+    behind: i32,
+    files: Vec<nomoreide_core::git_manager::GitFileStatus>,
+    /// Absent on success. Its presence is what the column renders as broken.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OverviewEnvelope {
+    ok: bool,
+    repos: Vec<RepoOverview>,
+    board: Vec<String>,
+}
+
+/// Every registered repository's status at once, for the multi-repo board.
+///
+/// Two things make this unlike the other reads. The statuses are read
+/// *concurrently* — the reference uses `Promise.all`, and a board of eight
+/// repos would otherwise pay eight sequential `git status` walks on every
+/// poll. And a repository that fails does not fail the response: it comes back
+/// as a column carrying an `error`, because one repo moved out from under the
+/// config should not blank the board.
+async fn overview(State(state): State<AppState>) -> Response {
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(reason) => return error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    };
+
+    // Spawned up front and awaited in order, which keeps the fan-out
+    // concurrent while the response still lists repos in config order.
+    let reads: Vec<_> = config
+        .git_repositories
+        .iter()
+        .map(|repository| {
+            let name = repository.name.clone();
+            let registered = repository.path.clone();
+            let worktree = repository
+                .active_worktree_path
+                .clone()
+                .unwrap_or_else(|| registered.clone());
+            tokio::spawn(async move {
+                match GitManager::status(&worktree).await {
+                    Ok(status) => RepoOverview {
+                        name,
+                        path: worktree,
+                        branch: status.branch,
+                        ahead: status.ahead,
+                        behind: status.behind,
+                        files: status.files,
+                        error: None,
+                    },
+                    Err(reason) => RepoOverview {
+                        name,
+                        path: registered,
+                        branch: String::new(),
+                        ahead: 0,
+                        behind: 0,
+                        files: Vec::new(),
+                        error: Some(reason.to_string()),
+                    },
+                }
+            })
+        })
+        .collect();
+
+    let mut repos = Vec::with_capacity(reads.len());
+    for read in reads {
+        match read.await {
+            Ok(repo) => repos.push(repo),
+            // A panicked read has no name to report against, so it cannot
+            // become a column; the reference has no equivalent (a throw is
+            // already caught per-repo) and this only guards a bug in ours.
+            Err(reason) => return error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+        }
+    }
+
+    // The effective board: the user's pinned order, or the first few repos
+    // when they have never curated one. Either way it is filtered to names
+    // that are still registered, so a repo removed since it was pinned drops
+    // out rather than rendering an empty column.
+    let board: Vec<String> = config
+        .git_board_repositories
+        .clone()
+        .unwrap_or_else(|| {
+            config
+                .git_repositories
+                .iter()
+                .take(DEFAULT_BOARD_COLUMNS)
+                .map(|repository| repository.name.clone())
+                .collect()
+        })
+        .into_iter()
+        .filter(|name| {
+            config
+                .git_repositories
+                .iter()
+                .any(|repository| &repository.name == name)
+        })
+        .collect();
+
+    Json(OverviewEnvelope {
+        ok: true,
+        repos,
+        board,
+    })
+    .into_response()
 }
 
 #[derive(Serialize)]
@@ -586,6 +712,3 @@ fn lexically_resolve(path: &str) -> std::path::PathBuf {
 }
 
 // Every read-safe `/api/git/*` route the dashboard uses is now served here.
-// The multi-repo board's `overview` (a status fan-out across every registered
-// repository, with per-repo error isolation) is the remaining read, and needs
-// its own increment rather than a handler beside these.
