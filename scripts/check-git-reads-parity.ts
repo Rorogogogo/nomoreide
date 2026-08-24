@@ -69,6 +69,7 @@ const steps: readonly Step[] = [
   { name: "graph/zero-limit", path: "/api/git/graph?limit=0" },
   { name: "graph/fractional-limit", path: "/api/git/graph?limit=2.9" },
   { name: "graph/over-ceiling", path: "/api/git/graph?limit=99999" },
+  { name: "worktrees", path: "/api/git/worktrees" },
 ];
 // `/api/git/graph` and `/api/git/worktrees` are not served by the native
 // daemon yet — see the note at the end of routes/git.rs for why — so they
@@ -98,7 +99,17 @@ try {
         version: 1,
         services: [],
         bundles: [],
-        gitRepositories: [{ name: "repo", path: partial.workspace }],
+        // `path` is the unresolved /var/... form a real config holds on macOS,
+        // while `git worktree list` reports the /private/var/... target. The
+        // active-worktree match has to see through that, so the fixture keeps
+        // them in the two different forms rather than normalizing either.
+        gitRepositories: [
+          {
+            name: "repo",
+            path: partial.workspace,
+            activeWorktreePath: join(partial.workspace, "..", "wt-feature"),
+          },
+        ],
         selectedGitRepository: "repo",
       }),
       () => workspaceFiles(),
@@ -144,7 +155,17 @@ try {
       // whole daemon, not specific to these routes — not compared here, the
       // same way the terminal and approval gates don't compare it either.
       const normalize = (answer: Answer) => {
-        const { contentType: _contentType, ...rest } = normalizePaths(answer, [reference.workspace, candidate.workspace]);
+        // The runtime *home* is erased as well as the workspace: a worktree
+        // added beside the workspace (`../wt-feature`) lives under the home,
+        // so normalizing only the workspace would leave "reference" vs
+        // "candidate" in the path and fail on the harness's own layout.
+        // Longest-first so the workspace is replaced before its parent.
+        const { contentType: _contentType, ...rest } = normalizePaths(answer, [
+          reference.workspace,
+          candidate.workspace,
+          reference.home,
+          candidate.home,
+        ]);
         return { ...rest, body: normalizeHashes(rest.body) };
       };
       assert.deepStrictEqual(normalize(answers.candidate), normalize(answers.reference));
@@ -198,9 +219,14 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
 /** Erase each runtime's own absolute workspace path from a body, so a real
  * path substring inside a diff/error message does not fail the compare. */
 function normalizePaths(answer: Answer, paths: readonly string[]): Answer {
-  const text = JSON.stringify(answer.body);
-  let replaced = text;
-  for (const path of paths) replaced = replaced.split(path).join("<workspace>");
+  let replaced = JSON.stringify(answer.body);
+  // macOS reports /private/var where the harness holds /var, so each path is
+  // erased in both forms. Longest first, so a workspace is replaced before the
+  // home that contains it.
+  const variants = paths
+    .flatMap((path) => [path, path.startsWith("/var/") ? `/private${path}` : path])
+    .sort((a, b) => b.length - a.length);
+  for (const path of variants) replaced = replaced.split(path).join("<root>");
   return { ...answer, body: JSON.parse(replaced) };
 }
 
@@ -224,7 +250,9 @@ function normalizeHashes(value: unknown): unknown {
       return Object.fromEntries(
         Object.entries(node).map(([key, entry]) =>
           // A commit timestamp is wall-clock and cannot match across runs.
-          key === "timestamp" ? [key, "<timestamp>"] : [key, walk(entry)],
+          key === "timestamp" || key === "createdAt"
+            ? [key, "<timestamp>"]
+            : [key, walk(entry)],
         ),
       );
     }
@@ -262,6 +290,9 @@ async function seedRepository(cwd: string): Promise<{ commitHash: string }> {
   await git("commit", "--quiet", "-m", "second");
 
   await git("branch", "feature");
+  // A real second worktree, so `activePath` has to *choose* rather than always
+  // landing on the repo root — which is what makes the match logic observable.
+  await git("worktree", "add", join(cwd, "..", "wt-feature"), "feature");
 
   // An unstaged edit: `git diff` shows it, `--cached` does not.
   await write("src/main.rs", "fn main() { println!(\"edited\"); }\n");

@@ -1,11 +1,11 @@
 //! Read-safe Git: search, status, history, and file/worktree listing.
 //!
-//! Everything here answers for the *selected* repository (`AppState`'s own
-//! notion of "the current one"), the same scope the dashboard's single-repo
-//! views use today. The multi-repo board (`overview`, and `diff`/`identity`
-//! with a `?repo=` naming a *different* registered repository) is not here
-//! yet — it needs its own repository lookup, not just a cwd, and is a
-//! deliberately separate increment.
+//! Most routes here answer for the *selected* repository. `diff` and
+//! `identity` also take a `?repo=` naming a different registered one, via
+//! [`resolve_repo_cwd`] — the multi-repo board scopes those two per column.
+//! `overview`, which fans a status read across *every* registered repository
+//! at once with per-repo error isolation, is the remaining read and is its own
+//! increment.
 //!
 //! `push`, `pull`, `merge`, `rebase`, and staging live behind `nomoreide-actions`
 //! and are not part of this module — see the crate's own docs for why that is a
@@ -37,9 +37,8 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/identity", get(identity))
         .route("/api/git/diff", get(diff))
         .route("/api/git/graph", get(graph))
+        .route("/api/git/worktrees", get(worktrees))
 }
-// `/api/git/worktrees` is deliberately not registered
-// yet — see the note at the end of this file.
 
 /// How many paths the file palette shows before it stops listing.
 const DEFAULT_FILE_LIMIT: usize = 50;
@@ -489,9 +488,104 @@ async fn graph(State(state): State<AppState>, Query(query): Query<GraphQuery>) -
     }
 }
 
-// `/api/git/worktrees` is not served yet: the reference route uses
-// `GitWorktreeManager`, which reports `createdAt`, `primary`, and `dirty`
-// per worktree — none of which `GitManager::worktrees` (built for the
-// simpler `nomoreide_git_worktrees` MCP tool) computes. Serving the plain
-// shape would look plausible and be silently wrong on every field the
-// dashboard's worktree cards actually render.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorktreesEnvelope {
+    ok: bool,
+    active_path: String,
+    worktrees: Vec<nomoreide_core::git_manager::GitWorktree>,
+}
+
+/// Worktrees are listed from the repository's *registered* path rather than
+/// its active worktree: `git worktree list` answers identically from any of
+/// them, and the registered path is the one that always exists. Unlike every
+/// other read here, this route 404s when no repository is selected, because
+/// there is no sensible cwd fallback for "list this repository's worktrees".
+async fn worktrees(State(state): State<AppState>) -> Response {
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(reason) => return error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    };
+    let repository = config
+        .selected_git_repository
+        .as_ref()
+        .and_then(|selected| {
+            config
+                .git_repositories
+                .iter()
+                .find(|repo| &repo.name == selected)
+        })
+        .or_else(|| config.git_repositories.first());
+    let Some(repository) = repository.cloned() else {
+        return error(StatusCode::NOT_FOUND, "No Git project is selected.");
+    };
+
+    match GitManager::worktrees(&repository.path).await {
+        Ok(worktrees) => {
+            // The configured active worktree may have been removed from disk
+            // since it was chosen; when git no longer lists it, the repository
+            // root is what is actually active.
+            let configured_active = repository
+                .active_worktree_path
+                .clone()
+                .unwrap_or_else(|| repository.path.clone());
+            let active_path = if worktrees
+                .iter()
+                .any(|worktree| paths_match(&worktree.path, &configured_active))
+            {
+                configured_active
+            } else {
+                repository.path.clone()
+            };
+            Json(WorktreesEnvelope {
+                ok: true,
+                active_path,
+                worktrees,
+            })
+            .into_response()
+        }
+        Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+/// The reference compares `resolve(a) === resolve(b)`: absolute-ized and
+/// lexically normalized, but *not* symlink-resolved.
+///
+/// **Mirrors a reference bug on purpose.** On macOS `git worktree list`
+/// reports `/private/var/...` where a config written from `$TMPDIR` holds the
+/// `/var/...` symlink to the same directory, so `resolve` finds no match and
+/// the route reports the repository root as active even when a different
+/// worktree is configured. Canonicalizing here would fix that — and diverge:
+/// the two runtimes would disagree about which worktree is active, which is
+/// exactly what the parity gate caught when this did canonicalize. Worth
+/// fixing on both sides in one change; not fixable in Rust alone.
+fn paths_match(a: &str, b: &str) -> bool {
+    lexically_resolve(a) == lexically_resolve(b)
+}
+
+/// Node's `path.resolve`: make absolute, then collapse `.` and `..` without
+/// touching the filesystem.
+fn lexically_resolve(path: &str) -> std::path::PathBuf {
+    let candidate = std::path::Path::new(path);
+    let absolute = if candidate.is_absolute() {
+        candidate.to_path_buf()
+    } else {
+        std::env::current_dir().unwrap_or_default().join(candidate)
+    };
+    let mut out = std::path::PathBuf::new();
+    for component in absolute.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            std::path::Component::CurDir => {}
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+// Every read-safe `/api/git/*` route the dashboard uses is now served here.
+// The multi-repo board's `overview` (a status fan-out across every registered
+// repository, with per-repo error isolation) is the remaining read, and needs
+// its own increment rather than a handler beside these.
