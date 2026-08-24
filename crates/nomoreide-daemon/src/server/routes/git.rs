@@ -7,11 +7,11 @@
 //! once, isolating each one's failure to its own column.
 //!
 //! Local writes — the index, a commit, a tracked file's contents, `fetch` —
-//! live in [`writes`], which shares this module's repository resolution and
-//! body readers. `push`, `pull`, `merge`, and `rebase` live behind
-//! `nomoreide-actions` and are not part of either — see the crate's own docs
-//! for why that is a crate boundary, not a naming convention.
+//! live in [`writes`]. The ones that reach a remote or rewrite history live in
+//! [`remote`] and call `nomoreide-actions` rather than `GitManager`. All three
+//! modules share this one's repository resolution and body readers.
 
+mod remote;
 mod writes;
 
 use crate::server::app::AppState;
@@ -45,6 +45,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/graph", get(graph))
         .route("/api/git/worktrees", get(worktrees))
         .merge(writes::routes())
+        .merge(remote::routes())
 }
 
 /// Read a JSON body the way the reference's `readJson` reads one: an empty,
