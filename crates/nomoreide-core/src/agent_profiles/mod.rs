@@ -9,6 +9,7 @@
 
 mod apply;
 mod credentials;
+mod registry;
 mod snapshot;
 mod store;
 mod transfer;
@@ -17,6 +18,9 @@ use crate::agent_env::{Json, OrderedMap};
 use serde::{Deserialize, Serialize};
 
 pub use apply::{apply, ApplyOutcome, ApplyPreview};
+pub use registry::{
+    install, publish, register_github, InstallOutcome, PublishOutcome, PublishRequest,
+};
 pub use snapshot::snapshot;
 pub use store::profiles_root;
 pub use transfer::{export, import, ExportOutcome, ImportOutcome};

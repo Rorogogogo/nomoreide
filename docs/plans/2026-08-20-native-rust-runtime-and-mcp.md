@@ -1036,6 +1036,25 @@ have landed. What the probing settled, and three things it corrected:
   because normalisation is two camel-case splits before a fold rather than a
   fold. A token pasted into `PLAIN_VALUE` is exported in the clear.
 
+The registry half — publish, install, and register-a-repository — is a
+conversation, not a call, and only the *request* side shows it:
+
+- **Publishing is five calls.** Look the slug up, create it when the lookup
+  404s, create a version, upload the package, release it. A slug that already
+  exists skips the create entirely, so a republish never updates its own title
+  or summary. Each step names itself in a failure, because "HTTP 422" alone
+  does not say which of the five went wrong.
+- **What is uploaded is the redacted export**, and the version manifest carries
+  less still: each server's name and kind, nothing else. Neither is a place a
+  token can hide.
+- **Installing is anonymous.** A public profile needs no token, so the tool
+  never asks for one — and it downloads the package *before* it checks whether
+  the local name is free, so a collision costs a round trip.
+- **`download_url` is relative to the API base unless it names a scheme.**
+- Sign-in is a file, and `NOMOREIDE_API_TOKEN` outranks it; the pre-rename
+  `~/.brainctl/config.json` is a fallback that an empty current config does not
+  reach past.
+
 Two things the reference does that are worth changing on the TypeScript side
 rather than only mirroring, and are called out here because parity forbids
 fixing them in Rust alone:

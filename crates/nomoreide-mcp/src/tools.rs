@@ -286,6 +286,21 @@ impl ToolExecutor for NativeToolExecutor {
                     archive_path,
                     arguments,
                 } => profiles::import(archive_path, arguments),
+                NativeTool::ProfilesPublish {
+                    name,
+                    slug,
+                    title,
+                    arguments,
+                } => profiles::publish(name, slug, title, arguments).await,
+                NativeTool::ProfilesInstallFromRegistry { slug, arguments } => {
+                    profiles::install_from_registry(slug, arguments).await
+                }
+                NativeTool::ProfilesRegisterGithub {
+                    repo_url,
+                    slug,
+                    title,
+                    arguments,
+                } => profiles::register_github(repo_url, slug, title, arguments).await,
                 runtime => self.serve_runtime(runtime).await,
             }
         })
@@ -446,6 +461,9 @@ impl NativeToolExecutor {
             | NativeTool::ProfilesApply { .. }
             | NativeTool::ProfilesExport { .. }
             | NativeTool::ProfilesImport { .. }
+            | NativeTool::ProfilesPublish { .. }
+            | NativeTool::ProfilesInstallFromRegistry { .. }
+            | NativeTool::ProfilesRegisterGithub { .. }
             | NativeTool::Docs(_)
             | NativeTool::OpenUi
             | NativeTool::CloseUi => {
@@ -571,6 +589,22 @@ enum NativeTool<'a> {
     },
     ProfilesImport {
         archive_path: &'a str,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesPublish {
+        name: &'a str,
+        slug: &'a str,
+        title: &'a str,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesInstallFromRegistry {
+        slug: &'a str,
+        arguments: &'a Map<String, Value>,
+    },
+    ProfilesRegisterGithub {
+        repo_url: &'a str,
+        slug: &'a str,
+        title: &'a str,
         arguments: &'a Map<String, Value>,
     },
     ListServices,
@@ -867,6 +901,22 @@ impl<'a> NativeTool<'a> {
             }),
             "nomoreide_profiles_import" => Ok(Self::ProfilesImport {
                 archive_path: required_text(arguments, "archivePath")?,
+                arguments,
+            }),
+            "nomoreide_profiles_publish" => Ok(Self::ProfilesPublish {
+                name: required_text(arguments, "name")?,
+                slug: required_text(arguments, "slug")?,
+                title: required_text(arguments, "title")?,
+                arguments,
+            }),
+            "nomoreide_profiles_install_from_registry" => Ok(Self::ProfilesInstallFromRegistry {
+                slug: required_text(arguments, "slug")?,
+                arguments,
+            }),
+            "nomoreide_profiles_register_github" => Ok(Self::ProfilesRegisterGithub {
+                repo_url: required_text(arguments, "repoUrl")?,
+                slug: required_text(arguments, "slug")?,
+                title: required_text(arguments, "title")?,
                 arguments,
             }),
             "nomoreide_open_ui" => Ok(Self::OpenUi),

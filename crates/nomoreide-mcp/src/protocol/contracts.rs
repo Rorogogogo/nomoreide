@@ -80,6 +80,9 @@ pub(super) enum ArgumentContract {
     ProfileApply,
     ProfileExport,
     ProfileImport,
+    ProfilePublish,
+    ProfileInstall,
+    ProfileGithub,
     /// One optional non-empty `cwd`, and nothing else. Absent means the
     /// directory the server was started in, so it is a default rather than a
     /// missing argument. Shared by the git reads and by the agent-environment
@@ -325,6 +328,9 @@ impl ArgumentContract {
             "nomoreide_profiles_apply" => Some(Self::ProfileApply),
             "nomoreide_profiles_export" => Some(Self::ProfileExport),
             "nomoreide_profiles_import" => Some(Self::ProfileImport),
+            "nomoreide_profiles_publish" => Some(Self::ProfilePublish),
+            "nomoreide_profiles_install_from_registry" => Some(Self::ProfileInstall),
+            "nomoreide_profiles_register_github" => Some(Self::ProfileGithub),
             "nomoreide_agents_status" => Some(Self::Empty),
             "nomoreide_agents_add_mcp" => Some(Self::AgentMcpAddition),
             "nomoreide_agents_remove_mcp" => Some(Self::AgentMcpRemoval),
@@ -454,6 +460,33 @@ impl ArgumentContract {
                 failures.extend(boolean(arguments, "force"));
                 failures.extend(optional_string(arguments, "as"));
                 failures.extend(string_map(arguments, "credentials"));
+                collect(failures)
+            }
+            Self::ProfilePublish => {
+                let mut failures = required_string_of(arguments, "name", 1);
+                failures.extend(required_string_of(arguments, "slug", 1));
+                failures.extend(required_string_of(arguments, "title", 1));
+                failures.extend(optional_string(arguments, "summary"));
+                failures.extend(optional_string(arguments, "version"));
+                failures.extend(optional_string(arguments, "changelog"));
+                failures.extend(enumerated(arguments, "visibility", &["public", "private"]));
+                failures.extend(optional_name(arguments, "cwd"));
+                collect(failures)
+            }
+            Self::ProfileInstall => {
+                let mut failures = required_string_of(arguments, "slug", 1);
+                failures.extend(boolean(arguments, "force"));
+                failures.extend(optional_string(arguments, "as"));
+                failures.extend(string_map(arguments, "credentials"));
+                collect(failures)
+            }
+            Self::ProfileGithub => {
+                let mut failures = required_string_of(arguments, "repoUrl", 1);
+                failures.extend(required_string_of(arguments, "slug", 1));
+                failures.extend(required_string_of(arguments, "title", 1));
+                failures.extend(optional_string(arguments, "summary"));
+                failures.extend(optional_string(arguments, "refName"));
+                failures.extend(optional_string(arguments, "profilePath"));
                 collect(failures)
             }
             Self::OptionalCwd => collect(optional_name(arguments, "cwd")),

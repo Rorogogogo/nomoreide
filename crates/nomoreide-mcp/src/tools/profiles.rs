@@ -178,3 +178,77 @@ pub(crate) fn import(archive_path: &str, arguments: &Map<String, Value>) -> Resu
         &supplied,
     )?)
 }
+
+pub(crate) async fn publish(
+    name: &str,
+    slug: &str,
+    title: &str,
+    arguments: &Map<String, Value>,
+) -> Result<String, String> {
+    let text = |key: &str| arguments.get(key).and_then(Value::as_str);
+    render(
+        &agent_profiles::publish(
+            agent_profiles::PublishRequest {
+                name,
+                slug,
+                title,
+                summary: text("summary"),
+                version: text("version"),
+                changelog: text("changelog"),
+                visibility: text("visibility"),
+            },
+            &project_directory(text("cwd")),
+        )
+        .await?,
+    )
+}
+
+pub(crate) async fn install_from_registry(
+    slug: &str,
+    arguments: &Map<String, Value>,
+) -> Result<String, String> {
+    let force = arguments
+        .get("force")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let supplied = arguments
+        .get("credentials")
+        .and_then(Value::as_object)
+        .map(|map| {
+            map.iter()
+                .filter_map(|(key, value)| {
+                    value.as_str().map(|text| (key.clone(), text.to_string()))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    render(
+        &agent_profiles::install(
+            slug,
+            force,
+            arguments.get("as").and_then(Value::as_str),
+            &supplied,
+        )
+        .await?,
+    )
+}
+
+pub(crate) async fn register_github(
+    repo_url: &str,
+    slug: &str,
+    title: &str,
+    arguments: &Map<String, Value>,
+) -> Result<String, String> {
+    let text = |key: &str| arguments.get(key).and_then(Value::as_str);
+    render(
+        &agent_profiles::register_github(
+            repo_url,
+            slug,
+            title,
+            text("summary"),
+            text("refName"),
+            text("profilePath"),
+        )
+        .await?,
+    )
+}
