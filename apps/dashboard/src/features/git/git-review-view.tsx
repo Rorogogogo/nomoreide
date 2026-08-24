@@ -20,6 +20,7 @@ import { nextChangeDecision } from "./review-navigation";
 import { GitGraphView } from "./git-graph-view";
 import { MultiRepoBoard } from "./multi-repo-board";
 import { LargestFilesView } from "./largest-files-view";
+import { SearchView } from "./search-view";
 import { SnapshotsView } from "./snapshots/snapshots-view";
 import { WorktreesView } from "./worktrees-view";
 import {
@@ -31,6 +32,7 @@ type GitTab =
   | "changes"
   | "board"
   | "all"
+  | "search"
   | "graph"
   | "largest"
   | "snapshots"
@@ -51,6 +53,8 @@ export function GitReviewView({
   const [mode, setMode] = useState<ChangesMode>("changes");
   const [selectedFile, setSelectedFile] = useState(data.git.status?.files[0]?.path ?? "");
   const [selectedTreeFile, setSelectedTreeFile] = useState("");
+  /** Line a search hit asked the viewer to land on; cleared once consumed. */
+  const [focusLine, setFocusLine] = useState<number | undefined>();
   const [allFiles, setAllFiles] = useState<string[]>([]);
   const [allFilesError, setAllFilesError] = useState<string | null>(null);
   const [diff, setDiff] = useState("");
@@ -264,9 +268,11 @@ export function GitReviewView({
     selectFile(path);
   }
 
-  // Jump from the ranking straight to a file in the All-files viewer.
-  function openFileInViewer(path: string) {
+  // Jump from the ranking or a search hit straight to a file in the All-files
+  // viewer. A content hit also names the line it fell on.
+  function openFileInViewer(path: string, line?: number) {
     setSelectedTreeFile(path);
+    setFocusLine(line);
     setTab("all");
   }
 
@@ -295,6 +301,13 @@ export function GitReviewView({
           onClick={() => setTab("all")}
         >
           {t("git.tab.all")}
+        </button>
+        <button
+          type="button"
+          className={tabButtonClass(tab === "search")}
+          onClick={() => setTab("search")}
+        >
+          {t("git.tab.search")}
         </button>
         <button
           type="button"
@@ -333,6 +346,8 @@ export function GitReviewView({
           <GitGraphView branches={data.git.branches ?? []} />
         ) : tab === "largest" ? (
           <LargestFilesView onOpenFile={openFileInViewer} root={data.git.cwd} />
+        ) : tab === "search" ? (
+          <SearchView onOpenFile={openFileInViewer} />
         ) : tab === "snapshots" ? (
           <SnapshotsView />
         ) : tab === "worktrees" ? (
@@ -350,7 +365,10 @@ export function GitReviewView({
               ) : (
                 <FileTree
                   branch={data.git.status?.branch || undefined}
-                  onSelectFile={setSelectedTreeFile}
+                  onSelectFile={(path) => {
+                    setSelectedTreeFile(path);
+                    setFocusLine(undefined);
+                  }}
                   paths={allFiles}
                   root={data.git.cwd}
                   selectedFile={selectedTreeFile}
@@ -360,6 +378,7 @@ export function GitReviewView({
             </aside>
             <FileViewer
               agentPath={absolutePath(data.git.cwd, selectedTreeFile)}
+              focusLine={focusLine}
               isModified={modifiedPaths.has(selectedTreeFile)}
               onFileSaved={handleTreeFileSaved}
               onViewDiff={viewDiffForTreeFile}

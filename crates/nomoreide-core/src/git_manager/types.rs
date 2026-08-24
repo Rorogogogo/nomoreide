@@ -87,3 +87,44 @@ pub struct GitWorktree {
     pub primary: bool,
     pub dirty: bool,
 }
+
+/// One tracked path matched by the file palette. `positions` are character
+/// offsets into `path`, so the caller can highlight what the query matched.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileNameMatch {
+    pub path: String,
+    pub score: i32,
+    pub positions: Vec<usize>,
+}
+
+/// One hit inside a file: the line it fell on, that line's text, and where in
+/// the text it sits. `start`/`end` are character offsets, matching `text`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentMatch {
+    /// One-based, the way an editor's gutter counts.
+    pub line: usize,
+    pub text: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileContentMatches {
+    pub path: String,
+    pub matches: Vec<ContentMatch>,
+    /// The file had more hits than one file is allowed to contribute.
+    pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchResult {
+    pub files: Vec<FileContentMatches>,
+    /// Matches actually returned — not how many exist, which a truncated search
+    /// never finishes counting.
+    pub total_matches: usize,
+    pub truncated: bool,
+}

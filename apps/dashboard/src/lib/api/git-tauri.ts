@@ -26,6 +26,8 @@ import {
   tauri_cloneGitRepository,
   tauri_selectGitRepository,
   tauri_gitFileSizes,
+  tauri_gitSearchFiles,
+  tauri_gitSearchContent,
   tauri_setGitBoard,
   tauri_gitOverview,
   tauri_gitWorktrees,
@@ -35,6 +37,8 @@ import {
   tauri_gitPruneWorktrees,
 } from "./tauri-bridge.js";
 import type {
+  ContentSearchResult,
+  FileNameMatch,
   FileSizeRank,
   GitApi,
   GitBranch,
@@ -55,6 +59,10 @@ export const tauriGitApi: GitApi = {
   getGitCommitDiff: (hash, file) => tauri_gitCommitDiff(hash, file),
   getGitCommitFiles: (hash) => tauri_gitCommitFiles(hash) as Promise<GitFileStatus[]>,
   getGitFiles: () => tauri_gitListFiles(),
+  searchGitFiles: (query, limit) =>
+    tauri_gitSearchFiles(query, limit) as Promise<FileNameMatch[]>,
+  searchGitContent: (query, options) =>
+    tauri_gitSearchContent(query, options) as Promise<ContentSearchResult>,
   getFileSizeRanking: () => tauri_gitFileSizes() as Promise<FileSizeRank[]>,
   getGitFile: (path) => tauri_gitReadFile(path) as Promise<GitFileContent>,
   updateGitFile: (path, content) => tauri_gitWriteFile(path, content),

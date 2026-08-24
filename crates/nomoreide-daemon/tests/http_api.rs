@@ -1115,3 +1115,176 @@ async fn the_error_inbox_is_authenticated_and_answers_for_ids_it_does_not_hold()
     let _ = server.await;
     tokio::fs::remove_dir_all(&root).await.ok();
 }
+
+/// Git search is the daemon's first `/api/git/*` surface, and it answers about
+/// the selected repository — so the fixture is a real repository, and what the
+/// endpoints report has to be what `git ls-files` says, not what is on disk.
+#[tokio::test]
+async fn searches_the_selected_repository_by_file_name_and_by_content() {
+    let root = temp_dir();
+    let runtime_paths = RuntimePaths::new(root.join("runtime"));
+    let config_path = root.join("config.json");
+    let repo = root.join("repo");
+    tokio::fs::create_dir_all(repo.join("src")).await.unwrap();
+
+    tokio::fs::write(repo.join("src/widget.ts"), "export const widget = 1;\n")
+        .await
+        .unwrap();
+    tokio::fs::write(repo.join("README.md"), "# widget\n\nAbout the widget.\n")
+        .await
+        .unwrap();
+    // Ignored, so neither search may see it even though it is on disk and
+    // matches both queries.
+    tokio::fs::write(repo.join(".gitignore"), "secret/\n")
+        .await
+        .unwrap();
+    tokio::fs::create_dir_all(repo.join("secret")).await.unwrap();
+    tokio::fs::write(repo.join("secret/widget.ts"), "const widget = 2;\n")
+        .await
+        .unwrap();
+
+    for args in [
+        vec!["init", "--quiet"],
+        vec!["add", "-A"],
+    ] {
+        let status = tokio::process::Command::new("git")
+            .args(&args)
+            .current_dir(&repo)
+            .status()
+            .await
+            .unwrap();
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    tokio::fs::write(
+        &config_path,
+        serde_json::to_vec_pretty(&json!({
+            "version": 1,
+            "services": [],
+            "bundles": [],
+            "gitRepositories": [{ "name": "demo", "path": repo.to_string_lossy() }],
+            "selectedGitRepository": "demo"
+        }))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+    let task_paths = runtime_paths.clone();
+    let mut server = tokio::spawn(async move {
+        serve_until(
+            DaemonOptions {
+                port: 0,
+                runtime_paths: task_paths,
+                config_path,
+            },
+            async {
+                let _ = shutdown_rx.await;
+            },
+        )
+        .await
+    });
+
+    let state = wait_for_state(&runtime_paths, &mut server).await;
+    let http = reqwest::Client::new();
+    let token = credential(&runtime_paths).await;
+
+    // Search speaks for the workspace, so it sits behind the credential with
+    // the rest of the runtime.
+    let unauthenticated = http
+        .get(format!("{}/api/git/search/files?q=widget", state.url))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
+
+    let by_name = http
+        .get(format!("{}/api/git/search/files?q=widget", state.url))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(by_name.status(), StatusCode::OK);
+    let body = by_name.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(body["ok"], json!(true));
+    let paths: Vec<&str> = body["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|file| file["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths, vec!["src/widget.ts"]);
+    // The palette highlights what matched, so the offsets travel with the path.
+    assert!(!body["files"][0]["positions"].as_array().unwrap().is_empty());
+
+    let by_content = http
+        .get(format!("{}/api/git/search/content?q=widget", state.url))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(by_content.status(), StatusCode::OK);
+    let body = by_content.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(body["ok"], json!(true));
+    assert_eq!(body["truncated"], json!(false));
+    let files: Vec<&str> = body["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|file| file["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(files, vec!["README.md", "src/widget.ts"]);
+    assert_eq!(body["files"][0]["matches"][0]["line"], json!(1));
+    assert_eq!(body["totalMatches"], json!(3));
+
+    // An include glob narrows it the way the panel's "files to include" does.
+    let scoped = http
+        .get(format!(
+            "{}/api/git/search/content?q=widget&include=**/*.ts",
+            state.url
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let body = scoped.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(body["files"].as_array().unwrap().len(), 1);
+    assert_eq!(body["files"][0]["path"], json!("src/widget.ts"));
+
+    // An empty box is the panel at rest, not a bad request.
+    let blank = http
+        .get(format!("{}/api/git/search/content?q=%20", state.url))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(blank.status(), StatusCode::OK);
+    assert_eq!(
+        blank.json::<serde_json::Value>().await.unwrap(),
+        json!({ "ok": true, "files": [], "totalMatches": 0, "truncated": false })
+    );
+
+    // A malformed regex is the user's own typing: 400 carrying what is wrong
+    // with it, so the panel can show it under the input.
+    let malformed = http
+        .get(format!(
+            "{}/api/git/search/content?q=a(&regex=1",
+            state.url
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(malformed.status(), StatusCode::BAD_REQUEST);
+    let body = malformed.json::<serde_json::Value>().await.unwrap();
+    assert_eq!(body["ok"], json!(false));
+    assert!(body["error"]
+        .as_str()
+        .unwrap()
+        .contains("Invalid search pattern"));
+
+    let _ = shutdown_tx.send(());
+    let _ = server.await;
+    tokio::fs::remove_dir_all(&root).await.ok();
+}

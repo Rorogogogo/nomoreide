@@ -1542,6 +1542,54 @@ function handleApi(url: URL, method: string, init?: RequestInit): Response {
 
   if (path === "/api/git/diff") return text(diffs[url.searchParams.get("file") ?? ""] ?? "");
   if (path === "/api/git/files") return json({ ok: true, files: Object.keys(files) });
+
+  // The search panel fires on mount with an empty query, so both endpoints need
+  // a handler here or the seam hands the UI `undefined` and the demo blanks.
+  if (path === "/api/git/search/files") {
+    const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const matched = Object.keys(files).filter((filePath) =>
+      filePath.toLowerCase().includes(query),
+    );
+    return json({
+      ok: true,
+      files: matched.sort().map((filePath) => {
+        const at = filePath.toLowerCase().indexOf(query);
+        return {
+          path: filePath,
+          score: at === -1 ? 0 : 100 - at,
+          positions:
+            query && at !== -1
+              ? Array.from({ length: query.length }, (_, index) => at + index)
+              : [],
+        };
+      }),
+    });
+  }
+  if (path === "/api/git/search/content") {
+    const query = (url.searchParams.get("q") ?? "").trim();
+    if (!query) return json({ ok: true, files: [], totalMatches: 0, truncated: false });
+    const needle = query.toLowerCase();
+    const matchedFiles = Object.entries(files)
+      .map(([filePath, content]) => ({
+        path: filePath,
+        matches: content
+          .split("\n")
+          .map((text, index) => ({ text, line: index + 1 }))
+          .filter((line) => line.text.toLowerCase().includes(needle))
+          .map((line) => {
+            const start = line.text.toLowerCase().indexOf(needle);
+            return { line: line.line, text: line.text, start, end: start + query.length };
+          }),
+        truncated: false,
+      }))
+      .filter((file) => file.matches.length > 0);
+    return json({
+      ok: true,
+      files: matchedFiles,
+      totalMatches: matchedFiles.reduce((sum, file) => sum + file.matches.length, 0),
+      truncated: false,
+    });
+  }
   if (path === "/api/git/file-sizes") {
     return json({
       ok: true,

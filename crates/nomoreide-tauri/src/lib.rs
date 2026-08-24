@@ -132,6 +132,8 @@ pub fn run() {
             commands::git::git_pull_default,
             commands::git::git_list_files,
             commands::git::git_file_sizes,
+            commands::git::git_search_files,
+            commands::git::git_search_content,
             commands::git::git_read_file,
             commands::git::git_write_file,
             commands::git::get_github_repo,

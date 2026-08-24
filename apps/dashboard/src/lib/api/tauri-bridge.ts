@@ -500,6 +500,43 @@ export async function tauri_gitFileSizes(repo?: string) {
   );
 }
 
+export async function tauri_gitSearchFiles(query: string, limit?: number, repo?: string) {
+  return tauriInvoke<Array<{ path: string; score: number; positions: number[] }>>(
+    "git_search_files", { query, limit: limit ?? null, repo: repo ?? null },
+  );
+}
+
+/** Tauri names arguments in camelCase; the Rust side reads them as snake_case. */
+export async function tauri_gitSearchContent(
+  query: string,
+  options: {
+    regex?: boolean;
+    caseSensitive?: boolean;
+    wholeWord?: boolean;
+    include?: string;
+    limit?: number;
+  } = {},
+  repo?: string,
+) {
+  return tauriInvoke<{
+    files: Array<{
+      path: string;
+      matches: Array<{ line: number; text: string; start: number; end: number }>;
+      truncated: boolean;
+    }>;
+    totalMatches: number;
+    truncated: boolean;
+  }>("git_search_content", {
+    query,
+    regex: options.regex ?? null,
+    caseSensitive: options.caseSensitive ?? null,
+    wholeWord: options.wholeWord ?? null,
+    include: options.include ?? null,
+    limit: options.limit ?? null,
+    repo: repo ?? null,
+  });
+}
+
 export async function tauri_selectGitRepository(name: string) {
   await tauriInvoke("select_git_repository", { name });
 }

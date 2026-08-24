@@ -17,13 +17,17 @@ mod branches;
 mod exec;
 mod files;
 mod inspect;
+mod search;
 mod types;
 mod worktrees;
 
 pub use worktrees::worktree_at;
 
+pub use search::ContentSearchOptions;
+
 pub use types::{
-    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree,
+    ContentMatch, ContentSearchResult, FileContentMatches, FileNameMatch, FileSizeRank, GitBranch,
+    GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree,
 };
 
 /// Read-safe Git operations. Every method takes the working directory it acts

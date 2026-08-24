@@ -3,7 +3,8 @@ use nomoreide_actions::git::{GitActions, GitPushResult, PullDefaultResult, PushC
 use nomoreide_core::config::{Config, GitRepoDef};
 use nomoreide_core::git_identity;
 use nomoreide_core::git_manager::{
-    FileSizeRank, GitBranch, GitCommit, GitFileStatus, GitManager, GitStatus, GitWorktree,
+    ContentSearchOptions, ContentSearchResult, FileNameMatch, FileSizeRank, GitBranch, GitCommit,
+    GitFileStatus, GitManager, GitStatus, GitWorktree,
 };
 use nomoreide_core::process_manager::ServiceState;
 use std::path::Path;
@@ -500,6 +501,48 @@ pub async fn git_file_sizes(
 ) -> Result<Vec<FileSizeRank>, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     GitManager::rank_files_by_size(&cwd)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The file palette's query. `limit` is the caller's page size, not a guard —
+/// the guard is that the search only ever walks what git tracks.
+#[tauri::command]
+pub async fn git_search_files(
+    state: State<'_, AppState>,
+    query: String,
+    limit: Option<usize>,
+    repo: Option<String>,
+) -> Result<Vec<FileNameMatch>, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    GitManager::search_files(&cwd, &query, limit.unwrap_or(50).clamp(1, 500))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The find panel. Every toggle is optional and defaults the way the panel
+/// opens: literal text, case-insensitive, no word boundary, every file.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn git_search_content(
+    state: State<'_, AppState>,
+    query: String,
+    regex: Option<bool>,
+    case_sensitive: Option<bool>,
+    whole_word: Option<bool>,
+    include: Option<String>,
+    limit: Option<usize>,
+    repo: Option<String>,
+) -> Result<ContentSearchResult, String> {
+    let cwd = resolve_cwd(&state, repo).await?;
+    let options = ContentSearchOptions {
+        regex: regex.unwrap_or(false),
+        case_sensitive: case_sensitive.unwrap_or(false),
+        whole_word: whole_word.unwrap_or(false),
+        include: include.unwrap_or_default(),
+        limit: limit.unwrap_or(500).clamp(1, 2_000),
+    };
+    GitManager::search_content(&cwd, &query, &options)
         .await
         .map_err(|e| e.to_string())
 }

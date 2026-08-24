@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import hljs from "highlight.js/lib/common";
 import { Code2, Eye, Pencil, Save, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -99,14 +99,35 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function NumberedContent({ content, path }: { content: string; path: string }) {
+function NumberedContent({
+  content,
+  focusLine,
+  path,
+}: {
+  content: string;
+  /** One-based line to scroll to and mark — how a search hit arrives here. */
+  focusLine?: number;
+  path: string;
+}) {
   const language = useMemo(() => languageFor(path), [path]);
   const lines = useMemo(() => highlightLines(content, language), [content, language]);
   const gutterWidth = `${Math.max(2, String(lines.length).length)}ch`;
+  const focusRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // Centred rather than merely visible: a hit at the bottom of the viewport
+    // reads as the end of the file, which is rarely what it is.
+    focusRef.current?.scrollIntoView({ block: "center" });
+  }, [focusLine, content]);
+
   return (
     <div className="min-w-max font-mono text-[12px] leading-[1.5]">
       {lines.map((line, index) => (
-        <div className="flex" key={index}>
+        <div
+          className={cn("flex", focusLine === index + 1 && "bg-amber-200/30 dark:bg-amber-500/15")}
+          key={index}
+          ref={focusLine === index + 1 ? focusRef : undefined}
+        >
           <span
             className="shrink-0 select-none border-r border-zinc-200 bg-zinc-100 px-2 text-right text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500"
             style={{ minWidth: `calc(${gutterWidth} + 1rem)` }}
@@ -125,12 +146,15 @@ function NumberedContent({ content, path }: { content: string; path: string }) {
 
 export function FileViewer({
   path,
+  focusLine,
   isModified,
   onViewDiff,
   onFileSaved,
   agentPath,
 }: {
   path: string;
+  /** One-based line the preview should land on, when a search hit opened this. */
+  focusLine?: number;
   isModified: boolean;
   onViewDiff: () => void;
   onFileSaved?: (path: string) => void;
@@ -346,7 +370,7 @@ export function FileViewer({
               <YamlTree content={file.content} />
             )
           ) : (
-            <NumberedContent content={file.content} path={path} />
+            <NumberedContent content={file.content} focusLine={focusLine} path={path} />
           )
         ) : null}
       </div>

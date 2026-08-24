@@ -1,6 +1,8 @@
 /** Node HTTP-server implementation of {@link GitApi} (the web/MCP backend). */
 import { postForm, postFormForJson, requestJson } from "./client.js";
 import type {
+  ContentSearchResult,
+  FileNameMatch,
   FileSizeRank,
   GitApi,
   GitBranch,
@@ -85,6 +87,34 @@ export const httpGitApi: GitApi = {
   async getGitFiles() {
     const response = await requestJson<{ ok: true; files: string[] }>("/api/git/files");
     return response.files;
+  },
+
+  async searchGitFiles(query, limit) {
+    const params = new URLSearchParams({ q: query });
+    if (limit) params.set("limit", String(limit));
+    const response = await requestJson<{ ok: true; files: FileNameMatch[] }>(
+      `/api/git/search/files?${params}`,
+    );
+    return response.files;
+  },
+
+  async searchGitContent(query, options = {}) {
+    // Only the toggles that are on are sent, so the URL says what was asked
+    // rather than restating every default.
+    const params = new URLSearchParams({ q: query });
+    if (options.regex) params.set("regex", "1");
+    if (options.caseSensitive) params.set("case", "1");
+    if (options.wholeWord) params.set("word", "1");
+    if (options.include) params.set("include", options.include);
+    if (options.limit) params.set("limit", String(options.limit));
+    const response = await requestJson<{ ok: true } & ContentSearchResult>(
+      `/api/git/search/content?${params}`,
+    );
+    return {
+      files: response.files,
+      totalMatches: response.totalMatches,
+      truncated: response.truncated,
+    };
   },
 
   async getFileSizeRanking() {

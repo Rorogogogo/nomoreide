@@ -132,6 +132,49 @@ export interface GitCheckoutDefaultAndPullResult {
   branch: string;
 }
 
+/** One tracked path matched by the file palette. */
+export interface FileNameMatch {
+  path: string;
+  /** Higher is a better match. Ordering is the server's; do not re-sort. */
+  score: number;
+  /** Character offsets into `path` that the query matched, for highlighting. */
+  positions: number[];
+}
+
+/** One hit inside a file. `start`/`end` are character offsets into `text`. */
+export interface ContentMatch {
+  /** One-based, the way an editor's gutter counts. */
+  line: number;
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface FileContentMatches {
+  path: string;
+  matches: ContentMatch[];
+  /** The file had more hits than one file is allowed to contribute. */
+  truncated: boolean;
+}
+
+export interface ContentSearchResult {
+  files: FileContentMatches[];
+  /** Matches actually returned, which a truncated search stops short of. */
+  totalMatches: number;
+  truncated: boolean;
+}
+
+/** The find panel's toggles. Every field is optional and defaults to off. */
+export interface ContentSearchOptions {
+  regex?: boolean;
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+  // Glob limiting which paths are searched, e.g. `src/**` then `/*.ts` — a
+  // doc comment cannot hold that pattern, since it closes the comment.
+  include?: string;
+  limit?: number;
+}
+
 export interface GitApi {
   getGitWorktrees(): Promise<GitWorktrees>;
   createGitWorktree(options: {
@@ -146,6 +189,16 @@ export interface GitApi {
   getGitCommitDiff(hash: string, file?: string): Promise<string>;
   getGitCommitFiles(hash: string): Promise<GitFileStatus[]>;
   getGitFiles(): Promise<string[]>;
+  /**
+   * Rank tracked paths against a fuzzy query, best first — the editor's file
+   * palette. An empty query lists the repository rather than nothing.
+   */
+  searchGitFiles(query: string, limit?: number): Promise<FileNameMatch[]>;
+  /**
+   * Search the contents of tracked files, grouped by file. A malformed regex
+   * rejects with the message the engine wrote, so it can be shown to the user.
+   */
+  searchGitContent(query: string, options?: ContentSearchOptions): Promise<ContentSearchResult>;
   getFileSizeRanking(): Promise<FileSizeRank[]>;
   getGitFile(path: string): Promise<GitFileContent>;
   updateGitFile(path: string, content: string): Promise<void>;
