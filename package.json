@@ -56,6 +56,7 @@
     "git-writes-parity": "node --import tsx scripts/check-git-writes-parity.ts",
     "git-remote-parity": "node --import tsx scripts/check-git-remote-parity.ts",
     "git-worktrees-parity": "node --import tsx scripts/check-git-worktrees-parity.ts",
+    "git-repositories-parity": "node --import tsx scripts/check-git-repositories-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",

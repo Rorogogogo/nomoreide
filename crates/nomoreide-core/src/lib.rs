@@ -27,6 +27,7 @@ pub mod one_time_skills;
 pub mod port_utils;
 pub mod process_manager;
 pub mod providers;
+pub mod repo_create;
 pub mod repo_match;
 pub mod repo_onboard;
 pub mod runtime_registry;

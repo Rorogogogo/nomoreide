@@ -12,6 +12,7 @@
 //! modules share this one's repository resolution and body readers.
 
 mod remote;
+mod repositories;
 mod worktrees;
 mod writes;
 
@@ -48,6 +49,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .merge(writes::routes())
         .merge(remote::routes())
         .merge(worktrees::routes())
+        .merge(repositories::routes())
 }
 
 /// Read a JSON body the way the reference's `readJson` reads one: an empty,

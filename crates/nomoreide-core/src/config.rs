@@ -635,9 +635,22 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Forget a repository.
+    ///
+    /// Refuses a name that is not registered rather than reporting success for
+    /// a no-op: "removed" and "was never there" are different answers, and the
+    /// dashboard shows the second one to the user.
     pub async fn remove_git_repository(&self, name: &str) -> Result<Config> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(validation("repository name is required"));
+        }
         let mut config = self.load().await?;
+        let before = config.git_repositories.len();
         config.git_repositories.retain(|r| r.name != name);
+        if config.git_repositories.len() == before {
+            anyhow::bail!("Git repository \"{name}\" is not registered.");
+        }
         if config.selected_git_repository.as_deref() == Some(name) {
             config.selected_git_repository = None;
         }
@@ -695,11 +708,29 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Persist the ordered set of repositories pinned to the board.
+    ///
+    /// Names are filtered to those still registered, de-duped with the first
+    /// occurrence winning, and only then capped — so a stale, repeated, or
+    /// overflowing list from the client cannot corrupt the board or strand a
+    /// repository off-screen. Filtering before the cap matters: capping first
+    /// would let five stale names push every real one out.
     pub async fn set_git_board_repositories(&self, names: Vec<String>) -> Result<Config> {
         let mut config = self.load().await?;
-        // Cap at 5, mirroring the UI's 5-column limit.
-        let capped: Vec<String> = names.into_iter().take(5).collect();
-        config.git_board_repositories = Some(capped);
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let kept: Vec<String> = names
+            .into_iter()
+            .filter(|name| {
+                config
+                    .git_repositories
+                    .iter()
+                    .any(|repo| &repo.name == name)
+                    && seen.insert(name.clone())
+            })
+            // Capped at 5, mirroring the UI's 5-column limit.
+            .take(5)
+            .collect();
+        config.git_board_repositories = Some(kept);
         self.save(&config).await?;
         Ok(config)
     }
@@ -1008,18 +1039,49 @@ fn mask_database_query(url: &str) -> String {
 /// `~` is not expanded anywhere in this project, so a path that starts with it
 /// would be stored literally and resolve to nothing. Say so rather than storing
 /// it.
+/// A refusal the caller can fix: a relative path, a missing name, a folder that
+/// is not a worktree.
+///
+/// The distinction has to survive the trip up to the web layer, because the
+/// reference's dispatcher answers `ConfigValidationError` with 400 and every
+/// other failure with 500. Carried through `anyhow` and recovered by
+/// downcasting, so existing `?` call sites keep working unchanged.
+#[derive(Debug)]
+pub struct ConfigValidationError(pub String);
+
+impl std::fmt::Display for ConfigValidationError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ConfigValidationError {}
+
+/// Whether a failure is one the caller can correct — the 400/500 split above.
+pub fn is_config_validation_error(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<ConfigValidationError>().is_some()
+}
+
+fn validation(message: impl Into<String>) -> anyhow::Error {
+    anyhow::Error::new(ConfigValidationError(message.into()))
+}
+
 fn require_absolute_path(path: &str) -> Result<()> {
     if PathBuf::from(path).is_absolute() {
         return Ok(());
     }
-    anyhow::bail!("Please add an absolute path. Paths beginning with ~ are not expanded here.")
+    Err(validation(
+        "Please add an absolute path. Paths beginning with ~ are not expanded here.",
+    ))
 }
 
 async fn require_git_worktree(path: &str) -> Result<()> {
     if is_git_worktree(path).await {
         return Ok(());
     }
-    anyhow::bail!("Not a Git repository. Choose a folder inside a Git worktree.")
+    Err(validation(
+        "Not a Git repository. Choose a folder inside a Git worktree.",
+    ))
 }
 
 /// A missing directory, a missing `git`, and a directory outside any repository
