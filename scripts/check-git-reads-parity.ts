@@ -55,6 +55,14 @@ const steps: readonly Step[] = [
   { name: "identity/no-account-selected", path: "/api/git/identity" },
   { name: "identity/named-repo", path: "/api/git/identity?repo=repo" },
   { name: "identity/unknown-repo", path: "/api/git/identity?repo=nope" },
+  { name: "diff/untracked", path: "/api/git/diff?file=untracked.txt", text: true },
+  { name: "diff/unstaged", path: "/api/git/diff?file=src/main.rs", text: true },
+  { name: "diff/staged-only", path: "/api/git/diff?file=staged-only.txt", text: true },
+  { name: "diff/both-staged-and-unstaged", path: "/api/git/diff?file=both.txt", text: true },
+  { name: "diff/clean-file", path: "/api/git/diff?file=src/nested/deep.txt" },
+  { name: "diff/missing-file-param", path: "/api/git/diff" },
+  { name: "diff/unknown-repo", path: "/api/git/diff?file=a.txt&repo=nope" },
+  { name: "diff/no-trailing-newline", path: "/api/git/diff?file=no-newline.txt", text: true },
 ];
 // `/api/git/graph` and `/api/git/worktrees` are not served by the native
 // daemon yet — see the note at the end of routes/git.rs for why — so they
@@ -213,12 +221,25 @@ async function seedRepository(cwd: string): Promise<{ commitHash: string }> {
   await git("commit", "--quiet", "-m", "first");
 
   await write("src/main.rs", "fn main() { println!(\"hi\"); }\n");
+  await write("staged-only.txt", "committed\n");
+  await write("both.txt", "committed\n");
   await git("add", "-A");
   await git("commit", "--quiet", "-m", "second");
 
   await git("branch", "feature");
 
+  // An unstaged edit: `git diff` shows it, `--cached` does not.
+  await write("src/main.rs", "fn main() { println!(\"edited\"); }\n");
+  // Staged only: `--cached` shows it, `git diff` does not.
+  await write("staged-only.txt", "staged\n");
+  await git("add", "staged-only.txt");
+  // Both: the unstaged version must win.
+  await write("both.txt", "staged\n");
+  await git("add", "both.txt");
+  await write("both.txt", "unstaged\n");
+
   await write("untracked.txt", "not tracked\n");
+  await write("no-newline.txt", "no trailing newline");
 
   const { stdout } = await run("git", ["rev-parse", "HEAD"], { cwd });
   return { commitHash: stdout.trim() };

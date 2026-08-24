@@ -3,7 +3,7 @@
 use super::exec;
 use super::types::{GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus};
 use super::GitManager;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 const LOCAL_PREFIX: &str = "refs/heads/";
 const REMOTE_PREFIX: &str = "refs/remotes/";
@@ -157,13 +157,61 @@ impl GitManager {
             .collect())
     }
 
-    pub async fn file_diff(cwd: &str, file: &str) -> Result<String> {
-        // Try staged diff first, fall back to unstaged
-        let staged = exec::output(cwd, &["diff", "--cached", "--", file]).await?;
-        if !staged.trim().is_empty() {
-            return Ok(staged);
+    /// The diff to show for one file, chosen by its status pair rather than by
+    /// probing: an untracked file has no blob to diff against and gets a
+    /// synthesized one, an unstaged change outranks a staged one (the working
+    /// tree is what the user is looking at), and a staged-only change falls
+    /// back to `--cached`.
+    ///
+    /// The status pair is what makes this correct. Probing "staged first, else
+    /// unstaged" — which is what this used to do — shows the *staged* diff for
+    /// a file that has both, hiding the edit the user just made.
+    pub async fn file_diff_for_status(cwd: &str, file: &GitFileStatus) -> Result<String> {
+        if file.index == "?" && file.working_tree == "?" {
+            return Self::untracked_diff(cwd, &file.path).await;
         }
-        exec::output(cwd, &["diff", "--", file]).await
+        if !file.working_tree.trim().is_empty() {
+            return Self::diff(cwd, Some(&file.path)).await;
+        }
+        if !file.index.trim().is_empty() {
+            return Self::staged_diff(cwd, Some(&file.path)).await;
+        }
+        Self::diff(cwd, Some(&file.path)).await
+    }
+
+    /// A unified diff for a file git has never seen, synthesized against
+    /// `/dev/null` — `git diff` reports nothing for an untracked path, so
+    /// without this the UI shows an empty panel for a brand-new file.
+    async fn untracked_diff(cwd: &str, path: &str) -> Result<String> {
+        let full = std::path::Path::new(cwd).join(path);
+        let content = tokio::fs::read_to_string(&full)
+            .await
+            .with_context(|| format!("Failed to read untracked file {path}"))?;
+
+        let lines: Vec<&str> = content.split('\n').collect();
+        let has_trailing_newline = lines.last() == Some(&"");
+        let content_lines = if has_trailing_newline {
+            &lines[..lines.len() - 1]
+        } else {
+            &lines[..]
+        };
+        // An empty file still reports one line of hunk length, matching the
+        // reference's `Math.max(contentLines.length, 1)`.
+        let hunk_length = content_lines.len().max(1);
+
+        let mut out = vec![
+            format!("diff --git a/{path} b/{path}"),
+            "new file mode 100644".to_string(),
+            "index 0000000..0000000".to_string(),
+            "--- /dev/null".to_string(),
+            format!("+++ b/{path}"),
+            format!("@@ -0,0 +1,{hunk_length} @@"),
+        ];
+        out.extend(content_lines.iter().map(|line| format!("+{line}")));
+        if !has_trailing_newline {
+            out.push("\\ No newline at end of file".to_string());
+        }
+        Ok(format!("{}\n", out.join("\n")))
     }
 
     pub async fn graph(cwd: &str, limit: usize) -> Result<Vec<GitCommit>> {
@@ -405,9 +453,8 @@ fn validate_hash(hash: &str) -> Result<String> {
     if trimmed.is_empty() {
         return Err(anyhow!("commit is required"));
     }
-    let valid = trimmed.len() >= 4
-        && trimmed.len() <= 64
-        && trimmed.chars().all(|c| c.is_ascii_hexdigit());
+    let valid =
+        trimmed.len() >= 4 && trimmed.len() <= 64 && trimmed.chars().all(|c| c.is_ascii_hexdigit());
     if !valid {
         return Err(anyhow!("invalid commit hash"));
     }
@@ -421,7 +468,10 @@ mod validate_hash_tests {
     #[test]
     fn accepts_hex_hashes_within_length_bounds() {
         assert_eq!(validate_hash("abcd").unwrap(), "abcd");
-        assert_eq!(validate_hash("a".repeat(64).as_str()).unwrap(), "a".repeat(64));
+        assert_eq!(
+            validate_hash("a".repeat(64).as_str()).unwrap(),
+            "a".repeat(64)
+        );
         assert_eq!(validate_hash("ABCD1234").unwrap(), "ABCD1234");
     }
 
@@ -454,5 +504,147 @@ mod validate_hash_tests {
     fn refuses_a_flag_shaped_value() {
         assert!(validate_hash("--upload-pack=evil").is_err());
         assert!(validate_hash("-h").is_err());
+    }
+}
+
+#[cfg(test)]
+mod file_diff_tests {
+    use super::*;
+    use uuid::Uuid;
+
+    async fn repository() -> String {
+        let root = std::env::temp_dir().join(format!("nomoreide-git-diff-{}", Uuid::new_v4()));
+        tokio::fs::create_dir_all(&root).await.unwrap();
+        let cwd = root.to_string_lossy().into_owned();
+        exec::checked(&cwd, &["init", "--quiet"]).await.unwrap();
+        exec::checked(&cwd, &["config", "user.email", "t@example.com"])
+            .await
+            .unwrap();
+        exec::checked(&cwd, &["config", "user.name", "T"])
+            .await
+            .unwrap();
+        cwd
+    }
+
+    fn status_of(path: &str, index: &str, working_tree: &str) -> GitFileStatus {
+        GitFileStatus {
+            path: path.to_string(),
+            index: index.to_string(),
+            working_tree: working_tree.to_string(),
+        }
+    }
+
+    /// A file with *both* a staged and an unstaged change must show the
+    /// unstaged one — the working tree is what the user is looking at. The
+    /// previous implementation probed staged-first and got this backwards.
+    #[tokio::test]
+    async fn an_unstaged_change_outranks_a_staged_one() {
+        let cwd = repository().await;
+        let path = std::path::Path::new(&cwd).join("a.txt");
+        tokio::fs::write(&path, "original\n").await.unwrap();
+        exec::checked(&cwd, &["add", "-A"]).await.unwrap();
+        exec::checked(&cwd, &["commit", "--quiet", "-m", "first"])
+            .await
+            .unwrap();
+
+        tokio::fs::write(&path, "staged\n").await.unwrap();
+        exec::checked(&cwd, &["add", "-A"]).await.unwrap();
+        tokio::fs::write(&path, "unstaged\n").await.unwrap();
+
+        let diff = GitManager::file_diff_for_status(&cwd, &status_of("a.txt", "M", "M"))
+            .await
+            .unwrap();
+        assert!(
+            diff.contains("+unstaged"),
+            "expected the working-tree diff, got:\n{diff}"
+        );
+        assert!(!diff.contains("+staged"));
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    #[tokio::test]
+    async fn a_staged_only_change_uses_the_cached_diff() {
+        let cwd = repository().await;
+        let path = std::path::Path::new(&cwd).join("a.txt");
+        tokio::fs::write(&path, "original\n").await.unwrap();
+        exec::checked(&cwd, &["add", "-A"]).await.unwrap();
+        exec::checked(&cwd, &["commit", "--quiet", "-m", "first"])
+            .await
+            .unwrap();
+
+        tokio::fs::write(&path, "staged\n").await.unwrap();
+        exec::checked(&cwd, &["add", "-A"]).await.unwrap();
+
+        let diff = GitManager::file_diff_for_status(&cwd, &status_of("a.txt", "M", " "))
+            .await
+            .unwrap();
+        assert!(
+            diff.contains("+staged"),
+            "expected the staged diff, got:\n{diff}"
+        );
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    /// `git diff` reports nothing for an untracked path, so the diff is
+    /// synthesized against /dev/null instead of coming back empty.
+    #[tokio::test]
+    async fn an_untracked_file_gets_a_synthesized_diff() {
+        let cwd = repository().await;
+        tokio::fs::write(
+            std::path::Path::new(&cwd).join("new.txt"),
+            "line one\nline two\n",
+        )
+        .await
+        .unwrap();
+
+        let diff = GitManager::file_diff_for_status(&cwd, &status_of("new.txt", "?", "?"))
+            .await
+            .unwrap();
+        assert_eq!(
+            diff,
+            "diff --git a/new.txt b/new.txt\n\
+             new file mode 100644\n\
+             index 0000000..0000000\n\
+             --- /dev/null\n\
+             +++ b/new.txt\n\
+             @@ -0,0 +1,2 @@\n\
+             +line one\n\
+             +line two\n"
+        );
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    #[tokio::test]
+    async fn an_untracked_file_without_a_trailing_newline_is_marked() {
+        let cwd = repository().await;
+        tokio::fs::write(std::path::Path::new(&cwd).join("new.txt"), "no newline")
+            .await
+            .unwrap();
+
+        let diff = GitManager::file_diff_for_status(&cwd, &status_of("new.txt", "?", "?"))
+            .await
+            .unwrap();
+        assert!(diff.contains("@@ -0,0 +1,1 @@"));
+        assert!(
+            diff.ends_with("+no newline\n\\ No newline at end of file\n"),
+            "got:\n{diff}"
+        );
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    /// An empty untracked file still reports a hunk length of 1, matching the
+    /// reference's `Math.max(contentLines.length, 1)`.
+    #[tokio::test]
+    async fn an_empty_untracked_file_still_reports_one_hunk_line() {
+        let cwd = repository().await;
+        tokio::fs::write(std::path::Path::new(&cwd).join("empty.txt"), "")
+            .await
+            .unwrap();
+
+        let diff = GitManager::file_diff_for_status(&cwd, &status_of("empty.txt", "?", "?"))
+            .await
+            .unwrap();
+        assert!(diff.contains("@@ -0,0 +1,1 @@"), "got:\n{diff}");
+        tokio::fs::remove_dir_all(&cwd).await.ok();
     }
 }

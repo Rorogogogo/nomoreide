@@ -35,6 +35,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/commit/files", get(commit_files))
         .route("/api/git/branches", get(branches))
         .route("/api/git/identity", get(identity))
+        .route("/api/git/diff", get(diff))
 }
 // `/api/git/graph` and `/api/git/worktrees` are deliberately not registered
 // yet — see the note at the end of this file.
@@ -258,10 +259,19 @@ fn text_response(body: String) -> Response {
 }
 
 async fn commit_diff(State(state): State<AppState>, Query(query): Query<CommitQuery>) -> Response {
-    let Some(hash) = query.hash.as_deref().map(str::trim).filter(|hash| !hash.is_empty()) else {
+    let Some(hash) = query
+        .hash
+        .as_deref()
+        .map(str::trim)
+        .filter(|hash| !hash.is_empty())
+    else {
         return error(StatusCode::BAD_REQUEST, "hash is required");
     };
-    let file = query.file.as_deref().map(str::trim).filter(|file| !file.is_empty());
+    let file = query
+        .file
+        .as_deref()
+        .map(str::trim)
+        .filter(|file| !file.is_empty());
     let cwd = state.workspace_cwd().await;
     match GitManager::commit_diff(&cwd, hash, file).await {
         Ok(diff) => text_response(diff),
@@ -277,7 +287,12 @@ struct CommitFilesEnvelope {
 }
 
 async fn commit_files(State(state): State<AppState>, Query(query): Query<CommitQuery>) -> Response {
-    let Some(hash) = query.hash.as_deref().map(str::trim).filter(|hash| !hash.is_empty()) else {
+    let Some(hash) = query
+        .hash
+        .as_deref()
+        .map(str::trim)
+        .filter(|hash| !hash.is_empty())
+    else {
         return error(StatusCode::BAD_REQUEST, "hash is required");
     };
     let cwd = state.workspace_cwd().await;
@@ -333,7 +348,12 @@ async fn resolve_repo_cwd(
         let repository = config
             .selected_git_repository
             .as_ref()
-            .and_then(|selected| config.git_repositories.iter().find(|repo| &repo.name == selected))
+            .and_then(|selected| {
+                config
+                    .git_repositories
+                    .iter()
+                    .find(|repo| &repo.name == selected)
+            })
             .or_else(|| config.git_repositories.first())
             .cloned();
         return Ok((state.workspace_cwd().await, repository));
@@ -343,10 +363,21 @@ async fn resolve_repo_cwd(
         .load()
         .await
         .map_err(|reason| error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()))?;
-    let Some(repository) = config.git_repositories.iter().find(|repo| repo.name == name).cloned() else {
-        return Err(error(StatusCode::NOT_FOUND, &format!("Unknown repository: {name}")));
+    let Some(repository) = config
+        .git_repositories
+        .iter()
+        .find(|repo| repo.name == name)
+        .cloned()
+    else {
+        return Err(error(
+            StatusCode::NOT_FOUND,
+            &format!("Unknown repository: {name}"),
+        ));
     };
-    let cwd = repository.active_worktree_path.clone().unwrap_or_else(|| repository.path.clone());
+    let cwd = repository
+        .active_worktree_path
+        .clone()
+        .unwrap_or_else(|| repository.path.clone());
     Ok((cwd, Some(repository)))
 }
 
@@ -377,6 +408,49 @@ async fn identity(State(state): State<AppState>, Query(query): Query<RepoQuery>)
     )
     .await;
     Json(IdentityEnvelope { ok: true, identity }).into_response()
+}
+
+#[derive(Deserialize)]
+struct DiffQuery {
+    #[serde(default)]
+    repo: Option<String>,
+    #[serde(default)]
+    file: Option<String>,
+}
+
+/// The working-tree diff for one file, scoped to a named or the selected
+/// repository. Which diff a file gets depends on its status pair, so status is
+/// read first; a path git does not report falls back to a plain `git diff`,
+/// and a path with nothing to show at all is a 404 rather than an empty body.
+async fn diff(State(state): State<AppState>, Query(query): Query<DiffQuery>) -> Response {
+    let (cwd, _repository) = match resolve_repo_cwd(&state, query.repo.as_deref()).await {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
+    let Some(file) = query
+        .file
+        .as_deref()
+        .map(str::trim)
+        .filter(|file| !file.is_empty())
+    else {
+        return error(StatusCode::BAD_REQUEST, "file is required");
+    };
+
+    let status = match GitManager::status(&cwd).await {
+        Ok(status) => status,
+        Err(reason) => return error(StatusCode::BAD_REQUEST, &reason.to_string()),
+    };
+    let diff = match status.files.iter().find(|entry| entry.path == file) {
+        Some(entry) => GitManager::file_diff_for_status(&cwd, entry).await.ok(),
+        // The reference reaches for a plain diff here and treats a failure as
+        // "nothing to show" rather than an error, so a path that is simply
+        // clean reads the same as one that does not exist.
+        None => GitManager::diff(&cwd, Some(file)).await.ok(),
+    };
+    match diff {
+        Some(diff) => text_response(diff),
+        None => error(StatusCode::NOT_FOUND, "No changes or file not found."),
+    }
 }
 
 // `/api/git/graph` is not served yet: the reference computes a git-graph

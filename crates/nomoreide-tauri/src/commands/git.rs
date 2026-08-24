@@ -249,9 +249,20 @@ pub async fn git_diff(
 ) -> Result<String, String> {
     let cwd = resolve_cwd(&state, repo).await?;
     match file {
-        Some(f) => GitManager::file_diff(&cwd, &f)
-            .await
-            .map_err(|e| e.to_string()),
+        // Which diff a file gets depends on its status pair, so the status has
+        // to be read first — see `file_diff_for_status`. A path git does not
+        // report at all falls back to a plain diff, matching the web route.
+        Some(f) => {
+            let status = GitManager::status(&cwd).await.map_err(|e| e.to_string())?;
+            match status.files.iter().find(|entry| entry.path == f) {
+                Some(entry) => GitManager::file_diff_for_status(&cwd, entry)
+                    .await
+                    .map_err(|e| e.to_string()),
+                None => GitManager::diff(&cwd, Some(&f))
+                    .await
+                    .map_err(|e| e.to_string()),
+            }
+        }
         None => GitManager::diff(&cwd, None)
             .await
             .map_err(|e| e.to_string()),

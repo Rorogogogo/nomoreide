@@ -37,13 +37,24 @@ impl GitManager {
             return Err(anyhow!("file is not tracked by git"));
         }
         let full = resolve_inside(cwd, path)?;
-        let bytes = tokio::fs::read(&full).await.context("Failed to read tracked file")?;
+        let bytes = tokio::fs::read(&full)
+            .await
+            .context("Failed to read tracked file")?;
         let size = bytes.len() as u64;
         if bytes.contains(&0) {
-            return Ok(TrackedFileContent { content: String::new(), truncated: false, binary: true, size });
+            return Ok(TrackedFileContent {
+                content: String::new(),
+                truncated: false,
+                binary: true,
+                size,
+            });
         }
         let truncated = bytes.len() > MAX_BYTES;
-        let slice = if truncated { &bytes[..MAX_BYTES] } else { &bytes[..] };
+        let slice = if truncated {
+            &bytes[..MAX_BYTES]
+        } else {
+            &bytes[..]
+        };
         Ok(TrackedFileContent {
             content: String::from_utf8_lossy(slice).into_owned(),
             truncated,
@@ -226,7 +237,9 @@ mod read_tracked_file_tests {
     #[tokio::test]
     async fn reads_a_tracked_text_file() {
         let cwd = repository(&[("src/main.rs", b"fn main() {}\n")]).await;
-        let file = GitManager::read_tracked_file(&cwd, "src/main.rs").await.unwrap();
+        let file = GitManager::read_tracked_file(&cwd, "src/main.rs")
+            .await
+            .unwrap();
         assert_eq!(file.content, "fn main() {}\n");
         assert!(!file.truncated);
         assert!(!file.binary);
@@ -237,8 +250,12 @@ mod read_tracked_file_tests {
     #[tokio::test]
     async fn refuses_a_path_git_does_not_track() {
         let cwd = repository(&[("tracked.txt", b"hi")]).await;
-        tokio::fs::write(Path::new(&cwd).join("untracked.txt"), b"secret").await.unwrap();
-        assert!(GitManager::read_tracked_file(&cwd, "untracked.txt").await.is_err());
+        tokio::fs::write(Path::new(&cwd).join("untracked.txt"), b"secret")
+            .await
+            .unwrap();
+        assert!(GitManager::read_tracked_file(&cwd, "untracked.txt")
+            .await
+            .is_err());
         tokio::fs::remove_dir_all(&cwd).await.ok();
     }
 
@@ -248,14 +265,18 @@ mod read_tracked_file_tests {
     #[tokio::test]
     async fn refuses_a_climbing_path_even_if_it_were_somehow_tracked() {
         let cwd = repository(&[("a.txt", b"hi")]).await;
-        assert!(GitManager::read_tracked_file(&cwd, "../a.txt").await.is_err());
+        assert!(GitManager::read_tracked_file(&cwd, "../a.txt")
+            .await
+            .is_err());
         tokio::fs::remove_dir_all(&cwd).await.ok();
     }
 
     #[tokio::test]
     async fn a_binary_file_is_reported_not_decoded() {
         let cwd = repository(&[("image.bin", &[0x00, 0xff, 0x01, 0x00])]).await;
-        let file = GitManager::read_tracked_file(&cwd, "image.bin").await.unwrap();
+        let file = GitManager::read_tracked_file(&cwd, "image.bin")
+            .await
+            .unwrap();
         assert!(file.binary);
         assert!(!file.truncated);
         assert_eq!(file.content, "");
@@ -267,7 +288,9 @@ mod read_tracked_file_tests {
     async fn a_file_past_the_cap_is_truncated_but_still_reports_its_full_size() {
         let big = vec![b'x'; 1_000_010];
         let cwd = repository(&[("big.txt", &big)]).await;
-        let file = GitManager::read_tracked_file(&cwd, "big.txt").await.unwrap();
+        let file = GitManager::read_tracked_file(&cwd, "big.txt")
+            .await
+            .unwrap();
         assert!(file.truncated);
         assert!(!file.binary);
         assert_eq!(file.content.len(), 1_000_000);
