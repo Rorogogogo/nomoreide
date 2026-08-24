@@ -20,7 +20,7 @@ dirs.workspace = true
 futures-util.workspace = true
 nomoreide-actions = { path = "../nomoreide-actions" }
 nomoreide-core = { path = "../nomoreide-core" }
-portable-pty = "0.8"
+portable-pty.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true

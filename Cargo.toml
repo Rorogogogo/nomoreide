@@ -28,6 +28,7 @@ serde = { version = "1", features = ["derive"] }
 # order they were written in. Without this, parsing a request would sort them
 # before any tool saw them, and the order could never be recovered.
 serde_json = { version = "1", features = ["preserve_order"] }
+portable-pty = "0.8"
 serde_yaml = "0.9"
 sha2 = "0.10"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "mysql", "sqlite", "json"] }

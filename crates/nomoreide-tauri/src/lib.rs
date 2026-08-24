@@ -10,10 +10,10 @@ use std::path::PathBuf;
 use tauri::{Manager, RunEvent, State, WindowEvent};
 use tokio::sync::{watch, Mutex};
 
-use commands::terminal::TerminalManager;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
+use nomoreide_core::terminal::TerminalManager;
 
 // ---------------------------------------------------------------------------
 // Shared application state
