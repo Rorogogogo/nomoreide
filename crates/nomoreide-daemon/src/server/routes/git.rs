@@ -34,6 +34,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/commit", get(commit_diff))
         .route("/api/git/commit/files", get(commit_files))
         .route("/api/git/branches", get(branches))
+        .route("/api/git/identity", get(identity))
 }
 // `/api/git/graph` and `/api/git/worktrees` are deliberately not registered
 // yet — see the note at the end of this file.
@@ -299,6 +300,83 @@ async fn branches(State(state): State<AppState>) -> Response {
         Ok(branches) => Json(BranchesEnvelope { ok: true, branches }).into_response(),
         Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
     }
+}
+
+#[derive(Deserialize)]
+struct RepoQuery {
+    #[serde(default)]
+    repo: Option<String>,
+}
+
+/// One repository's working directory, resolved the way every write-scoped
+/// reference route resolves it: a named `?repo=` looks the repository up by
+/// name and reports 404 when it isn't registered; its absence falls back to
+/// whichever repository is currently selected (via `workspace_cwd`, which may
+/// be no repository at all — the daemon's own cwd).
+///
+/// The two paths deliberately resolve a stale active worktree differently,
+/// matching the reference: the *named* path trusts `active_worktree_path`
+/// outright (nothing here re-checks it still exists), while the *selected*
+/// path goes through `workspace_cwd`, which already carries that same
+/// unchecked trust — so the two agree, not by coincidence but because neither
+/// one currently re-verifies it.
+async fn resolve_repo_cwd(
+    state: &AppState,
+    repo: Option<&str>,
+) -> Result<(String, Option<nomoreide_core::config::GitRepoDef>), Response> {
+    let Some(name) = repo.map(str::trim).filter(|name| !name.is_empty()) else {
+        let config = state
+            .config_store
+            .load()
+            .await
+            .map_err(|reason| error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()))?;
+        let repository = config
+            .selected_git_repository
+            .as_ref()
+            .and_then(|selected| config.git_repositories.iter().find(|repo| &repo.name == selected))
+            .or_else(|| config.git_repositories.first())
+            .cloned();
+        return Ok((state.workspace_cwd().await, repository));
+    };
+    let config = state
+        .config_store
+        .load()
+        .await
+        .map_err(|reason| error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()))?;
+    let Some(repository) = config.git_repositories.iter().find(|repo| repo.name == name).cloned() else {
+        return Err(error(StatusCode::NOT_FOUND, &format!("Unknown repository: {name}")));
+    };
+    let cwd = repository.active_worktree_path.clone().unwrap_or_else(|| repository.path.clone());
+    Ok((cwd, Some(repository)))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct IdentityEnvelope {
+    ok: bool,
+    #[serde(flatten)]
+    identity: nomoreide_core::git_identity::GitIdentityState,
+}
+
+/// Who a commit made here would be authored by, and whether that differs from
+/// the machine's configured git identity.
+async fn identity(State(state): State<AppState>, Query(query): Query<RepoQuery>) -> Response {
+    let (cwd, repository) = match resolve_repo_cwd(&state, query.repo.as_deref()).await {
+        Ok(resolved) => resolved,
+        Err(response) => return response,
+    };
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(reason) => return error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    };
+    let identity = nomoreide_core::git_identity::resolve_identity_state(
+        &state.config_store,
+        &config,
+        repository.as_ref(),
+        &cwd,
+    )
+    .await;
+    Json(IdentityEnvelope { ok: true, identity }).into_response()
 }
 
 // `/api/git/graph` is not served yet: the reference computes a git-graph

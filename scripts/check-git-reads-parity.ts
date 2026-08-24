@@ -52,6 +52,9 @@ const steps: readonly Step[] = [
   { name: "commit/invalid-hash", path: "/api/git/commit?hash=not-hex" },
   { name: "commit/short-hash", path: "/api/git/commit?hash=abc" },
   { name: "branches", path: "/api/git/branches" },
+  { name: "identity/no-account-selected", path: "/api/git/identity" },
+  { name: "identity/named-repo", path: "/api/git/identity?repo=repo" },
+  { name: "identity/unknown-repo", path: "/api/git/identity?repo=nope" },
 ];
 // `/api/git/graph` and `/api/git/worktrees` are not served by the native
 // daemon yet — see the note at the end of routes/git.rs for why — so they
