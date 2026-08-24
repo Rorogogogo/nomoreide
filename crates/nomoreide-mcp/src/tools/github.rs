@@ -66,7 +66,7 @@ pub(super) async fn list_prs(
     let prs = context(store, cwd)
         .await?
         .manager
-        .list_prs(state, page)
+        .list_prs(state, &page.to_string())
         .await
         .map_err(|error| error.to_string())?;
     render(&prs)
@@ -144,7 +144,7 @@ pub(super) async fn list_issues(
     let issues = context(store, cwd)
         .await?
         .manager
-        .list_issues(state, page)
+        .list_issues(state, &page.to_string())
         .await
         .map_err(|error| error.to_string())?;
     render(&issues)
@@ -232,7 +232,7 @@ pub(super) async fn get_commit_ci(
     let checks = context(store, cwd)
         .await?
         .manager
-        .commit_checks(sha)
+        .commit_checks(Some(sha))
         .await
         .map_err(|error| error.to_string())?;
     render(&checks)
@@ -247,8 +247,13 @@ pub(super) async fn list_workflow_runs(
     let runs = context(store, cwd)
         .await?
         .manager
-        .list_workflow_runs(branch, page)
+        .list_workflow_runs(branch, &page.to_string())
         .await
         .map_err(|error| error.to_string())?;
+    // A response with no `workflow_runs` renders as `null` here. The reference
+    // hands its MCP layer a JavaScript `undefined`, which is not a JSON
+    // document at all — a documented difference, confined to a payload GitHub
+    // does not produce. The HTTP route, where this shape *is* reachable, omits
+    // the field the way the reference does.
     render(&runs)
 }

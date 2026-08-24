@@ -4,6 +4,7 @@
 mod app;
 mod body;
 mod errors;
+mod query;
 mod routes;
 mod static_assets;
 

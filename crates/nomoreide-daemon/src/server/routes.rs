@@ -15,6 +15,9 @@ mod timeline;
 
 use crate::server::app::{require_credential, AppState};
 use crate::server::errors::method_not_allowed;
+use axum::http::header::CONTENT_TYPE;
+use axum::http::HeaderValue;
+use axum::response::Response;
 use axum::{middleware, Router};
 
 pub(crate) fn router(state: AppState) -> Router {
@@ -30,7 +33,28 @@ pub(crate) fn router(state: AppState) -> Router {
         // 404 the fallback used to answer directly.
         .fallback(shell::serve)
         .method_not_allowed_fallback(method_not_allowed)
+        .layer(middleware::map_response(declare_json_charset))
         .with_state(state)
+}
+
+/// Say which encoding the JSON is in.
+///
+/// The reference writes `application/json; charset=utf-8` from its one
+/// `sendJson`, and the JSON serializer here writes a bare `application/json`.
+/// Both are UTF-8 and every client this daemon has reads them the same way —
+/// but the header is part of the answer, and an answer that differs is a
+/// divergence whether or not anything currently notices.
+///
+/// Applied here rather than at each route, because the alternative is a rule
+/// every future route has to remember. Only the exact bare value is rewritten,
+/// so a route that deliberately says something else keeps saying it.
+async fn declare_json_charset(mut response: Response) -> Response {
+    const BARE: HeaderValue = HeaderValue::from_static("application/json");
+    const WITH_CHARSET: HeaderValue = HeaderValue::from_static("application/json; charset=utf-8");
+    if response.headers().get(CONTENT_TYPE) == Some(&BARE) {
+        response.headers_mut().insert(CONTENT_TYPE, WITH_CHARSET);
+    }
+    response
 }
 
 /// Everything that speaks for the runtime. `route_layer` runs the credential

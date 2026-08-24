@@ -10,6 +10,8 @@
 //! in the `Authorization` header of a request to GitHub itself; what the
 //! dashboard sees is the *selection* — which source, which host, which login.
 
+mod api;
+
 use crate::server::app::AppState;
 use crate::server::body::{parse_form, read_json_object, string_field};
 use crate::server::errors::{config_failure, error};
@@ -41,6 +43,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/github/account", put(select_account))
         .route("/api/github/oauth/start", post(oauth_start))
         .route("/api/github/oauth/poll", post(oauth_poll))
+        .merge(api::routes())
 }
 
 // --- Status -----------------------------------------------------------------

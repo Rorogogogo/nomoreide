@@ -101,12 +101,20 @@ pub struct GithubPr {
     pub mergeable: Value,
 }
 
+/// One commit's checks, as the reference reports them.
+///
+/// `sha` and `total_count` are optional because the reference builds this
+/// object out of values that can be `undefined` — a pull request head with no
+/// sha, a payload with no count — and `JSON.stringify` drops a key whose value
+/// is `undefined` rather than writing null.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitCiStatus {
-    pub sha: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sha: Option<String>,
     pub state: String,
-    pub total_count: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_count: Option<i64>,
     pub runs: Vec<Value>,
 }
 
@@ -163,7 +171,91 @@ impl GithubManager {
         self.get(&self.repo_path("")).await
     }
 
-    pub async fn list_prs(&self, state: &str, page: u64) -> Result<Vec<GithubPr>, GithubApiError> {
+    /// The repository's branches, reshaped down to what a base-branch picker
+    /// needs. GitHub sends far more per branch, and this list can be a hundred
+    /// of them.
+    ///
+    /// A branch with no `commit` object is a payload GitHub does not produce;
+    /// the reference reads straight through it and raises a `TypeError`, so
+    /// this raises too rather than inventing an empty sha that would later be
+    /// asked for as a real one.
+    pub async fn list_branches(&self) -> Result<Vec<Value>, GithubApiError> {
+        let path = self.repo_path("/branches?per_page=100");
+        let data = self.get(&path).await?;
+        array(&data)
+            .iter()
+            .map(|branch| {
+                let commit = branch.get("commit").ok_or_else(|| GithubApiError {
+                    message: "Cannot read properties of undefined (reading 'sha')".into(),
+                    status: 0,
+                    path: path.clone(),
+                })?;
+                let mut sha = Map::new();
+                if let Some(value) = commit.get("sha") {
+                    sha.insert("sha".into(), value.clone());
+                }
+                let mut out = Map::new();
+                copy(&mut out, branch, "name");
+                copy(&mut out, branch, "protected");
+                out.insert("commit".into(), Value::Object(sha));
+                Ok(Value::Object(out))
+            })
+            .collect()
+    }
+
+    /// The files one pull request touches, reshaped: `filename` is renamed to
+    /// `path`, and the counts and the patch are carried through as sent — a
+    /// field GitHub omitted stays omitted, because a huge diff arrives with no
+    /// `patch` at all and a `null` there would read as "no changes".
+    pub async fn list_pr_files(&self, number: i64) -> Result<Vec<Value>, GithubApiError> {
+        let data = self
+            .get(&self.repo_path(&format!("/pulls/{number}/files?per_page=100")))
+            .await?;
+        Ok(array(&data)
+            .iter()
+            .map(|file| {
+                let mut out = Map::new();
+                if let Some(value) = file.get("filename") {
+                    out.insert("path".into(), value.clone());
+                }
+                for key in [
+                    "status",
+                    "additions",
+                    "deletions",
+                    "changes",
+                    "patch",
+                    "blob_url",
+                ] {
+                    copy(&mut out, file, key);
+                }
+                Value::Object(out)
+            })
+            .collect())
+    }
+
+    pub async fn list_pr_reviews(&self, number: i64) -> Result<Vec<Value>, GithubApiError> {
+        let data = self
+            .get(&self.repo_path(&format!("/pulls/{number}/reviews?per_page=100")))
+            .await?;
+        Ok(array(&data).to_vec())
+    }
+
+    /// The jobs of one run, with the same envelope rule as
+    /// [`Self::list_workflow_runs`].
+    pub async fn list_workflow_run_jobs(
+        &self,
+        run_id: i64,
+    ) -> Result<Option<Value>, GithubApiError> {
+        let data = self
+            .get(&self.repo_path(&format!("/actions/runs/{run_id}/jobs?per_page=100")))
+            .await?;
+        Ok(data.get("jobs").cloned())
+    }
+
+    /// `page` and `state` arrive already rendered, because the reference puts
+    /// whatever the caller sent into the URL — a half-typed page number reaches
+    /// GitHub as GitHub's problem, not as a refusal here.
+    pub async fn list_prs(&self, state: &str, page: &str) -> Result<Vec<GithubPr>, GithubApiError> {
         let path = self.repo_path(&format!("/pulls?state={state}&per_page=30&page={page}"));
         let data = self.get(&path).await?;
         Ok(array(&data).iter().map(normalize_pr).collect())
@@ -237,7 +329,7 @@ impl GithubManager {
 
     /// The issues endpoint answers with pull requests too, and they are dropped
     /// here — a caller asking for issues did not ask for those.
-    pub async fn list_issues(&self, state: &str, page: u64) -> Result<Vec<Value>, GithubApiError> {
+    pub async fn list_issues(&self, state: &str, page: &str) -> Result<Vec<Value>, GithubApiError> {
         let path = self.repo_path(&format!("/issues?state={state}&per_page=30&page={page}"));
         let data = self.get(&path).await?;
         Ok(array(&data)
@@ -291,36 +383,60 @@ impl GithubManager {
     /// A commit nobody has run checks on, and a commit GitHub has never heard
     /// of, are both answered rather than raised: neither has a CI state, and an
     /// agent asking about a stale SHA does not need an exception for it.
-    pub async fn commit_checks(&self, sha: &str) -> Result<CommitCiStatus, GithubApiError> {
-        let path = self.repo_path(&format!("/commits/{sha}/check-runs?per_page=100"));
+    /// One commit's checks, or "unknown" when GitHub has never heard of it.
+    ///
+    /// `sha` is optional because one caller has no sha to give: a pull request
+    /// whose head payload carries none. That call still happens — the reference
+    /// interpolates the missing value into the URL, asking after a commit
+    /// literally named `undefined` — and is reproduced here so both runtimes
+    /// make the same request. GitHub answers 404 to it either way.
+    pub async fn commit_checks(&self, sha: Option<&str>) -> Result<CommitCiStatus, GithubApiError> {
+        let path = self.repo_path(&format!(
+            "/commits/{}/check-runs?per_page=100",
+            sha.unwrap_or("undefined")
+        ));
         match self.get(&path).await {
             Ok(data) => {
-                let runs = array(data.get("check_runs").unwrap_or(&Value::Null)).to_vec();
+                // A payload with no `check_runs` is one the reference cannot
+                // read either: it counts them before looking at them, and
+                // raises rather than reporting a commit with no checks.
+                let runs = data
+                    .get("check_runs")
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| GithubApiError {
+                        message: "Cannot read properties of undefined (reading 'length')".into(),
+                        status: 0,
+                        path: path.clone(),
+                    })?
+                    .clone();
                 Ok(CommitCiStatus {
-                    sha: sha.to_string(),
+                    sha: sha.map(str::to_string),
                     state: derive_state(&runs).to_string(),
-                    total_count: data
-                        .get("total_count")
-                        .and_then(Value::as_i64)
-                        .unwrap_or_default(),
+                    total_count: data.get("total_count").and_then(Value::as_i64),
                     runs,
                 })
             }
             Err(error) if error.status == 404 => Ok(CommitCiStatus {
-                sha: sha.to_string(),
+                sha: sha.map(str::to_string),
                 state: "unknown".to_string(),
-                total_count: 0,
+                total_count: Some(0),
                 runs: Vec::new(),
             }),
             Err(error) => Err(error),
         }
     }
 
+    /// The runs GitHub reports, exactly as it reports them.
+    ///
+    /// `Option`, not an empty list: the reference reads one field out of the
+    /// envelope and passes it on, so a payload without that field yields
+    /// nothing at all — and a caller that renders "no runs" for a *missing*
+    /// field would be reporting a broken response as an empty one.
     pub async fn list_workflow_runs(
         &self,
         branch: Option<&str>,
-        page: u64,
-    ) -> Result<Vec<Value>, GithubApiError> {
+        page: &str,
+    ) -> Result<Option<Value>, GithubApiError> {
         // The branch is appended after the other two, so it is last in the
         // query — which is what the request the reference makes looks like.
         let mut query = format!("per_page=30&page={page}");
@@ -330,7 +446,7 @@ impl GithubManager {
         let data = self
             .get(&self.repo_path(&format!("/actions/runs?{query}")))
             .await?;
-        Ok(array(data.get("workflow_runs").unwrap_or(&Value::Null)).to_vec())
+        Ok(data.get("workflow_runs").cloned())
     }
 
     async fn get(&self, path: &str) -> Result<Value, GithubApiError> {
@@ -421,6 +537,16 @@ impl GithubManager {
 
 fn array(value: &Value) -> &[Value] {
     value.as_array().map(Vec::as_slice).unwrap_or_default()
+}
+
+/// Carry one field across only when it is there. A key the source object does
+/// not have becomes `undefined` on the reference's side, which `JSON.stringify`
+/// drops — so the way to match it is to not write the key at all. A key it sent
+/// as null is a value, and is copied.
+fn copy(out: &mut Map<String, Value>, source: &Value, key: &str) {
+    if let Some(value) = source.get(key) {
+        out.insert(key.to_string(), value.clone());
+    }
 }
 
 /// Whether the field is there at all. GitHub marks a pull request by *having* a
