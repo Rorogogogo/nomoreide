@@ -4,6 +4,7 @@
 mod app;
 mod errors;
 mod routes;
+mod static_assets;
 
 use crate::runtime::DaemonRuntime;
 use crate::DaemonOwnership;

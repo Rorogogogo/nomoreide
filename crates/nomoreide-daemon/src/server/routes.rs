@@ -8,11 +8,12 @@ mod errors;
 mod git;
 mod meta;
 mod services;
+mod shell;
 mod terminal;
 mod timeline;
 
 use crate::server::app::{require_credential, AppState};
-use crate::server::errors::{method_not_allowed, not_found};
+use crate::server::errors::method_not_allowed;
 use axum::{middleware, Router};
 
 pub(crate) fn router(state: AppState) -> Router {
@@ -22,7 +23,11 @@ pub(crate) fn router(state: AppState) -> Router {
         // authenticated router.
         .merge(meta::public())
         .merge(authenticated(state.clone()))
-        .fallback(not_found)
+        // Last, so every `/api/*` route above wins first — the dispatch order
+        // the reference gets by registering its shell routes at the end of the
+        // list. Anything the shell does not claim falls through to the same
+        // 404 the fallback used to answer directly.
+        .fallback(shell::serve)
         .method_not_allowed_fallback(method_not_allowed)
         .with_state(state)
 }

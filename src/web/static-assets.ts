@@ -1,6 +1,6 @@
 import type { ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, resolve } from "node:path";
+import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export async function readWebAppShell(): Promise<string> {
@@ -19,10 +19,28 @@ export async function sendStaticAsset(
   response: ServerResponse,
   requestPath: string,
 ): Promise<boolean> {
+  return sendStaticAssetFrom(response, requestPath, webAssetRoots());
+}
+
+/**
+ * The resolution itself, with the roots passed in. Exported so the containment
+ * rules can be tested against a planted directory rather than against whatever
+ * this file's own location happens to resolve to.
+ */
+export async function sendStaticAssetFrom(
+  response: ServerResponse,
+  requestPath: string,
+  roots: readonly string[],
+): Promise<boolean> {
   const relativePath = requestPath.replace(/^\/+/, "");
-  for (const root of webAssetRoots()) {
+  for (const root of roots) {
     const assetPath = resolve(root, relativePath);
-    if (!assetPath.startsWith(root)) {
+    // Compared at a path separator, not as a bare string prefix. Without the
+    // separator, `/assets/../../client-evil/x` resolves to the *sibling*
+    // directory `…/web/client-evil/x`, whose name merely starts with the
+    // root's — and served it. The Rust daemon's `resolve_inside` refuses the
+    // same request the same way.
+    if (assetPath !== root && !assetPath.startsWith(root + sep)) {
       continue;
     }
 

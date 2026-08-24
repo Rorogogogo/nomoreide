@@ -7,8 +7,24 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use nomoreide_daemon_client::protocol::{DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope};
 
-pub(crate) async fn not_found() -> Response {
-    error(StatusCode::NOT_FOUND, "Not found.")
+/// The answer to a path no route claimed.
+///
+/// HTML, not the JSON envelope every *route* answers failure with. The
+/// reference's dispatcher ends its loop with `sendHtml(response, "Not found",
+/// 404)`, and this is the one 404 a browser can reach by typing a URL. The
+/// envelope invariant is about routes; an unmatched path is not one, and the
+/// daemon client already falls back to its own wording when a body is not an
+/// envelope.
+pub(crate) async fn unmatched() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        [(
+            axum::http::header::CONTENT_TYPE,
+            axum::http::HeaderValue::from_static("text/html; charset=utf-8"),
+        )],
+        "Not found",
+    )
+        .into_response()
 }
 
 pub(crate) async fn method_not_allowed() -> Response {
