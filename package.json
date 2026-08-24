@@ -52,6 +52,7 @@
     "mcp:registry-parity": "node --import tsx scripts/check-mcp-registry-parity.ts",
     "mcp:terminal-parity": "node --import tsx scripts/check-mcp-terminal-parity.ts",
     "approval-parity": "node --import tsx scripts/check-approval-parity.ts",
+    "git-reads-parity": "node --import tsx scripts/check-git-reads-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",

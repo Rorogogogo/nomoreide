@@ -3,7 +3,7 @@
 use super::exec;
 use super::types::{GitBranch, GitCommit, GitFileStatus, GitLogEntry, GitStatus};
 use super::GitManager;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 const LOCAL_PREFIX: &str = "refs/heads/";
 const REMOTE_PREFIX: &str = "refs/remotes/";
@@ -210,18 +210,26 @@ impl GitManager {
     }
 
     pub async fn commit_diff(cwd: &str, hash: &str, file: Option<&str>) -> Result<String> {
-        let mut args = vec!["show", hash, "--"];
+        let hash = validate_hash(hash)?;
+        // `--format=` suppresses the commit message header — without it `git
+        // show` prints "commit <hash>\nAuthor: ...\nDate: ...\n\n  <subject>"
+        // ahead of the patch, and a caller wanting only the diff gets both.
+        // `git show` (rather than `diff <sha>^..<sha>`) is what handles a root
+        // commit gracefully, since it has no parent to diff against.
+        let mut args = vec!["show", "--patch", "--format=", &hash];
         if let Some(f) = file {
+            args.push("--");
             args.push(f);
         }
         exec::output(cwd, &args).await
     }
 
     pub async fn commit_files(cwd: &str, hash: &str) -> Result<Vec<GitFileStatus>> {
+        let hash = validate_hash(hash)?;
         // NUL-separated name-status, matching the Node GitManager. The UI needs
         // the change letter (A/M/D/R/C) per file, not just paths — without it
         // `file.index` is undefined client-side and the commit file list crashes.
-        let raw = exec::output(cwd, &["show", "--name-status", "--format=", "-z", hash]).await?;
+        let raw = exec::output(cwd, &["show", "--name-status", "--format=", "-z", &hash]).await?;
         let tokens: Vec<&str> = raw.split('\0').filter(|t| !t.is_empty()).collect();
 
         let mut files = Vec::new();
@@ -384,5 +392,67 @@ mod tests {
             serde_json::to_string(&branch_entry("refs/heads/feature/x\t\t")).unwrap(),
             "{\"name\":\"feature/x\",\"current\":false,\"remote\":false}"
         );
+    }
+}
+
+/// A commit hash reaches `git show` as a raw argv entry, so anything starting
+/// with `-` would otherwise be read as a flag rather than a ref — this is
+/// what stands between an HTTP query parameter and argument injection. The
+/// pattern matches the reference's `validateHash` exactly: 4 to 64 hex
+/// characters, which accepts an abbreviated hash as well as a full one.
+fn validate_hash(hash: &str) -> Result<String> {
+    let trimmed = hash.trim();
+    if trimmed.is_empty() {
+        return Err(anyhow!("commit is required"));
+    }
+    let valid = trimmed.len() >= 4
+        && trimmed.len() <= 64
+        && trimmed.chars().all(|c| c.is_ascii_hexdigit());
+    if !valid {
+        return Err(anyhow!("invalid commit hash"));
+    }
+    Ok(trimmed.to_string())
+}
+
+#[cfg(test)]
+mod validate_hash_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_hex_hashes_within_length_bounds() {
+        assert_eq!(validate_hash("abcd").unwrap(), "abcd");
+        assert_eq!(validate_hash("a".repeat(64).as_str()).unwrap(), "a".repeat(64));
+        assert_eq!(validate_hash("ABCD1234").unwrap(), "ABCD1234");
+    }
+
+    #[test]
+    fn trims_surrounding_whitespace() {
+        assert_eq!(validate_hash("  abcd  ").unwrap(), "abcd");
+    }
+
+    #[test]
+    fn refuses_anything_shorter_than_four_hex_characters() {
+        assert!(validate_hash("abc").is_err());
+        assert!(validate_hash("").is_err());
+        assert!(validate_hash("   ").is_err());
+    }
+
+    #[test]
+    fn refuses_more_than_sixty_four_characters() {
+        assert!(validate_hash("a".repeat(65).as_str()).is_err());
+    }
+
+    #[test]
+    fn refuses_non_hex_characters() {
+        assert!(validate_hash("xyz1").is_err());
+        assert!(validate_hash("main").is_err());
+    }
+
+    /// The exact hazard: an argument-injection attempt must be refused before
+    /// it ever reaches argv, not merely fail to look like a real ref.
+    #[test]
+    fn refuses_a_flag_shaped_value() {
+        assert!(validate_hash("--upload-pack=evil").is_err());
+        assert!(validate_hash("-h").is_err());
     }
 }

@@ -3,6 +3,18 @@
 
 use serde::{Deserialize, Serialize};
 
+/// What `/api/git/file` hands back for one tracked path: the reference caps
+/// what it reads (`truncated`) and refuses to decode a binary file as text
+/// (`binary`) rather than mangling it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackedFileContent {
+    pub content: String,
+    pub truncated: bool,
+    pub binary: bool,
+    pub size: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitFileStatus {

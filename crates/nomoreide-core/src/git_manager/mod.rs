@@ -27,7 +27,7 @@ pub use search::ContentSearchOptions;
 
 pub use types::{
     ContentMatch, ContentSearchResult, FileContentMatches, FileNameMatch, FileSizeRank, GitBranch,
-    GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree,
+    GitCommit, GitFileStatus, GitLogEntry, GitStatus, GitWorktree, TrackedFileContent,
 };
 
 /// Read-safe Git operations. Every method takes the working directory it acts
