@@ -918,3 +918,60 @@ fn sessions_are_listed_oldest_first_and_a_close_does_not_reshuffle_the_rest() {
     assert_eq!(remaining, ["zz-last", "mm-middle"]);
     manager.close_all().unwrap();
 }
+
+/// Reopening a tab under a stable id must hand back the session already there,
+/// not spawn a second child beside it and orphan the first.
+///
+/// This is here rather than in the parity gate because the tool surface cannot
+/// see it: a replacement carries the same id, kind, label and size as the
+/// session it replaced, so both behaviours render the identical payload. The
+/// pid is the only thing that tells them apart.
+#[cfg(unix)]
+#[test]
+fn a_stable_id_reattaches_instead_of_spawning_a_second_child() {
+    use crate::event_sink::{EventSink, EventSinkError, SharedEventSink};
+    use std::sync::Arc;
+
+    struct Silent;
+    impl EventSink for Silent {
+        fn emit(&self, _event: &str, _payload: serde_json::Value) -> Result<(), EventSinkError> {
+            Ok(())
+        }
+    }
+
+    let manager = TerminalManager::new();
+    let sink: SharedEventSink = Arc::new(Silent);
+    let spec = || super::spawn::TerminalSpawnSpec {
+        id: "svc:reattach".to_string(),
+        service_name: Some("reattach".to_string()),
+        cwd: "/tmp".to_string(),
+        shell: std::ffi::OsString::from("/bin/sh"),
+        args: vec!["-c".to_string(), "sleep 30".to_string()],
+        env: Vec::new(),
+        label: Some("reattach".to_string()),
+        kind: Some("service".to_string()),
+        provider: None,
+    };
+
+    let first = manager.create(sink.clone(), spec()).unwrap();
+    let first_pid = pid_of(&manager, "svc:reattach");
+    let second = manager.create(sink, spec()).unwrap();
+    let second_pid = pid_of(&manager, "svc:reattach");
+
+    assert_eq!(first.id, second.id);
+    assert_eq!(first_pid, second_pid, "reopening spawned a second child");
+    assert_eq!(manager.list_sessions().len(), 1);
+    manager.close_all().unwrap();
+}
+
+#[cfg(unix)]
+fn pid_of(manager: &TerminalManager, id: &str) -> Option<u32> {
+    manager
+        .registry
+        .0
+        .lock()
+        .unwrap()
+        .sessions
+        .get(id)
+        .and_then(|session| session.pid)
+}

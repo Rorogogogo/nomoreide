@@ -59,13 +59,28 @@ interface Create {
   readonly settle?: number;
 }
 
-interface Step {
-  readonly name: string;
-  /** Sessions to create before this step's call, in order. */
-  readonly create?: readonly Create[];
-  readonly tool: string;
-  readonly args?: Record<string, unknown>;
-}
+/**
+ * A step that compares one MCP tool's answer, or one answer from the endpoint
+ * the gate itself depends on.
+ *
+ * The create endpoint is compared because everything else here is built on it:
+ * a runtime that refused a request the other accepted, or refused it in
+ * different words, would change what every later step is looking at. No MCP
+ * tool reaches it, so this gate is the only place it is held.
+ */
+type Step =
+  | {
+      readonly name: string;
+      /** Sessions to create before this step's call, in order. */
+      readonly create?: readonly Create[];
+      readonly tool: string;
+      readonly args?: Record<string, unknown>;
+    }
+  | {
+      readonly name: string;
+      /** A create whose status and body are compared rather than assumed. */
+      readonly createAnswer: Record<string, unknown>;
+    };
 
 /** An id carrying a control character, which the schema refuses. */
 const CONTROL_ID = "a\u0001b";
@@ -143,6 +158,24 @@ const PLAN: Step[] = [
   { name: "open/exited-agent", tool: "nomoreide_open_terminal", args: { id: "term_2" } },
   { name: "reclaim/exited-agent", tool: "nomoreide_reclaim_terminal", args: { id: "term_2" } },
 
+  // The create endpoint the gate itself leans on, answering for itself.
+  { name: "create/unknown-service", createAnswer: { serviceName: "not-registered" } },
+  // Not a refusal: a name that is only whitespace is no name at all, and falls
+  // through to the plain workspace shell.
+  { name: "create/blank-service-is-a-shell", createAnswer: { serviceName: "   " } },
+  {
+    name: "create/bad-provider",
+    createAnswer: { agent: { provider: "gemini", prompt: "" } },
+  },
+  {
+    name: "create/bad-resume-id",
+    createAnswer: { agent: { provider: "codex", prompt: "", resumeId: "zz" } },
+  },
+  {
+    name: "create/bad-model",
+    createAnswer: { agent: { provider: "codex", prompt: "", model: "--oops" } },
+  },
+
   // Refusals decided before a tool runs.
   { name: "error/missing-id", tool: "nomoreide_open_terminal", args: {} },
   { name: "error/empty-id", tool: "nomoreide_open_terminal", args: { id: "" } },
@@ -217,7 +250,7 @@ try {
       assert.equal(JSON.stringify(actual), JSON.stringify(expected));
     } catch {
       divergences.push(
-        `\n### ${step.name} (${step.tool})` +
+        `\n### ${step.name}${"tool" in step ? ` (${step.tool})` : ""}` +
           `\n--- reference\n${format(expected)}\n--- candidate\n${format(actual)}` +
           `\n--- reference JSON\n${JSON.stringify(expected)}` +
           `\n--- candidate JSON\n${JSON.stringify(actual)}`,
@@ -240,6 +273,10 @@ try {
 async function walk(runtime: Runtime): Promise<Map<string, unknown>> {
   const transcript = new Map<string, unknown>();
   for (const step of PLAN) {
+    if ("createAnswer" in step) {
+      transcript.set(step.name, await postSession(runtime, step.createAnswer));
+      continue;
+    }
     for (const created of step.create ?? []) {
       await createSession(runtime, created.body);
       if (created.settle) await delay(created.settle);
@@ -259,6 +296,20 @@ async function walk(runtime: Runtime): Promise<Map<string, unknown>> {
  * otherwise be compared as two identical "unknown session" answers and pass.
  */
 async function createSession(runtime: Runtime, body: Record<string, unknown>): Promise<void> {
+  const { status, body: answered } = await postSession(runtime, body);
+  if (status !== 201) {
+    throw new Error(
+      `${runtime.label}: creating a terminal session returned ${status}: ` +
+        `${JSON.stringify(answered)}`,
+    );
+  }
+}
+
+/** POST the create endpoint and hand back what it answered, refusals included. */
+async function postSession(
+  runtime: Runtime,
+  body: Record<string, unknown>,
+): Promise<{ status: number; body: unknown }> {
   const credential = await readFile(join(runtime.home, ".nomoreide", "daemon.credential"), "utf8")
     .then((value) => value.trim())
     .catch(() => "");
@@ -270,12 +321,14 @@ async function createSession(runtime: Runtime, body: Record<string, unknown>): P
     },
     body: JSON.stringify(body),
   });
-  if (response.status !== 201) {
-    throw new Error(
-      `${runtime.label}: creating a terminal session returned ${response.status}: ` +
-        `${await response.text()}`,
-    );
+  const text = await response.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* a non-JSON body is compared as the text it was */
   }
+  return { status: response.status, body: parsed };
 }
 
 /**

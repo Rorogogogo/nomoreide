@@ -1067,6 +1067,63 @@ fixing them in Rust alone:
   only part of this domain that takes input nobody local wrote. It is worth
   keeping that way.
 
+The terminal trio closes the ninety. They are the first tools whose subject is
+not a file or a request but a live process, and that changed what the port and
+the gate had to be:
+
+- **The PTY manager already existed, in the desktop crate.** It moved to
+  `nomoreide_core::terminal` rather than being written twice. Three things only
+  showed up once something other than the desktop app read a session: it listed
+  sessions straight out of a `HashMap`, so the order changed between two reads
+  of the same registry; a session's argv could not carry a service's `env`; and
+  an agent invocation could not pin a model. Insertion order is recorded now,
+  and insertion and removal go through one method so nothing can put a session
+  in the map but not in the order.
+- **Ten refusal messages were missing their trailing period.** Harmless while
+  they only reached the desktop UI, and exactly wrong once they became what a
+  tool hands back verbatim.
+- **`exit` is `{exitCode, signal}` with the signal as a number.** node-pty
+  reports zero for a process that returned on its own. The Rust PTY layer
+  reports a signal as a *localised name*, so a child that was killed cannot be
+  given its number back without guessing at that name. Accepted divergence: a
+  child that returned on its own — every case the tool surface can reach —
+  reports zero on both sides.
+- **A daemon-client URL builder percent-encodes every segment it is given,** so
+  a collection two segments deep arrived as `terminal%2Fsessions` and reached
+  nothing. The encoding is right for the *name* and wrong for the collection,
+  which is now a separate argument.
+
+The gate that holds them is `mcp:terminal-parity`. Two things about it are worth
+carrying to any later gate over live state:
+
+- **No tool creates a session,** so the gate drives each runtime's own
+  `POST /api/terminal/sessions` — the same "state no tool creates" problem the
+  deploy connections had, answered by using the endpoint that really does
+  create it rather than by planting a file. A create that does not return 201
+  fails the gate, because two runtimes that both failed to create a session
+  would otherwise agree perfectly that it does not exist.
+- **The id is the side channel.** A service terminal takes a stable
+  `svc:<name>` id, so a service named `needs encoding#hash` produces an id that
+  has to survive becoming a URL path segment; unencoded, the `#` truncates the
+  request at a fragment. Three steps name that session and a fourth names the
+  truncation, so a runtime that dropped the `#` gives the same answer to two ids
+  that must differ.
+
+What the gate deliberately does not reach: opening a *running* agent session
+launches Terminal.app. The lease, the attach socket, and the
+`terminalLaunching` presentation behind it cannot be exercised without taking
+over the developer's desktop, and the core crate's own tests — which spawn real
+PTYs against a stub socket — are what hold them instead. Every refusal in front
+of that launch is compared, including the one needing a real agent session: a
+stub provider binary that has already exited.
+
+One environmental trap, because it costs an hour to rediscover: node-pty's
+`spawn-helper` loses its executable bit, and every reference session then
+reports `state: "error"`, `error: "posix_spawnp failed."`. The reference carries
+a repair for exactly this. `chmod 755
+node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper` before blaming a
+port.
+
 ### Phase 6 — Dashboard, CLI, and Tauri convergence
 
 - Serve the compiled React assets and compatible loopback API from the Rust daemon.
