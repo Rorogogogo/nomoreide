@@ -2,6 +2,7 @@
 //! What it serves lives in [`routes`].
 
 mod app;
+mod body;
 mod errors;
 mod routes;
 mod static_assets;

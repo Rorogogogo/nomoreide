@@ -24,19 +24,28 @@ pub struct GithubCliAccounts {
     pub error: Option<String>,
 }
 
+/// Every failure below the discovery call reads the same way on purpose.
+///
+/// The reference wraps the whole of `listAccounts` — the run *and* the parse —
+/// in one `catch`, and reports whatever it caught through a single translator
+/// that only ever distinguishes "not installed" from everything else. So a
+/// `gh` that exited non-zero, timed out, or answered with something that is not
+/// the account JSON all reach the user as the same sentence, and the parse
+/// failure never surfaces its own wording.
+const GH_UNAVAILABLE: &str =
+    "GitHub CLI account discovery is unavailable. Update gh and run gh auth login.";
+const GH_NOT_INSTALLED: &str = "GitHub CLI is not installed or is not available on PATH.";
+
 pub async fn list_accounts() -> GithubCliAccounts {
-    match run_gh(&["auth", "status", "--json", "hosts"]).await {
-        Ok(stdout) => match parse_accounts(&stdout) {
-            Ok(accounts) => GithubCliAccounts {
-                available: true,
-                accounts,
-                error: None,
-            },
-            Err(error) => GithubCliAccounts {
-                available: false,
-                accounts: vec![],
-                error: Some(error),
-            },
+    let discovered = match run_gh(&["auth", "status", "--json", "hosts"]).await {
+        Ok(stdout) => parse_accounts(&stdout).map_err(|_| GH_UNAVAILABLE.to_string()),
+        Err(error) => Err(error),
+    };
+    match discovered {
+        Ok(accounts) => GithubCliAccounts {
+            available: true,
+            accounts,
+            error: None,
         },
         Err(error) => GithubCliAccounts {
             available: false,
@@ -46,16 +55,26 @@ pub async fn list_accounts() -> GithubCliAccounts {
     }
 }
 
+/// The token `gh` holds for one account.
+///
+/// An empty answer fails the same way a failed call does. The reference raises
+/// its own "returned an empty token" inside the `try` that replaces every
+/// failure with the sentence below, so that wording never reaches a caller —
+/// and a caller told two different things about one broken account would go
+/// looking for two different problems.
 pub async fn token(host: &str, login: &str) -> Result<String, String> {
     validate_identity(host, login)?;
+    let unusable = || {
+        format!(
+        "GitHub CLI could not provide credentials for @{login} on {host}. Re-authenticate with gh auth login or choose another account."
+    )
+    };
     let value = run_gh(&["auth", "token", "--hostname", host, "--user", login])
         .await
-        .map_err(|_| format!(
-            "GitHub CLI could not provide credentials for @{login} on {host}. Re-authenticate with gh auth login or choose another account."
-        ))?;
+        .map_err(|_| unusable())?;
     let trimmed = value.trim();
     if trimmed.is_empty() {
-        return Err("GitHub CLI returned an empty token.".into());
+        return Err(unusable());
     }
     Ok(trimmed.to_string())
 }
@@ -174,6 +193,14 @@ fn parse_accounts(raw: &str) -> Result<Vec<GithubCliAccount>, String> {
     Ok(result)
 }
 
+/// One `gh` invocation, with the same outcomes `execFile` gives the reference.
+///
+/// A non-zero exit is a failure **whatever it printed**: `execFile` rejects on
+/// the exit code alone and never looks at stdout, so a `gh` that answered with
+/// both an error status and a body must not be read as if it had succeeded.
+/// Output is decoded lossily for the same reason — `execFile`'s utf8 encoding
+/// substitutes rather than failing, and a byte we cannot decode is not a
+/// different kind of problem.
 async fn run_gh(args: &[&str]) -> Result<String, String> {
     let mut command = Command::new("gh");
     command
@@ -186,14 +213,21 @@ async fn run_gh(args: &[&str]) -> Result<String, String> {
         .env_remove("GITHUB_ENTERPRISE_TOKEN");
     let output = timeout(Duration::from_secs(5), command.output())
         .await
-        .map_err(|_| "GitHub CLI account discovery timed out.".to_string())?
-        .map_err(|_| "GitHub CLI is not installed or is not available on PATH.".to_string())?;
-    if !output.status.success() && output.stdout.is_empty() {
-        return Err(
-            "GitHub CLI account discovery is unavailable. Update gh and run gh auth login.".into(),
-        );
+        // A killed-on-timeout child is a rejection carrying no `ENOENT`, so the
+        // reference reports it as the generic failure rather than as a missing
+        // binary.
+        .map_err(|_| GH_UNAVAILABLE.to_string())?
+        .map_err(|error| {
+            if error.kind() == std::io::ErrorKind::NotFound {
+                GH_NOT_INSTALLED.to_string()
+            } else {
+                GH_UNAVAILABLE.to_string()
+            }
+        })?;
+    if !output.status.success() {
+        return Err(GH_UNAVAILABLE.to_string());
     }
-    String::from_utf8(output.stdout).map_err(|_| "GitHub CLI returned invalid output.".into())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn validate_identity(host: &str, login: &str) -> Result<(), String> {

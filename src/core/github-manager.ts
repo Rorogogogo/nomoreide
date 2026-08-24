@@ -214,31 +214,44 @@ export class GitHubApiError extends Error {
 }
 
 const GITHUB_API = "https://api.github.com";
+const GITHUB_WEB = "https://github.com";
 
 /**
- * Where API calls go. GitHub itself, unless `NOMOREIDE_GITHUB_API_BASE` names
- * a loopback address — which exists so the parity gate can point a runtime at
- * a stub it controls.
+ * A base URL an environment variable is allowed to move, which exists so the
+ * parity gates can point a runtime at a stub they control.
  *
  * Only loopback is honoured, and anything unparseable falls back rather than
- * failing: every request carries a bearer token, and an override that could
- * name any host would turn one environment variable into a way to post the
- * user's credential somewhere else.
+ * failing: these requests carry a bearer token or return one, and an override
+ * that could name any host would turn one environment variable into a way to
+ * post the user's credential somewhere else.
  */
-export function githubApiBase(): string {
-  const override = process.env.NOMOREIDE_GITHUB_API_BASE?.trim();
-  if (!override) return GITHUB_API;
+function loopbackOverride(variable: string, fallback: string): string {
+  const override = process.env[variable]?.trim();
+  if (!override) return fallback;
   let parsed: URL;
   try {
     parsed = new URL(override);
   } catch {
-    return GITHUB_API;
+    return fallback;
   }
   const loopback = ["127.0.0.1", "localhost", "[::1]", "::1"].includes(parsed.hostname);
   if (!loopback || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
-    return GITHUB_API;
+    return fallback;
   }
   return override.replace(/\/+$/, "");
+}
+
+/** Where API calls go. GitHub itself, unless the override names loopback. */
+export function githubApiBase(): string {
+  return loopbackOverride("NOMOREIDE_GITHUB_API_BASE", GITHUB_API);
+}
+
+/**
+ * Where the OAuth device flow's two endpoints live — `github.com` rather than
+ * `api.github.com`, so it moves under its own variable.
+ */
+export function githubOAuthBase(): string {
+  return loopbackOverride("NOMOREIDE_GITHUB_OAUTH_BASE", GITHUB_WEB);
 }
 
 export class GitHubManager {

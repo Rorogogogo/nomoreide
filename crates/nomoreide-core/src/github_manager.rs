@@ -21,17 +21,16 @@ const API_VERSION: &str = "2022-11-28";
 const JSON_ACCEPT: &str = "application/vnd.github+json";
 const DIFF_ACCEPT: &str = "application/vnd.github.diff";
 
-/// Where API calls go. GitHub itself, unless `NOMOREIDE_GITHUB_API_BASE` names
-/// a loopback address — which exists so the parity gate can point a runtime at
-/// a stub it controls.
+/// A base URL an environment variable is allowed to move, which exists so the
+/// parity gates can point a runtime at a stub they control.
 ///
 /// Only loopback is honoured, and anything else falls back rather than
-/// failing: every request carries a bearer token, and an override that could
-/// name any host would turn one environment variable into a way to post the
-/// user's credential somewhere else.
-pub fn api_base() -> String {
-    let Ok(override_value) = std::env::var("NOMOREIDE_GITHUB_API_BASE") else {
-        return GITHUB_API.to_string();
+/// failing: these requests carry a bearer token or return one, and an override
+/// that could name any host would turn one environment variable into a way to
+/// post the user's credential somewhere else.
+pub(crate) fn loopback_override(variable: &str, fallback: &str) -> String {
+    let Ok(override_value) = std::env::var(variable) else {
+        return fallback.to_string();
     };
     let override_value = override_value.trim();
     let rest = match override_value
@@ -39,7 +38,7 @@ pub fn api_base() -> String {
         .or_else(|| override_value.strip_prefix("https://"))
     {
         Some(rest) => rest,
-        None => return GITHUB_API.to_string(),
+        None => return fallback.to_string(),
     };
     let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
     let host = match authority.rsplit_once(':') {
@@ -47,9 +46,14 @@ pub fn api_base() -> String {
         _ => authority,
     };
     if !matches!(host, "127.0.0.1" | "localhost" | "[::1]" | "::1") {
-        return GITHUB_API.to_string();
+        return fallback.to_string();
     }
     override_value.trim_end_matches('/').to_string()
+}
+
+/// Where API calls go. GitHub itself, unless the override names loopback.
+pub fn api_base() -> String {
+    loopback_override("NOMOREIDE_GITHUB_API_BASE", GITHUB_API)
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +149,18 @@ impl GithubManager {
 
     fn repo_path(&self, suffix: &str) -> String {
         format!("/repos/{}/{}{suffix}", self.owner, self.repo)
+    }
+
+    /// The account the token speaks for. Passed through as GitHub sent it —
+    /// callers read `login` and `avatar_url`, and a struct here would drop the
+    /// rest of a payload the dashboard may grow into.
+    pub async fn viewer(&self) -> Result<Value, GithubApiError> {
+        self.get("/user").await
+    }
+
+    /// The repository itself: default branch, visibility, permissions.
+    pub async fn repo_info(&self) -> Result<Value, GithubApiError> {
+        self.get(&self.repo_path("")).await
     }
 
     pub async fn list_prs(&self, state: &str, page: u64) -> Result<Vec<GithubPr>, GithubApiError> {

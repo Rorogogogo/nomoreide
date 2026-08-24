@@ -6,7 +6,7 @@
 
 use anyhow::{anyhow, Result};
 
-use crate::config::ConfigStore;
+use crate::config::{ConfigStore, GithubCredentialSelection};
 use crate::git_manager::GitManager;
 use crate::github_auth;
 use crate::github_manager::GithubManager;
@@ -16,6 +16,9 @@ pub struct GithubContext {
     pub manager: GithubManager,
     pub owner: String,
     pub repo: String,
+    /// Which account answered, with the secret left behind — this is the shape
+    /// the dashboard shows and the config stores, not the resolved token.
+    pub credential: GithubCredentialSelection,
 }
 
 /// The credential lookup asks about github.com rather than about the remote's
@@ -40,32 +43,35 @@ pub async fn require_github_context(store: &ConfigStore, git_cwd: &str) -> Resul
     let repository = match_registered_repository(&config, &top_level)
         .await?
         .map(|repository| repository.name.clone());
-    let (token, _, _) = github_auth::resolve(&config, repository.as_deref(), CREDENTIAL_HOST)
-        .await
-        .map_err(|error| anyhow!("{error}"))?;
+    let (token, _, credential) =
+        github_auth::resolve(&config, repository.as_deref(), CREDENTIAL_HOST)
+            .await
+            .map_err(|error| anyhow!("{error}"))?;
 
     Ok(GithubContext {
         manager: GithubManager::new(token, owner.clone(), repo.clone()),
         owner,
         repo,
+        credential,
     })
+}
+
+/// The same context, or nothing at all.
+///
+/// Every failure collapses to `None` on purpose: a route that falls back to an
+/// unauthenticated answer does not care *why* it has no account, and the
+/// reference reaches this through a bare `catch` that keeps no reason either.
+pub async fn optional_github_context(store: &ConfigStore, git_cwd: &str) -> Option<GithubContext> {
+    require_github_context(store, git_cwd).await.ok()
 }
 
 /// Where a GitHub tool runs when the caller named no directory: the selected
 /// repository's active worktree, then its own folder, then this process's
 /// working directory.
-pub fn selected_github_cwd(config: &crate::config::Config, fallback: &str) -> String {
-    let repository = config
-        .git_repositories
-        .iter()
-        .find(|entry| Some(&entry.name) == config.selected_git_repository.as_ref())
-        .or_else(|| config.git_repositories.first());
-    repository
-        .and_then(|entry| {
-            entry
-                .active_worktree_path
-                .clone()
-                .or_else(|| Some(entry.path.clone()))
-        })
-        .unwrap_or_else(|| fallback.to_string())
+///
+/// Async because the active worktree is verified before it is used — see
+/// [`crate::config::selected_git_cwd`], which every surface shares so that the
+/// dashboard, the agent, and the desktop app all answer for the same directory.
+pub async fn selected_github_cwd(config: &crate::config::Config, fallback: &str) -> String {
+    crate::config::selected_git_cwd(config, fallback).await
 }

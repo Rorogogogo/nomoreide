@@ -191,7 +191,7 @@ pub async fn set_github_token(
 ) -> Result<PublicConfig, String> {
     let config = state
         .config_store
-        .set_github_token(host.clone(), token)
+        .set_github_token(host.clone(), token, None)
         .await
         .map_err(|e| e.to_string())?;
     if let Some(repository) = config.selected_git_repository.clone() {

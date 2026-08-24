@@ -146,6 +146,14 @@ pub struct GithubTokenDef {
     pub avatar_url: Option<String>,
 }
 
+/// Who a stored token belongs to, as captured once at connect time so a status
+/// check can name the account without spending an API call on it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GithubProfile {
+    pub login: String,
+    pub avatar_url: Option<String>,
+}
+
 /// Commit author/committer for a GitHub account, resolved once and cached so
 /// committing does not spend an API call per commit. Shares the
 /// `githubIdentities` key with the Node side.
@@ -759,16 +767,37 @@ impl ConfigStore {
         Ok(config)
     }
 
-    pub async fn set_github_token(&self, host: String, token: String) -> Result<Config> {
+    /// Store the secret for `host`, together with whoever it belongs to.
+    ///
+    /// The entry is **replaced, not merged**: storing a token without a profile
+    /// clears any identity the previous one carried. A new token can belong to
+    /// a different account, and a login left over from the old one would name
+    /// the wrong person on every screen that reads it. A caller that means to
+    /// keep an identity passes it, or uses [`Self::set_github_profile`] to
+    /// attach one without touching the secret.
+    pub async fn set_github_token(
+        &self,
+        host: String,
+        token: String,
+        profile: Option<GithubProfile>,
+    ) -> Result<Config> {
+        let host = host.trim().to_string();
+        let token = token.trim().to_string();
+        if host.is_empty() {
+            return Err(validation("GitHub host is required"));
+        }
+        if token.is_empty() {
+            return Err(validation("GitHub token is required"));
+        }
+        let (login, avatar_url) = match profile {
+            Some(profile) => (
+                non_empty(&profile.login),
+                profile.avatar_url.as_deref().and_then(non_empty),
+            ),
+            None => (None, None),
+        };
         let mut config = self.load().await?;
-        // Preserve any identity captured for this host; only the secret changes.
-        let previous = config
-            .github_tokens
-            .iter()
-            .find(|t| t.host == host)
-            .map(|t| (t.login.clone(), t.avatar_url.clone()));
         config.github_tokens.retain(|t| t.host != host);
-        let (login, avatar_url) = previous.unwrap_or((None, None));
         config.github_tokens.push(GithubTokenDef {
             host,
             token,
@@ -787,16 +816,17 @@ impl ConfigStore {
     }
 
     /// Cached account identity for a stored token, when one was captured.
-    pub fn get_github_profile(
-        &self,
-        config: &Config,
-        host: &str,
-    ) -> Option<(String, Option<String>)> {
+    pub fn get_github_profile(&self, config: &Config, host: &str) -> Option<GithubProfile> {
         config
             .github_tokens
             .iter()
             .find(|t| t.host == host)
-            .and_then(|t| t.login.clone().map(|login| (login, t.avatar_url.clone())))
+            .and_then(|t| {
+                t.login.clone().map(|login| GithubProfile {
+                    login,
+                    avatar_url: t.avatar_url.clone(),
+                })
+            })
     }
 
     /// Attach identity to an already-stored token without touching the secret.
@@ -1066,6 +1096,15 @@ fn validation(message: impl Into<String>) -> anyhow::Error {
     anyhow::Error::new(ConfigValidationError(message.into()))
 }
 
+/// A trimmed value, or nothing when it trims away to nothing. The reference
+/// stores `undefined` rather than an empty string for both halves of a
+/// profile, and an empty login rendered as an account name would be a blank
+/// avatar next to a blank name.
+fn non_empty(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
 fn require_absolute_path(path: &str) -> Result<()> {
     if PathBuf::from(path).is_absolute() {
         return Ok(());
@@ -1082,6 +1121,36 @@ async fn require_git_worktree(path: &str) -> Result<()> {
     Err(validation(
         "Not a Git repository. Choose a folder inside a Git worktree.",
     ))
+}
+
+/// The repository a request that named none is about: the selected one, or the
+/// first registered one when nothing is selected.
+pub fn selected_git_repository(config: &Config) -> Option<&GitRepoDef> {
+    config
+        .git_repositories
+        .iter()
+        .find(|repository| Some(&repository.name) == config.selected_git_repository.as_ref())
+        .or_else(|| config.git_repositories.first())
+}
+
+/// The working directory a request that named no repository runs in.
+///
+/// The active worktree is **verified before it is used**. A worktree that has
+/// been removed from disk leaves its path behind in the config, and running
+/// there would fail every git command for a repository that is perfectly fine —
+/// so a path that is no longer a worktree falls back to the repository's own
+/// folder, not to `fallback`. Only a config with no repositories at all reaches
+/// `fallback`.
+pub async fn selected_git_cwd(config: &Config, fallback: &str) -> String {
+    let Some(repository) = selected_git_repository(config) else {
+        return fallback.to_string();
+    };
+    if let Some(worktree) = repository.active_worktree_path.as_deref() {
+        if is_git_worktree(worktree).await {
+            return worktree.to_string();
+        }
+    }
+    repository.path.clone()
 }
 
 /// A missing directory, a missing `git`, and a directory outside any repository

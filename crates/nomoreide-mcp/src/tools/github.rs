@@ -19,7 +19,7 @@ pub(super) async fn set_token(
     host: &str,
 ) -> Result<String, String> {
     store
-        .set_github_token(host.to_string(), token.to_string())
+        .set_github_token(host.to_string(), token.to_string(), None)
         .await
         .map_err(|error| error.to_string())?;
     let config = store.load().await.map_err(|error| error.to_string())?;
@@ -49,7 +49,7 @@ async fn context(store: &ConfigStore, cwd: Option<&str>) -> Result<GithubContext
             let fallback = std::env::current_dir()
                 .map(|path| path.to_string_lossy().into_owned())
                 .map_err(|error| error.to_string())?;
-            selected_github_cwd(&config, &fallback)
+            selected_github_cwd(&config, &fallback).await
         }
     };
     require_github_context(store, &directory)

@@ -6,6 +6,7 @@ mod agent_chat;
 mod bundles;
 mod errors;
 mod git;
+mod github;
 mod meta;
 mod services;
 mod shell;
@@ -46,5 +47,6 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(timeline::routes())
         .merge(terminal::routes())
         .merge(git::routes())
+        .merge(github::routes())
         .route_layer(middleware::from_fn_with_state(state, require_credential))
 }

@@ -17,8 +17,8 @@ mod worktrees;
 mod writes;
 
 use crate::server::app::AppState;
+use crate::server::body::{parse_form, read_json_object, string_field};
 use crate::server::errors::error;
-use axum::body::Bytes;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -28,7 +28,6 @@ use nomoreide_core::git_manager::{
     ContentSearchOptions, ContentSearchResult, FileNameMatch, GitManager,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
@@ -50,79 +49,6 @@ pub(crate) fn routes() -> Router<AppState> {
         .merge(remote::routes())
         .merge(worktrees::routes())
         .merge(repositories::routes())
-}
-
-/// Read a JSON body the way the reference's `readJson` reads one: an empty,
-/// unparsable, or non-object payload is `{}` rather than a refusal. A form
-/// posted to a JSON route therefore reports the field it is missing, not that
-/// its syntax was wrong — which is the message the user can act on.
-fn read_json_object(body: &Bytes) -> Value {
-    let raw = std::str::from_utf8(body).unwrap_or_default().trim();
-    if raw.is_empty() {
-        return Value::Object(Default::default());
-    }
-    match serde_json::from_str::<Value>(raw) {
-        Ok(value) if value.is_object() || value.is_array() => value,
-        // `null` parses but is not an object, and `typeof null === "object"`
-        // does not save it: the reference's `parsed && typeof parsed` drops it.
-        _ => Value::Object(Default::default()),
-    }
-}
-
-fn string_field<'a>(body: &'a Value, key: &str) -> Option<&'a str> {
-    body.get(key).and_then(Value::as_str)
-}
-
-/// Read an `application/x-www-form-urlencoded` body the way `URLSearchParams`
-/// reads one: never fails, `+` is a space, and a repeated key keeps the first
-/// value (which is what `URLSearchParams.get` returns). A body that is not a
-/// form at all parses into keys nobody asks for, and the route then reports the
-/// field it wanted — the same outcome the reference reaches.
-fn parse_form(body: &Bytes) -> std::collections::HashMap<String, String> {
-    let raw = String::from_utf8_lossy(body);
-    let mut form = std::collections::HashMap::new();
-    for pair in raw.split('&').filter(|pair| !pair.is_empty()) {
-        let (key, value) = match pair.split_once('=') {
-            Some(split) => split,
-            None => (pair, ""),
-        };
-        form.entry(percent_decode(key))
-            .or_insert_with(|| percent_decode(value));
-    }
-    form
-}
-
-/// Percent-decoding with `+` as space. Invalid escapes are left as written,
-/// the way a URL parser leaves a stray `%` alone rather than failing the body.
-fn percent_decode(value: &str) -> String {
-    let bytes = value.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'+' => {
-                out.push(b' ');
-                index += 1;
-            }
-            b'%' if index + 2 < bytes.len() => {
-                match u8::from_str_radix(&value[index + 1..index + 3], 16) {
-                    Ok(decoded) => {
-                        out.push(decoded);
-                        index += 3;
-                    }
-                    Err(_) => {
-                        out.push(b'%');
-                        index += 1;
-                    }
-                }
-            }
-            other => {
-                out.push(other);
-                index += 1;
-            }
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// How many paths the file palette shows before it stops listing.

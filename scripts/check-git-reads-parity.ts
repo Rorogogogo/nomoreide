@@ -35,6 +35,14 @@ interface Step {
   readonly name: string;
   readonly path: string;
   readonly text?: boolean;
+  /**
+   * A form body, which also makes the step a POST.
+   *
+   * Only one step needs it: the reads below all answer for whichever
+   * repository is *selected*, and one of the things that has to be compared is
+   * how each runtime picks the directory to read in.
+   */
+  readonly form?: string;
 }
 
 const steps: readonly Step[] = [
@@ -71,6 +79,23 @@ const steps: readonly Step[] = [
   { name: "graph/fractional-limit", path: "/api/git/graph?limit=2.9" },
   { name: "graph/over-ceiling", path: "/api/git/graph?limit=99999" },
   { name: "worktrees", path: "/api/git/worktrees" },
+
+  // Last, because it changes what every read above answers for: `detached`
+  // names an active worktree that has been deleted. The selected directory is
+  // *verified* before it is used, so these reads land in the repository's own
+  // folder — a runtime that trusted the stored path would run every one of
+  // them in a directory that is not there.
+  {
+    name: "select/repository-with-a-stale-worktree",
+    path: "/api/git/select",
+    form: "name=detached",
+  },
+  { name: "status/stale-active-worktree", path: "/api/git/status" },
+  { name: "files/stale-active-worktree", path: "/api/git/files" },
+  { name: "branches/stale-active-worktree", path: "/api/git/branches" },
+  // Put back, because the steps that run after this list read the seeded
+  // repository's own commit.
+  { name: "select/back-to-the-seeded-repository", path: "/api/git/select", form: "name=repo" },
 ];
 
 const dump = process.argv.includes("--dump");
@@ -237,8 +262,14 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
   const credential = await readFile(join(runtime.home, ".nomoreide", "daemon.credential"), "utf8")
     .then((value) => value.trim())
     .catch(() => "");
+  const headers: Record<string, string> = credential
+    ? { authorization: `Bearer ${credential}` }
+    : {};
+  if (step.form !== undefined) headers["content-type"] = "application/x-www-form-urlencoded";
   const response = await fetch(`http://127.0.0.1:${runtime.port}${step.path}`, {
-    headers: credential ? { authorization: `Bearer ${credential}` } : {},
+    method: step.form === undefined ? "GET" : "POST",
+    headers,
+    body: step.form,
   });
   const text = await response.text();
   if (step.text) {

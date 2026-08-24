@@ -20,7 +20,7 @@
 
 use super::{parse_form, read_json_object};
 use crate::server::app::AppState;
-use crate::server::errors::error;
+use crate::server::errors::{config_failure, error};
 use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -47,17 +47,6 @@ pub(super) fn routes() -> Router<AppState> {
 struct ConfigEnvelope {
     ok: bool,
     config: Value,
-}
-
-/// The status the reference's dispatcher would give this failure: 400 when
-/// the caller can fix it, 500 otherwise.
-fn store_failure(reason: &anyhow::Error) -> Response {
-    let status = if nomoreide_core::config::is_config_validation_error(reason) {
-        StatusCode::BAD_REQUEST
-    } else {
-        StatusCode::INTERNAL_SERVER_ERROR
-    };
-    error(status, &reason.to_string())
 }
 
 fn config_envelope(config: &Config) -> Response {
@@ -100,7 +89,7 @@ async fn register(State(state): State<AppState>, body: Bytes) -> Response {
         .await
     {
         Ok(config) => config_envelope(&config),
-        Err(reason) => store_failure(&reason),
+        Err(reason) => config_failure(&reason),
     }
 }
 
@@ -120,7 +109,7 @@ fn repository(name: String, path: String) -> GitRepoDef {
 async fn remove(State(state): State<AppState>, Path(name): Path<String>) -> Response {
     match state.config_store.remove_git_repository(&name).await {
         Ok(config) => config_envelope(&config),
-        Err(reason) => store_failure(&reason),
+        Err(reason) => config_failure(&reason),
     }
 }
 
@@ -252,7 +241,7 @@ async fn select(State(state): State<AppState>, body: Bytes) -> Response {
     };
     match state.config_store.select_git_repository(Some(name)).await {
         Ok(config) => config_envelope(&config),
-        Err(reason) => store_failure(&reason),
+        Err(reason) => config_failure(&reason),
     }
 }
 
@@ -279,7 +268,7 @@ async fn board(State(state): State<AppState>, body: Bytes) -> Response {
             board: config.git_board_repositories.unwrap_or_default(),
         })
         .into_response(),
-        Err(reason) => store_failure(&reason),
+        Err(reason) => config_failure(&reason),
     }
 }
 

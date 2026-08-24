@@ -59,34 +59,17 @@ impl EventSink for DiscardingEventSink {
 }
 
 impl AppState {
-    /// The directory a new terminal session opens in: the selected repository's
-    /// active worktree, else its path, else wherever the daemon was started.
+    /// The directory a request that named no repository runs in: the selected
+    /// repository's active worktree when that is still a worktree, else its
+    /// path, else wherever the daemon was started.
     pub(crate) async fn workspace_cwd(&self) -> String {
-        let fallback = || {
-            std::env::current_dir()
-                .map(|path| path.to_string_lossy().into_owned())
-                .unwrap_or_default()
-        };
+        let fallback = std::env::current_dir()
+            .map(|path| path.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let Ok(config) = self.config_store.load().await else {
-            return fallback();
+            return fallback;
         };
-        config
-            .selected_git_repository
-            .as_ref()
-            .and_then(|selected| {
-                config
-                    .git_repositories
-                    .iter()
-                    .find(|repository| &repository.name == selected)
-            })
-            .or_else(|| config.git_repositories.first())
-            .map(|repository| {
-                repository
-                    .active_worktree_path
-                    .clone()
-                    .unwrap_or_else(|| repository.path.clone())
-            })
-            .unwrap_or_else(fallback)
+        nomoreide_core::config::selected_git_cwd(&config, &fallback).await
     }
 
     /// The next `term_<n>`.

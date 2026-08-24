@@ -31,6 +31,18 @@ pub(crate) async fn method_not_allowed() -> Response {
     error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed")
 }
 
+/// The status the reference's dispatcher would give a config-store failure:
+/// 400 when the caller can fix it, 500 otherwise. These routes have no error
+/// branch of their own, so the split is entirely in what was thrown.
+pub(crate) fn config_failure(reason: &anyhow::Error) -> Response {
+    let status = if nomoreide_core::config::is_config_validation_error(reason) {
+        StatusCode::BAD_REQUEST
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    };
+    error(status, &reason.to_string())
+}
+
 pub(crate) fn error(status: StatusCode, message: &str) -> Response {
     (
         status,

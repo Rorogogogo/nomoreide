@@ -171,9 +171,11 @@ async fn resolve_account(
         }));
     }
 
-    if let Some((login, avatar_url)) = state.config_store.get_github_profile(config, host) {
-        let avatar = avatar_url.unwrap_or_else(|| avatar_for_login(&login));
-        return Some(serde_json::json!({ "login": login, "avatarUrl": avatar }));
+    if let Some(profile) = state.config_store.get_github_profile(config, host) {
+        let avatar = profile
+            .avatar_url
+            .unwrap_or_else(|| avatar_for_login(&profile.login));
+        return Some(serde_json::json!({ "login": profile.login, "avatarUrl": avatar }));
     }
 
     // Nothing cached yet: use the viewer payload if this check already fetched
