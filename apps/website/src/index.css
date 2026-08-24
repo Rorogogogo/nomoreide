@@ -237,6 +237,20 @@ body {
   position: absolute;
 }
 
+/* The dashboard hides native scrollbars globally in its own styles.css, which
+   the website does not load — it pulls the dashboard in through `@source`, so
+   only the utilities come across. Without this the embedded workbench grows a
+   native scrollbar the real app never shows, most visibly down the sidebar nav. */
+.website-real-demo *,
+.website-real-demo *::before,
+.website-real-demo *::after {
+  scrollbar-width: none;
+}
+
+.website-real-demo *::-webkit-scrollbar {
+  display: none;
+}
+
 /* The embedded canvas is already bounded by the demo frame. Let the workbench
    fill it instead of centering its 1500px desktop cap and creating side gutters. */
 .website-real-demo [data-workbench-shell] {
