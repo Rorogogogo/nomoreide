@@ -15,6 +15,7 @@ use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::log_store::LogStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
+use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::timeline::TimelineStore;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use std::future::Future;
@@ -124,6 +125,9 @@ pub async fn serve_with_shutdown_requests(
         runtime: runtime.clone(),
         errors,
         shutdown: shutdown_sender,
+        terminal: TerminalManager::new(),
+        events: Arc::new(app::DiscardingEventSink),
+        session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
     });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

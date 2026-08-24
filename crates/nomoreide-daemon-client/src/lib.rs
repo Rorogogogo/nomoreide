@@ -136,10 +136,26 @@ impl DaemonEndpoint {
     }
 
     pub(crate) fn action_url(&self, collection: &str, name: &str, action: &str) -> Url {
+        self.action_url_under(&["api", collection], name, action)
+    }
+
+    /// The same, for a collection that is more than one path segment deep.
+    ///
+    /// The segments are extended one at a time rather than joined, because
+    /// `path_segments_mut` percent-encodes what it is given — a collection
+    /// passed as `"terminal/sessions"` would arrive as `terminal%2Fsessions`
+    /// and reach nothing. That encoding is exactly what `name` needs, though:
+    /// a session id can hold a `#` or a space.
+    pub(crate) fn action_url_under(&self, collection: &[&str], name: &str, action: &str) -> Url {
         let mut url = self.0.clone();
-        url.path_segments_mut()
-            .expect("validated hierarchical daemon URL")
-            .extend(["api", collection, name, action]);
+        {
+            let mut segments = url
+                .path_segments_mut()
+                .expect("validated hierarchical daemon URL");
+            segments.extend(collection);
+            segments.push(name);
+            segments.push(action);
+        }
         url
     }
 }

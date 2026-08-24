@@ -9,6 +9,10 @@ use axum::middleware::Next;
 use axum::response::Response;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
+use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
+use nomoreide_core::terminal::TerminalManager;
+use serde_json::Value;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 use tokio::sync::mpsc;
@@ -24,6 +28,70 @@ pub(crate) struct AppState {
     /// to drain the runtime the way a signalled one does, so both go through
     /// here rather than one of them exiting the process directly.
     pub(crate) shutdown: mpsc::Sender<()>,
+    pub(crate) terminal: TerminalManager,
+    /// Where a terminal session's lifecycle events go.
+    ///
+    /// Nothing subscribes yet — the daemon has no event stream of its own until
+    /// the dashboard moves onto it — so this discards. It is threaded through
+    /// anyway because the manager emits unconditionally, and a sink that exists
+    /// is what lets the stream be added without touching the manager again.
+    pub(crate) events: SharedEventSink,
+    /// Hands out `term_1`, `term_2`, … the way the reference does. Sessions the
+    /// caller named (`svc:<service>`) do not draw from it.
+    pub(crate) session_counter: Arc<AtomicU64>,
+}
+
+/// A sink that drops what it is given.
+pub(crate) struct DiscardingEventSink;
+
+impl EventSink for DiscardingEventSink {
+    fn emit(&self, _event: &str, _payload: Value) -> Result<(), EventSinkError> {
+        Ok(())
+    }
+}
+
+impl AppState {
+    /// The directory a new terminal session opens in: the selected repository's
+    /// active worktree, else its path, else wherever the daemon was started.
+    pub(crate) async fn workspace_cwd(&self) -> String {
+        let fallback = || {
+            std::env::current_dir()
+                .map(|path| path.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        };
+        let Ok(config) = self.config_store.load().await else {
+            return fallback();
+        };
+        config
+            .selected_git_repository
+            .as_ref()
+            .and_then(|selected| {
+                config
+                    .git_repositories
+                    .iter()
+                    .find(|repository| &repository.name == selected)
+            })
+            .or_else(|| config.git_repositories.first())
+            .map(|repository| {
+                repository
+                    .active_worktree_path
+                    .clone()
+                    .unwrap_or_else(|| repository.path.clone())
+            })
+            .unwrap_or_else(fallback)
+    }
+
+    /// The next `term_<n>`.
+    ///
+    /// The counter lives here rather than on the manager because which ids a
+    /// caller hands out is that caller's convention — the desktop app uses a
+    /// different one against the same manager.
+    pub(crate) fn next_session_id(&self) -> String {
+        format!(
+            "term_{}",
+            self.session_counter.fetch_add(1, Ordering::Relaxed) + 1
+        )
+    }
 }
 
 /// Reject anything that does not carry the daemon's local credential.

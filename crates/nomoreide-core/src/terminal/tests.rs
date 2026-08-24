@@ -36,6 +36,8 @@ fn agent_prompt_target_allows_dock_and_terminal_but_not_launching() {
         label: None,
         kind: Some("agent".to_string()),
         provider: Some("codex".to_string()),
+        exit: None,
+        error: None,
         presentation: TerminalPresentation::Dock,
     };
     assert!(validate_agent_prompt_target(&session).is_ok());
@@ -180,6 +182,8 @@ fn spawn_test_session(manager: &TerminalManager, id: &str, script: &str) -> u32 
             label: None,
             kind: Some("shell".to_string()),
             provider: None,
+            exit: None,
+            error: None,
             presentation: TerminalPresentation::Dock,
         },
         writer,
@@ -302,7 +306,7 @@ fn closed_output_gate_rejects_a_new_external_launch() {
         session.gate.lock().unwrap().closed = true;
         assert_eq!(
             super::external::validate_external_launch(session).unwrap_err(),
-            "Only a running agent session can open in Terminal",
+            "Only a running agent session can open in Terminal.",
         );
     }
     manager.close_session("closed-launch").unwrap();

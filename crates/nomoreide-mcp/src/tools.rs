@@ -9,6 +9,7 @@ mod github;
 mod onboard;
 mod profiles;
 mod registration;
+mod terminal;
 mod ui;
 
 use nomoreide_core::config::{ConfigStore, DatabaseDef};
@@ -337,6 +338,9 @@ impl NativeToolExecutor {
                     .map_err(daemon_message)?;
                 render(&ServiceStatusView::of(&status))
             }
+            NativeTool::ListTerminalSessions => terminal::list(&client).await,
+            NativeTool::OpenTerminal(id) => terminal::open(&client, id).await,
+            NativeTool::ReclaimTerminal(id) => terminal::reclaim(&client, id).await,
             NativeTool::ListErrors { limit } => errors::list(&client, limit).await,
             NativeTool::ErrorPrompt { id } => errors::prompt(&client, id).await,
             NativeTool::ReadLogs { service, limit } => {
@@ -481,6 +485,12 @@ enum NativeTool<'a> {
     Docs(Option<&'a str>),
     OpenUi,
     CloseUi,
+    /// The daemon owns every live PTY, so all three of these go through it.
+    /// Listing takes nothing; the other two take the id of a session the daemon
+    /// is already holding.
+    ListTerminalSessions,
+    OpenTerminal(&'a str),
+    ReclaimTerminal(&'a str),
     /// The daemon owns the inbox, so both of these go through it.
     ListErrors {
         limit: u32,
@@ -799,6 +809,11 @@ impl<'a> NativeTool<'a> {
     fn parse(name: &str, arguments: &'a Map<String, Value>) -> Result<Self, String> {
         match name {
             "nomoreide_docs" => Ok(Self::Docs(arguments.get("topic").and_then(Value::as_str))),
+            "nomoreide_list_terminal_sessions" => Ok(Self::ListTerminalSessions),
+            "nomoreide_open_terminal" => Ok(Self::OpenTerminal(required_text(arguments, "id")?)),
+            "nomoreide_reclaim_terminal" => {
+                Ok(Self::ReclaimTerminal(required_text(arguments, "id")?))
+            }
             "nomoreide_list_errors" => Ok(Self::ListErrors {
                 limit: arguments
                     .get("limit")

@@ -57,13 +57,13 @@ pub(super) struct ExternalAttachment {
 
 pub(super) fn validate_external_launch(session: &PtySession) -> Result<(), String> {
     if session.metadata.kind.as_deref() != Some("agent") {
-        return Err("Only agent sessions can open in Terminal".to_string());
+        return Err("Only agent sessions can open in Terminal.".to_string());
     }
     if session.metadata.state != "running" || session.gate.lock().unwrap().closed {
-        return Err("Only a running agent session can open in Terminal".to_string());
+        return Err("Only a running agent session can open in Terminal.".to_string());
     }
     if session.metadata.presentation != TerminalPresentation::Dock || session.attachment.is_some() {
-        return Err("This agent session is already opening or active in Terminal".to_string());
+        return Err("This agent session is already opening or active in Terminal.".to_string());
     }
     if session.prompt_write_active {
         return Err("This agent session is receiving a prompt; retry shortly".to_string());

@@ -6,7 +6,8 @@
 //! never publish state over its successor.
 
 use super::session::{
-    encode_agent_prompt_paste, validate_agent_prompt_target, TerminalPresentation, TerminalSession,
+    encode_agent_prompt_paste, validate_agent_prompt_target, TerminalExit, TerminalPresentation,
+    TerminalSession,
 };
 use crate::event_sink::{emit_event, EventSink, SharedEventSink};
 use portable_pty::{Child, ChildKiller};
@@ -155,7 +156,9 @@ impl TerminalRegistry {
 
 #[derive(Debug)]
 pub(super) enum IdReservation {
-    Existing(TerminalSession),
+    /// Boxed because a session is much larger than the "reserved" case, and an
+    /// unboxed variant would make every reservation pay for it.
+    Existing(Box<TerminalSession>),
     Reserved,
 }
 
@@ -304,7 +307,7 @@ impl TerminalManager {
         _sink: SharedEventSink,
         _id: &str,
     ) -> Result<TerminalSession, String> {
-        Err("External Terminal is currently available on macOS only".to_string())
+        Err("External Terminal is currently available on macOS only.".to_string())
     }
 
     pub fn reclaim_to_dock(
@@ -430,7 +433,7 @@ impl TerminalManager {
             return Err(format!("Terminal session is closing; retry shortly: {id}"));
         }
         if let Some(session) = registry.sessions.get(id) {
-            return Ok(IdReservation::Existing(session.metadata.clone()));
+            return Ok(IdReservation::Existing(Box::new(session.metadata.clone())));
         }
         if !registry.creating.insert(id.to_string()) {
             return Err(format!(
@@ -463,13 +466,13 @@ impl TerminalManager {
         let registry = self.registry.clone();
         std::thread::spawn(move || {
             let pid = child.process_id();
-            let wait_succeeded = child.wait().is_ok();
-            let group_cleanup_complete = if wait_succeeded {
+            let status = child.wait().ok();
+            let group_cleanup_complete = if status.is_some() {
                 cleanup_process_group_after_wait(pid)
             } else {
                 false
             };
-            let state = if wait_succeeded && group_cleanup_complete {
+            let state = if status.is_some() && group_cleanup_complete {
                 "exited"
             } else {
                 "error"
@@ -479,6 +482,17 @@ impl TerminalManager {
                 if session.generation == generation {
                     session.group_cleanup_complete = group_cleanup_complete;
                     session.metadata.state = state.to_string();
+                    session.metadata.exit = status.map(|status| TerminalExit {
+                        exit_code: status.exit_code(),
+                        // Accepted divergence: the PTY layer reports a signal
+                        // as a localised *name*, not a number, so a child that
+                        // was killed cannot be given its signal number back
+                        // without guessing at that name. A child that returned
+                        // on its own — every case the tool surface can reach —
+                        // reports zero here, which is what the reference
+                        // reports too.
+                        signal: 0,
+                    });
                 }
             }
             registry.1.notify_all();

@@ -350,3 +350,55 @@ pub struct MutationErrorEnvelope {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conflict: Option<PortConflict>,
 }
+
+// ---------------------------------------------------------------------------
+// Terminal sessions
+// ---------------------------------------------------------------------------
+
+/// A terminal session as the daemon reports it.
+///
+/// The field order here is load-bearing. A tool renders this straight to JSON
+/// for an agent to read, and the reference emits an id, then the session's own
+/// snapshot — whose keys are alphabetical — and appends the presentation last.
+/// Reordering the struct reorders the payload.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSessionInfo {
+    pub id: String,
+    pub cols: u16,
+    pub cwd: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit: Option<TerminalExitInfo>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    pub rows: u16,
+    pub shell: String,
+    pub state: String,
+    pub presentation: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalExitInfo {
+    pub exit_code: u32,
+    pub signal: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TerminalSessionsEnvelope {
+    pub ok: bool,
+    #[serde(default)]
+    pub sessions: Vec<TerminalSessionInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TerminalSessionEnvelope {
+    pub ok: bool,
+    pub session: TerminalSessionInfo,
+}

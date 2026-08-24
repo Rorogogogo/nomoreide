@@ -213,6 +213,12 @@ pub(super) enum ArgumentContract {
     /// in `(0, 2000]` — far above the log-line bound, because a build log is
     /// read to find the one line that failed.
     DeployLogs,
+    /// `nomoreide_open_terminal` and `nomoreide_reclaim_terminal`: the id of a
+    /// session the daemon is already holding. Bounded and refused a path
+    /// separator, because the id becomes a path segment on the way to the
+    /// daemon — and a control character, because it is echoed back in a
+    /// refusal. Whether the session exists is the daemon's question.
+    TerminalSession,
 }
 
 /// The reference's `z.number().int().positive().max(1000)`.
@@ -245,6 +251,8 @@ const ROW_LIMIT_MAX: f64 = 1000.0;
 const DEPLOYMENT_LIMIT_MAX: f64 = 100.0;
 /// The reference's `z.number().int().positive().max(2000).default(500)`.
 const BUILD_LOG_LIMIT_MAX: f64 = 2000.0;
+/// The reference's `z.string().min(1).max(200)`, for a terminal session id.
+const TERMINAL_SESSION_ID_MAX: usize = 200;
 /// The reference's `z.enum(["production", "preview"])`.
 const DEPLOY_TARGETS: &[&str] = &["production", "preview"];
 /// The agents an agent-environment write can name.
@@ -338,6 +346,8 @@ impl ArgumentContract {
             "nomoreide_agents_move_skill_scope" => Some(Self::AgentSkillMove),
             "nomoreide_agents_snapshot_agent" => Some(Self::AgentSnapshot),
             "nomoreide_agents_read_configs" | "nomoreide_agents_doctor" => Some(Self::OptionalCwd),
+            "nomoreide_list_terminal_sessions" => Some(Self::Empty),
+            "nomoreide_open_terminal" | "nomoreide_reclaim_terminal" => Some(Self::TerminalSession),
             "nomoreide_open_ui" | "nomoreide_close_ui" => Some(Self::Empty),
             _ => None,
         }
@@ -710,8 +720,45 @@ impl ArgumentContract {
                 failures.extend(bounded_integer(arguments, "limit", BUILD_LOG_LIMIT_MAX));
                 collect(failures)
             }
+            Self::TerminalSession => collect(terminal_session_id(arguments)),
         }
     }
+}
+
+/// The reference's session-id schema, in its own order: the length bounds are
+/// part of the string type and are reported before the refinement that follows
+/// them, and zod reports a failed refinement with no message of its own as
+/// `Invalid input`.
+fn terminal_session_id(arguments: &Map<String, Value>) -> Vec<String> {
+    let Some(value) = arguments.get("id") else {
+        return vec!["id: Required".to_string()];
+    };
+    let Value::String(id) = value else {
+        return vec![format!(
+            "id: Expected string, received {}",
+            schema_type(value)
+        )];
+    };
+    let length = id.encode_utf16().count();
+    if length < 1 {
+        return vec!["id: String must contain at least 1 character(s)".to_string()];
+    }
+    if length > TERMINAL_SESSION_ID_MAX {
+        return vec![format!(
+            "id: String must contain at most {TERMINAL_SESSION_ID_MAX} character(s)"
+        )];
+    }
+    if id.contains('/') || id.contains('\\') || id.chars().any(is_control_character) {
+        return vec!["id: Invalid input".to_string()];
+    }
+    Vec::new()
+}
+
+/// A path separator would make the id name a different endpoint, and a control
+/// character would let it forge a line in whatever echoes it back.
+fn is_control_character(character: char) -> bool {
+    let code = character as u32;
+    code <= 31 || code == 127
 }
 
 /// The two fields every deploy tool starts with, reported in that order.

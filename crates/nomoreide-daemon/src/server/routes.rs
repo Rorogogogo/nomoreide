@@ -6,6 +6,7 @@ mod bundles;
 mod errors;
 mod meta;
 mod services;
+mod terminal;
 mod timeline;
 
 use crate::server::app::{require_credential, AppState};
@@ -35,5 +36,6 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(services::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())
+        .merge(terminal::routes())
         .route_layer(middleware::from_fn_with_state(state, require_credential))
 }

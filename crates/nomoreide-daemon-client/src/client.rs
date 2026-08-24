@@ -2,7 +2,8 @@ use crate::protocol::{
     BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, Incident, IncidentPromptEnvelope,
     IncidentsEnvelope, LogsEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery,
     ServiceDiscoveryEnvelope, ServiceLogEntry, ServiceMutationEnvelope, ServiceRuntimeStatus,
-    ShutdownEnvelope, StatusEnvelope, TimelineEnvelope, TimelineEvent,
+    ShutdownEnvelope, StatusEnvelope, TerminalSessionEnvelope, TerminalSessionInfo,
+    TerminalSessionsEnvelope, TimelineEnvelope, TimelineEvent,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -286,6 +287,61 @@ impl DaemonClient {
         Ok(())
     }
 
+    /// The terminal tabs the daemon owns, in the order they were created.
+    pub async fn list_terminal_sessions(
+        &self,
+    ) -> Result<Vec<TerminalSessionInfo>, DaemonClientError> {
+        let body = self
+            .read(self.endpoint.api_url("api/terminal/sessions"))
+            .await?;
+        let envelope = serde_json::from_slice::<TerminalSessionsEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.sessions)
+    }
+
+    /// Move a running agent session out to the system terminal.
+    pub async fn open_terminal(&self, id: &str) -> Result<TerminalSessionInfo, DaemonClientError> {
+        self.terminal_control(id, "open-system-terminal").await
+    }
+
+    /// Bring one back to the dock.
+    pub async fn reclaim_terminal(
+        &self,
+        id: &str,
+    ) -> Result<TerminalSessionInfo, DaemonClientError> {
+        self.terminal_control(id, "reclaim-dock").await
+    }
+
+    /// Both control actions are the same request with a different last segment.
+    ///
+    /// The id is a path *segment*, so it is appended through the URL rather
+    /// than formatted into one: a session named after a service can hold a `#`
+    /// or a space, and either would silently truncate or corrupt a hand-built
+    /// path.
+    async fn terminal_control(
+        &self,
+        id: &str,
+        action: &str,
+    ) -> Result<TerminalSessionInfo, DaemonClientError> {
+        let url = self
+            .endpoint
+            .action_url_under(&["api", "terminal", "sessions"], id, action);
+        let body = self.terminal_mutation(url, MUTATION_TIMEOUT).await?;
+        let envelope = serde_json::from_slice::<TerminalSessionEnvelope>(&body)
+            .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+        if !envelope.ok {
+            return Err(DaemonClientError::Protocol(
+                "daemon returned an unsuccessful response".into(),
+            ));
+        }
+        Ok(envelope.session)
+    }
+
     async fn service_action(
         &self,
         name: &str,
@@ -350,6 +406,32 @@ impl DaemonClient {
                     })));
                 }
             }
+            let message = serde_json::from_slice::<ErrorEnvelope>(&body)
+                .ok()
+                .filter(|envelope| !envelope.ok)
+                .map(|envelope| envelope.error)
+                .unwrap_or_else(|| "Daemon request failed.".to_string());
+            return Err(DaemonClientError::Http { status, message });
+        }
+        Ok(body.to_vec())
+    }
+
+    /// A terminal control POST, which carries the header the daemon requires
+    /// before it will move a session between presentations.
+    async fn terminal_mutation(
+        &self,
+        url: reqwest::Url,
+        timeout: std::time::Duration,
+    ) -> Result<Vec<u8>, DaemonClientError> {
+        let request = self
+            .http
+            .post(url)
+            .timeout(timeout)
+            .header("x-nomoreide-terminal-control", "1");
+        let response = self.send_authenticated(request).await?;
+        let status = response.status();
+        let body = response.bytes().await.map_err(DaemonClientError::Request)?;
+        if !status.is_success() {
             let message = serde_json::from_slice::<ErrorEnvelope>(&body)
                 .ok()
                 .filter(|envelope| !envelope.ok)

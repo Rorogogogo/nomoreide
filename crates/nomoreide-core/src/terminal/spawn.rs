@@ -94,6 +94,8 @@ impl TerminalManager {
             label,
             kind,
             provider: provider.clone(),
+            exit: None,
+            error: None,
             presentation: TerminalPresentation::Dock,
         };
 
@@ -130,7 +132,7 @@ impl TerminalManager {
         let reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
 
         match self.reserve_id(&id)? {
-            IdReservation::Existing(existing) => return Ok(existing),
+            IdReservation::Existing(existing) => return Ok(*existing),
             IdReservation::Reserved => {}
         }
         let child = match pair.slave.spawn_command(command) {
