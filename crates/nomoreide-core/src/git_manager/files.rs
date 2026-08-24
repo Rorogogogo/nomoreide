@@ -63,6 +63,37 @@ impl GitManager {
         })
     }
 
+    /// Write a tracked file for the `PUT /api/git/file` route — the editor's
+    /// save.
+    ///
+    /// The same three guards as the read path, but **[`resolve_inside`] runs
+    /// first here**, where the read path checks the tracked set first. That is
+    /// not a tidier ordering, it is the reference's: `writeTrackedFile`
+    /// resolves before it lists, `readTrackedFile` lists before it resolves,
+    /// and a climbing path therefore gets told it left the repository on a
+    /// write and that it is untracked on a read. The parity gate reads those
+    /// two messages, so the orders cannot be unified on one side alone.
+    ///
+    /// The third guard is the binary check, and it reads what is on disk
+    /// rather than inspecting the incoming text: a string can never say it is
+    /// an ELF header, but the file it would overwrite can.
+    pub async fn write_tracked_file(cwd: &str, path: &str, content: &str) -> Result<()> {
+        let full = resolve_inside(cwd, path)?;
+        let tracked: HashSet<String> = Self::list_tracked_files(cwd).await?.into_iter().collect();
+        if !tracked.contains(path) {
+            return Err(anyhow!("file is not tracked by git"));
+        }
+        let current = tokio::fs::read(&full)
+            .await
+            .context("Failed to read tracked file")?;
+        if current.contains(&0) {
+            return Err(anyhow!("cannot write binary file"));
+        }
+        tokio::fs::write(&full, content)
+            .await
+            .context("Failed to write file")
+    }
+
     /// Rank tracked files by line count (then bytes), skipping binaries. Mirrors
     /// the Node `rankFilesBySize`: files past `MAX_BYTES` are measured from a
     /// capped read and flagged `truncated`.
@@ -295,6 +326,65 @@ mod read_tracked_file_tests {
         assert!(!file.binary);
         assert_eq!(file.content.len(), 1_000_000);
         assert_eq!(file.size, 1_000_010);
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    #[tokio::test]
+    async fn writes_a_tracked_text_file() {
+        let cwd = repository(&[("src/main.rs", b"fn main() {}\n")]).await;
+        GitManager::write_tracked_file(&cwd, "src/main.rs", "fn main() { edited(); }\n")
+            .await
+            .unwrap();
+        let file = GitManager::read_tracked_file(&cwd, "src/main.rs")
+            .await
+            .unwrap();
+        assert_eq!(file.content, "fn main() { edited(); }\n");
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    #[tokio::test]
+    async fn refuses_to_write_an_untracked_file() {
+        let cwd = repository(&[("src/main.rs", b"fn main() {}\n")]).await;
+        tokio::fs::write(std::path::Path::new(&cwd).join("untracked.txt"), b"x")
+            .await
+            .unwrap();
+        assert!(
+            GitManager::write_tracked_file(&cwd, "untracked.txt", "new")
+                .await
+                .is_err(),
+            "the tracked set is the guard, and an untracked path is not in it"
+        );
+        // The file on disk must be untouched, not merely un-reported.
+        let after = tokio::fs::read_to_string(std::path::Path::new(&cwd).join("untracked.txt"))
+            .await
+            .unwrap();
+        assert_eq!(after, "x");
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    #[tokio::test]
+    async fn refuses_to_write_outside_the_repository() {
+        let cwd = repository(&[("a.txt", b"a\n")]).await;
+        assert!(GitManager::write_tracked_file(&cwd, "../a.txt", "escaped")
+            .await
+            .is_err());
+        tokio::fs::remove_dir_all(&cwd).await.ok();
+    }
+
+    /// What is already on disk decides, not the incoming text: a save that
+    /// would replace a binary with a string is refused.
+    #[tokio::test]
+    async fn refuses_to_write_over_a_binary_file() {
+        let cwd = repository(&[("image.bin", &[0x00, 0xff, 0x01, 0x00])]).await;
+        assert!(
+            GitManager::write_tracked_file(&cwd, "image.bin", "text now")
+                .await
+                .is_err()
+        );
+        let after = tokio::fs::read(std::path::Path::new(&cwd).join("image.bin"))
+            .await
+            .unwrap();
+        assert_eq!(after, vec![0x00, 0xff, 0x01, 0x00]);
         tokio::fs::remove_dir_all(&cwd).await.ok();
     }
 }

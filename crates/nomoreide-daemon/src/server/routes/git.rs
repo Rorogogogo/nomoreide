@@ -6,12 +6,17 @@
 //! `overview` is the exception that reads *every* registered repository at
 //! once, isolating each one's failure to its own column.
 //!
-//! `push`, `pull`, `merge`, `rebase`, and staging live behind `nomoreide-actions`
-//! and are not part of this module — see the crate's own docs for why that is a
-//! crate boundary, not a naming convention.
+//! Local writes — the index, a commit, a tracked file's contents, `fetch` —
+//! live in [`writes`], which shares this module's repository resolution and
+//! body readers. `push`, `pull`, `merge`, and `rebase` live behind
+//! `nomoreide-actions` and are not part of either — see the crate's own docs
+//! for why that is a crate boundary, not a naming convention.
+
+mod writes;
 
 use crate::server::app::AppState;
 use crate::server::errors::error;
+use axum::body::Bytes;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -21,6 +26,7 @@ use nomoreide_core::git_manager::{
     ContentSearchOptions, ContentSearchResult, FileNameMatch, GitManager,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
@@ -38,6 +44,80 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/git/diff", get(diff))
         .route("/api/git/graph", get(graph))
         .route("/api/git/worktrees", get(worktrees))
+        .merge(writes::routes())
+}
+
+/// Read a JSON body the way the reference's `readJson` reads one: an empty,
+/// unparsable, or non-object payload is `{}` rather than a refusal. A form
+/// posted to a JSON route therefore reports the field it is missing, not that
+/// its syntax was wrong — which is the message the user can act on.
+fn read_json_object(body: &Bytes) -> Value {
+    let raw = std::str::from_utf8(body).unwrap_or_default().trim();
+    if raw.is_empty() {
+        return Value::Object(Default::default());
+    }
+    match serde_json::from_str::<Value>(raw) {
+        Ok(value) if value.is_object() || value.is_array() => value,
+        // `null` parses but is not an object, and `typeof null === "object"`
+        // does not save it: the reference's `parsed && typeof parsed` drops it.
+        _ => Value::Object(Default::default()),
+    }
+}
+
+fn string_field<'a>(body: &'a Value, key: &str) -> Option<&'a str> {
+    body.get(key).and_then(Value::as_str)
+}
+
+/// Read an `application/x-www-form-urlencoded` body the way `URLSearchParams`
+/// reads one: never fails, `+` is a space, and a repeated key keeps the first
+/// value (which is what `URLSearchParams.get` returns). A body that is not a
+/// form at all parses into keys nobody asks for, and the route then reports the
+/// field it wanted — the same outcome the reference reaches.
+fn parse_form(body: &Bytes) -> std::collections::HashMap<String, String> {
+    let raw = String::from_utf8_lossy(body);
+    let mut form = std::collections::HashMap::new();
+    for pair in raw.split('&').filter(|pair| !pair.is_empty()) {
+        let (key, value) = match pair.split_once('=') {
+            Some(split) => split,
+            None => (pair, ""),
+        };
+        form.entry(percent_decode(key))
+            .or_insert_with(|| percent_decode(value));
+    }
+    form
+}
+
+/// Percent-decoding with `+` as space. Invalid escapes are left as written,
+/// the way a URL parser leaves a stray `%` alone rather than failing the body.
+fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'+' => {
+                out.push(b' ');
+                index += 1;
+            }
+            b'%' if index + 2 < bytes.len() => {
+                match u8::from_str_radix(&value[index + 1..index + 3], 16) {
+                    Ok(decoded) => {
+                        out.push(decoded);
+                        index += 3;
+                    }
+                    Err(_) => {
+                        out.push(b'%');
+                        index += 1;
+                    }
+                }
+            }
+            other => {
+                out.push(other);
+                index += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// How many paths the file palette shows before it stops listing.
