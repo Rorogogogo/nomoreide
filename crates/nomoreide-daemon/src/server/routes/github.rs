@@ -15,7 +15,7 @@ mod template;
 
 use crate::server::app::AppState;
 use crate::server::body::{parse_form, read_json_object, string_field};
-use crate::server::errors::{config_failure, error};
+use crate::server::errors::{config_failure, error, method_not_allowed};
 use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -39,7 +39,12 @@ const GITHUB_HOST: &str = "github.com";
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/github/token", get(token_status).post(store_token))
-        .route("/api/github/token/:host", delete(remove_token))
+        // A pattern route in the reference, so a wrong method is 405 here
+        // rather than the shell's 404.
+        .route(
+            "/api/github/token/:host",
+            delete(remove_token).fallback(method_not_allowed),
+        )
         .route("/api/github/accounts", get(accounts))
         .route("/api/github/account", put(select_account))
         .route("/api/github/oauth/start", post(oauth_start))

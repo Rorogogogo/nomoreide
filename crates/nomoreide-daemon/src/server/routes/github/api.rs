@@ -16,6 +16,7 @@
 use crate::server::app::AppState;
 use crate::server::body::{read_json_object, string_field};
 use crate::server::errors::error;
+use crate::server::errors::method_not_allowed;
 use crate::server::query::{js_number_or, js_number_string};
 use axum::body::Bytes;
 use axum::extract::{Path, Query, State};
@@ -39,9 +40,13 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/api/github/prs/:number/diff", get(pr_diff))
         .route("/api/github/issues", get(list_issues).post(create_issue))
         .route("/api/github/issues/:number", get(get_issue))
+        // A pattern route in the reference, so a wrong method is 405 here
+        // rather than the shell's 404.
         .route(
             "/api/github/issues/:number/comments",
-            get(list_comments).post(add_comment),
+            get(list_comments)
+                .post(add_comment)
+                .fallback(method_not_allowed),
         )
         .route("/api/github/ci/:sha", get(commit_ci))
         .route("/api/github/runs", get(list_runs))

@@ -28,6 +28,8 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/api/git/commit", post(commit))
         .route("/api/git/stage", post(stage))
         .route("/api/git/unstage", post(unstage))
+        .route("/api/git/branches/switch", post(switch_branch))
+        .route("/api/git/branches/delete", post(delete_branch))
 }
 
 #[derive(Serialize)]
@@ -174,4 +176,61 @@ async fn index_move(state: AppState, body: &Bytes, staging: bool) -> Response {
         Ok(output) => Json(OutputEnvelope { ok: true, output }).into_response(),
         Err(reason) => error(StatusCode::BAD_REQUEST, &reason.to_string()),
     }
+}
+
+/// Switch the selected repository to a branch.
+///
+/// **No error branch, on purpose**, the same as `fetch` above: the reference
+/// route has no try/catch, so a name that does not resolve — and a missing
+/// `name` — leave the dispatcher to answer 500. `delete` below catches
+/// everything and answers 400. The asymmetry is the reference's, and it is why
+/// the two live next to each other rather than sharing a helper.
+///
+/// The repository is always the selected one. `switch` takes no `repo`, so a
+/// caller sending one is ignored rather than obeyed.
+async fn switch_branch(State(state): State<AppState>, body: Bytes) -> Response {
+    let form = parse_form(&body);
+    let Ok(name) = required(&form, "name") else {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "name is required");
+    };
+    let cwd = state.workspace_cwd().await;
+    match GitManager::switch_branch(&cwd, &name).await {
+        Ok(output) => Json(OutputEnvelope { ok: true, output }).into_response(),
+        Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+/// Delete a branch, from a named repository or from the selected one.
+///
+/// `git branch -d`, never `-D`: a branch holding commits that are reachable
+/// from nowhere else is refused rather than dropped. Discarding that work needs
+/// a surface of its own, and this is not it.
+///
+/// The repository is resolved **before** the name is read, which is the
+/// reference's order and shows: an unknown `repo` with no `name` at all reports
+/// the repository, not the missing field.
+async fn delete_branch(State(state): State<AppState>, body: Bytes) -> Response {
+    let form = parse_form(&body);
+    let cwd = match resolve_repo_cwd(&state, form.get("repo").map(String::as_str)).await {
+        Ok((cwd, _)) => cwd,
+        Err(response) => return response,
+    };
+    let name = match required(&form, "name") {
+        Ok(name) => name,
+        Err(reason) => return error(StatusCode::BAD_REQUEST, &reason),
+    };
+    match GitManager::delete_branch(&cwd, &name).await {
+        Ok(output) => Json(OutputEnvelope { ok: true, output }).into_response(),
+        Err(reason) => error(StatusCode::BAD_REQUEST, &reason.to_string()),
+    }
+}
+
+/// A form field the route cannot proceed without, trimmed, where blank counts
+/// as absent.
+fn required(form: &std::collections::HashMap<String, String>, key: &str) -> Result<String, String> {
+    form.get(key)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| format!("{key} is required"))
 }
