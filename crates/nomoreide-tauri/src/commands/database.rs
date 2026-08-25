@@ -11,12 +11,12 @@
 use crate::AppState;
 use futures_util::TryStreamExt;
 use nomoreide_actions::db::{
-    delete_rows_bound, delete_sql, run_execute, validate_delete_keys, DeleteDatabaseRowsInput,
-    WriteOutcome,
+    delete_rows_bound, delete_sql, ensure_confirmed_count, run_execute, validate_delete_keys,
+    DeleteDatabaseRowsInput, WriteOutcome,
 };
 use nomoreide_core::config::DatabaseDef;
 use nomoreide_core::db::{
-    capabilities, columns_for, connection as find_connection, hex_bytes,
+    capabilities, columns_for, connection as find_connection, first_statement, hex_bytes,
     is_sensitive_preview_column, list_connections, list_db_tables, lossless_json_integer,
     object_details, objects_for, quote_identifier, resolve_object, run_query, sample_object,
     schemas_for, test_connection, CatalogCapabilities, CatalogObject, ColumnInfo, ObjectDetails,
@@ -99,6 +99,8 @@ pub async fn execute_database(
             });
         }
     }
+    // Only the first statement runs, as it does on the dashboard's route.
+    let sql = first_statement(&sql).trim().to_string();
     let affected = run_execute(&database.engine, &database.url, &sql, commit).await?;
     Ok(WriteOutcome {
         engine: database.engine.clone(),
@@ -641,22 +643,16 @@ pub async fn delete_database_rows(
         .iter()
         .filter(|column| column.primary_key)
         .collect::<Vec<_>>();
-    validate_delete_keys(&input.keys, &primary_keys)?;
+    validate_delete_keys(&input.keys, &primary_keys, &object)?;
 
+    // The same two-sided confirmation the dashboard's route applies, in the
+    // same words, because the person doing this is looking at the same preview.
     let expected = if commit {
-        Some(
-            input
-                .expected_affected_rows
-                .ok_or_else(|| "Commit requires expectedAffectedRows from a preview".to_string())?,
-        )
+        input.expected_affected_rows
     } else {
         None
     };
-    if let Some(expected) = expected {
-        if expected != input.keys.len() as u64 {
-            return Err("Expected affected-row count must match the selected row count".into());
-        }
-    }
+    ensure_confirmed_count(input.keys.len(), expected, commit)?;
 
     let sql = delete_sql(&database.engine, &object, &primary_keys);
     let affected = delete_rows_bound(

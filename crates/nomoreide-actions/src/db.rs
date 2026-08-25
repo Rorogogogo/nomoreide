@@ -14,7 +14,7 @@
 //!
 //! Moved out of the Tauri command module unchanged.
 
-use nomoreide_core::db::{quote_identifier, CatalogObject, ColumnInfo};
+use nomoreide_core::db::{driver_message, quote_identifier, CatalogObject, ColumnInfo};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -39,41 +39,76 @@ pub struct DeleteDatabaseRowsInput {
     pub expected_affected_rows: Option<u64>,
 }
 
-const MAX_DELETE_ROWS: usize = 500;
+/// The reference's cap, and the reason it is low: a delete is confirmed by a
+/// person reading a preview, and a preview of more rows than this is not a
+/// thing anyone reads.
+const MAX_DELETE_ROWS: usize = 100;
 
+/// The tuples a caller wants deleted, checked against the live primary key.
+///
+/// Every refusal names the tuple it came from, counting from one, because the
+/// caller is looking at a table of rows they selected and has to find the one
+/// that is wrong. `object` is here only so the primary-key refusal can name the
+/// table -- a person who picked a view has no other clue why deleting is
+/// refused.
 pub fn validate_delete_keys(
     keys: &[serde_json::Map<String, Value>],
     primary_keys: &[&ColumnInfo],
+    object: &CatalogObject,
 ) -> Result<(), String> {
-    if keys.is_empty() || keys.len() > MAX_DELETE_ROWS {
+    if keys.is_empty() {
+        return Err("At least one primary-key tuple is required.".to_string());
+    }
+    if keys.len() > MAX_DELETE_ROWS {
         return Err(format!(
-            "Delete requires between 1 and {MAX_DELETE_ROWS} rows"
+            "No more than {MAX_DELETE_ROWS} rows can be deleted at once."
         ));
     }
     if primary_keys.is_empty() {
-        return Err("Rows can only be deleted from a table with a primary key".to_string());
+        return Err(format!(
+            "Table \"{}\" has no primary key; rows cannot be deleted safely.",
+            object.name
+        ));
     }
 
     let expected_names = primary_keys
         .iter()
         .map(|column| column.name.as_str())
         .collect::<HashSet<_>>();
+    let expected_list = primary_keys
+        .iter()
+        .map(|column| column.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
     let mut tuples = HashSet::new();
-    for key in keys {
+    for (index, key) in keys.iter().enumerate() {
+        let position = index + 1;
         if key.len() != primary_keys.len()
             || key
                 .keys()
                 .any(|name| !expected_names.contains(name.as_str()))
         {
-            return Err("Each row key must contain exactly the live primary-key columns".into());
+            return Err(format!(
+                "Primary-key tuple {position} must contain exactly: {expected_list}."
+            ));
         }
         let mut canonical = Vec::with_capacity(primary_keys.len());
         for column in primary_keys {
             let value = key.get(&column.name).ok_or_else(|| {
-                "Each row key must contain exactly the live primary-key columns".to_string()
+                format!("Primary-key tuple {position} must contain exactly: {expected_list}.")
             })?;
             match value {
-                Value::String(value) if value != "••••" => canonical.push(json!(["s", value])),
+                // The bullets are what the row browser shows in place of a
+                // secret, so a tuple carrying them came from a screen that
+                // never saw the real value. Deleting by it would delete a row
+                // whose key nobody actually read.
+                Value::String(value) if value == "\u{2022}\u{2022}\u{2022}\u{2022}" => {
+                    return Err(format!(
+                        "Primary-key value \"{}\" in tuple {position} is masked and cannot be used for deletion.",
+                        column.name
+                    ))
+                }
+                Value::String(value) => canonical.push(json!(["s", value])),
                 Value::Bool(value) => canonical.push(json!(["b", value])),
                 Value::Number(value) if value.as_i64().is_some() => {
                     canonical.push(json!(["i", value]))
@@ -82,17 +117,44 @@ pub fn validate_delete_keys(
                     canonical.push(json!(["f", value]))
                 }
                 _ => {
-                    return Err(
-                        "Primary-key values must be non-null, unmasked scalar values within supported numeric bounds"
-                            .into(),
-                    )
+                    return Err(format!(
+                        "Primary-key value \"{}\" in tuple {position} must be a non-null scalar.",
+                        column.name
+                    ))
                 }
             }
         }
         let tuple = serde_json::to_string(&canonical).map_err(|error| error.to_string())?;
         if !tuples.insert(tuple) {
-            return Err("Duplicate primary-key tuple".into());
+            return Err(format!("Primary-key tuple {position} is a duplicate."));
         }
+    }
+    Ok(())
+}
+
+/// The count a person confirmed after reading a preview.
+///
+/// Checked twice, against two different things. Here, before anything runs, it
+/// has to match the number of rows the caller *selected* -- a mismatch means
+/// the confirmation belongs to a different selection than the one being sent.
+/// After the delete runs, [`ensure_expected_affected`] checks it against the
+/// number of rows that actually went, which catches a row that changed under
+/// the caller between the preview and the commit.
+pub fn ensure_confirmed_count(
+    keys: usize,
+    expected: Option<u64>,
+    commit: bool,
+) -> Result<(), String> {
+    if !commit {
+        return Ok(());
+    }
+    let Some(expected) = expected else {
+        return Err("A confirmed preview count is required before deleting rows.".to_string());
+    };
+    if expected != keys as u64 {
+        return Err(
+            "The confirmed preview count must match the selected primary-key tuples.".to_string(),
+        );
     }
     Ok(())
 }
@@ -168,7 +230,7 @@ pub fn ensure_expected_affected(affected: u64, expected: Option<u64>) -> Result<
     if let Some(expected) = expected {
         if affected != expected {
             return Err(format!(
-                "Delete affected {affected} rows, but the preview expected {expected}; no changes were committed"
+                "Delete affected {affected} rows; expected {expected}. The transaction was rolled back."
             ));
         }
     }
@@ -177,18 +239,18 @@ pub fn ensure_expected_affected(affected: u64, expected: Option<u64>) -> Result<
 
 async fn execute_postgres(url: &str, sql: &str, commit: bool) -> Result<u64, String> {
     use sqlx::postgres::PgPool;
-    let pool = PgPool::connect(url).await.map_err(|e| e.to_string())?;
-    let mut transaction = pool.begin().await.map_err(|e| e.to_string())?;
+    let pool = PgPool::connect(url).await.map_err(driver_message)?;
+    let mut transaction = pool.begin().await.map_err(driver_message)?;
     let result = sqlx::query(sql)
         .execute(&mut *transaction)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
     if commit {
         transaction.commit().await
     } else {
         transaction.rollback().await
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(driver_message)?;
     Ok(result.rows_affected())
 }
 
@@ -249,7 +311,7 @@ async fn execute_sqlite(url: &str, sql: &str, commit: bool) -> Result<u64, Strin
     use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
     use std::str::FromStr;
     let options = if url.starts_with("sqlite:") {
-        SqliteConnectOptions::from_str(url).map_err(|e| e.to_string())?
+        SqliteConnectOptions::from_str(url).map_err(driver_message)?
     } else {
         SqliteConnectOptions::new().filename(url)
     }
@@ -258,18 +320,18 @@ async fn execute_sqlite(url: &str, sql: &str, commit: bool) -> Result<u64, Strin
         .max_connections(1)
         .connect_with(options)
         .await
-        .map_err(|e| e.to_string())?;
-    let mut transaction = pool.begin().await.map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
+    let mut transaction = pool.begin().await.map_err(driver_message)?;
     let result = sqlx::query(sql)
         .execute(&mut *transaction)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
     if commit {
         transaction.commit().await
     } else {
         transaction.rollback().await
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(driver_message)?;
     Ok(result.rows_affected())
 }
 
@@ -336,18 +398,18 @@ async fn delete_sqlite_rows(
 
 async fn execute_mysql(url: &str, sql: &str, commit: bool) -> Result<u64, String> {
     use sqlx::mysql::MySqlPool;
-    let pool = MySqlPool::connect(url).await.map_err(|e| e.to_string())?;
-    let mut transaction = pool.begin().await.map_err(|e| e.to_string())?;
+    let pool = MySqlPool::connect(url).await.map_err(driver_message)?;
+    let mut transaction = pool.begin().await.map_err(driver_message)?;
     let result = sqlx::query(sql)
         .execute(&mut *transaction)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(driver_message)?;
     if commit {
         transaction.commit().await
     } else {
         transaction.rollback().await
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(driver_message)?;
     Ok(result.rows_affected())
 }
 
@@ -471,7 +533,6 @@ mod tests {
             "user_id": "a"
         }))
         .unwrap()];
-        validate_delete_keys(&keys, &primary_keys).unwrap();
         let object = CatalogObject {
             key: "opaque".into(),
             schema: "main".into(),
@@ -480,6 +541,7 @@ mod tests {
             qualified_name: "memberships".into(),
             native_id: None,
         };
+        validate_delete_keys(&keys, &primary_keys, &object).unwrap();
         let sql = delete_sql("sqlite", &object, &primary_keys);
         assert_eq!(
             delete_sqlite_rows(&url, &sql, &keys, &primary_keys, false, None)
@@ -524,11 +586,86 @@ mod tests {
             primary_key: true,
         }];
         let primary_keys = columns.iter().collect::<Vec<_>>();
+        let object = CatalogObject {
+            key: "opaque".into(),
+            schema: "main".into(),
+            name: "rows".into(),
+            kind: "table".into(),
+            qualified_name: "rows".into(),
+            native_id: None,
+        };
         let duplicate: serde_json::Map<String, Value> =
             serde_json::from_value(json!({ "id": "one" })).unwrap();
-        assert!(validate_delete_keys(&[duplicate.clone(), duplicate], &primary_keys).is_err());
+        assert_eq!(
+            validate_delete_keys(&[duplicate.clone(), duplicate], &primary_keys, &object),
+            Err("Primary-key tuple 2 is a duplicate.".to_string())
+        );
         let masked: serde_json::Map<String, Value> =
             serde_json::from_value(json!({ "id": "••••" })).unwrap();
-        assert!(validate_delete_keys(&[masked], &primary_keys).is_err());
+        assert_eq!(
+            validate_delete_keys(&[masked], &primary_keys, &object),
+            Err(
+                "Primary-key value \"id\" in tuple 1 is masked and cannot be used for deletion."
+                    .to_string()
+            )
+        );
+    }
+
+    /// The count a person confirms is checked against the selection before
+    /// anything runs, and a commit without one is refused outright.
+    #[test]
+    fn a_commit_needs_a_confirmed_count_that_matches_the_selection() {
+        assert_eq!(ensure_confirmed_count(3, None, false), Ok(()));
+        assert_eq!(ensure_confirmed_count(3, Some(99), false), Ok(()));
+        assert_eq!(
+            ensure_confirmed_count(3, None, true),
+            Err("A confirmed preview count is required before deleting rows.".to_string())
+        );
+        assert_eq!(
+            ensure_confirmed_count(3, Some(2), true),
+            Err(
+                "The confirmed preview count must match the selected primary-key tuples."
+                    .to_string()
+            )
+        );
+        assert_eq!(ensure_confirmed_count(3, Some(3), true), Ok(()));
+    }
+
+    /// The cap is inclusive, and an empty selection is its own refusal rather
+    /// than a count that happens to be out of range.
+    #[test]
+    fn the_delete_cap_is_one_hundred_rows() {
+        let columns = [ColumnInfo {
+            name: "id".into(),
+            data_type: "INTEGER".into(),
+            nullable: false,
+            primary_key: true,
+        }];
+        let primary_keys = columns.iter().collect::<Vec<_>>();
+        let object = CatalogObject {
+            key: "opaque".into(),
+            schema: "main".into(),
+            name: "rows".into(),
+            kind: "table".into(),
+            qualified_name: "rows".into(),
+            native_id: None,
+        };
+        let tuples = |count: usize| {
+            (0..count)
+                .map(|index| serde_json::from_value(json!({ "id": index })).unwrap())
+                .collect::<Vec<serde_json::Map<String, Value>>>()
+        };
+        assert_eq!(
+            validate_delete_keys(&[], &primary_keys, &object),
+            Err("At least one primary-key tuple is required.".to_string())
+        );
+        assert_eq!(
+            validate_delete_keys(&tuples(100), &primary_keys, &object),
+            Ok(())
+        );
+        assert_eq!(
+            validate_delete_keys(&tuples(101), &primary_keys, &object),
+            Err("No more than 100 rows can be deleted at once.".to_string())
+        );
     }
 }

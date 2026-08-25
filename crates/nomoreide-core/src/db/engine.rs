@@ -33,7 +33,7 @@ impl<'a> QueryPlan<'a> {
 /// leaks which driver happens to be underneath. Errors that never reached a
 /// database — a bad URL, a refused socket — keep their own wording, because
 /// there is no database message to prefer.
-pub(super) fn driver_message(error: sqlx::Error) -> String {
+pub fn driver_message(error: sqlx::Error) -> String {
     match error {
         sqlx::Error::Database(failure) => failure.message().to_string(),
         other => other.to_string(),

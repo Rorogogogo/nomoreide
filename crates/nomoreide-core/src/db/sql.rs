@@ -107,3 +107,144 @@ pub fn is_sensitive_preview_column(column: &str) -> bool {
         || normalized.contains("private_key")
         || normalized.contains("privatekey")
 }
+
+/// The first statement in a caller's text, with anything after the first
+/// top-level `;` dropped.
+///
+/// The reference compiles a statement with `node:sqlite`'s `prepare`, which
+/// takes one statement and silently ignores whatever follows it. Handing the
+/// whole string to a driver that runs *all* of them would run a statement the
+/// reference never runs — on the write path, where that means changing rows
+/// nobody was told about. So the extra statements are dropped here instead.
+///
+/// The scan knows the four things a `;` can hide inside: a quoted string, a
+/// quoted or bracketed identifier, a line comment, and a block comment. It is
+/// not a parser and does not need to be — it never has to understand the
+/// statement, only find where it ends.
+pub fn first_statement(sql: &str) -> &str {
+    #[derive(PartialEq)]
+    enum Inside {
+        Code,
+        Single,
+        Double,
+        Backtick,
+        Bracket,
+        LineComment,
+        BlockComment,
+    }
+    let bytes = sql.as_bytes();
+    let mut state = Inside::Code;
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        let next = bytes.get(index + 1).copied();
+        match state {
+            Inside::Code => match byte {
+                b';' => return &sql[..index],
+                b'\'' => state = Inside::Single,
+                b'"' => state = Inside::Double,
+                b'`' => state = Inside::Backtick,
+                b'[' => state = Inside::Bracket,
+                b'-' if next == Some(b'-') => state = Inside::LineComment,
+                b'/' if next == Some(b'*') => {
+                    state = Inside::BlockComment;
+                    index += 1;
+                }
+                _ => {}
+            },
+            // A doubled quote is an escaped one, not the end: stepping over
+            // both leaves the scan inside the literal where it belongs.
+            Inside::Single if byte == b'\'' => {
+                if next == Some(b'\'') {
+                    index += 1;
+                } else {
+                    state = Inside::Code;
+                }
+            }
+            Inside::Double if byte == b'"' => {
+                if next == Some(b'"') {
+                    index += 1;
+                } else {
+                    state = Inside::Code;
+                }
+            }
+            Inside::Backtick if byte == b'`' => state = Inside::Code,
+            Inside::Bracket if byte == b']' => state = Inside::Code,
+            Inside::LineComment if byte == b'\n' => state = Inside::Code,
+            Inside::BlockComment if byte == b'*' && next == Some(b'/') => {
+                state = Inside::Code;
+                index += 1;
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    sql
+}
+
+#[cfg(test)]
+mod first_statement_tests {
+    use super::first_statement;
+
+    #[test]
+    fn one_statement_is_itself() {
+        assert_eq!(first_statement("DELETE FROM t"), "DELETE FROM t");
+        assert_eq!(first_statement(""), "");
+    }
+
+    #[test]
+    fn anything_after_the_first_semicolon_is_dropped() {
+        assert_eq!(
+            first_statement("DELETE FROM a; DELETE FROM b"),
+            "DELETE FROM a"
+        );
+        assert_eq!(first_statement("DELETE FROM a;"), "DELETE FROM a");
+        assert_eq!(first_statement("DELETE FROM a;;"), "DELETE FROM a");
+        assert_eq!(first_statement(";DELETE FROM a"), "");
+    }
+
+    /// The four places a semicolon is not the end of a statement.
+    #[test]
+    fn a_hidden_semicolon_is_not_the_end() {
+        assert_eq!(
+            first_statement("SELECT ';' FROM t; DROP TABLE t"),
+            "SELECT ';' FROM t"
+        );
+        assert_eq!(
+            first_statement(r#"SELECT "a;b" FROM t; DROP TABLE t"#),
+            r#"SELECT "a;b" FROM t"#
+        );
+        assert_eq!(
+            first_statement("SELECT `a;b` FROM [c;d]; DROP TABLE t"),
+            "SELECT `a;b` FROM [c;d]"
+        );
+        assert_eq!(
+            first_statement("SELECT 1 -- ; not the end\n; DROP TABLE t"),
+            "SELECT 1 -- ; not the end\n"
+        );
+        assert_eq!(
+            first_statement("SELECT 1 /* ; nor this */; DROP TABLE t"),
+            "SELECT 1 /* ; nor this */"
+        );
+    }
+
+    /// A doubled quote closes nothing, so the literal runs on past it.
+    #[test]
+    fn a_doubled_quote_stays_inside_the_literal() {
+        assert_eq!(
+            first_statement("SELECT 'it''s; fine' FROM t; DROP TABLE t"),
+            "SELECT 'it''s; fine' FROM t"
+        );
+        assert_eq!(
+            first_statement(r#"SELECT "a""b;c" FROM t; DROP TABLE t"#),
+            r#"SELECT "a""b;c" FROM t"#
+        );
+    }
+
+    /// An unterminated literal swallows the rest, which is the safe direction:
+    /// nothing after it is run.
+    #[test]
+    fn an_unterminated_literal_takes_everything() {
+        assert_eq!(first_statement("SELECT 'oops; DROP"), "SELECT 'oops; DROP");
+    }
+}

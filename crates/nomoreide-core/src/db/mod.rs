@@ -24,7 +24,7 @@ mod types;
 
 pub use catalog::{columns_for, objects_for, resolve_object, schemas_for};
 pub use details::object_details;
-pub use engine::{hex_bytes, list_db_tables, lossless_json_integer, run_query};
+pub use engine::{driver_message, hex_bytes, list_db_tables, lossless_json_integer, run_query};
 pub use peek::{
     connection as peek_connection, details as peek_details, is_read_statement,
     objects as peek_objects, query as peek_query, run_capped_query, sample as peek_sample,
@@ -32,7 +32,7 @@ pub use peek::{
     DEFAULT_ROW_LIMIT,
 };
 pub use rows::{row_browse_clauses, sample_object};
-pub use sql::{is_sensitive_preview_column, quote_identifier};
+pub use sql::{first_statement, is_sensitive_preview_column, quote_identifier};
 pub use types::{
     CatalogCapabilities, CatalogObject, ColumnInfo, NamedDefinition, ObjectDetails, ObjectRows,
     QueryResult, RowBrowseQuery, RowFilter, RowSort,

@@ -62,6 +62,7 @@
     "github-template-parity": "node --import tsx scripts/check-github-template-parity.ts",
     "database-connections-parity": "node --import tsx scripts/check-database-connections-parity.ts",
     "database-catalog-parity": "node --import tsx scripts/check-database-catalog-parity.ts",
+    "database-writes-parity": "node --import tsx scripts/check-database-writes-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",

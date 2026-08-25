@@ -6,6 +6,7 @@ mod agent_chat;
 mod bundles;
 mod database;
 mod database_catalog;
+mod database_write;
 mod errors;
 mod git;
 mod github;
@@ -70,6 +71,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(errors::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())
+        .merge(database_write::routes())
         .merge(services::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())
