@@ -74,6 +74,119 @@ pub async fn read(path: impl AsRef<Path>) -> std::io::Result<Option<Vec<EnvLine>
     }
 }
 
+/// Render lines back to a file body, always with a trailing newline.
+pub fn serialize(lines: &[EnvLine]) -> String {
+    let body: Vec<String> = lines
+        .iter()
+        .map(|line| match line {
+            EnvLine::Raw(text) => text.clone(),
+            EnvLine::Pair { key, value, quote } => format!("{key}={}", requote(value, *quote)),
+        })
+        .collect();
+    format!("{}\n", body.join("\n"))
+}
+
+/// Fold a set of entries into a file's existing lines.
+///
+/// This is a **replacement of the assignments**, not an update of them: a key
+/// the caller did not send is dropped. What survives regardless is everything
+/// that is not an assignment — comments, blank lines, and anything the parser
+/// could not read — because those carry the file's shape and the editor never
+/// sends them. Keys the caller added arrive at the end, in the order given.
+pub fn merge_entries(existing: &[EnvLine], entries: &[EnvEntry]) -> Vec<EnvLine> {
+    let mut result: Vec<EnvLine> = Vec::with_capacity(existing.len() + entries.len());
+    let mut seen: Vec<&str> = Vec::new();
+    for line in existing {
+        match line {
+            EnvLine::Raw(_) => result.push(line.clone()),
+            EnvLine::Pair { key, quote, .. } => {
+                let Some(entry) = entries.iter().find(|entry| &entry.key == key) else {
+                    continue;
+                };
+                seen.push(key.as_str());
+                result.push(EnvLine::Pair {
+                    key: key.clone(),
+                    value: entry.value.clone(),
+                    quote: pick_quote(&entry.value, *quote),
+                });
+            }
+        }
+    }
+    for entry in entries {
+        if seen.contains(&entry.key.as_str()) {
+            continue;
+        }
+        result.push(EnvLine::Pair {
+            key: entry.key.clone(),
+            value: entry.value.clone(),
+            quote: pick_quote(&entry.value, Quote::None),
+        });
+    }
+    result
+}
+
+/// Write a file, creating the directories above it.
+pub async fn write(path: impl AsRef<Path>, lines: &[EnvLine]) -> std::io::Result<()> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    tokio::fs::write(path, serialize(lines)).await
+}
+
+/// A hint list, not a classifier. It decides whether the editor *marks* a value
+/// as sensitive, never whether the value is sent — the editor has to show what
+/// it is about to save.
+pub fn looks_secret(key: &str) -> bool {
+    const HINTS: [&str; 7] = [
+        "secret",
+        "token",
+        "key",
+        "password",
+        "passwd",
+        "auth",
+        "credential",
+    ];
+    let lower = key.to_lowercase();
+    HINTS.iter().any(|hint| lower.contains(hint))
+}
+
+/// A value needs quoting when it holds whitespace, a `#`, a quote of either
+/// kind, or nothing at all.
+fn needs_quoting(value: &str) -> bool {
+    value.is_empty()
+        || value
+            .chars()
+            .any(|c| c.is_whitespace() || c == '#' || c == '"' || c == '\'')
+}
+
+fn requote(value: &str, preferred: Quote) -> String {
+    if !needs_quoting(value) && preferred == Quote::None {
+        return value.to_string();
+    }
+    if preferred == Quote::Single && !value.contains('\'') {
+        return format!("'{value}'");
+    }
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n");
+    format!("\"{escaped}\"")
+}
+
+/// A value keeps the quote it arrived in; a new one gets double quotes only if
+/// it needs any.
+fn pick_quote(value: &str, current: Quote) -> Quote {
+    if current != Quote::None {
+        return current;
+    }
+    if needs_quoting(value) {
+        Quote::Double
+    } else {
+        Quote::None
+    }
+}
+
 fn split_lines(content: &str) -> Vec<&str> {
     content
         .split('\n')

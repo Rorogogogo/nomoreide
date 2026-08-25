@@ -11,6 +11,7 @@ pub mod cloudflare_manager;
 pub mod cloudflare_provider;
 pub mod compose;
 pub mod config;
+pub mod config_files;
 pub mod context_library;
 pub mod db;
 pub mod env_file;
