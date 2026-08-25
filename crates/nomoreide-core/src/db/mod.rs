@@ -17,6 +17,7 @@
 mod catalog;
 mod details;
 mod engine;
+mod export;
 mod peek;
 mod rows;
 mod sql;
@@ -25,6 +26,9 @@ mod types;
 pub use catalog::{columns_for, objects_for, resolve_object, schemas_for};
 pub use details::object_details;
 pub use engine::{driver_message, hex_bytes, list_db_tables, lossless_json_integer, run_query};
+pub use export::{
+    content_disposition, csv_cell, export_filename, export_sql, ExportFormat, ExportWriter,
+};
 pub use peek::{
     connection as peek_connection, details as peek_details, is_read_statement,
     objects as peek_objects, query as peek_query, run_capped_query, sample as peek_sample,

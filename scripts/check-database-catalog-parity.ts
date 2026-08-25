@@ -78,7 +78,9 @@ const SCHEMA: readonly string[] = [
   "INSERT INTO authors VALUES (1,'acme','Ada'), (2,'acme','Bo')",
   "INSERT INTO books (author_id, isbn, pages, title) VALUES (1,'x',10,'First'), (2,'y',20,'Second'), (1,NULL,30,'Third'), (2,'z',40,'Fourth')",
   "INSERT INTO users VALUES (1,'a@b.c','hunter2','tok','shh',30), (2,'d@e.f',NULL,NULL,NULL,17), (3,'g@h.i','x','y','z',40)",
-  "INSERT INTO cells VALUES (42, 1.5, 'hi', x'00ff10', NULL)",
+  // The second row's REAL is a whole number, which JavaScript prints without a
+  // decimal point and most other languages print with one.
+  "INSERT INTO cells VALUES (42, 1.5, 'hi', x'00ff10', NULL), (43, 2.0, 'ho', NULL, 1), (44, -0.0, 'hu', NULL, 2), (45, 1e21, 'hz', NULL, 3)",
   "INSERT INTO patterns (label) VALUES ('100%'), ('a_b'), ('plain'), ('with!bang')",
 ];
 

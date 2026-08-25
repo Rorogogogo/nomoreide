@@ -31,7 +31,7 @@ use crate::server::js_json;
 use crate::server::query::{js_number, js_number_or};
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::{StatusCode, Uri};
+use axum::http::{header, HeaderName, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -61,6 +61,10 @@ pub(crate) fn routes() -> Router<AppState> {
         .route(
             "/api/databases/:name/catalog/rows",
             get(catalog_rows).fallback(method_not_allowed),
+        )
+        .route(
+            "/api/databases/:name/catalog/export",
+            get(export).fallback(method_not_allowed),
         )
         .route(
             "/api/databases/:name/tables",
@@ -157,6 +161,107 @@ async fn catalog_rows(State(state): State<AppState>, uri: Uri) -> Response {
             .map(|rows| merge(json!({ "ok": true }), json!(rows)))
     })
     .await
+}
+
+/// A whole object as a file.
+///
+/// The only route in the domain that answers with something a browser saves
+/// rather than something it renders, which is why it sets four headers rather
+/// than none: the format's content type, a `content-disposition` naming the
+/// file, `no-store` so a download of live data is never served again from
+/// cache, and `nosniff` so a CSV full of `<script>` is not re-read as HTML.
+///
+/// It is a **read**, so the connection's write unlock has nothing to do with
+/// it -- a locked connection exports exactly as an unlocked one does.
+///
+/// One difference from the reference is deliberate and worth naming: the
+/// reference streams rows to the response as it reads them, and this reads the
+/// object and then writes it. The bytes are identical, and every case in the
+/// parity gate passes either way; what differs is that a table too large to
+/// hold in memory is a problem here and not there. Sharing one streaming row
+/// source with the desktop app's export is the fix, and it is a change to both
+/// surfaces rather than to this route.
+async fn export(State(state): State<AppState>, uri: Uri) -> Response {
+    let key = match require_param(&uri, "key") {
+        Ok(key) => key,
+        Err(message) => return error(StatusCode::BAD_REQUEST, &message),
+    };
+    let format = match parse_query(&uri)
+        .get("format")
+        .and_then(|value| db::ExportFormat::parse(value))
+    {
+        Some(format) => format,
+        None => return error(StatusCode::BAD_REQUEST, "format must be csv or json"),
+    };
+    let Some(name) = name_from(&uri) else {
+        return error(StatusCode::NOT_FOUND, "Not found");
+    };
+    let config = match state.config_store.load().await {
+        Ok(config) => config,
+        Err(reason) => return config_failure(&reason),
+    };
+    let database = match connection(&config, &name) {
+        Ok(database) => database,
+        // Everything this route refuses is a 400, including a connection that
+        // is not registered: the reference does its resolving inside the same
+        // try/catch as the read.
+        Err(reason) => return error(StatusCode::BAD_REQUEST, &reason),
+    };
+
+    let body = match render_export(&database, &key, format).await {
+        Ok(body) => body,
+        Err(reason) => return error(StatusCode::BAD_REQUEST, &reason),
+    };
+    let filename = db::export_filename(&name, &body.object, format, &today());
+    (
+        [
+            (header::CONTENT_TYPE, format.content_type().to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                db::content_disposition(&filename),
+            ),
+            (header::CACHE_CONTROL, "no-store".to_string()),
+            (
+                HeaderName::from_static("x-content-type-options"),
+                "nosniff".to_string(),
+            ),
+        ],
+        body.text,
+    )
+        .into_response()
+}
+
+struct Export {
+    object: String,
+    text: String,
+}
+
+async fn render_export(
+    database: &nomoreide_core::config::DatabaseDef,
+    key: &str,
+    format: db::ExportFormat,
+) -> Result<Export, String> {
+    let object = db::resolve_object(database, key).await?;
+    if !matches!(object.kind.as_str(), "table" | "view" | "materializedView") {
+        return Err("This database object cannot be exported.".to_string());
+    }
+    let columns = db::columns_for(database, &object).await?;
+    let sql = db::export_sql(database, &object, &columns);
+    let result = db::run_query(&database.engine, &database.url, &sql).await?;
+    let (mut writer, mut text) = db::ExportWriter::new(format, &columns);
+    for row in result.rows {
+        text.push_str(&writer.row(row));
+    }
+    text.push_str(&writer.finish());
+    Ok(Export {
+        object: object.qualified_name,
+        text,
+    })
+}
+
+/// Today, as the filename spells it.
+fn today() -> String {
+    chrono::Utc::now().format("%Y-%m-%d").to_string()
 }
 
 async fn tables(State(state): State<AppState>, uri: Uri) -> Response {
