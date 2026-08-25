@@ -11,6 +11,7 @@ mod errors;
 mod git;
 mod github;
 mod meta;
+mod service_config;
 mod services;
 mod shell;
 mod terminal;
@@ -80,6 +81,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(database_catalog::routes())
         .merge(database_write::routes())
         .merge(services::routes())
+        .merge(service_config::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())
         .merge(terminal::routes())

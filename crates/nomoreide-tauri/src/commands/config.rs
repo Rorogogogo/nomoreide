@@ -69,7 +69,7 @@ pub async fn register_bundle(
 ) -> Result<PublicConfig, String> {
     state
         .config_store
-        .register_bundle(bundle)
+        .register_bundle(bundle, None)
         .await
         .map(public_config)
         .map_err(|e| e.to_string())

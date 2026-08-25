@@ -65,6 +65,7 @@
     "database-writes-parity": "node --import tsx scripts/check-database-writes-parity.ts",
     "database-export-parity": "node --import tsx scripts/check-database-export-parity.ts",
     "git-branch-parity": "node --import tsx scripts/check-git-branch-parity.ts",
+    "service-config-parity": "node --import tsx scripts/check-service-config-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",

@@ -156,6 +156,13 @@ impl DaemonRuntime {
         self.require_stop_allowed()?;
         let _permit = self.mutation_gate.read().await;
         self.require_stop_allowed()?;
+        // **A registration check the reference does not have.** The reference
+        // stops by name without consulting config, so a name it has never heard
+        // of answers `stopped` and it records a runtime entry and a timeline
+        // event for what is nearly always a typo. This is a declared divergence
+        // — see the note on `error/stop-unregistered` in
+        // scripts/check-mcp-runtime-parity.ts — not an oversight, and both
+        // sides of it are asserted by that gate and by the service-config gate.
         if self.process_manager.service_status(name).is_none() {
             self.registered_startable_service(name).await?;
         }
@@ -267,7 +274,7 @@ fn launch_error(error: anyhow::Error) -> RuntimeMutationError {
         return RuntimeMutationError::PortConflict {
             message: conflict.to_string(),
             conflict: Box::new(PortConflict {
-                service: conflict.service.clone(),
+                code: nomoreide_daemon_client::protocol::PORT_IN_USE.to_string(),
                 port: conflict.port,
                 holder: conflict.holder.as_ref().map(holder_identity),
             }),

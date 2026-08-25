@@ -1,11 +1,15 @@
-//! How the daemon renders a refusal. Every route answers failure in one of
-//! these shapes, so a client can branch on `code` rather than on prose.
+//! How the daemon renders a refusal.
+//!
+//! Every shape here is the reference's, including the ones that look like
+//! oversights. A refusal a route did not catch is a 500 with prose in it, and
+//! that is the contract: the dashboard reads `error`, and the only structured
+//! failure either runtime offers is a port conflict.
 
 use crate::runtime::RuntimeMutationError;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use nomoreide_daemon_client::protocol::{DaemonErrorCode, ErrorEnvelope, MutationErrorEnvelope};
+use nomoreide_daemon_client::protocol::{ErrorEnvelope, MutationErrorEnvelope};
 
 /// The answer to a path no route claimed.
 ///
@@ -54,79 +58,57 @@ pub(crate) fn error(status: StatusCode, message: &str) -> Response {
         .into_response()
 }
 
-pub(crate) fn mutation_error(error: RuntimeMutationError) -> Response {
-    let (status, code, message, conflict) = match error {
-        RuntimeMutationError::ServiceNotFound(name) => (
-            StatusCode::NOT_FOUND,
-            DaemonErrorCode::ServiceNotFound,
-            format!("Service \"{name}\" is not registered."),
-            None,
-        ),
-        RuntimeMutationError::UnsupportedServiceKind => (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            DaemonErrorCode::UnsupportedServiceKind,
-            "Only local, ssh, and docker-compose services are supported by the native daemon."
-                .to_string(),
-            None,
-        ),
-        RuntimeMutationError::PortConflict { message, conflict } => (
+/// Render a runtime refusal the way the reference's routes do.
+///
+/// There are exactly **two** shapes, and the split is not semantic — it is
+/// structural. The reference's service route catches `PortConflictError` and
+/// nothing else; its bundle route catches nothing at all. So a port conflict is
+/// a **409** carrying the conflict, and every other failure — an unregistered
+/// service, an unknown bundle, a dependency cycle, a daemon that is draining —
+/// escapes to the dispatcher and becomes a plain **500**.
+///
+/// It is tempting to answer 404 for a name that is not registered and 503 for a
+/// draining daemon, and this daemon used to. But the dashboard is the
+/// reference's dashboard: it reads the message, not the status, and a client
+/// that started branching on the richer statuses would be reading a contract
+/// only one of the two runtimes offers.
+pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
+    if let RuntimeMutationError::PortConflict { message, conflict } = failure {
+        return (
             StatusCode::CONFLICT,
-            DaemonErrorCode::PortInUse,
-            message,
-            Some(*conflict),
-        ),
-        RuntimeMutationError::DaemonDraining => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            DaemonErrorCode::DaemonDraining,
-            "The daemon is draining process mutations.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::DaemonCleanupFailed => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            DaemonErrorCode::DaemonCleanupFailed,
+            Json(MutationErrorEnvelope {
+                ok: false,
+                error: message,
+                conflict: Some(*conflict),
+            }),
+        )
+            .into_response();
+    }
+    let message = match failure {
+        RuntimeMutationError::ServiceNotFound(name) => {
+            format!("Service \"{name}\" is not registered.")
+        }
+        RuntimeMutationError::BundleNotFound(name) => {
+            format!("Bundle \"{name}\" is not registered.")
+        }
+        RuntimeMutationError::UnsupportedServiceKind => {
+            "Only local, ssh, and docker-compose services are supported by the native daemon."
+                .to_string()
+        }
+        RuntimeMutationError::DaemonDraining => {
+            "The daemon is draining process mutations.".to_string()
+        }
+        RuntimeMutationError::DaemonCleanupFailed => {
             "The daemon previously failed to clean up its services; new starts are disabled."
-                .to_string(),
-            None,
-        ),
-        RuntimeMutationError::ConfigLoadFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::ConfigLoadFailed,
-            "Failed to load NoMoreIDE config.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::ServiceStartFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::ServiceStartFailed,
-            "Failed to start the registered service.".to_string(),
-            None,
-        ),
-        RuntimeMutationError::BundleNotFound(name) => (
-            StatusCode::NOT_FOUND,
-            DaemonErrorCode::BundleNotFound,
-            format!("Bundle \"{name}\" is not registered."),
-            None,
-        ),
-        RuntimeMutationError::DependencyCycle(message) => (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            DaemonErrorCode::DependencyCycle,
-            message,
-            None,
-        ),
-        RuntimeMutationError::CleanupFailed => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            DaemonErrorCode::CleanupFailed,
-            "Failed to confirm service cleanup.".to_string(),
-            None,
-        ),
+                .to_string()
+        }
+        RuntimeMutationError::ConfigLoadFailed => "Failed to load NoMoreIDE config.".to_string(),
+        RuntimeMutationError::ServiceStartFailed => {
+            "Failed to start the registered service.".to_string()
+        }
+        RuntimeMutationError::DependencyCycle(message) => message,
+        RuntimeMutationError::CleanupFailed => "Failed to confirm service cleanup.".to_string(),
+        RuntimeMutationError::PortConflict { .. } => unreachable!("handled above"),
     };
-    (
-        status,
-        Json(MutationErrorEnvelope {
-            ok: false,
-            error: message,
-            code,
-            conflict,
-        }),
-    )
-        .into_response()
+    error(StatusCode::INTERNAL_SERVER_ERROR, &message)
 }

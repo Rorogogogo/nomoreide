@@ -1482,7 +1482,6 @@ fn server_spec(arguments: &Map<String, Value>) -> nomoreide_core::agent_env::Ser
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nomoreide_daemon_client::protocol::DaemonErrorCode;
     use nomoreide_daemon_client::{DaemonApiError, StatusCode};
 
     fn status(state: ServiceRuntimeState) -> ServiceRuntimeStatus {
@@ -1697,7 +1696,6 @@ mod tests {
         assert_eq!(
             daemon_message(DaemonClientError::Mutation(Box::new(DaemonApiError {
                 status: StatusCode::CONFLICT,
-                code: DaemonErrorCode::PortInUse,
                 message: "Port 3000 is already in use for api".into(),
                 conflict: None,
             }))),

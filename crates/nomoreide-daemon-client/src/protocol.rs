@@ -169,21 +169,6 @@ pub struct ServiceMutationEnvelope {
     pub status: ServiceRuntimeStatus,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DaemonErrorCode {
-    ServiceNotFound,
-    UnsupportedServiceKind,
-    PortInUse,
-    DaemonDraining,
-    DaemonCleanupFailed,
-    ConfigLoadFailed,
-    ServiceStartFailed,
-    CleanupFailed,
-    BundleNotFound,
-    DependencyCycle,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PortHolderIdentity {
@@ -199,10 +184,16 @@ pub struct PortHolderIdentity {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PortConflict {
-    pub service: String,
+    /// Always `PORT_IN_USE`. The reference puts its error class's own code
+    /// here, inside the conflict rather than beside it, and the dashboard
+    /// branches on it — so it is part of the shape, not a redundant label.
+    pub code: String,
     pub port: u16,
     pub holder: Option<PortHolderIdentity>,
 }
+
+/// The one code the wire carries, and only ever inside a [`PortConflict`].
+pub const PORT_IN_USE: &str = "PORT_IN_USE";
 
 /// One buffered line of a service's output.
 ///
@@ -346,7 +337,9 @@ pub struct BundleMutationEnvelope {
 pub struct MutationErrorEnvelope {
     pub ok: bool,
     pub error: String,
-    pub code: DaemonErrorCode,
+    /// Present only for a port conflict, which is the single failure the
+    /// reference's routes catch and describe rather than rethrow. Everything
+    /// else is prose and a 500, so there is no machine-readable code to carry.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conflict: Option<PortConflict>,
 }

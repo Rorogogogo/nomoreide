@@ -1,9 +1,9 @@
 use crate::protocol::{
-    BundleMutationEnvelope, DaemonErrorCode, ErrorEnvelope, Incident, IncidentPromptEnvelope,
-    IncidentsEnvelope, LogsEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery,
-    ServiceDiscoveryEnvelope, ServiceLogEntry, ServiceMutationEnvelope, ServiceRuntimeStatus,
-    ShutdownEnvelope, StatusEnvelope, TerminalSessionEnvelope, TerminalSessionInfo,
-    TerminalSessionsEnvelope, TimelineEnvelope, TimelineEvent,
+    BundleMutationEnvelope, ErrorEnvelope, Incident, IncidentPromptEnvelope, IncidentsEnvelope,
+    LogsEnvelope, MutationErrorEnvelope, PortConflict, ServiceDiscovery, ServiceDiscoveryEnvelope,
+    ServiceLogEntry, ServiceMutationEnvelope, ServiceRuntimeStatus, ShutdownEnvelope,
+    StatusEnvelope, TerminalSessionEnvelope, TerminalSessionInfo, TerminalSessionsEnvelope,
+    TimelineEnvelope, TimelineEvent,
 };
 use crate::{
     discover_daemon, is_pid_alive, probe_daemon, read_daemon_credential, read_daemon_state,
@@ -45,11 +45,15 @@ pub enum DaemonClientError {
     IdentityUnverified,
 }
 
+/// A refusal the daemon described, as opposed to a transport failure.
+///
+/// There is no error *code* here: the daemon answers the way the reference
+/// does, which is prose plus a status, and the one structured failure —
+/// a port conflict — is recognised by `conflict` being present.
 #[derive(Debug, Error)]
-#[error("daemon mutation failed ({status}, {code:?}): {message}")]
+#[error("daemon mutation failed ({status}): {message}")]
 pub struct DaemonApiError {
     pub status: StatusCode,
-    pub code: DaemonErrorCode,
     pub message: String,
     pub conflict: Option<PortConflict>,
 }
@@ -400,7 +404,6 @@ impl DaemonClient {
                 if !envelope.ok {
                     return Err(DaemonClientError::Mutation(Box::new(DaemonApiError {
                         status,
-                        code: envelope.code,
                         message: envelope.error,
                         conflict: envelope.conflict,
                     })));

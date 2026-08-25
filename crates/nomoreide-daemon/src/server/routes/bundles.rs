@@ -1,7 +1,7 @@
 //! Starting and stopping named groups of services.
 
 use crate::server::app::AppState;
-use crate::server::errors::mutation_error;
+use crate::server::errors::{method_not_allowed, mutation_error};
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
@@ -10,8 +10,16 @@ use nomoreide_daemon_client::protocol::BundleMutationEnvelope;
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
-        .route("/api/bundles/:name/start", post(start_bundle))
-        .route("/api/bundles/:name/stop", post(stop_bundle))
+        // Pattern routes in the reference, so a wrong method is its own 405
+        // rather than the shell's 404.
+        .route(
+            "/api/bundles/:name/start",
+            post(start_bundle).fallback(method_not_allowed),
+        )
+        .route(
+            "/api/bundles/:name/stop",
+            post(stop_bundle).fallback(method_not_allowed),
+        )
 }
 
 async fn start_bundle(State(state): State<AppState>, Path(name): Path<String>) -> Response {

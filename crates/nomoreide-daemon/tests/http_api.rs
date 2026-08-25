@@ -1,7 +1,5 @@
 use nomoreide_daemon::{serve_until, DaemonOptions};
-use nomoreide_daemon_client::protocol::{
-    DaemonErrorCode, ServiceRuntimeState, TimelineEventKind, TimelineSeverity,
-};
+use nomoreide_daemon_client::protocol::{ServiceRuntimeState, TimelineEventKind, TimelineSeverity};
 use nomoreide_daemon_client::{
     is_pid_alive, read_daemon_state, DaemonClient, DaemonClientError, RuntimePaths,
 };
@@ -125,12 +123,16 @@ async fn serves_authenticated_redacted_service_discovery_on_loopback() {
         .await
         .unwrap();
     assert_eq!(unknown.status(), StatusCode::NOT_FOUND);
+    // A wrong method on an exact route is not a 405: the reference's router
+    // declines to match and the request falls through to the SPA shell, which
+    // answers the same 404 an unrouted path gets. Only the reference's *pattern*
+    // routes check the method themselves and answer 405.
     let wrong_method = http
-        .post(format!("{}/api/services", state.url))
+        .post(format!("{}/api/status", state.url))
         .send()
         .await
         .unwrap();
-    assert_eq!(wrong_method.status(), StatusCode::METHOD_NOT_ALLOWED);
+    assert_eq!(wrong_method.status(), StatusCode::NOT_FOUND);
 
     let client = DaemonClient::connect(state.endpoint().unwrap(), &runtime_paths)
         .await
@@ -314,14 +316,15 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     assert!(matches!(
         missing,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::ServiceNotFound
+            if error.message == "Service \"missing\" is not registered."
     ));
     // A kind this daemon implements no runtime for is still refused as a kind.
     let unsupported = client.start_service("podman").await.unwrap_err();
     assert!(matches!(
         unsupported,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::UnsupportedServiceKind
+            if error.message
+                == "Only local, ssh, and docker-compose services are supported by the native daemon."
     ));
     // A compose service is not refused for its kind any more: it gets as far
     // as asking compose to bring it up, and fails there because this fixture
@@ -330,7 +333,7 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     assert!(matches!(
         composeless,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::ServiceStartFailed
+            if error.message == "Failed to start the registered service."
     ));
     // A remote service is a child this daemon spawns and supervises like any
     // other, so it is launched rather than refused. The host is unresolvable,
@@ -346,7 +349,10 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
     assert!(matches!(
         conflict,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::PortInUse && error.conflict.is_some()
+            // A port conflict is the one refusal that carries structure. The
+            // status and the conflict are the whole contract — there is no
+            // error code on the wire, because the reference does not send one.
+            if error.status == StatusCode::CONFLICT && error.conflict.is_some()
     ));
     assert!(held_listener.local_addr().is_ok());
 
@@ -411,14 +417,17 @@ async fn authenticated_client_starts_and_stops_only_registered_local_services() 
         .await
         .unwrap();
     assert_eq!(unauthorized_restart.status(), StatusCode::UNAUTHORIZED);
-    for (name, code) in [
-        ("missing", DaemonErrorCode::ServiceNotFound),
-        ("podman", DaemonErrorCode::UnsupportedServiceKind),
+    for (name, message) in [
+        ("missing", "Service \"missing\" is not registered."),
+        (
+            "podman",
+            "Only local, ssh, and docker-compose services are supported by the native daemon.",
+        ),
     ] {
         let refused = client.restart_service(name).await.unwrap_err();
         assert!(matches!(
             refused,
-            DaemonClientError::Mutation(error) if error.code == code
+            DaemonClientError::Mutation(error) if error.message == message
         ));
     }
     let replaced = client.restart_service("sleeper").await.unwrap();
@@ -509,11 +518,13 @@ async fn managed_services_stay_stoppable_after_their_definition_drifts() {
     let stopped = client.stop_service("removed").await.unwrap();
     assert_eq!(stopped.state, ServiceRuntimeState::Stopped);
     assert!(!is_pid_alive(removed_pid));
-    // A name this daemon never started still has to be registered.
+    // A name this daemon never started still has to be registered: see the
+    // declared divergence on `stop_service`.
     let unknown = client.stop_service("never-started").await.unwrap_err();
     assert!(matches!(
         unknown,
-        DaemonClientError::Mutation(error) if error.code == DaemonErrorCode::ServiceNotFound
+        DaemonClientError::Mutation(error)
+            if error.message == "Service \"never-started\" is not registered."
     ));
 
     // Drift 2: the config cannot be read at all.
@@ -524,7 +535,8 @@ async fn managed_services_stay_stoppable_after_their_definition_drifts() {
     let unreadable = client.stop_service("never-started").await.unwrap_err();
     assert!(matches!(
         unreadable,
-        DaemonClientError::Mutation(error) if error.code == DaemonErrorCode::ConfigLoadFailed
+        DaemonClientError::Mutation(error)
+            if error.message == "Failed to load NoMoreIDE config."
     ));
 
     shutdown_tx.send(()).unwrap();
@@ -642,7 +654,7 @@ async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
     assert!(matches!(
         missing,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::BundleNotFound
+            if error.message == "Bundle \"missing\" is not registered."
     ));
 
     // A bundle holding a service of a kind this daemon implements no runtime
@@ -652,7 +664,8 @@ async fn bundles_start_in_dependency_order_and_stop_only_their_own_members() {
     assert!(matches!(
         mixed,
         DaemonClientError::Mutation(error)
-            if error.code == DaemonErrorCode::UnsupportedServiceKind
+            if error.message
+                == "Only local, ssh, and docker-compose services are supported by the native daemon."
     ));
     // Nothing launched: the journal only appears once a service is spawned, so
     // its absence proves `db` was never started on the way to the refusal.
@@ -1138,15 +1151,14 @@ async fn searches_the_selected_repository_by_file_name_and_by_content() {
     tokio::fs::write(repo.join(".gitignore"), "secret/\n")
         .await
         .unwrap();
-    tokio::fs::create_dir_all(repo.join("secret")).await.unwrap();
+    tokio::fs::create_dir_all(repo.join("secret"))
+        .await
+        .unwrap();
     tokio::fs::write(repo.join("secret/widget.ts"), "const widget = 2;\n")
         .await
         .unwrap();
 
-    for args in [
-        vec!["init", "--quiet"],
-        vec!["add", "-A"],
-    ] {
+    for args in [vec!["init", "--quiet"], vec!["add", "-A"]] {
         let status = tokio::process::Command::new("git")
             .args(&args)
             .current_dir(&repo)
@@ -1268,10 +1280,7 @@ async fn searches_the_selected_repository_by_file_name_and_by_content() {
     // A malformed regex is the user's own typing: 400 carrying what is wrong
     // with it, so the panel can show it under the input.
     let malformed = http
-        .get(format!(
-            "{}/api/git/search/content?q=a(&regex=1",
-            state.url
-        ))
+        .get(format!("{}/api/git/search/content?q=a(&regex=1", state.url))
         .bearer_auth(&token)
         .send()
         .await

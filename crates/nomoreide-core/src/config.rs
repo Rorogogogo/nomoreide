@@ -1,5 +1,5 @@
 use crate::filesystem::{atomic_write_async, AtomicWriteOptions};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
@@ -581,9 +581,23 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Drop a service, and with it every bundle membership that named it.
+    ///
+    /// A name that is not registered is an **error**, not a no-op: the caller
+    /// asked for a state change and did not get one, and a delete button that
+    /// silently succeeds on a stale name hides a config that moved underneath
+    /// it.
     pub async fn remove_service(&self, name: &str) -> Result<Config> {
+        let name = name.trim();
+        if name.is_empty() {
+            bail!("service name is required");
+        }
         let mut config = self.load().await?;
+        let before = config.services.len();
         config.services.retain(|s| s.name != name);
+        if config.services.len() == before {
+            bail!("Service \"{name}\" is not registered.");
+        }
         config
             .bundles
             .iter_mut()
@@ -592,9 +606,48 @@ impl ConfigStore {
         Ok(config)
     }
 
-    pub async fn register_bundle(&self, bundle: BundleDef) -> Result<Config> {
+    /// Point a service at a project folder, or clear the assignment.
+    ///
+    /// `None` and a blank string mean the same thing — **clear it** — because
+    /// absent and empty both arrive from a form that way, and storing an empty
+    /// path would leave a service assigned to nothing in particular rather than
+    /// inferring its project from `cwd`.
+    pub async fn set_service_project(
+        &self,
+        name: &str,
+        project_path: Option<&str>,
+    ) -> Result<Config> {
+        let name = name.trim();
+        if name.is_empty() {
+            bail!("service name is required");
+        }
+        let assigned = project_path
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
         let mut config = self.load().await?;
-        config.bundles.retain(|b| b.name != bundle.name);
+        let Some(service) = config.services.iter_mut().find(|s| s.name == name) else {
+            bail!("Service \"{name}\" is not registered.");
+        };
+        service.project_path = assigned.map(str::to_string);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    /// Register a bundle, optionally replacing one that used to have a
+    /// different name.
+    ///
+    /// A rename is one write, not a delete plus an add: `previous_name` is
+    /// dropped in the same pass that drops a same-named bundle, so a rename
+    /// cannot half-apply and leave both names registered.
+    pub async fn register_bundle(
+        &self,
+        bundle: BundleDef,
+        previous_name: Option<&str>,
+    ) -> Result<Config> {
+        let mut config = self.load().await?;
+        config
+            .bundles
+            .retain(|b| b.name != bundle.name && Some(b.name.as_str()) != previous_name);
         config.bundles.push(bundle);
         self.save(&config).await?;
         Ok(config)

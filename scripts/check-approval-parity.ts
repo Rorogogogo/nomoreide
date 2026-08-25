@@ -16,17 +16,12 @@
  * fail closed identically in both runtimes. The path where a human really
  * decides is held by the core crate's own tests instead.
  *
- * Two divergences are declared rather than compared, and both are asserted so
- * that closing one fails this gate instead of passing silently:
+ * One divergence is declared rather than compared, and it is asserted so that
+ * closing it fails this gate instead of passing silently:
  *
  * - **A malformed body's prose.** The reference surfaces its JSON engine's
  *   parse error, which names a byte offset. A different parser cannot reproduce
  *   the wording. Status and shape are compared; the message is not.
- * - **A wrong method on an exact route.** The reference's `route()` declines to
- *   match on a method mismatch and falls through to the SPA shell's catch-all,
- *   answering `404 text/html`. The native daemon does not serve that shell yet,
- *   so axum answers `405 application/json`. This closes in Phase 6, when the
- *   Rust daemon serves the compiled assets.
  *
  * Usage:
  *   node --import tsx scripts/check-approval-parity.ts <candidate> [args...]
@@ -67,15 +62,6 @@ interface Answer {
 
 const APPROVAL = "/api/agent/chat/approval";
 const APPROVE = "/api/agent/chat/approve";
-
-/**
- * A wrong method on an exact route. Both sides refuse; they disagree on how,
- * for a structural reason that Phase 6 closes.
- */
-const methodDivergence = {
-  reference: { status: 404, body: "Not found" },
-  candidate: { status: 405, body: { ok: false, error: "Method not allowed" } },
-} as const;
 
 const cases: readonly Case[] = [
   // --- the hook side: every answer is a deny carried by a 200, because the
@@ -134,13 +120,9 @@ const cases: readonly Case[] = [
     path: APPROVAL,
     body: JSON.stringify({ requestId: "r5", unexpected: 1, toolInput: { nested: [1, { a: 2 }] } }),
   },
-  {
-    name: "approval/get",
-    path: APPROVAL,
-    body: "",
-    method: "GET",
-    divergent: methodDivergence,
-  },
+  // A wrong method on an exact route falls through to the SPA shell in both
+  // runtimes now, so this is compared rather than declared.
+  { name: "approval/get", path: APPROVAL, body: "", method: "GET" },
 
   // --- the decision side: a stale request is `ok: false` at 200; a request
   // that was never well-formed is a 400.
@@ -191,7 +173,7 @@ const cases: readonly Case[] = [
   { name: "approve/empty-body", path: APPROVE, body: "" },
   { name: "approve/json-array", path: APPROVE, body: "[1,2,3]" },
   { name: "approve/json-null", path: APPROVE, body: "null" },
-  { name: "approve/get", path: APPROVE, body: "", method: "GET", divergent: methodDivergence },
+  { name: "approve/get", path: APPROVE, body: "", method: "GET" },
 ];
 
 const dump = process.argv.includes("--dump");

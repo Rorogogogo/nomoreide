@@ -41,7 +41,7 @@ pub(super) async fn register_bundle(
         services: strings(arguments, "services"),
     };
     let config = store
-        .register_bundle(bundle)
+        .register_bundle(bundle, None)
         .await
         .map_err(|error| error.to_string())?;
     let view = config.public_view();

@@ -86,6 +86,21 @@ impl DaemonRuntime {
         Ok(statuses)
     }
 
+    /// Stop a bundle, then start it.
+    ///
+    /// Sequential, and the stop's refusal is the whole call's: an unknown
+    /// bundle is reported by the stop and never reaches the start, so a restart
+    /// answers the same way a stop would. Nothing is started on the way out of
+    /// a failed teardown, which is what keeps a half-stopped bundle from being
+    /// half-started on top of itself.
+    pub(crate) async fn restart_bundle(
+        &self,
+        name: &str,
+    ) -> Result<Vec<ServiceRuntimeStatus>, RuntimeMutationError> {
+        self.stop_bundle(name).await?;
+        self.start_bundle(name).await
+    }
+
     /// Give each declared dependency a chance to bind its port before the
     /// service that needs it starts. Dependencies precede their dependents in
     /// the resolved order, so each one has already been asked to start.
