@@ -14,6 +14,7 @@
 //! all add methods to the same [`GitManager`].
 
 mod branches;
+mod compare;
 mod exec;
 mod files;
 mod graph_layout;
@@ -30,8 +31,8 @@ pub use graph_layout::{GitGraphEdge, GitGraphEdgeKind, GitGraphLayoutRow};
 
 pub use types::{
     ContentMatch, ContentSearchResult, FileContentMatches, FileNameMatch, FileSizeRank, GitBranch,
-    GitCommit, GitFileStatus, GitGraphCommit, GitGraphRef, GitGraphRefKind, GitLogEntry, GitStatus,
-    GitWorktree, TrackedFileContent,
+    GitCommit, GitCompareCommit, GitCompareFile, GitCompareSummary, GitFileStatus, GitGraphCommit,
+    GitGraphRef, GitGraphRefKind, GitLogEntry, GitStatus, GitWorktree, TrackedFileContent,
 };
 
 /// Read-safe Git operations. Every method takes the working directory it acts

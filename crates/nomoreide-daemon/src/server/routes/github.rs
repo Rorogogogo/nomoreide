@@ -11,6 +11,7 @@
 //! dashboard sees is the *selection* — which source, which host, which login.
 
 mod api;
+mod template;
 
 use crate::server::app::AppState;
 use crate::server::body::{parse_form, read_json_object, string_field};
@@ -44,6 +45,7 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/github/oauth/start", post(oauth_start))
         .route("/api/github/oauth/poll", post(oauth_poll))
         .merge(api::routes())
+        .merge(template::routes())
 }
 
 // --- Status -----------------------------------------------------------------

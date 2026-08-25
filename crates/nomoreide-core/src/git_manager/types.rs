@@ -176,3 +176,26 @@ pub struct ContentSearchResult {
     pub total_matches: usize,
     pub truncated: bool,
 }
+
+/// One commit in a branch comparison: enough to list it, not to render it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCompareCommit {
+    pub sha: String,
+    pub message: String,
+}
+
+/// One file in a branch comparison. `status` is git's single letter.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCompareFile {
+    pub path: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCompareSummary {
+    pub ahead_by: i32,
+    pub head_sha: String,
+    pub commits: Vec<GitCompareCommit>,
+    pub files: Vec<GitCompareFile>,
+}

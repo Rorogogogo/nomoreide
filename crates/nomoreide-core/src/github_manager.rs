@@ -107,6 +107,25 @@ pub struct GithubPr {
 /// object out of values that can be `undefined` — a pull request head with no
 /// sha, a payload with no count — and `JSON.stringify` drops a key whose value
 /// is `undefined` rather than writing null.
+/// A branch comparison as GitHub reports it, reshaped.
+///
+/// `head_sha` comes from the *last* commit in the range rather than from a
+/// field of its own: GitHub's compare response names the merge base and the
+/// two endpoints, but the sha this is wanted for is the tip of the branch
+/// being proposed, which is the last commit it listed.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GithubCompareSummary {
+    /// `Option`, not a null: the reference copies these two straight off
+    /// GitHub's payload, so a field it did not send becomes `undefined` and
+    /// disappears from the answer rather than showing up as null.
+    pub status: Option<Value>,
+    pub ahead_by: Option<Value>,
+    pub head_sha: Option<String>,
+    pub commits: Vec<Value>,
+    pub files: Vec<Value>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitCiStatus {
@@ -255,6 +274,68 @@ impl GithubManager {
     /// `page` and `state` arrive already rendered, because the reference puts
     /// whatever the caller sent into the URL — a half-typed page number reaches
     /// GitHub as GitHub's problem, not as a refusal here.
+    /// What `head` adds on top of `base`, according to GitHub.
+    ///
+    /// Both refs are escaped on the way into the path. A branch name may
+    /// contain a `/` — `feat/thing` is the usual spelling — and an unescaped
+    /// one would split the path segment and ask about a repository that does
+    /// not exist.
+    pub async fn compare_branches(
+        &self,
+        base: &str,
+        head: &str,
+    ) -> Result<GithubCompareSummary, GithubApiError> {
+        let path = self.repo_path(&format!(
+            "/compare/{}...{}",
+            encode_uri_component(base),
+            encode_uri_component(head)
+        ));
+        let data = self.get(&path).await?;
+        let commits = array(data.get("commits").unwrap_or(&Value::Null)).to_vec();
+        Ok(GithubCompareSummary {
+            status: data.get("status").cloned(),
+            ahead_by: data.get("ahead_by").cloned(),
+            head_sha: commits
+                .last()
+                .and_then(|commit| commit.get("sha"))
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            commits: commits
+                .iter()
+                .map(|commit| {
+                    let mut out = Map::new();
+                    copy(&mut out, commit, "sha");
+                    out.insert(
+                        "message".into(),
+                        Value::String(first_line(
+                            commit
+                                .get("commit")
+                                .and_then(|inner| inner.get("message"))
+                                .and_then(Value::as_str)
+                                .unwrap_or_default(),
+                        )),
+                    );
+                    Value::Object(out)
+                })
+                .collect(),
+            // A comparison too large for GitHub to enumerate carries no
+            // `files` at all, which the reference reads as none.
+            files: array(data.get("files").unwrap_or(&Value::Null))
+                .iter()
+                .map(|file| {
+                    let mut out = Map::new();
+                    if let Some(value) = file.get("filename") {
+                        out.insert("path".into(), value.clone());
+                    }
+                    for key in ["status", "additions", "deletions", "changes"] {
+                        copy(&mut out, file, key);
+                    }
+                    Value::Object(out)
+                })
+                .collect(),
+        })
+    }
+
     pub async fn list_prs(&self, state: &str, page: &str) -> Result<Vec<GithubPr>, GithubApiError> {
         let path = self.repo_path(&format!("/pulls?state={state}&per_page=30&page={page}"));
         let data = self.get(&path).await?;
@@ -533,6 +614,42 @@ impl GithubManager {
             .await
             .map_err(|error| GithubApiError::transport(error, path))
     }
+}
+
+/// A commit subject: the first line of its message, trimmed. A body below it
+/// is not a title, and a title is what the caller is building.
+fn first_line(message: &str) -> String {
+    message
+        .split(['\r', '\n'])
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+/// `encodeURIComponent`, whose unreserved set is wider than a URL crate's
+/// default. Matching it matters because the resulting path is compared against
+/// the reference request for request.
+fn encode_uri_component(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'-'
+            | b'_'
+            | b'.'
+            | b'!'
+            | b'~'
+            | b'*'
+            | b'\''
+            | b'('
+            | b')' => out.push(byte as char),
+            other => out.push_str(&format!("%{other:02X}")),
+        }
+    }
+    out
 }
 
 fn array(value: &Value) -> &[Value] {
