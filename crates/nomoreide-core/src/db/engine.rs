@@ -10,18 +10,6 @@
 use super::types::QueryResult;
 use serde_json::{json, Map, Value};
 
-/// How a cell holding bytes is written into JSON.
-///
-/// The two surfaces that read a row disagree about this, so the caller says
-/// which one it is rather than the engine deciding. The dashboard wants a
-/// short human label; the agent surface wants the bytes themselves, because an
-/// agent asked to explain a column cannot do it from "<blob 3 bytes>".
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum CellStyle {
-    Dashboard,
-    Peek,
-}
-
 /// One statement to run, with whatever the caller wants bound into it.
 ///
 /// The bind exists for the agent surface's row cap: a value that came from a
@@ -30,16 +18,11 @@ pub enum CellStyle {
 pub struct QueryPlan<'a> {
     pub sql: &'a str,
     pub bind: Option<i64>,
-    pub style: CellStyle,
 }
 
 impl<'a> QueryPlan<'a> {
     pub fn peek(sql: &'a str, bind: Option<i64>) -> Self {
-        Self {
-            sql,
-            bind,
-            style: CellStyle::Peek,
-        }
+        Self { sql, bind }
     }
 }
 
@@ -76,7 +59,7 @@ fn json_number(value: f64) -> Value {
 /// listing into a column of nulls. Each storage class is tried in turn and the
 /// first that decodes wins; `NULL` decodes as the first of them, which is why
 /// it does not fall through to the end.
-fn sqlite_cell(row: &sqlx::sqlite::SqliteRow, index: usize, style: CellStyle) -> Value {
+fn sqlite_cell(row: &sqlx::sqlite::SqliteRow, index: usize) -> Value {
     use sqlx::Row;
     if let Ok(value) = row.try_get::<Option<i64>, _>(index) {
         return value.map_or(Value::Null, |value| json!(value));
@@ -88,7 +71,7 @@ fn sqlite_cell(row: &sqlx::sqlite::SqliteRow, index: usize, style: CellStyle) ->
         return Value::String(value);
     }
     if let Ok(Some(value)) = row.try_get::<Option<Vec<u8>>, _>(index) {
-        return bytes_value(style, &value);
+        return bytes_value(&value);
     }
     Value::Null
 }
@@ -109,16 +92,7 @@ where
 }
 
 pub async fn run_query(engine: &str, url: &str, sql: &str) -> Result<QueryResult, String> {
-    run_plan(
-        engine,
-        url,
-        QueryPlan {
-            sql,
-            bind: None,
-            style: CellStyle::Dashboard,
-        },
-    )
-    .await
+    run_plan(engine, url, QueryPlan { sql, bind: None }).await
 }
 
 pub async fn run_plan(engine: &str, url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, String> {
@@ -130,20 +104,23 @@ pub async fn run_plan(engine: &str, url: &str, plan: QueryPlan<'_>) -> Result<Qu
     }
 }
 
-/// Bytes as the chosen surface spells them. `Peek` mirrors how a typed array
-/// reaches JSON — an object keyed by index — because that is what an agent
-/// reading the reference has always been handed.
-fn bytes_value(style: CellStyle, bytes: &[u8]) -> Value {
-    match style {
-        CellStyle::Dashboard => Value::String(format!("<blob {} bytes>", bytes.len())),
-        CellStyle::Peek => Value::Object(
-            bytes
-                .iter()
-                .enumerate()
-                .map(|(index, byte)| (index.to_string(), json!(byte)))
-                .collect::<Map<String, Value>>(),
-        ),
-    }
+/// Bytes, spelled the way a typed array reaches JSON — an object keyed by
+/// index.
+///
+/// It reads like an accident, and in the reference it is one: its SQLite driver
+/// hands back a `Uint8Array`, which is neither a `Buffer` (so the hex branch
+/// misses it) nor a scalar (so it survives to `JSON.stringify` as an object of
+/// numeric keys). Both surfaces that read a row show it that way, so both are
+/// given it here. A short human label instead would read better and would be a
+/// different payload than every client has been written against.
+fn bytes_value(bytes: &[u8]) -> Value {
+    Value::Object(
+        bytes
+            .iter()
+            .enumerate()
+            .map(|(index, byte)| (index.to_string(), json!(byte)))
+            .collect::<Map<String, Value>>(),
+    )
 }
 
 pub fn hex_bytes(bytes: &[u8]) -> String {
@@ -322,11 +299,7 @@ async fn query_sqlite(url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, Str
         .collect();
     let result_rows: Vec<Vec<Value>> = rows
         .iter()
-        .map(|row| {
-            (0..columns.len())
-                .map(|i| sqlite_cell(row, i, plan.style))
-                .collect()
-        })
+        .map(|row| (0..columns.len()).map(|i| sqlite_cell(row, i)).collect())
         .collect();
 
     let count = result_rows.len();
@@ -409,7 +382,7 @@ async fn query_mysql(url: &str, plan: QueryPlan<'_>) -> Result<QueryResult, Stri
                             .try_get::<Option<Vec<u8>>, _>(i)
                             .ok()
                             .flatten()
-                            .map(|v| bytes_value(plan.style, &v))
+                            .map(|v| bytes_value(&v))
                             .unwrap_or(Value::Null),
                         _ => row
                             .try_get::<Option<String>, _>(i)

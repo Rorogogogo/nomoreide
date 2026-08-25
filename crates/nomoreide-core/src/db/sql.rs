@@ -5,7 +5,7 @@
 //! the caller chose, so every one of them goes through `sql_literal` or
 //! `quote_identifier` on the way into a statement.
 
-use super::types::{CatalogIdentity, CatalogObject, ColumnInfo, QueryResult};
+use super::types::{CatalogIdentity, CatalogObject, QueryResult};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde_json::Value;
 
@@ -83,18 +83,6 @@ pub(crate) fn first_strings(result: QueryResult) -> Vec<String> {
         .into_iter()
         .filter_map(|row| row.into_iter().next()?.as_str().map(str::to_string))
         .collect()
-}
-
-pub fn sample_column_expression(engine: &str, column: &ColumnInfo) -> String {
-    let identifier = quote_identifier(&column.name, engine);
-    if !column.primary_key {
-        return identifier;
-    }
-    match engine {
-        "postgres" => format!("{identifier}::text AS {identifier}"),
-        "mysql" => format!("CAST({identifier} AS CHAR) AS {identifier}"),
-        _ => format!("CAST({identifier} AS TEXT) AS {identifier}"),
-    }
 }
 
 pub fn is_sensitive_preview_column(column: &str) -> bool {

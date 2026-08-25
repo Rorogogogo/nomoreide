@@ -35,6 +35,12 @@ pub async fn schemas_for(database: &DatabaseDef) -> Result<Vec<String>, String> 
     }
 }
 
+/// Said for an object key that names nothing, whether because the key is not a
+/// key at all, because it names a schema this connection does not have, or
+/// because whatever it named is gone. All three are the same answer on purpose:
+/// a key is opaque, so none of those is a distinction its holder can act on.
+pub(crate) const NO_SUCH_OBJECT: &str = "Database object was not found in the live catalog.";
+
 pub async fn objects_for(
     database: &DatabaseDef,
     schema: &str,
@@ -149,17 +155,28 @@ pub async fn objects_for(
     Ok(objects)
 }
 
+/// The object an opaque key names, resolved only by equality against a freshly
+/// read catalog.
+///
+/// A key that is not a key, a key naming a schema this connection does not
+/// have, and a key naming an object that is gone are all the **same** answer on
+/// purpose. A key is opaque, so "malformed" is not a distinction its holder
+/// could act on, and telling the three apart would say which schemas exist to a
+/// caller who guessed.
 pub async fn resolve_object(database: &DatabaseDef, key: &str) -> Result<CatalogObject, String> {
-    let bytes = URL_SAFE_NO_PAD
+    let identity: CatalogIdentity = URL_SAFE_NO_PAD
         .decode(key)
-        .map_err(|_| "Invalid database object key".to_string())?;
-    let identity: CatalogIdentity =
-        serde_json::from_slice(&bytes).map_err(|_| "Invalid database object key".to_string())?;
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .ok_or_else(|| NO_SUCH_OBJECT.to_string())?;
+    if !schemas_for(database).await?.contains(&identity.schema) {
+        return Err(NO_SUCH_OBJECT.to_string());
+    }
     objects_for(database, &identity.schema)
         .await?
         .into_iter()
         .find(|object| object.key == key)
-        .ok_or_else(|| "Database object was not found in the live catalog".to_string())
+        .ok_or_else(|| NO_SUCH_OBJECT.to_string())
 }
 
 pub async fn columns_for(

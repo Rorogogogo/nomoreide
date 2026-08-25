@@ -27,11 +27,12 @@ pub use details::object_details;
 pub use engine::{hex_bytes, list_db_tables, lossless_json_integer, run_query};
 pub use peek::{
     connection as peek_connection, details as peek_details, is_read_statement,
-    objects as peek_objects, query as peek_query, sample as peek_sample, schemas as peek_schemas,
-    tables as peek_tables, write_staging_guidance, QueryOutcome, TableRef, DEFAULT_ROW_LIMIT,
+    objects as peek_objects, query as peek_query, run_capped_query, sample as peek_sample,
+    schemas as peek_schemas, tables as peek_tables, write_staging_guidance, QueryOutcome, TableRef,
+    DEFAULT_ROW_LIMIT,
 };
 pub use rows::{row_browse_clauses, sample_object};
-pub use sql::{is_sensitive_preview_column, quote_identifier, sample_column_expression};
+pub use sql::{is_sensitive_preview_column, quote_identifier};
 pub use types::{
     CatalogCapabilities, CatalogObject, ColumnInfo, NamedDefinition, ObjectDetails, ObjectRows,
     QueryResult, RowBrowseQuery, RowFilter, RowSort,
@@ -429,9 +430,14 @@ mod tests {
         assert!(columns[1].primary_key);
         assert!(!columns[2].primary_key);
         assert!(columns[2].nullable);
+        // A primary key past 2^53 comes back as the integer it is, and reaches
+        // JSON without passing through a float. The reference cannot do this at
+        // all -- `node:sqlite` refuses the row rather than lose the precision --
+        // so it is a fix rather than a divergence, and it is why the projection
+        // is the column itself and not a cast to text.
         let projection = columns
             .iter()
-            .map(|column| sample_column_expression("sqlite", column))
+            .map(|column| quote_identifier(&column.name, "sqlite"))
             .collect::<Vec<_>>()
             .join(", ");
         let sampled = run_query(
@@ -441,7 +447,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(sampled.rows[0][0], Value::String("9007199254740993".into()));
+        assert_eq!(sampled.rows[0][0], serde_json::json!(9007199254740993i64));
         let _ = std::fs::remove_file(path);
     }
 
@@ -492,23 +498,5 @@ mod tests {
             },
         )
         .is_err());
-    }
-
-    #[test]
-    fn primary_keys_are_sampled_as_lossless_text() {
-        let column = ColumnInfo {
-            name: "id".into(),
-            data_type: "BIGINT".into(),
-            nullable: false,
-            primary_key: true,
-        };
-        assert_eq!(
-            sample_column_expression("postgres", &column),
-            "\"id\"::text AS \"id\"",
-        );
-        assert_eq!(
-            sample_column_expression("sqlite", &column),
-            "CAST(\"id\" AS TEXT) AS \"id\"",
-        );
     }
 }

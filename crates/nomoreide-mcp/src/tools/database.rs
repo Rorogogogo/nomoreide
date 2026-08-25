@@ -113,7 +113,10 @@ pub(super) async fn db_sample(
 ) -> Result<String, String> {
     let config = store.load().await.map_err(|error| error.to_string())?;
     let database = peek_connection(&config.databases, name)?;
-    render(&peek_sample(database, table, limit).await?)
+    // The tool takes no offset. The field is still reported, so that a caller
+    // paging through the dashboard's row browser and a caller sampling here
+    // read the same shape.
+    render(&peek_sample(database, table, limit, 0).await?)
 }
 
 pub(super) async fn db_query(

@@ -3,32 +3,25 @@
 //! Both halves of the read-safe layer answer the same questions, but not with
 //! the same words, and the difference is not cosmetic. The dashboard renders a
 //! catalog into a table a person scrolls; an agent is handed a payload it has
-//! to reason over. So bytes come back as bytes rather than as `<blob 3 bytes>`,
-//! a row is an object keyed by column name rather than a positional array, and
-//! a statement that is not a read is answered with instructions instead of an
-//! error. Keeping that in its own module is what lets the dashboard's shapes
-//! change without changing what an agent has already learned to expect.
+//! to reason over. So a row is an object keyed by column name rather than a
+//! positional array, and a statement that is not a read is answered with
+//! instructions instead of an error. Keeping that in its own module is what
+//! lets the dashboard's shapes change without changing what an agent has
+//! already learned to expect.
 //!
 //! Nothing here can write. The engines enforce that underneath — a read-only
 //! transaction on Postgres and MySQL, a read-only connection on SQLite — so
 //! [`query`] does not have to be trusted to recognise every way to spell a
 //! write. What it recognises is only used to decide *how* to refuse.
 
-use super::catalog::{columns_for, objects_for, schemas_for};
+use super::catalog::{columns_for, objects_for, resolve_object, schemas_for};
 use super::details::details_for;
 use super::engine::{run_plan, QueryPlan};
 use super::sql::quote_identifier;
-use super::types::{CatalogIdentity, CatalogObject, ColumnInfo, ObjectDetails};
+use super::types::{CatalogObject, ColumnInfo, ObjectDetails};
 use crate::config::DatabaseDef;
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-
-/// Said for an object key that names nothing, whether because the key is not a
-/// key at all or because whatever it named is gone. The two are the same
-/// answer on purpose: a key is opaque, so "malformed" is not a distinction the
-/// holder of one can act on.
-const NO_SUCH_OBJECT: &str = "Database object was not found in the live catalog.";
 
 /// The default row cap. Both `sample` and `query` share it.
 pub const DEFAULT_ROW_LIMIT: i64 = 100;
@@ -75,7 +68,7 @@ pub async fn objects(database: &DatabaseDef, schema: &str) -> Result<Vec<Catalog
 }
 
 pub async fn details(database: &DatabaseDef, key: &str) -> Result<ObjectDetails, String> {
-    details_for(database, &resolve(database, key).await?).await
+    details_for(database, &resolve_object(database, key).await?).await
 }
 
 /// Every table and view this connection holds, in one flat list ordered the
@@ -92,15 +85,30 @@ pub async fn tables(database: &DatabaseDef) -> Result<Vec<TableRef>, String> {
 }
 
 /// Rows from one named table, with the column schema that explains them.
-pub async fn sample(database: &DatabaseDef, table: &str, limit: i64) -> Result<Value, String> {
+///
+/// Deliberately *not* [`crate::db::sample_object`]: that one resolves an opaque
+/// catalog key and bullets out a column whose name looks like a secret. This
+/// one is reached by a table's own name and reports what is stored. Both are
+/// the reference's, one per route, and unifying them would either hide a column
+/// from a caller who named it or expose one to a caller who did not.
+pub async fn sample(
+    database: &DatabaseDef,
+    table: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Value, String> {
     let object = catalog_tables(database)
         .await?
         .into_iter()
         .find(|candidate| candidate.qualified_name == table)
         .ok_or_else(|| format!("Table \"{table}\" not found."))?;
+    // The same bounds the browser's own row reader uses. A caller naming a
+    // table can ask for as many rows as one paging through a catalog can.
+    let limit = limit.clamp(1, 5_000);
+    let offset = offset.max(0);
     let columns = columns_for(database, &object).await?;
     let sql = format!(
-        "SELECT * FROM {} LIMIT {}",
+        "SELECT * FROM {} LIMIT {} OFFSET {offset}",
         qualified_sql(database, &object),
         placeholder(&database.engine)
     );
@@ -121,10 +129,7 @@ pub async fn sample(database: &DatabaseDef, table: &str, limit: i64) -> Result<V
         "rows": rows,
         "rowCount": rows.len(),
         "limit": limit,
-        // Always zero. The tool takes no offset, and the field is reported so
-        // that a caller paging through the dashboard's browser and a caller
-        // sampling here read the same shape.
-        "offset": 0,
+        "offset": offset,
     }))
 }
 
@@ -138,26 +143,18 @@ pub async fn sample(database: &DatabaseDef, table: &str, limit: i64) -> Result<V
 /// driver refuses it because a parameter it was handed no longer has a place to
 /// go. Either way the connection is still read-only, so the worst case is a
 /// caller returning more of their own rows than they asked for.
-pub async fn query(database: &DatabaseDef, sql: &str, limit: i64) -> Result<QueryOutcome, String> {
+pub async fn run_capped_query(
+    database: &DatabaseDef,
+    sql: &str,
+    limit: i64,
+) -> Result<Value, String> {
+    let statement = prepare_user_query(sql)?;
     let wrapped = format!(
-        "SELECT * FROM ({sql}) LIMIT {}",
+        "SELECT * FROM ({statement}) LIMIT {}",
         placeholder(&database.engine)
     );
     let plan = QueryPlan::peek(&wrapped, Some(limit + 1));
-    let result = match run_plan(&database.engine, &database.url, plan).await {
-        Ok(result) => result,
-        Err(message) => {
-            // A refusal is worth more to an agent than the driver's complaint,
-            // but only when the statement is one this connection was never
-            // going to run. A malformed read is still just malformed.
-            if !is_read_statement(sql) || mentions_read_only(&message) {
-                return Ok(QueryOutcome::Guidance(write_staging_guidance(
-                    &database.name,
-                )));
-            }
-            return Err(message);
-        }
-    };
+    let result = run_plan(&database.engine, &database.url, plan).await?;
     let mut rows = objectify(&result.columns, &result.rows);
     let truncated = rows.len() as i64 > limit;
     rows.truncate(limit.max(0) as usize);
@@ -175,13 +172,50 @@ pub async fn query(database: &DatabaseDef, sql: &str, limit: i64) -> Result<Quer
             })
         })
         .collect();
-    Ok(QueryOutcome::Rows(json!({
+    Ok(json!({
         "engine": database.engine,
         "columns": columns,
         "rows": rows,
         "rowCount": rows.len(),
         "truncated": truncated,
-    })))
+    }))
+}
+
+/// The same statement, answered the way an *agent* is answered.
+///
+/// The only difference from [`run_capped_query`] is what a failure becomes: a
+/// refusal is worth more to an agent than the driver's complaint, but only when
+/// the statement is one this connection was never going to run. A malformed
+/// read is still just malformed. The dashboard's own query route wants the
+/// driver's wording instead, so it takes the raw function.
+pub async fn query(database: &DatabaseDef, sql: &str, limit: i64) -> Result<QueryOutcome, String> {
+    match run_capped_query(database, sql, limit).await {
+        Ok(rows) => Ok(QueryOutcome::Rows(rows)),
+        Err(message) => {
+            if !is_read_statement(sql) || mentions_read_only(&message) {
+                Ok(QueryOutcome::Guidance(write_staging_guidance(
+                    &database.name,
+                )))
+            } else {
+                Err(message)
+            }
+        }
+    }
+}
+
+/// A caller's statement, ready to be wrapped.
+///
+/// One trailing semicolon is dropped, because that is what a person typing into
+/// a SQL console types and the wrapper would choke on it. Only one: a statement
+/// that ends in two is two statements, and the second is the caller's to
+/// explain.
+fn prepare_user_query(sql: &str) -> Result<String, String> {
+    let trimmed = sql.trim();
+    let trimmed = trimmed.strip_suffix(';').unwrap_or(trimmed).trim();
+    if trimmed.is_empty() {
+        return Err("Query is empty.".to_string());
+    }
+    Ok(trimmed.to_string())
 }
 
 /// Whether a statement is one this connection would have run.
@@ -222,19 +256,6 @@ pub fn write_staging_guidance(connection: &str) -> String {
 }
 
 // ---------------------------------------------------------------------------
-
-async fn resolve(database: &DatabaseDef, key: &str) -> Result<CatalogObject, String> {
-    let identity: CatalogIdentity = URL_SAFE_NO_PAD
-        .decode(key)
-        .ok()
-        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-        .ok_or_else(|| NO_SUCH_OBJECT.to_string())?;
-    objects(database, &identity.schema)
-        .await?
-        .into_iter()
-        .find(|object| object.key == key)
-        .ok_or_else(|| NO_SUCH_OBJECT.to_string())
-}
 
 /// Every table and view across every schema, ordered by qualified name so that
 /// the listing reads the same whether one schema holds it all or ten do.

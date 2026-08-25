@@ -35,7 +35,20 @@ pub(crate) fn string_field<'a>(body: &'a Value, key: &str) -> Option<&'a str> {
 /// form at all parses into keys nobody asks for, and the route then reports the
 /// field it wanted — the same outcome the reference reaches.
 pub(crate) fn parse_form(body: &Bytes) -> HashMap<String, String> {
-    let raw = String::from_utf8_lossy(body);
+    parse_pairs(&String::from_utf8_lossy(body))
+}
+
+/// A URL's query string, read the way `URLSearchParams` reads one.
+///
+/// The same rules as a form body, because they are the same grammar: a repeated
+/// key keeps its first value, `+` is a space, and a key written without `=` is
+/// present with an empty value. A route that treats an empty value as absent
+/// says so itself -- that is the caller's rule, not the parser's.
+pub(crate) fn parse_query(uri: &axum::http::Uri) -> HashMap<String, String> {
+    parse_pairs(uri.query().unwrap_or_default())
+}
+
+fn parse_pairs(raw: &str) -> HashMap<String, String> {
     let mut form = HashMap::new();
     for pair in raw.split('&').filter(|pair| !pair.is_empty()) {
         let (key, value) = match pair.split_once('=') {

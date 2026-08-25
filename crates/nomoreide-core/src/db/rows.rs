@@ -8,9 +8,7 @@
 
 use super::catalog::{columns_for, resolve_object};
 use super::engine::run_query;
-use super::sql::{
-    is_sensitive_preview_column, quote_identifier, sample_column_expression, sql_literal,
-};
+use super::sql::{is_sensitive_preview_column, quote_identifier, sql_literal};
 use super::types::{ColumnInfo, ObjectRows, RowBrowseQuery};
 use crate::config::DatabaseDef;
 use serde_json::{json, Value};
@@ -133,7 +131,10 @@ pub async fn sample_object(
 ) -> Result<ObjectRows, String> {
     let object = resolve_object(database, key).await?;
     if !matches!(object.kind.as_str(), "table" | "view" | "materializedView") {
-        return Err("This database object cannot be sampled".into());
+        return Err(format!(
+            "Database object \"{}\" cannot be sampled.",
+            object.qualified_name
+        ));
     }
     let limit = limit.unwrap_or(100).clamp(1, 5_000);
     let offset = offset.unwrap_or(0).max(0);
@@ -149,7 +150,7 @@ pub async fn sample_object(
     let columns = columns_for(database, &object).await?;
     let projection = columns
         .iter()
-        .map(|column| sample_column_expression(&database.engine, column))
+        .map(|column| quote_identifier(&column.name, &database.engine))
         .collect::<Vec<_>>()
         .join(", ");
     let (where_sql, order_by_sql) =
@@ -186,7 +187,14 @@ pub async fn sample_object(
     Ok(ObjectRows {
         engine: database.engine.clone(),
         object: object.clone(),
-        table: json!({ "schema": if object.schema == "main" { Value::Null } else { json!(object.schema) }, "name": object.name, "qualifiedName": object.qualified_name }),
+        // The object's own schema, `main` included. The row browser shows it
+        // next to the table name, so blanking it for SQLite would leave that
+        // label empty on the one engine where it is always the same word.
+        table: json!({
+            "schema": object.schema,
+            "name": object.name,
+            "qualifiedName": object.qualified_name,
+        }),
         columns,
         rows,
         row_count,
