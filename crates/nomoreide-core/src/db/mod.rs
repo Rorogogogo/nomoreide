@@ -70,6 +70,59 @@ pub fn public_connection(database: &DatabaseDef) -> Value {
     entry
 }
 
+/// One connection string found in a service's `.env`.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetectedConnection {
+    pub service: String,
+    pub cwd: String,
+    pub key: String,
+    pub engine: String,
+    /// **Unmasked, on purpose.** This is the one place a raw connection string
+    /// leaves the server: the client has just been told a connection exists and
+    /// needs the real value to register it, and has nowhere else to get it.
+    pub url: String,
+    pub masked_url: String,
+}
+
+/// Scan registered services' `.env` files for anything that looks like a
+/// connection string.
+///
+/// Deduplicated by engine *and* value, so the same database named twice in one
+/// file -- or shared between two services -- is offered once. The first
+/// sighting wins, which keeps the result in the order the services are
+/// registered rather than in whichever order the filesystem answered.
+pub async fn detect_from_env(config: &Config) -> Vec<DetectedConnection> {
+    let mut found = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for service in &config.services {
+        let Some(cwd) = service.cwd.as_deref() else {
+            continue;
+        };
+        let Ok(Some(lines)) = crate::env_file::read(std::path::Path::new(cwd).join(".env")).await
+        else {
+            continue;
+        };
+        for entry in crate::env_file::entries(&lines) {
+            let Some(engine) = engine_from_url(&entry.value) else {
+                continue;
+            };
+            if !seen.insert(format!("{engine}:{}", entry.value)) {
+                continue;
+            }
+            found.push(DetectedConnection {
+                service: service.name.clone(),
+                cwd: cwd.to_string(),
+                key: entry.key,
+                engine: engine.to_string(),
+                masked_url: mask_url(engine, &entry.value),
+                url: entry.value,
+            });
+        }
+    }
+    found
+}
+
 /// Check that a connection can be reached, without saying anything about it.
 pub async fn test_connection(engine: &str, url: &str) -> Result<(), String> {
     let sql = match engine {
@@ -124,10 +177,10 @@ pub fn mask_url(engine: &str, url: &str) -> String {
             if parsed
                 .password()
                 .is_some_and(|password| !password.is_empty())
-                && parsed.set_password(Some("****")).is_ok()
             {
-                return parsed.to_string();
+                let _ = parsed.set_password(Some("****"));
             }
+            mask_sensitive_query(&mut parsed);
             parsed.to_string()
         }
         Err(_) => {
@@ -140,6 +193,159 @@ pub fn mask_url(engine: &str, url: &str) -> String {
             format!("{head}****{tail}")
         }
     }
+}
+
+/// Query-string fields that must never leave the machine in the clear.
+///
+/// The password is not always in the password slot. A connection string can
+/// carry a second credential in its query -- `?password=`, `?token=`,
+/// `?api_key=` -- and a mask that only rewrites the userinfo section hands that
+/// one straight to the client. The pattern matches the reference's:
+/// `password|passwd|secret|token|api[_-]?key`, case-insensitively, anywhere in
+/// the key, so `apiKey` and `X-API-KEY` are both caught.
+pub fn is_sensitive_connection_parameter(key: &str) -> bool {
+    let lower = key.to_ascii_lowercase();
+    if lower.contains("password")
+        || lower.contains("passwd")
+        || lower.contains("secret")
+        || lower.contains("token")
+    {
+        return true;
+    }
+    // `api key`, with an optional single `_` or `-` between the halves.
+    let bytes = lower.as_bytes();
+    for (index, _) in lower.match_indices("api") {
+        let rest = &bytes[index + 3..];
+        let rest = match rest.first() {
+            Some(b'_') | Some(b'-') => &rest[1..],
+            _ => rest,
+        };
+        if rest.starts_with(b"key") {
+            return true;
+        }
+    }
+    false
+}
+
+fn mask_sensitive_query(parsed: &mut url::Url) {
+    let masked: Vec<(String, String)> = parsed
+        .query_pairs()
+        .map(|(key, value)| {
+            let key = key.into_owned();
+            let value = if is_sensitive_connection_parameter(&key) {
+                "****".to_string()
+            } else {
+                value.into_owned()
+            };
+            (key, value)
+        })
+        .collect();
+    if masked.is_empty() {
+        return;
+    }
+    // Rebuilt wholesale rather than edited in place: the reference sets each
+    // sensitive value through the same URLSearchParams object, which re-encodes
+    // the whole query, so a value that arrived oddly encoded comes back
+    // normalised on both sides.
+    let mut serializer = parsed.query_pairs_mut();
+    serializer.clear();
+    for (key, value) in &masked {
+        serializer.append_pair(key, value);
+    }
+    drop(serializer);
+}
+
+/// Guess an engine from a connection string or a bare file path.
+pub fn engine_from_url(value: &str) -> Option<&'static str> {
+    let trimmed = value.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.starts_with("postgres://") || lower.starts_with("postgresql://") {
+        return Some("postgres");
+    }
+    if lower.starts_with("mysql://") || lower.starts_with("mariadb://") {
+        return Some("mysql");
+    }
+    if lower.starts_with("sqlite://") {
+        return Some("sqlite");
+    }
+    // `file:` followed by at least one character and then a database suffix
+    // *anywhere* after it -- the reference does not anchor this one to the end,
+    // so `file:./app.db?mode=ro` still counts.
+    if let Some(rest) = lower.strip_prefix("file:") {
+        if !rest.is_empty()
+            && [".db", ".sqlite", ".sqlite3"]
+                .iter()
+                .any(|ext| rest.contains(ext))
+        {
+            return Some("sqlite");
+        }
+    }
+    if [".db", ".sqlite", ".sqlite3"]
+        .iter()
+        .any(|ext| lower.ends_with(ext))
+    {
+        return Some("sqlite");
+    }
+    None
+}
+
+/// Put the stored password back into an edited connection string.
+///
+/// The client only ever holds the masked URL, so an edit that did not change
+/// the password arrives without one. Taking that at face value would silently
+/// wipe the credential. A password that *is* supplied always wins, SQLite has
+/// none to carry, and a string that does not parse cannot be spliced -- it is
+/// returned untouched rather than guessed at.
+pub fn merge_stored_password(engine: &str, next_url: &str, existing_url: &str) -> String {
+    if engine == "sqlite" {
+        return next_url.to_string();
+    }
+    let (Ok(mut next), Ok(existing)) = (url::Url::parse(next_url), url::Url::parse(existing_url))
+    else {
+        return next_url.to_string();
+    };
+    if next.password().is_some_and(|value| !value.is_empty()) {
+        return next_url.to_string();
+    }
+    let Some(password) = existing.password().filter(|value| !value.is_empty()) else {
+        return next_url.to_string();
+    };
+    let decoded = percent_decode(password);
+    if next.set_password(Some(&decoded)).is_err() {
+        return next_url.to_string();
+    }
+    next.to_string()
+}
+
+/// Take the connection string, and any password inside it, out of an error.
+///
+/// Drivers put the URL they failed to open into their message, so the error a
+/// user sees would otherwise carry the credential the mask exists to hide.
+pub fn redact_database_error(engine: &str, url: &str, message: &str) -> String {
+    let mut message = message.replace(url, &mask_url(engine, url));
+    if engine == "sqlite" {
+        return message;
+    }
+    if let Ok(parsed) = url::Url::parse(url) {
+        if let Some(password) = parsed.password().filter(|value| !value.is_empty()) {
+            // Both spellings: a driver may quote the password as it appeared in
+            // the URL (encoded) or as it used it (decoded).
+            let decoded = percent_decode(password);
+            if !decoded.is_empty() {
+                message = message.replace(&decoded, "****");
+            }
+            message = message.replace(password, "****");
+        }
+    }
+    message
+}
+
+/// `decodeURIComponent`, near enough: `urlencoding` also leaves `+` alone,
+/// where a form decoder would turn it into a space.
+fn percent_decode(value: &str) -> String {
+    urlencoding::decode(value)
+        .map(|decoded| decoded.into_owned())
+        .unwrap_or_else(|_| value.to_string())
 }
 
 #[cfg(test)]

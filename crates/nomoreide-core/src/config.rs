@@ -758,11 +758,20 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Open or close write access for one registered connection.
+    ///
+    /// A name that is not registered is an **error**, not a no-op. Reporting
+    /// success for a connection that was never touched tells the caller the
+    /// database is unlocked when nothing was stored, and the next write would
+    /// be refused by a flag the caller believes it already set.
     pub async fn set_database_write_access(&self, name: &str, unlocked: bool) -> Result<Config> {
         let mut config = self.load().await?;
-        if let Some(db) = config.databases.iter_mut().find(|d| d.name == name) {
-            db.write_unlocked = Some(unlocked);
-        }
+        let Some(database) = config.databases.iter_mut().find(|d| d.name == name) else {
+            return Err(anyhow::anyhow!(
+                "Database connection \"{name}\" is not registered."
+            ));
+        };
+        database.write_unlocked = Some(unlocked);
         self.save(&config).await?;
         Ok(config)
     }
