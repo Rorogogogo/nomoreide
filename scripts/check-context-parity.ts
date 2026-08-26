@@ -31,7 +31,7 @@
  *   ... --dump    print both payloads per step
  */
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inspect } from "node:util";
@@ -60,6 +60,15 @@ interface Step {
    */
   readonly path: string;
   readonly body?: string;
+  /**
+   * Runs against this runtime before the request.
+   *
+   * The vault is a directory of Markdown files that the daemon re-reads on
+   * every request, so a step can put something there that no endpoint would
+   * ever create — a note carrying an id another note already claims, which is
+   * what a copied file looks like.
+   */
+  readonly mutate?: (runtime: Runtime) => Promise<void>;
 }
 
 const NOTES = "/api/context/notes";
@@ -106,6 +115,30 @@ const steps: readonly Step[] = [
   // would otherwise never show.
   { name: "create/a-lowercase-title", method: "POST", path: NOTES, body: '{"title":"beta lowercase","body":"l"}' },
   { name: "create/an-uppercase-title", method: "POST", path: NOTES, body: '{"title":"Beta uppercase","body":"u"}' },
+  // Two titles that differ *only* by case, so the comparison reaches its
+  // tertiary level and the lowercase-first tie-break is what decides. The pair
+  // above cannot show it: they differ at `l` vs `u` long before case matters.
+  { name: "create/a-case-tie", method: "POST", path: NOTES, body: '{"title":"Sigma","body":"upper"}' },
+  { name: "create/the-other-case-tie", method: "POST", path: NOTES, body: '{"title":"sigma","body":"lower"}' },
+  // A tag that is not lowercase. A query is lowercased before it is used, so a
+  // haystack that is *not* lowercased in turn stops matching — and only a tag
+  // can show that, because a note's `path` is its title already slugged to
+  // lowercase and matches either way.
+  { name: "create/an-uppercase-tag", method: "POST", path: NOTES, body: '{"title":"Omega note","body":"o","tags":["Urgent"]}' },
+  // Two items that answer to the same name, so a wiki link to it is ambiguous
+  // and resolves to neither.
+  //
+  // The name they share is an **alias**, not their title, and that is not a
+  // stylistic choice: the listing is ordered by title, so two notes with the
+  // same title tie all the way down and fall back to the order the vault
+  // directory happened to be scanned in — which differs between two runtimes,
+  // and between two runs of the same one. An alias collides for the link
+  // lookup without colliding for the sort.
+  { name: "create/an-ambiguous-name", method: "POST", path: NOTES, body: '{"title":"Twin one","body":"first","aliases":["Twin"]}' },
+  { name: "create/the-other-ambiguous-name", method: "POST", path: NOTES, body: '{"title":"Twin two","body":"second","aliases":["Twin"]}' },
+  // Links that resolve to something still present, unlike Delta's, whose target
+  // is renamed out from under it later on.
+  { name: "create/links-that-resolve", method: "POST", path: NOTES, body: '{"title":"Linker","body":"see [[Omega note]], [[Twin]] and [[SIGMA]]","projectPaths":["/tmp/one"]}' },
   { name: "create/the-listing-afterwards", method: "GET", path: CONTEXT },
 
   // --- reading ---------------------------------------------------------------
@@ -126,6 +159,14 @@ const steps: readonly Step[] = [
   // A stale revision is a 409, and the body carries the note as it now is.
   { name: "update/a-stale-revision", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: `{"title":"Alpha again","body":"y","projectPaths":[],"tags":[],"aliases":[],"revision":"${STALE_REVISION}"}` },
   { name: "update/a-revision-that-is-not-a-sha", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: '{"title":"Alpha again","body":"y","projectPaths":[],"tags":[],"aliases":[],"revision":"nope"}' },
+  // Hexadecimal and the wrong length, which `nope` cannot show: a version that
+  // dropped the length check would still refuse a revision carrying letters
+  // that are not hex digits.
+  { name: "update/a-revision-that-is-short-hex", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: '{"title":"Alpha again","body":"y","projectPaths":[],"tags":[],"aliases":[],"revision":"abcdef"}' },
+  // Omits one array and sends the rest, so a version that made *that* one
+  // optional would go through. Omitting all three cannot show it — the next
+  // required field refuses first either way.
+  { name: "update/without-project-paths", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: '{"title":"Alpha again","body":"y","tags":[],"aliases":[],"revision":"{{REV:Alpha renamed}}"}' },
   { name: "update/an-uppercase-revision", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: `{"title":"Alpha again","body":"y","projectPaths":[],"tags":[],"aliases":[],"revision":"${"A".repeat(64)}"}` },
   // `sourceKey` is accepted on a create and refused on an update.
   { name: "update/a-source-key", method: "PUT", path: `${NOTES}/{{ID:Alpha renamed}}`, body: '{"title":"Alpha again","body":"y","projectPaths":[],"tags":[],"aliases":[],"sourceKey":"x","revision":"{{REV:Alpha renamed}}"}' },
@@ -140,6 +181,13 @@ const steps: readonly Step[] = [
   { name: "pins/a-ref-with-an-extra-key", method: "PUT", path: "/api/context/pins", body: '{"refs":[{"kind":"note","id":"abcdefgh","extra":1}]}' },
   // A pin does not have to resolve to anything.
   { name: "pins/a-ref-that-resolves-to-nothing", method: "PUT", path: "/api/context/pins", body: '{"refs":[{"kind":"note","id":"does-not-exist"}]}' },
+  // The **kind** is half the key. This names a real note's id under the wrong
+  // kind, so nothing is pinned — and a version that matched on the id alone
+  // would light up that note in the listing.
+  { name: "pins/a-real-id-under-the-wrong-kind", method: "PUT", path: "/api/context/pins", body: '{"refs":[{"kind":"incident","id":"{{ID:Gamma note}}"}]}' },
+  { name: "pins/the-listing-under-the-wrong-kind", method: "GET", path: CONTEXT },
+  // Pin something the graph will have to sort first.
+  { name: "pins/a-project", method: "PUT", path: "/api/context/pins", body: '{"refs":[{"kind":"note","id":"{{ID:Omega note}}"}]}' },
   { name: "pins/cleared", method: "PUT", path: "/api/context/pins", body: '{"refs":[]}' },
 
   // --- filtering -------------------------------------------------------------
@@ -150,6 +198,11 @@ const steps: readonly Step[] = [
   // any string — so only a query that is *whitespace* can show whether it was
   // trimmed before it was used.
   { name: "filter/a-whitespace-query", method: "GET", path: `${CONTEXT}?q=%20%20` },
+  // Matches only through a tag, and only if the haystack is lowercased too.
+  { name: "filter/a-query-that-matches-a-tag", method: "GET", path: `${CONTEXT}?q=urgent` },
+  // Matches a title whose slugged path does *not* contain the query, so the
+  // title is the only haystack that can answer.
+  { name: "filter/a-query-with-a-space", method: "GET", path: `${CONTEXT}?q=omega%20note` },
   // Lambda note is filed under `/tmp/one` via its `projectPaths` **list**, not
   // via the single `projectPath` a derived item carries — the filter has to
   // match either, or a note filed under three repositories shows up under none.
@@ -167,6 +220,13 @@ const steps: readonly Step[] = [
   { name: "filter/a-blank-kinds", method: "GET", path: `${CONTEXT}?kinds=` },
   { name: "filter/repeated-kinds", method: "GET", path: `${CONTEXT}?kinds=note&kinds=service` },
   { name: "filter/the-graph-filtered", method: "GET", path: `/api/context/graph?kinds=note` },
+  // The whole graph, which is the only shape that has edges in it: `kinds=note`
+  // filters out every project and service, and those are what notes and
+  // services draw `belongs-to` edges *to*. Ordering matters here too — pinned
+  // first, then by kind, then by title — and a pinned note is in the fixture by
+  // the time this runs.
+  { name: "filter/the-whole-graph", method: "GET", path: "/api/context/graph" },
+  { name: "filter/the-graph-for-one-project", method: "GET", path: "/api/context/graph?projectPath=%2Ftmp%2Fone" },
 
   // --- previewing ------------------------------------------------------------
   { name: "preview/one-note", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"note","id":"{{ID:Alpha renamed}}"}],"includePinned":false}}' },
@@ -193,6 +253,27 @@ const steps: readonly Step[] = [
   { name: "delete/a-note", method: "DELETE", path: `${NOTES}/{{ID:Alpha renamed}}`, body: '{"revision":"{{REV:Alpha renamed}}"}' },
   { name: "delete/the-same-note-again", method: "DELETE", path: `${NOTES}/{{ID:Alpha renamed}}`, body: `{"revision":"${STALE_REVISION}"}` },
   { name: "delete/the-listing-afterwards", method: "GET", path: CONTEXT },
+
+  // --- a note copied on disk -------------------------------------------------
+  // Two files claiming the same id is what copying a Markdown note looks like,
+  // and no endpoint can produce it — the id is generated per create. Both
+  // copies are hidden rather than one being chosen, because an invisible note
+  // with a diagnostic beside it is recoverable where a silently picked one is a
+  // lost edit.
+  {
+    name: "duplicate/the-listing",
+    method: "GET",
+    path: CONTEXT,
+    mutate: async (runtime) => {
+      const notes = join(runtime.home, ".nomoreide", "context-vault", "Notes");
+      const original = (await readdir(notes)).find((name) => name.startsWith("gamma-note--"));
+      if (!original) return;
+      const body = await readFile(join(notes, original), "utf8");
+      await writeFile(join(notes, `copy-of-${original}`), body);
+    },
+  },
+  { name: "duplicate/reading-one-of-them", method: "GET", path: `${NOTES}/{{ID:Gamma note}}` },
+  { name: "duplicate/the-graph", method: "GET", path: "/api/context/graph" },
 ];
 
 interface Answer {
@@ -242,6 +323,7 @@ async function resolve(runtime: Runtime, text: string): Promise<string> {
 }
 
 async function send(runtime: Runtime, step: Step): Promise<Answer> {
+  if (step.mutate) await step.mutate(runtime);
   const path = await resolve(runtime, step.path);
   const body = step.body === undefined ? undefined : await resolve(runtime, step.body);
   const response = await fetch(`http://127.0.0.1:${runtime.port}${path}`, {
@@ -339,7 +421,17 @@ try {
         ],
         bundles: [],
         databases: [],
-        gitRepositories: [{ name: "demo", path: partial.workspace }],
+        gitRepositories: [
+          { name: "demo", path: partial.workspace },
+          // A repository with an active worktree, so the project row's excerpt
+          // says `Active worktree: …` rather than repeating the path. With only
+          // the first repository, both branches of that read the same.
+          {
+            name: "worktreed",
+            path: "/tmp/one",
+            activeWorktreePath: "/tmp/one-wt",
+          },
+        ],
         selectedGitRepository: "demo",
       }),
       () => [],

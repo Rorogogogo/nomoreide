@@ -264,7 +264,11 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
   const headers: Record<string, string> = {
     ...(await credentialFor(runtime)),
     "content-type": "application/json",
-    ...(step.control ? { [CONTROL_HEADER]: "1" } : {}),
+    // The *value* the case asked for, not a hardcoded `1`. Sending `1` for
+    // every case that carries the field would have made "the header is present"
+    // and "the header says 1" the same test, which is exactly the hole a seed
+    // found here.
+    ...(step.control === undefined ? {} : { [CONTROL_HEADER]: step.control }),
   };
   const response = await fetch(`http://127.0.0.1:${runtime.port}${path}`, {
     method: step.method,

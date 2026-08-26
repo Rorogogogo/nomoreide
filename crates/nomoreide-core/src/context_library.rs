@@ -188,7 +188,7 @@ impl ContextLibrary {
                 .into_iter()
                 .map(|id| {
                     format!(
-                        "Duplicate context note id {id}; copied notes with this id are hidden                          until their frontmatter ids are made unique."
+                        "Duplicate context note id {id}; copied notes with this id are hidden until their frontmatter ids are made unique."
                     )
                 })
                 .collect(),
