@@ -14,22 +14,32 @@ fn stamp() -> String {
     Local::now().format("%Y%m%d-%H%M%S").to_string()
 }
 
-/// The first free spelling of `<prefix><stamp>`, `<prefix><stamp>-1`, and so on.
-fn free_path(directory: &Path, prefix: &str) -> PathBuf {
+/// How many spellings of one second's backup are tried before giving up.
+///
+/// The stamp is only accurate to the second, so a burst of writes to one file
+/// collides with itself and the counter is what separates them. The two callers
+/// give up at different points *and in different ways*, which is the reference's
+/// shape: a file that cannot be set aside is written over anyway, and a skill
+/// directory that cannot be is a refusal. A file is the smaller loss — the
+/// content being replaced is still in the reply — where a skill's directory is
+/// the only copy there is.
+const FILE_ATTEMPTS: u32 = 10;
+const DIRECTORY_ATTEMPTS: u32 = 100;
+
+/// The first free spelling of `<prefix><stamp>`, `<prefix><stamp>-1`, and so
+/// on, or `None` once `attempts` of them are taken.
+fn free_path(directory: &Path, prefix: &str, attempts: u32) -> Option<PathBuf> {
     let stamp = stamp();
-    let candidate = directory.join(format!("{prefix}{stamp}"));
-    if !candidate.exists() {
-        return candidate;
-    }
-    // Bounded so a directory that somehow cannot be written to ends the search
-    // rather than spinning; the caller reports the failure either way.
-    for counter in 1..10_000 {
-        let candidate = directory.join(format!("{prefix}{stamp}-{counter}"));
+    for counter in 0..attempts {
+        let candidate = match counter {
+            0 => directory.join(format!("{prefix}{stamp}")),
+            counter => directory.join(format!("{prefix}{stamp}-{counter}")),
+        };
         if !candidate.exists() {
-            return candidate;
+            return Some(candidate);
         }
     }
-    directory.join(format!("{prefix}{stamp}-overflow"))
+    None
 }
 
 /// Copy `path` beside itself as `<path>.bak.<stamp>`.
@@ -46,7 +56,11 @@ pub(super) fn file(path: &Path) -> Result<Option<PathBuf>, String> {
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let target = free_path(directory, &format!("{name}.bak."));
+    // Every spelling taken: the write goes ahead without a copy, and the answer
+    // says so with a null rather than a path to something that is not there.
+    let Some(target) = free_path(directory, &format!("{name}.bak."), FILE_ATTEMPTS) else {
+        return Ok(None);
+    };
     std::fs::copy(path, &target)
         .map_err(|error| format!("Failed to back up {}: {error}", path.display()))?;
     Ok(Some(target))
@@ -61,7 +75,8 @@ pub(super) fn directory(source: &Path, name: &str) -> Result<PathBuf, String> {
     let store = store_directory();
     std::fs::create_dir_all(&store)
         .map_err(|error| format!("Failed to create {}: {error}", store.display()))?;
-    let target = free_path(&store, &format!("{name}."));
+    let target = free_path(&store, &format!("{name}."), DIRECTORY_ATTEMPTS)
+        .ok_or_else(|| format!("Could not allocate a unique backup path for skill \"{name}\"."))?;
     copy_tree(source, &target)?;
     Ok(target)
 }

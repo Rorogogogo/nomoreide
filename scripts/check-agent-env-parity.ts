@@ -110,16 +110,27 @@ const PLUGIN_FILES: readonly HomeFile[] = [
       2,
     ),
   },
+  // Two skills, not one, so an unsorted listing is visible; a dot-directory,
+  // because those are left out; and a `.toml` beside a `.md` in each of the
+  // other two, because agents accept both suffixes and commands accept one.
   {
     path: ".claude/plugins/cache/tidy/skills/tidy-up/SKILL.md",
     contents: "---\nname: tidy-up\ndescription: Tidy.\n---\n\nTidy it.\n",
   },
   {
+    path: ".claude/plugins/cache/tidy/skills/archive/SKILL.md",
+    contents: "---\nname: archive\ndescription: Archive.\n---\n\nArchive it.\n",
+  },
+  { path: ".claude/plugins/cache/tidy/skills/.hidden/SKILL.md", contents: "hidden\n" },
+  {
     path: ".claude/plugins/cache/tidy/.mcp.json",
     contents: '{\n  "mcpServers": {\n    "tidy-mcp": {\n      "command": "true"\n    }\n  }\n}\n',
   },
   { path: ".claude/plugins/cache/tidy/agents/reviewer.md", contents: "# reviewer\n" },
+  { path: ".claude/plugins/cache/tidy/agents/planner.toml", contents: "name = \"planner\"\n" },
+  { path: ".claude/plugins/cache/tidy/agents/notes.txt", contents: "ignored\n" },
   { path: ".claude/plugins/cache/tidy/commands/tidy.md", contents: "# tidy\n" },
+  { path: ".claude/plugins/cache/tidy/commands/sweep.toml", contents: "ignored = true\n" },
 ];
 
 /** The fixture's own home, plus the plugins it does not ship. */
@@ -796,6 +807,28 @@ const steps: Step[] = [
     body: JSON.stringify({ content: 'model = "gpt-5"\napproval_policy = "on-request"\n' }),
   },
   { name: "settings/get-after-the-codex-put", method: "GET", path: `${ENV}/settings/codex` },
+  {
+    name: "settings/put-codex-content-with-a-model-in-a-section",
+    method: "PUT",
+    path: `${ENV}/settings/codex`,
+    body: JSON.stringify({
+      content: '# a comment\nmodel = "gpt-5"\n\n[profiles.fast]\nmodel = "gpt-5-mini"\n',
+    }),
+  },
+  {
+    name: "settings/set-a-model-with-a-section-below",
+    method: "POST",
+    path: `${ENV}/settings/codex/model`,
+    body: '{"model":"o3"}',
+  },
+  { name: "settings/the-codex-file-after-that", method: "GET", path: `${ENV}/settings/codex` },
+  {
+    name: "settings/clear-a-codex-model-with-a-section-below",
+    method: "POST",
+    path: `${ENV}/settings/codex/model`,
+    body: '{"model":""}',
+  },
+  { name: "settings/the-codex-file-after-clearing", method: "GET", path: `${ENV}/settings/codex` },
   {
     name: "settings/put-codex-content-that-is-not-toml",
     method: "PUT",
