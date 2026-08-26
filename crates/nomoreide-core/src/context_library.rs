@@ -199,6 +199,11 @@ impl ContextLibrary {
         self.ensure_root()?;
         let mut paths = Vec::new();
         collect_markdown(&self.root.join("Notes"), &mut paths)?;
+        // `read_dir` hands back whatever order the filesystem holds, which is
+        // not the same twice — and the vault's order is observable: the graph
+        // emits one note's edges before the next one's, so an unsorted walk
+        // makes the edge list differ between two readings of the same vault.
+        paths.sort();
         paths.truncate(MAX_NOTES);
         paths
             .into_iter()
