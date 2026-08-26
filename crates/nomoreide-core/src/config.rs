@@ -573,6 +573,59 @@ impl ConfigStore {
         .context("Failed to atomically replace config.json")
     }
 
+    /// The project's preferences, or the defaults when it has none.
+    ///
+    /// The defaults are returned rather than written: a project that has never
+    /// had a preference set should not grow a config file merely by being
+    /// looked at.
+    pub async fn preferences(&self) -> Result<serde_json::Value> {
+        let config = self.load().await?;
+        Ok(config
+            .preferences
+            .clone()
+            .unwrap_or_else(default_preferences))
+    }
+
+    /// Fold a validated patch into the stored preferences, one level deep, so
+    /// a patch naming `logs` leaves `database` alone.
+    pub async fn update_preferences(&self, patch: &serde_json::Value) -> Result<serde_json::Value> {
+        let mut config = self.load().await?;
+        let mut current = config
+            .preferences
+            .clone()
+            .unwrap_or_else(default_preferences);
+        if let (Some(current), Some(patch)) = (current.as_object_mut(), patch.as_object()) {
+            for (group, fields) in patch {
+                let Some(fields) = fields.as_object() else {
+                    continue;
+                };
+                let entry = current
+                    .entry(group.clone())
+                    .or_insert_with(|| serde_json::json!({}));
+                if let Some(entry) = entry.as_object_mut() {
+                    for (key, value) in fields {
+                        entry.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+        }
+        config.preferences = Some(current.clone());
+        self.save(&config).await?;
+        Ok(current)
+    }
+
+    /// Clear the stored preferences and report the defaults.
+    ///
+    /// The key is **removed**, not overwritten with the defaults: "unset" and
+    /// "set to exactly the defaults" should not be the same file, so that a
+    /// later change to a default reaches a project that never chose otherwise.
+    pub async fn reset_preferences(&self) -> Result<serde_json::Value> {
+        let mut config = self.load().await?;
+        config.preferences = None;
+        self.save(&config).await?;
+        Ok(default_preferences())
+    }
+
     pub async fn register_service(&self, service: ServiceDef) -> Result<Config> {
         let mut config = self.load().await?;
         config.services.retain(|s| s.name != service.name);
@@ -1226,6 +1279,14 @@ pub async fn is_git_worktree(path: &str) -> bool {
         .ok()
         .filter(|output| output.status.success())
         .is_some_and(|output| String::from_utf8_lossy(&output.stdout).trim() == "true")
+}
+
+/// What a project's preferences are before anyone sets one.
+pub fn default_preferences() -> serde_json::Value {
+    serde_json::json!({
+        "logs": { "showTimestamps": true, "wrapLines": true },
+        "database": { "confirmWrites": true, "resultLimit": 100 }
+    })
 }
 
 #[cfg(test)]
