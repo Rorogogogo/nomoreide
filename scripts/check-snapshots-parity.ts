@@ -177,6 +177,13 @@ const steps: readonly Step[] = [
   // The ref name keeps the old slug, and the sha is a new object.
   { name: "rename/the-listing-afterwards", method: "GET", path: "/api/snapshots" },
   { name: "rename/the-old-sha-is-gone", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "<renamed-old>" },
+  // And the sha it *reported* is the one that now exists. A rename that answers
+  // with the sha it was given rather than the one it wrote passes every other
+  // case here and fails this one.
+  { name: "rename/the-reported-sha-is-live", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "<renamed-new>" },
+  // The stored label is the trimmed one, which only a padded label can show.
+  { name: "rename/a-padded-label", method: "PATCH", path: "/api/snapshots/{{SHA}}", body: '{"label":"   padded   "}', shaOfLabel: "relabelled" },
+  { name: "rename/the-padded-listing", method: "GET", path: "/api/snapshots" },
   { name: "rename/a-sha-that-is-not-a-snapshot", method: "PATCH", path: "/api/snapshots/abcdef0", body: '{"label":"x"}' },
 
   // --- deleting --------------------------------------------------------------
@@ -190,6 +197,12 @@ const steps: readonly Step[] = [
   // since. The pre-restore snapshot it takes first is in the answer.
   { name: "restore/a-snapshot", method: "POST", path: "/api/snapshots/{{SHA}}/restore", shaOfLabel: "first checkpoint" },
   { name: "restore/what-the-tree-looks-like-now", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "first checkpoint" },
+  // A restore puts files back in the *working tree* and leaves the index alone,
+  // so everything it touched reads as unstaged. Nothing in the restore's own
+  // answer can show that — `preRestore`, `restoredFiles` and `deletedPaths` are
+  // identical either way — so this reaches for the one endpoint that tells
+  // staged from unstaged.
+  { name: "restore/the-repository-status-afterwards", method: "GET", path: "/api/git/status" },
   { name: "restore/the-listing-afterwards", method: "GET", path: "/api/snapshots" },
   // Nothing left to change, so the second one restores no files and deletes
   // nothing — but still takes a snapshot.
@@ -219,6 +232,10 @@ async function resolveSha(runtime: Runtime, label: string): Promise<string> {
     const remembered = renamedOld.get(runtime.label);
     return remembered ?? "0000000";
   }
+  if (label === "<renamed-new>") {
+    const remembered = renamedNew.get(runtime.label);
+    return remembered ?? "0000000";
+  }
   const response = await fetch(`http://127.0.0.1:${runtime.port}/api/snapshots`, {
     headers: await credentialFor(runtime),
   });
@@ -229,6 +246,16 @@ async function resolveSha(runtime: Runtime, label: string): Promise<string> {
 
 /** The sha a rename replaced, per runtime, so it can be asked for afterwards. */
 const renamedOld = new Map<string, string>();
+/**
+ * The sha a rename *reported*, per runtime.
+ *
+ * Not the same thing as the one it replaced, and the difference is the point: a
+ * rename rewrites the commit, so it answers with a sha that did not exist
+ * before. Asking the old sha whether it is gone cannot tell whether the new one
+ * was reported correctly — both runtimes 404 on the old sha however wrong the
+ * answer was. Following each runtime's own reported sha can.
+ */
+const renamedNew = new Map<string, string>();
 
 async function send(runtime: Runtime, step: Step): Promise<Answer> {
   if (step.mutate) await step.mutate(runtime);
@@ -248,6 +275,10 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
     body: step.body,
   });
   const text = await response.text();
+  if (step.name === "rename/a-label") {
+    const reported = (JSON.parse(text) as { snapshot?: { sha?: string } }).snapshot?.sha;
+    if (reported) renamedNew.set(runtime.label, reported);
+  }
   let parsed: unknown = text;
   try {
     parsed = JSON.parse(text);
