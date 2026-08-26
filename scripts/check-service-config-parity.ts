@@ -85,6 +85,33 @@ const stopDivergence = {
   candidate: { ok: false, error: 'Service "ghost" is not registered.' },
 } as const;
 
+/**
+ * The same divergence seen from the status map.
+ *
+ * Stopping a service the daemon never launched makes the reference *record* a
+ * runtime entry for it, so `worker` — registered, restarted as part of a
+ * bundle, never actually running — appears in the status as `stopped`. The
+ * native daemon tracks only what it launched, so its map holds just `db`.
+ *
+ * This is the entry-writing half of `stopDivergence` above: the same decision
+ * not to fabricate runtime state for a process that never existed. It is
+ * asserted rather than skipped, so closing it fails this gate.
+ */
+const runningDb = {
+  name: "db",
+  state: "running",
+  kind: "local",
+  pid: "<redacted>",
+  startedAt: "<redacted>",
+} as const;
+const statusDivergence = {
+  reference: {
+    ok: true,
+    status: { services: { worker: { name: "worker", state: "stopped" }, db: runningDb } },
+  },
+  candidate: { ok: true, status: { services: { db: runningDb } } },
+} as const;
+
 const encode = (value: string) => encodeURIComponent(value);
 
 const steps: readonly Step[] = [
@@ -150,6 +177,10 @@ const steps: readonly Step[] = [
   // starts cleanly. That makes "restart is a stop and then a start" observable:
   // reversed, a cold bundle ends stopped rather than running.
   { name: "bundle-restart/a-cold-bundle", method: "POST", path: "/api/bundles/leaf/restart", redact: ["pid", "startedAt"] },
+  // The restart's own answer reports the state at the moment it started, so
+  // both orders describe a running service. Only the state *afterwards*
+  // separates them: stop-then-start ends running, start-then-stop ends exited.
+  { name: "bundle-restart/the-state-afterwards", method: "GET", path: "/api/status", redact: ["pid", "startedAt", "exitedAt", "exitCode", "signal", "url"], divergent: statusDivergence },
   // start and stop share the dispatcher with restart, so they are checked here
   // too: whatever status an unregistered bundle gets, all three must agree.
   { name: "bundle-start/unknown", method: "POST", path: "/api/bundles/ghost/start" },
@@ -318,12 +349,12 @@ try {
     try {
       if (step.divergent) {
         assert.deepStrictEqual(
-          normalize(answers.reference, reference).body,
+          normalize(answers.reference, reference, step.redact).body,
           step.divergent.reference,
           "the reference side of a declared divergence changed",
         );
         assert.deepStrictEqual(
-          normalize(answers.candidate, candidate).body,
+          normalize(answers.candidate, candidate, step.redact).body,
           step.divergent.candidate,
           "the candidate side of a declared divergence changed",
         );

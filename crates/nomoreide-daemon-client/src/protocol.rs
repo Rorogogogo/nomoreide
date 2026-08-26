@@ -326,7 +326,20 @@ pub struct TimelineEnvelope {
 #[serde(rename_all = "camelCase")]
 pub struct StatusEnvelope {
     pub ok: bool,
-    pub services: Vec<ServiceRuntimeStatus>,
+    pub status: ServiceStatusSnapshot,
+}
+
+/// The status body, which is a **map keyed by service name** rather than a
+/// list.
+///
+/// A `BTreeMap` rather than an insertion-ordered map, so two consecutive reads
+/// of the same runtime compare equal — the reference's is in whatever order the
+/// process manager happened to record the services. That is the documented
+/// difference; a parsed object compares the same either way.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceStatusSnapshot {
+    pub services: std::collections::BTreeMap<String, ServiceRuntimeStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

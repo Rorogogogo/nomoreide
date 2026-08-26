@@ -9,7 +9,8 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use nomoreide_daemon_client::protocol::{
-    LogsEnvelope, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, StatusEnvelope,
+    LogsEnvelope, ServiceDiscoveryEnvelope, ServiceMutationEnvelope, ServiceStatusSnapshot,
+    StatusEnvelope,
 };
 use serde::Deserialize;
 
@@ -56,13 +57,19 @@ async fn list_services(State(state): State<AppState>) -> Response {
 /// Runtime state is never cacheable: a stale read here is a caller acting on a
 /// service that has already stopped.
 async fn status(State(state): State<AppState>) -> Response {
-    (
-        [(axum::http::header::CACHE_CONTROL, "no-store")],
-        Json(StatusEnvelope {
-            ok: true,
-            services: state.runtime.status(),
-        }),
-    )
+    // No cache-control: the reference sends none here, and the gates compare
+    // the header.
+    (Json(StatusEnvelope {
+        ok: true,
+        status: ServiceStatusSnapshot {
+            services: state
+                .runtime
+                .status()
+                .into_iter()
+                .map(|status| (status.name.clone(), status))
+                .collect(),
+        },
+    }),)
         .into_response()
 }
 

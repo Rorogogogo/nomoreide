@@ -182,7 +182,7 @@ impl DaemonClient {
                 "daemon returned an unsuccessful response".into(),
             ));
         }
-        Ok(envelope.services)
+        Ok(envelope.status.services.into_values().collect())
     }
 
     /// The tail of a service's buffered output, newest last.
