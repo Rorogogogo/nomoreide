@@ -93,6 +93,69 @@ pub fn default_repos_dir() -> PathBuf {
         .join("repos")
 }
 
+/// True when `path` resolves inside `root`. The containment guard the onboard
+/// endpoints put in front of every path a browser hands them, so a clone path
+/// can only ever name something the wizard itself cloned.
+///
+/// **The escape check is a string test on the relative path**, not a structural
+/// one, which is worth mirroring rather than tightening: a directory whose own
+/// name begins with `..` — `<root>/..hidden` is a perfectly ordinary one — makes
+/// the relative path start with `..` and is refused even though it is inside.
+/// A guard that lets *fewer* paths through than the reference is still a
+/// divergence, and this one is the reference's.
+///
+/// The root itself is refused too: the relative path is empty, and an empty
+/// path is not a repository anyone onboarded.
+pub fn is_inside_repos_dir(path: &str, root: &Path) -> bool {
+    let resolved = node_resolve(path);
+    let relative = node_relative(&node_resolve(&root.to_string_lossy()), &resolved);
+    if relative.is_empty() {
+        return false;
+    }
+    !relative.starts_with("..") && !resolved.contains('\0')
+}
+
+/// `path.resolve` for one POSIX path: made absolute against the process
+/// directory, then `.` dropped and `..` popped **textually**. No symlink is
+/// followed and the filesystem is not consulted, which is what makes the guard
+/// above decidable for a path that is not there.
+fn node_resolve(path: &str) -> String {
+    let mut segments: Vec<&str> = Vec::new();
+    let joined = if path.starts_with('/') {
+        path.to_string()
+    } else {
+        format!(
+            "{}/{path}",
+            std::env::current_dir().unwrap_or_default().display()
+        )
+    };
+    for segment in joined.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => {
+                segments.pop();
+            }
+            other => segments.push(other),
+        }
+    }
+    format!("/{}", segments.join("/"))
+}
+
+/// `path.relative` for two already-resolved POSIX paths: the segments they do
+/// not share, prefixed by one `..` per segment left over on the `from` side.
+fn node_relative(from: &str, to: &str) -> String {
+    let from: Vec<&str> = from.split('/').filter(|s| !s.is_empty()).collect();
+    let to: Vec<&str> = to.split('/').filter(|s| !s.is_empty()).collect();
+    let shared = from
+        .iter()
+        .zip(to.iter())
+        .take_while(|(left, right)| left == right)
+        .count();
+    let mut parts: Vec<&str> = vec![".."; from.len() - shared];
+    parts.extend_from_slice(&to[shared..]);
+    parts.join("/")
+}
+
 /// Shallow-clone a repository into `dest_root/<name>`. Refuses to overwrite a
 /// non-empty destination, and disables interactive credential prompts so a
 /// private repository fails fast instead of hanging. When a `github_token` is

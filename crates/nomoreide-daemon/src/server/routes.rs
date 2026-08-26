@@ -13,6 +13,7 @@ mod git;
 mod github;
 mod log_sources;
 mod meta;
+mod onboard;
 mod service_config;
 mod service_files;
 mod service_register;
@@ -92,6 +93,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(service_register::routes())
         .merge(fs_directories::routes())
         .merge(log_sources::routes())
+        .merge(onboard::routes())
         .merge(settings::routes())
         .merge(workflows::routes())
         .merge(bundles::routes())

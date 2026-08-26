@@ -31,6 +31,9 @@ enum Arm {
 /// One thing an arm requires, in the order the arm declares it — which is the
 /// order its failures are reported in.
 enum Check {
+    /// The name, first of the shared base's fields and so the first thing every
+    /// arm reports.
+    Name,
     /// The port, which lives on the shared base rather than on any arm — so it
     /// is checked before the arm's own fields, and reported in every arm.
     Port,
@@ -48,6 +51,7 @@ enum Check {
 }
 
 const LOCAL_CHECKS: &[Check] = &[
+    Check::Name,
     Check::Port,
     Check::Kind,
     Check::Required("command"),
@@ -56,12 +60,14 @@ const LOCAL_CHECKS: &[Check] = &[
     Check::Env,
 ];
 const COMPOSE_CHECKS: &[Check] = &[
+    Check::Name,
     Check::Port,
     Check::Kind,
     Check::Required("cwd"),
     Check::Required("composeService"),
 ];
 const SSH_CHECKS: &[Check] = &[
+    Check::Name,
     Check::Port,
     Check::Kind,
     Check::Required("host"),
@@ -93,7 +99,8 @@ impl Arm {
         self.checks()
             .iter()
             .flat_map(|check| match check {
-                Check::Port => port_failure(arguments).into_iter().collect::<Vec<_>>(),
+                Check::Name => name_failure(arguments).into_iter().collect::<Vec<_>>(),
+                Check::Port => port_failures(arguments),
                 Check::Kind => self.kind_failure(arguments).into_iter().collect::<Vec<_>>(),
                 Check::Required(key) => missing(arguments, key).into_iter().collect(),
                 Check::SshCommand => match string(arguments, "command") {
@@ -122,7 +129,7 @@ impl Arm {
                             .collect()
                     })
                     .unwrap_or_default(),
-                Check::Env => environment_failure(arguments).into_iter().collect(),
+                Check::Env => environment_failures(arguments),
             })
             .collect()
     }
@@ -227,17 +234,86 @@ pub fn service_definition(arguments: &Map<String, Value>) -> Result<ServiceDef, 
     Err(serde_json::to_string_pretty(&issues).map_err(|error| error.to_string())?)
 }
 
-/// A `port` that is present but is not a number the schema could accept.
+/// A `name` that is there but says nothing.
 ///
-/// The sentinel is a *string* `"NaN"`, because JSON cannot carry the value
-/// itself: whoever builds these arguments out of a form has no other way to say
-/// "the caller typed something, and it was not a number".
-fn port_failure(arguments: &Map<String, Value>) -> Option<Issue> {
-    match arguments.get("port") {
-        None => None,
-        Some(Value::Number(_)) => None,
-        Some(_) => Some(Issue::unreadable_port()),
+/// Only the empty string is reported. A *missing* or non-string name would be
+/// an `invalid_type` in the reference, and no caller can produce one: the form
+/// route refuses a blank name before the schema sees it, the onboarding route
+/// refuses a name that is not a string, and the MCP tool types it. Writing the
+/// branch anyway would be a report nothing can read.
+fn name_failure(arguments: &Map<String, Value>) -> Option<Issue> {
+    match arguments.get("name") {
+        Some(Value::String(name)) if name.is_empty() => Some(Issue::Bound(BoundIssue {
+            code: "too_small",
+            minimum: Some(1),
+            maximum: None,
+            kind: "string",
+            inclusive: true,
+            exact: false,
+            message: "String must contain at least 1 character(s)".to_string(),
+            path: vec![Value::from("name")],
+        })),
+        _ => None,
     }
+}
+
+/// Everything `z.number().int().positive().max(65535)` has to say about a
+/// `port`, in the order the schema declares those checks.
+///
+/// They **accumulate**: a port of `-1.5` is reported as both a float and a
+/// non-positive number, because each check adds its issue and carries on. Only
+/// a value that is not a number at all stops the rest — there is nothing left
+/// to bound.
+///
+/// The not-a-number sentinel is a *string* `"NaN"`, because JSON cannot carry
+/// the value itself: whoever builds these arguments out of a form has no other
+/// way to say "the caller typed something, and it was not a number".
+fn port_failures(arguments: &Map<String, Value>) -> Vec<Issue> {
+    let Some(port) = arguments.get("port") else {
+        return Vec::new();
+    };
+    let Some(number) = port.as_f64() else {
+        return vec![Issue::unreadable_port()];
+    };
+    let mut issues = Vec::new();
+    if number.fract() != 0.0 {
+        issues.push(Issue::Typed(TypeIssue {
+            code: "invalid_type",
+            expected: "integer".to_string(),
+            received: "float".to_string(),
+            // Written by the check rather than by the error map, so it is
+            // serialized where it was declared — before the path, unlike the
+            // `invalid_type` a missing field gets.
+            message: Some("Expected integer, received float".to_string()),
+            path: vec![Value::from("port")],
+            trailing_message: None,
+        }));
+    }
+    if number <= 0.0 {
+        issues.push(Issue::Bound(BoundIssue {
+            code: "too_small",
+            minimum: Some(0),
+            maximum: None,
+            kind: "number",
+            inclusive: false,
+            exact: false,
+            message: "Number must be greater than 0".to_string(),
+            path: vec![Value::from("port")],
+        }));
+    }
+    if number > 65535.0 {
+        issues.push(Issue::Bound(BoundIssue {
+            code: "too_big",
+            minimum: None,
+            maximum: Some(65535),
+            kind: "number",
+            inclusive: true,
+            exact: false,
+            message: "Number must be less than or equal to 65535".to_string(),
+            path: vec![Value::from("port")],
+        }));
+    }
+    issues
 }
 
 fn missing(arguments: &Map<String, Value>, key: &'static str) -> Option<Issue> {
@@ -246,19 +322,59 @@ fn missing(arguments: &Map<String, Value>, key: &'static str) -> Option<Issue> {
         .then(|| Issue::missing(key))
 }
 
-/// One rejected key condemns the whole map: the reference refines the map, not
-/// its entries, so the report names `env` rather than the key that failed.
-fn environment_failure(arguments: &Map<String, Value>) -> Option<Issue> {
-    let entries = arguments.get("env")?.as_object()?;
-    entries
-        .keys()
-        .any(|key| !is_environment_name(key))
-        .then(|| {
-            Issue::custom(
-                "Environment variable names must use letters, numbers, and underscores.",
-                vec![Value::from("env")],
-            )
+/// What `z.record(z.string()).refine(...)` says about an `env` map.
+///
+/// **The values are read before the keys are judged**, and a value that is not
+/// a string stops the refinement from running at all — so a map with both a bad
+/// value and a bad key reports only the value. Each bad value is reported
+/// separately and names its own key.
+///
+/// The key rule is the other way round: one rejected key condemns the whole
+/// map, because the reference refines the map rather than its entries, so that
+/// report names `env` and not the key that failed.
+fn environment_failures(arguments: &Map<String, Value>) -> Vec<Issue> {
+    let Some(entries) = arguments.get("env").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    let bad_values: Vec<Issue> = entries
+        .iter()
+        .filter(|(_, value)| !value.is_string())
+        .map(|(key, value)| {
+            let received = json_type_name(value);
+            Issue::Typed(TypeIssue {
+                code: "invalid_type",
+                expected: "string".to_string(),
+                received: received.to_string(),
+                message: None,
+                path: vec![Value::from("env"), Value::from(key.as_str())],
+                // Supplied by the error map rather than by the check, so it is
+                // appended after the path.
+                trailing_message: Some(format!("Expected string, received {received}")),
+            })
         })
+        .collect();
+    if !bad_values.is_empty() {
+        return bad_values;
+    }
+    if entries.keys().any(|key| !is_environment_name(key)) {
+        return vec![Issue::custom(
+            "Environment variable names must use letters, numbers, and underscores.",
+            vec![Value::from("env")],
+        )];
+    }
+    Vec::new()
+}
+
+/// What zod calls the type it received, which is not always what JSON calls it.
+fn json_type_name(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
 }
 
 /// The reference's `/^[A-Za-z_][A-Za-z0-9_]*$/`.
@@ -307,6 +423,8 @@ pub fn strings(arguments: &Map<String, Value>, key: &str) -> Vec<String> {
 enum Issue {
     Literal(LiteralIssue),
     Missing(MissingIssue),
+    Typed(TypeIssue),
+    Bound(BoundIssue),
     Custom(CustomIssue),
     Union(UnionIssue),
 }
@@ -343,10 +461,22 @@ impl Issue {
         })
     }
 
-    /// Whether this is a rule the arm applies to a field it did understand,
-    /// rather than a field it never found.
+    /// Whether the arm read the arguments as its own kind of service and then
+    /// declined them, rather than failing to read them at all.
+    ///
+    /// This is the reference validator's *dirty* versus *aborted* split, and it
+    /// decides the whole shape of the report: an arm that only went dirty is
+    /// reported on its own, while an arm that aborted contributes to the union.
+    /// The split does not follow the issue code — a port that is a float is an
+    /// `invalid_type`, and it is dirty, because a number was there to check.
     fn is_refinement(&self) -> bool {
-        matches!(self, Issue::Custom(_))
+        match self {
+            Issue::Custom(_) | Issue::Bound(_) => true,
+            // Only the one the numeric checks raise. A field that was the wrong
+            // type from the start, or was not there, stopped its arm.
+            Issue::Typed(issue) => issue.expected == "integer",
+            _ => false,
+        }
     }
 }
 
@@ -369,6 +499,38 @@ struct MissingIssue {
     received: &'static str,
     path: Vec<Value>,
     message: &'static str,
+}
+
+/// An `invalid_type`, whose key order says who wrote its message: a check that
+/// carried one serializes it where it was declared — *before* the path — while
+/// one left to the error map has it appended last.
+#[derive(Clone, Serialize)]
+struct TypeIssue {
+    code: &'static str,
+    expected: String,
+    received: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+    path: Vec<Value>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "message")]
+    trailing_message: Option<String>,
+}
+
+/// `too_small` and `too_big`, which differ only in which bound they name.
+#[derive(Clone, Serialize)]
+struct BoundIssue {
+    code: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    minimum: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    maximum: Option<i64>,
+    /// `type` in the report; the word is taken in Rust.
+    #[serde(rename = "type")]
+    kind: &'static str,
+    inclusive: bool,
+    exact: bool,
+    message: String,
+    path: Vec<Value>,
 }
 
 #[derive(Clone, Serialize)]

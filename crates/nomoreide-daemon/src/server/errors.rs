@@ -96,7 +96,20 @@ pub(crate) fn service_mutation_error(failure: RuntimeMutationError) -> Response 
 
 /// Everything the dispatcher renders: a 500 carrying the message alone.
 pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
-    let message = match failure {
+    error(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        &mutation_message(failure),
+    )
+}
+
+/// What a runtime refusal *says*, without deciding what status says it.
+///
+/// A route that starts a service as part of some larger operation reports the
+/// failure under its own status — onboarding answers 422 for everything that
+/// goes wrong, a start included — so the wording has to be reachable apart from
+/// the 500 the dispatcher would otherwise wrap it in.
+pub(crate) fn mutation_message(failure: RuntimeMutationError) -> String {
+    match failure {
         RuntimeMutationError::ServiceNotFound(name) => {
             format!("Service \"{name}\" is not registered.")
         }
@@ -122,6 +135,5 @@ pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
         RuntimeMutationError::CleanupFailed => "Failed to confirm service cleanup.".to_string(),
         // Uncaught here on purpose: only the service-action route catches it.
         RuntimeMutationError::PortConflict { message, .. } => message,
-    };
-    error(StatusCode::INTERNAL_SERVER_ERROR, &message)
+    }
 }
