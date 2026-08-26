@@ -146,7 +146,19 @@ const steps: readonly Step[] = [
   { name: "filter/a-query", method: "GET", path: `${CONTEXT}?q=beta` },
   { name: "filter/a-query-that-matches-nothing", method: "GET", path: `${CONTEXT}?q=zzzzz` },
   { name: "filter/a-blank-query", method: "GET", path: `${CONTEXT}?q=` },
+  // An empty query matches everything by accident — `"".contains` is true of
+  // any string — so only a query that is *whitespace* can show whether it was
+  // trimmed before it was used.
+  { name: "filter/a-whitespace-query", method: "GET", path: `${CONTEXT}?q=%20%20` },
+  // Lambda note is filed under `/tmp/one` via its `projectPaths` **list**, not
+  // via the single `projectPath` a derived item carries — the filter has to
+  // match either, or a note filed under three repositories shows up under none.
   { name: "filter/a-project-path", method: "GET", path: `${CONTEXT}?projectPath=%2Ftmp%2Fone` },
+  { name: "filter/the-other-project-path", method: "GET", path: `${CONTEXT}?projectPath=%2Ftmp%2Ftwo` },
+  // The workspace is a registered repository, so this one selects the derived
+  // project row and the services under it rather than any note.
+  { name: "filter/a-project-that-is-registered", method: "GET", path: `${CONTEXT}?projectPath=%2Ftmp%2Fnothing` },
+  { name: "filter/a-project-and-a-kind", method: "GET", path: `${CONTEXT}?projectPath=%2Ftmp%2Fone&kinds=note` },
   { name: "filter/one-kind", method: "GET", path: `${CONTEXT}?kinds=note` },
   // An unrecognised kind is dropped rather than refused, which leaves an empty
   // filter — and an empty filter matches nothing.
@@ -162,6 +174,14 @@ const steps: readonly Step[] = [
   { name: "preview/a-missing-ref", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"note","id":"does-not-exist"}],"includePinned":false}}' },
   { name: "preview/without-include-pinned", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[]}}' },
   { name: "preview/a-duplicate-ref", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"note","id":"{{ID:Alpha renamed}}"},{"kind":"note","id":"{{ID:Alpha renamed}}"}],"includePinned":false}}' },
+  // `projectPath` marks a resolved item as belonging to *another* project, so it
+  // only says anything when the attachment actually resolves to something with a
+  // project of its own. An empty attachment cannot show it, which is why this
+  // names the note filed under `/tmp/one` and then asks again under a project it
+  // does not belong to.
+  { name: "preview/scoped-to-its-own-project", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"note","id":"{{ID:Lambda note}}"}],"includePinned":false},"projectPath":"/tmp/one"}' },
+  { name: "preview/scoped-to-another-project", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"note","id":"{{ID:Lambda note}}"}],"includePinned":false},"projectPath":"/tmp/nowhere"}' },
+  { name: "preview/scoped-to-a-registered-project", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[{"kind":"service","id":"workspace:stray"}],"includePinned":false},"projectPath":"/tmp/one"}' },
   { name: "preview/with-a-project-path", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[],"includePinned":true},"projectPath":"/tmp/one"}' },
   { name: "preview/an-unknown-key", method: "POST", path: "/api/context/preview", body: '{"attachment":{"refs":[],"includePinned":false},"colour":"red"}' },
   { name: "preview/no-attachment", method: "POST", path: "/api/context/preview", body: "{}" },
@@ -240,14 +260,29 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
 }
 
 /**
- * Keys whose value is generated rather than decided. A note's id is a uuid, its
- * revision hashes a file containing that uuid and two timestamps, and its path
- * is named after both — so all three differ between two runtimes that did
- * exactly the same thing.
+ * Keys whose value is generated rather than decided.
+ *
+ * A *note's* id is a uuid, its revision hashes a file containing that uuid and
+ * two timestamps, and its filename is built from both — all three differ
+ * between two runtimes that did exactly the same thing.
+ *
+ * A **derived** item's id is nothing of the sort. A project's is its path, a
+ * service's is `<project>:<name>`, a file's is a hash of the repository path
+ * and the relative path. Those are worth comparing, and blanket-scrubbing `id`
+ * would hide a service ref built as `workspace:api` where it should be
+ * `/path/to/repo:api`. So a uuid is redacted for being a uuid, not for sitting
+ * under a key called `id`.
  */
-const VOLATILE = new Set(["id", "revision", "path", "created", "updated", "updatedAt"]);
+const VOLATILE = new Set(["revision", "created", "updated"]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A note's file, which is named `<slug>--<first 8 of the uuid>.md`. */
+const NOTE_FILE = /--[0-9a-f]{8}\.md$/i;
 
 function scrub(value: unknown): unknown {
+  if (typeof value === "string") {
+    if (UUID.test(value)) return "<uuid>";
+    return NOTE_FILE.test(value) ? value.replace(NOTE_FILE, "--<uuid8>.md") : value;
+  }
   if (Array.isArray(value)) return value.map(scrub);
   if (value && typeof value === "object") {
     return Object.fromEntries(
@@ -284,6 +319,10 @@ try {
         // has something to select.
         services: [
           { name: "api", command: "true", cwd: partial.workspace, port: 4599 },
+          // Outside every registered repository, so its derived ref id falls
+          // back to `workspace:` — a default nothing else in the fixture can
+          // reach, since a service under a repo takes that repo's path.
+          { name: "stray", command: "true", cwd: "/tmp/elsewhere", port: 4598 },
         ],
         bundles: [],
         databases: [],
@@ -292,7 +331,11 @@ try {
       }),
       () => [],
     );
-    await harness.startDaemon(runtime, {});
+    // The transcript reader falls back to `process.env.CODEX_HOME` when nothing
+    // overrides it, so without this a Codex installation on the developer's own
+    // machine contributes `session` items to the listing — and the gate stops
+    // being about the fixture.
+    await harness.startDaemon(runtime, { CODEX_HOME: join(runtime.home, ".codex") });
     runtimes.push(runtime);
   }
   const [reference, candidate] = runtimes;

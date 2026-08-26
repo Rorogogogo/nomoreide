@@ -69,8 +69,14 @@ interface Step {
   /** `{{ID}}` is replaced with the id resolved from `idOfIndex`. */
   readonly path: string;
   readonly body?: string;
-  /** Send the terminal-control header. */
-  readonly control?: true;
+  /**
+   * The terminal-control header to send, if any.
+   *
+   * A *value*, not a flag: the guard compares against the exact string `1`, and
+   * a version that merely checks the header is *present* passes every case that
+   * only ever sends `1` or nothing.
+   */
+  readonly control?: string;
   /**
    * Which session `{{ID}}` means, by its position in the listing.
    *
@@ -154,6 +160,11 @@ const steps: readonly Step[] = [
   { name: "rename/the-listing-afterwards", method: "GET", path: SESSIONS },
   { name: "rename/a-blank-label", method: "PATCH", path: `${SESSIONS}/{{ID}}`, body: '{"label":"   "}', idOfIndex: 0 },
   { name: "rename/a-label-that-is-too-long", method: "PATCH", path: `${SESSIONS}/{{ID}}`, body: `{"label":"${"n".repeat(61)}"}`, idOfIndex: 0 },
+  // Exactly at the bound once trimmed, and over it before — the trim is a
+  // transform that runs *before* the bounds, so this is accepted. A version
+  // that measures the raw string refuses it, and no other rename case can see
+  // the difference because they are all short either way.
+  { name: "rename/a-long-label-with-padding", method: "PATCH", path: `${SESSIONS}/{{ID}}`, body: `{"label":"  ${"p".repeat(60)}  "}`, idOfIndex: 0 },
   { name: "rename/an-unknown-key", method: "PATCH", path: `${SESSIONS}/{{ID}}`, body: '{"label":"ok","colour":"red"}', idOfIndex: 0 },
   { name: "rename/no-body", method: "PATCH", path: `${SESSIONS}/{{ID}}`, idOfIndex: 0 },
   { name: "rename/an-unknown-session", method: "PATCH", path: `${SESSIONS}/term_999`, body: '{"label":"ok"}' },
@@ -167,35 +178,51 @@ const steps: readonly Step[] = [
   // --- inserting a prompt ----------------------------------------------------
   // The header is checked first, so this is a 403 and not a 404.
   { name: "insert/without-the-header", method: "POST", path: `${SESSIONS}/term_999/insert-prompt`, body: '{"prompt":"hi"}' },
-  { name: "insert/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/insert-prompt`, body: '{"prompt":"hi"}', control: true },
-  { name: "insert/an-empty-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":""}', control: true, idOfIndex: 0 },
-  { name: "insert/no-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: "{}", control: true, idOfIndex: 0 },
-  { name: "insert/an-unknown-key", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"hi","colour":"red"}', control: true, idOfIndex: 0 },
+  // Present but wrong. Only the exact string `1` opens the guard.
+  { name: "insert/with-the-wrong-header-value", method: "POST", path: `${SESSIONS}/term_999/insert-prompt`, body: '{"prompt":"hi"}', control: "0" },
+  { name: "insert/with-an-empty-header-value", method: "POST", path: `${SESSIONS}/term_999/insert-prompt`, body: '{"prompt":"hi"}', control: "" },
+  // A bad id *and* no header. With the header present both orderings answer
+  // 400, so this is the only shape that says which check runs first.
+  { name: "insert/a-bad-id-without-the-header", method: "POST", path: `${SESSIONS}/a%2Fb/insert-prompt`, body: '{"prompt":"hi"}' },
+  { name: "insert/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/insert-prompt`, body: '{"prompt":"hi"}', control: "1" },
+  { name: "insert/an-empty-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":""}', control: "1", idOfIndex: 0 },
+  { name: "insert/no-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: "{}", control: "1", idOfIndex: 0 },
+  // Present and the wrong type, which an absent prompt cannot show: a version
+  // that stringifies whatever it is given pastes `7` and answers 200.
+  { name: "insert/a-prompt-that-is-a-number", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":7}', control: "1", idOfIndex: 0 },
+  { name: "insert/a-prompt-that-is-null", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":null}', control: "1", idOfIndex: 0 },
+  { name: "insert/an-unknown-key", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"hi","colour":"red"}', control: "1", idOfIndex: 0 },
   // A carriage return would submit the prompt rather than paste it.
-  { name: "insert/a-prompt-that-submits", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"do it\\r"}', control: true, idOfIndex: 0 },
-  { name: "insert/a-prompt-with-a-newline", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"one\\ntwo"}', control: true, idOfIndex: 0 },
+  { name: "insert/a-prompt-that-submits", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"do it\\r"}', control: "1", idOfIndex: 0 },
+  { name: "insert/a-prompt-with-a-newline", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"one\\ntwo"}', control: "1", idOfIndex: 0 },
   // Over the *body* cap, so the reader stops before anything is parsed.
-  { name: "insert/a-body-over-the-body-cap", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${OVER_THE_BODY_CAP}"}`, control: true, idOfIndex: 0 },
+  { name: "insert/a-body-over-the-body-cap", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${OVER_THE_BODY_CAP}"}`, control: "1", idOfIndex: 0 },
+  // The body cap is six times the prompt cap, so anything it refuses could not
+  // have held a valid prompt — and a body carrying a huge *prompt* is refused
+  // by the next check with the same status and the same words. Only a body that
+  // is over the cap and is **not** a prompt tells the two apart: with the cap it
+  // is a 413, and without it the body parses and the schema refuses it as a 400.
+  { name: "insert/a-body-over-the-cap-that-is-not-a-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"colour":"${OVER_THE_BODY_CAP}"}`, control: "1", idOfIndex: 0 },
   // Parsed fine, then refused by the second measurement — same status, and the
   // same wording, from a different check.
-  { name: "insert/a-prompt-over-the-prompt-cap", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${OVER_THE_PROMPT_CAP}"}`, control: true, idOfIndex: 0 },
+  { name: "insert/a-prompt-over-the-prompt-cap", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${OVER_THE_PROMPT_CAP}"}`, control: "1", idOfIndex: 0 },
   // Half as many characters as the cap, and one byte over it.
-  { name: "insert/a-prompt-that-is-multibyte", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${MULTIBYTE_OVER_THE_CAP}"}`, control: true, idOfIndex: 0 },
-  { name: "insert/a-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"review this"}', control: true, idOfIndex: 0 },
+  { name: "insert/a-prompt-that-is-multibyte", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: `{"prompt":"${MULTIBYTE_OVER_THE_CAP}"}`, control: "1", idOfIndex: 0 },
+  { name: "insert/a-prompt", method: "POST", path: `${SESSIONS}/{{ID}}/insert-prompt`, body: '{"prompt":"review this"}', control: "1", idOfIndex: 0 },
   // The stricter id rule: a slash is refused here even though rename allows it.
-  { name: "insert/an-id-with-a-slash", method: "POST", path: `${SESSIONS}/a%2Fb/insert-prompt`, body: '{"prompt":"hi"}', control: true },
-  { name: "insert/an-id-that-is-badly-encoded", method: "POST", path: `${SESSIONS}/a%zzb/insert-prompt`, body: '{"prompt":"hi"}', control: true },
-  { name: "insert/wrong-method", method: "GET", path: `${SESSIONS}/term_999/insert-prompt`, control: true },
+  { name: "insert/an-id-with-a-slash", method: "POST", path: `${SESSIONS}/a%2Fb/insert-prompt`, body: '{"prompt":"hi"}', control: "1" },
+  { name: "insert/an-id-that-is-badly-encoded", method: "POST", path: `${SESSIONS}/a%zzb/insert-prompt`, body: '{"prompt":"hi"}', control: "1" },
+  { name: "insert/wrong-method", method: "GET", path: `${SESSIONS}/term_999/insert-prompt`, control: "1" },
 
   // --- the other two actions -------------------------------------------------
   { name: "reclaim/without-the-header", method: "POST", path: `${SESSIONS}/term_999/reclaim-dock` },
-  { name: "reclaim/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/reclaim-dock`, control: true },
-  { name: "reclaim/a-session", method: "POST", path: `${SESSIONS}/{{ID}}/reclaim-dock`, control: true, idOfIndex: 0 },
-  { name: "reclaim/wrong-method", method: "DELETE", path: `${SESSIONS}/term_999/reclaim-dock`, control: true },
-  { name: "system-terminal/wrong-method", method: "GET", path: `${SESSIONS}/term_999/open-system-terminal`, control: true },
+  { name: "reclaim/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/reclaim-dock`, control: "1" },
+  { name: "reclaim/a-session", method: "POST", path: `${SESSIONS}/{{ID}}/reclaim-dock`, control: "1", idOfIndex: 0 },
+  { name: "reclaim/wrong-method", method: "DELETE", path: `${SESSIONS}/term_999/reclaim-dock`, control: "1" },
+  { name: "system-terminal/wrong-method", method: "GET", path: `${SESSIONS}/term_999/open-system-terminal`, control: "1" },
   { name: "system-terminal/without-the-header", method: "POST", path: `${SESSIONS}/term_999/open-system-terminal` },
-  { name: "system-terminal/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/open-system-terminal`, control: true },
-  { name: "action/an-unknown-action", method: "POST", path: `${SESSIONS}/term_999/detonate`, control: true },
+  { name: "system-terminal/an-unknown-session", method: "POST", path: `${SESSIONS}/term_999/open-system-terminal`, control: "1" },
+  { name: "action/an-unknown-action", method: "POST", path: `${SESSIONS}/term_999/detonate`, control: "1" },
 
   // --- closing ---------------------------------------------------------------
   // `ok` reports whether anything closed, and the status stays 200 either way.
@@ -357,8 +384,8 @@ const WRITTEN: ReadonlyArray<readonly [string, string]> = [
   [".claude/projects/{{S}}/ssss-7777.jsonl", "2026-08-06T00:00:00.000Z"],
   [".claude/projects/{{S}}/tttt-8888.jsonl", "2026-08-07T00:00:00.000Z"],
   [".claude/projects/-elsewhere-project/eeee-9999.jsonl", "2026-08-08T00:00:00.000Z"],
-  [".codex/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-1.jsonl", "2026-08-09T00:00:00.000Z"],
-  [".codex/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-2.jsonl", "2026-08-10T00:00:00.000Z"],
+  ["codex-home/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-1.jsonl", "2026-08-09T00:00:00.000Z"],
+  ["codex-home/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-2.jsonl", "2026-08-10T00:00:00.000Z"],
 ];
 
 /** The stale worktree: a real directory that was never a git worktree. */
@@ -370,8 +397,10 @@ function transcriptFiles(partial: { home: string; workspace: string }) {
   const at = (path: string) =>
     `../${path.split("{{W}}").join(claudeDir(workspace)).split("{{S}}").join(claudeDir(stale))}`;
   const contents: Record<string, string> = {
+    // The title runs across lines and doubles its spaces, so whether the reader
+    // collapses whitespace is visible. A title of ordinary prose is not.
     ".claude/projects/{{W}}/aaaa-1111.jsonl": claudeSession("aaaa-1111", workspace, [
-      { text: "the oldest workspace session" },
+      { text: "  the oldest\n\n  workspace   session  " },
     ]),
     // The opening turn is a sidechain, which is context the CLI recorded rather
     // than anything a human typed; the title is the turn after it, assembled
@@ -403,12 +432,12 @@ function transcriptFiles(partial: { home: string; workspace: string }) {
       "/elsewhere/project",
       [{ text: "another project entirely" }],
     ),
-    ".codex/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-1.jsonl": codexRollout(
+    "codex-home/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-1.jsonl": codexRollout(
       "codex-1111",
       workspace,
       "a codex prompt",
     ),
-    ".codex/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-2.jsonl": codexRollout(
+    "codex-home/sessions/2026/07/01/rollout-2026-07-01T09-00-00-codex-2.jsonl": codexRollout(
       "codex-2222",
       workspace,
       "a subagent thread",
@@ -469,7 +498,12 @@ try {
     // Codex's home is read from the environment when nothing overrides it, so
     // an installation on the developer's own machine would otherwise leak into
     // the listing.
-    await harness.startDaemon(runtime, { CODEX_HOME: join(runtime.home, ".codex") });
+    // Deliberately **not** `<home>/.codex`, which is where the reader falls back
+    // to when nothing names one. Pointing the fixture at the fallback would make
+    // "reads CODEX_HOME" and "assumes the default" indistinguishable, and the
+    // sweep proved that is exactly what happens: a seed that dropped the
+    // environment read changed nothing.
+    await harness.startDaemon(runtime, { CODEX_HOME: join(runtime.home, "codex-home") });
     runtimes.push(runtime);
   }
   const [reference, candidate] = runtimes;

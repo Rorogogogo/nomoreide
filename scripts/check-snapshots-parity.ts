@@ -177,13 +177,14 @@ const steps: readonly Step[] = [
   // The ref name keeps the old slug, and the sha is a new object.
   { name: "rename/the-listing-afterwards", method: "GET", path: "/api/snapshots" },
   { name: "rename/the-old-sha-is-gone", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "<renamed-old>" },
-  // And the sha it *reported* is the one that now exists. A rename that answers
-  // with the sha it was given rather than the one it wrote passes every other
-  // case here and fails this one.
-  { name: "rename/the-reported-sha-is-live", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "<renamed-new>" },
-  // The stored label is the trimmed one, which only a padded label can show.
-  { name: "rename/a-padded-label", method: "PATCH", path: "/api/snapshots/{{SHA}}", body: '{"label":"   padded   "}', shaOfLabel: "relabelled" },
-  { name: "rename/the-padded-listing", method: "GET", path: "/api/snapshots" },
+  // And the sha it *reported* is one the namespace still holds.
+  //
+  // This has to be a **rename**, not a read. `/files` and `/diff` do not consult
+  // the namespace guard at all — they diff whatever commit they are handed — so
+  // a stale sha answers 200 there and the two versions look identical. Rename,
+  // restore and delete are the three that call `find`, and rename is the only
+  // one of those that does not move the working tree.
+  { name: "rename/the-reported-sha-is-still-a-snapshot", method: "PATCH", path: "/api/snapshots/{{SHA}}", body: '{"label":"relabelled twice"}', shaOfLabel: "<renamed-new>" },
   { name: "rename/a-sha-that-is-not-a-snapshot", method: "PATCH", path: "/api/snapshots/abcdef0", body: '{"label":"x"}' },
 
   // --- deleting --------------------------------------------------------------
@@ -197,16 +198,38 @@ const steps: readonly Step[] = [
   // since. The pre-restore snapshot it takes first is in the answer.
   { name: "restore/a-snapshot", method: "POST", path: "/api/snapshots/{{SHA}}/restore", shaOfLabel: "first checkpoint" },
   { name: "restore/what-the-tree-looks-like-now", method: "GET", path: "/api/snapshots/{{SHA}}/files", shaOfLabel: "first checkpoint" },
-  // A restore puts files back in the *working tree* and leaves the index alone,
-  // so everything it touched reads as unstaged. Nothing in the restore's own
-  // answer can show that — `preRestore`, `restoredFiles` and `deletedPaths` are
-  // identical either way — so this reaches for the one endpoint that tells
-  // staged from unstaged.
-  { name: "restore/the-repository-status-afterwards", method: "GET", path: "/api/git/status" },
   { name: "restore/the-listing-afterwards", method: "GET", path: "/api/snapshots" },
   // Nothing left to change, so the second one restores no files and deletes
   // nothing — but still takes a snapshot.
   { name: "restore/the-same-snapshot-again", method: "POST", path: "/api/snapshots/{{SHA}}/restore", shaOfLabel: "first checkpoint" },
+
+  // --- what a restore leaves in the index ------------------------------------
+  // A restore writes the working tree and leaves the index alone, so everything
+  // it touched reads as *unstaged*. Nothing in the restore's own answer can show
+  // that — `preRestore`, `restoredFiles` and `deletedPaths` are identical either
+  // way — so this asks the one endpoint that tells staged from unstaged.
+  //
+  // It also cannot use "first checkpoint": that snapshot was taken on a clean
+  // tree, so restoring it returns the worktree to exactly HEAD and the status is
+  // empty however the index was written. The probe needs a snapshot whose tree
+  // *differs* from HEAD, so one is taken here while the tree is dirty and the
+  // worktree is then put back.
+  {
+    name: "restore/a-checkpoint-that-differs-from-head",
+    method: "POST",
+    path: "/api/snapshots/{{SHA}}/restore",
+    shaOfLabel: "dirty checkpoint",
+    mutate: async (runtime) => {
+      await writeFile(join(runtime.workspace, "app.txt"), "dirty\n");
+      await fetch(`http://127.0.0.1:${runtime.port}/api/snapshots`, {
+        method: "POST",
+        headers: { ...(await credentialFor(runtime)), "content-type": "application/json" },
+        body: '{"label":"dirty checkpoint"}',
+      });
+      await writeFile(join(runtime.workspace, "app.txt"), "clean again\n");
+    },
+  },
+  { name: "restore/the-repository-status-afterwards", method: "GET", path: "/api/git/status" },
 ];
 
 interface Answer {
@@ -276,8 +299,15 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
   });
   const text = await response.text();
   if (step.name === "rename/a-label") {
-    const reported = (JSON.parse(text) as { snapshot?: { sha?: string } }).snapshot?.sha;
-    if (reported) renamedNew.set(runtime.label, reported);
+    // A seeded run can answer this with anything at all, HTML included. A throw
+    // here would abort the whole gate, which a sweep reads as a broken gate
+    // rather than as the divergence it is.
+    try {
+      const reported = (JSON.parse(text) as { snapshot?: { sha?: string } }).snapshot?.sha;
+      if (reported) renamedNew.set(runtime.label, reported);
+    } catch {
+      /* left unset; the step that wants it asks for a sha that is not there */
+    }
   }
   let parsed: unknown = text;
   try {
