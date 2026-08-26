@@ -161,20 +161,26 @@ fn parent_of(path: &Path) -> String {
 /// `String.prototype.localeCompare`, to the depth a file listing needs.
 ///
 /// **This is an approximation of ICU's collation, not an implementation of
-/// it.** Three levels, compared in order:
+/// it.** Two levels and a tiebreak:
 ///
-/// 1. *Primary* — punctuation before digits before letters, and within letters
-///    the accent-folded lowercase form. This is what puts `alpha` before
-///    `Beta` where a byte comparison puts `Beta` first, and what keeps
-///    `Éclair` next to `eclair` instead of after `zeta`.
-/// 2. *Secondary* — the accent itself, so `eclair` precedes `Éclair`.
-/// 3. *Tertiary* — case, lowercase first.
+/// 1. *Primary* — punctuation ranked by its collation group, everything else
+///    by its accent-folded lowercase code point. This is what puts `alpha`
+///    before `Beta` where a byte comparison puts `Beta` first, what keeps
+///    `éclair` beside `eclair` instead of after `zeta`, and what puts `_under`
+///    before `.hidden`.
+/// 2. *Case* — lowercase first, for names equal through the primary level.
+/// 3. Whatever is left is settled by code point.
 ///
-/// Names outside Latin-1 fall back to code-point order at the primary level,
-/// which is where this parts company with ICU. A directory listing is the only
-/// caller, and the alternative is an ICU dependency for a picker's sort.
+/// There is deliberately **no accent level** between those two. It would never
+/// decide anything: an accented character's code point is always above its
+/// base, so for any two names that tie on the folded primary the code-point
+/// tiebreak already orders them the way the accent would.
+///
+/// Names outside Latin-1 fold to themselves, which is where this parts company
+/// with ICU. A directory listing is the only caller, and the alternative is an
+/// ICU dependency for a picker's sort.
 pub fn locale_compare(left: &str, right: &str) -> Ordering {
-    for level in 0..3 {
+    for level in 0..2 {
         let ordering = sort_key(left, level).cmp(&sort_key(right, level));
         if ordering != Ordering::Equal {
             return ordering;
@@ -200,7 +206,6 @@ fn sort_key(value: &str, level: usize) -> Vec<u32> {
                 };
                 (class << 24) | weight
             }
-            1 => character as u32 - fold(character) as u32,
             _ => u32::from(character.is_uppercase()),
         })
         .collect()

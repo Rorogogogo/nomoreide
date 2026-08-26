@@ -169,11 +169,15 @@ const DIRECTORIES = [
   "10-ten",
   "2-two",
   "dir with space",
-  "Éclair",
-  // Same letters as `Éclair` once the accent is folded, so these two are
+  // Lowercase on purpose. Against `eclair` below it differs by *accent
+  // alone*, which is the only way the accent level decides an order — with an
+  // uppercase spelling the case level reaches the same answer and hides it.
+  "éclair",
+  // Same letters as `éclair` once the accent is folded, so these two are
   // separated by the *accent* level rather than by the primary one. `éclair`
-  // is not planted beside them: on a case-insensitive filesystem it is
-  // `Éclair`, which is also why no pair here reaches the case level.
+  // `Éclair` is not planted beside them: on a case-insensitive filesystem it
+  // is the same directory, which is also why no pair here reaches the case
+  // level.
   "eclair",
   ".hidden",
   ".git",
