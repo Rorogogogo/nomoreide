@@ -1,7 +1,7 @@
 //! Reading and changing the state of individual services.
 
 use crate::server::app::AppState;
-use crate::server::errors::{error, mutation_error};
+use crate::server::errors::{error, service_mutation_error};
 use crate::service_discovery::build_service_discovery;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -126,6 +126,6 @@ async fn service_action(state: AppState, name: String, action: ServiceAction) ->
     };
     match result {
         Ok(status) => Json(ServiceMutationEnvelope { ok: true, status }).into_response(),
-        Err(error) => mutation_error(error),
+        Err(error) => service_mutation_error(error),
     }
 }

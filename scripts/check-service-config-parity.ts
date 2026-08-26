@@ -32,6 +32,7 @@
  */
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inspect } from "node:util";
@@ -61,6 +62,12 @@ interface Step {
    * that closing the divergence fails this gate rather than passing quietly.
    */
   readonly divergent?: { readonly reference: unknown; readonly candidate: unknown };
+  /**
+   * Keys whose values are replaced before diffing, for a case that has to
+   * start a real process. A pid and a start time cannot agree across two
+   * runtimes; the *state* beside them is the whole point of the case.
+   */
+  readonly redact?: readonly string[];
 }
 
 /**
@@ -97,6 +104,10 @@ const steps: readonly Step[] = [
   // The name is decoded, so a service whose name needs encoding is reachable.
   { name: "definition/encoded-name", method: "GET", path: `/api/services/${encode("web ui")}/definition` },
   { name: "definition/blank-name", method: "GET", path: `/api/services/${encode("   ")}/definition` },
+  // A registered name with padding around it. The lookup is exact, so this is
+  // a miss — the only case that can tell an exact lookup from a trimming one,
+  // since a blank name misses either way.
+  { name: "definition/a-padded-name", method: "GET", path: `/api/services/${encode("  api  ")}/definition` },
   // A pattern route: this one really is a 405.
   { name: "definition/wrong-method", method: "POST", path: "/api/services/api/definition" },
 
@@ -129,12 +140,27 @@ const steps: readonly Step[] = [
   { name: "bundle-restart/unknown", method: "POST", path: "/api/bundles/ghost/restart" },
   { name: "bundle-restart/empty-bundle", method: "POST", path: "/api/bundles/hollow/restart" },
   { name: "bundle-restart/wrong-method", method: "GET", path: "/api/bundles/hollow/restart" },
+  // `solo` holds `worker`, which depends on `api`, whose port the port-conflict
+  // case is holding — so this reaches a port conflict through a *bundle*. The
+  // reference catches `PortConflictError` on the service action route and
+  // nowhere else, so here the same error renders as the dispatcher's plain 500
+  // with no `conflict` object at all. One error, two answers.
+  { name: "bundle-restart/a-member-port-is-held", method: "POST", path: "/api/bundles/solo/restart" },
+  // A bundle whose one member declares no port and depends on nothing, so it
+  // starts cleanly. That makes "restart is a stop and then a start" observable:
+  // reversed, a cold bundle ends stopped rather than running.
+  { name: "bundle-restart/a-cold-bundle", method: "POST", path: "/api/bundles/leaf/restart", redact: ["pid", "startedAt"] },
   // start and stop share the dispatcher with restart, so they are checked here
   // too: whatever status an unregistered bundle gets, all three must agree.
   { name: "bundle-start/unknown", method: "POST", path: "/api/bundles/ghost/start" },
   { name: "bundle-stop/unknown", method: "POST", path: "/api/bundles/ghost/stop" },
   // The same envelope, reached through a service rather than a bundle.
   { name: "service-start/unknown", method: "POST", path: "/api/services/ghost/start" },
+  // The one refusal the reference does *not* let escape as a 500: a port
+  // conflict is caught and answered 409 with a `conflict` object, and the
+  // dashboard branches on the code *inside* it. The gate holds 4001 itself, so
+  // both runtimes meet the same holder and the identity diffs equal.
+  { name: "service-start/port-in-use", method: "POST", path: "/api/services/api/start" },
   { name: "service-stop/unknown", method: "POST", path: "/api/services/ghost/stop", divergent: stopDivergence },
 
   // --- delete ----------------------------------------------------------------
@@ -186,8 +212,22 @@ function erase(value: string, runtime: Runtime): string {
   return value.split(`/private${runtime.home}`).join("<home>").split(runtime.home).join("<home>");
 }
 
-function normalize(answer: Answer, runtime: Runtime): Answer {
-  return { ...answer, body: JSON.parse(erase(JSON.stringify(answer.body), runtime)) };
+/** Replace every value stored under one of `keys`, at any depth. */
+function scrub(value: unknown, keys: readonly string[]): unknown {
+  if (Array.isArray(value)) return value.map((item) => scrub(item, keys));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) =>
+        keys.includes(key) ? [key, "<redacted>"] : [key, scrub(item, keys)],
+      ),
+    );
+  }
+  return value;
+}
+
+function normalize(answer: Answer, runtime: Runtime, redact: readonly string[] = []): Answer {
+  const body = JSON.parse(erase(JSON.stringify(answer.body), runtime));
+  return { ...answer, body: redact.length ? scrub(body, redact) : body };
 }
 
 /** The config each runtime is left holding. */
@@ -199,6 +239,9 @@ async function census(runtime: Runtime): Promise<unknown> {
 const root = await mkdtemp(join(tmpdir(), "nmi-service-config-parity-"));
 const harness = new RuntimeHarness(root);
 let failures = 0;
+/** The port `api` declares in the fixture below. */
+const HELD_PORT = 4001;
+let held: Server | undefined;
 
 try {
   const runtimes: Runtime[] = [];
@@ -242,6 +285,7 @@ try {
         ],
         bundles: [
           { name: "stack", services: ["api", "worker"] },
+          { name: "leaf", services: ["db"] },
           { name: "solo", services: ["worker"] },
         ],
         databases: [],
@@ -253,6 +297,13 @@ try {
     runtimes.push(runtime);
   }
   const [reference, candidate] = runtimes;
+
+  // Held for the whole loop, by this process, so `service-start/port-in-use`
+  // reports one holder to both sides.
+  held = createServer();
+  await new Promise<void>((resolve, reject) => {
+    held!.once("error", reject).listen(HELD_PORT, "127.0.0.1", resolve);
+  });
 
   for (const step of steps) {
     const answers = {
@@ -278,8 +329,8 @@ try {
         );
       } else {
         assert.deepStrictEqual(
-          normalize(answers.candidate, candidate),
-          normalize(answers.reference, reference),
+          normalize(answers.candidate, candidate, step.redact),
+          normalize(answers.reference, reference, step.redact),
         );
       }
       console.log(`ok   ${step.name}`);
@@ -304,6 +355,7 @@ try {
     console.log(`  ${error instanceof Error ? error.message : String(error)}`);
   }
 } finally {
+  if (held) await new Promise<void>((resolve) => held!.close(() => resolve()));
   await harness.shutdown();
   await rm(root, { recursive: true, force: true });
 }

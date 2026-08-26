@@ -140,8 +140,9 @@ pub struct ServiceRuntimeStatus {
     pub container_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pgid: Option<u32>,
+    // No `pgid`. The daemon knows the process group — it is what a stop
+    // signals — but the reference's status has no such field, and nothing
+    // reads one back off the wire.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,14 +172,17 @@ pub struct ServiceMutationEnvelope {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+/// The three fields the reference puts on the wire, and no more.
+///
+/// The core's own `PortHolder` also carries a uid and a start token, which are
+/// what an owner check compares before anything is signalled. Neither belongs
+/// in a response: they are inputs to a decision the daemon makes, and the
+/// reference has no equivalent for either.
 pub struct PortHolderIdentity {
     pub pid: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pgid: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub uid: Option<u32>,
     pub command: String,
-    pub start_token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

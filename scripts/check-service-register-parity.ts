@@ -96,6 +96,12 @@ const steps: readonly Step[] = [
   { name: "register/args-holding-a-number", method: "POST", path: "/api/services", form: q({ name: "badargs", command: "sleep 100", cwd: "CWD", args: "[1]" }) },
   { name: "register/an-unreadable-port", method: "POST", path: "/api/services", form: q({ name: "badport", command: "sleep 100", cwd: "CWD", port: "not-a-number" }) },
   { name: "register/a-blank-port", method: "POST", path: "/api/services", form: q({ name: "blankport", command: "sleep 100", cwd: "CWD", port: "  " }) },
+  // Two schema failures at once, which is the only way the *order* of an arm's
+  // checks is observable. It has to be the ssh arm: the route reads `command`
+  // and `cwd` itself before the schema runs, so on a local service every other
+  // failure is a 500 that never reaches the union at all. Here `host` and `cwd`
+  // satisfy the route, and the port and the null byte both reach the arm.
+  { name: "register/an-unreadable-port-and-a-null-byte", method: "POST", path: "/api/services", form: q({ name: "twice", kind: "ssh", host: "h", cwd: "/srv", command: `sleep${NUL}100`, port: "not-a-number" }) },
   { name: "register/wrong-method", method: "PUT", path: "/api/services" },
 
   // --- the tester -------------------------------------------------------------

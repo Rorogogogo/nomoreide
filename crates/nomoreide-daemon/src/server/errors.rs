@@ -72,7 +72,14 @@ pub(crate) fn error(status: StatusCode, message: &str) -> Response {
 /// reference's dashboard: it reads the message, not the status, and a client
 /// that started branching on the richer statuses would be reading a contract
 /// only one of the two runtimes offers.
-pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
+/// A port conflict answered the way **one** route answers it.
+///
+/// `/api/services/:name/(start|stop|restart)` is the only place the reference
+/// catches `PortConflictError`, and it turns it into a 409 carrying the holder.
+/// Every other route that can raise one — the bundle actions above all — lets
+/// it escape to the dispatcher, which renders it as a plain 500 with the
+/// message and nothing else. Two routes, two answers, from one error.
+pub(crate) fn service_mutation_error(failure: RuntimeMutationError) -> Response {
     if let RuntimeMutationError::PortConflict { message, conflict } = failure {
         return (
             StatusCode::CONFLICT,
@@ -84,6 +91,11 @@ pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
         )
             .into_response();
     }
+    mutation_error(failure)
+}
+
+/// Everything the dispatcher renders: a 500 carrying the message alone.
+pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
     let message = match failure {
         RuntimeMutationError::ServiceNotFound(name) => {
             format!("Service \"{name}\" is not registered.")
@@ -108,7 +120,8 @@ pub(crate) fn mutation_error(failure: RuntimeMutationError) -> Response {
         }
         RuntimeMutationError::DependencyCycle(message) => message,
         RuntimeMutationError::CleanupFailed => "Failed to confirm service cleanup.".to_string(),
-        RuntimeMutationError::PortConflict { .. } => unreachable!("handled above"),
+        // Uncaught here on purpose: only the service-action route catches it.
+        RuntimeMutationError::PortConflict { message, .. } => message,
     };
     error(StatusCode::INTERNAL_SERVER_ERROR, &message)
 }

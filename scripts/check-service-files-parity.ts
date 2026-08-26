@@ -119,6 +119,17 @@ const steps: readonly Step[] = [
   { name: "put/env-into-a-file-that-is-not-there", method: "PUT", path: file(".env.local"), json: { entries: [{ key: "ONLY", value: "one" }] } },
   { name: "put/env-with-no-entries", method: "PUT", path: file(".env"), json: {} },
   { name: "put/env-entries-that-are-not-a-list", method: "PUT", path: file(".env"), json: { entries: "TOKEN=x" } },
+  // The other four ways an entry list is refused. Each has its own wording and
+  // all four escape as a 500, so a gate that only pinned the first would let
+  // three of them say anything at all.
+  { name: "put/env-an-entry-that-is-not-an-object", method: "PUT", path: file(".env"), json: { entries: ["TOKEN=x"] } },
+  { name: "put/env-a-key-that-is-not-a-name", method: "PUT", path: file(".env"), json: { entries: [{ key: "not a name", value: "x" }] } },
+  { name: "put/env-a-key-that-is-missing", method: "PUT", path: file(".env"), json: { entries: [{ value: "x" }] } },
+  { name: "put/env-a-value-that-is-not-a-string", method: "PUT", path: file(".env"), json: { entries: [{ key: "TOKEN", value: 1 }] } },
+  { name: "put/env-a-duplicate-key", method: "PUT", path: file(".env"), json: { entries: [{ key: "TOKEN", value: "a" }, { key: "TOKEN", value: "b" }] } },
+  // A dot is legal in a `.env` key and illegal in a service definition's env.
+  // Two rules on purpose; this pins the permissive one.
+  { name: "put/env-a-dotted-key", method: "PUT", path: file(".env"), json: { entries: [{ key: "A.B", value: "dotted" }] } },
   { name: "put/json-valid", method: "PUT", path: file("appsettings.json"), json: { content: '{\n  "a": 1\n}\n' } },
   { name: "put/json-invalid", method: "PUT", path: file("appsettings.json"), json: { content: "{ not json" } },
   { name: "put/json-content-is-not-a-string", method: "PUT", path: file("appsettings.json"), json: { content: 42 } },

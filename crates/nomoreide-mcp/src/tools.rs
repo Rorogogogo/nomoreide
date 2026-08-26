@@ -1492,7 +1492,6 @@ mod tests {
             host: None,
             container_id: None,
             pid: Some(4321),
-            pgid: Some(4321),
             exit_code: None,
             url: Some("http://localhost:3000".into()),
             started_at: Some("2026-08-21T10:00:00.000Z".into()),
@@ -1520,6 +1519,7 @@ mod tests {
                 "}"
             )
         );
+        // The daemon knows the process group; the wire has never carried it.
         assert!(!rendered.contains("pgid"));
         // Still running, so there is no ending to report.
         assert!(!rendered.contains("exitCode"));
@@ -1577,6 +1577,7 @@ mod tests {
         let parsed: Value = serde_json::from_str(&rendered).unwrap();
         assert_eq!(parsed["services"]["api"]["state"], "running");
         assert_eq!(parsed["services"]["web"]["pid"], 4321);
+        // The daemon knows the process group; the wire has never carried it.
         assert!(!rendered.contains("pgid"));
         // Sorted, so two consecutive reads of the same runtime compare equal.
         assert!(rendered.find("\"api\"").unwrap() < rendered.find("\"web\"").unwrap());
@@ -1588,7 +1589,6 @@ mod tests {
             kind: Some("docker-compose".into()),
             container_id: Some("container-abc".into()),
             pid: None,
-            pgid: None,
             url: None,
             ..status(ServiceRuntimeState::Running)
         };
@@ -1629,7 +1629,6 @@ mod tests {
         let never_ran = ServiceRuntimeStatus {
             kind: None,
             pid: None,
-            pgid: None,
             url: None,
             started_at: None,
             ..status(ServiceRuntimeState::Stopped)

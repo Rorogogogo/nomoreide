@@ -55,6 +55,8 @@ interface Step {
   readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
   readonly json?: unknown;
+  /** An exact body, for the shapes `JSON.stringify` cannot produce. */
+  readonly raw?: string;
 }
 
 // "REPO" and "LINK" are replaced with each runtime's own paths per request.
@@ -87,6 +89,10 @@ const steps: readonly Step[] = [
   { name: "global/a-key-nobody-knows", method: "PATCH", path: "/api/settings/global", json: { terminal: { unknown: 1 } } },
   { name: "global/a-top-level-key-nobody-knows", method: "PATCH", path: "/api/settings/global", json: { unknown: 1 } },
   { name: "global/a-body-that-is-not-json", method: "PATCH", path: "/api/settings/global", json: undefined },
+  // Not the same as `{}`: this one never reaches `JSON.parse`, and "change
+  // nothing" is a request a form can legitimately make.
+  { name: "global/an-empty-body", method: "PATCH", path: "/api/settings/global", raw: "" },
+  { name: "global/a-body-that-is-only-whitespace", method: "PATCH", path: "/api/settings/global", raw: "   " },
   { name: "global/a-body-that-is-an-array", method: "PATCH", path: "/api/settings/global", json: [1, 2] },
   { name: "global/wrong-method", method: "POST", path: "/api/settings/global" },
 
@@ -98,6 +104,10 @@ const steps: readonly Step[] = [
   { name: "project/a-result-limit-below-the-floor", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { database: { resultLimit: 9 } } },
   { name: "project/a-result-limit-above-the-ceiling", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { database: { resultLimit: 5001 } } },
   { name: "project/a-key-nobody-knows", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { logs: { unknown: true } } },
+  { name: "project/a-top-level-key-nobody-knows", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { unknown: true } },
+  { name: "project/a-group-that-is-not-an-object", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { logs: "yes" } },
+  { name: "project/a-boolean-that-is-a-string", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { logs: { wrapLines: "no" } } },
+  { name: "project/a-result-limit-that-is-fractional", method: "PATCH", path: "/api/settings/project?projectPath=REPO", json: { database: { resultLimit: 12.5 } } },
   { name: "project/an-unregistered-project", method: "PATCH", path: "/api/settings/project?projectPath=%2Ftmp", json: { logs: { wrapLines: false } } },
   // A write insists on the directory itself, not a link that resolves to it.
   { name: "project/through-a-symlink", method: "PATCH", path: "/api/settings/project?projectPath=LINK", json: { logs: { wrapLines: true } } },
@@ -127,7 +137,10 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
     ? { authorization: `Bearer ${credential}` }
     : {};
   let body: string | undefined;
-  if (step.json !== undefined) {
+  if (step.raw !== undefined) {
+    headers["content-type"] = "application/json";
+    body = step.raw;
+  } else if (step.json !== undefined) {
     headers["content-type"] = "application/json";
     body = JSON.stringify(step.json);
   } else if (step.method === "PATCH") {

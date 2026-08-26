@@ -172,13 +172,13 @@ impl std::fmt::Display for PortConflictError {
         if let Some(holder) = &self.holder {
             write!(
                 formatter,
-                "Port {} is already in use for {} (held by pid {} — {})",
+                "Port {} is already in use for {} (held by pid {} — {}).",
                 self.port, self.service, holder.pid, holder.command
             )
         } else {
             write!(
                 formatter,
-                "Port {} is already in use for {}",
+                "Port {} is already in use for {}.",
                 self.port, self.service
             )
         }

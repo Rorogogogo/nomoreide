@@ -297,7 +297,6 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         host: status.host,
         container_id: status.container_id,
         pid: status.pid,
-        pgid: status.pgid,
         exit_code: status.exit_code,
         url: status.url,
         started_at: status.started_at.map(iso_millis),
@@ -356,7 +355,6 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
         host: None,
         container_id: None,
         pid: None,
-        pgid: None,
         exit_code: None,
         url: None,
         started_at: None,
@@ -369,9 +367,7 @@ fn holder_identity(holder: &PortHolder) -> PortHolderIdentity {
     PortHolderIdentity {
         pid: holder.pid,
         pgid: holder.pgid,
-        uid: holder.uid,
         command: holder.command.clone(),
-        start_token: holder.start_token.clone(),
     }
 }
 
