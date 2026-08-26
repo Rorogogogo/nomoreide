@@ -22,7 +22,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 
-use nomoreide_core::agent_env::{self, Agent};
+use nomoreide_core::agent_env::{self, Action, Agent, Category, PendingChange, Scope};
 use nomoreide_core::agent_settings::{
     read_agent_settings, set_agent_model, write_agent_settings, WrittenSettings,
 };
@@ -36,6 +36,8 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/agent-env/agents", get(agents))
         .route("/api/agent-env/live", get(live))
         .route("/api/agent-env/doctor", get(doctor))
+        .route("/api/agent-env/changes/preview", post(preview_changes))
+        .route("/api/agent-env/changes/apply", post(apply_changes))
         .route("/api/agent-env/snapshot", post(snapshot))
         .route(
             "/api/agent-env/settings/:agent",
@@ -92,6 +94,96 @@ async fn doctor() -> Response {
         "hasIssues": report.has_issues,
     }))
     .into_response()
+}
+
+/// The refusal both change routes give for anything the schema will not take.
+///
+/// One sentence for every shape — a missing field, a wrong type, an unknown
+/// agent, an empty batch, a batch of fifty-one. The dashboard stages these
+/// itself and cannot send a malformed one by accident, so the reference spends
+/// no words telling it which of them it got wrong.
+const BAD_CHANGES: &str = "changes must be a non-empty array of staged changes.";
+
+/// At most fifty at a time, and at least one.
+const MAX_CHANGES: usize = 50;
+
+/// Read the batch, holding to the schema the reference validates with.
+///
+/// Unknown keys are dropped rather than refused, and an absent `sourceScope`
+/// means user scope — but a *null* one is a refusal, because `null` is a value
+/// of the wrong type where absent is no value at all.
+fn staged_changes(body: &Bytes) -> Option<Vec<PendingChange>> {
+    let payload = read_json_object(body);
+    let items = payload.get("changes")?.as_array()?;
+    if items.is_empty() || items.len() > MAX_CHANGES {
+        return None;
+    }
+    items.iter().map(staged_change).collect()
+}
+
+fn staged_change(value: &Value) -> Option<PendingChange> {
+    let object = value.as_object()?;
+    let name = object.get("name")?.as_str()?;
+    if name.is_empty() {
+        return None;
+    }
+    let optional = |key: &str| -> Option<Option<&Value>> {
+        match object.get(key) {
+            // Present and null is the one shape an optional field refuses.
+            Some(Value::Null) => None,
+            other => Some(other),
+        }
+    };
+    let target_agent = match optional("targetAgent")? {
+        Some(value) => Some(Agent::parse(value.as_str()?)?),
+        None => None,
+    };
+    let target_scope = match optional("targetScope")? {
+        Some(value) => Some(Scope::parse(value.as_str()?)?),
+        None => None,
+    };
+    let source_scope = match optional("sourceScope")? {
+        Some(value) => Scope::parse(value.as_str()?)?,
+        None => Scope::User,
+    };
+    Some(PendingChange {
+        category: Category::parse(object.get("category")?.as_str()?)?,
+        action: Action::parse(object.get("action")?.as_str()?)?,
+        name: name.to_string(),
+        source_agent: Agent::parse(object.get("sourceAgent")?.as_str()?)?,
+        source_scope,
+        target_agent,
+        target_scope,
+    })
+}
+
+async fn preview_changes(body: Bytes) -> Response {
+    let Some(changes) = staged_changes(&body) else {
+        return error(StatusCode::BAD_REQUEST, BAD_CHANGES);
+    };
+    let preview = agent_env::preview_changes(&changes, &cwd());
+    Json(json!({
+        "ok": true,
+        "valid": preview.valid,
+        "items": preview.items,
+        "agents": preview.agents,
+    }))
+    .into_response()
+}
+
+/// Always 200 when the batch parses: a change that could not be applied is
+/// data the drawer renders per row, not a transport failure.
+async fn apply_changes(body: Bytes) -> Response {
+    let Some(changes) = staged_changes(&body) else {
+        return error(StatusCode::BAD_REQUEST, BAD_CHANGES);
+    };
+    Json(agent_env::apply_changes(&changes, &cwd())).into_response()
+}
+
+/// The directory project scope resolves against: the daemon's own, as the
+/// reference uses the process's.
+fn cwd() -> std::path::PathBuf {
+    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
 }
 
 async fn snapshot(State(_state): State<AppState>, body: Bytes) -> Response {

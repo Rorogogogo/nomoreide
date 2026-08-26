@@ -13,6 +13,7 @@
 
 mod availability;
 mod backup;
+mod changes;
 mod documents;
 mod ordered;
 mod plugins;
@@ -23,6 +24,10 @@ mod store;
 mod writers;
 
 pub(crate) use backup::copy_tree;
+pub use changes::{
+    apply as apply_changes, preview as preview_changes, Action, Category, ChangePreview,
+    PendingChange,
+};
 pub use ordered::{Json, OrderedMap};
 pub use spec::{Scope, ServerSpec};
 pub use writers::SnapshotOutcome;

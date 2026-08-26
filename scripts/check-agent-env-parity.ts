@@ -674,6 +674,19 @@ const steps: Step[] = [
     body: changes(change({ category: "skill", action: "copy", name: "summarise", sourceAgent: "claude", targetAgent: "codex" })),
   },
   {
+    name: "apply/move-a-skill",
+    method: "POST",
+    path: `${ENV}/changes/apply`,
+    body: changes(change({ category: "skill", action: "move", name: "zulu", sourceAgent: "claude", targetAgent: "codex" })),
+  },
+  { name: "apply/the-live-picture-after-the-skill-move", method: "GET", path: `${ENV}/live` },
+  {
+    name: "apply/move-a-skill-that-has-already-moved",
+    method: "POST",
+    path: `${ENV}/changes/apply`,
+    body: changes(change({ category: "skill", action: "move", name: "zulu", sourceAgent: "claude", targetAgent: "codex" })),
+  },
+  {
     name: "apply/remove-a-skill",
     method: "POST",
     path: `${ENV}/changes/apply`,
