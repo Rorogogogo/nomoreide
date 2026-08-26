@@ -4,6 +4,7 @@
 
 mod agent_chat;
 mod bundles;
+mod change_sets;
 mod context;
 mod database;
 mod database_catalog;
@@ -130,6 +131,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(workflows::routes())
         .merge(workflow_triggers::routes())
         .merge(bundles::routes())
+        .merge(change_sets::routes())
         .merge(context::routes())
         .merge(timeline::routes())
         .merge(terminal::routes())

@@ -2,6 +2,7 @@ pub mod agent_context;
 pub mod agent_env;
 pub mod agent_profiles;
 pub mod agent_runtime;
+pub mod agent_sessions;
 pub mod agent_transcripts;
 pub mod app_settings;
 pub mod approval_broker;
