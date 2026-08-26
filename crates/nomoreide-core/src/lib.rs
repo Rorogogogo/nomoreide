@@ -26,6 +26,7 @@ pub mod github_auth;
 pub mod github_context;
 pub mod github_manager;
 pub mod github_oauth;
+pub mod log_sources;
 pub mod log_store;
 pub mod one_time_skills;
 pub mod port_utils;

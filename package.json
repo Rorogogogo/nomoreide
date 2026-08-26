@@ -70,6 +70,7 @@
     "service-register-parity": "node --import tsx scripts/check-service-register-parity.ts",
     "settings-parity": "node --import tsx scripts/check-settings-parity.ts",
     "workflows-parity": "node --import tsx scripts/check-workflows-parity.ts",
+    "log-sources-parity": "node --import tsx scripts/check-log-sources-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",

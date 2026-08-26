@@ -25,6 +25,18 @@ pub enum ZodIssue {
         message: String,
         path: Vec<Value>,
     },
+    /// A `superRefine` issue, which carries nothing but its own message.
+    ///
+    /// `makeIssue` spreads the caller's `{ code, message }` and then sets
+    /// `path`, so the message lands **before** the path even though every
+    /// built-in issue puts it last. Nothing about that is meaningful — it is
+    /// the order the object happened to be built in — but it is what the
+    /// caller reads.
+    Custom {
+        code: &'static str,
+        message: String,
+        path: Vec<Value>,
+    },
     /// The same code with `path` before `message`, which is the shape zod
     /// builds when the base type itself is wrong.
     Type {
@@ -178,6 +190,15 @@ impl ZodIssue {
     /// A string or array that was present but shorter than its minimum. Zod
     /// reports the `type` it was measuring, which is why these are two
     /// constructors and not one.
+    /// A refinement's own message, at the root of the object it validated.
+    pub fn custom(message: &str) -> Self {
+        ZodIssue::Custom {
+            code: "custom",
+            message: message.to_string(),
+            path: Vec::new(),
+        }
+    }
+
     pub fn too_small_string(minimum: i64, path: Vec<Value>) -> Self {
         ZodIssue::TooSmall {
             code: "too_small",

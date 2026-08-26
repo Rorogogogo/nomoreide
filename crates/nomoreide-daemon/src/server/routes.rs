@@ -10,6 +10,7 @@ mod database_write;
 mod errors;
 mod git;
 mod github;
+mod log_sources;
 mod meta;
 mod service_config;
 mod service_files;
@@ -88,6 +89,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(service_config::routes())
         .merge(service_files::routes())
         .merge(service_register::routes())
+        .merge(log_sources::routes())
         .merge(settings::routes())
         .merge(workflows::routes())
         .merge(bundles::routes())
