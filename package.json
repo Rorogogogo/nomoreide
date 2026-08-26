@@ -77,6 +77,7 @@
     "workflow-triggers-parity": "node --import tsx scripts/check-workflow-triggers-parity.ts",
     "terminal-parity": "node --import tsx scripts/check-terminal-parity.ts",
     "change-sets-parity": "node --import tsx scripts/check-change-sets-parity.ts",
+    "agent-env-parity": "node --import tsx scripts/check-agent-env-parity.ts",
     "context-parity": "node --import tsx scripts/check-context-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
