@@ -170,7 +170,11 @@ const DIRECTORIES = [
   "2-two",
   "dir with space",
   "Éclair",
-  "éclair",
+  // Same letters as `Éclair` once the accent is folded, so these two are
+  // separated by the *accent* level rather than by the primary one. `éclair`
+  // is not planted beside them: on a case-insensitive filesystem it is
+  // `Éclair`, which is also why no pair here reaches the case level.
+  "eclair",
   ".hidden",
   ".git",
   "node_modules",

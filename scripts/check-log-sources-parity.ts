@@ -140,7 +140,8 @@ const steps: readonly Step[] = [
   { name: "logs/grep-is-a-regex", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("^th.rd")}` },
   { name: "logs/grep-is-case-insensitive", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("SECOND")}` },
   // Not a valid regex, so it falls back to a literal match.
-  { name: "logs/grep-that-is-not-a-regex", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("[unclosed")}` },
+  { name: "logs/grep-that-is-not-a-regex", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("[bracket")}` },
+  { name: "logs/grep-that-is-not-a-regex-and-matches-nothing", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("[unclosed")}` },
   { name: "logs/grep-that-matches-nothing", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("nowhere")}` },
   { name: "logs/level-error", method: "GET", path: "/api/log-sources/tail/logs?level=error" },
   { name: "logs/level-warn", method: "GET", path: "/api/log-sources/tail/logs?level=warn" },
@@ -251,7 +252,18 @@ try {
     // warn patterns are supposed to pick out of a single stdout stream.
     await writeFile(
       join(runtime.workspace, "uat.log"),
-      ["first line", "the second line", "third line", "", "a WARNING here", "it failed hard", ""].join("\n"),
+      [
+        "first line",
+        "the second line",
+        "third line",
+        "",
+        "a WARNING here",
+        "it failed hard",
+        // Not a valid regex, so `grep=[bracket` reaches the literal fallback —
+        // and has something to match once it gets there.
+        "a [bracket line",
+        "",
+      ].join("\n"),
     );
     await writeFile(join(runtime.workspace, "other.log"), "replaced\n");
     await writeFile(join(runtime.workspace, "lines.log"), "one\ntwo\n");

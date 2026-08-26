@@ -189,10 +189,12 @@ fn sort_key(value: &str, level: usize) -> Vec<u32> {
         .map(|character| match level {
             0 => {
                 let base = fold(character);
-                let (class, weight) = if base.is_ascii_digit() {
-                    (1, base as u32)
-                } else if base.is_alphabetic() {
-                    (2, base.to_lowercase().next().unwrap_or(base) as u32)
+                // Two classes, not three: punctuation is ranked by its
+                // collation group, and everything else by its folded lowercase
+                // code point. A separate class for digits would be redundant —
+                // every digit's code point already sorts below every letter's.
+                let (class, weight) = if base.is_alphanumeric() {
+                    (1, base.to_lowercase().next().unwrap_or(base) as u32)
                 } else {
                     (0, punctuation_rank(base))
                 };
