@@ -68,8 +68,28 @@ pub(crate) fn routes() -> Router<AppState> {
 /// a delete of a service called `graph` and everything else is that route's own
 /// 405. axum matched the static segment, so the name has to be re-supplied.
 async fn shadowed_graph(state: State<AppState>, method: Method) -> Response {
+    shadow(state, method, "graph").await
+}
+
+/// The same shadowing for any other exact route that sits at
+/// `/api/services/<one segment>` — `/api/services/test`, today.
+pub(super) async fn shadowed_service_path(
+    state: State<AppState>,
+    method: Method,
+    uri: axum::http::Uri,
+) -> Response {
+    let name = uri
+        .path()
+        .rsplit('/')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    shadow(state, method, &name).await
+}
+
+async fn shadow(state: State<AppState>, method: Method, name: &str) -> Response {
     if method == Method::DELETE {
-        return remove_service(state, Path("graph".to_string())).await;
+        return remove_service(state, Path(name.to_string())).await;
     }
     method_not_allowed().await
 }

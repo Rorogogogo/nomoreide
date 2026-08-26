@@ -1893,7 +1893,7 @@ impl Termination {
 /// from numbers written out here. A lookup rather than a `match` because
 /// several names share a number on some targets.
 #[cfg(unix)]
-fn signal_name(signal: i32) -> Option<&'static str> {
+pub(crate) fn signal_name(signal: i32) -> Option<&'static str> {
     const NAMES: &[(libc::c_int, &str)] = &[
         (libc::SIGHUP, "SIGHUP"),
         (libc::SIGINT, "SIGINT"),
@@ -1932,7 +1932,7 @@ fn signal_name(signal: i32) -> Option<&'static str> {
 }
 
 #[cfg(not(unix))]
-fn signal_name(_signal: i32) -> Option<&'static str> {
+pub(crate) fn signal_name(_signal: i32) -> Option<&'static str> {
     None
 }
 

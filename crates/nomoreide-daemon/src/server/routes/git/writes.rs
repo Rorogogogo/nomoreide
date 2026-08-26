@@ -28,6 +28,7 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/api/git/commit", post(commit))
         .route("/api/git/stage", post(stage))
         .route("/api/git/unstage", post(unstage))
+        .route("/api/git/branches", post(create_branch))
         .route("/api/git/branches/switch", post(switch_branch))
         .route("/api/git/branches/delete", post(delete_branch))
 }
@@ -195,6 +196,28 @@ async fn switch_branch(State(state): State<AppState>, body: Bytes) -> Response {
     };
     let cwd = state.workspace_cwd().await;
     match GitManager::switch_branch(&cwd, &name).await {
+        Ok(output) => Json(OutputEnvelope { ok: true, output }).into_response(),
+        Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+/// Create a branch and switch to it.
+///
+/// Like `switch`, this takes no `repo`: it always acts on the selected
+/// repository, and it catches nothing, so a name git refuses — or a start point
+/// that does not resolve — escapes to the dispatcher as a 500. A blank
+/// `startPoint` is not a start point; it means "from here".
+async fn create_branch(State(state): State<AppState>, body: Bytes) -> Response {
+    let form = parse_form(&body);
+    let Ok(name) = required(&form, "name") else {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "name is required");
+    };
+    let start_point = form
+        .get("startPoint")
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty());
+    let cwd = state.workspace_cwd().await;
+    match GitManager::create_branch(&cwd, &name, start_point).await {
         Ok(output) => Json(OutputEnvelope { ok: true, output }).into_response(),
         Err(reason) => error(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
     }

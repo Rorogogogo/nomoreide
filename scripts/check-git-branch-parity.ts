@@ -84,6 +84,24 @@ const steps: readonly Step[] = [
   { name: "switch/wrong-method", method: "GET", path: "/api/git/branches/switch" },
 
   // === delete ==============================================================
+  // --- create ----------------------------------------------------------------
+  // Like switch, create takes no repo and catches nothing, so every refusal is
+  // a 500. A blank startPoint means "from here" rather than an empty ref.
+  { name: "create/a-new-branch", method: "POST", path: "/api/git/branches", form: "name=fresh" },
+  { name: "create/the-same-branch-again", method: "POST", path: "/api/git/branches", form: "name=fresh" },
+  { name: "create/from-a-start-point", method: "POST", path: "/api/git/branches", form: "name=from-main&startPoint=main" },
+  { name: "create/from-a-blank-start-point", method: "POST", path: "/api/git/branches", form: "name=blank-start&startPoint=%20%20" },
+  { name: "create/from-a-start-point-that-does-not-exist", method: "POST", path: "/api/git/branches", form: "name=nowhere&startPoint=ghost" },
+  { name: "create/a-slashed-name", method: "POST", path: "/api/git/branches", form: `name=${encode("feature/new")}` },
+  { name: "create/missing-name", method: "POST", path: "/api/git/branches", form: "" },
+  { name: "create/blank-name", method: "POST", path: "/api/git/branches", form: "name=%20%20" },
+  { name: "create/a-name-that-looks-like-a-flag", method: "POST", path: "/api/git/branches", form: `name=${encode("--all")}` },
+  { name: "create/a-name-with-a-semicolon", method: "POST", path: "/api/git/branches", form: `name=${encode("x; touch pwned")}` },
+  { name: "create/a-start-point-that-looks-like-a-flag", method: "POST", path: "/api/git/branches", form: `name=flagged&startPoint=${encode("--all")}` },
+  // The repo field is ignored here, as it is on switch.
+  { name: "create/the-repo-field-is-ignored", method: "POST", path: "/api/git/branches", form: "name=elsewhere&repo=other" },
+  { name: "create/wrong-method", method: "PUT", path: "/api/git/branches" },
+
   { name: "delete/a-merged-branch", method: "POST", path: "/api/git/branches/delete", form: "name=merged" },
   { name: "delete/the-same-branch-again", method: "POST", path: "/api/git/branches/delete", form: "name=merged" },
   // `branch -d` refuses to drop work that is not reachable from anywhere else.
