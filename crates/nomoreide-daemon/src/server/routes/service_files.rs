@@ -266,7 +266,14 @@ async fn write_file(file: &ConfigFileInfo, body: &Bytes) -> Response {
 /// key, so two entries naming the same key have no defined result — the file
 /// would keep whichever the loop reached last.
 fn parse_env_entries(payload: &Value) -> Result<Vec<EnvEntry>, String> {
-    if !payload.is_object() {
+    // `typeof [] === "object"`, so an array passes this check in the reference
+    // and is refused by the *next* one, for not having an `entries` array —
+    // a different message. Mirrored rather than tightened.
+    //
+    // The branch is in fact unreachable: `read_json_object` already turns
+    // every body that is neither an object nor an array into `{}`. It is kept
+    // so that loosening that reader cannot silently change this route.
+    if !(payload.is_object() || payload.is_array()) {
         return Err("entries array is required.".to_string());
     }
     let Some(list) = payload.get("entries").and_then(Value::as_array) else {

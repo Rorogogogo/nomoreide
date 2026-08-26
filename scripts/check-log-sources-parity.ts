@@ -119,27 +119,34 @@ const steps: readonly Step[] = [
   { name: "register/wrong-method", method: "PUT", path: "/api/log-sources" },
 
   // --- reading ---------------------------------------------------------------
-  { name: "logs/a-file-source", method: "GET", path: "/api/log-sources/uat/logs" },
+  { name: "logs/a-file-source", method: "GET", path: "/api/log-sources/tail/logs" },
+  // `uat` was repointed by `register/the-same-name-again`, so this reads the
+  // replacement rather than the file it was registered with.
+  { name: "logs/a-repointed-source", method: "GET", path: "/api/log-sources/uat/logs" },
   { name: "logs/an-unknown-source", method: "GET", path: "/api/log-sources/ghost/logs" },
   { name: "logs/a-file-that-is-not-there", method: "GET", path: "/api/log-sources/missing/logs" },
   // `lines` is clamped rather than reported: none of these four is a refusal.
-  { name: "logs/two-lines", method: "GET", path: "/api/log-sources/uat/logs?lines=2" },
-  { name: "logs/zero-lines", method: "GET", path: "/api/log-sources/uat/logs?lines=0" },
-  { name: "logs/negative-lines", method: "GET", path: "/api/log-sources/uat/logs?lines=-5" },
-  { name: "logs/lines-that-are-not-a-number", method: "GET", path: "/api/log-sources/uat/logs?lines=plenty" },
-  { name: "logs/fractional-lines", method: "GET", path: "/api/log-sources/uat/logs?lines=2.9" },
-  { name: "logs/lines-above-the-ceiling", method: "GET", path: "/api/log-sources/uat/logs?lines=99999" },
-  { name: "logs/grep", method: "GET", path: `/api/log-sources/uat/logs?grep=${encode("second")}` },
-  { name: "logs/grep-is-a-regex", method: "GET", path: `/api/log-sources/uat/logs?grep=${encode("^th.rd")}` },
-  { name: "logs/grep-is-case-insensitive", method: "GET", path: `/api/log-sources/uat/logs?grep=${encode("SECOND")}` },
+  { name: "logs/two-lines", method: "GET", path: "/api/log-sources/tail/logs?lines=2" },
+  { name: "logs/zero-lines", method: "GET", path: "/api/log-sources/tail/logs?lines=0" },
+  { name: "logs/negative-lines", method: "GET", path: "/api/log-sources/tail/logs?lines=-5" },
+  { name: "logs/lines-that-are-not-a-number", method: "GET", path: "/api/log-sources/tail/logs?lines=plenty" },
+  { name: "logs/fractional-lines", method: "GET", path: "/api/log-sources/tail/logs?lines=2.9" },
+  // Both of these need a file longer than the ceiling, or the clamp and the
+  // default are the same answer as "everything" and neither is observable.
+  { name: "logs/the-default-is-five-hundred", method: "GET", path: "/api/log-sources/bulk/logs" },
+  { name: "logs/lines-above-the-ceiling", method: "GET", path: "/api/log-sources/bulk/logs?lines=99999" },
+  { name: "logs/lines-below-the-ceiling", method: "GET", path: "/api/log-sources/bulk/logs?lines=4999" },
+  { name: "logs/grep", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("second")}` },
+  { name: "logs/grep-is-a-regex", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("^th.rd")}` },
+  { name: "logs/grep-is-case-insensitive", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("SECOND")}` },
   // Not a valid regex, so it falls back to a literal match.
-  { name: "logs/grep-that-is-not-a-regex", method: "GET", path: `/api/log-sources/uat/logs?grep=${encode("[unclosed")}` },
-  { name: "logs/grep-that-matches-nothing", method: "GET", path: `/api/log-sources/uat/logs?grep=${encode("nowhere")}` },
-  { name: "logs/level-error", method: "GET", path: "/api/log-sources/uat/logs?level=error" },
-  { name: "logs/level-warn", method: "GET", path: "/api/log-sources/uat/logs?level=warn" },
+  { name: "logs/grep-that-is-not-a-regex", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("[unclosed")}` },
+  { name: "logs/grep-that-matches-nothing", method: "GET", path: `/api/log-sources/tail/logs?grep=${encode("nowhere")}` },
+  { name: "logs/level-error", method: "GET", path: "/api/log-sources/tail/logs?level=error" },
+  { name: "logs/level-warn", method: "GET", path: "/api/log-sources/tail/logs?level=warn" },
   // Only `warn` and `error` are read; anything else is no filter at all.
-  { name: "logs/level-nonsense", method: "GET", path: "/api/log-sources/uat/logs?level=trace" },
-  { name: "logs/grep-and-level-together", method: "GET", path: `/api/log-sources/uat/logs?level=error&grep=${encode("fail")}` },
+  { name: "logs/level-nonsense", method: "GET", path: "/api/log-sources/tail/logs?level=trace" },
+  { name: "logs/grep-and-level-together", method: "GET", path: `/api/log-sources/tail/logs?level=error&grep=${encode("fail")}` },
   { name: "logs/a-command-source", method: "GET", path: "/api/log-sources/cmd/logs" },
   { name: "logs/a-command-that-fails", method: "GET", path: "/api/log-sources/broken/logs" },
   { name: "logs/a-command-that-writes-to-stderr", method: "GET", path: "/api/log-sources/noisy/logs" },
@@ -150,6 +157,9 @@ const steps: readonly Step[] = [
   { name: "delete/the-same-one-again", method: "DELETE", path: "/api/log-sources/prod" },
   { name: "delete/one-nobody-registered", method: "DELETE", path: "/api/log-sources/ghost" },
   { name: "delete/an-encoded-name", method: "DELETE", path: `/api/log-sources/${encode("with space")}` },
+  // The name is taken as sent. Removal does not trim it, unlike the workflow
+  // route next door, so a padded name removes nothing.
+  { name: "delete/a-padded-name", method: "DELETE", path: `/api/log-sources/${encode("  cmd  ")}` },
   { name: "delete/wrong-method", method: "GET", path: "/api/log-sources/uat" },
   { name: "delete/read-back", method: "GET", path: "/api/log-sources" },
 ];
@@ -226,6 +236,13 @@ try {
             cwd: partial.workspace,
           },
           { name: "with space", kind: "file", path: join(partial.workspace, "uat.log") },
+          // Read-only: no case re-registers this name, so the filter cases
+          // below always see the whole fixture file. `uat` is repointed
+          // half-way through and cannot be used for them.
+          { name: "tail", kind: "file", path: join(partial.workspace, "uat.log") },
+          // Longer than the 5000-line ceiling, so the clamp and the 500-line
+          // default are both visible.
+          { name: "bulk", kind: "file", path: join(partial.workspace, "bulk.log") },
         ],
       }),
       () => [],
@@ -238,6 +255,10 @@ try {
     );
     await writeFile(join(runtime.workspace, "other.log"), "replaced\n");
     await writeFile(join(runtime.workspace, "lines.log"), "one\ntwo\n");
+    await writeFile(
+      join(runtime.workspace, "bulk.log"),
+      `${Array.from({ length: 5001 }, (_, index) => `line ${index}`).join("\n")}\n`,
+    );
     await harness.startDaemon(runtime, {});
     runtimes.push(runtime);
   }

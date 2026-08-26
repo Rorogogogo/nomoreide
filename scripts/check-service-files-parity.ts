@@ -118,6 +118,9 @@ const steps: readonly Step[] = [
   { name: "put/env-read-back", method: "GET", path: file(".env") },
   { name: "put/env-into-a-file-that-is-not-there", method: "PUT", path: file(".env.local"), json: { entries: [{ key: "ONLY", value: "one" }] } },
   { name: "put/env-with-no-entries", method: "PUT", path: file(".env"), json: {} },
+  // A body that is not an object at all, which is a different refusal from a
+  // body that is one and has no `entries`.
+  { name: "put/env-a-body-that-is-an-array", method: "PUT", path: file(".env"), json: [1] },
   { name: "put/env-entries-that-are-not-a-list", method: "PUT", path: file(".env"), json: { entries: "TOKEN=x" } },
   // The other four ways an entry list is refused. Each has its own wording and
   // all four escape as a 500, so a gate that only pinned the first would let
