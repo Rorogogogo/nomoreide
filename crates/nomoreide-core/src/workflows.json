@@ -1,0 +1,134 @@
+[
+  {
+    "id": "commit-push",
+    "name": "Commit & push",
+    "description": "Pause for approval, make one AI-written commit, then pause again before pushing.",
+    "builtin": true,
+    "steps": [
+      {
+        "kind": "agent",
+        "id": "commit-message",
+        "title": "Generate commit message",
+        "prompt": "Stage my changes with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`), inspect the staged diff once with `nomoreide_git_staged_diff`, then write one conventional-commit message \u2014 a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. Do NOT commit. Reply with ONLY the commit message you recommend."
+      },
+      {
+        "kind": "gate",
+        "id": "gate-commit",
+        "title": "Approve commit",
+        "message": "Stage the current changes and create one AI-written commit?"
+      },
+      {
+        "kind": "action",
+        "id": "commit",
+        "title": "Commit with approved message",
+        "op": "commit"
+      },
+      {
+        "kind": "gate",
+        "id": "gate-push",
+        "title": "Approve push",
+        "message": "Push to the remote?"
+      },
+      {
+        "kind": "action",
+        "id": "push",
+        "title": "Push",
+        "op": "push"
+      }
+    ]
+  },
+  {
+    "id": "ship-it",
+    "name": "Ship it",
+    "description": "Approve the AI commit, push, then use quick AI turns to open and squash-merge the PR.",
+    "builtin": true,
+    "steps": [
+      {
+        "kind": "action",
+        "id": "assert-pr-branch",
+        "title": "Check PR branch",
+        "op": "assert-pr-branch"
+      },
+      {
+        "kind": "agent",
+        "id": "commit-message",
+        "title": "Generate commit message",
+        "prompt": "Stage my changes with `nomoreide_git_stage` (skip anything that looks like a secret, e.g. `.env`), inspect the staged diff once with `nomoreide_git_staged_diff`, then write one conventional-commit message \u2014 a `<type>: concise title` line (feat/fix/refactor/chore/docs/test) plus a few short bullets of what changed. Do NOT commit. Reply with ONLY the commit message you recommend."
+      },
+      {
+        "kind": "gate",
+        "id": "gate-commit",
+        "title": "Approve commit",
+        "message": "Stage the current changes and create one AI-written commit?"
+      },
+      {
+        "kind": "action",
+        "id": "commit",
+        "title": "Commit with approved message",
+        "op": "commit"
+      },
+      {
+        "kind": "gate",
+        "id": "gate-push",
+        "title": "Approve push",
+        "message": "Push and open a PR?"
+      },
+      {
+        "kind": "action",
+        "id": "push",
+        "title": "Push",
+        "op": "push"
+      },
+      {
+        "kind": "agent",
+        "id": "open-pr",
+        "title": "Open a PR",
+        "prompt": "Open a PR for the current branch into `main` using the `nomoreide_github_create_pr` tool. Title = the latest commit subject; for the body, list the commits via `nomoreide_git_log`. Do NOT read file diffs. Reply with just the PR number and URL."
+      },
+      {
+        "kind": "gate",
+        "id": "gate-merge",
+        "title": "Approve merge",
+        "message": "Squash-merge the pull request?"
+      },
+      {
+        "kind": "agent",
+        "id": "merge",
+        "title": "Squash-merge",
+        "prompt": "Squash-merge the open pull request for the current branch. First call `nomoreide_git_status` for the branch name, then `nomoreide_github_list_prs` to find its open PR, then merge it with `nomoreide_github_merge_pr`. Don't analyze anything else \u2014 just find it and merge. Reply with one line."
+      },
+      {
+        "kind": "action",
+        "id": "checkout-default-and-pull",
+        "title": "Return to default branch",
+        "op": "checkout-default-and-pull"
+      }
+    ]
+  },
+  {
+    "id": "file-issue",
+    "name": "File an issue from these changes",
+    "description": "One quick AI turn drafts a short issue from your file list, then files it on approval.",
+    "builtin": true,
+    "steps": [
+      {
+        "kind": "agent",
+        "id": "draft",
+        "title": "Draft a short issue",
+        "prompt": "Draft a SHORT GitHub issue (a title + a 2\u20133 line body) from the list of changed files only \u2014 call `nomoreide_git_status` for the file list. Do NOT read file diffs or analyze the changes. Show me the draft; don't file it."
+      },
+      {
+        "kind": "gate",
+        "id": "gate-file",
+        "title": "Approve filing",
+        "message": "File this issue on GitHub?"
+      },
+      {
+        "kind": "agent",
+        "id": "create",
+        "title": "File the issue",
+        "prompt": "Create the GitHub issue you just drafted using the `nomoreide_github_create_issue` tool. Reply with just the issue number and URL."
+      }
+    ]
+  }
+]

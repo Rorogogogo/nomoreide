@@ -19,6 +19,7 @@ mod settings;
 mod shell;
 mod terminal;
 mod timeline;
+mod workflows;
 
 use crate::server::app::{require_credential, AppState};
 use axum::http::header::CONTENT_TYPE;
@@ -88,6 +89,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(service_files::routes())
         .merge(service_register::routes())
         .merge(settings::routes())
+        .merge(workflows::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())
         .merge(terminal::routes())

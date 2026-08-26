@@ -54,9 +54,26 @@ pub enum ZodIssue {
         message: String,
         path: Vec<Value>,
     },
+    /// A missing *enum* field, whose `expected` is the option list rather than
+    /// a type name — and which puts `expected` ahead of the code.
+    RequiredEnum {
+        expected: String,
+        received: &'static str,
+        code: &'static str,
+        path: Vec<Value>,
+        message: &'static str,
+    },
     /// `received` comes **first** here, ahead of the code.
     Enum {
         received: String,
+        code: &'static str,
+        options: Vec<&'static str>,
+        path: Vec<Value>,
+        message: String,
+    },
+    /// A discriminated union whose discriminator was not one of its literals.
+    /// Zod reports this once, rather than reporting every arm's failure.
+    Discriminator {
         code: &'static str,
         options: Vec<&'static str>,
         path: Vec<Value>,
@@ -78,6 +95,34 @@ impl ZodIssue {
             received,
             path,
             message: format!("Expected {expected}, received {received}"),
+        }
+    }
+
+    /// A field that was not there at all. Zod does not say "expected string,
+    /// received undefined" in the message for this one — it says `Required`,
+    /// even though the `expected`/`received` fields say exactly that.
+    pub fn required(expected: &'static str, path: Vec<Value>) -> Self {
+        ZodIssue::Type {
+            code: "invalid_type",
+            expected,
+            received: "undefined",
+            path,
+            message: "Required".to_string(),
+        }
+    }
+
+    /// The enum flavour of [`Self::required`].
+    pub fn required_enum(options: &[&'static str], path: Vec<Value>) -> Self {
+        ZodIssue::RequiredEnum {
+            expected: options
+                .iter()
+                .map(|option| format!("'{option}'"))
+                .collect::<Vec<_>>()
+                .join(" | "),
+            received: "undefined",
+            code: "invalid_type",
+            path,
+            message: "Required",
         }
     }
 
@@ -127,6 +172,47 @@ impl ZodIssue {
             options: options.to_vec(),
             path,
             message: format!("Invalid enum value. Expected {rendered}, received '{received}'"),
+        }
+    }
+
+    /// A string or array that was present but shorter than its minimum. Zod
+    /// reports the `type` it was measuring, which is why these are two
+    /// constructors and not one.
+    pub fn too_small_string(minimum: i64, path: Vec<Value>) -> Self {
+        ZodIssue::TooSmall {
+            code: "too_small",
+            minimum,
+            kind: "string",
+            inclusive: true,
+            exact: false,
+            message: format!("String must contain at least {minimum} character(s)"),
+            path,
+        }
+    }
+
+    pub fn too_small_array(minimum: i64, path: Vec<Value>) -> Self {
+        ZodIssue::TooSmall {
+            code: "too_small",
+            minimum,
+            kind: "array",
+            inclusive: true,
+            exact: false,
+            message: format!("Array must contain at least {minimum} element(s)"),
+            path,
+        }
+    }
+
+    pub fn bad_discriminator(options: &[&'static str], path: Vec<Value>) -> Self {
+        let rendered = options
+            .iter()
+            .map(|option| format!("'{option}'"))
+            .collect::<Vec<_>>()
+            .join(" | ");
+        ZodIssue::Discriminator {
+            code: "invalid_union_discriminator",
+            options: options.to_vec(),
+            path,
+            message: format!("Invalid discriminator value. Expected {rendered}"),
         }
     }
 
