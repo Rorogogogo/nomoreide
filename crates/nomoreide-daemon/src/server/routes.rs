@@ -4,6 +4,7 @@
 
 mod agent_chat;
 mod bundles;
+mod context;
 mod database;
 mod database_catalog;
 mod database_write;
@@ -14,6 +15,7 @@ mod github;
 mod log_sources;
 mod meta;
 mod onboard;
+mod query;
 mod service_config;
 mod service_files;
 mod service_register;
@@ -128,6 +130,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(workflows::routes())
         .merge(workflow_triggers::routes())
         .merge(bundles::routes())
+        .merge(context::routes())
         .merge(timeline::routes())
         .merge(terminal::routes())
         .merge(git::routes())

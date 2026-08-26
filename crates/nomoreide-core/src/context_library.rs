@@ -1,7 +1,7 @@
 use crate::filesystem::{
     atomic_write, canonicalize_contained, resolve_relative_path, AtomicWriteOptions,
 };
-use chrono::Utc;
+use chrono::{SecondsFormat, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -134,7 +134,10 @@ pub struct ContextLibrary {
 
 impl Default for ContextLibrary {
     fn default() -> Self {
-        let root = std::env::var_os("NOMOREIDE_CONTEXT_VAULT")
+        let root = std::env::var("NOMOREIDE_CONTEXT_VAULT")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
             .map(PathBuf::from)
             .or_else(|| dirs::home_dir().map(|home| home.join(".nomoreide/context-vault")))
             .unwrap_or_else(|| PathBuf::from(".nomoreide/context-vault"));
@@ -148,6 +151,17 @@ impl ContextLibrary {
     }
 
     pub fn notes(&self) -> Result<Vec<ContextNote>, String> {
+        Ok(self.notes_and_diagnostics()?.0)
+    }
+
+    /// The notes, and what was hidden to get them.
+    ///
+    /// A note's id lives in its own frontmatter, so copying a Markdown note
+    /// copies its id — and then two files claim to be the same note. Rather
+    /// than pick one, **every** copy is hidden and the listing says so: an
+    /// invisible note with a diagnostic beside it is recoverable, where a
+    /// silently chosen one is a lost edit.
+    pub fn notes_and_diagnostics(&self) -> Result<(Vec<ContextNote>, Vec<String>), String> {
         let notes = self.raw_notes()?;
         let mut counts = HashMap::new();
         for note in &notes {
@@ -155,10 +169,30 @@ impl ContextLibrary {
                 .entry(note.item.context_ref.id.clone())
                 .or_insert(0usize) += 1;
         }
-        Ok(notes
-            .into_iter()
-            .filter(|note| counts.get(&note.item.context_ref.id) == Some(&1))
-            .collect())
+        // Ordered by first appearance rather than by the map, so two runs over
+        // the same vault report the same diagnostics in the same order.
+        let mut duplicates = Vec::new();
+        for note in &notes {
+            let id = &note.item.context_ref.id;
+            if counts.get(id) > Some(&1) && !duplicates.contains(id) {
+                duplicates.push(id.clone());
+            }
+        }
+        Ok((
+            notes
+                .iter()
+                .filter(|note| counts.get(&note.item.context_ref.id) == Some(&1))
+                .cloned()
+                .collect(),
+            duplicates
+                .into_iter()
+                .map(|id| {
+                    format!(
+                        "Duplicate context note id {id}; copied notes with this id are hidden                          until their frontmatter ids are made unique."
+                    )
+                })
+                .collect(),
+        ))
     }
 
     fn raw_notes(&self) -> Result<Vec<ContextNote>, String> {
@@ -195,7 +229,12 @@ impl ContextLibrary {
         validate_body(&input.body)?;
         self.ensure_root()?;
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+        // `Date.prototype.toISOString`, which is what wrote every note already
+        // on disk: milliseconds and a `Z`, not the microseconds and `+00:00`
+        // that `to_rfc3339` defaults to. The stamp is stored in a note's
+        // frontmatter and hashed into its revision, so the format is part of
+        // the note rather than a detail of how it was printed.
+        let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
         let mut frontmatter = Map::new();
         frontmatter.insert("id".into(), Value::String(id.clone()));
         frontmatter.insert("title".into(), Value::String(input.title.trim().into()));
@@ -254,7 +293,10 @@ impl ContextLibrary {
             "projects".into(),
             serde_json::to_value(input.project_paths).unwrap_or_default(),
         );
-        frontmatter.insert("updated".into(), Value::String(Utc::now().to_rfc3339()));
+        frontmatter.insert(
+            "updated".into(),
+            Value::String(Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)),
+        );
         atomic_write(
             &path,
             render_markdown(&frontmatter, &input.body)?,
@@ -267,7 +309,12 @@ impl ContextLibrary {
     pub fn delete_note(&self, id: &str, revision: &str) -> Result<(), String> {
         let current = self.get_note(id)?;
         if current.revision != revision {
-            return Err("This note changed outside NoMoreIDE. Reload it before deleting.".into());
+            // "saving", not "deleting": one `ContextConflictError` carries one
+            // sentence in the reference, and both the update and the delete
+            // raise it. Wording it per-operation reads better and is wrong —
+            // the dashboard matches on this string to decide whether to offer a
+            // reload.
+            return Err("This note changed outside NoMoreIDE. Reload it before saving.".into());
         }
         fs::remove_file(self.note_path(&current)?).map_err(|error| error.to_string())?;
         let pinned = self
@@ -350,11 +397,26 @@ impl ContextLibrary {
                 missing.push(context_ref);
                 continue;
             };
-            let body = notes
-                .get(&item.context_ref.id)
-                .map(|note| xml(note.body.trim()))
-                .or_else(|| item.excerpt.clone())
-                .unwrap_or_default();
+            // A note renders as its body. Everything else renders as the few
+            // facts a reader needs to place it — where it lives and what it is
+            // — because a derived row has no body to quote, and an excerpt on
+            // its own does not say which project or path it came from.
+            let body = match notes.get(&item.context_ref.id) {
+                Some(note) => xml(note.body.trim()),
+                None => {
+                    let mut lines = Vec::new();
+                    if let Some(project) = item.project_path.as_deref() {
+                        lines.push(format!("Project: {project}"));
+                    }
+                    if let Some(path) = item.path.as_deref() {
+                        lines.push(format!("Path: {path}"));
+                    }
+                    if let Some(excerpt) = item.excerpt.as_deref() {
+                        lines.push(excerpt.to_string());
+                    }
+                    lines.join("\n")
+                }
+            };
             let rendered = format!(
                 "<context-item kind=\"{}\" id=\"{}\" title=\"{}\">\n{}\n</context-item>",
                 item.kind,
@@ -460,14 +522,7 @@ impl ContextLibrary {
             },
             title,
             kind: "note".into(),
-            excerpt: Some(
-                body.split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .chars()
-                    .take(180)
-                    .collect(),
-            ),
+            excerpt: Some(excerpt(body)),
             project_path: projects.first().cloned(),
             path: Some(relative_path),
             updated_at: frontmatter
@@ -599,6 +654,30 @@ fn validate_body(body: &str) -> Result<(), String> {
         Ok(())
     }
 }
+/// The first 180 characters of a note's body, with its Markdown taken out.
+///
+/// The punctuation that carries meaning to a renderer carries none to a reader
+/// skimming a list, so `#`, `>`, `*`, `_`, backticks and square brackets each
+/// become a space before the whitespace is collapsed. That last part matters
+/// for wiki links in particular: `[[Alpha note]]` reads as `Alpha note` rather
+/// than as its own syntax.
+fn excerpt(body: &str) -> String {
+    let stripped: String = body
+        .chars()
+        .map(|character| match character {
+            '#' | '>' | '*' | '_' | '`' | '[' | ']' => ' ',
+            other => other,
+        })
+        .collect();
+    stripped
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(180)
+        .collect()
+}
+
 fn slug(value: &str) -> String {
     let value: String = value
         .to_lowercase()

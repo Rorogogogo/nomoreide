@@ -273,15 +273,28 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
  * `/path/to/repo:api`. So a uuid is redacted for being a uuid, not for sitting
  * under a key called `id`.
  */
-const VOLATILE = new Set(["revision", "created", "updated"]);
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const VOLATILE = new Set(["revision"]);
+/**
+ * A timestamp is masked rather than redacted: every digit becomes `#` and the
+ * punctuation stays. Two runs a millisecond apart compare equal, and a runtime
+ * that writes `2026-08-26T11:14:12.433824+00:00` where the other writes
+ * `2026-08-26T11:14:12.428Z` still fails — which is the divergence this found
+ * on its first run. Redacting the whole value by key would have hidden it.
+ */
+const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})$/;
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 /** A note's file, which is named `<slug>--<first 8 of the uuid>.md`. */
-const NOTE_FILE = /--[0-9a-f]{8}\.md$/i;
+const NOTE_FILE = /--[0-9a-f]{8}\.md/gi;
 
 function scrub(value: unknown): unknown {
   if (typeof value === "string") {
-    if (UUID.test(value)) return "<uuid>";
-    return NOTE_FILE.test(value) ? value.replace(NOTE_FILE, "--<uuid8>.md") : value;
+    if (TIMESTAMP.test(value)) return value.replace(/\d/g, "#");
+    // Globally, not just when the whole string is one: a preview's rendered
+    // context embeds a note's id inside its `<context-item>` tag, and a value
+    // that merely *contains* a uuid is just as unstable as one that is a uuid.
+    return value
+      .replace(UUID, "<uuid>")
+      .replace(NOTE_FILE, "--<uuid8>.md");
   }
   if (Array.isArray(value)) return value.map(scrub);
   if (value && typeof value === "object") {

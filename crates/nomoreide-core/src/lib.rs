@@ -14,6 +14,7 @@ pub mod compose;
 pub mod config;
 pub mod config_files;
 pub mod context_library;
+pub mod context_snapshot;
 pub mod db;
 pub mod directories;
 pub mod env_file;
