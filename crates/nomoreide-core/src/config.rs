@@ -1135,6 +1135,38 @@ impl ConfigStore {
         self.save(&config).await?;
         Ok(config)
     }
+
+    /// Store a trigger, replacing one that already had its id.
+    ///
+    /// The record is appended rather than written in place, so re-saving a
+    /// trigger moves it to the end of the list — which is the order the
+    /// dashboard shows them in.
+    pub async fn save_workflow_trigger(&self, trigger: serde_json::Value) -> Result<Config> {
+        let mut config = self.load().await?;
+        let id = trigger
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        config
+            .workflow_triggers
+            .retain(|t| t.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
+        config.workflow_triggers.push(trigger);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    /// Drop a trigger. An id that is not there is **not** an error: the caller
+    /// asked for it to be gone and it is gone.
+    pub async fn remove_workflow_trigger(&self, id: &str) -> Result<Config> {
+        let id = id.trim();
+        let mut config = self.load().await?;
+        config
+            .workflow_triggers
+            .retain(|t| t.get("id").and_then(|v| v.as_str()).unwrap_or("") != id);
+        self.save(&config).await?;
+        Ok(config)
+    }
 }
 
 fn mask_database_url(url: &str) -> String {

@@ -20,8 +20,10 @@ mod service_register;
 mod services;
 mod settings;
 mod shell;
+mod snapshots;
 mod terminal;
 mod timeline;
+mod workflow_triggers;
 mod workflows;
 
 use crate::server::app::{require_credential, AppState};
@@ -52,7 +54,34 @@ pub(crate) fn router(state: AppState) -> Router {
         // own `.fallback(method_not_allowed)`, which wins over this one.
         .method_not_allowed_fallback(shell::serve)
         .layer(middleware::map_response(declare_json_charset))
+        // Outermost, so it decides before anything is matched.
+        .layer(middleware::from_fn(refuse_empty_segments))
         .with_state(state)
+}
+
+/// A path with an empty segment in it reaches the shell, not a route.
+///
+/// The reference's parameterised routes are regexes over the **raw** pathname,
+/// and every one of them requires at least one character — `([^/]+)`, `(\d+)`.
+/// So `/api/snapshots//files` matches nothing there and falls through to the
+/// shell's 404. This router's `:param` segments happily match an empty string,
+/// which turned the same request into whatever the handler made of a blank
+/// name: an "invalid sha" here, an unregistered service there.
+///
+/// One layer rather than a check in every handler, because it is one rule and
+/// it holds for every route: no reference pattern can match an empty segment,
+/// and no exact path contains one.
+async fn refuse_empty_segments(
+    request: axum::extract::Request,
+    next: middleware::Next,
+) -> Response {
+    let path = request.uri().path();
+    if path.starts_with("/api/") && path.split('/').skip(1).any(str::is_empty) {
+        let method = request.method().clone();
+        let uri = request.uri().clone();
+        return shell::serve(method, uri).await;
+    }
+    next.run(request).await
 }
 
 /// Say which encoding the JSON is in.
@@ -94,8 +123,10 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(fs_directories::routes())
         .merge(log_sources::routes())
         .merge(onboard::routes())
+        .merge(snapshots::routes())
         .merge(settings::routes())
         .merge(workflows::routes())
+        .merge(workflow_triggers::routes())
         .merge(bundles::routes())
         .merge(timeline::routes())
         .merge(terminal::routes())

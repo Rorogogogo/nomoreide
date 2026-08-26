@@ -66,14 +66,15 @@ pub enum ZodIssue {
         message: String,
         path: Vec<Value>,
     },
-    /// A missing *enum* field, whose `expected` is the option list rather than
-    /// a type name — and which puts `expected` ahead of the code.
+    /// An *enum* field that never got as far as its options: absent, or not a
+    /// string at all. `expected` is the option list rather than a type name,
+    /// and it comes ahead of the code.
     RequiredEnum {
         expected: String,
         received: &'static str,
         code: &'static str,
         path: Vec<Value>,
-        message: &'static str,
+        message: String,
     },
     /// `received` comes **first** here, ahead of the code.
     Enum {
@@ -126,15 +127,31 @@ impl ZodIssue {
     /// The enum flavour of [`Self::required`].
     pub fn required_enum(options: &[&'static str], path: Vec<Value>) -> Self {
         ZodIssue::RequiredEnum {
-            expected: options
-                .iter()
-                .map(|option| format!("'{option}'"))
-                .collect::<Vec<_>>()
-                .join(" | "),
+            expected: joined(options),
             received: "undefined",
             code: "invalid_type",
             path,
-            message: "Required",
+            // The error map special-cases a `received` of `undefined`: the
+            // message is `Required`, even though the fields beside it spell
+            // out what was expected.
+            message: "Required".to_string(),
+        }
+    }
+
+    /// An enum field that is not a string. Zod cannot quote what it received as
+    /// one of the options, so it reports the *type* it saw against the list.
+    pub fn wrong_enum_type(
+        options: &[&'static str],
+        received: &'static str,
+        path: Vec<Value>,
+    ) -> Self {
+        let expected = joined(options);
+        ZodIssue::RequiredEnum {
+            expected: expected.clone(),
+            received,
+            code: "invalid_type",
+            path,
+            message: format!("Expected {expected}, received {received}"),
         }
     }
 
@@ -250,6 +267,15 @@ impl ZodIssue {
             message: format!("Unrecognized key(s) in object: {rendered}"),
         }
     }
+}
+
+/// How zod writes an option list into a message: quoted, pipe-separated.
+fn joined(options: &[&'static str]) -> String {
+    options
+        .iter()
+        .map(|option| format!("'{option}'"))
+        .collect::<Vec<_>>()
+        .join(" | ")
 }
 
 /// A `ZodError`'s `message`: the issue array as pretty JSON, two-space indent.

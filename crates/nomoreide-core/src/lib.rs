@@ -54,5 +54,6 @@ pub mod vultr_auth;
 pub mod vultr_context;
 pub mod vultr_manager;
 pub mod vultr_provider;
+pub mod workflow_triggers;
 pub mod workflows;
 pub mod zod_report;

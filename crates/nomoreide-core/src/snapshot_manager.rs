@@ -6,9 +6,13 @@
 //! is assembled in a scratch index file, so whatever the user had staged is
 //! exactly what they still have staged afterwards.
 //!
-//! Only reading and creating live here. Restoring a snapshot overwrites work,
-//! so it stays a human-confirmed action in the dashboard, the same boundary
-//! `db_write` draws against `db_peek`.
+//! Restoring is here as well, and it is the one destructive operation in the
+//! module. Two things keep it safe: it refuses any sha that is not itself a
+//! snapshot, so no caller can check out an arbitrary commit through it, and it
+//! takes a `pre-restore` snapshot first, so the state it overwrites is still
+//! reachable afterwards. It stays a human-confirmed action in the dashboard and
+//! is deliberately absent from the MCP surface, the same boundary `db_write`
+//! draws against `db_peek`.
 
 use anyhow::{bail, Result};
 use chrono::{SecondsFormat, Utc};
@@ -29,6 +33,11 @@ const SLUG_MAX: usize = 40;
 /// What a label with nothing nameable in it becomes.
 const FALLBACK_SLUG: &str = "snapshot";
 
+/// What a *blank* label becomes. The same word, but a different decision: this
+/// one is about a caller who named nothing, not about a name with no ASCII in
+/// it.
+const FALLBACK_LABEL: &str = "snapshot";
+
 /// The format `list` asks git for: tab-separated so a label with spaces in it
 /// survives, and sorted by ref name, which — because every name begins with the
 /// millisecond it was taken — is newest first.
@@ -45,8 +54,40 @@ pub struct Snapshot {
     pub label: String,
 }
 
+/// One file's fate between a snapshot and now: `A` added since, `M` modified,
+/// `D` deleted since.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SnapshotChange {
+    pub status: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreResult {
+    /// The safety snapshot taken before anything was overwritten.
+    pub pre_restore: Snapshot,
+    /// How many files were written back out of the snapshot.
+    pub restored_files: usize,
+    /// Files created after the snapshot, which the restore removed.
+    pub deleted_paths: Vec<String>,
+}
+
 pub struct SnapshotManager {
     cwd: String,
+}
+
+/// The tool's own identity, passed per command so no repository config changes.
+///
+/// A checkpoint nobody asked for should not turn up in `git log --author` as
+/// something the user wrote.
+fn identity() -> Vec<(&'static str, String)> {
+    vec![
+        ("GIT_AUTHOR_NAME", IDENTITY_NAME.to_string()),
+        ("GIT_AUTHOR_EMAIL", IDENTITY_EMAIL.to_string()),
+        ("GIT_COMMITTER_NAME", IDENTITY_NAME.to_string()),
+        ("GIT_COMMITTER_EMAIL", IDENTITY_EMAIL.to_string()),
+    ]
 }
 
 impl SnapshotManager {
@@ -66,9 +107,11 @@ impl SnapshotManager {
             .lines()
             .filter(|line| !line.is_empty())
             .map(|line| {
-                // Split rather than split-with-limit, matching the reference: a
-                // tab inside a subject truncates the label there in both.
-                let mut fields = line.split('\t');
+                // The label is everything after the third tab, rejoined —
+                // the first three fields cannot contain one, so only a label
+                // ever splits into more, and it is put back together rather
+                // than truncated at the tab.
+                let mut fields = line.splitn(4, '\t');
                 Snapshot {
                     reference: fields.next().unwrap_or_default().to_string(),
                     sha: fields.next().unwrap_or_default().to_string(),
@@ -82,50 +125,62 @@ impl SnapshotManager {
     /// Checkpoint the working tree — tracked changes and untracked files alike,
     /// minus whatever `.gitignore` excludes.
     pub async fn snapshot(&self, label: &str) -> Result<Snapshot> {
+        let tree = self.capture_tree().await?;
+        self.build(label, &tree).await
+    }
+
+    /// The working tree — tracked changes and untracked files alike, minus
+    /// whatever `.gitignore` excludes — written out as a tree object.
+    ///
+    /// **Seeded from HEAD, not from nothing.** Starting empty would give the
+    /// same tree for almost every repository, because `add -A` re-adds
+    /// everything it can see; the difference is a file that is *tracked* and
+    /// also ignored, which `add -A` will not stage but which HEAD already
+    /// carries. Reading HEAD in first keeps that file in the snapshot, so
+    /// restoring one does not quietly delete it.
+    async fn capture_tree(&self) -> Result<String> {
         // A scratch index, so the real one is neither read nor written. Named
-        // for the process so two snapshots at once cannot share it.
+        // for the process so two captures at once cannot share it.
         let index = std::env::temp_dir().join(format!(
             "nomoreide-snapshot-{}-{}.index",
             std::process::id(),
             Utc::now().timestamp_nanos_opt().unwrap_or_default()
         ));
         let scratch = [("GIT_INDEX_FILE", index.to_string_lossy().into_owned())];
-        let result = self.build(label, &scratch).await;
+        let result = self.write_tree(&scratch).await;
         // The scratch index is ours alone; its removal is not the caller's
         // problem and its failure is not their error.
         let _ = tokio::fs::remove_file(&index).await;
         result
     }
 
-    async fn build(&self, label: &str, scratch: &[(&str, String)]) -> Result<Snapshot> {
-        self.git(&["read-tree", "--empty"], scratch).await?;
+    async fn write_tree(&self, scratch: &[(&str, String)]) -> Result<String> {
+        match self.head_sha().await {
+            Some(head) => self.git(&["read-tree", &head], scratch).await?,
+            None => self.git(&["read-tree", "--empty"], scratch).await?,
+        };
         self.git(&["add", "-A"], scratch).await?;
-        let tree = self.git(&["write-tree"], scratch).await?.trim().to_string();
+        Ok(self.git(&["write-tree"], scratch).await?.trim().to_string())
+    }
 
-        // An unborn HEAD is not a failure: the first snapshot in a repository
-        // with no commits yet simply has no parent.
-        let parent = self
-            .git(&["rev-parse", "HEAD"], scratch)
+    /// An unborn HEAD is not a failure: a repository with no commits yet simply
+    /// has no parent to hang a snapshot off.
+    async fn head_sha(&self) -> Option<String> {
+        self.git(&["rev-parse", "--verify", "HEAD"], &[])
             .await
             .ok()
             .map(|sha| sha.trim().to_string())
-            .filter(|sha| !sha.is_empty());
+            .filter(|sha| !sha.is_empty())
+    }
 
-        let mut commit: Vec<&str> = vec!["commit-tree", &tree];
+    async fn build(&self, label: &str, tree: &str) -> Result<Snapshot> {
+        let parent = self.head_sha().await;
+        let mut commit: Vec<&str> = vec!["commit-tree", tree];
         if let Some(parent) = parent.as_deref() {
             commit.extend(["-p", parent]);
         }
         commit.extend(["-m", label]);
-        // The identity is the tool's, not the user's: a checkpoint nobody asked
-        // for should not appear in `git log --author` as something they wrote.
-        // Passed per command, so no repository config changes.
-        let identity = [
-            ("GIT_AUTHOR_NAME", IDENTITY_NAME.to_string()),
-            ("GIT_AUTHOR_EMAIL", IDENTITY_EMAIL.to_string()),
-            ("GIT_COMMITTER_NAME", IDENTITY_NAME.to_string()),
-            ("GIT_COMMITTER_EMAIL", IDENTITY_EMAIL.to_string()),
-        ];
-        let sha = self.git(&commit, &identity).await?.trim().to_string();
+        let sha = self.git(&commit, &identity()).await?.trim().to_string();
 
         let reference = format!(
             "{REF_PREFIX}/{}-{}",
@@ -140,6 +195,198 @@ impl SnapshotManager {
             created_at: Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true),
             label: label.to_string(),
         })
+    }
+
+    /// What differs between a snapshot and the working tree as it stands now.
+    ///
+    /// The current side is captured the same way a snapshot is, so an untracked
+    /// file counts as an addition rather than being invisible.
+    pub async fn changed_files(&self, sha: &str) -> Result<Vec<SnapshotChange>> {
+        let tree = self.capture_tree().await?;
+        let raw = self
+            .git(&["diff", "--no-renames", "--name-status", sha, &tree], &[])
+            .await?;
+        Ok(raw
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                // A path may contain a tab, and git does not quote one here, so
+                // everything after the first field is the path.
+                let mut fields = line.splitn(2, '\t');
+                SnapshotChange {
+                    status: fields.next().unwrap_or_default().to_string(),
+                    path: fields.next().unwrap_or_default().to_string(),
+                }
+            })
+            .collect())
+    }
+
+    /// The patch between a snapshot and the working tree, optionally for one
+    /// path. Returned as git wrote it — this is read by a diff viewer.
+    pub async fn diff(&self, sha: &str, path: Option<&str>) -> Result<String> {
+        let tree = self.capture_tree().await?;
+        let mut args: Vec<&str> = vec!["diff", "--no-renames", sha, &tree];
+        if let Some(path) = path {
+            args.extend(["--", path]);
+        }
+        self.git(&args, &[]).await
+    }
+
+    /// Put the working tree back to a snapshot.
+    ///
+    /// Reversible by construction: a `pre-restore` snapshot is taken first, and
+    /// it doubles as the *current* side of the comparison that decides what to
+    /// change — so the same capture both records the state being overwritten
+    /// and says which files to overwrite.
+    ///
+    /// **Additions are deleted by hand.** `git restore` only writes files the
+    /// source tree has; a file created after the snapshot is not in it and
+    /// would simply survive, leaving a "restored" tree that is not the snapshot.
+    pub async fn restore(&self, sha: &str) -> Result<RestoreResult> {
+        let target = self.find(sha).await?;
+        let pre_restore = self
+            .snapshot(&format!("pre-restore ({})", target.label))
+            .await?;
+        let changes = self
+            .git(
+                &[
+                    "diff",
+                    "--no-renames",
+                    "--name-status",
+                    sha,
+                    &pre_restore.sha,
+                ],
+                &[],
+            )
+            .await?;
+
+        let mut deleted_paths = Vec::new();
+        let mut restored_files = 0usize;
+        for line in changes.lines().filter(|line| !line.trim().is_empty()) {
+            let mut fields = line.splitn(2, '\t');
+            let status = fields.next().unwrap_or_default();
+            let path = fields.next().unwrap_or_default().to_string();
+            if status == "A" {
+                self.remove_worktree_file(&path).await?;
+                deleted_paths.push(path);
+            } else {
+                restored_files += 1;
+            }
+        }
+        if restored_files > 0 {
+            // `--worktree` only, so the user's index survives a restore the same
+            // way it survives a snapshot.
+            self.git(&["restore", "--source", sha, "--worktree", "--", ":/"], &[])
+                .await?;
+        }
+        Ok(RestoreResult {
+            pre_restore,
+            restored_files,
+            deleted_paths,
+        })
+    }
+
+    /// Drop one snapshot's ref. The commit object is left for git to collect.
+    pub async fn delete(&self, sha: &str) -> Result<()> {
+        let target = self.find(sha).await?;
+        // Compare-and-swap on the old value, so a ref that moved underneath us
+        // is not deleted on the strength of a stale read.
+        self.git(&["update-ref", "-d", &target.reference, sha], &[])
+            .await?;
+        Ok(())
+    }
+
+    /// Relabel a snapshot.
+    ///
+    /// A commit object is immutable, so the message is rewritten onto a *new*
+    /// object carrying the same tree, parents and dates, and the ref is moved to
+    /// it. The ref name keeps the old slug: it encodes when the snapshot was
+    /// taken, which relabelling does not change.
+    pub async fn rename(&self, sha: &str, label: &str) -> Result<Snapshot> {
+        let target = self.find(sha).await?;
+        let cleaned = match label.trim() {
+            "" => FALLBACK_LABEL,
+            trimmed => trimmed,
+        };
+        let tree = self
+            .git(&["rev-parse", &format!("{sha}^{{tree}}")], &[])
+            .await?
+            .trim()
+            .to_string();
+        let listed = self
+            .git(&["rev-list", "--parents", "-n", "1", sha], &[])
+            .await?;
+        // The first field is the commit itself; the rest are its parents.
+        let parents: Vec<String> = listed
+            .split_whitespace()
+            .skip(1)
+            .map(str::to_string)
+            .collect();
+        let author_date = self
+            .git(&["show", "-s", "--format=%aI", sha], &[])
+            .await?
+            .trim()
+            .to_string();
+        let committer_date = self
+            .git(&["show", "-s", "--format=%cI", sha], &[])
+            .await?
+            .trim()
+            .to_string();
+
+        let mut commit: Vec<&str> = vec!["commit-tree", &tree];
+        for parent in &parents {
+            commit.extend(["-p", parent.as_str()]);
+        }
+        commit.extend(["-m", cleaned]);
+        let mut environment = identity();
+        environment.push(("GIT_AUTHOR_DATE", author_date));
+        environment.push(("GIT_COMMITTER_DATE", committer_date));
+        let new_sha = self.git(&commit, &environment).await?.trim().to_string();
+
+        self.git(&["update-ref", &target.reference, &new_sha, sha], &[])
+            .await?;
+        Ok(Snapshot {
+            reference: target.reference,
+            sha: new_sha,
+            created_at: target.created_at,
+            label: cleaned.to_string(),
+        })
+    }
+
+    /// Resolve a sha to the snapshot it names, refusing anything outside the
+    /// namespace. **This is the guard**: every operation that changes or
+    /// overwrites something goes through it, so a caller can only ever name a
+    /// commit this module made.
+    async fn find(&self, sha: &str) -> Result<Snapshot> {
+        match self
+            .list()
+            .await?
+            .into_iter()
+            .find(|snapshot| snapshot.sha == sha)
+        {
+            Some(snapshot) => Ok(snapshot),
+            None => bail!("Not a nomoreide snapshot: {sha}"),
+        }
+    }
+
+    /// Delete one file the restore decided was added after the snapshot.
+    ///
+    /// The containment check is belt-and-braces — the paths come from git's own
+    /// diff and are repository-relative — but a delete driven by a path from
+    /// anywhere is worth guarding whether or not today's caller can reach it.
+    async fn remove_worktree_file(&self, path: &str) -> Result<()> {
+        let root = std::path::Path::new(&self.cwd);
+        let absolute = root.join(path);
+        if !absolute.starts_with(root) || absolute == root {
+            bail!("Refusing to delete outside the repository: {path}");
+        }
+        // A file that is already gone is a restore that has nothing to undo.
+        if let Err(error) = tokio::fs::remove_file(&absolute).await {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                bail!("{}", error);
+            }
+        }
+        Ok(())
     }
 
     /// Drop all but the newest `keep` snapshots. Returns how many went.

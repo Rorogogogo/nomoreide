@@ -40,6 +40,7 @@
  */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createServer, type Server } from "node:net";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -74,6 +75,12 @@ interface Step {
   /** Keys replaced before diffing. */
   readonly redact?: readonly string[];
 }
+
+/** Held by this process for the whole run, so a start can conflict with it.
+ *  Read from the environment because a parallel sweep runs several gates at
+ *  once and each worker needs its own. */
+const HELD_PORT = Number(process.env.NMI_GATE_HELD_PORT ?? 4590);
+let held: Server | undefined;
 
 const SCAN = "/api/onboard/scan";
 const REGISTER = "/api/onboard/register";
@@ -132,6 +139,9 @@ const steps: readonly Step[] = [
   { name: "register/a-blank-command", path: REGISTER, body: `{"name":"demo","cwd":"${REPOS}/demo-app","command":"   "}` },
   { name: "register/a-command-that-is-a-number", path: REGISTER, body: `{"name":"demo","cwd":"${REPOS}/demo-app","command":8080}` },
   { name: "register/a-blank-name", path: REGISTER, body: `{"name":"","cwd":"${REPOS}/demo-app","command":"node -v"}` },
+  // Not trimmed, unlike the form route's name — so this registers a service
+  // whose name is three spaces rather than being refused as blank.
+  { name: "register/a-name-that-is-only-spaces", path: REGISTER, body: `{"name":"   ","cwd":"${REPOS}/demo-app","command":"node -v"}` },
   { name: "register/compose-without-a-service", path: REGISTER, body: `{"name":"demo","kind":"docker-compose","cwd":"${REPOS}/demo-app"}` },
   { name: "register/compose-with-a-blank-service", path: REGISTER, body: `{"name":"demo","kind":"docker-compose","cwd":"${REPOS}/demo-app","composeService":"  "}` },
   // Not a kind this route knows, so it is built as a *local* service — and a
@@ -158,7 +168,7 @@ const steps: readonly Step[] = [
   { name: "register/a-blank-name-and-no-command", path: REGISTER, body: `{"name":"","cwd":"${REPOS}/demo-app","kind":"docker-compose","composeService":"web","port":0}` },
 
   // --- register: registrations that work -------------------------------------
-  { name: "register/a-local-service", path: REGISTER, body: `{"name":"api","cwd":"${REPOS}/demo-app","command":"node -v","port":4599,"description":"  a spaced description  "}` },
+  { name: "register/a-local-service", path: REGISTER, body: `{"name":"api","cwd":"${REPOS}/demo-app","command":"node -v","port":4598,"description":"  a spaced description  "}` },
   // A string port is dropped rather than refused, so this registers without one.
   { name: "register/a-port-that-is-a-string", path: REGISTER, body: `{"name":"string-port","cwd":"${REPOS}/demo-app","command":"node -v","port":"4600"}` },
   { name: "register/a-blank-description", path: REGISTER, body: `{"name":"blank-description","cwd":"${REPOS}/demo-app","command":"node -v","description":"   "}` },
@@ -187,7 +197,7 @@ const steps: readonly Step[] = [
   { name: "register/the-status-afterwards", method: "GET", path: "/api/status", redact: ["pid", "startedAt"] },
   // A second start of a service already holding its port. The refusal is not
   // caught separately here, so it is a 422 with the message and no `conflict`.
-  { name: "register/a-start-that-conflicts", path: REGISTER, body: `{"name":"conflicting","cwd":"${REPOS}/demo-app","command":"sleep 30","port":4599,"start":true}`, redact: ["pid", "startedAt"] },
+  { name: "register/a-start-that-conflicts", path: REGISTER, body: `{"name":"conflicting","cwd":"${REPOS}/demo-app","command":"sleep 30","port":${HELD_PORT},"start":true}`, redact: ["pid", "startedAt"] },
   { name: "register/wrong-method", method: "GET", path: REGISTER, body: "" },
 ];
 
@@ -359,6 +369,13 @@ try {
   }
   const [reference, candidate] = runtimes;
 
+  // Held for the whole loop, by this process, so the conflicting start meets
+  // one holder that both runtimes describe identically.
+  held = createServer();
+  await new Promise<void>((resolve, reject) => {
+    held!.once("error", reject).listen(HELD_PORT, "127.0.0.1", resolve);
+  });
+
   for (const step of steps) {
     const answers = {
       reference: await send(reference, step),
@@ -384,6 +401,7 @@ try {
     }
   }
 } finally {
+  held?.close();
   await harness.shutdown();
   await rm(root, { recursive: true, force: true });
 }

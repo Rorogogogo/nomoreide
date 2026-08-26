@@ -340,7 +340,7 @@ fn environment_failures(arguments: &Map<String, Value>) -> Vec<Issue> {
         .iter()
         .filter(|(_, value)| !value.is_string())
         .map(|(key, value)| {
-            let received = json_type_name(value);
+            let received = crate::zod_report::type_name(value);
             Issue::Typed(TypeIssue {
                 code: "invalid_type",
                 expected: "string".to_string(),
@@ -363,18 +363,6 @@ fn environment_failures(arguments: &Map<String, Value>) -> Vec<Issue> {
         )];
     }
     Vec::new()
-}
-
-/// What zod calls the type it received, which is not always what JSON calls it.
-fn json_type_name(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "null",
-        Value::Bool(_) => "boolean",
-        Value::Number(_) => "number",
-        Value::String(_) => "string",
-        Value::Array(_) => "array",
-        Value::Object(_) => "object",
-    }
 }
 
 /// The reference's `/^[A-Za-z_][A-Za-z0-9_]*$/`.
