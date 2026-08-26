@@ -247,6 +247,19 @@ fn codex_files(codex_home: &Path) -> Vec<PathBuf> {
     files
 }
 
+/// Where the two CLIs keep their transcripts.
+///
+/// `CODEX_HOME` is read from the environment rather than derived, because Codex
+/// itself reads it there and an installation that moved is still the one whose
+/// sessions should be listed.
+pub fn default_transcript_homes() -> (PathBuf, PathBuf) {
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    let codex = std::env::var_os("CODEX_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".codex"));
+    (home, codex)
+}
+
 pub fn list_agent_transcripts(
     home: &Path,
     codex_home: &Path,

@@ -11,6 +11,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
+/// The kinds a context ref may name. The reference's `CONTEXT_KINDS`, and the
+/// order matters only in that it is the order an enum refusal lists them in.
+pub const CONTEXT_KINDS: &[&str] = &["note", "project", "service", "file", "incident", "session"];
+
 const MAX_NOTE_BYTES: usize = 1024 * 1024;
 const MAX_NOTES: usize = 2_000;
 const MAX_CONTEXT_CHARS: usize = 96 * 1024;
