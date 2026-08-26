@@ -874,10 +874,24 @@ interface Answer {
   readonly body: unknown;
 }
 
+/**
+ * The bearer the daemon wrote for itself, when it wants one.
+ *
+ * Only the candidate does, which is exactly why this cannot be left out: a
+ * reference-against-reference run of this gate passes without it, and every
+ * case then fails against the candidate with the same 401.
+ */
+async function credentialFor(runtime: Runtime): Promise<Record<string, string>> {
+  const credential = await readFile(join(runtime.home, ".nomoreide", "daemon.credential"), "utf8")
+    .then((value) => value.trim())
+    .catch(() => "");
+  return credential ? { authorization: `Bearer ${credential}` } : {};
+}
+
 async function send(runtime: Runtime, step: Step): Promise<Answer> {
   const response = await fetch(`http://127.0.0.1:${runtime.port}${step.path}`, {
     method: step.method,
-    headers: { "content-type": "application/json" },
+    headers: { ...(await credentialFor(runtime)), "content-type": "application/json" },
     body: step.body,
   });
   const text = await response.text();
@@ -890,8 +904,17 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
   return { status: response.status, contentType: response.headers.get("content-type"), body: parsed };
 }
 
-/** `YYYYMMDD-HHMMSS`, with the collision suffix left visible: it is behaviour. */
-const STAMP = /\b\d{8}-\d{6}\b/g;
+/**
+ * `YYYYMMDD-HHMMSS`, and the counter that follows it on a collision.
+ *
+ * The counter looked like behaviour worth asserting and is not: it counts how
+ * many backups of *that* file already exist in the same wall-clock second, so
+ * it moves when the two runtimes straddle a second boundary differently, and it
+ * accumulates every earlier write in the run. Which backups were taken is still
+ * held to account — the path and the `.bak.` are compared — but how many
+ * happened to share a second is a race with the clock.
+ */
+const STAMP = /\b\d{8}-\d{6}(?:-\d+)?\b/g;
 
 /**
  * The one thing here that is compared by shape rather than by text.

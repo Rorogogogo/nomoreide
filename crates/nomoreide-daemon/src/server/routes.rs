@@ -3,6 +3,7 @@
 //! `server.rs`.
 
 mod agent_chat;
+mod agent_env;
 mod bundles;
 mod change_sets;
 mod context;
@@ -115,6 +116,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(meta::authenticated())
         .merge(agent_chat::routes())
+        .merge(agent_env::routes())
         .merge(errors::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())

@@ -30,7 +30,6 @@
 use crate::server::app::AppState;
 use crate::server::body::{parse_form, percent_decode};
 use crate::server::errors::{config_failure, error};
-use crate::server::js_json;
 use crate::server::query::js_number;
 use axum::body::Bytes;
 use axum::extract::State;
@@ -43,6 +42,7 @@ use nomoreide_actions::db::{
 };
 use nomoreide_core::config::DatabaseDef;
 use nomoreide_core::db;
+use nomoreide_core::js_json;
 use serde_json::{json, Map, Value};
 
 pub(crate) fn routes() -> Router<AppState> {

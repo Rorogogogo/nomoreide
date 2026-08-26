@@ -660,10 +660,5 @@ fn ref_key(reference: &ContextRef) -> String {
 /// is capitalised, which is exactly why the difference stays invisible until it
 /// is not.
 fn locale_cmp(left: &str, right: &str) -> Ordering {
-    match left.to_lowercase().cmp(&right.to_lowercase()) {
-        // Lowercase sorts before uppercase at the tertiary level, which is the
-        // opposite of what the code points say.
-        Ordering::Equal => right.cmp(left),
-        primary => primary,
-    }
+    crate::locale::compare(left, right)
 }

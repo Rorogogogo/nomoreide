@@ -15,6 +15,7 @@ mod availability;
 mod backup;
 mod documents;
 mod ordered;
+mod plugins;
 mod readers;
 mod skills;
 mod spec;
@@ -198,10 +199,26 @@ pub struct RemoteServer {
 #[serde(rename_all = "camelCase")]
 pub struct SkillEntry {
     pub name: String,
-    pub source: &'static str,
+    /// Where it came from: `local` for a skill someone put in a directory, the
+    /// marketplace for a plugin. Absent when a plugin's record does not say.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
     pub kind: &'static str,
     pub scope: &'static str,
-    pub install_path: String,
+    /// Absent when a plugin is recorded as installed but its record carries no
+    /// path — it is still installed, and still worth reporting.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub install_path: Option<String>,
+    /// The four below describe a *plugin* and are absent on a skill. The skills
+    /// list is present even when empty, which is what tells the two apart.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_skills: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_mcps: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_agents: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_commands: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -251,6 +268,15 @@ pub fn install_user_skill(agent: Agent, name: &str, source: &Path) -> Result<(),
     std::fs::create_dir_all(&directory)
         .map_err(|error| format!("Failed to create {}: {error}", directory.display()))?;
     copy_tree(source, &directory)
+}
+
+/// Copy a file beside itself before something replaces it.
+///
+/// Exposed because the settings editor backs up a file this module does not
+/// otherwise own, and a second implementation of the naming rule would be a
+/// second set of backups nobody thinks to look in.
+pub fn backup_config_file(path: &Path) -> Result<Option<PathBuf>, String> {
+    backup::file(path)
 }
 
 pub(crate) fn home() -> PathBuf {

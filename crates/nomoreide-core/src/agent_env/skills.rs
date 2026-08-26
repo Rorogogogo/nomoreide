@@ -10,7 +10,9 @@ use std::path::{Path, PathBuf};
 
 /// User-scope skills first, then project-scope, each sorted by name.
 pub(super) fn discover(agent: Agent, home: &Path, cwd: &Path) -> Vec<SkillEntry> {
-    let mut skills = Vec::new();
+    // Plugins first, in their record's own order — the reference lists what was
+    // installed as a unit ahead of what was dropped into a directory.
+    let mut skills = super::plugins::discover(agent, home);
     for relative in agent.user_skills_relative_paths() {
         skills.extend(entries_in(&home.join(relative), "user"));
     }
@@ -48,10 +50,14 @@ fn entries_in(directory: &Path, scope: &'static str) -> Vec<SkillEntry> {
         .filter(|entry| entry.path().is_dir())
         .map(|entry| SkillEntry {
             name: entry.file_name().to_string_lossy().into_owned(),
-            source: "local",
+            source: Some("local".to_string()),
             kind: "skill",
             scope,
-            install_path: entry.path().to_string_lossy().into_owned(),
+            install_path: Some(entry.path().to_string_lossy().into_owned()),
+            plugin_skills: None,
+            plugin_mcps: None,
+            plugin_agents: None,
+            plugin_commands: None,
         })
         .collect();
     // `read_dir` order is whatever the filesystem happens to hand back, which

@@ -50,7 +50,10 @@ pub fn snapshot(
     };
     store::save(&profile)?;
     for skill in skills {
-        store::bundle_skill(name, &skill.name, Path::new(&skill.install_path))?;
+        // A plugin recorded without an install path has nothing to bundle, and
+        // the empty path fails here exactly as the reference's `undefined` does.
+        let installed = skill.install_path.as_deref().unwrap_or_default();
+        store::bundle_skill(name, &skill.name, Path::new(installed))?;
     }
     Ok(profile)
 }

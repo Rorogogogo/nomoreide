@@ -37,7 +37,7 @@
 use serde_json::Value;
 
 /// `JSON.parse(raw)`, with V8's message on failure.
-pub(crate) fn parse(raw: &str) -> Result<Value, String> {
+pub fn parse(raw: &str) -> Result<Value, String> {
     serde_json::from_str(raw).map_err(|error| message(raw, &error))
 }
 

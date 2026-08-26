@@ -231,7 +231,7 @@ async fn write_file(file: &ConfigFileInfo, body: &Bytes) -> Response {
         // The reference wraps its engine's own parse diagnostic, so the message
         // a user reads is V8's. `js_json` reproduces that wording, which is why
         // the check is here rather than in the core module's `validate_json`.
-        if let Err(reason) = crate::server::js_json::parse(content) {
+        if let Err(reason) = nomoreide_core::js_json::parse(content) {
             return error(StatusCode::BAD_REQUEST, &format!("Invalid JSON: {reason}"));
         }
     }
