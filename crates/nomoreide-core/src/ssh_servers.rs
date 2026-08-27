@@ -141,9 +141,7 @@ pub async fn discover_ssh_hosts(config_path: &Path) -> Vec<String> {
 /// already depends on `dirs`, and because the config reader and the setup probe
 /// want the same directory — one answer, not two that could drift.
 pub fn ssh_directory() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".ssh")
+    crate::home::home_directory().join(".ssh")
 }
 
 /// One row per host, whether it came from the user, from `~/.ssh/config`, or

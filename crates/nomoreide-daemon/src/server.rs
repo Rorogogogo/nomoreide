@@ -21,6 +21,7 @@ use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::timeline::TimelineStore;
+use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -132,6 +133,7 @@ pub async fn serve_with_shutdown_requests(
         terminal: TerminalManager::new(),
         events: Arc::new(app::DiscardingEventSink),
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        tool_calls: ToolCallStore::new(),
         approvals: ApprovalBroker::new(),
     });
 

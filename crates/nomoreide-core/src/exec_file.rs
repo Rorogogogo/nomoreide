@@ -31,7 +31,24 @@ pub struct ExecOutput {
     pub stderr: Vec<u8>,
 }
 
-pub async fn exec_file(argv: &[String], options: &ExecOptions<'_>) -> Result<ExecOutput, String> {
+/// The program ran and said something. `failure` is set when it exited
+/// non-zero — the output is still there, because Node hangs `stdout` on the
+/// error object and one caller reads it.
+pub struct ExecAttempt {
+    pub output: ExecOutput,
+    pub failure: Option<String>,
+}
+
+/// Run a program, and hand back what it printed **even when it failed**.
+///
+/// `claude mcp list` is why this exists: it prints a usable table and then
+/// exits non-zero, and the reference parses the table anyway. An `Err` here is
+/// only for a run that produced nothing to read — a spawn failure, a timeout,
+/// or output past the buffer.
+pub async fn exec_file_capturing(
+    argv: &[String],
+    options: &ExecOptions<'_>,
+) -> Result<ExecAttempt, String> {
     let (program, args) = argv.split_first().ok_or("no command")?;
     let mut command = Command::new(program);
     command
@@ -53,17 +70,29 @@ pub async fn exec_file(argv: &[String], options: &ExecOptions<'_>) -> Result<Exe
     if output.stdout.len() > options.max_buffer || output.stderr.len() > options.max_buffer {
         return Err("stdout maxBuffer length exceeded".to_string());
     }
-    if !output.status.success() {
-        return Err(format!(
+    let failure = (!output.status.success()).then(|| {
+        format!(
             "Command failed: {}\n{}",
             argv.join(" "),
             String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    Ok(ExecOutput {
-        stdout: output.stdout,
-        stderr: output.stderr,
+        )
+    });
+    Ok(ExecAttempt {
+        output: ExecOutput {
+            stdout: output.stdout,
+            stderr: output.stderr,
+        },
+        failure,
     })
+}
+
+/// The common case: a non-zero exit is a failure and the output is discarded.
+pub async fn exec_file(argv: &[String], options: &ExecOptions<'_>) -> Result<ExecOutput, String> {
+    let attempt = exec_file_capturing(argv, options).await?;
+    match attempt.failure {
+        Some(failure) => Err(failure),
+        None => Ok(attempt.output),
+    }
 }
 
 /// The `code` Node puts on a spawn failure, which callers quote rather than the

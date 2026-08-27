@@ -12,6 +12,7 @@ use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
 use nomoreide_core::terminal::TerminalManager;
+use nomoreide_core::tool_call_store::ToolCallStore;
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -40,6 +41,13 @@ pub(crate) struct AppState {
     /// Hands out `term_1`, `term_2`, … the way the reference does. Sessions the
     /// caller named (`svc:<service>`) do not draw from it.
     pub(crate) session_counter: Arc<AtomicU64>,
+    /// The MCP tool-call feed the dashboard renders.
+    ///
+    /// Nothing writes to it yet: the reference records here only from an
+    /// in-process MCP server, and this daemon's MCP clients are separate
+    /// processes. It exists so `/api/agent/tool-calls` answers the same shape,
+    /// and so the writer is the only piece still missing.
+    pub(crate) tool_calls: ToolCallStore,
     /// Parks a blocked tool-permission hook until a human decides.
     ///
     /// No run opens one here yet — the agent event stream is still the
