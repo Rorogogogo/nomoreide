@@ -15,8 +15,8 @@ pub fn snapshot(
     description: Option<&str>,
     cwd: &Path,
 ) -> Result<Profile, String> {
-    super::check_name(name)?;
-    if store::exists(name) {
+    let name = super::check_name(name)?;
+    if store::exists(&name) {
         return Err(format!("Profile \"{name}\" already exists."));
     }
     let views = agent_env::read_configs(Some(cwd));
@@ -41,7 +41,7 @@ pub fn snapshot(
         .filter(|skill| skill.scope == "user")
         .collect();
     let profile = Profile {
-        name: name.to_string(),
+        name: name.clone(),
         description: description.map(str::to_string),
         source_agent: Some(agent.id().to_string()),
         mcps,
@@ -53,7 +53,7 @@ pub fn snapshot(
         // A plugin recorded without an install path has nothing to bundle, and
         // the empty path fails here exactly as the reference's `undefined` does.
         let installed = skill.install_path.as_deref().unwrap_or_default();
-        store::bundle_skill(name, &skill.name, Path::new(installed))?;
+        store::bundle_skill(&name, &skill.name, Path::new(installed))?;
     }
     Ok(profile)
 }
@@ -103,4 +103,61 @@ fn json_values(map: &OrderedMap<serde_json::Value>) -> OrderedMap<Json> {
         );
     }
     out
+}
+
+/// Rebuild an existing profile from an agent's environment as it is now.
+///
+/// The new bundle is captured into a *sibling* profile first and only swapped
+/// in once it is whole, so a read that fails halfway leaves the last good
+/// profile untouched. The original is moved aside rather than deleted, and
+/// moved back if the swap itself fails — the window where neither is in place
+/// is a single rename.
+pub fn refresh(agent: Agent, name: &str, cwd: &Path) -> Result<Profile, String> {
+    let name = super::check_name(name)?;
+    let existing = super::get(&name)?;
+    let token = uuid::Uuid::new_v4().to_string();
+    let staging_name = format!("{name}.refresh-{token}");
+
+    let captured = snapshot(agent, &staging_name, existing.description.as_deref(), cwd)?;
+    let staging_dir = store::directory_of(&staging_name);
+    let current_dir = store::directory_of(&name);
+    let held = store::profiles_root().join(format!(".profile-backup-{token}"));
+
+    let restore = |taken: bool| {
+        if taken {
+            let _ = std::fs::rename(&held, &current_dir);
+        }
+        let _ = std::fs::remove_dir_all(&staging_dir);
+    };
+
+    // The captured profile is written under the name it will answer to, not the
+    // staging name it was built under.
+    let renamed = Profile {
+        name: name.clone(),
+        ..captured
+    };
+    if let Err(reason) = store::write_at(&staging_dir, &renamed) {
+        restore(false);
+        return Err(reason);
+    }
+
+    let had_current = current_dir.is_dir();
+    if had_current {
+        if let Err(error) = std::fs::rename(&current_dir, &held) {
+            restore(false);
+            return Err(format!(
+                "Failed to set aside {}: {error}",
+                current_dir.display()
+            ));
+        }
+    }
+    if let Err(error) = std::fs::rename(&staging_dir, &current_dir) {
+        restore(had_current);
+        return Err(format!(
+            "Failed to install {}: {error}",
+            current_dir.display()
+        ));
+    }
+    let _ = std::fs::remove_dir_all(&held);
+    super::get(&name)
 }

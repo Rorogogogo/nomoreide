@@ -151,12 +151,21 @@ mod tests {
     }
 
     #[test]
-    fn antigravity_has_no_skills_to_find() {
+    fn antigravity_reads_its_own_skills_directory_and_no_one_elses() {
         let home = scratch("antigravity");
         std::fs::create_dir_all(home.join(".claude/skills/summarise")).unwrap();
         std::fs::create_dir_all(home.join(".agents/skills/refactor")).unwrap();
+        std::fs::create_dir_all(home.join(".gemini/skills/summarise")).unwrap();
         let found = discover(Agent::Antigravity, &home, &home);
         std::fs::remove_dir_all(&home).ok();
-        assert!(found.is_empty());
+        // `~/.gemini/skills` is its own; the other two agents' are not, and it
+        // has no project scope for the walk upwards to find.
+        assert_eq!(
+            found
+                .iter()
+                .map(|skill| (skill.name.as_str(), skill.scope))
+                .collect::<Vec<_>>(),
+            [("summarise", "user")]
+        );
     }
 }

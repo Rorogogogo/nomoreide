@@ -120,6 +120,13 @@ impl Agent {
             .map(|relative| home.join(relative))
     }
 
+    /// Where an *install* puts a user-scope skill. Every agent has one, so
+    /// this cannot fail the way the project-scope question can.
+    pub(super) fn install_skills_directory(self, home: &Path) -> PathBuf {
+        self.user_skills_directory(home)
+            .unwrap_or_else(|| home.join(".claude").join("skills"))
+    }
+
     /// Where a named skill already is, among this agent's user directories.
     ///
     /// Reading and writing are not symmetric for Codex: a skill is installed
@@ -150,8 +157,7 @@ impl Agent {
         match self {
             Self::Claude => &[".claude/skills"],
             Self::Codex => &[".agents/skills", ".codex/skills"],
-            // Antigravity has no skills of its own to find.
-            Self::Antigravity => &[],
+            Self::Antigravity => &[".gemini/skills"],
         }
     }
 
@@ -262,17 +268,28 @@ pub struct DoctorReport {
 ///
 /// An agent with no skills directory of its own — Antigravity — has nowhere
 /// for one to go, and says so rather than writing somewhere it invented.
-pub fn install_user_skill(agent: Agent, name: &str, source: &Path) -> Result<(), String> {
-    let directory = agent
-        .user_skills_directory(&home())
-        .ok_or_else(|| format!("{} has no skills directory.", agent.display_name()))?
-        .join(name);
+pub fn install_user_skill(
+    agent: Agent,
+    name: &str,
+    source: &Path,
+) -> Result<Option<PathBuf>, String> {
+    let directory = agent.install_skills_directory(&home()).join(name);
+    // Whatever is being replaced is copied aside first. Unlike a *copy* between
+    // agents, which keeps nothing because the two are the same skill under the
+    // same name, an install overwrites a skill the user may have edited in
+    // place, and that version exists nowhere else.
+    let taken = if directory.is_dir() {
+        Some(backup::directory(&directory, name)?)
+    } else {
+        None
+    };
     // Replaced rather than merged: a skill is the directory, and leaving files
     // from an older version beside the new ones would make it neither.
     std::fs::remove_dir_all(&directory).ok();
     std::fs::create_dir_all(&directory)
         .map_err(|error| format!("Failed to create {}: {error}", directory.display()))?;
-    copy_tree(source, &directory)
+    copy_tree(source, &directory)?;
+    Ok(taken)
 }
 
 /// Copy a file beside itself before something replaces it.

@@ -21,7 +21,7 @@ pub use apply::{apply, ApplyOutcome, ApplyPreview};
 pub use registry::{
     install, publish, register_github, InstallOutcome, PublishOutcome, PublishRequest,
 };
-pub use snapshot::snapshot;
+pub use snapshot::{refresh, snapshot};
 pub use store::profiles_root;
 pub use transfer::{export, import, ExportOutcome, ImportOutcome};
 
@@ -92,12 +92,19 @@ fn valid_name(name: &str) -> bool {
         && characters.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
-pub(super) fn check_name(name: &str) -> Result<(), String> {
-    if valid_name(name) {
-        return Ok(());
+/// The name a caller supplied, trimmed, if it is one this store will hold.
+///
+/// The padding is taken off *before* the check and the trimmed name is what is
+/// used from then on — so `"  x  "` is the profile `x`, and a name that is only
+/// spaces is refused as the empty string it trims down to rather than as the
+/// spaces it arrived as.
+pub(super) fn check_name(name: &str) -> Result<String, String> {
+    let trimmed = name.trim();
+    if valid_name(trimmed) {
+        return Ok(trimmed.to_string());
     }
     Err(format!(
-        "Invalid profile name \"{name}\". Use letters, numbers, \".\", \"_\", or \"-\"."
+        "Invalid profile name \"{trimmed}\". Use letters, numbers, \".\", \"_\", or \"-\"."
     ))
 }
 
@@ -131,12 +138,12 @@ pub fn get(name: &str) -> Result<Profile, String> {
 }
 
 pub fn create(name: &str, description: Option<&str>) -> Result<Profile, String> {
-    check_name(name)?;
-    if store::exists(name) {
+    let name = check_name(name)?;
+    if store::exists(&name) {
         return Err(format!("Profile \"{name}\" already exists."));
     }
     let profile = Profile {
-        name: name.to_string(),
+        name: name.clone(),
         description: description.map(str::to_string),
         ..Profile::default()
     };

@@ -4,6 +4,7 @@
 
 mod agent_chat;
 mod agent_env;
+mod agent_profiles;
 mod bundles;
 mod change_sets;
 mod context;
@@ -117,6 +118,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(meta::authenticated())
         .merge(agent_chat::routes())
         .merge(agent_env::routes())
+        .merge(agent_profiles::routes())
         .merge(errors::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())

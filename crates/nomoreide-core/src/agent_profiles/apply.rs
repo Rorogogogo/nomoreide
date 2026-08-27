@@ -67,7 +67,7 @@ pub fn apply(
 ) -> Result<Applied, String> {
     let profile = super::get(name)?;
     if dry_run {
-        return Ok(Applied::Preview(preview(&profile, agent)));
+        return Ok(Applied::Preview(preview(&profile, agent, cwd)));
     }
     Ok(Applied::Outcome(run(
         &profile,
@@ -79,23 +79,42 @@ pub fn apply(
     )?))
 }
 
-fn preview(profile: &Profile, agent: Agent) -> ApplyPreview {
+fn preview(profile: &Profile, agent: Agent, cwd: &Path) -> ApplyPreview {
+    // A preview is a *comparison*, so it has to read what the agent already
+    // has: an entry the target does not carry is an addition, one it carries
+    // identically is a no-op, and one it carries differently is the only kind
+    // worth stopping for.
+    let views = agent_env::read_configs(Some(cwd));
+    let live = views.iter().find(|view| view.agent == agent.id());
+
     let mut items = Vec::new();
     for (key, entry) in profile.mcps.iter() {
         items.push(PreviewItem {
             category: "mcp",
             name: key.to_string(),
             id: None,
-            status: "add",
+            status: match live.and_then(|view| live_mcp(view, key)) {
+                None => "add",
+                Some(existing) if existing == canonical_mcp(entry) => "identical",
+                Some(_) => "conflict",
+            },
             warnings: mcp_warnings(agent, entry),
         });
     }
     for skill in &profile.skills {
+        let name = entry_name(skill).unwrap_or_default().to_string();
+        // Contents are not diffed: a user-scope directory already under this
+        // name is a conflict whatever is in it.
+        let installed = live.is_some_and(|view| {
+            view.skills
+                .iter()
+                .any(|entry| entry.scope == "user" && entry.name == name)
+        });
         items.push(PreviewItem {
             category: "skill",
-            name: entry_name(skill).unwrap_or_default().to_string(),
+            name,
             id: None,
-            status: "add",
+            status: if installed { "conflict" } else { "add" },
             warnings: Vec::new(),
         });
     }
@@ -117,21 +136,127 @@ fn preview(profile: &Profile, agent: Agent) -> ApplyPreview {
     }
 }
 
-/// What a target agent cannot keep. Only Codex loses anything: its config has
-/// a URL and nothing else to say how to reach it.
+/// What a target agent cannot keep. Only Codex loses anything, and only when
+/// there is something to lose: its config stores a URL and nothing else, so a
+/// plain HTTP server with no headers survives the trip intact and is not warned
+/// about.
 fn mcp_warnings(agent: Agent, entry: &Json) -> Vec<String> {
-    let remote = entry
-        .as_object()
-        .and_then(|map| map.get("kind"))
-        .and_then(Json::as_str)
-        == Some("remote");
-    if remote && matches!(agent, Agent::Codex) {
+    let field = |key: &str| entry.as_object().and_then(|map| map.get(key));
+    let remote = field("kind").and_then(Json::as_str) == Some("remote");
+    let loses =
+        field("headers").is_some() || field("transport").and_then(Json::as_str) == Some("sse");
+    if remote && loses && matches!(agent, Agent::Codex) {
         return vec![
             "Codex config only stores a URL for remote MCPs; transport and headers will be dropped."
                 .to_string(),
         ];
     }
     Vec::new()
+}
+
+/// One MCP entry reduced to a form two spellings of the same server share.
+///
+/// The comparison is by value and not by text: an absent `args` and an empty
+/// one are the same server, and an env map is ordered so that two files listing
+/// the same variables in different orders still match.
+fn canonical_mcp(entry: &Json) -> String {
+    let field = |key: &str| entry.as_object().and_then(|map| map.get(key));
+    let text = |key: &str| {
+        field(key)
+            .and_then(Json::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let map = |key: &str| {
+        let mut pairs: Vec<(String, String)> = field(key)
+            .and_then(Json::as_object)
+            .map(|object| {
+                object
+                    .iter()
+                    .map(|(name, value)| {
+                        (
+                            name.to_string(),
+                            value.as_str().unwrap_or_default().to_string(),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        pairs.sort_by(|left, right| crate::locale::compare(&left.0, &right.0));
+        pairs
+    };
+    if text("kind") == "local" {
+        let args: Vec<String> = field("args")
+            .and_then(|value| match value {
+                Json::Array(items) => Some(
+                    items
+                        .iter()
+                        .map(|item| item.as_str().unwrap_or_default().to_string())
+                        .collect(),
+                ),
+                _ => None,
+            })
+            .unwrap_or_default();
+        return format!(
+            "local\u{1}{}\u{1}{args:?}\u{1}{:?}",
+            text("command"),
+            map("env")
+        );
+    }
+    format!(
+        "remote\u{1}{}\u{1}{}\u{1}{:?}\u{1}{:?}",
+        text("transport"),
+        text("url"),
+        map("headers"),
+        map("env")
+    )
+}
+
+/// The server the agent already has under this key, in the same canonical form.
+fn live_mcp(view: &agent_env::AgentConfigView, key: &str) -> Option<String> {
+    if let Some(server) = view.mcp_servers.get(key) {
+        let mut pairs: Vec<(String, String)> = server
+            .env
+            .as_ref()
+            .map(|env| {
+                env.iter()
+                    .map(|(name, value)| {
+                        (
+                            name.to_string(),
+                            value.as_str().unwrap_or_default().to_string(),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        pairs.sort_by(|left, right| crate::locale::compare(&left.0, &right.0));
+        let args = server.args.clone().unwrap_or_default();
+        return Some(format!(
+            "local\u{1}{}\u{1}{args:?}\u{1}{pairs:?}",
+            server.command
+        ));
+    }
+    let server = view.remote_mcp_servers.get(key)?;
+    let mut headers: Vec<(String, String)> = server
+        .headers
+        .as_ref()
+        .map(|map| {
+            map.iter()
+                .map(|(name, value)| {
+                    (
+                        name.to_string(),
+                        value.as_str().unwrap_or_default().to_string(),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    headers.sort_by(|left, right| crate::locale::compare(&left.0, &right.0));
+    let env: Vec<(String, String)> = Vec::new();
+    Some(format!(
+        "remote\u{1}{}\u{1}{}\u{1}{headers:?}\u{1}{env:?}",
+        server.transport, server.url
+    ))
 }
 
 /// A plugin captured from one agent and applied to another arrives as files
@@ -198,7 +323,9 @@ fn run(
         // one whose bundle was never captured. There is nothing to install.
         match store::bundled_skill(&profile.name, &name) {
             Some(source) => {
-                agent_env::install_user_skill(agent, &name, &source)?;
+                if let Some(taken) = agent_env::install_user_skill(agent, &name, &source)? {
+                    backups.push(taken.to_string_lossy().into_owned());
+                }
                 skills_applied.push(name);
             }
             None => skipped.push(format!("skill \"{name}\" (missing from profile bundle)")),

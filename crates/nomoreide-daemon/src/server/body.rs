@@ -136,3 +136,30 @@ mod tests {
         assert_eq!(form.get("name").map(String::as_str), Some("one"));
     }
 }
+
+/// `decodeURIComponent`, including its refusal to guess.
+///
+/// [`percent_decode`] above is the lenient reading a query string gets, where a
+/// malformed escape survives as the text it was. A *path segment* is decoded
+/// with `decodeURIComponent` in the reference, which throws on a broken escape
+/// rather than passing it through — and a route that lets that throw escape
+/// answers 500. `None` here is that throw.
+pub(crate) fn decode_uri_component(raw: &str) -> Option<String> {
+    let bytes = raw.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = raw.get(index + 1..index + 3)?;
+            if !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                return None;
+            }
+            decoded.push(u8::from_str_radix(hex, 16).ok()?);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8(decoded).ok()
+}

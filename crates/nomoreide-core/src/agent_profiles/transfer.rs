@@ -237,8 +237,7 @@ fn adopt(
         // is not checked writes above the profiles root. The name inside the
         // archive was validated when the archive was parsed; this one comes
         // from the request.
-        super::check_name(name)?;
-        profile.name = name.to_string();
+        profile.name = super::check_name(name)?;
     }
     if store::exists(&profile.name) && !force {
         return Err(format!(

@@ -26,6 +26,24 @@ pub fn profiles_root() -> PathBuf {
 /// straight through — so the name is reduced to its last path segment first.
 /// That is what the reference does, and it is why importing as `../escape`
 /// stores a profile called `../escape` in a directory called `escape`.
+/// A profile's directory, for the one caller that needs to move it: a refresh
+/// stages the new bundle beside the old one and swaps them.
+pub(super) fn directory_of(name: &str) -> PathBuf {
+    directory(name)
+}
+
+/// Write a profile into a directory chosen by the caller rather than into the
+/// one its name implies — again, for a refresh's staging copy.
+pub(super) fn write_at(directory: &std::path::Path, profile: &Profile) -> Result<(), String> {
+    std::fs::create_dir_all(directory)
+        .map_err(|error| format!("Failed to create {}: {error}", directory.display()))?;
+    let mut text = serde_json::to_string_pretty(profile)
+        .map_err(|error| format!("Failed to render profile.json: {error}"))?;
+    text.push('\n');
+    std::fs::write(directory.join("profile.json"), text)
+        .map_err(|error| format!("Failed to write profile.json: {error}"))
+}
+
 fn directory(name: &str) -> PathBuf {
     profiles_root().join(basename(name))
 }
@@ -58,6 +76,11 @@ pub(super) fn load(name: &str) -> Result<Option<Profile>, String> {
         return Ok(None);
     };
     let invalid = || format!("Profile \"{name}\" has an invalid profile.json.");
+    // A file that is not JSON at all reports the *parser's* complaint, because
+    // the reference lets `JSON.parse` throw straight out of the read and the
+    // route renders whatever message came with it. Only a document that parses
+    // and then fails the profile's own shape gets the sentence above.
+    crate::js_json::parse(&text)?;
     let profile: Profile = serde_json::from_str(&text).map_err(|_| invalid())?;
     if !super::valid_name(&profile.name) {
         return Err(invalid());

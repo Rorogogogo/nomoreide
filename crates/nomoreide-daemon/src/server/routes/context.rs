@@ -13,6 +13,7 @@
 //! anything: the loser is told what it missed rather than being told "no".
 
 use crate::server::app::AppState;
+use crate::server::body::decode_uri_component as percent_decode;
 use crate::server::errors::{error, method_not_allowed};
 use crate::server::routes::query::query_value;
 use axum::body::Bytes;
@@ -350,26 +351,6 @@ fn note_id(uri: &Uri) -> Result<String, Refusal> {
 /// A status and the wording that goes with it, small enough not to trip
 /// clippy's `result_large_err` in an error position.
 type Refusal = (StatusCode, &'static str);
-
-fn percent_decode(raw: &str) -> Option<String> {
-    let bytes = raw.as_bytes();
-    let mut decoded = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'%' {
-            let hex = raw.get(index + 1..index + 3)?;
-            if !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-                return None;
-            }
-            decoded.push(u8::from_str_radix(hex, 16).ok()?);
-            index += 3;
-        } else {
-            decoded.push(bytes[index]);
-            index += 1;
-        }
-    }
-    String::from_utf8(decoded).ok()
-}
 
 fn parsed_body(body: &[u8]) -> Value {
     serde_json::from_slice::<Value>(body).unwrap_or(Value::Null)
