@@ -15,12 +15,10 @@
 //! reason in place of the lines.
 
 use std::collections::HashMap;
-use std::process::Stdio;
 use std::time::Duration;
 
 use regex::{Regex, RegexBuilder};
 use serde::Serialize;
-use tokio::process::Command;
 
 use crate::config::LogSourceDef;
 
@@ -301,47 +299,24 @@ fn shell_escape(value: &str) -> String {
     format!("'{}'", value.replace('\'', r"'\''"))
 }
 
-/// `execFile`, including how it reports a failure.
+/// `execFile`, with this module's own budgets.
 ///
-/// Node rejects a non-zero exit with `Command failed: <file> <args…>` followed
-/// by the whole of stderr, and that message is what the log pane shows, so it
-/// is reproduced verbatim rather than replaced with something tidier.
+/// The wording of a failure is the shared runner's, because it is Node's and
+/// every surface that quotes one quotes the same sentence.
 async fn exec_file(argv: &[String], cwd: Option<&str>) -> Result<(String, String), String> {
-    let (program, args) = argv.split_first().ok_or("no command")?;
-    let mut command = Command::new(program);
-    command
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    if let Some(cwd) = cwd.filter(|value| !value.is_empty()) {
-        command.current_dir(cwd);
-    }
-    let child = command
-        .spawn()
-        .map_err(|error| format!("spawn {program} {}", errno_name(&error)))?;
-    let output = tokio::time::timeout(READ_TIMEOUT, child.wait_with_output())
-        .await
-        .map_err(|_| format!("Command failed: {}", argv.join(" ")))?
-        .map_err(|error| error.to_string())?;
-
-    if output.stdout.len() > MAX_BUFFER || output.stderr.len() > MAX_BUFFER {
-        return Err("stdout maxBuffer length exceeded".to_string());
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    if !output.status.success() {
-        return Err(format!("Command failed: {}\n{stderr}", argv.join(" ")));
-    }
-    Ok((stdout, stderr))
-}
-
-fn errno_name(error: &std::io::Error) -> &'static str {
-    match error.kind() {
-        std::io::ErrorKind::NotFound => "ENOENT",
-        std::io::ErrorKind::PermissionDenied => "EACCES",
-        _ => "EIO",
-    }
+    let output = crate::exec_file::exec_file(
+        argv,
+        &crate::exec_file::ExecOptions {
+            timeout: READ_TIMEOUT,
+            max_buffer: MAX_BUFFER,
+            cwd,
+        },
+    )
+    .await?;
+    Ok((
+        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
+    ))
 }
 
 /// Parses `journalctl -o json` lines into entries with real timestamps.

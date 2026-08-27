@@ -1097,6 +1097,32 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Save one server, replacing any row that already holds its host.
+    ///
+    /// Filtered then appended, so re-registering an existing host **moves it to
+    /// the end** rather than updating it in place. Config order is what the
+    /// servers list returns, so that reordering is visible.
+    ///
+    /// The definition is expected to have been through
+    /// [`crate::ssh_servers::check_ssh_server`] already — this stores what it
+    /// is given.
+    pub async fn register_ssh_server(&self, server: SshServerDef) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.ssh_servers.retain(|item| item.host != server.host);
+        config.ssh_servers.push(server);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
+    /// Forget one server. A host that was never saved is not an error: the row
+    /// may have come from `~/.ssh/config`, which this never writes.
+    pub async fn remove_ssh_server(&self, host: &str) -> Result<Config> {
+        let mut config = self.load().await?;
+        config.ssh_servers.retain(|item| item.host != host);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
     pub async fn register_log_source(&self, source: LogSourceDef) -> Result<Config> {
         let mut config = self.load().await?;
         config.log_sources.retain(|s| s.name != source.name);

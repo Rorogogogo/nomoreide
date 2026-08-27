@@ -19,6 +19,7 @@ mod log_sources;
 mod meta;
 mod onboard;
 mod query;
+mod servers;
 mod service_config;
 mod service_files;
 mod service_register;
@@ -123,6 +124,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(database::routes())
         .merge(database_catalog::routes())
         .merge(database_write::routes())
+        .merge(servers::routes())
         .merge(services::routes())
         .merge(service_config::routes())
         .merge(service_files::routes())

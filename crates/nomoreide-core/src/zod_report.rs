@@ -92,6 +92,15 @@ pub enum ZodIssue {
         path: Vec<Value>,
         message: String,
     },
+    /// A string that failed a `.regex()`, `.email()` or similar. `validation`
+    /// names which one and comes **first**, ahead of the code — zod builds this
+    /// object by spreading the check's own descriptor before the common fields.
+    InvalidString {
+        validation: &'static str,
+        code: &'static str,
+        message: String,
+        path: Vec<Value>,
+    },
     UnrecognizedKeys {
         code: &'static str,
         keys: Vec<String>,
@@ -224,6 +233,29 @@ impl ZodIssue {
             inclusive: true,
             exact: false,
             message: format!("String must contain at least {minimum} character(s)"),
+            path,
+        }
+    }
+
+    pub fn too_big_string(maximum: i64, path: Vec<Value>) -> Self {
+        ZodIssue::TooBig {
+            code: "too_big",
+            maximum,
+            kind: "string",
+            inclusive: true,
+            exact: false,
+            message: format!("String must contain at most {maximum} character(s)"),
+            path,
+        }
+    }
+
+    /// A `.regex(pattern, message)` failure, which carries the schema author's
+    /// wording rather than one zod composed.
+    pub fn invalid_regex(message: &str, path: Vec<Value>) -> Self {
+        ZodIssue::InvalidString {
+            validation: "regex",
+            code: "invalid_string",
+            message: message.to_string(),
             path,
         }
     }

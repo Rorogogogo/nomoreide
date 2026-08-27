@@ -425,10 +425,14 @@ mod tests {
             Agent::Claude.user_skills_relative_paths(),
             [".claude/skills"]
         );
-        assert!(Agent::Antigravity.user_skills_relative_paths().is_empty());
+        // Antigravity reads one directory of its own, and installs into it.
+        assert_eq!(
+            Agent::Antigravity.user_skills_relative_paths(),
+            [".gemini/skills"]
+        );
         assert_eq!(
             Agent::Antigravity.user_skills_directory(Path::new("/h")),
-            None
+            Some(PathBuf::from("/h/.gemini/skills"))
         );
     }
 

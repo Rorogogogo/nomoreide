@@ -739,7 +739,7 @@ fn is_resume_id(id: &str) -> bool {
             .all(|character| character.is_ascii_hexdigit() || character == '-')
 }
 
-fn spawn(state: &AppState, spec: TerminalSpawnSpec) -> Response {
+pub(super) fn spawn(state: &AppState, spec: TerminalSpawnSpec) -> Response {
     match state.terminal.create(state.events.clone(), spec) {
         Ok(session) => (
             StatusCode::CREATED,
