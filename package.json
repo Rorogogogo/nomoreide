@@ -78,6 +78,7 @@
     "terminal-parity": "node --import tsx scripts/check-terminal-parity.ts",
     "change-sets-parity": "node --import tsx scripts/check-change-sets-parity.ts",
     "agent-env-parity": "node --import tsx scripts/check-agent-env-parity.ts",
+    "agent-profiles-parity": "node --import tsx scripts/check-agent-profiles-parity.ts",
     "context-parity": "node --import tsx scripts/check-context-parity.ts",
     "shell-parity": "node --import tsx scripts/check-shell-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
