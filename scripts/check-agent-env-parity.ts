@@ -77,6 +77,8 @@ interface Step {
   /** Written to both runtimes' homes before the request. */
   readonly writeHomeFiles?: readonly HomeFile[];
   readonly removeHomeFiles?: readonly string[];
+  /** Runs against this runtime immediately before the request. */
+  readonly mutate?: (runtime: Runtime) => Promise<void>;
   /** Put every fixture file back, for the step after a deliberate break. */
   readonly replant?: boolean;
 }
@@ -104,6 +106,12 @@ const PLUGIN_FILES: readonly HomeFile[] = [
         plugins: {
           "tidy@acme": [{ installPath: "{{home}}/.claude/plugins/cache/tidy" }],
           "stale@acme": [{}],
+          // A scoped key holds two `@`, which is the only shape that tells
+          // splitting once, splitting from the right, and taking the first two
+          // pieces of a full split apart from each other.
+          "@acme/scoped@market": [{ installPath: "{{home}}/.claude/plugins/cache/scoped" }],
+          // No `@` at all: the source is absent rather than empty.
+          unsourced: [{ installPath: "{{home}}/.claude/plugins/cache/unsourced" }],
         },
       },
       null,
@@ -122,6 +130,13 @@ const PLUGIN_FILES: readonly HomeFile[] = [
     contents: "---\nname: archive\ndescription: Archive.\n---\n\nArchive it.\n",
   },
   { path: ".claude/plugins/cache/tidy/skills/.hidden/SKILL.md", contents: "hidden\n" },
+  // Capitalised, so byte order and `localeCompare` disagree about where it goes.
+  {
+    path: ".claude/plugins/cache/tidy/skills/Zebra/SKILL.md",
+    contents: "---\nname: Zebra\ndescription: Z.\n---\n\nZ.\n",
+  },
+  { path: ".claude/plugins/cache/scoped/skills/scoped-skill/SKILL.md", contents: "---\nname: scoped-skill\ndescription: S.\n---\n\nS.\n" },
+  { path: ".claude/plugins/cache/unsourced/skills/lonely/SKILL.md", contents: "---\nname: lonely\ndescription: L.\n---\n\nL.\n" },
   {
     path: ".claude/plugins/cache/tidy/.mcp.json",
     contents: '{\n  "mcpServers": {\n    "tidy-mcp": {\n      "command": "true"\n    }\n  }\n}\n',
@@ -547,6 +562,24 @@ const steps: Step[] = [
     body: changes(change({ category: "skill", action: "copy", name: "tidy", sourceAgent: "claude", targetAgent: "codex" })),
   },
   {
+    name: "preview/move-a-skill-to-project-scope",
+    method: "POST",
+    path: `${ENV}/changes/preview`,
+    body: changes(change({ category: "skill", action: "move", name: "summarise", sourceAgent: "claude", targetAgent: "antigravity", targetScope: "project" })),
+  },
+  {
+    name: "preview/copy-a-skill-to-codex-project-scope",
+    method: "POST",
+    path: `${ENV}/changes/preview`,
+    body: changes(change({ category: "skill", action: "copy", name: "summarise", sourceAgent: "claude", targetAgent: "codex", targetScope: "project" })),
+  },
+  {
+    name: "preview/copy-an-mcp-to-antigravity-project-scope",
+    method: "POST",
+    path: `${ENV}/changes/preview`,
+    body: changes(change({ category: "mcp", action: "copy", name: "linear", sourceAgent: "claude", targetAgent: "antigravity", targetScope: "project" })),
+  },
+  {
     name: "preview/a-name-with-a-slash",
     method: "POST",
     path: `${ENV}/changes/preview`,
@@ -789,6 +822,13 @@ const steps: Step[] = [
   },
   { name: "settings/get-after-the-put", method: "GET", path: `${ENV}/settings/claude` },
   {
+    name: "settings/put-content-with-no-trailing-newline",
+    method: "PUT",
+    path: `${ENV}/settings/claude`,
+    body: JSON.stringify({ content: '{"model":"opus"}' }),
+  },
+  { name: "settings/get-after-the-newlineless-put", method: "GET", path: `${ENV}/settings/claude` },
+  {
     name: "settings/put-the-same-content-again",
     method: "PUT",
     path: `${ENV}/settings/claude`,
@@ -826,8 +866,12 @@ const steps: Step[] = [
     name: "settings/clear-a-codex-model-with-a-section-below",
     method: "POST",
     path: `${ENV}/settings/codex/model`,
+    // Every spelling of this second's backup is already taken, so the write
+    // has to decide what to do when it cannot set the file aside.
+    mutate: (runtime) => fillBackupSlots(runtime, ".codex/config.toml"),
     body: '{"model":""}',
   },
+  { name: "settings/the-codex-file-after-the-unbacked-write", method: "GET", path: `${ENV}/settings/codex` },
   { name: "settings/the-codex-file-after-clearing", method: "GET", path: `${ENV}/settings/codex` },
   {
     name: "settings/put-codex-content-that-is-not-toml",
@@ -889,6 +933,14 @@ const steps: Step[] = [
     name: "settings/clear-the-model",
     method: "POST",
     path: `${ENV}/settings/claude/model`,
+    // `model` ahead of two more keys is the only arrangement where removing it
+    // in place and removing it by swapping the last key into its slot differ.
+    writeHomeFiles: [
+      {
+        path: ".claude/settings.json",
+        contents: '{\n  "model": "opus",\n  "alpha": 1,\n  "omega": 2\n}\n',
+      },
+    ],
     body: '{"model":"   "}',
   },
   { name: "settings/the-file-after-the-model-was-cleared", method: "GET", path: `${ENV}/settings/claude` },
@@ -934,7 +986,42 @@ async function credentialFor(runtime: Runtime): Promise<Record<string, string>> 
   return credential ? { authorization: `Bearer ${credential}` } : {};
 }
 
+/**
+ * Fill every backup spelling this second — and the next one — has to offer.
+ *
+ * The ten-attempt cap is only observable once ten backups of one file share a
+ * wall-clock second, and *making* ten by sending ten requests is a race the
+ * gate loses under load: the writes spread across seconds, no collision
+ * happens, and the case passes without exercising the cap at all. That is worse
+ * than a hole, because it looks like coverage. Planting the collisions puts the
+ * cap under test in one round trip, and covering the next second too means a
+ * request that lands just past the boundary still meets a full set.
+ */
+async function fillBackupSlots(runtime: Runtime, relative: string): Promise<void> {
+  const stamp = (at: Date) =>
+    [
+      at.getFullYear(),
+      String(at.getMonth() + 1).padStart(2, "0"),
+      String(at.getDate()).padStart(2, "0"),
+      "-",
+      String(at.getHours()).padStart(2, "0"),
+      String(at.getMinutes()).padStart(2, "0"),
+      String(at.getSeconds()).padStart(2, "0"),
+    ].join("");
+  const now = new Date();
+  const next = new Date(now.getTime() + 1000);
+  const target = join(runtime.home, relative);
+  await mkdir(dirname(target), { recursive: true });
+  for (const at of [now, next]) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const suffix = attempt === 0 ? "" : `-${attempt}`;
+      await writeFile(`${target}.bak.${stamp(at)}${suffix}`, "taken\n");
+    }
+  }
+}
+
 async function send(runtime: Runtime, step: Step): Promise<Answer> {
+  if (step.mutate) await step.mutate(runtime);
   const response = await fetch(`http://127.0.0.1:${runtime.port}${step.path}`, {
     method: step.method,
     headers: { ...(await credentialFor(runtime)), "content-type": "application/json" },

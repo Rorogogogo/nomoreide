@@ -46,10 +46,15 @@ fn claude(home: &Path) -> Vec<SkillEntry> {
         .map(|(key, records)| {
             // `name@source`, and a key with no `@` names a plugin that came
             // from nowhere the record can spell.
-            let (name, source) = match key.split_once('@') {
-                Some((name, source)) => (name.to_string(), Some(source.to_string())),
-                None => (key.clone(), None),
-            };
+            //
+            // Split on *every* `@` and keep the first two pieces, which is what
+            // destructuring `key.split("@")` does. A scoped key like
+            // `@acme/tidy@market` therefore has an empty name and the source
+            // `acme/tidy` — splitting once would carry `acme/tidy@market`, and
+            // splitting from the right would carry `market`.
+            let mut pieces = key.split('@');
+            let name = pieces.next().unwrap_or_default().to_string();
+            let source = pieces.next().map(str::to_string);
             let install_path = records
                 .as_array()
                 .and_then(|records| records.first())
