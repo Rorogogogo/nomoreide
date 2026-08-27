@@ -92,7 +92,7 @@ fn valid_name(name: &str) -> bool {
         && characters.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
 }
 
-fn check_name(name: &str) -> Result<(), String> {
+pub(super) fn check_name(name: &str) -> Result<(), String> {
     if valid_name(name) {
         return Ok(());
     }

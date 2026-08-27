@@ -20,6 +20,7 @@ import {
   resolveMcpCredentials,
 } from "./credentials.js";
 import {
+  assertValidProfileName,
   getProfile,
   clearProfileRegistryLink,
   copyProfileAssetTree,
@@ -206,7 +207,13 @@ export async function importProfile(
       throw new Error("Archive has a missing or invalid profile.json.");
     }
 
-    const name = input.as ?? parsedProfile.data.name;
+    // `as` renames the profile on the way in, and the name it supplies becomes
+    // a directory under the profiles root. It goes through the same check a
+    // create does: `profileDir` joins it through `basename`, and `basename("..")`
+    // is `".."`, so an unchecked rename writes *above* the root. The archive's
+    // own name is already schema-validated; this one arrives from the request.
+    const name =
+      input.as === undefined ? parsedProfile.data.name : assertValidProfileName(input.as);
     const profile: Profile = { ...parsedProfile.data, name };
     if (!input.force && (await pathExists(path.join(profileDir(name, options), "profile.json")))) {
       throw new Error(`Profile "${name}" already exists. Re-import with force to overwrite.`);

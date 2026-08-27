@@ -232,6 +232,12 @@ fn adopt(
         .ok_or_else(|| "Archive has a missing or invalid profile.json.".to_string())?;
 
     if let Some(name) = rename_to {
+        // The same check a create runs. `store::directory` joins the name
+        // through `basename`, and `basename("..")` is `".."` — so a rename that
+        // is not checked writes above the profiles root. The name inside the
+        // archive was validated when the archive was parsed; this one comes
+        // from the request.
+        super::check_name(name)?;
         profile.name = name.to_string();
     }
     if store::exists(&profile.name) && !force {
