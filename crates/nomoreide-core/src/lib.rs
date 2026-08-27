@@ -19,6 +19,7 @@ pub mod context_library;
 pub mod context_snapshot;
 pub mod db;
 pub mod directories;
+pub mod docker;
 pub mod env_file;
 pub mod error_inbox;
 pub mod event_sink;

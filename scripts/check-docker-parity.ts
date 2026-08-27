@@ -475,6 +475,10 @@ const steps: readonly Step[] = [
   { name: "logs/tail-is-zero", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=0" },
   { name: "logs/tail-is-negative", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=-5" },
   { name: "logs/tail-is-fractional", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=1.9" },
+  // Above zero, so the route passes it through — and *then* it truncates to
+  // zero, which is falsy, so the default applies after all. The only input
+  // that reaches the fallback from inside rather than from the route's filter.
+  { name: "logs/tail-is-a-half", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=0.5" },
   { name: "logs/tail-is-not-a-number", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=abc" },
   { name: "logs/tail-is-blank", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=" },
   { name: "logs/tail-is-huge", method: "GET", path: "/api/docker/containers/abc123456789/logs?tail=5000" },

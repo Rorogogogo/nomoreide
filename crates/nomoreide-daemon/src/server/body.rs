@@ -110,33 +110,6 @@ fn hex_digit(byte: u8) -> Option<u8> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn decodes_escapes_and_plus() {
-        assert_eq!(percent_decode("a+b%2Fc"), "a b/c");
-        assert_eq!(percent_decode("%E2%9C%93"), "\u{2713}");
-    }
-
-    /// The regression this reader's byte walk exists for: a stray `%` in front
-    /// of a multi-byte character used to slice the string mid-character.
-    #[test]
-    fn leaves_a_stray_escape_alone_without_panicking() {
-        assert_eq!(percent_decode("%a\u{e9}"), "%a\u{e9}");
-        assert_eq!(percent_decode("%"), "%");
-        assert_eq!(percent_decode("%z1"), "%z1");
-        assert_eq!(percent_decode("100%"), "100%");
-    }
-
-    #[test]
-    fn a_repeated_key_keeps_the_first_value() {
-        let form = parse_form(&Bytes::from_static(b"name=one&name=two"));
-        assert_eq!(form.get("name").map(String::as_str), Some("one"));
-    }
-}
-
 /// `decodeURIComponent`, including its refusal to guess.
 ///
 /// [`percent_decode`] above is the lenient reading a query string gets, where a
@@ -162,4 +135,31 @@ pub(crate) fn decode_uri_component(raw: &str) -> Option<String> {
         }
     }
     String::from_utf8(decoded).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decodes_escapes_and_plus() {
+        assert_eq!(percent_decode("a+b%2Fc"), "a b/c");
+        assert_eq!(percent_decode("%E2%9C%93"), "\u{2713}");
+    }
+
+    /// The regression this reader's byte walk exists for: a stray `%` in front
+    /// of a multi-byte character used to slice the string mid-character.
+    #[test]
+    fn leaves_a_stray_escape_alone_without_panicking() {
+        assert_eq!(percent_decode("%a\u{e9}"), "%a\u{e9}");
+        assert_eq!(percent_decode("%"), "%");
+        assert_eq!(percent_decode("%z1"), "%z1");
+        assert_eq!(percent_decode("100%"), "100%");
+    }
+
+    #[test]
+    fn a_repeated_key_keeps_the_first_value() {
+        let form = parse_form(&Bytes::from_static(b"name=one&name=two"));
+        assert_eq!(form.get("name").map(String::as_str), Some("one"));
+    }
 }

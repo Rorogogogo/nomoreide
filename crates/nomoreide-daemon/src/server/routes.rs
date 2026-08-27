@@ -11,6 +11,7 @@ mod context;
 mod database;
 mod database_catalog;
 mod database_write;
+mod docker;
 mod errors;
 mod fs_directories;
 mod git;
@@ -120,6 +121,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(agent_chat::routes())
         .merge(agent_env::routes())
         .merge(agent_profiles::routes())
+        .merge(docker::routes())
         .merge(errors::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())

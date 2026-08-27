@@ -363,7 +363,7 @@ mod tests {
             "File returned an invalid size."
         );
         assert_eq!(
-            parse_read_only_file("/x", b"NOT_A_HEADER\010\0hello").unwrap_err(),
+            parse_read_only_file("/x", b"NOT_A_HEADER\x0010\0hello").unwrap_err(),
             "File returned an unexpected response."
         );
     }
