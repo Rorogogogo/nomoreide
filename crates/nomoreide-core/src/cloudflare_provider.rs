@@ -422,6 +422,63 @@ pub fn cloudflare_repo_url(remote: &str) -> Option<String> {
     repo_url(remote)
 }
 
+/// The manifest the dashboard renders a tab from.
+///
+/// `requiresScope` is the field Vercel has no use for: a Cloudflare token is
+/// account-scoped, so a connection that has not chosen an account cannot ask
+/// for anything yet.
+pub fn manifest() -> Value {
+    serde_json::json!({
+        "id": "cloudflare",
+        "name": "Cloudflare",
+        "kind": "deploy",
+        "strings": {
+            "en": {
+                "scope.label": "Cloudflare account",
+                "action.redeploy": "Retry build",
+                "action.redeploy.done": "Build retried.",
+                "action.rollback": "Roll back",
+                "action.rollback.done": "Rolled back production.",
+                "action.rollback.confirmTitle": "Roll production back?",
+                "action.rollback.confirm": "Production traffic switches back to this older deployment immediately."
+            },
+            "zh": {
+                "scope.label": "Cloudflare 账户",
+                "action.redeploy": "重试构建",
+                "action.redeploy.done": "已重试构建。",
+                "action.rollback": "回滚",
+                "action.rollback.done": "已回滚生产环境。",
+                "action.rollback.confirmTitle": "回滚生产环境？",
+                "action.rollback.confirm": "生产流量将立即切回这个较旧的部署。"
+            }
+        },
+        "authSources": [
+            "cli",
+            "stored"
+        ],
+        "capabilities": [
+            "projects",
+            "deployments",
+            "buildLogs",
+            "env",
+            "domains"
+        ],
+        "requiresScope": true,
+        "actions": [
+            "redeploy",
+            "rollback"
+        ],
+        "productionAffecting": [
+            "rollback"
+        ],
+        "api": {
+            "hosts": [
+                "api.cloudflare.com"
+            ]
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -15,6 +15,7 @@ mod database_catalog;
 mod database_write;
 mod docker;
 mod errors;
+mod extensions;
 mod fs_directories;
 mod git;
 mod github;
@@ -131,6 +132,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(agent_profiles::routes())
         .merge(docker::routes())
         .merge(errors::routes())
+        .merge(extensions::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())
         .merge(database_write::routes())

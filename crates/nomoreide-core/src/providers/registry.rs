@@ -17,6 +17,7 @@ use crate::cloudflare_provider::{
     cloudflare_repo_url, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE, CLOUDFLARE_PROVIDER_ID,
 };
 use crate::config::{Config, ConfigStore};
+use serde_json::Value;
 use crate::providers::deploy::{BuildLogLine, Deployment, DeploymentDetail, ProviderProject};
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_context::require_client;
@@ -231,4 +232,67 @@ async fn resolve_project(
         }
     }
     None
+}
+
+/// Every deploy provider's manifest, in registry order.
+pub fn deploy_provider_manifests() -> Vec<Value> {
+    vec![
+        crate::vercel_provider::manifest(),
+        crate::cloudflare_provider::manifest(),
+    ]
+}
+
+/// One neutral row per installed plugin, both registries flattened together.
+///
+/// Kind is a *field* on the answer rather than a shape difference in it: the
+/// two contracts stay disjoint everywhere they disagree, but an inventory is
+/// one of the few places they genuinely agree, because what an inventory
+/// reports is the manifest — and both manifests carry an id, a name, an action
+/// list and an egress allowlist.
+///
+/// Everything is `built-in`, so there is nothing to install or remove. The page
+/// says so rather than rendering disabled buttons.
+pub fn installed_extensions() -> Vec<Value> {
+    let mut rows: Vec<Value> = deploy_provider_manifests()
+        .iter()
+        // A deploy plugin's projects and deployments render on its own page, so
+        // there is nowhere else to send the reader.
+        .map(|manifest| extension_row(manifest, "deploy", Value::Null))
+        .collect();
+    // A host plugin has its own page like everything else, *and* its instances
+    // keep appearing in the SSH server list beside machines no plugin owns.
+    rows.push(extension_row(
+        &crate::vultr_provider::manifest(),
+        "host",
+        Value::String("servers".into()),
+    ));
+    rows
+}
+
+fn extension_row(manifest: &Value, kind: &str, merges_into: Value) -> Value {
+    let list = |key: &str| match manifest.get(key) {
+        Some(Value::Array(items)) => Value::Array(items.clone()),
+        _ => Value::Array(Vec::new()),
+    };
+    let mut row = serde_json::Map::new();
+    row.insert("id".into(), manifest.get("id").cloned().unwrap_or(Value::Null));
+    row.insert(
+        "name".into(),
+        manifest.get("name").cloned().unwrap_or(Value::Null),
+    );
+    row.insert("kind".into(), Value::String(kind.to_string()));
+    row.insert("source".into(), Value::String("built-in".into()));
+    // A host plugin has no capability list, because it has no optional reads.
+    row.insert("capabilities".into(), list("capabilities"));
+    row.insert("actions".into(), list("actions"));
+    row.insert("productionAffecting".into(), list("productionAffecting"));
+    row.insert(
+        "hosts".into(),
+        match manifest.get("api").and_then(|api| api.get("hosts")) {
+            Some(Value::Array(hosts)) => Value::Array(hosts.clone()),
+            _ => Value::Array(Vec::new()),
+        },
+    );
+    row.insert("mergesInto".into(), merges_into);
+    Value::Object(row)
 }

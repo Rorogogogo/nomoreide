@@ -254,6 +254,80 @@ pub fn vercel_repo_url(remote: &str) -> Option<String> {
     repo_url(remote)
 }
 
+/// The manifest the dashboard renders a tab from, and the egress allowlist
+/// `createProviderFetch` enforces.
+///
+/// Data rather than a struct: every field of it is sent verbatim to a client
+/// that renders it, including the translated action labels, so a struct would
+/// only add a second spelling of the same document to keep in step.
+pub fn manifest() -> Value {
+    serde_json::json!({
+        "id": "vercel",
+        "name": "Vercel",
+        "kind": "deploy",
+        "strings": {
+            "en": {
+                "scope.label": "Vercel scope",
+                "action.redeploy": "Redeploy",
+                "action.redeploy.done": "Redeploy started.",
+                "action.cancel": "Cancel build",
+                "action.cancel.done": "Build canceled.",
+                "action.promote": "Promote",
+                "action.promote.done": "Promoted to production.",
+                "action.promote.confirmTitle": "Promote to production?",
+                "action.promote.confirm": "Production traffic switches to this deployment immediately.",
+                "action.rollback": "Roll back",
+                "action.rollback.done": "Rolled back production.",
+                "action.rollback.confirmTitle": "Roll production back?",
+                "action.rollback.confirm": "Production traffic switches back to this older deployment immediately."
+            },
+            "zh": {
+                "scope.label": "Vercel 范围",
+                "action.redeploy": "重新部署",
+                "action.redeploy.done": "已开始重新部署。",
+                "action.cancel": "取消构建",
+                "action.cancel.done": "已取消构建。",
+                "action.promote": "提升至生产",
+                "action.promote.done": "已提升至生产环境。",
+                "action.promote.confirmTitle": "提升至生产环境？",
+                "action.promote.confirm": "生产流量将立即切换到该部署。",
+                "action.rollback": "回滚",
+                "action.rollback.done": "已回滚生产环境。",
+                "action.rollback.confirmTitle": "回滚生产环境？",
+                "action.rollback.confirm": "生产流量将立即切回这个较旧的部署。"
+            }
+        },
+        "authSources": [
+            "cli",
+            "stored",
+            "oauth"
+        ],
+        "capabilities": [
+            "projects",
+            "deployments",
+            "buildLogs",
+            "runtimeLogs",
+            "env",
+            "domains"
+        ],
+        "actions": [
+            "redeploy",
+            "cancel",
+            "promote",
+            "rollback"
+        ],
+        "productionAffecting": [
+            "promote",
+            "rollback"
+        ],
+        "api": {
+            "hosts": [
+                "api.vercel.com"
+            ]
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
