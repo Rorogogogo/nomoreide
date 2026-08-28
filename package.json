@@ -84,6 +84,7 @@
     "servers-parity": "node --import tsx scripts/check-servers-parity.ts",
     "docker-parity": "node --import tsx scripts/check-docker-parity.ts",
     "agent-status-parity": "node --import tsx scripts/check-agent-status-parity.ts",
+    "usage-parity": "node --import tsx scripts/check-usage-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",

@@ -10,6 +10,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { callMcpTool, normalizeMcpContract, type McpCommand } from "./mcp-contract.js";
 
 export interface RuntimeSpec {
@@ -33,7 +34,16 @@ export interface WorkspaceFile {
   readonly executable?: boolean;
 }
 
-const REFERENCE_ARGS = ["--import", "tsx", "src/index.ts"] as const;
+/**
+ * Absolute, so the reference boots from any working directory. A bare `tsx`
+ * and a relative `src/index.ts` would both resolve against the daemon's cwd,
+ * which {@link RuntimeHarness.startDaemon} lets a gate point elsewhere.
+ */
+const REFERENCE_ARGS = [
+  "--import",
+  pathToFileURL(join(repoRoot(), "node_modules", "tsx", "dist", "loader.mjs")).href,
+  join(repoRoot(), "src", "index.ts"),
+] as const;
 
 export function referenceSpec(): RuntimeSpec {
   return { label: "reference", command: process.execPath, args: [...REFERENCE_ARGS] };
@@ -106,10 +116,22 @@ export class RuntimeHarness {
     };
   }
 
-  /** Boot a runtime's daemon and wait until its own state file answers /api/health. */
-  async startDaemon(runtime: Runtime, overrides: Record<string, string> = {}): Promise<void> {
+  /**
+   * Boot a runtime's daemon and wait until its own state file answers
+   * /api/health.
+   *
+   * `cwd` defaults to the repo root. A gate whose endpoints read *project*
+   * state — anything under the daemon's own working directory — points it at
+   * `runtime.workspace` instead, so the two runtimes get separate project
+   * trees rather than sharing this checkout's.
+   */
+  async startDaemon(
+    runtime: Runtime,
+    overrides: Record<string, string> = {},
+    cwd: string = repoRoot(),
+  ): Promise<void> {
     const daemon = spawn(runtime.command, [...runtime.args, "daemon"], {
-      cwd: repoRoot(),
+      cwd,
       env: this.env(runtime, overrides),
       stdio: ["ignore", "pipe", "pipe"],
     });
