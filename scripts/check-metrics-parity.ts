@@ -137,15 +137,18 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
 }
 
 /**
- * Every key path in a document, with the leaves dropped.
+ * Every key of a document, with the leaves dropped.
  *
- * A live sample's numbers are noise; the keys around them are the contract. An
- * array is collapsed to its first element's shape and a flag for whether it had
- * any, so two hosts with different numbers of processes still compare.
+ * A live sample's numbers are noise; the keys around them are the contract.
+ * Arrays collapse to a marker rather than to their contents *or their
+ * emptiness*: the host sampler fills its buffer on a timer, so the two daemons
+ * — started a second or two apart — legitimately disagree about whether a
+ * sample has landed yet. Key presence survives, which is what the
+ * `includeProcesses` decision turns on.
  */
 function shape(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.length === 0 ? [] : ["<non-empty>", shape(value[0])];
+    return "<array>";
   }
   if (value && typeof value === "object") {
     return Object.fromEntries(
