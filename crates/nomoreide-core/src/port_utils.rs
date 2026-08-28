@@ -83,7 +83,11 @@ pub fn check_host_port(host: &str, port: u16) -> bool {
 }
 
 pub fn get_port_binding_status(port: u16) -> PortBindingStatus {
-    let hosts = ["127.0.0.1", "::1", "0.0.0.0"];
+    // The reference probes these four, in this order, and reports them in it.
+    //  is not redundant with 127.0.0.1: a machine may resolve it to
+    // the IPv6 loopback, and a service bound to only one of the two is exactly
+    // the case this list exists to tell apart.
+    let hosts = ["127.0.0.1", "localhost", "::1", "0.0.0.0"];
     let bindings = hosts
         .iter()
         .map(|host| PortBinding {

@@ -197,11 +197,16 @@ try {
         ],
         bundles: [{ name: "all", services: ["api", "web"] }],
         databases: [],
-        gitRepositories: [{ name: "fixture", path: workspace, selected: true }],
+        // A *subdirectory*, so the daemon's own working directory and the
+        // repository it reports are two different paths. When they are the
+        // same, `cwd` and `git.cwd` are interchangeable and a port that
+        // reported the wrong one would pass.
+        gitRepositories: [{ name: "fixture", path: join(workspace, "repo"), selected: true }],
       }),
       () => [],
     );
-    await seedRepository(runtime.workspace);
+    await mkdir(join(runtime.workspace, "repo"), { recursive: true });
+    await seedRepository(join(runtime.workspace, "repo"));
     await mkdir(join(runtime.home, ".nomoreide", "logs"), { recursive: true });
     await writeFile(join(runtime.home, ".nomoreide", "timeline.log"), `${TIMELINE}\n`);
     await writeFile(

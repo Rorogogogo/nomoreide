@@ -10,6 +10,7 @@ mod agent_status;
 mod bundles;
 mod change_sets;
 mod context;
+mod dashboard;
 mod database;
 mod database_catalog;
 mod database_write;
@@ -134,6 +135,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(docker::routes())
         .merge(errors::routes())
         .merge(extensions::routes())
+        .merge(dashboard::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())
         .merge(database_write::routes())

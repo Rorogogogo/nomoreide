@@ -44,6 +44,7 @@ pub mod mcp_auth;
 pub mod one_time_skills;
 pub mod port_utils;
 pub mod process_manager;
+pub mod project_overview;
 pub mod providers;
 pub mod read_only_files;
 pub mod repo_create;
