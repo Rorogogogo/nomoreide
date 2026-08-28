@@ -1,5 +1,6 @@
 pub mod agent_context;
 pub mod agent_env;
+pub mod agent_info;
 pub mod agent_profiles;
 pub mod agent_runtime;
 pub mod agent_sessions;

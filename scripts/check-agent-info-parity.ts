@@ -170,6 +170,9 @@ function installedPlugins(home: string): string {
         bare: [{ scope: "user", installPath: `${home}/plugins/bare` }],
         // A leading `@` is not a separator: `lastIndexOf` must be > 0.
         "@scoped": [{ installPath: `${home}/plugins/missing` }],
+        // Two separators, so splitting at the first and at the last differ:
+        // the name is everything before the *last* one.
+        "scoped@name@market": [{ scope: "user", installPath: `${home}/plugins/bare` }],
         // No records, and a record with no install path.
         empty: [],
         "no-path@market": [{ scope: "user", version: "9" }],
@@ -338,6 +341,31 @@ const SHAPE_VIEWS: ViewStep[] = [
   },
 ];
 
+/**
+ * Key *order*, as content.
+ *
+ * `deepStrictEqual` compares objects without regard to the order their keys
+ * were inserted in, so every ordering decision the reference makes while
+ * building a row is invisible to an ordinary view. `Object.keys` turns it into
+ * an array, which is compared in order. The one that matters most is a merged
+ * Codex project: a directory the config already knew about gains
+ * `lastSessionModified` at the end, and one only a session mentions carries it
+ * in the middle.
+ */
+function keyOrderViews(): ViewStep[] {
+  const parts = ["projects", "hooks", "plugins"] as const;
+  return ["claude-code", "codex"].flatMap((who) =>
+    parts.map((part) => ({
+      kind: "view" as const,
+      name: `${who}/${part}-key-order`,
+      select: (agent: Record<string, unknown>) =>
+        ((profile(agent, who)[part] as Record<string, unknown>[]) ?? []).map((row) =>
+          Object.keys(row ?? {}),
+        ),
+    })),
+  );
+}
+
 const DETECTED: ViewStep = {
   kind: "view",
   name: "detected",
@@ -378,6 +406,7 @@ const phases: Phase[] = [
     steps: [
       { kind: "fetch", name: "fetch/seeded" },
       ...everyView(),
+      ...keyOrderViews(),
 
       // --- instructions and memory ------------------------------------------
       {
