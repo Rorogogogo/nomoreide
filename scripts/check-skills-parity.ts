@@ -18,6 +18,15 @@
  * a path in it, and one too long. A port that let any of them through would be
  * a port that fetches what a page told it to.
  *
+ * **Two behaviours are provably out of reach here**, and are unit-tested in the
+ * core instead rather than being claimed. Which end of the source the separator
+ * splits at cannot be seen: `@` belongs to neither the repository charset nor
+ * the selector charset, so a source with two of them is refused whichever way
+ * it splits, and the only input that would tell them apart is one where a split
+ * *succeeds* -- which reaches a subprocess. And the core's own two-hundred-unit
+ * name limit is unreachable through HTTP at all, because the schema below caps
+ * a name at two hundred units before the validator ever sees it.
+ *
  * The two refusals are also different refusals, and the gate keeps them apart:
  * a body the schema rejects is a 400 that never reaches the validator, and a
  * body it accepts whose source is invalid is a 422 from the validator itself.
@@ -71,6 +80,14 @@ const steps: Step[] = [
   { name: "search/whitespace-around-one-character", method: "GET", path: `${SEARCH}?q=%20%20a%20%20` },
   { name: "search/one-hundred-and-one-characters", method: "GET", path: `${SEARCH}?q=${"x".repeat(101)}` },
   { name: "search/a-repeated-query-parameter", method: "GET", path: `${SEARCH}?q=a&q=abcdef` },
+  // One character, three bytes. Counting bytes rather than UTF-16 units would
+  // let this through and put a request on the network.
+  { name: "search/one-wide-character", method: "GET", path: `${SEARCH}?q=${encodeURIComponent("\u4e2d")}` },
+  {
+    name: "search/one-hundred-and-one-wide-characters",
+    method: "GET",
+    path: `${SEARCH}?q=${encodeURIComponent("\u4e2d".repeat(101))}`,
+  },
   { name: "search/an-unrelated-parameter", method: "GET", path: `${SEARCH}?limit=1` },
 
   // --- use: bodies the schema refuses, which never reach the validator -------
@@ -83,6 +100,25 @@ const steps: Step[] = [
   { name: "use/a-skill-with-no-name", method: "POST", path: USE, body: use({ source: GOOD_SOURCE }) },
   { name: "use/a-name-that-is-only-spaces", method: "POST", path: USE, body: use({ name: "   ", source: GOOD_SOURCE }) },
   { name: "use/a-name-past-two-hundred", method: "POST", path: USE, body: use({ name: "n".repeat(201), source: GOOD_SOURCE }) },
+  // Two hundred and one wide characters: over the limit by units, well over by
+  // bytes, and the refusal has to come from the units.
+  { name: "use/a-wide-name-past-two-hundred", method: "POST", path: USE, body: use({ name: "\u4e2d".repeat(201), source: GOOD_SOURCE }) },
+  // Inside the limit by units and outside it by bytes, so a byte count would
+  // refuse this at the schema (400) where the reference lets it through to the
+  // validator, which refuses the source instead (422). The two refusals are
+  // what tells the counts apart.
+  {
+    name: "use/a-wide-name-within-the-limit",
+    method: "POST",
+    path: USE,
+    body: use({ name: "\u4e2d".repeat(100), source: "owner/repo" }),
+  },
+  {
+    name: "use/a-wide-source-within-the-limit",
+    method: "POST",
+    path: USE,
+    body: use({ name: "x", source: "\u4e2d".repeat(150) }),
+  },
   { name: "use/a-source-under-three-characters", method: "POST", path: USE, body: use({ name: "x", source: "ab" }) },
   { name: "use/a-source-past-four-hundred", method: "POST", path: USE, body: use({ name: "x", source: `o/r@${"s".repeat(400)}` }) },
   { name: "use/a-name-that-is-not-a-string", method: "POST", path: USE, body: use({ name: 7, source: GOOD_SOURCE }) },

@@ -30,6 +30,7 @@ mod service_register;
 mod services;
 mod settings;
 mod shell;
+mod skills;
 mod snapshots;
 mod terminal;
 mod timeline;
@@ -146,6 +147,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(onboard::routes())
         .merge(snapshots::routes())
         .merge(settings::routes())
+        .merge(skills::routes())
         .merge(workflows::routes())
         .merge(workflow_triggers::routes())
         .merge(bundles::routes())

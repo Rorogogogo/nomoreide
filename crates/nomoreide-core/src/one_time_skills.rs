@@ -94,40 +94,99 @@ fn normalize_search(payload: SearchPayload) -> Vec<RemoteSkillResult> {
         .collect()
 }
 
+/// A search failure, with the code the HTTP surface reports beside it.
+///
+/// `search_remote_skills` keeps returning a bare message so its other callers
+/// are unchanged; the daemon needs the code because it decides the status —
+/// a query this rejected is the caller's fault, a timeout is the upstream's.
+#[derive(Debug, Clone)]
+pub struct SkillSearchFailure {
+    pub code: &'static str,
+    pub message: String,
+}
+
+impl SkillSearchFailure {
+    fn new(code: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+        }
+    }
+}
+
 pub async fn search_remote_skills(raw_query: &str) -> Result<Vec<RemoteSkillResult>, String> {
+    search_remote_skills_detailed(raw_query)
+        .await
+        .map_err(|failure| failure.message)
+}
+
+pub async fn search_remote_skills_detailed(
+    raw_query: &str,
+) -> Result<Vec<RemoteSkillResult>, SkillSearchFailure> {
     let query = raw_query.trim();
-    if !(2..=100).contains(&query.len()) {
-        return Err("Skill search must be 2–100 characters.".into());
+    // UTF-16 code units, because the reference counts a JavaScript string's
+    // `length` — a single wide character is one unit and three bytes, and
+    // counting bytes would let it through to the network.
+    if !(2..=100).contains(&query.encode_utf16().count()) {
+        return Err(SkillSearchFailure::new(
+            "invalid_query",
+            "Skill search must be 2–100 characters.",
+        ));
     }
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))
         .build()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| SkillSearchFailure::new("invalid_response", error.to_string()))?;
     let mut response = client
         .get(SEARCH_URL)
         .query(&[("q", query), ("limit", &SEARCH_LIMIT.to_string())])
         .send()
         .await
-        .map_err(|error| format!("Could not search skills.sh: {error}"))?;
+        .map_err(|error| {
+            // reqwest folds its own deadline into the transport error, so a
+            // timeout is recognised here rather than raised separately.
+            let code = if error.is_timeout() {
+                "timeout"
+            } else {
+                "invalid_response"
+            };
+            let message = if error.is_timeout() {
+                "Skill search timed out.".to_string()
+            } else {
+                format!("Could not search skills.sh: {error}")
+            };
+            SkillSearchFailure::new(code, message)
+        })?;
     if !response.status().is_success() {
-        return Err(format!(
-            "skills.sh search failed with HTTP {}.",
-            response.status().as_u16()
+        return Err(SkillSearchFailure::new(
+            "invalid_response",
+            format!(
+                "skills.sh search failed with HTTP {}.",
+                response.status().as_u16()
+            ),
         ));
     }
     let mut bytes = Vec::new();
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| format!("Could not read skills.sh response: {error}"))?
-    {
+    while let Some(chunk) = response.chunk().await.map_err(|error| {
+        SkillSearchFailure::new(
+            "invalid_response",
+            format!("Could not read skills.sh response: {error}"),
+        )
+    })? {
         if bytes.len().saturating_add(chunk.len()) > MAX_SEARCH_BYTES {
-            return Err("skills.sh returned too much search data.".into());
+            return Err(SkillSearchFailure::new(
+                "invalid_response",
+                "skills.sh returned too much search data.",
+            ));
         }
         bytes.extend_from_slice(&chunk);
     }
-    let payload: SearchPayload = serde_json::from_slice(&bytes)
-        .map_err(|_| "skills.sh returned an invalid search result.".to_string())?;
+    let payload: SearchPayload = serde_json::from_slice(&bytes).map_err(|_| {
+        SkillSearchFailure::new(
+            "invalid_response",
+            "skills.sh returned an invalid search result.",
+        )
+    })?;
     Ok(normalize_search(payload))
 }
 
@@ -139,7 +198,7 @@ fn validate_selection(selection: &OneTimeSkillSelection) -> Result<(), String> {
     if !valid_repository(repository)
         || !valid_segment(selector, 200, true)
         || selection.name.trim().is_empty()
-        || selection.name.len() > 200
+        || selection.name.encode_utf16().count() > 200
     {
         return Err("The selected skill source is invalid.".into());
     }
@@ -285,6 +344,43 @@ pub fn compose_one_time_skill_prompt(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn selection(name: &str, source: &str) -> OneTimeSkillSelection {
+        OneTimeSkillSelection {
+            name: name.to_string(),
+            source: source.to_string(),
+        }
+    }
+
+    /// Unit-tested rather than gated, because the parity gate cannot reach it.
+    ///
+    /// `@` belongs to neither the repository charset nor the selector charset,
+    /// so a source carrying two of them is refused whichever end it splits at,
+    /// and both refusals read identically over HTTP. The only input that would
+    /// tell the two splits apart is one where a split *succeeds* — which
+    /// reaches a subprocess, and a gate must not do that. So the direction is
+    /// fixed here instead.
+    #[test]
+    fn the_source_splits_at_its_last_separator() {
+        assert!(validate_selection(&selection("x", "owner@inner/repo@s")).is_err());
+        assert!(validate_selection(&selection("x", "owner/repo@some-skill")).is_ok());
+        // A selector may hold a colon, so the split must not stop at one.
+        assert!(validate_selection(&selection("x", "owner/repo@group:skill")).is_ok());
+    }
+
+    /// Also unreachable through HTTP: the route's schema caps a name at two
+    /// hundred UTF-16 units before the validator sees it, so this limit only
+    /// guards the desktop app's own call into the same function.
+    #[test]
+    fn a_name_is_measured_in_utf16_units_not_bytes() {
+        // A hundred wide characters: three hundred bytes, one hundred units.
+        let wide = "\u{4e2d}".repeat(100);
+        assert!(validate_selection(&selection(&wide, "owner/repo@s")).is_ok());
+        assert!(validate_selection(&selection(&"\u{4e2d}".repeat(201), "owner/repo@s")).is_err());
+        assert!(validate_selection(&selection(&"n".repeat(200), "owner/repo@s")).is_ok());
+        assert!(validate_selection(&selection(&"n".repeat(201), "owner/repo@s")).is_err());
+        assert!(validate_selection(&selection("   ", "owner/repo@s")).is_err());
+    }
 
     #[test]
     fn normalizes_public_search_results() {
