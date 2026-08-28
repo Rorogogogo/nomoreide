@@ -133,3 +133,41 @@ mod tests {
         assert_eq!(compare("a", "a"), Ordering::Equal);
     }
 }
+
+/// `<`, `>` and `>=` between two JavaScript strings.
+///
+/// Not the collator above: the relational operators do not consult one. They
+/// compare UTF-16 code units, which is why they order ASCII the obvious way and
+/// order everything else by encoding rather than by alphabet. Two places need
+/// exactly that — picking the latest `timestamp` out of a rollout, and the
+/// `since` filter on usage history — and both would be subtly wrong if they
+/// used the collator or Rust's own byte order.
+///
+/// Rust compares `str` by UTF-8 bytes, which agrees with UTF-16 for everything
+/// below U+E000 and disagrees above it: a supplementary character encodes as a
+/// surrogate pair beginning `0xD800`, which sorts *below* the `0xE000` range
+/// rather than above it.
+pub fn code_unit_cmp(left: &str, right: &str) -> Ordering {
+    left.encode_utf16().cmp(right.encode_utf16())
+}
+
+#[cfg(test)]
+mod relational_tests {
+    use super::code_unit_cmp;
+    use std::cmp::Ordering;
+
+    #[test]
+    fn ascii_orders_the_obvious_way() {
+        assert_eq!(code_unit_cmp("2026-08-20", "2026-08-21"), Ordering::Less);
+        assert_eq!(code_unit_cmp("b", "a"), Ordering::Greater);
+        assert_eq!(code_unit_cmp("", ""), Ordering::Equal);
+        assert_eq!(code_unit_cmp("2026", "2026-08"), Ordering::Less);
+    }
+
+    #[test]
+    fn a_supplementary_character_sorts_below_the_private_use_area() {
+        // Rust's own byte order puts these the other way round.
+        assert_eq!(code_unit_cmp("\u{1F600}", "\u{E000}"), Ordering::Less);
+        assert!("\u{1F600}" > "\u{E000}");
+    }
+}

@@ -31,6 +31,9 @@ mod shell;
 mod snapshots;
 mod terminal;
 mod timeline;
+mod usage;
+
+pub(crate) use usage::daemon_cwd;
 mod workflow_triggers;
 mod workflows;
 
@@ -122,6 +125,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(agent_chat::routes())
         .merge(agent_env::routes())
         .merge(agent_status::routes())
+        .merge(usage::routes())
         .merge(agent_profiles::routes())
         .merge(docker::routes())
         .merge(errors::routes())

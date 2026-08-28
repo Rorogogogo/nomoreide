@@ -13,6 +13,7 @@ use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
 use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::tool_call_store::ToolCallStore;
+use nomoreide_core::usage_history::UsageHistory;
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -48,6 +49,13 @@ pub(crate) struct AppState {
     /// processes. It exists so `/api/agent/tool-calls` answers the same shape,
     /// and so the writer is the only piece still missing.
     pub(crate) tool_calls: ToolCallStore,
+    /// Token and cost totals over time.
+    ///
+    /// Shared rather than rebuilt per request because it carries the dedup keys
+    /// the sampler writes through: a store built fresh each tick would re-seed
+    /// from the file every time and append a duplicate row on the first sample
+    /// after every restart.
+    pub(crate) usage_history: Arc<UsageHistory>,
     /// Parks a blocked tool-permission hook until a human decides.
     ///
     /// No run opens one here yet — the agent event stream is still the

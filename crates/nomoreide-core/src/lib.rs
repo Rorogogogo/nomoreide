@@ -59,6 +59,8 @@ pub mod ssh_setup;
 pub mod terminal;
 pub mod timeline;
 pub mod tool_call_store;
+pub mod usage_history;
+pub mod usage_info;
 pub mod vercel_actions;
 pub mod vercel_auth;
 pub mod vercel_context;

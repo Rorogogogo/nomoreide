@@ -22,11 +22,13 @@ use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::timeline::TimelineStore;
 use nomoreide_core::tool_call_store::ToolCallStore;
+use nomoreide_core::usage_history::UsageHistory;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 
@@ -123,6 +125,17 @@ pub async fn serve_with_shutdown_requests(
         .publish(&state)
         .context("failed to publish daemon state")?;
 
+    // Token and cost history, beside the logs and the timeline in the same
+    // state directory. The reference derives this path from its log directory
+    // for the same reason: one place per machine, not one per project.
+    let usage_history = Arc::new(UsageHistory::new(
+        options
+            .runtime_paths
+            .state_dir
+            .join("usage-history.jsonl"),
+    ));
+    tokio::spawn(sample_usage(usage_history.clone()));
+
     let app = routes::router(AppState {
         credential: ownership.credential().to_string(),
         owner_id: ownership.owner_id().to_string(),
@@ -134,6 +147,7 @@ pub async fn serve_with_shutdown_requests(
         events: Arc::new(app::DiscardingEventSink),
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         tool_calls: ToolCallStore::new(),
+        usage_history,
         approvals: ApprovalBroker::new(),
     });
 
@@ -207,5 +221,25 @@ async fn forward_shutdown_signals(sender: mpsc::Sender<()>) {
         if tokio::signal::ctrl_c().await.is_err() || sender.send(()).await.is_err() {
             return;
         }
+    }
+}
+
+/// Record the current reading shortly after boot, and every thirty seconds
+/// after that.
+///
+/// Always on, rather than driven by the Usage tab: history that only accrues
+/// while someone is watching is not history. The store de-dupes, so an idle
+/// agent costs one read of three files a tick and writes nothing, and a failure
+/// is dropped rather than logged — a sample is not worth a line in the daemon's
+/// stderr every thirty seconds when a home has gone read-only.
+async fn sample_usage(history: Arc<UsageHistory>) {
+    let cwd = crate::server::routes::daemon_cwd();
+    // Deferred, so a daemon that starts and stops immediately leaves no file
+    // behind at all.
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    loop {
+        let usage = nomoreide_core::usage_info::build_usage_info(&cwd).await;
+        history.record(&usage).await;
+        tokio::time::sleep(Duration::from_secs(30)).await;
     }
 }

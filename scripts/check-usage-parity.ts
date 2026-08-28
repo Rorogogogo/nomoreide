@@ -160,6 +160,34 @@ const OLDER = jsonl({
   },
 });
 
+/**
+ * A rollout larger than the two megabytes that get read.
+ *
+ * The first line holds the latest `timestamp` in the whole fixture and would
+ * win outright if it were read — but it sits before the window, so it must not
+ * be. The last line is the only reading inside the window, and it is the one
+ * the answer has to carry. Nothing in the padding says `token_count`, so the
+ * window holds exactly one candidate.
+ */
+function bigRollout(): string {
+  const head = JSON.stringify({
+    timestamp: "2099-01-01T00:00:00.000Z",
+    payload: {
+      type: "token_count",
+      info: { total_token_usage: { input_tokens: 111, total_tokens: 111 } },
+    },
+  });
+  const padding = JSON.stringify({ payload: { type: "turn_context" }, pad: "p".repeat(980) });
+  const tail = JSON.stringify({
+    timestamp: "2020-01-01T00:00:00.000Z",
+    payload: {
+      type: "token_count",
+      info: { total_token_usage: { input_tokens: 222, output_tokens: 222, total_tokens: 444 } },
+    },
+  });
+  return `${[head, ...Array.from({ length: 2_200 }, () => padding), tail].join("\n")}\n`;
+}
+
 /** No `token_count` anywhere, so it occupies a slot in the newest-twenty without filling it. */
 const FILLER = jsonl({ timestamp: "2026-08-01T00:00:00.000Z", payload: { type: "turn_context" } });
 
@@ -354,6 +382,15 @@ const steps: Step[] = [
     files: { ".codex/sessions/cap/filler-0.jsonl": null },
   },
   { name: "usage/codex-twenty-first-becomes-twentieth", method: "GET", path: USAGE },
+
+  // --- Codex: only the last two megabytes of a rollout are read ---------------
+  {
+    kind: "write",
+    name: "one rollout larger than the read window",
+    files: { ".codex/sessions/cap": null, ".codex/sessions/big.jsonl": bigRollout() },
+    times: { ".codex/sessions/big.jsonl": EPOCH + 800 },
+  },
+  { name: "usage/codex-reads-only-the-tail-of-a-rollout", method: "GET", path: USAGE },
   {
     kind: "write",
     name: "remove the sessions tree entirely",
