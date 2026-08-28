@@ -88,6 +88,7 @@
     "agent-info-parity": "node --import tsx scripts/check-agent-info-parity.ts",
     "extensions-parity": "node --import tsx scripts/check-extensions-parity.ts",
     "skills-parity": "node --import tsx scripts/check-skills-parity.ts",
+    "dashboard-parity": "node --import tsx scripts/check-dashboard-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",
