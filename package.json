@@ -92,6 +92,7 @@
     "metrics-parity": "node --import tsx scripts/check-metrics-parity.ts",
     "errors-bundle-parity": "node --import tsx scripts/check-errors-bundle-parity.ts",
     "streams-parity": "node --import tsx scripts/check-streams-parity.ts",
+    "terminal-streams-parity": "node --import tsx scripts/check-terminal-streams-parity.ts",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",
