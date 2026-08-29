@@ -161,6 +161,73 @@ export class RuntimeHarness {
     return callMcpTool(command, tool, args);
   }
 
+  /**
+   * Read a server-sent event stream until it goes quiet, then close it.
+   *
+   * An event stream never ends on its own — these endpoints hold the
+   * connection open and heartbeat into it — so the reader stops when nothing
+   * has arrived for `idleMs`, or at `totalMs` whichever comes first, and the
+   * bytes it saw are the answer. Both runtimes are read the same way, so a
+   * stream that opens slower is a divergence rather than a flake: `idleMs` is
+   * the quiet *after* the last byte, not a fixed budget.
+   *
+   * `whileOpen` runs once the response headers have arrived and before the
+   * body is drained, which is how a gate tests *live* delivery: trigger the
+   * thing that emits, then keep reading and see whether the event lands.
+   */
+  async readStream(
+    runtime: Runtime,
+    path: string,
+    options: {
+      headers?: Record<string, string>;
+      idleMs?: number;
+      totalMs?: number;
+      whileOpen?: () => Promise<void>;
+    } = {},
+  ): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+    const { headers = {}, idleMs = 750, totalMs = 8000, whileOpen } = options;
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), totalMs);
+    let status = 0;
+    let received: Record<string, string> = {};
+    let body = "";
+    try {
+      const response = await fetch(`http://127.0.0.1:${runtime.port}${path}`, {
+        headers,
+        signal: controller.signal,
+      });
+      status = response.status;
+      received = Object.fromEntries(response.headers);
+      if (whileOpen) await whileOpen();
+      const reader = response.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        for (;;) {
+          let quiet: NodeJS.Timeout | undefined;
+          const idle = new Promise<"idle">((resolve) => {
+            quiet = setTimeout(() => resolve("idle"), idleMs);
+          });
+          // The read outlives a lost race; `cancel` below settles it, and the
+          // catch keeps that from surfacing as an unhandled rejection.
+          const next = reader.read();
+          next.catch(() => undefined);
+          const winner = await Promise.race([next, idle]);
+          clearTimeout(quiet);
+          if (winner === "idle" || winner.done) break;
+          body += decoder.decode(winner.value, { stream: true });
+        }
+        await reader.cancel().catch(() => undefined);
+      }
+    } catch (error) {
+      // An abort is how this reader always ends; anything else is real.
+      if (!controller.signal.aborted) throw error;
+    } finally {
+      clearTimeout(deadline);
+      controller.abort();
+    }
+    return { status, headers: received, body };
+  }
+
   async shutdown(): Promise<void> {
     await Promise.all(
       this.#daemons.map(async (daemon) => {
