@@ -75,8 +75,14 @@ async function send(
   return { status: response.status, contentType: response.headers.get("content-type"), body };
 }
 
-/** A run's id and clocks are per-runtime; its status, command and counts are not. */
-const VOLATILE = new Set(["id", "startedAt", "endedAt"]);
+/**
+ * A run's id and clocks are per-runtime; its status, command and counts are not.
+ *
+ * `firstSeen`/`lastSeen` are here because the two runtimes are driven in
+ * parallel: their incidents agree only when both land in the same millisecond,
+ * which is most of the time and therefore the worst kind of flake.
+ */
+const VOLATILE = new Set(["id", "startedAt", "endedAt", "firstSeen", "lastSeen"]);
 
 function scrub(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(scrub);
