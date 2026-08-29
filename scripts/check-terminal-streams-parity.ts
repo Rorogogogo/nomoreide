@@ -131,6 +131,21 @@ const streams: StreamStep[] = [
       await send(runtime, "POST", SESSIONS, '{"label":"late"}');
     },
   },
+  // Closing a session emits **nothing**: the manager disposes it before any
+  // state change reaches a listener. The case is here to pin that absence — a
+  // port that helpfully emitted an `exited` frame would fail it.
+  {
+    name: "terminal/closing-emits-nothing",
+    path: TERMINAL,
+    idleMs: 3_000,
+    trigger: async (runtime) => {
+      const listed = (await send(runtime, "GET", SESSIONS)) as {
+        body: { sessions?: Array<{ id: string }> };
+      };
+      const id = listed.body.sessions?.[0]?.id;
+      if (id) await send(runtime, "DELETE", `${SESSIONS}/${encodeURIComponent(id)}`);
+    },
+  },
   // Long enough to sit through one keepalive. The terminal stream spells its
   // comment differently from every other stream, which is the point.
   { name: "terminal/the-keepalive", path: TERMINAL, idleMs: 16_000, totalMs: 19_000 },
