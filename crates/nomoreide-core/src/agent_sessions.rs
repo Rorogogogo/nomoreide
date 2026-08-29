@@ -54,3 +54,27 @@ pub fn find_agent_session(path: &Path, id: &str) -> Option<AgentSession> {
         .into_iter()
         .find(|session| session.id == id)
 }
+
+/// How many sessions the store keeps. Past this the oldest is dropped: the
+/// change-set panel is a view of recent work, and a session whose snapshot has
+/// long since been pruned has nothing left to restore.
+const MAX_SESSIONS: usize = 50;
+
+/// Record a session, newest first, replacing any earlier one with the same id.
+///
+/// The only writer in this runtime — the daemon's fix loop. It rewrites the
+/// whole file rather than appending because the order is the content: the
+/// dashboard reads the list as it stands, and an append-only log would need a
+/// reader that knew to fold it.
+pub fn save_agent_session(path: &Path, session: AgentSession) -> std::io::Result<()> {
+    let mut sessions = list_agent_sessions(path);
+    sessions.retain(|existing| existing.id != session.id);
+    sessions.insert(0, session);
+    sessions.truncate(MAX_SESSIONS);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let rendered = serde_json::to_string_pretty(&sessions)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))?;
+    std::fs::write(path, format!("{rendered}\n"))
+}

@@ -9,12 +9,13 @@ mod detect;
 
 pub use detect::{continues_a_stack, level_of, signature_of, title_of, Frame, Level};
 
+use crate::config::Config;
 use crate::git_manager::GitManager;
 use crate::log_store::LogStore;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 /// How many distinct incidents are kept. Past this the oldest is dropped: the
@@ -58,6 +59,24 @@ pub struct IncidentPrompt {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file: Option<String>,
     pub prompt: String,
+}
+
+/// An incident with everything needed to render it: see
+/// [`ErrorInbox::context`].
+#[derive(Debug, Clone)]
+pub struct IncidentContext {
+    pub incident: Incident,
+    /// The service name without the `:test` suffix a test-runner incident
+    /// carries.
+    pub service: String,
+    /// Where the diff and the `.env` are read from.
+    pub service_cwd: String,
+    /// Absolute — resolved against `service_cwd` when the incident named a
+    /// relative path.
+    pub file: Option<String>,
+    /// Empty when the file is outside a repository, unchanged, or absent.
+    pub diff: String,
+    pub recent_logs: Vec<String>,
 }
 
 struct Inner {
@@ -157,6 +176,39 @@ impl ErrorInbox {
             file: incident.file.clone(),
             incident,
             prompt,
+        })
+    }
+
+    /// The raw material behind an incident: where its service runs, what has
+    /// changed in the file that faulted, and what the log said around it.
+    ///
+    /// Gathered once so the prompt and the repro bundle can render their own
+    /// markdown from the same facts. `service_cwd` is passed in rather than
+    /// looked up here because the inbox has no config store — see
+    /// [`service_cwd`], which is what a caller resolves it with.
+    pub async fn context(&self, id: u64, service_cwd: &str) -> Option<IncidentContext> {
+        let incident = self.get(id)?;
+        let recent_logs = self.recent_lines(&incident.service, PROMPT_LOG_LINES);
+        // The diff is asked for with the path exactly as the incident named it,
+        // relative or not, because git resolves it against the cwd the same way
+        // the reference's does. A repository that cannot answer contributes no
+        // diff rather than an error: a bundle without one is still a bundle.
+        let diff = match &incident.file {
+            Some(file) => GitManager::diff(service_cwd, Some(file))
+                .await
+                .unwrap_or_default(),
+            None => String::new(),
+        };
+        Some(IncidentContext {
+            service: base_service(&incident.service).to_string(),
+            file: incident
+                .file
+                .as_deref()
+                .map(|file| resolve_against(service_cwd, file)),
+            service_cwd: service_cwd.to_string(),
+            incident,
+            diff,
+            recent_logs,
         })
     }
 
@@ -272,6 +324,57 @@ async fn working_diff(file: &str) -> Option<String> {
     let diff = GitManager::diff(&directory, Some(file)).await.ok()?;
     let diff = diff.trim_end();
     (!diff.is_empty()).then(|| diff.to_string())
+}
+
+/// A test-runner incident is tagged `<service>:test`. Its diff and its `.env`
+/// belong to the service that was tested, not to a service by that name — which
+/// does not exist.
+pub fn base_service(service: &str) -> &str {
+    service.strip_suffix(":test").unwrap_or(service)
+}
+
+/// The working directory an incident's diff and `.env` are read from: the
+/// service's own `cwd` when it declares one, else where the daemon runs.
+///
+/// A relative `cwd` is resolved against `fallback` rather than against the
+/// process — a config that says `cwd: "api"` means the workspace's `api`, and a
+/// daemon that had been started elsewhere would otherwise read another
+/// project's secrets.
+pub fn service_cwd(config: &Config, service: &str, fallback: &str) -> String {
+    let base = base_service(service);
+    match config
+        .services
+        .iter()
+        .find(|definition| definition.name == base)
+        .and_then(|definition| definition.cwd.as_deref())
+        .filter(|cwd| !cwd.is_empty())
+    {
+        Some(cwd) => resolve_against(fallback, cwd),
+        None => fallback.to_string(),
+    }
+}
+
+/// Node's `path.resolve` for the one case this needs: an absolute path stands,
+/// a relative one hangs off `root`, and `.`/`..` collapse lexically rather than
+/// against the filesystem — the file an incident names may already be gone.
+fn resolve_against(root: &str, path: &str) -> String {
+    let candidate = Path::new(path);
+    let joined = if candidate.is_absolute() {
+        candidate.to_path_buf()
+    } else {
+        Path::new(root).join(candidate)
+    };
+    let mut resolved = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                resolved.pop();
+            }
+            std::path::Component::CurDir => {}
+            other => resolved.push(other),
+        }
+    }
+    resolved.to_string_lossy().into_owned()
 }
 
 fn render_prompt(incident: &Incident, diff: Option<&str>, logs: &[String]) -> String {

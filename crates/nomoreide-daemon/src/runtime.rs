@@ -77,6 +77,18 @@ impl DaemonRuntime {
         statuses
     }
 
+    /// What the manager knows about one service, unmapped.
+    ///
+    /// Core's own status rather than the wire's, because the caller is core
+    /// too — the repro bundle renders a service's run state and has no business
+    /// reading a shape invented for the dashboard.
+    pub(crate) fn service_status(&self, name: &str) -> Option<ServiceStatus> {
+        self.process_manager
+            .status()
+            .into_iter()
+            .find(|status| status.name == name)
+    }
+
     /// The tail of a service's buffered output.
     ///
     /// Reading logs is not gated on the service being registered, the way a

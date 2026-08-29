@@ -121,6 +121,21 @@ pub enum ServiceState {
     Exited,
 }
 
+impl ServiceState {
+    /// The wire spelling, which is also the one a person reads in a repro
+    /// bundle — so it comes from here rather than from a second table that
+    /// could drift from the serde one.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ServiceState::Stopped => "stopped",
+            ServiceState::Starting => "starting",
+            ServiceState::Running => "running",
+            ServiceState::Stopping => "stopping",
+            ServiceState::Exited => "exited",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServiceStatus {
