@@ -107,8 +107,10 @@ async fn events(State(state): State<AppState>) -> Response {
         .collect();
     sse::stream(
         sse::CONNECTED_AND_KEEPALIVE,
-        "session",
-        replay,
+        replay
+            .into_iter()
+            .map(|session| sse::named("session", session))
+            .collect(),
         state.event_stream.clone(),
         |event| {
             if event.name != TERMINAL_SESSION_CHANGED {
@@ -116,7 +118,7 @@ async fn events(State(state): State<AppState>) -> Response {
             }
             serde_json::from_value::<TerminalSession>(event.payload)
                 .ok()
-                .map(wire)
+                .map(|session| sse::named("session", wire(session)))
         },
     )
 }

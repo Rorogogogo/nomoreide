@@ -3,8 +3,8 @@
 //! `server.rs`.
 
 mod agent_chat;
-mod agent_info;
 mod agent_env;
+mod agent_info;
 mod agent_profiles;
 mod agent_status;
 mod bundles;
@@ -29,6 +29,7 @@ mod servers;
 mod service_config;
 mod service_files;
 mod service_register;
+mod service_test;
 mod services;
 mod settings;
 mod shell;
@@ -145,6 +146,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(service_config::routes())
         .merge(service_files::routes())
         .merge(service_register::routes())
+        .merge(service_test::routes())
         .merge(fs_directories::routes())
         .merge(log_sources::routes())
         .merge(metrics::routes())

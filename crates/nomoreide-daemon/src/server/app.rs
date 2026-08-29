@@ -13,6 +13,7 @@ use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
 use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::terminal::TerminalManager;
+use nomoreide_core::test_runner::TestRunner;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
 use serde_json::Value;
@@ -54,6 +55,10 @@ pub(crate) struct AppState {
     /// processes. It exists so `/api/agent/tool-calls` answers the same shape,
     /// and so the writer is the only piece still missing.
     pub(crate) tool_calls: ToolCallStore,
+    /// Per-service test runs. Shared because a run outlives the request that
+    /// started it: the POST answers while the child is still going, and the
+    /// stream that reports the rest is a later request.
+    pub(crate) tests: TestRunner,
     /// Rolling CPU and memory for the host and every running service.
     ///
     /// Shared rather than rebuilt per request because it *is* the history: a

@@ -59,12 +59,31 @@ pub(crate) const CONNECTED_AND_KEEPALIVE: Framing = Framing {
     no_buffering: true,
 };
 
-/// One frame: `event: <name>` and its JSON payload.
+/// One frame's `event:` name and its payload.
+///
+/// The name is carried per frame rather than per stream because it is not
+/// always fixed: a test run emits `status`, then `output`, then `status`
+/// again. A stream whose name never changes just says the same one each time.
+pub(crate) struct Frame<S> {
+    pub event: String,
+    pub payload: S,
+}
+
+/// A frame with a fixed name, which is what most streams want.
+pub(crate) fn named<S>(event: &str, payload: S) -> Frame<S> {
+    Frame {
+        event: event.to_string(),
+        payload,
+    }
+}
+
+/// Render one frame.
 ///
 /// A value that will not serialize contributes no frame rather than a broken
 /// one — half a frame would desynchronise every frame after it.
-fn frame(event: &str, payload: &impl Serialize) -> Option<Bytes> {
-    let data = serde_json::to_string(payload).ok()?;
+fn render<S: Serialize>(frame: &Frame<S>) -> Option<Bytes> {
+    let data = serde_json::to_string(&frame.payload).ok()?;
+    let event = &frame.event;
     Some(Bytes::from(format!("event: {event}\ndata: {data}\n\n")))
 }
 
@@ -76,26 +95,25 @@ fn frame(event: &str, payload: &impl Serialize) -> Option<Bytes> {
 /// no producer — the pending-trigger queue, which nothing fires yet — stay open
 /// and heartbeat instead of closing the moment it finds the channel empty.
 ///
-/// `wire` maps a broadcast value to the payload to send, and `None` drops it:
+/// `wire` maps a broadcast value to the frame to send, and `None` drops it:
 /// one channel can carry several kinds of event, and a stream takes only its
 /// own.
 pub(crate) fn stream<T, S, W>(
     framing: Framing,
-    event: &'static str,
-    replay: Vec<S>,
+    replay: Vec<Frame<S>>,
     live: broadcast::Sender<T>,
     wire: W,
 ) -> Response
 where
     T: Clone + Send + 'static,
-    W: Fn(T) -> Option<S> + Send + 'static,
+    W: Fn(T) -> Option<Frame<S>> + Send + 'static,
     S: Serialize + Send + 'static,
 {
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
     tokio::spawn(async move {
         let mut received = live.subscribe();
         let mut prologue = vec![Bytes::from(framing.prologue)];
-        prologue.extend(replay.iter().filter_map(|value| frame(event, value)));
+        prologue.extend(replay.iter().filter_map(render));
         for chunk in prologue {
             if tx.send(chunk).await.is_err() {
                 return;
@@ -108,7 +126,7 @@ where
         loop {
             let chunk = tokio::select! {
                 value = received.recv() => match value {
-                    Ok(value) => match wire(value).as_ref().and_then(|payload| frame(event, payload)) {
+                    Ok(value) => match wire(value).as_ref().and_then(render) {
                         Some(chunk) => chunk,
                         // Not this stream's event, or one that would not
                         // serialize.

@@ -245,6 +245,31 @@ try {
 
   await runInStream("stream/a-failing-run", "failer");
   await new Promise((resolve) => setTimeout(resolve, 1_000));
+
+  // One channel carries every service's runs, so a stream has to take only its
+  // own. Watching `bare` while `failer` runs is the case that proves it: a
+  // stream that forgot to filter would show another service's output here,
+  // which is one project's test results in another project's panel.
+  {
+    const answers = await Promise.all(
+      runtimes.map((runtime) =>
+        harness.readStream(runtime, `${testPath("bare")}/stream`, {
+          headers: auth(runtime),
+          idleMs: 2_500,
+          totalMs: 15_000,
+          whileOpen: async () => {
+            await send(runtime, "POST", testPath("failer"));
+          },
+        }),
+      ),
+    );
+    compare(
+      "stream/another-services-run-is-not-mine",
+      streamView(answers[0], reference),
+      streamView(answers[1], candidate),
+    );
+  }
+  await new Promise((resolve) => setTimeout(resolve, 1_000));
   await runInStream("stream/a-run-with-a-pattern", "passer", { pattern: "a.test.js" });
   await new Promise((resolve) => setTimeout(resolve, 1_000));
 

@@ -94,10 +94,14 @@ async fn tool_calls(State(state): State<AppState>, uri: Uri) -> Response {
 async fn tool_calls_stream(State(state): State<AppState>) -> Response {
     sse::stream(
         sse::RETRY_AND_PING,
-        "tool-call",
-        state.tool_calls.recent(STREAM_REPLAY),
+        state
+            .tool_calls
+            .recent(STREAM_REPLAY)
+            .into_iter()
+            .map(|record| sse::named("tool-call", record))
+            .collect(),
         state.tool_calls.events(),
-        Some,
+        |record| Some(sse::named("tool-call", record)),
     )
 }
 

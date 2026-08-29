@@ -68,13 +68,9 @@ async fn pending() -> Response {
 /// rather than closing.
 async fn pending_stream() -> Response {
     let live = tokio::sync::broadcast::Sender::<Value>::new(1);
-    sse::stream(
-        sse::RETRY_AND_PING,
-        "pending",
-        Vec::<Value>::new(),
-        live,
-        Some,
-    )
+    sse::stream(sse::RETRY_AND_PING, Vec::new(), live, |pending: Value| {
+        Some(sse::named("pending", pending))
+    })
 }
 
 /// Acknowledging a pending run. `ok` is whether one was removed, and the status

@@ -65,6 +65,7 @@ pub mod ssh_servers;
 pub mod ssh_setup;
 pub mod system_processes;
 pub mod terminal;
+pub mod test_runner;
 pub mod timeline;
 pub mod tool_call_store;
 pub mod usage_history;

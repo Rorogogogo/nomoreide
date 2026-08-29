@@ -22,6 +22,7 @@ use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_core::terminal::TerminalManager;
+use nomoreide_core::test_runner::TestRunner;
 use nomoreide_core::timeline::TimelineStore;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
@@ -98,6 +99,10 @@ pub async fn serve_with_shutdown_requests(
     // that store and told to watch before any service can produce one.
     let errors = ErrorInbox::new(log_store.clone());
     errors.watch();
+    // Built over the same store, so a failing run's output reaches the inbox
+    // the way a service's does — that is what turns a failed test into an
+    // incident with no extra wiring.
+    let tests = TestRunner::new(log_store.clone());
     let runtime = Arc::new(DaemonRuntime::new(
         config_store.clone(),
         ProcessManager::with_runtime_registry(log_store, registry).with_timeline(timeline),
@@ -160,6 +165,7 @@ pub async fn serve_with_shutdown_requests(
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         metrics: metrics.clone(),
         tool_calls: ToolCallStore::new(),
+        tests,
         usage_history,
         approvals: ApprovalBroker::new(),
     });

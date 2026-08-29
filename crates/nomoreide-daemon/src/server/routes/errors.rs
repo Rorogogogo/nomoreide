@@ -76,10 +76,12 @@ async fn stream(State(state): State<AppState>) -> Response {
         .collect();
     sse::stream(
         sse::RETRY_AND_PING,
-        "incident",
-        replay,
+        replay
+            .into_iter()
+            .map(|i| sse::named("incident", i))
+            .collect(),
         state.errors.events(),
-        |incident| Some(wire(incident)),
+        |incident| Some(sse::named("incident", wire(incident))),
     )
 }
 
