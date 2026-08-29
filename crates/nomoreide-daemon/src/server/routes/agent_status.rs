@@ -9,6 +9,7 @@ use crate::server::app::AppState;
 use crate::server::body::read_json_object;
 use crate::server::errors::error;
 use crate::server::routes::query::query_value;
+use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::{StatusCode, Uri};
@@ -30,6 +31,7 @@ pub(crate) fn routes() -> Router<AppState> {
         )
         .route("/api/agent/mcp-status", get(mcp_status))
         .route("/api/agent/tool-calls", get(tool_calls))
+        .route("/api/agent/tool-calls/stream", get(tool_calls_stream))
 }
 
 fn home() -> PathBuf {
@@ -83,3 +85,20 @@ async fn tool_calls(State(state): State<AppState>, uri: Uri) -> Response {
     ));
     Json(json!({ "ok": true, "records": state.tool_calls.recent(limit) })).into_response()
 }
+
+/// The live tool-call feed.
+///
+/// **Empty in a daemon, and streaming anyway.** Nothing writes to the store
+/// here — see [`tool_calls`] — so this replays nothing and then heartbeats.
+/// The framing is still the contract, and the writer is the missing half.
+async fn tool_calls_stream(State(state): State<AppState>) -> Response {
+    sse::stream(
+        "tool-call",
+        state.tool_calls.recent(STREAM_REPLAY),
+        state.tool_calls.subscribe(),
+        |record| record,
+    )
+}
+
+/// How many calls a newly-opened stream replays.
+const STREAM_REPLAY: usize = 50;

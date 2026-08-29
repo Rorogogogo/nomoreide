@@ -12,6 +12,7 @@ use crate::server::app::AppState;
 use crate::server::errors::error;
 use crate::server::routes::query::query_value;
 use crate::server::routes::shell;
+use crate::server::sse;
 use axum::extract::{Path, Query, State};
 use axum::http::{Method, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
@@ -29,6 +30,7 @@ use std::path::PathBuf;
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/errors", get(list))
+        .route("/api/errors/stream", get(stream))
         .route("/api/errors/:id/prompt", any(prompt))
         .route("/api/errors/:id/bundle", any(bundle))
         .route("/api/errors/:id/fix", any(fix))
@@ -60,6 +62,23 @@ async fn list(State(state): State<AppState>, Query(query): Query<ListQuery>) -> 
     })
     .into_response()
 }
+
+/// The live incident feed: the fifty most recent, then whatever arrives.
+///
+/// The replay is what stops a reloaded dashboard from starting blank, and it
+/// goes out newest-first because that is the order [`ErrorInbox::list`] holds.
+async fn stream(State(state): State<AppState>) -> Response {
+    let replay: Vec<Incident> = state
+        .errors
+        .list(STREAM_REPLAY)
+        .into_iter()
+        .map(wire)
+        .collect();
+    sse::stream("incident", replay, state.errors.subscribe(), wire)
+}
+
+/// How many incidents a newly-opened stream replays.
+const STREAM_REPLAY: usize = 50;
 
 /// Does the reference's `(\d+)` claim this segment, and what number is it?
 ///

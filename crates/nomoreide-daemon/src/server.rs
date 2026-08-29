@@ -6,6 +6,7 @@ mod body;
 mod errors;
 mod query;
 mod routes;
+mod sse;
 mod static_assets;
 
 use crate::runtime::DaemonRuntime;
@@ -17,11 +18,11 @@ use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::log_store::LogStore;
+use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::timeline::TimelineStore;
-use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
@@ -139,10 +140,7 @@ pub async fn serve_with_shutdown_requests(
     tokio::spawn(sample_metrics(metrics.clone(), runtime.clone()));
 
     let usage_history = Arc::new(UsageHistory::new(
-        options
-            .runtime_paths
-            .state_dir
-            .join("usage-history.jsonl"),
+        options.runtime_paths.state_dir.join("usage-history.jsonl"),
     ));
     tokio::spawn(sample_usage(usage_history.clone()));
 

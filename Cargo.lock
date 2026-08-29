@@ -2401,6 +2401,7 @@ dependencies = [
  "anyhow",
  "axum",
  "chrono",
+ "futures-util",
  "libc",
  "nomoreide-actions",
  "nomoreide-core",

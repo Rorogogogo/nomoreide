@@ -12,6 +12,7 @@
 
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 
 /// How many calls are kept. Old ones are dropped from the front, so the feed
 /// stays a feed rather than growing for the life of the daemon.
@@ -40,9 +41,26 @@ struct Inner {
     next_id: u64,
 }
 
-#[derive(Clone, Default)]
+/// How many calls a stream may fall behind before it starts losing them.
+const EVENT_BACKLOG: usize = 256;
+
+#[derive(Clone)]
 pub struct ToolCallStore {
     inner: Arc<Mutex<Inner>>,
+    /// Live calls, for `/api/agent/tool-calls/stream`.
+    ///
+    /// A broadcast channel rather than a callback list because a stream must
+    /// unsubscribe when its reader goes away, and dropping a receiver is that.
+    events: broadcast::Sender<ToolCallRecord>,
+}
+
+impl Default for ToolCallStore {
+    fn default() -> Self {
+        Self {
+            inner: Arc::default(),
+            events: broadcast::Sender::new(EVENT_BACKLOG),
+        }
+    }
 }
 
 impl ToolCallStore {
@@ -62,7 +80,16 @@ impl ToolCallStore {
             let excess = inner.records.len() - CAPACITY;
             inner.records.drain(..excess);
         }
+        drop(inner);
+        // An error here is "nobody is listening", which is the usual case.
+        let _ = self.events.send(entry.clone());
         entry
+    }
+
+    /// Live calls, from the moment of subscription. The replay a stream opens
+    /// with comes from [`Self::recent`].
+    pub fn subscribe(&self) -> broadcast::Receiver<ToolCallRecord> {
+        self.events.subscribe()
     }
 
     /// The most recent `limit`, oldest first — the tail of the ring, not the

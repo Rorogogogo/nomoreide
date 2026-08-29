@@ -9,6 +9,7 @@ license.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 chrono.workspace = true
+futures-util.workspace = true
 nomoreide-actions = { path = "../nomoreide-actions" }
 nomoreide-core = { path = "../nomoreide-core" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }

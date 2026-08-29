@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 
 /// How many distinct incidents are kept. Past this the oldest is dropped: the
 /// inbox is a view of what is going wrong now, not a record of everything that
@@ -95,10 +96,25 @@ struct Inner {
     windows: HashMap<String, VecDeque<String>>,
 }
 
+/// How many incidents a stream may fall behind before it starts losing them.
+///
+/// A subscriber that lags past this misses the ones in between rather than
+/// holding the inbox up: the inbox is fed from the log store's own listener,
+/// and a slow reader must never be able to stall the thread delivering log
+/// lines.
+const EVENT_BACKLOG: usize = 256;
+
 #[derive(Clone)]
 pub struct ErrorInbox {
     inner: Arc<Mutex<Inner>>,
     logs: LogStore,
+    /// Live incidents, for `/api/errors/stream`.
+    ///
+    /// A broadcast channel rather than a list of callbacks because a stream
+    /// has to *unsubscribe* when the browser tab closes, and dropping a
+    /// receiver is that — with no way to forget it. A callback list would leak
+    /// one entry per reload.
+    events: broadcast::Sender<Incident>,
 }
 
 impl ErrorInbox {
@@ -111,7 +127,16 @@ impl ErrorInbox {
                 windows: HashMap::new(),
             })),
             logs,
+            events: broadcast::Sender::new(EVENT_BACKLOG),
         }
+    }
+
+    /// Live incidents, from the moment of subscription.
+    ///
+    /// The replay a stream opens with comes from [`Self::list`], not from
+    /// here: this carries what happens next.
+    pub fn subscribe(&self) -> broadcast::Receiver<Incident> {
+        self.events.subscribe()
     }
 
     /// Start watching the log store this inbox was built over.
@@ -132,17 +157,26 @@ impl ErrorInbox {
     /// back — everything it needs about the lines before this one is already in
     /// the window kept here.
     pub fn observe(&self, service: &str, text: &str, at: DateTime<Utc>) {
-        let mut inner = self.inner.lock().unwrap();
-        let window = inner.windows.entry(service.to_string()).or_default();
-        window.push_back(text.to_string());
-        while window.len() > EXCERPT_WINDOW {
-            window.pop_front();
-        }
-        match detect::level_of(text) {
-            Some(level) => record(&mut inner, service, text, level, at),
-            // Not an incident of its own, but a stack frame belongs to
-            // whichever incident is already open for this service.
-            None => attach_continuation(&mut inner, service, text, at),
+        // The lock is released before the event goes out. Subscribers are
+        // arbitrary readers, and none of them should be able to hold the log
+        // store's delivery thread inside this inbox's mutex.
+        let touched = {
+            let mut inner = self.inner.lock().unwrap();
+            let window = inner.windows.entry(service.to_string()).or_default();
+            window.push_back(text.to_string());
+            while window.len() > EXCERPT_WINDOW {
+                window.pop_front();
+            }
+            match detect::level_of(text) {
+                Some(level) => record(&mut inner, service, text, level, at),
+                // Not an incident of its own, but a stack frame belongs to
+                // whichever incident is already open for this service.
+                None => attach_continuation(&mut inner, service, text, at),
+            }
+        };
+        if let Some(incident) = touched {
+            // An error here is "nobody is listening", which is the usual case.
+            let _ = self.events.send(incident);
         }
     }
 
@@ -232,7 +266,16 @@ impl ErrorInbox {
     }
 }
 
-fn record(inner: &mut Inner, service: &str, text: &str, level: Level, at: DateTime<Utc>) {
+/// Returns the incident this line created or updated, for the live stream.
+/// Every observation that changes one is an event — a repeat bumps a count the
+/// dashboard is showing.
+fn record(
+    inner: &mut Inner,
+    service: &str,
+    text: &str,
+    level: Level,
+    at: DateTime<Utc>,
+) -> Option<Incident> {
     let title = detect::title_of(text);
     let signature = detect::signature_of(service, text);
     let excerpt: Vec<String> = inner
@@ -258,7 +301,7 @@ fn record(inner: &mut Inner, service: &str, text: &str, level: Level, at: DateTi
                 existing.line = Some(frame.line);
             }
         }
-        return;
+        return Some(existing.clone());
     }
 
     let id = inner.next_id;
@@ -279,6 +322,7 @@ fn record(inner: &mut Inner, service: &str, text: &str, level: Level, at: DateTi
     while inner.incidents.len() > MAX_INCIDENTS {
         inner.incidents.pop_front();
     }
+    inner.incidents.back().cloned()
 }
 
 /// A stack frame that followed an incident joins it, and points it at a file if
@@ -288,23 +332,25 @@ fn record(inner: &mut Inner, service: &str, text: &str, level: Level, at: DateTi
 /// A continuation joins the excerpt whether or not it resolves to a file — a
 /// stack printed with holes in it is harder to read than one with frames this
 /// cannot place.
-fn attach_continuation(inner: &mut Inner, service: &str, text: &str, at: DateTime<Utc>) {
+fn attach_continuation(
+    inner: &mut Inner,
+    service: &str,
+    text: &str,
+    at: DateTime<Utc>,
+) -> Option<Incident> {
     if !detect::continues_a_stack(text) {
-        return;
+        return None;
     }
     let frame = detect::frame_in(text);
     let appended = inner.appended.get(service).copied().unwrap_or(0);
     if appended >= MAX_APPENDED_FRAMES {
-        return;
+        return None;
     }
-    let Some(incident) = inner
+    let incident = inner
         .incidents
         .iter_mut()
         .filter(|incident| incident.service == service)
-        .next_back()
-    else {
-        return;
-    };
+        .next_back()?;
     incident.log_excerpt.push(text.to_string());
     incident.last_seen = at;
     if incident.file.is_none() {
@@ -313,7 +359,9 @@ fn attach_continuation(inner: &mut Inner, service: &str, text: &str, at: DateTim
             incident.line = Some(frame.line);
         }
     }
+    let touched = incident.clone();
     inner.appended.insert(service.to_string(), appended + 1);
+    Some(touched)
 }
 
 /// The uncommitted changes to one file, when it is in a repository and has any.
