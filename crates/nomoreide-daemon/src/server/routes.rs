@@ -20,6 +20,7 @@ mod extensions;
 mod fs_directories;
 mod git;
 mod github;
+mod jetbrains;
 mod log_sources;
 mod meta;
 mod metrics;
@@ -148,6 +149,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(service_register::routes())
         .merge(service_test::routes())
         .merge(fs_directories::routes())
+        .merge(jetbrains::routes())
         .merge(log_sources::routes())
         .merge(metrics::routes())
         .merge(onboard::routes())
