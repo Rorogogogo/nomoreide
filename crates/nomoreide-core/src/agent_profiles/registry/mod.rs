@@ -36,6 +36,8 @@ pub struct InstallOutcome {
     #[serde(flatten)]
     pub imported: transfer::ImportOutcome,
     pub version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_kind: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,6 +46,11 @@ struct Descriptor {
     version: Option<String>,
     #[serde(default)]
     download_url: Option<String>,
+    /// How the registry holds the package — an upload, or a GitHub repository
+    /// it serves without one. Carried into the outcome so the dashboard can
+    /// say which, and absent when the registry did not say.
+    #[serde(default)]
+    source_kind: Option<String>,
 }
 
 /// One request, with the step's name carried into any failure.
@@ -192,6 +199,19 @@ pub async fn publish(request_of: PublishRequest<'_>, cwd: &Path) -> Result<Publi
     if !(200..300).contains(&status) {
         return Err(failed("Publish profile version", status, &body));
     }
+
+    // Same note as an install leaves, plus the ids — a published profile can be
+    // pushed again, and the next push reuses them.
+    let _ = super::publication::write_link(
+        name,
+        super::publication::NewLink {
+            origin: "published",
+            slug,
+            version,
+            profile_id: Some(&profile_id),
+            version_id: Some(&version_id),
+        },
+    );
 
     Ok(PublishOutcome {
         slug: slug.to_string(),
@@ -402,6 +422,7 @@ pub async fn install(
     let descriptor: Descriptor = serde_json::from_str(&body).unwrap_or(Descriptor {
         version: None,
         download_url: None,
+        source_kind: None,
     });
     let Some(download_url) = descriptor.download_url.filter(|url| !url.is_empty()) else {
         return Err(format!(
@@ -437,9 +458,25 @@ pub async fn install(
     let imported = written.and_then(|()| transfer::import(&archive, force, rename_to, supplied));
     let _ = std::fs::remove_dir_all(&staging);
 
+    let imported = imported?;
+    let version = descriptor.version.unwrap_or_default();
+    // Provenance, recorded under whatever name the import actually used — `as`
+    // may have renamed it. Best-effort: the profile is installed and the note
+    // is a convenience, so a failure to write it does not fail the install.
+    let _ = super::publication::write_link(
+        &imported.name,
+        super::publication::NewLink {
+            origin: "installed",
+            slug,
+            version: &version,
+            ..Default::default()
+        },
+    );
+
     Ok(InstallOutcome {
-        imported: imported?,
-        version: descriptor.version.unwrap_or_default(),
+        imported,
+        version,
+        source_kind: descriptor.source_kind,
     })
 }
 

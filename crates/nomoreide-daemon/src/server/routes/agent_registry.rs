@@ -163,21 +163,29 @@ async fn install(State(state): State<AppState>, body: Bytes) -> Response {
         .get("force")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    let rename_to = match optional(&payload, "as") {
-        Ok(value) => value.filter(|value| !value.is_empty()),
-        Err(()) => return failed(StatusCode::BAD_REQUEST, "slug is required."),
+    // `as` is `z.string().min(1).optional()`: absent is fine, blank is not.
+    let rename_to = match payload.get("as") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(value)) if !value.is_empty() => Some(value.as_str()),
+        Some(_) => return failed(StatusCode::BAD_REQUEST, "slug is required."),
     };
-    let supplied: BTreeMap<String, String> = payload
-        .get("credentials")
-        .and_then(Value::as_object)
-        .map(|map| {
-            map.iter()
-                .filter_map(|(key, value)| {
-                    value.as_str().map(|text| (key.clone(), text.to_string()))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    // `z.record(z.string())`: every value must be a string, and one that is
+    // not fails the whole body rather than being quietly dropped — a
+    // credential silently discarded is a profile installed without it.
+    let supplied: BTreeMap<String, String> = match payload.get("credentials") {
+        None | Some(Value::Null) => BTreeMap::new(),
+        Some(Value::Object(map)) => {
+            let mut supplied = BTreeMap::new();
+            for (key, value) in map {
+                let Some(text) = value.as_str() else {
+                    return failed(StatusCode::BAD_REQUEST, "slug is required.");
+                };
+                supplied.insert(key.clone(), text.to_string());
+            }
+            supplied
+        }
+        Some(_) => return failed(StatusCode::BAD_REQUEST, "slug is required."),
+    };
     let token = config::api_token_with_source().map(|(token, _)| token);
 
     match agent_profiles::install(slug, force, rename_to, &supplied, token.as_deref()).await {

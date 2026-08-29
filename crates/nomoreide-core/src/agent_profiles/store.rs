@@ -133,6 +133,7 @@ pub(super) fn summaries() -> Result<Vec<(ProfileSummary, SystemTime)>, String> {
         let modified = std::fs::metadata(&path)
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
+        let registry = super::publication::summary(&name, &profile);
         summaries.push((
             ProfileSummary {
                 name: profile.name,
@@ -142,6 +143,7 @@ pub(super) fn summaries() -> Result<Vec<(ProfileSummary, SystemTime)>, String> {
                 skill_count: profile.skills.len(),
                 plugin_count: profile.plugins.len(),
                 updated_at: iso_instant(modified),
+                registry,
             },
             modified,
         ));

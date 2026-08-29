@@ -1705,48 +1705,69 @@ pub async fn run_install(
         }
     };
 
-    async fn pump<R>(stream: &'static str, reader: R, lines: tokio::sync::mpsc::Sender<InstallLine>)
-    where
-        R: tokio::io::AsyncRead + Unpin,
-    {
-        let mut reader = BufReader::new(reader).lines();
-        while let Ok(Some(line)) = reader.next_line().await {
-            // A line that is only whitespace is not output. Blank lines are
-            // most of what a noisy installer prints.
-            if line.trim().is_empty() {
-                continue;
+    // **One loop over both pipes, stdout polled first.**
+    //
+    // Two independent readers race: a command that writes a line to each
+    // reports them in whichever order the tasks happened to wake, which is not
+    // the order they were written. The reference reads both through one event
+    // loop that offers stdout first, so a `biased` select reproduces it — and
+    // reading them together is also what keeps interleaved output in the order
+    // it actually happened.
+    let mut out = child
+        .stdout
+        .take()
+        .map(|reader| BufReader::new(reader).lines());
+    let mut err = child
+        .stderr
+        .take()
+        .map(|reader| BufReader::new(reader).lines());
+    let mut out_done = out.is_none();
+    let mut err_done = err.is_none();
+
+    loop {
+        let (stream, line) = tokio::select! {
+            biased;
+            line = async { out.as_mut().expect("checked").next_line().await }, if !out_done => {
+                ("stdout", line)
             }
-            if lines
-                .send(InstallLine {
-                    stream,
-                    text: line.trim_end_matches('\r').to_string(),
-                })
-                .await
-                .is_err()
-            {
-                return;
+            line = async { err.as_mut().expect("checked").next_line().await }, if !err_done => {
+                ("stderr", line)
+            }
+            else => break,
+        };
+        match line {
+            Ok(Some(text)) => {
+                // A line that is only whitespace is not output. Blank lines are
+                // most of what a noisy installer prints.
+                if text.trim().is_empty() {
+                    continue;
+                }
+                if lines
+                    .send(InstallLine {
+                        stream,
+                        text: text.trim_end_matches('\r').to_string(),
+                    })
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            // End of stream, or a read that failed: either way there is no
+            // more of it.
+            _ => {
+                if stream == "stdout" {
+                    out_done = true;
+                } else {
+                    err_done = true;
+                }
             }
         }
     }
 
-    let out = child.stdout.take().map(|reader| {
-        let lines = lines.clone();
-        tokio::spawn(async move { pump("stdout", reader, lines).await })
-    });
-    let err = child.stderr.take().map(|reader| {
-        let lines = lines.clone();
-        tokio::spawn(async move { pump("stderr", reader, lines).await })
-    });
-
-    let status = child.wait().await.ok();
     // Both pipes are drained before the exit code goes out, so a trailing line
     // never arrives after the `done` that says the run finished.
-    if let Some(task) = out {
-        let _ = task.await;
-    }
-    if let Some(task) = err {
-        let _ = task.await;
-    }
+    let status = child.wait().await.ok();
     status.and_then(|status| status.code())
 }
 

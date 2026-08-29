@@ -159,7 +159,9 @@ async fn set_model(State(state): State<AppState>, raw: Bytes) -> Response {
     };
     let requested = model.unwrap_or_default();
     let trimmed = requested.trim();
-    if trimmed.len() > 64 {
+    // Counted in characters, not bytes: the reference measures a JavaScript
+    // string, where a multi-byte name is still one character per letter.
+    if trimmed.chars().count() > 64 {
         return refuse(StatusCode::BAD_REQUEST, "Model name is too long.");
     }
     match state

@@ -15,7 +15,7 @@
 //! request that failed to connect is exactly the sort a developer opened this
 //! to see.
 
-use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -133,7 +133,7 @@ async fn proxy(
 
     let (method, path) = request_line(&head).unwrap_or_else(|| ("GET".into(), "/".into()));
     let upstream_host = format!("127.0.0.1:{upstream_port}");
-    let rewritten = rewrite_host(&head[..head_end], &upstream_host);
+    let rewritten = rewrite_head(&head[..head_end], &upstream_host);
     let leftover = head[head_end..].to_vec();
 
     let mut upstream = match TcpStream::connect(("127.0.0.1", upstream_port)).await {
@@ -171,43 +171,72 @@ async fn proxy(
     let (mut client_read, mut client_write) = client.into_split();
     let (mut upstream_read, mut upstream_write) = upstream.into_split();
 
-    // The request body, counted as it goes.
-    let request_bytes = tokio::spawn(async move {
-        let mut total = 0usize;
+    // The rest of the request body, forwarded and counted as it goes.
+    //
+    // Counted through a shared cell rather than returned, because this task
+    // cannot be waited on: a keep-alive client holds its socket open after the
+    // response, so joining here would park until the *client* went away and the
+    // event would never be reported.
+    // Seeded with whatever body arrived alongside the head: a small POST is one
+    // packet, so its whole body is already in hand and the pump below never
+    // sees it.
+    let request_bytes = Arc::new(AtomicUsize::new(leftover.len()));
+    let counted = request_bytes.clone();
+    tokio::spawn(async move {
         let mut buffer = [0u8; 8192];
         while let Ok(read) = client_read.read(&mut buffer).await {
             if read == 0 {
                 break;
             }
-            total += read;
+            counted.fetch_add(read, Ordering::Relaxed);
             if upstream_write.write_all(&buffer[..read]).await.is_err() {
                 break;
             }
         }
         let _ = upstream_write.shutdown().await;
-        total
     });
 
-    // The response, whose head is read far enough to learn the status.
+    // The response. Every byte is forwarded, but only the *body* is counted —
+    // the reference counts what its HTTP parser hands it, which is the body
+    // alone, so counting the head here would inflate every row by the size of
+    // its headers.
+    //
+    // The stream ends when the upstream closes, which it does after one
+    // response because the head sent up asked it to — see `rewrite_head`.
     let mut response_bytes = 0usize;
     let mut status = 0u16;
+    let mut head_seen = false;
+    let mut response_head: Vec<u8> = Vec::new();
     let mut buffer = [0u8; 8192];
     loop {
         let read = match upstream_read.read(&mut buffer).await {
             Ok(0) | Err(_) => break,
             Ok(read) => read,
         };
-        if status == 0 {
-            status = status_of(&buffer[..read]).unwrap_or(0);
+        if head_seen {
+            response_bytes += read;
+        } else {
+            response_head.extend_from_slice(&buffer[..read]);
+            if let Some(end) = find_head_end(&response_head) {
+                head_seen = true;
+                status = status_of(&response_head).unwrap_or(0);
+                // Whatever of the body came in the same read as the head.
+                response_bytes += response_head.len() - end;
+                response_head = Vec::new();
+            } else if response_head.len() > 64 * 1024 {
+                // Not a response head this can make sense of; forward the rest
+                // blind rather than buffering it forever.
+                head_seen = true;
+                response_head = Vec::new();
+            }
         }
-        response_bytes += read;
         if client_write.write_all(&buffer[..read]).await.is_err() {
             break;
         }
     }
     let _ = client_write.shutdown().await;
 
-    let req_bytes = request_bytes.await.unwrap_or(0);
+    let req_bytes = request_bytes.load(Ordering::Relaxed);
     on_event(HttpInspectorEvent {
         id: uuid::Uuid::new_v4().to_string(),
         started_at,
@@ -252,28 +281,42 @@ fn status_of(head: &[u8]) -> Option<u16> {
         .ok()
 }
 
-/// Point `Host` at the upstream, leaving every other header as it came.
-fn rewrite_host(head: &[u8], upstream_host: &str) -> Vec<u8> {
+/// Point `Host` at the upstream and ask it not to keep the connection alive.
+///
+/// Two rewrites, and only two. `Host` so a service that vhosts on it still
+/// answers.
+///
+/// `Connection: close` is the load-bearing one: without it a keep-alive
+/// upstream never closes, and since this proxy forwards bytes rather than
+/// parsing HTTP it has no other way to know where one response ended — so the
+/// request would be forwarded correctly and then never *reported*, which is the
+/// entire point of the inspector. The cost is one connection per request while
+/// the inspector is on, which is a throughput property of a debugging tool that
+/// is off by default.
+fn rewrite_head(head: &[u8], upstream_host: &str) -> Vec<u8> {
     let text = String::from_utf8_lossy(head);
     let mut out = String::with_capacity(text.len());
-    let mut replaced = false;
+    let mut wrote_host = false;
     for line in text.split_inclusive("\r\n") {
         let trimmed = line.trim_end_matches("\r\n");
         if trimmed.is_empty() {
-            if !replaced {
+            if !wrote_host {
                 out.push_str(&format!("host: {upstream_host}\r\n"));
-                replaced = true;
+                wrote_host = true;
             }
+            out.push_str("connection: close\r\n");
             out.push_str(line);
             continue;
         }
-        if trimmed
-            .split(':')
-            .next()
-            .is_some_and(|name| name.eq_ignore_ascii_case("host"))
-        {
+        let name = trimmed.split(':').next().unwrap_or_default();
+        if name.eq_ignore_ascii_case("host") {
             out.push_str(&format!("host: {upstream_host}\r\n"));
-            replaced = true;
+            wrote_host = true;
+            continue;
+        }
+        // Dropped here and re-added at the blank line, so exactly one of each
+        // goes up whatever the client sent.
+        if name.eq_ignore_ascii_case("connection") || name.eq_ignore_ascii_case("keep-alive") {
             continue;
         }
         out.push_str(line);
@@ -308,11 +351,11 @@ mod tests {
         assert_eq!(status_of(b"garbage\r\n"), None);
     }
 
-    /// The one header that changes, and it changes whatever its case was.
+    /// The host changes whatever case it arrived in, and nothing else does.
     #[test]
     fn the_host_is_pointed_upstream() {
         let head = b"GET / HTTP/1.1\r\nHost: example.test\r\nAccept: */*\r\n\r\n";
-        let out = String::from_utf8(rewrite_host(head, "127.0.0.1:9000")).unwrap();
+        let out = String::from_utf8(rewrite_head(head, "127.0.0.1:9000")).unwrap();
         assert!(out.contains("host: 127.0.0.1:9000\r\n"));
         assert!(!out.contains("example.test"));
         assert!(out.contains("Accept: */*\r\n"));
@@ -323,7 +366,20 @@ mod tests {
     #[test]
     fn a_missing_host_is_added() {
         let head = b"GET / HTTP/1.1\r\nAccept: */*\r\n\r\n";
-        let out = String::from_utf8(rewrite_host(head, "127.0.0.1:9000")).unwrap();
+        let out = String::from_utf8(rewrite_head(head, "127.0.0.1:9000")).unwrap();
         assert!(out.contains("host: 127.0.0.1:9000\r\n"));
+    }
+
+    /// Exactly one `connection` header goes up, and it says close — whatever
+    /// the client asked for. Without this the byte pipe cannot see where a
+    /// response ended and no request is ever reported.
+    #[test]
+    fn the_upstream_is_asked_to_close() {
+        let head =
+            b"GET / HTTP/1.1\r\nHost: x\r\nConnection: keep-alive\r\nKeep-Alive: timeout=5\r\n\r\n";
+        let out = String::from_utf8(rewrite_head(head, "127.0.0.1:9000")).unwrap();
+        assert_eq!(out.matches("connection: close").count(), 1);
+        assert!(!out.to_lowercase().contains("keep-alive"));
+        assert!(out.ends_with("connection: close\r\n\r\n"));
     }
 }

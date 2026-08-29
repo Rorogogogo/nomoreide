@@ -161,6 +161,26 @@ pub struct ServiceRuntimeStatus {
     /// The name of the signal that killed the process, never its number.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signal: Option<String>,
+    /// The HTTP inspector in front of this service, when one was asked for.
+    ///
+    /// Absent rather than disabled when it is off: the reference reports
+    /// `undefined`, and the dashboard tests the key's presence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inspector: Option<InspectorRuntimeStatus>,
+}
+
+/// Where a service's inspector is listening, and what it is listening to.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct InspectorRuntimeStatus {
+    pub enabled: bool,
+    /// Absent until the proxy is up. An inspector enabled on a service that
+    /// has not announced a URL yet has nothing to proxy to, and starts when it
+    /// does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upstream_port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

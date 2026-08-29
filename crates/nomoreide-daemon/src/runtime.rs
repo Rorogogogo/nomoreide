@@ -11,8 +11,8 @@ use nomoreide_core::timeline::{
     TimelineSeverity as CoreSeverity,
 };
 use nomoreide_daemon_client::protocol::{
-    PortConflict, PortHolderIdentity, ServiceLogEntry, ServiceRuntimeState, ServiceRuntimeStatus,
-    TimelineEvent, TimelineEventKind, TimelineSeverity,
+    InspectorRuntimeStatus, PortConflict, PortHolderIdentity, ServiceLogEntry, ServiceRuntimeState,
+    ServiceRuntimeStatus, TimelineEvent, TimelineEventKind, TimelineSeverity,
 };
 use std::future::Future;
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -87,10 +87,11 @@ impl DaemonRuntime {
         &self,
         name: &str,
         enabled: bool,
-    ) -> Result<ServiceStatus, String> {
+    ) -> Result<ServiceRuntimeStatus, String> {
         self.process_manager
             .set_inspector_enabled(name, enabled)
             .await
+            .map(runtime_status)
     }
 
     pub(crate) fn service_status(&self, name: &str) -> Option<ServiceStatus> {
@@ -325,6 +326,11 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         started_at: status.started_at.map(iso_millis),
         exited_at: status.exited_at.map(iso_millis),
         signal: status.signal,
+        inspector: status.inspector.map(|inspector| InspectorRuntimeStatus {
+            enabled: inspector.enabled,
+            port: inspector.port,
+            upstream_port: inspector.upstream_port,
+        }),
     }
 }
 
@@ -383,6 +389,8 @@ fn stopped_status(name: &str) -> ServiceRuntimeStatus {
         started_at: None,
         exited_at: None,
         signal: None,
+        // A service the daemon has never run has nothing in front of it.
+        inspector: None,
     }
 }
 

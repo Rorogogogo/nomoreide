@@ -9,6 +9,7 @@
 
 mod apply;
 mod credentials;
+pub mod publication;
 mod registry;
 mod snapshot;
 mod store;
@@ -63,6 +64,12 @@ pub struct ProfileSummary {
     /// When the profile was last written. Read from the file rather than
     /// stored in it, so an edit made by any means keeps it honest.
     pub updated_at: String,
+    /// Where this profile came from, when it came from the registry.
+    ///
+    /// Absent for a profile made here. Serialised after `updatedAt` because
+    /// the reference spreads it in at that point.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registry: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
