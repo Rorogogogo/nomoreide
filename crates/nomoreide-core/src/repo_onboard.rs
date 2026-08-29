@@ -390,6 +390,204 @@ fn absolute(path: &Path) -> PathBuf {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Install
+// ---------------------------------------------------------------------------
+
+/// One line of a running install, and which pipe it came out of.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct InstallLine {
+    pub stream: &'static str,
+    pub text: String,
+}
+
+/// Run a one-shot install command in `cwd`, sending each line as it arrives.
+///
+/// Stateless: the caller owns delivery, because the only caller is an SSE route
+/// and what it does with a line is framing, not process management.
+///
+/// Returns the exit code, or `None` when there was no code to have — the child
+/// was killed by a signal, or never started at all. Both are reported the same
+/// way to the browser, which is the reference's `exitCode: null`.
+///
+/// **The two pipes are forwarded as they arrive**, not one after the other.
+/// An install that interleaves progress on stdout with warnings on stderr reads
+/// in the order it happened, which is the only order that makes sense of it.
+pub async fn run_install(
+    cwd: &str,
+    command: &str,
+    lines: tokio::sync::mpsc::Sender<InstallLine>,
+) -> Option<i32> {
+    use std::process::Stdio;
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    let mut child = match tokio::process::Command::new(SHELL)
+        .arg("-c")
+        .arg(command)
+        .current_dir(cwd)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(error) => {
+            // A cwd that is not there fails the *spawn*, and the reference
+            // reports it as a line on stderr rather than as a stream error —
+            // so the browser sees a failed install, not a broken connection.
+            let _ = lines
+                .send(InstallLine {
+                    stream: "stderr",
+                    text: node_spawn_error(&error),
+                })
+                .await;
+            return None;
+        }
+    };
+
+    // **One loop over both pipes, stdout polled first.**
+    //
+    // Two independent readers race: a command that writes a line to each
+    // reports them in whichever order the tasks happened to wake, which is not
+    // the order they were written. The reference reads both through one event
+    // loop that offers stdout first, so a `biased` select reproduces it — and
+    // reading them together is also what keeps interleaved output in the order
+    // it actually happened.
+    let mut out = child
+        .stdout
+        .take()
+        .map(|reader| BufReader::new(reader).lines());
+    let mut err = child
+        .stderr
+        .take()
+        .map(|reader| BufReader::new(reader).lines());
+    let mut out_done = out.is_none();
+    let mut err_done = err.is_none();
+
+    loop {
+        let (stream, line) = tokio::select! {
+            biased;
+            line = async { out.as_mut().expect("checked").next_line().await }, if !out_done => {
+                ("stdout", line)
+            }
+            line = async { err.as_mut().expect("checked").next_line().await }, if !err_done => {
+                ("stderr", line)
+            }
+            else => break,
+        };
+        match line {
+            Ok(Some(text)) => {
+                // A line that is only whitespace is not output. Blank lines are
+                // most of what a noisy installer prints.
+                if text.trim().is_empty() {
+                    continue;
+                }
+                if lines
+                    .send(InstallLine {
+                        stream,
+                        text: text.trim_end_matches('\r').to_string(),
+                    })
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            // End of stream, or a read that failed: either way there is no
+            // more of it.
+            _ => {
+                if stream == "stdout" {
+                    out_done = true;
+                } else {
+                    err_done = true;
+                }
+            }
+        }
+    }
+
+    // Both pipes are drained before the exit code goes out, so a trailing line
+    // never arrives after the `done` that says the run finished.
+    let status = child.wait().await.ok();
+    status.and_then(|status| status.code())
+}
+
+/// The shell an install command runs under.
+///
+/// Named explicitly because it appears in the failure message, which is
+/// compared against the reference's — Node spells a spawn failure
+/// `spawn <file> <CODE>`.
+const SHELL: &str = "/bin/sh";
+
+/// A spawn failure worded the way Node words it.
+fn node_spawn_error(error: &std::io::Error) -> String {
+    let code = match error.raw_os_error() {
+        Some(2) => "ENOENT",
+        Some(13) => "EACCES",
+        Some(20) => "ENOTDIR",
+        Some(12) => "ENOMEM",
+        _ => return error.to_string(),
+    };
+    format!("spawn {SHELL} {code}")
+}
+
+#[cfg(test)]
+mod install_tests {
+    use super::*;
+
+    async fn collect(cwd: &str, command: &str) -> (Vec<InstallLine>, Option<i32>) {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(64);
+        let run = tokio::spawn({
+            let cwd = cwd.to_string();
+            let command = command.to_string();
+            async move { run_install(&cwd, &command, tx).await }
+        });
+        let mut lines = Vec::new();
+        while let Some(line) = rx.recv().await {
+            lines.push(line);
+        }
+        (lines, run.await.unwrap())
+    }
+
+    #[tokio::test]
+    async fn a_last_line_without_a_newline_is_still_a_line() {
+        let (lines, code) = collect("/", "printf 'no-newline'").await;
+        assert_eq!(
+            lines,
+            vec![InstallLine {
+                stream: "stdout",
+                text: "no-newline".into()
+            }]
+        );
+        assert_eq!(code, Some(0));
+    }
+
+    #[tokio::test]
+    async fn blank_lines_are_not_output() {
+        let (lines, code) = collect("/", "printf '\\n\\n   \\n'").await;
+        assert!(lines.is_empty());
+        assert_eq!(code, Some(0));
+    }
+
+    #[tokio::test]
+    async fn a_cwd_that_is_not_there_reads_the_way_node_reads_it() {
+        let (lines, code) = collect("/definitely/not/here", "echo hi").await;
+        assert_eq!(
+            lines,
+            vec![InstallLine {
+                stream: "stderr",
+                text: "spawn /bin/sh ENOENT".into()
+            }]
+        );
+        assert_eq!(code, None);
+    }
+
+    #[tokio::test]
+    async fn an_exit_code_survives() {
+        let (_, code) = collect("/", "exit 7").await;
+        assert_eq!(code, Some(7));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1648,202 +1846,4 @@ fn encode_component(value: &str) -> String {
         }
     }
     encoded
-}
-
-// ---------------------------------------------------------------------------
-// Install
-// ---------------------------------------------------------------------------
-
-/// One line of a running install, and which pipe it came out of.
-#[derive(Debug, Clone, serde::Serialize, PartialEq)]
-pub struct InstallLine {
-    pub stream: &'static str,
-    pub text: String,
-}
-
-/// Run a one-shot install command in `cwd`, sending each line as it arrives.
-///
-/// Stateless: the caller owns delivery, because the only caller is an SSE route
-/// and what it does with a line is framing, not process management.
-///
-/// Returns the exit code, or `None` when there was no code to have — the child
-/// was killed by a signal, or never started at all. Both are reported the same
-/// way to the browser, which is the reference's `exitCode: null`.
-///
-/// **The two pipes are forwarded as they arrive**, not one after the other.
-/// An install that interleaves progress on stdout with warnings on stderr reads
-/// in the order it happened, which is the only order that makes sense of it.
-pub async fn run_install(
-    cwd: &str,
-    command: &str,
-    lines: tokio::sync::mpsc::Sender<InstallLine>,
-) -> Option<i32> {
-    use std::process::Stdio;
-    use tokio::io::{AsyncBufReadExt, BufReader};
-
-    let mut child = match tokio::process::Command::new(SHELL)
-        .arg("-c")
-        .arg(command)
-        .current_dir(cwd)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(error) => {
-            // A cwd that is not there fails the *spawn*, and the reference
-            // reports it as a line on stderr rather than as a stream error —
-            // so the browser sees a failed install, not a broken connection.
-            let _ = lines
-                .send(InstallLine {
-                    stream: "stderr",
-                    text: node_spawn_error(&error),
-                })
-                .await;
-            return None;
-        }
-    };
-
-    // **One loop over both pipes, stdout polled first.**
-    //
-    // Two independent readers race: a command that writes a line to each
-    // reports them in whichever order the tasks happened to wake, which is not
-    // the order they were written. The reference reads both through one event
-    // loop that offers stdout first, so a `biased` select reproduces it — and
-    // reading them together is also what keeps interleaved output in the order
-    // it actually happened.
-    let mut out = child
-        .stdout
-        .take()
-        .map(|reader| BufReader::new(reader).lines());
-    let mut err = child
-        .stderr
-        .take()
-        .map(|reader| BufReader::new(reader).lines());
-    let mut out_done = out.is_none();
-    let mut err_done = err.is_none();
-
-    loop {
-        let (stream, line) = tokio::select! {
-            biased;
-            line = async { out.as_mut().expect("checked").next_line().await }, if !out_done => {
-                ("stdout", line)
-            }
-            line = async { err.as_mut().expect("checked").next_line().await }, if !err_done => {
-                ("stderr", line)
-            }
-            else => break,
-        };
-        match line {
-            Ok(Some(text)) => {
-                // A line that is only whitespace is not output. Blank lines are
-                // most of what a noisy installer prints.
-                if text.trim().is_empty() {
-                    continue;
-                }
-                if lines
-                    .send(InstallLine {
-                        stream,
-                        text: text.trim_end_matches('\r').to_string(),
-                    })
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-            // End of stream, or a read that failed: either way there is no
-            // more of it.
-            _ => {
-                if stream == "stdout" {
-                    out_done = true;
-                } else {
-                    err_done = true;
-                }
-            }
-        }
-    }
-
-    // Both pipes are drained before the exit code goes out, so a trailing line
-    // never arrives after the `done` that says the run finished.
-    let status = child.wait().await.ok();
-    status.and_then(|status| status.code())
-}
-
-/// The shell an install command runs under.
-///
-/// Named explicitly because it appears in the failure message, which is
-/// compared against the reference's — Node spells a spawn failure
-/// `spawn <file> <CODE>`.
-const SHELL: &str = "/bin/sh";
-
-/// A spawn failure worded the way Node words it.
-fn node_spawn_error(error: &std::io::Error) -> String {
-    let code = match error.raw_os_error() {
-        Some(2) => "ENOENT",
-        Some(13) => "EACCES",
-        Some(20) => "ENOTDIR",
-        Some(12) => "ENOMEM",
-        _ => return error.to_string(),
-    };
-    format!("spawn {SHELL} {code}")
-}
-
-#[cfg(test)]
-mod install_tests {
-    use super::*;
-
-    async fn collect(cwd: &str, command: &str) -> (Vec<InstallLine>, Option<i32>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(64);
-        let run = tokio::spawn({
-            let cwd = cwd.to_string();
-            let command = command.to_string();
-            async move { run_install(&cwd, &command, tx).await }
-        });
-        let mut lines = Vec::new();
-        while let Some(line) = rx.recv().await {
-            lines.push(line);
-        }
-        (lines, run.await.unwrap())
-    }
-
-    #[tokio::test]
-    async fn a_last_line_without_a_newline_is_still_a_line() {
-        let (lines, code) = collect("/", "printf 'no-newline'").await;
-        assert_eq!(
-            lines,
-            vec![InstallLine {
-                stream: "stdout",
-                text: "no-newline".into()
-            }]
-        );
-        assert_eq!(code, Some(0));
-    }
-
-    #[tokio::test]
-    async fn blank_lines_are_not_output() {
-        let (lines, code) = collect("/", "printf '\\n\\n   \\n'").await;
-        assert!(lines.is_empty());
-        assert_eq!(code, Some(0));
-    }
-
-    #[tokio::test]
-    async fn a_cwd_that_is_not_there_reads_the_way_node_reads_it() {
-        let (lines, code) = collect("/definitely/not/here", "echo hi").await;
-        assert_eq!(
-            lines,
-            vec![InstallLine {
-                stream: "stderr",
-                text: "spawn /bin/sh ENOENT".into()
-            }]
-        );
-        assert_eq!(code, None);
-    }
-
-    #[tokio::test]
-    async fn an_exit_code_survives() {
-        let (_, code) = collect("/", "exit 7").await;
-        assert_eq!(code, Some(7));
-    }
 }

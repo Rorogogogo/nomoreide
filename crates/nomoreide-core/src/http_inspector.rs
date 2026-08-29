@@ -203,7 +203,7 @@ async fn proxy(
     //
     // The stream ends when the upstream closes, which it does after one
     // response because the head sent up asked it to — see `rewrite_head`.
-    let mut response_bytes = 0usize;
+    let mut body = BodyCounter::new(false);
     let mut status = 0u16;
     let mut head_seen = false;
     let mut response_head: Vec<u8> = Vec::new();
@@ -214,18 +214,20 @@ async fn proxy(
             Ok(read) => read,
         };
         if head_seen {
-            response_bytes += read;
+            body.feed(&buffer[..read]);
         } else {
             response_head.extend_from_slice(&buffer[..read]);
             if let Some(end) = find_head_end(&response_head) {
                 head_seen = true;
                 status = status_of(&response_head).unwrap_or(0);
+                body = BodyCounter::new(is_chunked(&response_head));
                 // Whatever of the body came in the same read as the head.
-                response_bytes += response_head.len() - end;
+                let carried = response_head[end..].to_vec();
+                body.feed(&carried);
                 response_head = Vec::new();
             } else if response_head.len() > 64 * 1024 {
-                // Not a response head this can make sense of; forward the rest
-                // blind rather than buffering it forever.
+                // Not a response head this can make sense of; count the rest
+                // raw rather than buffering it forever.
                 head_seen = true;
                 response_head = Vec::new();
             }
@@ -236,6 +238,7 @@ async fn proxy(
     }
     let _ = client_write.shutdown().await;
 
+    let response_bytes = body.total;
     let req_bytes = request_bytes.load(Ordering::Relaxed);
     on_event(HttpInspectorEvent {
         id: uuid::Uuid::new_v4().to_string(),
@@ -248,6 +251,107 @@ async fn proxy(
         res_bytes: response_bytes,
     });
     Ok(())
+}
+
+/// How many bytes of *body* a response carried.
+///
+/// Not how many bytes crossed the wire. A response with no content-length is
+/// chunked, and its wire form interleaves a hex length, the payload, and a
+/// terminator around every piece — eleven extra bytes on a single small
+/// response. The reference counts what its HTTP parser hands it, which is the
+/// payload alone, so the framing is parsed out here rather than counted.
+///
+/// The bytes are still *forwarded* untouched; only the tally sees the
+/// difference.
+struct BodyCounter {
+    total: usize,
+    chunked: bool,
+    state: ChunkState,
+    /// Partial size line, held across reads — a chunk header can be split.
+    pending: Vec<u8>,
+}
+
+enum ChunkState {
+    Size,
+    Data(usize),
+    /// The CRLF after a chunk's data, and how much of it is left.
+    Crlf(usize),
+    Done,
+}
+
+impl BodyCounter {
+    fn new(chunked: bool) -> Self {
+        Self {
+            total: 0,
+            chunked,
+            state: ChunkState::Size,
+            pending: Vec::new(),
+        }
+    }
+
+    fn feed(&mut self, mut bytes: &[u8]) {
+        if !self.chunked {
+            self.total += bytes.len();
+            return;
+        }
+        while !bytes.is_empty() {
+            match self.state {
+                ChunkState::Done => return,
+                ChunkState::Size => {
+                    let Some(newline) = bytes.iter().position(|byte| *byte == b'\n') else {
+                        self.pending.extend_from_slice(bytes);
+                        return;
+                    };
+                    self.pending.extend_from_slice(&bytes[..newline]);
+                    bytes = &bytes[newline + 1..];
+                    let line = String::from_utf8_lossy(&self.pending);
+                    // A chunk header may carry extensions after a semicolon;
+                    // only the size in front of it is the size.
+                    let size = usize::from_str_radix(
+                        line.trim().split(';').next().unwrap_or_default().trim(),
+                        16,
+                    )
+                    .unwrap_or(0);
+                    self.pending.clear();
+                    self.state = if size == 0 {
+                        ChunkState::Done
+                    } else {
+                        ChunkState::Data(size)
+                    };
+                }
+                ChunkState::Data(remaining) => {
+                    let taken = remaining.min(bytes.len());
+                    self.total += taken;
+                    bytes = &bytes[taken..];
+                    self.state = if taken == remaining {
+                        ChunkState::Crlf(2)
+                    } else {
+                        ChunkState::Data(remaining - taken)
+                    };
+                }
+                ChunkState::Crlf(remaining) => {
+                    let taken = remaining.min(bytes.len());
+                    bytes = &bytes[taken..];
+                    self.state = if taken == remaining {
+                        ChunkState::Size
+                    } else {
+                        ChunkState::Crlf(remaining - taken)
+                    };
+                }
+            }
+        }
+    }
+}
+
+/// Whether a response head declares chunked transfer encoding.
+fn is_chunked(head: &[u8]) -> bool {
+    String::from_utf8_lossy(head).lines().any(|line| {
+        let Some((name, value)) = line.split_once(':') else {
+            return false;
+        };
+        name.trim().eq_ignore_ascii_case("transfer-encoding")
+            && value.to_ascii_lowercase().contains("chunked")
+    })
 }
 
 /// Rounded to a tenth of a millisecond, the way the reference rounds it.
@@ -340,6 +444,41 @@ mod tests {
             request_line(b"POST /a?b=1 HTTP/1.1\r\n"),
             Some(("POST".to_string(), "/a?b=1".to_string()))
         );
+    }
+
+    #[test]
+    fn a_chunked_body_counts_only_its_payload() {
+        let mut counter = BodyCounter::new(true);
+        counter.feed(b"5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n");
+        assert_eq!(counter.total, 11);
+    }
+
+    /// A chunk header split across two reads is still one header.
+    #[test]
+    fn a_chunk_split_across_reads_is_counted_once() {
+        let mut counter = BodyCounter::new(true);
+        counter.feed(b"5\r\nhel");
+        counter.feed(b"lo\r\n0\r\n\r\n");
+        assert_eq!(counter.total, 5);
+    }
+
+    #[test]
+    fn an_unchunked_body_is_counted_as_it_comes() {
+        let mut counter = BodyCounter::new(false);
+        counter.feed(b"hello");
+        counter.feed(b" world");
+        assert_eq!(counter.total, 11);
+    }
+
+    #[test]
+    fn chunked_is_read_off_the_head_whatever_its_case() {
+        assert!(is_chunked(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+        ));
+        assert!(is_chunked(
+            b"HTTP/1.1 200 OK\r\ntransfer-encoding: Chunked\r\n\r\n"
+        ));
+        assert!(!is_chunked(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n"));
     }
 
     #[test]

@@ -57,6 +57,9 @@ pub(crate) fn routes() -> Router<AppState> {
 ///
 /// The prose of that throw is V8's, and it names a byte offset — see
 /// [`PARSE_FAILURE`].
+// The refusal is a whole `Response`, which is large; there is one of them per
+// request and boxing it would only move the allocation.
+#[allow(clippy::result_large_err)]
 fn read_or_refuse(raw: &Bytes) -> Result<Value, Response> {
     let text = String::from_utf8_lossy(raw);
     let trimmed = text.trim();

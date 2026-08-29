@@ -1497,6 +1497,7 @@ mod tests {
             started_at: Some("2026-08-21T10:00:00.000Z".into()),
             exited_at: None,
             signal: None,
+            inspector: None,
         }
     }
 
