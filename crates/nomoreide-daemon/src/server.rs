@@ -21,6 +21,7 @@ use nomoreide_core::process_manager::ProcessManager;
 use nomoreide_core::runtime_registry::RuntimeRegistry;
 use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::timeline::TimelineStore;
+use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
 use nomoreide_daemon_client::{DaemonState, RuntimePaths};
@@ -128,6 +129,15 @@ pub async fn serve_with_shutdown_requests(
     // Token and cost history, beside the logs and the timeline in the same
     // state directory. The reference derives this path from its log directory
     // for the same reason: one place per machine, not one per project.
+    // Anchored to the daemon's own working directory, which is the filesystem
+    // whose free space the dashboard reports.
+    let metrics = MetricsStore::new(crate::server::routes::daemon_cwd());
+    // One sample before anything is served, so the first request to reach a
+    // freshly started daemon draws a point rather than an empty pane. The
+    // reference has the same property by starting its sampler before it binds.
+    metrics.sample_once(&[]).await;
+    tokio::spawn(sample_metrics(metrics.clone(), runtime.clone()));
+
     let usage_history = Arc::new(UsageHistory::new(
         options
             .runtime_paths
@@ -146,6 +156,7 @@ pub async fn serve_with_shutdown_requests(
         terminal: TerminalManager::new(),
         events: Arc::new(app::DiscardingEventSink),
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        metrics: metrics.clone(),
         tool_calls: ToolCallStore::new(),
         usage_history,
         approvals: ApprovalBroker::new(),
@@ -241,5 +252,37 @@ async fn sample_usage(history: Arc<UsageHistory>) {
         let usage = nomoreide_core::usage_info::build_usage_info(&cwd).await;
         history.record(&usage).await;
         tokio::time::sleep(Duration::from_secs(30)).await;
+    }
+}
+
+/// Sample host and per-service activity on a timer.
+///
+/// The first tick is immediate rather than deferred: a dashboard opened at the
+/// same moment as the daemon should draw a point, not an empty pane, and one
+/// `ps` at startup costs nothing anybody notices.
+async fn sample_metrics(metrics: MetricsStore, runtime: Arc<DaemonRuntime>) {
+    let interval = Duration::from_millis(metrics.interval_ms());
+    loop {
+        // Sleep first. The startup sample has already been taken, and taking a
+        // second one straight away would give the host a CPU percentage before
+        // an interval had passed -- a ratio over no elapsed time.
+        tokio::time::sleep(interval).await;
+        let running: Vec<nomoreide_core::metrics_store::RunningService> = runtime
+            .status()
+            .into_iter()
+            .filter(|status| {
+                serde_json::to_value(status.state)
+                    .ok()
+                    .and_then(|value| value.as_str().map(str::to_string))
+                    .as_deref()
+                    == Some("running")
+            })
+            .map(|status| nomoreide_core::metrics_store::RunningService {
+                name: status.name,
+                pid: status.pid.map(i64::from),
+                started_at: status.started_at,
+            })
+            .collect();
+        metrics.sample_once(&running).await;
     }
 }

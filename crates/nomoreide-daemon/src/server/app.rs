@@ -12,6 +12,7 @@ use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
 use nomoreide_core::terminal::TerminalManager;
+use nomoreide_core::metrics_store::MetricsStore;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
 use serde_json::Value;
@@ -49,6 +50,12 @@ pub(crate) struct AppState {
     /// processes. It exists so `/api/agent/tool-calls` answers the same shape,
     /// and so the writer is the only piece still missing.
     pub(crate) tool_calls: ToolCallStore,
+    /// Rolling CPU and memory for the host and every running service.
+    ///
+    /// Shared rather than rebuilt per request because it *is* the history: a
+    /// store built fresh for a request would have one sample in it, and a graph
+    /// needs the ones before.
+    pub(crate) metrics: MetricsStore,
     /// Token and cost totals over time.
     ///
     /// Shared rather than rebuilt per request because it carries the dedup keys

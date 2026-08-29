@@ -49,7 +49,7 @@ impl LogEntry {
 /// which lines become timeline events and which service reports itself
 /// unhealthy, so two classifiers that disagree would put a line in the timeline
 /// that the log panel had painted as ordinary.
-fn classify_severity(text: &str) -> Option<String> {
+pub(crate) fn classify_severity(text: &str) -> Option<String> {
     static CRASH_SIGNALS: OnceLock<Regex> = OnceLock::new();
     static ERROR_WORD: OnceLock<Regex> = OnceLock::new();
     static NO_ERRORS: OnceLock<Regex> = OnceLock::new();
