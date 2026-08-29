@@ -160,6 +160,14 @@ const requests = [
   { name: "triggers/rejects-post", method: "POST", path: TRIGGERS },
 ];
 
+/**
+ * The two heartbeat cases cost nineteen seconds each. A seeded sweep skips
+ * them for a mutation that cannot reach the heartbeat; a plain run never does,
+ * so the committed gate is always the whole gate.
+ */
+const skipSlow = process.env.NMI_SKIP_SLOW === "1";
+const SLOW = new Set(["terminal/the-keepalive", "triggers/the-heartbeat"]);
+
 const root = await mkdtemp(join(tmpdir(), "nmi-terminal-streams-parity-"));
 const harness = new RuntimeHarness(root);
 let failures = 0;
@@ -213,6 +221,7 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 2_000));
 
   for (const step of streams) {
+    if (skipSlow && SLOW.has(step.name)) continue;
     const answers = await Promise.all(
       runtimes.map((runtime) =>
         harness.readStream(runtime, step.path, {

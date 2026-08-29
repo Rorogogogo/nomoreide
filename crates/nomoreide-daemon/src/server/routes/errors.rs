@@ -74,7 +74,13 @@ async fn stream(State(state): State<AppState>) -> Response {
         .into_iter()
         .map(wire)
         .collect();
-    sse::stream("incident", replay, state.errors.subscribe(), wire)
+    sse::stream(
+        sse::RETRY_AND_PING,
+        "incident",
+        replay,
+        state.errors.events(),
+        |incident| Some(wire(incident)),
+    )
 }
 
 /// How many incidents a newly-opened stream replays.

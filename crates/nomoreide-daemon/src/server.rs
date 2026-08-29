@@ -144,6 +144,9 @@ pub async fn serve_with_shutdown_requests(
     ));
     tokio::spawn(sample_usage(usage_history.clone()));
 
+    // One channel behind the sink every manager already emits into, so the
+    // terminal stream is a subscriber rather than a change to the manager.
+    let event_stream = tokio::sync::broadcast::Sender::<app::RuntimeEvent>::new(app::EVENT_BACKLOG);
     let app = routes::router(AppState {
         credential: ownership.credential().to_string(),
         owner_id: ownership.owner_id().to_string(),
@@ -152,7 +155,8 @@ pub async fn serve_with_shutdown_requests(
         errors,
         shutdown: shutdown_sender,
         terminal: TerminalManager::new(),
-        events: Arc::new(app::DiscardingEventSink),
+        events: Arc::new(app::BroadcastEventSink::new(event_stream.clone())),
+        event_stream,
         session_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         metrics: metrics.clone(),
         tool_calls: ToolCallStore::new(),

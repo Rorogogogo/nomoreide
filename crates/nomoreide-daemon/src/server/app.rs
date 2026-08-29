@@ -11,14 +11,15 @@ use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
 use nomoreide_core::event_sink::{EventSink, EventSinkError, SharedEventSink};
-use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::metrics_store::MetricsStore;
+use nomoreide_core::terminal::TerminalManager;
 use nomoreide_core::tool_call_store::ToolCallStore;
 use nomoreide_core::usage_history::UsageHistory;
 use serde_json::Value;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
+use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
 #[derive(Clone)]
@@ -40,6 +41,9 @@ pub(crate) struct AppState {
     /// anyway because the manager emits unconditionally, and a sink that exists
     /// is what lets the stream be added without touching the manager again.
     pub(crate) events: SharedEventSink,
+    /// The same events, readable. `events` is write-only through its trait, and
+    /// a stream has to subscribe — so the channel behind it is held here too.
+    pub(crate) event_stream: broadcast::Sender<RuntimeEvent>,
     /// Hands out `term_1`, `term_2`, … the way the reference does. Sessions the
     /// caller named (`svc:<service>`) do not draw from it.
     pub(crate) session_counter: Arc<AtomicU64>,
@@ -72,11 +76,45 @@ pub(crate) struct AppState {
     pub(crate) approvals: ApprovalBroker,
 }
 
-/// A sink that drops what it is given.
-pub(crate) struct DiscardingEventSink;
+/// One runtime event: what happened, and the thing it happened to.
+///
+/// Named rather than typed because a single channel carries every producer's
+/// events — a terminal session changing, and whatever is wired in next — and
+/// each stream takes only the names it serves.
+#[derive(Clone, Debug)]
+pub(crate) struct RuntimeEvent {
+    pub(crate) name: String,
+    pub(crate) payload: Value,
+}
 
-impl EventSink for DiscardingEventSink {
-    fn emit(&self, _event: &str, _payload: Value) -> Result<(), EventSinkError> {
+/// How many events a stream may fall behind before it starts losing them. A
+/// slow reader must never be able to block a producer, so this drops rather
+/// than waits.
+pub(crate) const EVENT_BACKLOG: usize = 256;
+
+/// A sink that fans its events out to whoever is streaming.
+///
+/// The managers emit unconditionally into a [`SharedEventSink`], so this is the
+/// whole of what `/api/terminal/events` needed: nothing in the terminal manager
+/// changed to make it stream.
+pub(crate) struct BroadcastEventSink {
+    events: broadcast::Sender<RuntimeEvent>,
+}
+
+impl BroadcastEventSink {
+    pub(crate) fn new(events: broadcast::Sender<RuntimeEvent>) -> Self {
+        Self { events }
+    }
+}
+
+impl EventSink for BroadcastEventSink {
+    /// A send with no listeners is not a failure — the usual state of a daemon
+    /// nobody has a dashboard open against.
+    fn emit(&self, event: &str, payload: Value) -> Result<(), EventSinkError> {
+        let _ = self.events.send(RuntimeEvent {
+            name: event.to_string(),
+            payload,
+        });
         Ok(())
     }
 }

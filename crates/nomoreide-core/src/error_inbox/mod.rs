@@ -131,12 +131,14 @@ impl ErrorInbox {
         }
     }
 
-    /// Live incidents, from the moment of subscription.
+    /// The live-incident channel. A caller subscribes to it *and* holds it,
+    /// so a stream with nothing to report stays open rather than seeing a
+    /// closed channel.
     ///
     /// The replay a stream opens with comes from [`Self::list`], not from
     /// here: this carries what happens next.
-    pub fn subscribe(&self) -> broadcast::Receiver<Incident> {
-        self.events.subscribe()
+    pub fn events(&self) -> broadcast::Sender<Incident> {
+        self.events.clone()
     }
 
     /// Start watching the log store this inbox was built over.

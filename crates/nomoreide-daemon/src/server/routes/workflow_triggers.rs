@@ -1,6 +1,6 @@
 //! Configured bindings between an event and a workflow.
 //!
-//! Four of the domain's five endpoints — everything but the stream.
+//! All five of the domain's endpoints, the stream included.
 //!
 //! **The queue is empty because nothing fills it.** A fired trigger enqueues a
 //! pending run for the dashboard to drain, and the thing that fires triggers —
@@ -26,6 +26,7 @@
 use crate::server::app::AppState;
 use crate::server::body::{percent_decode, read_json_object};
 use crate::server::errors::{error, method_not_allowed};
+use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::{StatusCode, Uri};
@@ -33,7 +34,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use nomoreide_core::workflow_triggers::workflow_trigger;
-use serde_json::json;
+use serde_json::{json, Value};
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
@@ -42,6 +43,7 @@ pub(crate) fn routes() -> Router<AppState> {
             "/api/workflow-triggers/pending",
             get(pending).fallback(shadowed_trigger_id),
         )
+        .route("/api/workflow-triggers/pending/stream", get(pending_stream))
         .route(
             "/api/workflow-triggers/pending/:id/ack",
             axum::routing::post(ack).fallback(method_not_allowed),
@@ -55,6 +57,24 @@ pub(crate) fn routes() -> Router<AppState> {
 /// The pending queue, which is empty until something fires a trigger.
 async fn pending() -> Response {
     Json(json!({ "ok": true, "pending": [] })).into_response()
+}
+
+/// The pending queue as a stream: an empty replay, and then a heartbeat every
+/// fifteen seconds.
+///
+/// **Nothing ever sends on this channel.** No trigger fires in this runtime
+/// yet, so the sender exists only to hold the stream open — which is the
+/// reference's behaviour too: its stream stays connected with an empty queue
+/// rather than closing.
+async fn pending_stream() -> Response {
+    let live = tokio::sync::broadcast::Sender::<Value>::new(1);
+    sse::stream(
+        sse::RETRY_AND_PING,
+        "pending",
+        Vec::<Value>::new(),
+        live,
+        Some,
+    )
 }
 
 /// Acknowledging a pending run. `ok` is whether one was removed, and the status

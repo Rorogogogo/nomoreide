@@ -7,6 +7,7 @@
 use crate::server::app::AppState;
 use crate::server::errors::{error, method_not_allowed};
 use crate::server::routes::query::query_value;
+use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;
 use axum::extract::{DefaultBodyLimit, State};
@@ -44,6 +45,7 @@ pub(crate) fn routes() -> Router<AppState> {
         // Exact paths, so a wrong method reaches the shell rather than a 405 —
         // the reference registers these two with a method and nothing else.
         .route("/api/terminal/capabilities", get(capabilities))
+        .route("/api/terminal/events", get(events))
         .route("/api/terminal/transcripts", get(transcripts))
         .route(
             "/api/terminal/sessions",
@@ -86,6 +88,41 @@ async fn capabilities() -> Response {
     })
     .into_response()
 }
+
+/// The live session feed.
+///
+/// Its framing is the terminal's own — `: connected`, `: keepalive`, a charset,
+/// and `x-accel-buffering` — not the one every other stream uses.
+///
+/// The manager already emits `terminal-session-changed` into the event sink on
+/// every state change, so this subscribes to that rather than reaching into the
+/// manager: opening, closing and moving a session to Terminal.app all arrive
+/// here without any of them knowing about a stream.
+async fn events(State(state): State<AppState>) -> Response {
+    let replay: Vec<TerminalSessionInfo> = state
+        .terminal
+        .list_sessions()
+        .into_iter()
+        .map(wire)
+        .collect();
+    sse::stream(
+        sse::CONNECTED_AND_KEEPALIVE,
+        "session",
+        replay,
+        state.event_stream.clone(),
+        |event| {
+            if event.name != TERMINAL_SESSION_CHANGED {
+                return None;
+            }
+            serde_json::from_value::<TerminalSession>(event.payload)
+                .ok()
+                .map(wire)
+        },
+    )
+}
+
+/// The event name the terminal manager emits under.
+const TERMINAL_SESSION_CHANGED: &str = "terminal-session-changed";
 
 async fn list_sessions(State(state): State<AppState>) -> Response {
     Json(TerminalSessionsEnvelope {

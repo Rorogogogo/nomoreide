@@ -173,6 +173,14 @@ impl TerminalManager {
             },
         );
         self.start_child_waiter(id, generation, child);
+        // A newly spawned session is a change anyone streaming should see.
+        //
+        // The reference gets this from its PTY state listener firing as the
+        // child reaches `running`; there is no such transition here, because a
+        // session is born running. **Only creation emits.** Closing one does
+        // not — the reference disposes the session before any state change
+        // reaches a listener, and `terminal/closing-emits-nothing` holds that.
+        super::manager::emit_terminal_session(sink.as_ref(), &session);
         Ok(session)
     }
 }

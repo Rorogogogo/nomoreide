@@ -93,10 +93,11 @@ async fn tool_calls(State(state): State<AppState>, uri: Uri) -> Response {
 /// The framing is still the contract, and the writer is the missing half.
 async fn tool_calls_stream(State(state): State<AppState>) -> Response {
     sse::stream(
+        sse::RETRY_AND_PING,
         "tool-call",
         state.tool_calls.recent(STREAM_REPLAY),
-        state.tool_calls.subscribe(),
-        |record| record,
+        state.tool_calls.events(),
+        Some,
     )
 }
 

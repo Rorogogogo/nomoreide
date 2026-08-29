@@ -86,10 +86,11 @@ impl ToolCallStore {
         entry
     }
 
-    /// Live calls, from the moment of subscription. The replay a stream opens
-    /// with comes from [`Self::recent`].
-    pub fn subscribe(&self) -> broadcast::Receiver<ToolCallRecord> {
-        self.events.subscribe()
+    /// The live-call channel; the replay a stream opens with comes from
+    /// [`Self::recent`]. Handed out as the sender so a stream can hold it open
+    /// — see `server::sse::stream`.
+    pub fn events(&self) -> broadcast::Sender<ToolCallRecord> {
+        self.events.clone()
     }
 
     /// The most recent `limit`, oldest first — the tail of the ring, not the
