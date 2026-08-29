@@ -7,6 +7,7 @@ use axum::extract::{Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
+use nomoreide_core::agent_profiles::auth::AuthStates;
 use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
@@ -79,6 +80,13 @@ pub(crate) struct AppState {
     /// denies. That is the point: the refusals in front of a decision are the
     /// part a hook depends on, and they answer the same either way.
     pub(crate) approvals: ApprovalBroker,
+    /// Registry sign-ins waiting on a browser.
+    ///
+    /// In the daemon rather than in the route module because a sign-in spans
+    /// three requests — `start` mints the state, `finish` settles it from a
+    /// browser tab, `outcome` collects it — and only something outliving all
+    /// three can tie them together.
+    pub(crate) registry_auth: AuthStates,
 }
 
 /// One runtime event: what happened, and the thing it happened to.

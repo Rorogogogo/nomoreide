@@ -19,7 +19,8 @@ use serde::{Deserialize, Serialize};
 
 pub use apply::{apply, ApplyOutcome, ApplyPreview};
 pub use registry::{
-    install, publish, register_github, InstallOutcome, PublishOutcome, PublishRequest,
+    auth, config as registry_config, install, publish, register_github, InstallOutcome,
+    PublishOutcome, PublishRequest,
 };
 pub use snapshot::{refresh, snapshot};
 pub use store::profiles_root;

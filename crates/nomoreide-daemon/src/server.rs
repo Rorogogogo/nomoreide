@@ -14,6 +14,7 @@ use crate::DaemonOwnership;
 use anyhow::{Context, Result};
 use app::AppState;
 use chrono::Utc;
+use nomoreide_core::agent_profiles::auth::AuthStates;
 use nomoreide_core::approval_broker::ApprovalBroker;
 use nomoreide_core::config::ConfigStore;
 use nomoreide_core::error_inbox::ErrorInbox;
@@ -168,6 +169,7 @@ pub async fn serve_with_shutdown_requests(
         tests,
         usage_history,
         approvals: ApprovalBroker::new(),
+        registry_auth: AuthStates::new(),
     });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

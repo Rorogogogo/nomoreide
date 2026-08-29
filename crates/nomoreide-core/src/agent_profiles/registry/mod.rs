@@ -9,7 +9,8 @@
 //! placeholders rather than secrets; the version manifest carries less still,
 //! only the name and kind of each server. Neither is a place a token can hide.
 
-mod config;
+pub mod auth;
+pub mod config;
 
 use super::{store, transfer, Profile};
 use crate::agent_env::Json;

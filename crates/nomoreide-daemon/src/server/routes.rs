@@ -2,6 +2,7 @@
 //! — or adding one and merging it here — and never editing the request path in
 //! `server.rs`.
 
+mod agent_auth;
 mod agent_chat;
 mod agent_env;
 mod agent_info;
@@ -56,6 +57,9 @@ pub(crate) fn router(state: AppState) -> Router {
         // the credential — so it is deliberately the one endpoint outside the
         // authenticated router.
         .merge(meta::public())
+        // Loaded by a browser following the registry's redirect, which carries
+        // no credential and cannot be given one.
+        .merge(agent_auth::public())
         .merge(authenticated(state.clone()))
         // Last, so every `/api/*` route above wins first — the dispatch order
         // the reference gets by registering its shell routes at the end of the
@@ -129,6 +133,7 @@ async fn declare_json_charset(mut response: Response) -> Response {
 fn authenticated(state: AppState) -> Router<AppState> {
     Router::new()
         .merge(meta::authenticated())
+        .merge(agent_auth::authenticated())
         .merge(agent_chat::routes())
         .merge(agent_env::routes())
         .merge(agent_info::routes())
