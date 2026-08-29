@@ -7,6 +7,7 @@ mod agent_chat;
 mod agent_env;
 mod agent_info;
 mod agent_profiles;
+mod agent_registry;
 mod agent_status;
 mod bundles;
 mod change_sets;
@@ -139,6 +140,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(agent_info::routes())
         .merge(agent_status::routes())
         .merge(usage::routes())
+        .merge(agent_registry::routes())
         .merge(agent_profiles::routes())
         .merge(docker::routes())
         .merge(errors::routes())

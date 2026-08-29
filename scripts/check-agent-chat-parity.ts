@@ -92,6 +92,22 @@ interface Step {
   readonly body?: string;
   /** Sent raw, so a body that is not JSON can be one of the cases. */
   readonly raw?: boolean;
+  /**
+   * Replace `error` with a token before comparing.
+   *
+   * Used for exactly one thing: a body that is not JSON. The reference reports
+   * its JSON engine's own message — `Expected property name or '}' in JSON at
+   * position 1 (line 1 column 2)` — which names a byte offset and a token in
+   * V8's wording. No other parser reproduces that sentence, and pretending
+   * otherwise would mean hard-coding V8's grammar into a Rust daemon.
+   *
+   * What is still asserted here is everything that matters: the status is 400,
+   * the shape is the `{ok:false,error}` envelope, and an error string is
+   * *present*. Only the prose is dropped, and only on the two steps that ask
+   * for it — a route that answered a parse failure with the wrong status, the
+   * wrong shape, or no message still fails.
+   */
+  readonly maskError?: boolean;
 }
 
 const steps: Step[] = [
@@ -99,7 +115,7 @@ const steps: Step[] = [
 
   /* ---- choosing a provider ---- */
   { name: "provider/no-body", method: "POST", path: `${CHAT}/provider`, body: "{}" },
-  { name: "provider/a-body-that-is-not-json", method: "POST", path: `${CHAT}/provider`, body: "{oops", raw: true },
+  { name: "provider/a-body-that-is-not-json", method: "POST", path: `${CHAT}/provider`, body: "{oops", raw: true, maskError: true },
   { name: "provider/one-that-does-not-exist", method: "POST", path: `${CHAT}/provider`, body: '{"provider":"nope"}' },
   { name: "provider/one-that-is-a-number", method: "POST", path: `${CHAT}/provider`, body: '{"provider":7}' },
   { name: "provider/codex", method: "POST", path: `${CHAT}/provider`, body: '{"provider":"codex"}' },
@@ -125,7 +141,7 @@ const steps: Step[] = [
   { name: "chat/no-message", method: "POST", path: CHAT, body: "{}" },
   { name: "chat/a-message-that-is-blank", method: "POST", path: CHAT, body: '{"message":"   "}' },
   { name: "chat/a-message-that-is-a-number", method: "POST", path: CHAT, body: '{"message":7}' },
-  { name: "chat/a-body-that-is-not-json", method: "POST", path: CHAT, body: "{oops", raw: true },
+  { name: "chat/a-body-that-is-not-json", method: "POST", path: CHAT, body: "{oops", raw: true, maskError: true },
   { name: "chat/a-provider-that-is-not-installed", method: "POST", path: CHAT, body: '{"message":"hi","provider":"codex"}' },
   { name: "chat/a-turn", method: "POST", path: CHAT, body: '{"message":"hi"}' },
   { name: "chat/a-turn-that-resumes", method: "POST", path: CHAT, body: '{"message":"hi","resumeSessionId":"sess-fixed"}' },
@@ -167,6 +183,12 @@ async function send(runtime: Runtime, step: Step): Promise<Answer> {
     body = JSON.parse(text);
   } catch {
     /* SSE and the SPA shell are compared as the text they were */
+  }
+  if (step.maskError && typeof body === "object" && body !== null) {
+    const envelope = body as { error?: unknown };
+    if (typeof envelope.error === "string" && envelope.error.length > 0) {
+      envelope.error = "<parser's own words>";
+    }
   }
   return { status: response.status, contentType: response.headers.get("content-type"), body };
 }

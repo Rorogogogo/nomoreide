@@ -1649,3 +1649,180 @@ fn encode_component(value: &str) -> String {
     }
     encoded
 }
+
+// ---------------------------------------------------------------------------
+// Install
+// ---------------------------------------------------------------------------
+
+/// One line of a running install, and which pipe it came out of.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct InstallLine {
+    pub stream: &'static str,
+    pub text: String,
+}
+
+/// Run a one-shot install command in `cwd`, sending each line as it arrives.
+///
+/// Stateless: the caller owns delivery, because the only caller is an SSE route
+/// and what it does with a line is framing, not process management.
+///
+/// Returns the exit code, or `None` when there was no code to have — the child
+/// was killed by a signal, or never started at all. Both are reported the same
+/// way to the browser, which is the reference's `exitCode: null`.
+///
+/// **The two pipes are forwarded as they arrive**, not one after the other.
+/// An install that interleaves progress on stdout with warnings on stderr reads
+/// in the order it happened, which is the only order that makes sense of it.
+pub async fn run_install(
+    cwd: &str,
+    command: &str,
+    lines: tokio::sync::mpsc::Sender<InstallLine>,
+) -> Option<i32> {
+    use std::process::Stdio;
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    let mut child = match tokio::process::Command::new(SHELL)
+        .arg("-c")
+        .arg(command)
+        .current_dir(cwd)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(error) => {
+            // A cwd that is not there fails the *spawn*, and the reference
+            // reports it as a line on stderr rather than as a stream error —
+            // so the browser sees a failed install, not a broken connection.
+            let _ = lines
+                .send(InstallLine {
+                    stream: "stderr",
+                    text: node_spawn_error(&error),
+                })
+                .await;
+            return None;
+        }
+    };
+
+    async fn pump<R>(stream: &'static str, reader: R, lines: tokio::sync::mpsc::Sender<InstallLine>)
+    where
+        R: tokio::io::AsyncRead + Unpin,
+    {
+        let mut reader = BufReader::new(reader).lines();
+        while let Ok(Some(line)) = reader.next_line().await {
+            // A line that is only whitespace is not output. Blank lines are
+            // most of what a noisy installer prints.
+            if line.trim().is_empty() {
+                continue;
+            }
+            if lines
+                .send(InstallLine {
+                    stream,
+                    text: line.trim_end_matches('\r').to_string(),
+                })
+                .await
+                .is_err()
+            {
+                return;
+            }
+        }
+    }
+
+    let out = child.stdout.take().map(|reader| {
+        let lines = lines.clone();
+        tokio::spawn(async move { pump("stdout", reader, lines).await })
+    });
+    let err = child.stderr.take().map(|reader| {
+        let lines = lines.clone();
+        tokio::spawn(async move { pump("stderr", reader, lines).await })
+    });
+
+    let status = child.wait().await.ok();
+    // Both pipes are drained before the exit code goes out, so a trailing line
+    // never arrives after the `done` that says the run finished.
+    if let Some(task) = out {
+        let _ = task.await;
+    }
+    if let Some(task) = err {
+        let _ = task.await;
+    }
+    status.and_then(|status| status.code())
+}
+
+/// The shell an install command runs under.
+///
+/// Named explicitly because it appears in the failure message, which is
+/// compared against the reference's — Node spells a spawn failure
+/// `spawn <file> <CODE>`.
+const SHELL: &str = "/bin/sh";
+
+/// A spawn failure worded the way Node words it.
+fn node_spawn_error(error: &std::io::Error) -> String {
+    let code = match error.raw_os_error() {
+        Some(2) => "ENOENT",
+        Some(13) => "EACCES",
+        Some(20) => "ENOTDIR",
+        Some(12) => "ENOMEM",
+        _ => return error.to_string(),
+    };
+    format!("spawn {SHELL} {code}")
+}
+
+#[cfg(test)]
+mod install_tests {
+    use super::*;
+
+    async fn collect(cwd: &str, command: &str) -> (Vec<InstallLine>, Option<i32>) {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(64);
+        let run = tokio::spawn({
+            let cwd = cwd.to_string();
+            let command = command.to_string();
+            async move { run_install(&cwd, &command, tx).await }
+        });
+        let mut lines = Vec::new();
+        while let Some(line) = rx.recv().await {
+            lines.push(line);
+        }
+        (lines, run.await.unwrap())
+    }
+
+    #[tokio::test]
+    async fn a_last_line_without_a_newline_is_still_a_line() {
+        let (lines, code) = collect("/", "printf 'no-newline'").await;
+        assert_eq!(
+            lines,
+            vec![InstallLine {
+                stream: "stdout",
+                text: "no-newline".into()
+            }]
+        );
+        assert_eq!(code, Some(0));
+    }
+
+    #[tokio::test]
+    async fn blank_lines_are_not_output() {
+        let (lines, code) = collect("/", "printf '\\n\\n   \\n'").await;
+        assert!(lines.is_empty());
+        assert_eq!(code, Some(0));
+    }
+
+    #[tokio::test]
+    async fn a_cwd_that_is_not_there_reads_the_way_node_reads_it() {
+        let (lines, code) = collect("/definitely/not/here", "echo hi").await;
+        assert_eq!(
+            lines,
+            vec![InstallLine {
+                stream: "stderr",
+                text: "spawn /bin/sh ENOENT".into()
+            }]
+        );
+        assert_eq!(code, None);
+    }
+
+    #[tokio::test]
+    async fn an_exit_code_survives() {
+        let (_, code) = collect("/", "exit 7").await;
+        assert_eq!(code, Some(7));
+    }
+}

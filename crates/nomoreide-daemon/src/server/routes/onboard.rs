@@ -1,7 +1,9 @@
 //! The "Add from GitHub" wizard: paste a URL, get a proposal, confirm it.
 //!
-//! Two endpoints of the three the wizard uses. The middle one — the streamed
-//! install — is Server-Sent Events and is not served here yet.
+//! The three endpoints the wizard uses. The middle one — the streamed install
+//! — is Server-Sent Events, and is the only route here that answers 200 before
+//! it knows whether the work succeeded: a failed install is a `done` frame
+//! carrying a non-zero exit code, not an HTTP error.
 //!
 //! **Everything that goes wrong is a 422.** Both routes have exactly one guard
 //! answering 400 (a missing `url`; a `name`/`cwd` pair that is not an onboarded
@@ -24,6 +26,7 @@
 use crate::server::app::AppState;
 use crate::server::body::read_json_object;
 use crate::server::errors::{error, mutation_message};
+use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -33,7 +36,7 @@ use axum::{Json, Router};
 use nomoreide_core::config::{DatabaseDef, GitRepoDef};
 use nomoreide_core::repo_onboard::{
     clone_repository, default_repos_dir, is_inside_repos_dir, propose_databases, propose_services,
-    scan_repo,
+    run_install, scan_repo,
 };
 use nomoreide_core::service_definition::service_definition;
 use serde_json::{json, Map, Value};
@@ -41,7 +44,61 @@ use serde_json::{json, Map, Value};
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/onboard/scan", post(scan))
+        .route("/api/onboard/install/stream", post(install_stream))
         .route("/api/onboard/register", post(register))
+}
+
+/// Run the install command a proposal named, streaming its output.
+///
+/// **The containment guard is the whole of the safety here**: the body names a
+/// directory and a shell command, and the command runs in that directory. So
+/// the path has to resolve inside the onboarding root, which only this wizard
+/// writes to. The command itself is deliberately unconstrained — it is the
+/// `npm install` the user just confirmed — and a path outside the root is
+/// refused before anything is spawned.
+///
+/// The order of the two checks is load-bearing: a request that is wrong in
+/// both ways reports the path, because that is the one that decided.
+async fn install_stream(State(state): State<AppState>, body: Bytes) -> Response {
+    let _ = &state;
+    let payload = read_json_object(&body);
+    let clone_path = payload
+        .get("clonePath")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let command = payload
+        .get("command")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or_default()
+        .to_string();
+
+    if clone_path.is_empty() || !is_inside_repos_dir(&clone_path, &default_repos_dir()) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "clonePath must be an onboarded repo",
+        );
+    }
+    if command.is_empty() {
+        return error(StatusCode::BAD_REQUEST, "command is required");
+    }
+
+    sse::driven(sse::RETRY_AND_PING, move |sink| async move {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(64);
+        let install = tokio::spawn(async move { run_install(&clone_path, &command, tx).await });
+        while let Some(line) = rx.recv().await {
+            if !sink.send(sse::named("output", line)).await {
+                // The browser left. The child keeps going — an install half
+                // done is worse than one finished — but nothing more is
+                // written.
+                break;
+            }
+        }
+        let exit_code = install.await.ok().flatten();
+        sink.send(sse::named("done", json!({ "exitCode": exit_code })))
+            .await;
+    })
 }
 
 /// Clone a repository and read it into a profile plus a proposal.

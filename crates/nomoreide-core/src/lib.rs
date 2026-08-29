@@ -37,6 +37,7 @@ pub mod github_manager;
 pub mod github_oauth;
 pub mod home;
 pub mod host_metrics;
+pub mod http_inspector;
 pub mod jetbrains_import;
 pub mod js_json;
 pub mod js_number;

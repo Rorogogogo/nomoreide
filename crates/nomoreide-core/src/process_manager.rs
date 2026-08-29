@@ -168,6 +168,26 @@ pub struct ServiceStatus {
     /// The name of the signal that killed the process ("SIGTERM"), not its
     /// number: the name is what the reference reports and what a reader knows.
     pub signal: Option<String>,
+    /// The HTTP inspector standing in front of this service, when one is on.
+    ///
+    /// Absent rather than `{enabled: false}` when it is off — the reference
+    /// reports `undefined`, and the dashboard reads the key's presence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inspector: Option<InspectorStatus>,
+}
+
+/// Where a service's inspector is listening, and what it is listening to.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InspectorStatus {
+    pub enabled: bool,
+    /// Absent until the proxy is actually up. Enabling an inspector on a
+    /// service that has not announced a URL yet is legitimate — there is simply
+    /// nothing to proxy to, and the proxy starts when the URL turns up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub upstream_port: Option<u16>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -222,6 +242,11 @@ struct ManagedProcess {
     exited_at: Option<DateTime<Utc>>,
     cleanup_confirmed: bool,
     controller: Option<mpsc::Sender<SupervisorCommand>>,
+    /// Whether the user has asked for an inspector, which is not the same as
+    /// whether one is running: the request survives a service that has not
+    /// announced its URL yet, and the proxy is started when it does.
+    inspector_enabled: bool,
+    inspector: Option<crate::http_inspector::HttpInspectorHandle>,
 }
 
 /// One place turns a tracked process into the status readers see, so the
@@ -240,7 +265,141 @@ fn status_of(name: &str, process: &ManagedProcess) -> ServiceStatus {
         started_at: process.started_at,
         exited_at: process.exited_at,
         signal: process.signal.clone(),
+        inspector: inspector_status(process),
     }
+}
+
+/// Stand an inspector in front of a service, if one was asked for and there is
+/// somewhere to point it.
+///
+/// Called both when the user toggles it on and when a service finally
+/// announces its URL — the two orders a developer can do this in, and the
+/// reason "enabled" and "running" are tracked separately.
+async fn maybe_start_inspector(
+    processes: &Arc<Mutex<HashMap<String, ManagedProcess>>>,
+    timeline: &Option<TimelineStore>,
+    name: &str,
+) {
+    let upstream_port = {
+        let entries = processes.lock().unwrap();
+        let Some(process) = entries.get(name) else {
+            return;
+        };
+        if !process.inspector_enabled || process.inspector.is_some() {
+            return;
+        }
+        match port_from_url(process.url.as_deref()) {
+            Some(port) => port,
+            // Enabled with nowhere to point: legitimate, and this runs again
+            // when the URL arrives.
+            None => return,
+        }
+    };
+
+    let for_events = timeline.clone();
+    let service = name.to_string();
+    let Ok(handle) = crate::http_inspector::start(upstream_port, move |event| {
+        record_inspector_event(&for_events, &service, event);
+    })
+    .await
+    else {
+        return;
+    };
+    let port = handle.port;
+
+    {
+        let mut entries = processes.lock().unwrap();
+        let Some(process) = entries.get_mut(name) else {
+            return;
+        };
+        // Turned off, or won by another caller, while the socket was binding.
+        // Dropping the handle here is what stops the proxy we just started.
+        if !process.inspector_enabled || process.inspector.is_some() {
+            return;
+        }
+        process.inspector = Some(handle);
+    }
+
+    if let Some(timeline) = timeline {
+        timeline.append(
+            NewTimelineEvent::new(
+                TimelineEventKind::ServiceLifecycle,
+                TimelineSeverity::Info,
+                format!("{name} HTTP inspector on :{port}"),
+            )
+            .service(name)
+            .detail(format!("Proxying to upstream :{upstream_port}")),
+        );
+    }
+}
+
+/// One proxied request, onto the timeline.
+///
+/// The severity is read off the status the way a developer reads it: a 5xx is
+/// the service's fault and an error, a 4xx is the caller's and a warning.
+fn record_inspector_event(
+    timeline: &Option<TimelineStore>,
+    service: &str,
+    event: crate::http_inspector::HttpInspectorEvent,
+) {
+    let Some(timeline) = timeline else {
+        return;
+    };
+    let severity = if event.status >= 500 {
+        TimelineSeverity::Error
+    } else if event.status >= 400 {
+        TimelineSeverity::Warning
+    } else {
+        TimelineSeverity::Info
+    };
+    let duration = crate::js_number::value(event.duration_ms);
+    timeline.append(
+        NewTimelineEvent::new(
+            TimelineEventKind::ServiceHttp,
+            severity,
+            format!("{} {} → {}", event.method, event.path, event.status),
+        )
+        .service(service)
+        .detail(format!("{} ms", event.duration_ms))
+        .at(event.started_at)
+        .data(serde_json::json!({
+            "id": event.id,
+            "method": event.method,
+            "path": event.path,
+            "status": event.status,
+            "durationMs": duration,
+            "reqBytes": event.req_bytes,
+            "resBytes": event.res_bytes,
+        })),
+    );
+}
+
+/// The inspector as a reader sees it: nothing at all when it was not asked
+/// for, and otherwise what is actually listening.
+fn inspector_status(process: &ManagedProcess) -> Option<InspectorStatus> {
+    if !process.inspector_enabled {
+        return None;
+    }
+    Some(InspectorStatus {
+        enabled: true,
+        port: process.inspector.as_ref().map(|handle| handle.port),
+        upstream_port: port_from_url(process.url.as_deref()),
+    })
+}
+
+/// The port out of a URL a service printed, the way the reference reads it:
+/// the first `:<digits>` anywhere in the string.
+fn port_from_url(url: Option<&str>) -> Option<u16> {
+    let url = url?;
+    let start = url.find(':')? + 1;
+    let digits: String = url[start..]
+        .chars()
+        .take_while(char::is_ascii_digit)
+        .collect();
+    if digits.is_empty() {
+        return port_from_url(Some(&url[start..]));
+    }
+    digits.parse().ok()
 }
 
 enum SupervisorCommand {
@@ -561,6 +720,36 @@ impl ProcessManager {
         })
     }
 
+    /// Turn a service's HTTP inspector on or off.
+    ///
+    /// Only a *running* service has one: an inspector is a proxy in front of a
+    /// port, and a stopped service has no port. That refusal is an error rather
+    /// than a silent no-op, because the toggle is a user action and a toggle
+    /// that appears to work and does nothing is worse than one that says why.
+    pub async fn set_inspector_enabled(
+        &self,
+        name: &str,
+        enabled: bool,
+    ) -> Result<ServiceStatus, String> {
+        {
+            let mut entries = self.processes.lock().unwrap();
+            let Some(process) = entries.get_mut(name) else {
+                return Err(format!("Service \"{name}\" is not running."));
+            };
+            process.inspector_enabled = enabled;
+            if !enabled {
+                if let Some(mut inspector) = process.inspector.take() {
+                    inspector.stop();
+                }
+            }
+        }
+        if enabled {
+            maybe_start_inspector(&self.processes, &self.timeline, name).await;
+        }
+        self.service_status(name)
+            .ok_or_else(|| format!("Service \"{name}\" is not running."))
+    }
+
     pub async fn start_service(&self, def: &ServiceDef) -> Result<()> {
         self.start_service_with_options(def, StartServiceOptions::default())
             .await
@@ -729,6 +918,8 @@ impl ProcessManager {
                 // Nothing was spawned, so there is nothing left to confirm.
                 cleanup_confirmed: true,
                 controller: None,
+                inspector_enabled: false,
+                inspector: None,
             },
         );
 
@@ -1014,6 +1205,8 @@ impl ProcessManager {
                 exited_at: None,
                 cleanup_confirmed: false,
                 controller: Some(controller),
+                inspector_enabled: false,
+                inspector: None,
             },
         );
 
@@ -1062,6 +1255,10 @@ impl ProcessManager {
                                     .detail(url),
                                 );
                             }
+                            // An inspector asked for before the service said
+                            // where it was is started here instead — this is
+                            // the first moment there is a port to proxy to.
+                            maybe_start_inspector(&processes, &timeline, &name).await;
                         }
                     }
                     store.append(LogEntry::new(&name, "stdout", &line));
@@ -1872,6 +2069,12 @@ fn finish_generation(
             process.signal = termination.signal_name();
             process.exited_at = Some(Utc::now());
             process.cleanup_confirmed = cleanup_confirmed;
+            // The upstream is gone, so the proxy in front of it is a port
+            // answering 502. The *request* for an inspector is kept, so a
+            // restart brings one back without the user asking again.
+            if let Some(mut inspector) = process.inspector.take() {
+                inspector.stop();
+            }
             process.controller = None;
         }
     }
@@ -3110,6 +3313,8 @@ mod tests {
                 exited_at: None,
                 cleanup_confirmed: false,
                 controller: None,
+                inspector_enabled: false,
+                inspector: None,
             },
         );
 

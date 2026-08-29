@@ -82,6 +82,17 @@ impl DaemonRuntime {
     /// Core's own status rather than the wire's, because the caller is core
     /// too — the repro bundle renders a service's run state and has no business
     /// reading a shape invented for the dashboard.
+    /// Toggle a service's HTTP inspector, answering its status afterwards.
+    pub(crate) async fn set_inspector_enabled(
+        &self,
+        name: &str,
+        enabled: bool,
+    ) -> Result<ServiceStatus, String> {
+        self.process_manager
+            .set_inspector_enabled(name, enabled)
+            .await
+    }
+
     pub(crate) fn service_status(&self, name: &str) -> Option<ServiceStatus> {
         self.process_manager
             .status()

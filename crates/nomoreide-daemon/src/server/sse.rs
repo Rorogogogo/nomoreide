@@ -36,7 +36,9 @@ const HEARTBEAT: Duration = Duration::from_secs(15);
 pub(crate) struct Framing {
     /// Written before anything else, replay included.
     pub prologue: &'static str,
-    /// The comment written every fifteen seconds.
+    /// The comment written every fifteen seconds, or `""` for a stream that
+    /// does not beat at all. A chat turn is the latter: it is a job with an
+    /// end, and the reference sets no timer on it.
     pub heartbeat: &'static str,
     pub content_type: &'static str,
     /// Whether to tell nginx not to buffer. Only the terminal stream does.
@@ -47,6 +49,15 @@ pub(crate) struct Framing {
 pub(crate) const RETRY_AND_PING: Framing = Framing {
     prologue: "retry: 2000\n\n",
     heartbeat: ": ping\n\n",
+    content_type: "text/event-stream",
+    no_buffering: false,
+};
+
+/// One agent turn: the same opening as most streams, no heartbeat, and no
+/// `event:` name on any frame — the dashboard reads the `type` inside the JSON.
+pub(crate) const CHAT_TURN: Framing = Framing {
+    prologue: "retry: 2000\n\n",
+    heartbeat: "",
     content_type: "text/event-stream",
     no_buffering: false,
 };
@@ -65,14 +76,24 @@ pub(crate) const CONNECTED_AND_KEEPALIVE: Framing = Framing {
 /// always fixed: a test run emits `status`, then `output`, then `status`
 /// again. A stream whose name never changes just says the same one each time.
 pub(crate) struct Frame<S> {
-    pub event: String,
+    /// `None` writes no `event:` line at all, which is a legitimate SSE frame
+    /// and what the chat stream sends.
+    pub event: Option<String>,
     pub payload: S,
 }
 
 /// A frame with a fixed name, which is what most streams want.
 pub(crate) fn named<S>(event: &str, payload: S) -> Frame<S> {
     Frame {
-        event: event.to_string(),
+        event: Some(event.to_string()),
+        payload,
+    }
+}
+
+/// A frame carrying only data.
+pub(crate) fn unnamed<S>(payload: S) -> Frame<S> {
+    Frame {
+        event: None,
         payload,
     }
 }
@@ -83,8 +104,71 @@ pub(crate) fn named<S>(event: &str, payload: S) -> Frame<S> {
 /// one — half a frame would desynchronise every frame after it.
 fn render<S: Serialize>(frame: &Frame<S>) -> Option<Bytes> {
     let data = serde_json::to_string(&frame.payload).ok()?;
-    let event = &frame.event;
-    Some(Bytes::from(format!("event: {event}\ndata: {data}\n\n")))
+    Some(Bytes::from(match &frame.event {
+        Some(event) => format!("event: {event}\ndata: {data}\n\n"),
+        None => format!("data: {data}\n\n"),
+    }))
+}
+
+/// Where a [`driven`] stream's frames are written.
+///
+/// `send` answers whether the client is still there, so a producer can stop
+/// early rather than run a whole install nobody is reading.
+pub(crate) struct Sink {
+    tx: tokio::sync::mpsc::Sender<Bytes>,
+}
+
+impl Sink {
+    pub(crate) async fn send<S: Serialize>(&self, frame: Frame<S>) -> bool {
+        match render(&frame) {
+            Some(chunk) => self.tx.send(chunk).await.is_ok(),
+            // A payload that will not serialize contributes nothing, but the
+            // connection is still good.
+            None => true,
+        }
+    }
+}
+
+/// A stream whose frames come from work this daemon is doing, and which **ends
+/// when that work does**.
+///
+/// The counterpart to [`stream`]: that one subscribes to something other parts
+/// publish onto and stays open indefinitely, this one runs a job and closes.
+/// The heartbeat still beats underneath, because the job may be a long install
+/// that says nothing for minutes — and it stops with the job, which is the
+/// reference's `clearInterval` in its `finally`.
+pub(crate) fn driven<F, Fut>(framing: Framing, run: F) -> Response
+where
+    F: FnOnce(Sink) -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = ()> + Send,
+{
+    let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
+    tokio::spawn(async move {
+        if tx.send(Bytes::from(framing.prologue)).await.is_err() {
+            return;
+        }
+        let work = run(Sink { tx: tx.clone() });
+        let mut work = std::pin::pin!(work);
+        if framing.heartbeat.is_empty() {
+            work.await;
+            return;
+        }
+        let mut heartbeat = tokio::time::interval(HEARTBEAT);
+        // The first tick is immediate; the reference's timer starts counting at
+        // connect, so that one is spent here rather than sent.
+        heartbeat.tick().await;
+        loop {
+            tokio::select! {
+                _ = &mut work => return,
+                _ = heartbeat.tick() => {
+                    if tx.send(Bytes::from(framing.heartbeat)).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        }
+    });
+    respond(framing, rx)
 }
 
 /// Open a stream: the prologue, then `replay`, then everything `live` carries
@@ -146,6 +230,11 @@ where
         }
     });
 
+    respond(framing, rx)
+}
+
+/// The headers and the body both kinds of stream share.
+fn respond(framing: Framing, rx: tokio::sync::mpsc::Receiver<Bytes>) -> Response {
     let body = Body::from_stream(futures_util::stream::unfold(rx, |mut rx| async move {
         rx.recv()
             .await

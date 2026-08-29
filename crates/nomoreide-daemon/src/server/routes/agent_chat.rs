@@ -1,4 +1,17 @@
-//! The two endpoints either side of a tool-permission decision.
+//! The in-dock agent chat, and the two endpoints either side of a
+//! tool-permission decision.
+//!
+//! **`chat` answers 200 before the turn has happened.** It is Server-Sent
+//! Events: the only failure that can be an HTTP status is a provider that is
+//! not installed, which is decided before the stream opens. Everything after
+//! that — a CLI that will not start, one that exits non-zero, a line nothing
+//! can parse — is an `error` event inside a 200.
+//!
+//! **The body reader here is not the one below.** These four routes use the
+//! reference's `readJsonBody`, which *throws* on malformed JSON and answers
+//! 400 with the parser's own words; the approval routes use a reader that
+//! treats the same body as a deny. Two readers in one file because the
+//! reference has two, and the difference is observable.
 //!
 //! `approval` is called by the agent CLI's hook, which is a child of the
 //! spawned agent and *blocks* on the answer. `approve` is called by whoever is
@@ -13,20 +26,249 @@
 //! identical.
 
 use crate::server::app::AppState;
+use crate::server::sse;
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
+use nomoreide_core::agent_info::detected_agent_name;
+use nomoreide_core::agent_runtime::{
+    self, is_agent_available, permission_mode, provider_by_id, public_provider_info,
+    resolve_chat_provider, AgentChatProvider, AgentStreamEvent, Approval, RunOptions,
+};
 use nomoreide_core::approval_broker::{ApprovalDecision, Decision};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
+        .route("/api/agent/chat", post(chat))
+        .route("/api/agent/chat/status", get(status))
+        .route("/api/agent/chat/model", post(set_model))
+        .route("/api/agent/chat/provider", post(set_provider))
         .route("/api/agent/chat/approval", post(approval))
         .route("/api/agent/chat/approve", post(approve))
+}
+
+/// The reference's `readJsonBody`: trim, treat empty as `{}`, and *throw* on
+/// anything that is not JSON.
+///
+/// The prose of that throw is V8's, and it names a byte offset — see
+/// [`PARSE_FAILURE`].
+fn read_or_refuse(raw: &Bytes) -> Result<Value, Response> {
+    let text = String::from_utf8_lossy(raw);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Value::Object(Default::default()));
+    }
+    serde_json::from_str::<Value>(trimmed)
+        .map_err(|_| refuse(StatusCode::BAD_REQUEST, PARSE_FAILURE))
+}
+
+/// What a body that is not JSON is reported as.
+///
+/// The reference surfaces V8's own message, which names the offending token and
+/// a byte offset — prose no other parser reproduces. The status, the shape and
+/// the fact that a parse failure is *reported* are what the gate holds; the
+/// wording is a documented divergence, masked on both sides there.
+const PARSE_FAILURE: &str = "Request body is not valid JSON.";
+
+fn refuse(status: StatusCode, message: &str) -> Response {
+    (
+        status,
+        Json(Failure {
+            ok: false,
+            error: message.to_string(),
+        }),
+    )
+        .into_response()
+}
+
+/// The provider a turn or a setting is about.
+///
+/// Reads exactly the reference's `providerById(typeof x === "string" ? x : undefined)`:
+/// a non-string is not a wrong provider, it is no provider, and both answer the
+/// same way.
+fn named_provider(body: &Value) -> Option<AgentChatProvider> {
+    provider_by_id(string_field(body, "provider"))
+}
+
+/// Which provider is in force: the saved choice, else what launched this
+/// daemon, else Claude.
+async fn selected_provider(
+    state: &AppState,
+    override_id: Option<&str>,
+) -> (AgentChatProvider, Value) {
+    let config = state.config_store.load().await.unwrap_or_default();
+    let preferred = override_id
+        .map(str::to_string)
+        .or_else(|| config.chat_provider.clone());
+    let provider = resolve_chat_provider(&detected_agent_name().await, preferred.as_deref());
+    let models =
+        serde_json::to_value(config.chat_models.unwrap_or_default()).unwrap_or_else(|_| json!({}));
+    (provider, models)
+}
+
+/// What is installed, what is selected, and what each one spawns with.
+///
+/// **Every** provider is probed, not just the selected one: the dashboard uses
+/// this to offer a switch, and a switch to something that is not installed is
+/// not worth offering.
+async fn status(State(state): State<AppState>) -> Response {
+    let (provider, models) = selected_provider(&state, None).await;
+    let mode = permission_mode();
+    let mut providers = Vec::new();
+    for candidate in agent_runtime::chat_providers() {
+        let mut info = public_provider_info(&candidate);
+        if let Some(object) = info.as_object_mut() {
+            object.insert(
+                "configured".into(),
+                json!(is_agent_available(&candidate).await),
+            );
+        }
+        providers.push(info);
+    }
+    Json(json!({
+        "ok": true,
+        "configured": is_agent_available(&provider).await,
+        "approvals": agent_runtime::approvals_enabled(&provider, &mode),
+        "provider": public_provider_info(&provider),
+        "providers": providers,
+        "models": models,
+    }))
+    .into_response()
+}
+
+/// Pin the model a provider's new sessions spawn with.
+async fn set_model(State(state): State<AppState>, raw: Bytes) -> Response {
+    let body = match read_or_refuse(&raw) {
+        Ok(body) => body,
+        Err(response) => return response,
+    };
+    let Some(provider) = named_provider(&body) else {
+        return refuse(StatusCode::BAD_REQUEST, "Unknown chat provider.");
+    };
+    // Absent and null both mean "clear it"; anything else that is not a string
+    // is a mistake worth naming.
+    let model = match body.get("model") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(model)) => Some(model.clone()),
+        Some(_) => return refuse(StatusCode::BAD_REQUEST, "Model must be a string."),
+    };
+    let requested = model.unwrap_or_default();
+    let trimmed = requested.trim();
+    if trimmed.len() > 64 {
+        return refuse(StatusCode::BAD_REQUEST, "Model name is too long.");
+    }
+    match state
+        .config_store
+        .set_chat_model(provider.id.as_str(), Some(trimmed))
+        .await
+    {
+        Ok(config) => Json(json!({
+            "ok": true,
+            "models": serde_json::to_value(config.chat_models.unwrap_or_default())
+                .unwrap_or_else(|_| json!({})),
+        }))
+        .into_response(),
+        Err(reason) => refuse(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+/// Remember which provider the dock talks to, across CLI, web and desktop.
+async fn set_provider(State(state): State<AppState>, raw: Bytes) -> Response {
+    let body = match read_or_refuse(&raw) {
+        Ok(body) => body,
+        Err(response) => return response,
+    };
+    let Some(provider) = named_provider(&body) else {
+        return refuse(StatusCode::BAD_REQUEST, "Unknown chat provider.");
+    };
+    match state
+        .config_store
+        .set_chat_provider(provider.id.as_str().to_string())
+        .await
+    {
+        Ok(_) => {
+            Json(json!({ "ok": true, "provider": public_provider_info(&provider) })).into_response()
+        }
+        Err(reason) => refuse(StatusCode::INTERNAL_SERVER_ERROR, &reason.to_string()),
+    }
+}
+
+/// One turn, streamed.
+///
+/// The approval URL names *this* daemon by the `Host` the caller reached it on,
+/// because the thing that calls it back is a hook script running as a
+/// grandchild of this process — it has to be able to find its way home.
+async fn chat(State(state): State<AppState>, headers: HeaderMap, raw: Bytes) -> Response {
+    let body = match read_or_refuse(&raw) {
+        Ok(body) => body,
+        Err(response) => return response,
+    };
+    let message = match string_field(&body, "message") {
+        Some(message) if !message.trim().is_empty() => message.to_string(),
+        _ => {
+            return refuse(
+                StatusCode::BAD_REQUEST,
+                "Request must include a non-empty `message` string.",
+            )
+        }
+    };
+    let resume = string_field(&body, "resumeSessionId").map(str::to_string);
+    let auto_approve = body.get("autoApprove") == Some(&Value::Bool(true));
+
+    // An unknown provider on a turn is not a refusal — it falls back the same
+    // way an absent one does.
+    let (provider, _) = selected_provider(&state, string_field(&body, "provider")).await;
+    if !is_agent_available(&provider).await {
+        return refuse(
+            StatusCode::SERVICE_UNAVAILABLE,
+            &format!(
+                "{} (`{}`) is not installed or not on PATH.",
+                provider.label, provider.command_name
+            ),
+        );
+    }
+
+    let host = headers
+        .get(axum::http::header::HOST)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("127.0.0.1:4317")
+        .to_string();
+    let cwd = state.workspace_cwd().await;
+    let approvals = state.approvals.clone();
+
+    sse::driven(sse::CHAT_TURN, move |sink| async move {
+        let (events, mut received) = tokio::sync::mpsc::unbounded_channel::<AgentStreamEvent>();
+        let run = tokio::spawn(async move {
+            agent_runtime::run(
+                &cwd,
+                &provider,
+                RunOptions {
+                    message: &message,
+                    resume_session_id: resume.as_deref(),
+                    permission_mode: &permission_mode(),
+                    codex_approval_policy: &agent_runtime::codex_approval_policy(),
+                    approval: Some(Approval {
+                        broker: approvals,
+                        url: format!("http://{host}/api/agent/chat/approval"),
+                        auto_approve,
+                    }),
+                },
+                events,
+            )
+            .await;
+        });
+        while let Some(event) = received.recv().await {
+            if !sink.send(sse::unnamed(event)).await {
+                break;
+            }
+        }
+        let _ = run.await;
+    })
 }
 
 /// What a JSON body turned out to be.

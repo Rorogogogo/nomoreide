@@ -117,6 +117,19 @@ fn signal(key: &str) -> Option<String> {
 /// resolves the same way every time. The parent process is only consulted when
 /// the environment said nothing, and it is reported either way: knowing what
 /// launched the daemon is useful even when it was not an agent.
+/// Just the name from [`detect_agent`], for callers choosing a chat provider.
+///
+/// The full detection carries signals and a parent process for the agent panel;
+/// picking a provider needs one word of it.
+pub async fn detected_agent_name() -> String {
+    detect_agent()
+        .await
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown")
+        .to_string()
+}
+
 async fn detect_agent() -> Value {
     let mut signals: Vec<Value> = Vec::new();
     let mut name = "unknown";

@@ -228,6 +228,9 @@ pub(crate) async fn install_from_registry(
             force,
             arguments.get("as").and_then(Value::as_str),
             &supplied,
+            agent_profiles::registry_config::api_token_with_source()
+                .map(|(token, _)| token)
+                .as_deref(),
         )
         .await?,
     )

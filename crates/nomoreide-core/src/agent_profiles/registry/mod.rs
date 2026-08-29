@@ -60,6 +60,11 @@ async fn request(step: &str, builder: reqwest::RequestBuilder) -> Result<(u16, S
 /// The reference's shape for a failed call, so a caller sees the same sentence
 /// whichever runtime answered: the step, the status, and the body verbatim.
 fn failed(step: &str, status: u16, body: &str) -> String {
+    // An empty body contributes no dash: the reference appends the separator
+    // only when there is something to separate.
+    if body.is_empty() {
+        return format!("{step} failed: HTTP {status}");
+    }
     format!("{step} failed: HTTP {status} — {body}")
 }
 
@@ -242,19 +247,153 @@ fn version_manifest(slug: &str, version: &str, profile: &Profile) -> Value {
 
 /// Install a published profile by slug.
 ///
-/// Anonymous: a public profile needs no token, so nothing here asks for one.
+/// The public profiles the browse tab lists.
+///
+/// Anonymous, and every field is renamed on the way through. A null optional
+/// becomes an *absent* key rather than a null, because the reference maps it to
+/// `undefined` and `JSON.stringify` drops those — but `summary` is passed
+/// through as it came, null included, since the reference does not guard it.
+pub async fn list_public_profiles(query: Option<&str>, sort: &str) -> Result<Vec<Value>, String> {
+    let base = config::api_base_url();
+    let mut url = format!("{base}/profiles");
+    let mut params: Vec<String> = Vec::new();
+    if let Some(query) = query.map(str::trim).filter(|value| !value.is_empty()) {
+        params.push(format!("q={}", urlencoding::encode(query)));
+    }
+    // The default is not sent. A registry that gained a different default would
+    // then serve it, which is the reference's intent in leaving it off.
+    if sort != "recent" {
+        params.push(format!("sort={}", urlencoding::encode(sort)));
+    }
+    if !params.is_empty() {
+        url = format!("{url}?{}", params.join("&"));
+    }
+
+    let (status, body) = request("List profiles", reqwest::Client::new().get(url)).await?;
+    if !(200..300).contains(&status) {
+        return Err(failed("List profiles", status, &body));
+    }
+    let listed = json_of(&body);
+    Ok(listed
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .map(summarize)
+        .collect())
+}
+
+/// One registry profile, in the dashboard's spelling.
+fn summarize(profile: &Value) -> Value {
+    let version = profile
+        .get("latest_version")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let manifest = version.get("manifest_json").cloned().unwrap_or(Value::Null);
+    let count = |key: &str| {
+        manifest
+            .get(key)
+            .and_then(Value::as_array)
+            .map(Vec::len)
+            .unwrap_or(0)
+    };
+
+    let mut out = serde_json::Map::new();
+    out.insert(
+        "id".into(),
+        profile.get("id").cloned().unwrap_or(Value::Null),
+    );
+    out.insert(
+        "slug".into(),
+        profile.get("slug").cloned().unwrap_or(Value::Null),
+    );
+    out.insert(
+        "title".into(),
+        profile.get("title").cloned().unwrap_or(Value::Null),
+    );
+    // Not guarded against null, unlike everything below it.
+    out.insert(
+        "summary".into(),
+        profile.get("summary").cloned().unwrap_or(Value::Null),
+    );
+    out.insert(
+        "version".into(),
+        version.get("version").cloned().unwrap_or(Value::Null),
+    );
+    out.insert(
+        "sourceKind".into(),
+        profile
+            .get("source")
+            .and_then(|source| source.get("kind"))
+            .cloned()
+            .unwrap_or(Value::Null),
+    );
+    if let Some(repo) = present(profile.get("source").and_then(|s| s.get("github_repo_url"))) {
+        out.insert("githubRepoUrl".into(), repo);
+    }
+    out.insert(
+        "starsCount".into(),
+        profile.get("stars_count").cloned().unwrap_or(Value::Null),
+    );
+    out.insert(
+        "downloadsCount".into(),
+        profile
+            .get("downloads_count")
+            .cloned()
+            .unwrap_or(Value::Null),
+    );
+    if let Some(author) = present(profile.get("author")) {
+        let mut described = serde_json::Map::new();
+        described.insert(
+            "id".into(),
+            author.get("id").cloned().unwrap_or(Value::Null),
+        );
+        if let Some(name) = present(author.get("display_name")) {
+            described.insert("displayName".into(), name);
+        }
+        if let Some(avatar) = present(author.get("avatar_url")) {
+            described.insert("avatarUrl".into(), avatar);
+        }
+        out.insert("author".into(), Value::Object(described));
+    }
+    if let Some(published) = present(version.get("published_at")) {
+        out.insert("publishedAt".into(), published);
+    }
+    out.insert("mcpCount".into(), json!(count("mcps")));
+    out.insert("skillCount".into(), json!(count("skills")));
+    out.insert("pluginCount".into(), json!(count("plugins")));
+    Value::Object(out)
+}
+
+/// A value that is neither missing nor null. The reference's `?? undefined`,
+/// which becomes a key that is not there.
+fn present(value: Option<&Value>) -> Option<Value> {
+    match value {
+        Some(Value::Null) | None => None,
+        Some(value) => Some(value.clone()),
+    }
+}
+
+/// The token is *optional*, not absent: a public profile installs without one,
+/// and a private profile the caller has access to needs it on both calls — the
+/// descriptor and the download.
 pub async fn install(
     slug: &str,
     force: bool,
     rename_to: Option<&str>,
     supplied: &BTreeMap<String, String>,
+    token: Option<&str>,
 ) -> Result<InstallOutcome, String> {
     let base = config::api_base_url();
     let client = reqwest::Client::new();
+    let authorized = |builder: reqwest::RequestBuilder| match token {
+        Some(token) => builder.bearer_auth(token),
+        None => builder,
+    };
 
     let (status, body) = request(
         "Read install descriptor",
-        client.get(format!("{base}/profiles/{slug}/install")),
+        authorized(client.get(format!("{base}/profiles/{slug}/install"))),
     )
     .await?;
     if !(200..300).contains(&status) {
@@ -271,8 +410,7 @@ pub async fn install(
     };
 
     let (status, bytes) = {
-        let response = client
-            .get(resolve_download_url(&download_url, &base))
+        let response = authorized(client.get(resolve_download_url(&download_url, &base)))
             .send()
             .await
             .map_err(|error| format!("Download failed: {error}"))?;

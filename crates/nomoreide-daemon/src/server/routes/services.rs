@@ -22,6 +22,40 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/services/:name/start", post(start_service))
         .route("/api/services/:name/stop", post(stop_service))
         .route("/api/services/:name/restart", post(restart_service))
+        .route(
+            "/api/services/:name/inspector",
+            post(set_inspector).fallback(set_inspector),
+        )
+}
+
+/// Turn a service's HTTP inspector on or off.
+///
+/// **The body is a form, not JSON**, and only `"true"` and `"1"` mean on.
+/// Anything else — `"yes"`, `"True"`, a JSON body, an absent field — turns it
+/// *off*, because the reference compares two exact strings rather than testing
+/// truthiness. A JSON body is not an error here; it simply parses as a form
+/// with no `enabled` key in it, which is off.
+async fn set_inspector(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    method: axum::http::Method,
+    body: axum::body::Bytes,
+) -> Response {
+    if method != axum::http::Method::POST {
+        return error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed");
+    }
+    let Some(name) = crate::server::body::decode_uri_component(&name) else {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "URI malformed");
+    };
+    let form = crate::server::body::parse_form(&body);
+    let enabled = matches!(
+        form.get("enabled").map(String::as_str),
+        Some("true") | Some("1")
+    );
+    match state.runtime.set_inspector_enabled(&name, enabled).await {
+        Ok(status) => Json(serde_json::json!({ "ok": true, "status": status })).into_response(),
+        Err(message) => error(StatusCode::INTERNAL_SERVER_ERROR, &message),
+    }
 }
 
 async fn list_services(State(state): State<AppState>) -> Response {

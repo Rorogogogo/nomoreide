@@ -822,6 +822,25 @@ impl ConfigStore {
         Ok(config)
     }
 
+    /// Pin the model new sessions of one provider spawn with.
+    ///
+    /// A blank or absent model *clears* the pin rather than storing an empty
+    /// string: "no model" and "the model named nothing" would otherwise be the
+    /// same stored value, and only one of them is meaningful.
+    pub async fn set_chat_model(&self, provider: &str, model: Option<&str>) -> Result<Config> {
+        let mut config = self.load().await?;
+        let trimmed = model.map(str::trim).filter(|value| !value.is_empty());
+        let mut models = config.chat_models.take().unwrap_or_default();
+        match provider {
+            "claude" => models.claude = trimmed.map(str::to_string),
+            "codex" => models.codex = trimmed.map(str::to_string),
+            _ => {}
+        }
+        config.chat_models = Some(models);
+        self.save(&config).await?;
+        Ok(config)
+    }
+
     /// Persist the ordered set of repositories pinned to the board.
     ///
     /// Names are filtered to those still registered, de-duped with the first

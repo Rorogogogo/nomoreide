@@ -205,8 +205,15 @@ pub fn build_agent_invocation(
 }
 
 /// Streamed back to a run's caller.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// The serialization is the wire format the dashboard parses, so it is pinned
+/// rather than incidental: `type` first, the variant in snake_case, and the
+/// fields in camelCase. `stopReason` is present even when null — the dashboard
+/// distinguishes "finished with no reason given" from "still going".
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum AgentStreamEvent {
+    #[serde(rename_all = "camelCase")]
     Session {
         session_id: String,
     },
@@ -218,17 +225,20 @@ pub enum AgentStreamEvent {
         name: String,
         input: Value,
     },
+    #[serde(rename_all = "camelCase")]
     ToolResult {
         id: String,
         name: String,
         preview: String,
         is_error: bool,
     },
+    #[serde(rename_all = "camelCase")]
     ApprovalRequest {
         request_id: String,
         name: String,
         input: Value,
     },
+    #[serde(rename_all = "camelCase")]
     Done {
         stop_reason: Option<String>,
     },
@@ -1680,4 +1690,80 @@ echo '{{"type":"result","subtype":"success"}}'
             );
         }
     }
+}
+
+/// Whether a provider's CLI is installed and runnable.
+///
+/// Probed by running it with `--version`, and **memoised for the life of the
+/// process** — the reference caches the promise, so a dashboard polling
+/// `chat/status` every few seconds spawns one probe per provider ever, not one
+/// per poll. The cost of that is a CLI installed after the daemon started is
+/// not noticed until it restarts, which is the reference's behaviour too.
+pub async fn is_agent_available(provider: &AgentChatProvider) -> bool {
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+
+    static PROBES: OnceLock<Mutex<HashMap<String, bool>>> = OnceLock::new();
+    let probes = PROBES.get_or_init(|| Mutex::new(HashMap::new()));
+
+    let key = provider.bin.clone();
+    if let Some(known) = probes
+        .lock()
+        .ok()
+        .and_then(|probes| probes.get(&key).copied())
+    {
+        return known;
+    }
+
+    // Probed outside the lock: two callers racing here both spawn, which costs
+    // one extra `--version` and never a deadlock.
+    let available = Command::new(&provider.bin)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|status| status.success())
+        .unwrap_or(false);
+
+    if let Ok(mut probes) = probes.lock() {
+        probes.insert(key, available);
+    }
+    available
+}
+
+/// A provider as the dashboard is told about it.
+///
+/// `bin` is deliberately not in here: it can be an absolute path from the
+/// environment, and where this machine keeps its binaries is not the browser's
+/// business.
+pub fn public_provider_info(provider: &AgentChatProvider) -> serde_json::Value {
+    serde_json::json!({
+        "id": provider.id.as_str(),
+        "label": provider.label,
+        "commandName": provider.command_name,
+        "installHint": provider.install_hint,
+        "intro": provider.intro,
+    })
+}
+
+/// The tool-permission mode this daemon runs agents under.
+pub fn permission_mode() -> String {
+    std::env::var("NOMOREIDE_AGENT_PERMISSION_MODE")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "default".to_string())
+}
+
+/// How much rope Codex is given when it is the provider.
+///
+/// Codex has no approval hook, so this is the whole of its permission story —
+/// `never` asks it not to stop for confirmation, which is what a headless run
+/// needs and why gating is Claude-only.
+pub fn codex_approval_policy() -> String {
+    std::env::var("NOMOREIDE_CODEX_APPROVAL_POLICY")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "never".to_string())
 }
