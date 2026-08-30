@@ -113,7 +113,7 @@ async fn servers(state: &AppState) -> Result<Vec<Value>, Response> {
     Ok(merge_ssh_servers(
         &config.ssh_servers,
         &discovered,
-        &host_provider_ssh_targets(),
+        &host_provider_ssh_targets(&state.config_store, &config).await,
     ))
 }
 

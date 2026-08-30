@@ -30,7 +30,7 @@ use crate::zod_report::{report, ZodIssue};
 use regex::Regex;
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// A probe waits less than a read does: it exists to answer "is this machine
@@ -171,8 +171,13 @@ pub fn merge_ssh_servers(
     hosts
         .into_iter()
         .map(|host| {
-            let saved_server = saved.iter().find(|server| server.host == host);
-            let target = host_targets.iter().find(|target| target.host == host);
+            // Last wins, not first. The reference builds a `Map` from each
+            // list, and a `Map` keeps the *later* value for a repeated key —
+            // so when two provider instances answer at one address, or two
+            // saved rows name one host, it is the last of them that describes
+            // the row. `find` would take the first and disagree.
+            let saved_server = saved.iter().rev().find(|server| server.host == host);
+            let target = host_targets.iter().rev().find(|target| target.host == host);
             let mut row = Map::new();
             row.insert("host".into(), Value::String(host.to_string()));
             let name = saved_server
@@ -290,6 +295,7 @@ fn length_issues(
 }
 
 /// A machine a connected host provider contributed, as an SSH target.
+#[derive(Debug, Clone, PartialEq)]
 pub struct HostSshTarget {
     pub host: String,
     pub name: Option<String>,
@@ -298,20 +304,70 @@ pub struct HostSshTarget {
     pub instance: Value,
 }
 
+/// How long a provider's instance list is reused.
+///
+/// The servers view reloads on an interval *and* on every window focus, and
+/// each reload would otherwise be one API call per connected provider.
+/// Instances do not change on a human timescale, so a short window trades
+/// staleness nobody notices for not being rate-limited by the vendor. A power
+/// action clears it explicitly, which is the one case where the delay would be
+/// visible.
+const HOST_TARGET_TTL_MS: f64 = 30_000.0;
+
+static HOST_TARGETS: Mutex<Option<(f64, Vec<HostSshTarget>)>> = Mutex::new(None);
+
 /// Every connected host provider's instances, as SSH targets.
 ///
-/// **Nothing yet.** The bridge needs a provider *connection* — the registry,
-/// each vendor's context, and its `toSshTarget` — and that block is still
-/// served by the reference. Until it lands there is no provider to ask, so this
-/// is an explicit empty rather than a guess: the user's hand-registered and
-/// `~/.ssh/config` hosts are the whole list, which is also what the reference
-/// returns on this machine with nothing connected.
+/// **Never fails.** A provider that is not connected, whose token has expired,
+/// or whose API is down contributes nothing; the user's hand-registered and
+/// `~/.ssh/config` hosts must still list. A provider outage is not a reason for
+/// the servers page to go blank, and there is nowhere in that page's shape to
+/// report one.
 ///
-/// A provider outage must never blank the servers page, so when this is filled
-/// in it has to keep the reference's rule: a provider that fails contributes
-/// nothing and is not reported.
-pub fn host_provider_ssh_targets() -> Vec<HostSshTarget> {
-    Vec::new()
+/// The empty answer is cached like any other, which is deliberate: a provider
+/// that is down would otherwise be retried on every reload of a page that
+/// reloads on focus.
+pub async fn host_provider_ssh_targets(
+    store: &crate::config::ConfigStore,
+    config: &crate::config::Config,
+) -> Vec<HostSshTarget> {
+    if let Some(cached) = cached_host_targets() {
+        return cached;
+    }
+    let targets: Vec<HostSshTarget> = crate::vultr_context::list_instances(store, config)
+        .await
+        .map(|instances| {
+            instances
+                .iter()
+                .filter_map(crate::vultr_provider::to_ssh_target)
+                .collect()
+        })
+        .unwrap_or_default();
+    if let Ok(mut cache) = HOST_TARGETS.lock() {
+        *cache = Some((now_ms(), targets.clone()));
+    }
+    targets
+}
+
+/// Forget the cached instance list.
+///
+/// For after a power action or a change of credential — the moments the delay
+/// above would show, because the user just acted and is looking at the row for
+/// it. **Nothing calls this yet**: the routes that do in the reference are
+/// `/api/hosts/*`, which no client asks for and which the daemon does not
+/// serve. It exists because the cache and the way out of it belong together;
+/// a cache whose invalidation arrives with a later port is a cache someone has
+/// to rediscover the need for.
+pub fn invalidate_host_ssh_targets() {
+    if let Ok(mut cache) = HOST_TARGETS.lock() {
+        *cache = None;
+    }
+}
+
+fn cached_host_targets() -> Option<Vec<HostSshTarget>> {
+    let cache = HOST_TARGETS.lock().ok()?;
+    let (at, targets) = cache.as_ref()?;
+    (now_ms() - at < HOST_TARGET_TTL_MS).then(|| targets.clone())
 }
 
 /// Is the machine there, and what is it?

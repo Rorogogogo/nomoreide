@@ -78,6 +78,23 @@ import {
   RuntimeHarness,
   type Runtime,
 } from "../test/support/runtime-parity.js";
+import { type ApiStub, startApiStub } from "./support/http-api-stub.js";
+import { readFile } from "node:fs/promises";
+
+/**
+ * A connected host provider, so `GET /api/servers` merges three sources rather
+ * than two.
+ *
+ * Without one this gate proved only that the two runtimes agree about a
+ * machine with *no* provider connected — which they did, by both contributing
+ * nothing. Reusing the host gate's own fixture keeps one description of what
+ * Vultr answers; the instances it lists are the ones the bridge has to turn
+ * into SSH targets, including the several that have no address and must
+ * therefore contribute no row at all.
+ */
+const HOST_FIXTURE = JSON.parse(
+  await readFile(new URL("../test/fixtures/host-parity-v1.json", import.meta.url), "utf8"),
+) as { config: { connections: Record<string, unknown> }; api: Parameters<typeof startApiStub>[0] };
 
 const argv = process.argv.slice(2).filter((a) => a !== "--dump");
 const dump = process.argv.slice(2).includes("--dump");
@@ -709,13 +726,20 @@ async function seed(runtime: Runtime): Promise<void> {
   await chmod(join(bin, "ssh-copy-id"), 0o755);
 }
 
+let vultr: ApiStub | undefined;
+
 try {
+  vultr = await startApiStub(HOST_FIXTURE.api);
+  const vultrBase = vultr.base;
   const runtimes: Runtime[] = [];
   for (const spec of [referenceSpec(), candidateSpec(argv)]) {
     const runtime = await harness.provision(
       spec,
       () => ({
         version: 1,
+        // The stored Vultr token from the host fixture. Both sides get it, so
+        // both sides reach the same stub and must agree on what it produced.
+        connections: HOST_FIXTURE.config.connections,
         services: [],
         bundles: [],
         databases: [],
@@ -729,6 +753,7 @@ try {
       // First, so the stubs win over anything real on this machine — and the
       // rest of PATH is kept so the stubs' own `#!/usr/bin/env node` resolves.
       PATH: `${join(runtime.workspace, "bin")}:${process.env.PATH ?? ""}`,
+      NOMOREIDE_VULTR_API_BASE: vultrBase,
     });
     const credential = await import("node:fs/promises")
       .then((fs) => fs.readFile(join(runtime.home, ".nomoreide", "daemon.credential"), "utf8"))
@@ -765,6 +790,7 @@ try {
   }
 } finally {
   await harness.shutdown();
+  await vultr?.close().catch(() => {});
   await rm(root, { recursive: true, force: true });
 }
 

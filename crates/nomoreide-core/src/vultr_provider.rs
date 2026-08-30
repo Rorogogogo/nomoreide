@@ -6,8 +6,14 @@
 
 use crate::providers::api_base::provider_api_host;
 use crate::providers::host::{HostInstance, HostInstanceSpecs, HostInstanceState};
+use crate::ssh_servers::HostSshTarget;
+use crate::vultr_auth::VULTR_PROVIDER_ID;
 use crate::vultr_manager::api_base;
 use serde_json::Value;
+
+/// The display name, in one place: the manifest renders it as a tab and an
+/// SSH target carries it as the provider a machine came from.
+pub const VULTR_NAME: &str = "Vultr";
 
 pub const VULTR_ACTIONS: &[&str] = &["start", "halt", "reboot"];
 
@@ -154,11 +160,46 @@ pub fn instance_from_raw(raw: &Value) -> HostInstance {
     }
 }
 
+/// The instance as an SSH host, or nothing when there is not one yet.
+///
+/// Nullable because a machine still being built genuinely has no address, and
+/// inventing a placeholder would put a row in the servers list that can only
+/// ever fail to connect. A *stopped* instance still returns a target: it keeps
+/// its address, and seeing it in the list is how the user notices it is down.
+///
+/// IPv4 first — a v6-only target only works from a v6-capable client — and the
+/// login name is part of the host, because `ssh` would otherwise try the local
+/// username, which is not an account on any Vultr image.
+pub fn to_ssh_target(instance: &HostInstance) -> Option<HostSshTarget> {
+    let address = instance.ipv4.clone().or_else(|| instance.ipv6.clone())?;
+    let mut reference = serde_json::Map::new();
+    reference.insert("providerId".into(), VULTR_PROVIDER_ID.into());
+    reference.insert("providerName".into(), VULTR_NAME.into());
+    reference.insert("instanceId".into(), instance.id.clone().into());
+    reference.insert("state".into(), instance.state.as_str().into());
+    reference.insert("rawState".into(), instance.raw_state.clone().into());
+    // Absent rather than null, because the reference builds this by spread and
+    // an undefined region simply does not survive serialisation.
+    if let Some(region) = &instance.region {
+        reference.insert("region".into(), region.clone().into());
+    }
+    Some(HostSshTarget {
+        host: format!("{}@{address}", instance.default_user),
+        name: Some(instance.label.clone()),
+        // Deliberately unset. Vultr tags are free-form and mean whatever the
+        // account owner decided, so inferring "Production" from one would
+        // eventually put that label on the wrong machine. A user-saved value
+        // wins in the merge anyway, so this is a blank the user can fill.
+        environment: None,
+        instance: Value::Object(reference),
+    })
+}
+
 /// The manifest the dashboard renders a tab from.
 pub fn manifest() -> Value {
     serde_json::json!({
         "id": crate::vultr_auth::VULTR_PROVIDER_ID,
-        "name": "Vultr",
+        "name": VULTR_NAME,
         "kind": "host",
         "strings": {
             "en": {
