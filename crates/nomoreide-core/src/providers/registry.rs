@@ -23,8 +23,8 @@ use crate::cloudflare_provider::{
 };
 use crate::config::{Config, ConfigStore, PublicProviderConnectionDef};
 use crate::providers::deploy::{
-    present, BuildLogLine, Deployment, DeploymentDetail, ProviderDomain, ProviderEnvVar,
-    ProviderProject,
+    present, truthy, CreatedDeployment, DeployActionInput, Deployment, DeploymentDetail,
+    ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
 };
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_actions::VercelActions;
@@ -170,7 +170,7 @@ impl DeployClient {
         project: Option<&str>,
         id: &str,
         limit: u32,
-    ) -> Result<Vec<BuildLogLine>, ProviderError> {
+    ) -> Result<Vec<ProviderLogLine>, ProviderError> {
         match self {
             Self::Vercel(provider) => Ok(provider.build_logs(id, limit).await?),
             // Pages serves the whole build history in one document, so there is
@@ -186,6 +186,24 @@ impl DeployClient {
                     let skip = lines.len().saturating_sub(limit as usize);
                     lines.into_iter().skip(skip).collect()
                 })?),
+        }
+    }
+
+    /// Why a *deployed* request failed, which is a different question from why
+    /// a build did.
+    ///
+    /// **A provider without them answers an empty list, not an error.** Pages
+    /// serves runtime output over a websocket tail rather than a REST read, so
+    /// it declares no `runtimeLogs` capability and the tab is hidden — but a
+    /// stale client that asks anyway gets an empty pane instead of a failure.
+    pub async fn runtime_logs(
+        &self,
+        id: &str,
+        limit: u32,
+    ) -> Result<Vec<ProviderLogLine>, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.runtime_logs(id, limit).await?),
+            Self::Cloudflare(_) => Ok(vec![]),
         }
     }
 
@@ -341,6 +359,75 @@ pub enum DeployActions {
 }
 
 impl DeployActions {
+    /// Perform a named deploy action.
+    ///
+    /// **One entry point rather than four methods**, because promote-versus-
+    /// rollback is one vendor's vocabulary: Vercel records a rollback, with its
+    /// reason, on a different endpoint from a forward promotion; Pages has
+    /// "retry" and "rollback" and no promote at all; Netlify calls it publish.
+    /// Fixing four names into this signature would bake Vercel's words into
+    /// every provider that follows. Which names a provider offers — and which
+    /// of them change what production serves — is declared in its manifest, and
+    /// the route checks the name against that before it ever reaches here.
+    ///
+    /// The `Option` is the answer's shape, not a failure: only the actions that
+    /// *create* a deployment have one to report, and the route spreads it into
+    /// its answer so the others send `{ ok: true }` alone.
+    pub async fn run(
+        &self,
+        action: &str,
+        input: &DeployActionInput,
+    ) -> Result<Option<CreatedDeployment>, ProviderError> {
+        match self {
+            Self::Vercel(actions) => match action {
+                "redeploy" => Ok(Some(
+                    actions
+                        .redeploy(
+                            &input.deployment_id,
+                            require_field(input.name.as_ref(), "name")?,
+                            input.target.as_ref().unwrap_or(&Value::Null),
+                        )
+                        .await?,
+                )),
+                "cancel" => {
+                    actions.cancel(&input.deployment_id).await?;
+                    Ok(None)
+                }
+                "promote" => {
+                    actions
+                        .promote(require_project_id(input)?, &input.deployment_id)
+                        .await?;
+                    Ok(None)
+                }
+                "rollback" => {
+                    actions
+                        .rollback(
+                            require_project_id(input)?,
+                            &input.deployment_id,
+                            input.description.as_deref(),
+                        )
+                        .await?;
+                    Ok(None)
+                }
+                other => Err(unsupported_action("Vercel", other)),
+            },
+            // Cloudflare addresses a deployment *within* its project, so every
+            // action needs the project the route resolved — where Vercel needed
+            // the original deployment's name and target instead. Demanded
+            // before the name is matched, which is the reference's order and is
+            // observable: an unknown action on an unlinked repository reports
+            // the missing project rather than the unknown action.
+            Self::Cloudflare(actions) => {
+                let project = require_project_id(input)?;
+                match action {
+                    "redeploy" => Ok(Some(actions.retry(project, &input.deployment_id).await?)),
+                    "rollback" => Ok(Some(actions.rollback(project, &input.deployment_id).await?)),
+                    other => Err(unsupported_action("Cloudflare", other)),
+                }
+            }
+        }
+    }
+
     /// Add a variable.
     ///
     /// `kind` is the shared dialog's word — `plain` or `encrypted` — and each
@@ -395,6 +482,31 @@ impl DeployActions {
             Self::Cloudflare(actions) => Ok(actions.delete_env(project, env_id).await?),
         }
     }
+}
+
+/// A field the action needed and the caller could not supply.
+///
+/// Truthiness, not presence: the reference tests `if (!value)`, so a name the
+/// vendor sent as an empty string is as missing as one it never sent.
+fn require_field<'a>(value: Option<&'a Value>, field: &str) -> Result<&'a Value, ProviderError> {
+    value
+        .filter(|value| truthy(value))
+        .ok_or_else(|| local(&format!("This action requires \"{field}\".")))
+}
+
+/// The project an action addresses, as a string.
+fn require_project_id(input: &DeployActionInput) -> Result<&str, ProviderError> {
+    input
+        .project_id
+        .as_deref()
+        .filter(|project| !project.is_empty())
+        .ok_or_else(|| local("This action requires \"projectId\"."))
+}
+
+fn unsupported_action(provider: &str, action: &str) -> ProviderError {
+    local(&format!(
+        "{provider} does not support the action \"{action}\"."
+    ))
 }
 
 /// The write-capable client for `provider_id`.

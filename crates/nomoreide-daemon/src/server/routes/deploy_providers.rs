@@ -2,10 +2,9 @@
 //! account you are acting as, which project this repository deploys, and what
 //! it has deployed.
 //!
-//! The Rust half of `src/web/routes/provider-routes.ts`, minus `env`,
-//! `domains`, the OAuth pair, and the write actions. Nothing here names Vercel
-//! or Cloudflare — the id is a path segment and the client comes from the
-//! registry — so a third provider adds no route.
+//! The Rust half of `src/web/routes/provider-routes.ts`, minus the OAuth pair.
+//! Nothing here names Vercel or Cloudflare — the id is a path segment and the
+//! client comes from the registry — so a third provider adds no route.
 //!
 //! **Every route answers failure differently, and none of it is a house
 //! style.** Each follows from where the reference's `try` starts, and the
@@ -22,6 +21,12 @@
 //!   they can refuse is the caller's doing.
 //! - `project` answers **400** on the way in and **500** on the way out: a
 //!   rejected write is the caller's problem and a failed read is not.
+//! - the deployment reads answer **500** for everything, the id that will not
+//!   percent-decode included, because the reference decodes inside the same
+//!   `try` a vendor refusal lands in.
+//! - the action route answers **404** for a name the manifest does not declare
+//!   and **400** for everything else — the 404 comes first, before any
+//!   credential is resolved.
 //!
 //! **A missing project is not a failure.** `deployments` answers 200 with an
 //! empty list and an explicit `project: null`, because the dashboard's job in
@@ -35,6 +40,11 @@
 //! why every route below is `any()` with an explicit match rather than
 //! `get()`/`post()` — the router would answer 405 in places the reference does
 //! not.
+//!
+//! **The write boundary is one door.** Every deploy-changing operation is a
+//! `POST` to `deployments/:deployment/:action`, so there is one place to audit
+//! what a provider can change and one place a guard would go. Which names are
+//! legal comes from the manifest, never from this file.
 //!
 //! The OAuth pair is deliberately still the reference's. It holds a login
 //! session in memory across two unrelated requests and serves an HTML page to
@@ -53,7 +63,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::any;
 use axum::{Json, Router};
 use nomoreide_core::config::{selected_git_repository, ProviderConnectionDef};
-use nomoreide_core::providers::deploy::ProviderProject;
+use nomoreide_core::providers::deploy::{DeployActionInput, ProviderProject};
 use nomoreide_core::providers::registry::{
     cli_missing, provider_cli_session, provider_cli_status, public_provider_connection,
     require_deploy_provider, require_provider_actions, require_provider_context, DeployActions,
@@ -64,6 +74,18 @@ use serde_json::{json, Map, Value};
 /// The most deployments one request will return, however large a `limit` asks
 /// for.
 const MAX_DEPLOYMENTS: u32 = 100;
+
+/// The line caps the two log routes apply, and the number each vendor's
+/// manager falls back to when the caller names none.
+///
+/// The defaults are spelled here rather than left to the manager because a
+/// route that sends no limit and a route that sends the manager's own default
+/// make the *same* vendor request — but only while the two numbers agree, and
+/// nothing else would notice if they stopped.
+const MAX_BUILD_LOG_LINES: u32 = 2_000;
+const DEFAULT_BUILD_LOG_LINES: u32 = 500;
+const MAX_RUNTIME_LOG_LINES: u32 = 1_000;
+const DEFAULT_RUNTIME_LOG_LINES: u32 = 200;
 
 /// What both vendors' managers fall back to when the caller names no limit.
 /// Spelled here because the route has to send *something*, and sending a
@@ -85,6 +107,26 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/providers/:provider/domains", any(domains))
         .route("/api/providers/:provider/projects", any(projects))
         .route("/api/providers/:provider/deployments", any(deployments))
+        // Static before dynamic, which is also the reference's dispatch order:
+        // `logs` and `runtime-logs` are matched as themselves, so a POST to
+        // either is a 405 rather than an unknown action. Axum prefers a literal
+        // segment over `:action` on its own, and the order here says so anyway.
+        .route(
+            "/api/providers/:provider/deployments/:deployment/logs",
+            any(build_logs),
+        )
+        .route(
+            "/api/providers/:provider/deployments/:deployment/runtime-logs",
+            any(runtime_logs),
+        )
+        .route(
+            "/api/providers/:provider/deployments/:deployment/:action",
+            any(run_action),
+        )
+        .route(
+            "/api/providers/:provider/deployments/:deployment",
+            any(deployment),
+        )
 }
 
 fn ok() -> Response {
@@ -466,7 +508,14 @@ async fn actions(state: &AppState, provider: &str) -> Result<DeployActions, Stri
 /// it through — and that throw is a 400 the caller sees. Reading the raw
 /// segment back off the URI is what keeps that difference.
 fn raw_env_segment(uri: &Uri) -> &str {
-    uri.path().split('/').nth(5).unwrap_or_default()
+    raw_segment(uri, 5)
+}
+
+/// The nth `/`-separated piece of the path, counting the empty piece before the
+/// leading slash as zero — so `/api/providers/<id>/deployments/<deployment>`
+/// puts the provider at 3 and the deployment at 5.
+fn raw_segment(uri: &Uri, index: usize) -> &str {
+    uri.path().split('/').nth(index).unwrap_or_default()
 }
 
 /// `GET` lists the project's variables; `POST` adds one.
@@ -741,7 +790,7 @@ async fn deployments(
     // rather than a filter the vendor would reject.
     let target =
         query_value(&uri, "target").filter(|value| value == "production" || value == "preview");
-    let limit = deployment_limit(query_value(&uri, "limit").as_deref());
+    let limit = capped_limit(query_value(&uri, "limit").as_deref(), MAX_DEPLOYMENTS);
 
     match context
         .client
@@ -762,6 +811,199 @@ async fn deployments(
     }
 }
 
+/// The shared opening of the three deployment reads: the verb, the provider,
+/// the context, and the id as the caller wrote it.
+///
+/// All four failures are a **500**, which is the reference's answer for every
+/// one of them — including a deployment id that will not percent-decode, since
+/// it decodes inside the same `try` a vendor refusal lands in. A 400 would read
+/// better and would diverge.
+async fn deployment_read(
+    state: &AppState,
+    provider: &str,
+    method: Method,
+    uri: &Uri,
+) -> Result<(ProviderContext, String), Response> {
+    if method != Method::GET {
+        return Err(method_not_allowed().await);
+    }
+    let context = context(state, provider).await?;
+    let id = decode_uri_component(raw_segment(uri, 5))
+        .ok_or_else(|| error(StatusCode::INTERNAL_SERVER_ERROR, "URI malformed"))?;
+    Ok((context, id))
+}
+
+/// Why a build failed, in the vendor's own output.
+async fn build_logs(
+    State(state): State<AppState>,
+    Path((provider, _deployment)): Path<(String, String)>,
+    method: Method,
+    uri: Uri,
+) -> Response {
+    let (context, id) = match deployment_read(&state, &provider, method, &uri).await {
+        Ok(read) => read,
+        Err(response) => return response,
+    };
+    let limit = capped_limit(query_value(&uri, "limit").as_deref(), MAX_BUILD_LOG_LINES);
+    match context
+        .client
+        .build_logs(
+            context.linked_project().as_deref(),
+            &id,
+            limit.unwrap_or(DEFAULT_BUILD_LOG_LINES),
+        )
+        .await
+    {
+        Ok(logs) => Json(json!({ "ok": true, "logs": logs })).into_response(),
+        Err(failure) => error(StatusCode::INTERNAL_SERVER_ERROR, &failure.message),
+    }
+}
+
+/// Why a *deployed* request failed, which is a different question from why a
+/// build did.
+///
+/// A provider that does not serve these answers an empty list rather than an
+/// error: the tab is hidden by the manifest, so reaching this route at all
+/// means a stale client, and an empty pane is a better answer for one than a
+/// failure.
+async fn runtime_logs(
+    State(state): State<AppState>,
+    Path((provider, _deployment)): Path<(String, String)>,
+    method: Method,
+    uri: Uri,
+) -> Response {
+    let (context, id) = match deployment_read(&state, &provider, method, &uri).await {
+        Ok(read) => read,
+        Err(response) => return response,
+    };
+    let limit = capped_limit(query_value(&uri, "limit").as_deref(), MAX_RUNTIME_LOG_LINES);
+    match context
+        .client
+        .runtime_logs(&id, limit.unwrap_or(DEFAULT_RUNTIME_LOG_LINES))
+        .await
+    {
+        Ok(logs) => Json(json!({ "ok": true, "logs": logs })).into_response(),
+        Err(failure) => error(StatusCode::INTERNAL_SERVER_ERROR, &failure.message),
+    }
+}
+
+/// One deployment on its own, which is where the fields worth a round trip
+/// live — its aliases, when the build started, and why it failed.
+async fn deployment(
+    State(state): State<AppState>,
+    Path((provider, _deployment)): Path<(String, String)>,
+    method: Method,
+    uri: Uri,
+) -> Response {
+    let (context, id) = match deployment_read(&state, &provider, method, &uri).await {
+        Ok(read) => read,
+        Err(response) => return response,
+    };
+    match context
+        .client
+        .get_deployment(context.linked_project().as_deref(), &id)
+        .await
+    {
+        Ok(deployment) => Json(json!({ "ok": true, "deployment": deployment })).into_response(),
+        Err(failure) => error(StatusCode::INTERNAL_SERVER_ERROR, &failure.message),
+    }
+}
+
+/// **The write boundary's single door.** Every deploy-changing operation
+/// arrives here, POST-only and named in the path, so there is one place to
+/// audit what a provider can change and one place a guard would go.
+///
+/// Which names are legal comes from the manifest, not from this file — an
+/// action a provider does not declare is a **404** naming it, before any
+/// credential is resolved or any request is made. Everything after that is a
+/// **400**: a caller asked for something the vendor would not do.
+///
+/// The original deployment is read first, and a failure to read it is
+/// deliberately swallowed. Vercel's redeploy needs the original's name and
+/// target — without the target a production retry silently comes back as a
+/// preview — but Cloudflare's needs neither, so a provider that can act without
+/// them should not be stopped by a read that did not answer.
+async fn run_action(
+    State(state): State<AppState>,
+    Path((provider, _deployment, _action)): Path<(String, String, String)>,
+    method: Method,
+    uri: Uri,
+) -> Response {
+    if method != Method::POST {
+        return method_not_allowed().await;
+    }
+    let refusal = StatusCode::BAD_REQUEST;
+    let manifest = match require_deploy_provider(&provider) {
+        Ok(manifest) => manifest,
+        Err(message) => return error(refusal, &message),
+    };
+    // Read raw: the reference never decodes the action, so `red%65ploy` is a
+    // name no provider declares rather than a redeploy.
+    let action = raw_segment(&uri, 6);
+    if !declares_action(&manifest, action) {
+        let name = manifest
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or(&provider);
+        return error(
+            StatusCode::NOT_FOUND,
+            &format!("{name} has no action \"{action}\"."),
+        );
+    }
+
+    let context = match provider_context(&state, &provider).await {
+        Ok(context) => context,
+        Err(message) => return error(refusal, &message),
+    };
+    let actions = match actions(&state, &provider).await {
+        Ok(actions) => actions,
+        Err(message) => return error(refusal, &message),
+    };
+    let Some(deployment_id) = decode_uri_component(raw_segment(&uri, 5)) else {
+        return error(refusal, "URI malformed");
+    };
+
+    let project = context.linked_project();
+    let original = context
+        .client
+        .get_deployment(project.as_deref(), &deployment_id)
+        .await
+        .ok();
+    let input = DeployActionInput {
+        deployment_id,
+        project_id: project,
+        name: original
+            .as_ref()
+            .and_then(|detail| detail.deployment.name.clone()),
+        target: original
+            .as_ref()
+            .map(|detail| detail.deployment.target.clone()),
+        description: Some(format!("{action} from NoMoreIDE")),
+    };
+
+    match actions.run(action, &input).await {
+        // Spread into the answer rather than nested under a key, so an action
+        // that created nothing sends `{ ok: true }` and nothing else.
+        Ok(created) => {
+            let mut body = Map::new();
+            body.insert("ok".into(), Value::Bool(true));
+            if let Some(deployment) = created {
+                body.insert("deployment".into(), json!(deployment));
+            }
+            Json(Value::Object(body)).into_response()
+        }
+        Err(failure) => error(refusal, &failure.message),
+    }
+}
+
+/// Whether the provider's manifest lists this action name.
+fn declares_action(manifest: &Value, action: &str) -> bool {
+    manifest
+        .get("actions")
+        .and_then(Value::as_array)
+        .is_some_and(|actions| actions.iter().any(|name| name == action))
+}
+
 /// `Number.parseInt(value, 10)` of the query value, kept only when it came out
 /// a positive number, and capped.
 ///
@@ -769,9 +1011,9 @@ async fn deployments(
 /// whatever follows, so `20abc` is twenty and `abc` is nothing at all. A value
 /// at or below zero is *dropped* rather than clamped, which is what lets the
 /// vendors' own default apply instead of a limit of one.
-fn deployment_limit(raw: Option<&str>) -> Option<u32> {
+fn capped_limit(raw: Option<&str>, cap: u32) -> Option<u32> {
     let parsed = parse_int(raw.unwrap_or(""))?;
-    (parsed > 0).then(|| parsed.min(i64::from(MAX_DEPLOYMENTS)) as u32)
+    (parsed > 0).then(|| parsed.min(i64::from(cap)) as u32)
 }
 
 /// The leading integer of a string, the way `Number.parseInt` reads one.

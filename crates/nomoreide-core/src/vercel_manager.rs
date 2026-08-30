@@ -699,22 +699,49 @@ pub fn parse_runtime_log_events(raw: &str) -> Vec<Value> {
                 .or_else(|| row.get("timestamp"))
                 .and_then(Value::as_i64)
                 .unwrap_or(0);
+            // The fallback id reads `timestampInMs` only — not the `timestamp`
+            // that `createdAt` falls back to. A row with the second but not the
+            // first is identified by its index twice over, which looks like an
+            // oversight and is the contract.
             let id = row
                 .get("rowId")
                 .or_else(|| row.get("requestId"))
                 .and_then(Value::as_str)
                 .map(str::to_string)
-                .unwrap_or_else(|| format!("{created_at}-{index}"));
-            serde_json::json!({
-                "id": id,
-                "createdAt": created_at,
-                "level": row.get("level").and_then(Value::as_str).unwrap_or("info"),
-                "message": row.get("message").and_then(Value::as_str).unwrap_or("").trim_end(),
-                "source": row.get("source").cloned().unwrap_or(Value::Null),
-                "statusCode": row.get("statusCode").cloned().unwrap_or(Value::Null),
-                "requestMethod": row.get("requestMethod").cloned().unwrap_or(Value::Null),
-                "requestPath": row.get("requestPath").cloned().unwrap_or(Value::Null),
-            })
+                .unwrap_or_else(|| {
+                    let stamp = row
+                        .get("timestampInMs")
+                        .and_then(Value::as_i64)
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| index.to_string());
+                    format!("{stamp}-{index}")
+                });
+            let mut line = serde_json::Map::new();
+            line.insert("id".into(), Value::String(id));
+            line.insert("createdAt".into(), Value::from(created_at));
+            line.insert(
+                "level".into(),
+                Value::from(row.get("level").and_then(Value::as_str).unwrap_or("info")),
+            );
+            line.insert(
+                "message".into(),
+                Value::from(
+                    row.get("message")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .trim_end(),
+                ),
+            );
+            // Carried by *presence*, not by value: a vendor that sent an
+            // explicit null said something, and the difference reaches the
+            // client — `JSON.stringify` drops an absent field and keeps a null
+            // one, and the request badge is built from whether the key is there.
+            for key in ["source", "statusCode", "requestMethod", "requestPath"] {
+                if let Some(value) = row.get(key) {
+                    line.insert(key.into(), value.clone());
+                }
+            }
+            Value::Object(line)
         })
         .filter(|line| {
             line.get("message")

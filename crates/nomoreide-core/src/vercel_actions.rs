@@ -13,6 +13,7 @@
 use serde_json::Value;
 
 use super::vercel_manager::{request, request_json, RequestAuth, VercelApiError};
+use crate::providers::deploy::{truthy, CreatedDeployment};
 
 pub struct VercelActions {
     auth: RequestAuth,
@@ -29,15 +30,21 @@ impl VercelActions {
     ///
     /// `target` carries the original's environment through: without it a
     /// redeploy of a production deployment would come back as a preview.
+    /// `name` and `target` travel as the JSON the vendor sent, not as strings:
+    /// they are read straight off the original deployment and handed back
+    /// unchanged, and narrowing them here would be this layer inventing a type
+    /// the vendor never promised.
     pub async fn redeploy(
         &self,
         uid: &str,
-        name: &str,
-        target: Option<&str>,
-    ) -> Result<Value, VercelApiError> {
+        name: &Value,
+        target: &Value,
+    ) -> Result<CreatedDeployment, VercelApiError> {
         let mut body = serde_json::json!({ "deploymentId": uid, "name": name });
-        if let Some(target) = target {
-            body["target"] = Value::String(target.to_string());
+        // Omitted rather than sent as null when the original had none: Vercel
+        // reads the key's presence, and a null target is a preview.
+        if truthy(target) {
+            body["target"] = target.clone();
         }
         let created = request_json(
             &self.auth,
@@ -46,14 +53,15 @@ impl VercelActions {
             Some(&body),
         )
         .await?;
-        Ok(serde_json::json!({
-            "uid": created
+        Ok(CreatedDeployment {
+            id: created
                 .get("uid")
                 .or_else(|| created.get("id"))
-                .cloned()
-                .unwrap_or(Value::String(String::new())),
-            "url": created.get("url").cloned().unwrap_or(Value::Null),
-        }))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            url: created.get("url").cloned().unwrap_or(Value::Null),
+        })
     }
 
     /// Stop an in-flight build. A finished deployment cannot be canceled

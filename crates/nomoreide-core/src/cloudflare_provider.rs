@@ -14,8 +14,8 @@ use crate::cloudflare_manager::{
 };
 use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
-    present, BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification,
-    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderProject,
+    present, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification, ProjectLink,
+    ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
 };
 use crate::providers::project_resolution::LinkFile;
 
@@ -155,16 +155,20 @@ fn states_of(raw: &Value) -> (&'static str, String) {
     )
 }
 
-pub fn deployment_from_raw(raw: &Value, account: &str, canonical: Option<&str>) -> Deployment {
+/// `project` is the project the caller *resolved*, not the one the record
+/// names. They agree whenever Pages labelled the deployment — but the dashboard
+/// link has to open even when it did not, and the record's own label is the one
+/// field here that can be missing.
+pub fn deployment_from_raw(
+    raw: &Value,
+    account: &str,
+    project: &str,
+    canonical: Option<&str>,
+) -> Deployment {
     let (state, raw_state) = states_of(raw);
 
     let id = raw
         .get("id")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string();
-    let project = raw
-        .get("project_name")
         .and_then(Value::as_str)
         .unwrap_or_default()
         .to_string();
@@ -175,7 +179,14 @@ pub fn deployment_from_raw(raw: &Value, account: &str, canonical: Option<&str>) 
         // older build after a rollback, and can serve a preview URL as the
         // canonical one.
         is_current_production: canonical.is_some_and(|canonical| canonical == id),
-        name: raw.get("project_name").cloned(),
+        // The record's own label, always a string and empty when Pages did not
+        // set one — a record old enough to predate the field still has to
+        // render in a list whose name column the client reads unconditionally.
+        name: Some(Value::from(
+            raw.get("project_name")
+                .and_then(Value::as_str)
+                .unwrap_or_default(),
+        )),
         // Always reported, `null` included: Pages assigns a URL the moment a
         // build starts, so its absence is news rather than an omission.
         url: Some(
@@ -211,7 +222,7 @@ pub fn deployment_from_raw(raw: &Value, account: &str, canonical: Option<&str>) 
             .map(Value::from),
         creator: None,
         meta: meta_from_raw(raw.get("deployment_trigger")),
-        inspector_url: Some(Value::from(inspector_url(account, &project, &id))),
+        inspector_url: Some(Value::from(inspector_url(account, project, &id))),
         id: Value::from(id),
     }
 }
@@ -229,8 +240,13 @@ fn meta_from_raw(raw: Option<&Value>) -> DeploymentMeta {
     }
 }
 
-pub fn detail_from_raw(raw: &Value, account: &str, canonical: Option<&str>) -> DeploymentDetail {
-    let deployment = deployment_from_raw(raw, account, canonical);
+pub fn detail_from_raw(
+    raw: &Value,
+    account: &str,
+    project: &str,
+    canonical: Option<&str>,
+) -> DeploymentDetail {
+    let deployment = deployment_from_raw(raw, account, project, canonical);
     // Pages records no failure message on the deployment — the reason is in the
     // build log. Naming the stage that failed is the most a caller gets without
     // a second request, and it is what tells "the build broke" apart from "the
@@ -555,7 +571,7 @@ impl CloudflareDeployProvider {
         let account = self.account();
         Ok(deployments
             .iter()
-            .map(|raw| deployment_from_raw(raw, &account, canonical.as_deref()))
+            .map(|raw| deployment_from_raw(raw, &account, project, canonical.as_deref()))
             .collect())
     }
 
@@ -571,6 +587,7 @@ impl CloudflareDeployProvider {
         Ok(detail_from_raw(
             &raw?,
             &self.account(),
+            project,
             canonical.as_deref(),
         ))
     }
@@ -579,13 +596,17 @@ impl CloudflareDeployProvider {
         &self,
         project: &str,
         deployment: &str,
-    ) -> Result<Vec<BuildLogLine>, CloudflareApiError> {
+    ) -> Result<Vec<ProviderLogLine>, CloudflareApiError> {
         Ok(self
             .manager
             .build_logs_raw(project, deployment)
             .await?
             .iter()
-            .filter_map(|entry| {
+            // Numbered before the empty lines are dropped, because the index is
+            // part of the fallback id: filtering first would renumber every
+            // line after a blank one.
+            .enumerate()
+            .filter_map(|(index, entry)| {
                 // Trailing whitespace goes and leading whitespace stays, the
                 // same way Vercel's build log is read — indentation is what
                 // makes a build log legible, and a line that is only whitespace
@@ -594,15 +615,20 @@ impl CloudflareDeployProvider {
                 if text.is_empty() {
                     return None;
                 }
-                Some(BuildLogLine {
-                    text: text.to_string(),
-                    created: entry
-                        .get("ts")
-                        .and_then(Value::as_str)
-                        .and_then(epoch_ms)
-                        .map(Value::from),
-                    level: None,
-                })
+                let stamp = entry.get("ts").and_then(Value::as_str);
+                Some(ProviderLogLine::build(
+                    // Pages numbers nothing, so the id is the timestamp it did
+                    // send — a string, not a number — paired with the position.
+                    match stamp {
+                        Some(ts) => format!("{ts}-{index}"),
+                        None => format!("{index}-{index}"),
+                    },
+                    stamp.and_then(epoch_ms).unwrap_or(0),
+                    // Pages does not separate its streams, so every line is
+                    // stdout rather than a level the vendor chose.
+                    "stdout".to_string(),
+                    text.to_string(),
+                ))
             })
             .collect())
     }
@@ -720,6 +746,7 @@ mod tests {
         let deployment = deployment_from_raw(
             &json!({"id": "d", "is_skipped": true, "latest_stage": {"name": "deploy", "status": "success"}}),
             "acc",
+            "app",
             None,
         );
         assert_eq!(deployment.state, "canceled");
@@ -729,7 +756,7 @@ mod tests {
     /// A stage that is running is *building*; no stage at all is *queued*.
     #[test]
     fn a_missing_stage_reads_as_queued_and_idle() {
-        let deployment = deployment_from_raw(&json!({"id": "d"}), "acc", None);
+        let deployment = deployment_from_raw(&json!({"id": "d"}), "acc", "app", None);
         assert_eq!(deployment.state, "queued");
         assert_eq!(deployment.raw_state, "queued:idle");
     }
@@ -739,9 +766,9 @@ mod tests {
     #[test]
     fn current_production_is_the_canonical_deployment() {
         let raw = json!({"id": "d1", "environment": "preview"});
-        assert!(deployment_from_raw(&raw, "acc", Some("d1")).is_current_production);
-        assert!(!deployment_from_raw(&raw, "acc", Some("d2")).is_current_production);
-        assert!(!deployment_from_raw(&raw, "acc", None).is_current_production);
+        assert!(deployment_from_raw(&raw, "acc", "app", Some("d1")).is_current_production);
+        assert!(!deployment_from_raw(&raw, "acc", "app", Some("d2")).is_current_production);
+        assert!(!deployment_from_raw(&raw, "acc", "app", None).is_current_production);
     }
 
     #[test]
@@ -750,12 +777,16 @@ mod tests {
             "id": "d", "latest_stage": {"name": "deploy", "status": "success"},
             "modified_on": "2026-02-01T10:05:00Z"
         });
-        assert!(deployment_from_raw(&ready, "acc", None).ready_at.is_some());
+        assert!(deployment_from_raw(&ready, "acc", "app", None)
+            .ready_at
+            .is_some());
         let failed = json!({
             "id": "d", "latest_stage": {"name": "deploy", "status": "failure"},
             "modified_on": "2026-02-01T10:05:00Z"
         });
-        assert!(deployment_from_raw(&failed, "acc", None).ready_at.is_none());
+        assert!(deployment_from_raw(&failed, "acc", "app", None)
+            .ready_at
+            .is_none());
     }
 
     #[test]
@@ -763,6 +794,7 @@ mod tests {
         let detail = detail_from_raw(
             &json!({"id": "d", "url": "https://d.pages.dev", "aliases": ["https://a.pages.dev", "b.pages.dev"]}),
             "acc",
+            "app",
             None,
         );
         assert_eq!(detail.deployment.url, Some(json!("d.pages.dev")));

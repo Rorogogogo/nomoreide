@@ -22,6 +22,7 @@ use serde_json::{Map, Value};
 use crate::cloudflare_manager::{
     merge_env_vars, request_json, CloudflareApiError, CloudflareEnvVar, PLAIN_TEXT, SECRET_TEXT,
 };
+use crate::providers::deploy::CreatedDeployment;
 
 /// The only two environments Pages has. A third would be silently created by a
 /// `PATCH` and then read by nothing.
@@ -35,6 +36,61 @@ pub struct CloudflareActions {
 impl CloudflareActions {
     pub fn new(token: String, account_id: String) -> Self {
         Self { token, account_id }
+    }
+
+    /// Rebuild an existing deployment.
+    ///
+    /// Cloudflare calls this "retry" and mints a new deployment id, inheriting
+    /// the original's branch, commit and environment — so, unlike Vercel's
+    /// redeploy, nothing has to be carried through by the caller to keep a
+    /// production retry in production.
+    pub async fn retry(
+        &self,
+        project: &str,
+        deployment_id: &str,
+    ) -> Result<CreatedDeployment, CloudflareApiError> {
+        let created = self
+            .post_deployment(project, deployment_id, "retry")
+            .await?;
+        Ok(CreatedDeployment {
+            id: result_string(&created, "id").unwrap_or_default(),
+            url: result_field(&created, "url"),
+        })
+    }
+
+    /// Point the project's production alias at an earlier deployment without
+    /// rebuilding it. Cloudflare records this as a rollback, and it takes
+    /// effect immediately.
+    ///
+    /// Falls back to the id it was *given* when Cloudflare does not name one:
+    /// a rollback does not create a deployment, so the answer describes the one
+    /// production now serves.
+    pub async fn rollback(
+        &self,
+        project: &str,
+        deployment_id: &str,
+    ) -> Result<CreatedDeployment, CloudflareApiError> {
+        let rolled = self
+            .post_deployment(project, deployment_id, "rollback")
+            .await?;
+        Ok(CreatedDeployment {
+            id: result_string(&rolled, "id").unwrap_or_else(|| deployment_id.to_string()),
+            url: result_field(&rolled, "url"),
+        })
+    }
+
+    async fn post_deployment(
+        &self,
+        project: &str,
+        deployment_id: &str,
+        action: &str,
+    ) -> Result<Value, CloudflareApiError> {
+        let path = format!(
+            "{}/deployments/{}/{action}",
+            self.project_path(project),
+            urlencoding::encode(deployment_id)
+        );
+        request_json(&self.token, "POST", &path, None).await
     }
 
     /// Add a variable. `encrypted` is the default, and its value never reads
@@ -205,6 +261,26 @@ fn require_environments(environments: &[String]) -> Result<Vec<String>, Cloudfla
         )));
     }
     Ok(environments.to_vec())
+}
+
+/// A string inside Cloudflare's `result` envelope, if it sent one.
+fn result_string(payload: &Value, key: &str) -> Option<String> {
+    payload
+        .get("result")
+        .and_then(|result| result.get(key))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+/// A field inside `result`, narrowed to null when absent — the shape the
+/// dashboard reads, where a deployment with no hostname yet is a real state.
+fn result_field(payload: &Value, key: &str) -> Value {
+    payload
+        .get("result")
+        .and_then(|result| result.get(key))
+        .filter(|value| !value.is_null())
+        .cloned()
+        .unwrap_or(Value::Null)
 }
 
 /// A refusal this module reached on its own, with no request behind it.

@@ -1254,11 +1254,38 @@ the only thing that has been checking any of this.
   now go through the same sender as the reads, which is what let the gate reach
   them with a stub at all.
 
-  What is left, per provider: `oauth/start`, `oauth/status`, and the deployment
-  write actions (`redeploy`, `cancel`, `promote`, `rollback`) — the actions
-  layer those need now exists and is gated. The OAuth pair is the hard part —
-  it holds a login session in memory across two unrelated requests and serves
-  an HTML result page to a browser tab — and it is why this was left for last
+  **The per-deployment surface closed it out**: one deployment, its build logs,
+  its runtime logs, and the single `POST` every deploy-changing action goes
+  through, held by `check-deploy-actions-parity.ts` at 50 cases. That route is
+  the write boundary, so the gate compares the recorded vendor requests —
+  bodies included — for every one of them: a port that promoted the right
+  deployment by `POST`ing the wrong path would still agree on `{ ok: true }`.
+
+  Three more defects, none of which an existing gate could reach because each
+  needs a vendor record the older fixtures never produce:
+
+  - **A Cloudflare deployment's inspector link used the record's own
+    `project_name`** rather than the project the caller resolved. Pages labels
+    the records it returns, so the two agree everywhere the fixtures look —
+    and where it does not, the link opened `.../pages/view//<id>`.
+  - **The same record's `name` was omitted** when Pages sent none, where the
+    reference reports an empty string. The client reads that column
+    unconditionally.
+  - **The Vercel runtime-log parser collapsed absent and explicit-null** for
+    `source`, `statusCode`, `requestMethod` and `requestPath`. Those four
+    travel by presence — a null status is a status — and it is what decides
+    whether a line gets a request badge at all.
+
+  `BuildLogLine` became `ProviderLogLine` in the same change: the old shape
+  carried only what the MCP tool reads, which joins `line.text` and nothing
+  else, and that is not what the dashboard renders.
+
+  What is left, for both providers: `oauth/start`, `oauth/callback` and
+  `oauth/status`. That trio is the hard part — it holds a login session in
+  memory across two unrelated requests and serves an HTML result page to a
+  browser tab rather than JSON — and being the only stateful thing here, it
+  belongs in a `deploy_providers/` submodule of its own when it lands, the way
+  `github/api.rs` sits under `github.rs`. It is why this was left for last
   rather than an oversight.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8

@@ -16,8 +16,8 @@ use serde_json::Value;
 
 use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
-    present, BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification,
-    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderProject,
+    present, truthy, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification, LogRequest,
+    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
 };
 use crate::providers::project_resolution::LinkFile;
 use crate::vercel_manager::{repo_url, VercelApiError, VercelManager};
@@ -351,22 +351,80 @@ impl VercelDeployProvider {
         &self,
         id: &str,
         limit: u32,
-    ) -> Result<Vec<BuildLogLine>, VercelApiError> {
+    ) -> Result<Vec<ProviderLogLine>, VercelApiError> {
         Ok(self
             .manager
             .deployment_build_logs(id, Some(limit))
             .await?
             .iter()
-            .map(|line| BuildLogLine {
-                text: line
-                    .get("text")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-                created: line.get("createdAt").cloned(),
-                level: line.get("type").and_then(Value::as_str).map(str::to_string),
+            .map(|line| {
+                ProviderLogLine::build(
+                    text_of(line, "id"),
+                    line.get("createdAt").and_then(Value::as_i64).unwrap_or(0),
+                    text_of(line, "type"),
+                    text_of(line, "text"),
+                )
             })
             .collect())
+    }
+
+    /// Why a *deployed* request failed, which is a different question from why
+    /// a build did.
+    ///
+    /// The manager already answers with an empty list rather than an error for
+    /// the accounts whose plan does not serve these, so there is nothing to
+    /// catch here.
+    pub async fn runtime_logs(
+        &self,
+        id: &str,
+        limit: u32,
+    ) -> Result<Vec<ProviderLogLine>, VercelApiError> {
+        Ok(self
+            .manager
+            .deployment_runtime_logs(id, Some(limit))
+            .await?
+            .iter()
+            .map(runtime_log_from_raw)
+            .collect())
+    }
+}
+
+/// A string field of a normalized line, or the empty string.
+fn text_of(line: &Value, key: &str) -> String {
+    line.get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// One runtime line, with its request badge attached only when the vendor said
+/// something about the request.
+///
+/// A status code of zero still counts: the reference tests `statusCode` for
+/// *presence* while testing the two strings for truthiness, so an empty method
+/// is no method and a zero status is a status.
+fn runtime_log_from_raw(line: &Value) -> ProviderLogLine {
+    // `Value::cloned`, not `present` — see `parse_runtime_log_events`: these
+    // four travel by presence, so an explicit null is a value here.
+    let field = |key: &str| line.get(key).cloned();
+    let method = field("requestMethod");
+    let path = field("requestPath");
+    let status_code = field("statusCode");
+    let named = method.as_ref().is_some_and(truthy)
+        || path.as_ref().is_some_and(truthy)
+        || status_code.is_some();
+    ProviderLogLine {
+        id: text_of(line, "id"),
+        created_at: line.get("createdAt").and_then(Value::as_i64).unwrap_or(0),
+        kind: "runtime",
+        level: text_of(line, "level"),
+        text: text_of(line, "message"),
+        source: field("source"),
+        request: named.then(|| LogRequest {
+            method,
+            path,
+            status_code,
+        }),
     }
 }
 

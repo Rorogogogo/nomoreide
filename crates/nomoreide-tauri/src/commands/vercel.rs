@@ -512,14 +512,22 @@ pub async fn vercel_deployment_action(
                 .get_deployment(&id)
                 .await
                 .map_err(|error| error.message)?;
-            let name = deployment.get("name").and_then(Value::as_str).unwrap_or("");
+            let name = deployment
+                .get("name")
+                .cloned()
+                .unwrap_or(Value::String(String::new()));
             let uid = deployment.get("uid").and_then(Value::as_str).unwrap_or(&id);
-            let target = deployment.get("target").and_then(Value::as_str);
+            let target = deployment.get("target").cloned().unwrap_or(Value::Null);
             let created = actions
-                .redeploy(uid, name, target)
+                .redeploy(uid, &name, &target)
                 .await
                 .map_err(|error| error.message)?;
-            Ok(serde_json::json!({ "deployment": created }))
+            // Reported as `uid`, which is this command's own long-standing
+            // spelling — the provider layer calls the same field `id`, and the
+            // desktop app is not a caller of that layer.
+            Ok(serde_json::json!({
+                "deployment": { "uid": created.id, "url": created.url }
+            }))
         }
         "cancel" => {
             actions.cancel(&id).await.map_err(|error| error.message)?;

@@ -27,6 +27,23 @@ pub fn present(field: Option<&Value>) -> Option<Value> {
     field.filter(|value| !value.is_null()).cloned()
 }
 
+/// JavaScript truthiness, for the fields the reference gates on `if (value)`
+/// rather than on presence.
+///
+/// Worth spelling out because the difference bites twice in this file: an
+/// empty string is *not* a value there, so an empty `target` is no target and
+/// an empty request method is no method — while an explicit `null` is still a
+/// value wherever presence is what is being tested.
+pub fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::String(text) => !text.is_empty(),
+        Value::Number(number) => number.as_f64().is_some_and(|value| value != 0.0),
+        _ => true,
+    }
+}
+
 /// One project environment variable, with its value deliberately absent.
 ///
 /// Listing answers "is this key set, and where" — the question a failed deploy
@@ -200,14 +217,95 @@ pub struct DeploymentDetail {
     pub error_message: Option<Value>,
 }
 
-/// One line of build output. Only the text reaches an agent; the dashboard
-/// reads the rest.
+/// One line of a deployment's output, build or runtime.
+///
+/// **Both kinds are one type on purpose.** They answer different questions —
+/// the build log says why a deployment never shipped, the runtime log says why
+/// a shipped one is failing requests — but the dashboard renders them in the
+/// same pane, and a reader scrolling a failure wants them to line up. `kind`
+/// is what tells them apart.
+///
+/// The two runtime-only fields are *absent* on a build line rather than null,
+/// which is a contract and not a detail: the client renders a request badge on
+/// any line that has one.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct BuildLogLine {
+pub struct ProviderLogLine {
+    pub id: String,
+    pub created_at: i64,
+    /// `build` or `runtime`.
+    pub kind: &'static str,
+    /// `stdout` / `stderr` / `command` for build lines; `error` / `warning` /
+    /// `info` for runtime ones. The vendor's word, not ours.
+    pub level: String,
     pub text: String,
+    /// Runtime lines only, and only when the vendor named a source.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub created: Option<Value>,
+    pub source: Option<Value>,
+    /// Runtime lines only — which request produced this line.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub level: Option<String>,
+    pub request: Option<LogRequest>,
+}
+
+impl ProviderLogLine {
+    pub fn build(id: String, created_at: i64, level: String, text: String) -> Self {
+        Self {
+            id,
+            created_at,
+            kind: "build",
+            level,
+            text,
+            source: None,
+            request: None,
+        }
+    }
+}
+
+/// The request a runtime log line was emitted while serving.
+///
+/// Present as a whole or not at all: the reference builds it only when the
+/// vendor sent at least one of the three, so a line with none carries no
+/// `request` key rather than one with three nulls.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LogRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_code: Option<Value>,
+}
+
+/// Everything an action needs beyond its own name.
+///
+/// One struct rather than four signatures because the route does not know
+/// which action it is dispatching — the name arrives in the path and the legal
+/// names come from the manifest, so the caller fills what it can and each
+/// provider takes what it needs. Which fields are *required* is therefore the
+/// provider's answer, not this type's: Vercel's redeploy needs the original's
+/// `name`, Cloudflare's needs only the project.
+#[derive(Debug, Clone, Default)]
+pub struct DeployActionInput {
+    pub deployment_id: String,
+    /// Required by actions that address the project rather than the deployment.
+    pub project_id: Option<String>,
+    /// The original's name and environment, read before the call and passed
+    /// through by actions that recreate it. Without the target a production
+    /// retry silently comes back as a preview.
+    pub name: Option<Value>,
+    pub target: Option<Value>,
+    /// Recorded by providers that accept a reason (Vercel's rollback).
+    pub description: Option<String>,
+}
+
+/// The deployment an action created, when it created one.
+///
+/// `url` is always present and sometimes null — a deployment that exists but
+/// has not been assigned a hostname yet is a real state, and the client shows
+/// it differently from one it simply was not told about.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct CreatedDeployment {
+    pub id: String,
+    pub url: Value,
 }
