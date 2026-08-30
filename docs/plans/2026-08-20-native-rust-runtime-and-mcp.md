@@ -1177,6 +1177,54 @@ codex mcp add nomoreide -- nomoreide mcp
 
 **Exit gate:** no production command or desktop path invokes Node.js, and the previous native release remains a documented rollback target.
 
+**Not met, and it cannot be met inside a working session.** The first bullet
+above is "run at least one stable native release", and the second is "remove
+the TypeScript code only after the rollback window closes". Both are waiting on
+wall-clock time after a release goes out, not on work. Deleting the TypeScript
+runtime before that would also delete the differential parity gates, which are
+the only thing that has been checking any of this.
+
+**What has landed toward it:**
+
+- **The host-provider bridge.** `host_provider_ssh_targets()` returned an
+  explicit empty, so a native daemon listed a user's own SSH hosts and silently
+  dropped every machine belonging to a connected provider. It now lists them,
+  with the reference's rules: a provider that is down contributes nothing
+  rather than blanking the page, and the 30-second cache exists because the
+  servers view reloads on focus. `check-servers-parity` now connects the host
+  fixture's provider, so its 112 cases actually exercise this — before, both
+  runtimes agreed by both contributing nothing.
+- **Six bugs in the Vultr instance mapping**, found by adding the fixture rows
+  that no case had: `defaultUser` was the constant `"root"` where the vendor's
+  `limited` scheme means `linuxuser`, `ipv6` was not reported at all, `::` was
+  not recognised as "not assigned yet", a machine with neither label nor
+  hostname came out unlabelled, and blank/zero vendor fields came out as `""`
+  and `0` rather than absent.
+
+**What is left, and what it is worth:**
+
+- **`/api/hosts/*` is still unported — and nothing calls it.** No file under
+  `apps/dashboard/src` references the path; the host surface reaches the user
+  through `/api/servers` and the extensions manifest, both of which are ported.
+  Porting six routes with no client is not what closes this phase, and saying
+  so is more useful than a green tick beside dead surface.
+- **The deploy provider surface is the real remaining gap**, because unlike the
+  host routes it *is* reached by the dashboard. The daemon serves exactly one
+  route, `GET /api/providers` (the manifests, from `extensions.rs`).
+  `apps/dashboard/src/lib/api/provider-http.ts` also calls, per provider:
+  `status`, `connect` (POST and DELETE), `oauth/start`, `oauth/status`,
+  `scope`, `env`, `env/*`, `project`, and `projects`. A native daemon therefore
+  renders the Deploy view's provider panel against nine missing endpoints. The
+  OAuth pair is the hard part — it holds a login session in memory and serves
+  an HTML result page — and it is why this was left for last rather than an
+  oversight.
+- **The compatibility suite needs a home that outlives the reference.** Every
+  gate works by launching the TypeScript runtime and diffing; when Phase 8
+  deletes it, all 65 stop being runnable. The fixtures are the durable half and
+  the plan already says to keep them — but "retain contract fixtures" needs to
+  become recorded expectations the native runtime is checked against on its
+  own, and that conversion has not started.
+
 ## Suggested PR sequence
 
 1. Contract snapshot and parity harness.
