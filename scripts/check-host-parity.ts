@@ -1,12 +1,19 @@
 /**
  * Phase 4 host-provider parity gate.
  *
- * Vultr is the first thing gated here that **no MCP tool reaches** and that the
- * native daemon does not yet serve: `/api/hosts/*` is Phase 8 work. So neither
- * of the usual doors is open, and this follows the pattern
- * `check-git-actions-parity.ts` already set for exactly this case — run the
- * TypeScript provider and the Rust one against their own identical loopback
- * stand-ins for the vendor, and diff what each returns.
+ * Vultr is gated here at the **provider layer**, not over HTTP: no MCP tool
+ * reaches it, so this follows the pattern `check-git-actions-parity.ts` set for
+ * exactly that case — run the TypeScript provider and the Rust one against
+ * their own identical loopback stand-ins for the vendor, and diff what each
+ * returns.
+ *
+ * `/api/hosts/*` is now served natively too, and
+ * `check-host-routes-parity.ts` gates that surface over HTTP. The two ask
+ * different questions and both are worth asking: this one is "does the Vultr
+ * client behave the same", and that one is "does the daemon" — status codes,
+ * verb handling and persisted config, none of which a probe can see. They share
+ * `test/fixtures/host-parity-v1.json`, so they cannot drift about what Vultr
+ * said.
  *
  * Two things are compared per step: what the operation reported, and every
  * request it made to the vendor to get there — method, path and query, headers,

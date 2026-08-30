@@ -1203,11 +1203,49 @@ the only thing that has been checking any of this.
 
 **What is left, and what it is worth:**
 
-- **`/api/hosts/*` is still unported — and nothing calls it.** No file under
-  `apps/dashboard/src` references the path; the host surface reaches the user
-  through `/api/servers` and the extensions manifest, both of which are ported.
-  Porting six routes with no client is not what closes this phase, and saying
-  so is more useful than a green tick beside dead surface.
+- **`/api/hosts/*` is now served natively.** The registry, `status`, `connect`,
+  the instance reads, and the single `POST` every power operation goes through.
+  Its own `host_providers.rs` rather than more routes in `deploy_providers.rs`,
+  for the reason the reference gives: a deploy route is scoped to the selected
+  repository's project and a host route is scoped to nothing but the account,
+  so the two contracts disagree about almost every path.
+
+  It was left until after the deploy surface because no file under
+  `apps/dashboard/src` references it — the host surface reaches the user
+  through `/api/servers` and the extensions manifest. That is still true, and
+  it is why the gate leans on **recorded requests** more than on answers.
+
+  `check-host-routes-parity.ts` holds it at 54 cases, alongside the older
+  `check-host-parity.ts`, which drives the *provider layer* through a probe
+  binary. The two ask different questions and both are worth asking: the probe
+  asks whether the Vultr client behaves the same, and this one asks whether the
+  daemon does — status codes, verb handling, persisted config, and the SSH
+  target cache. They share `test/fixtures/host-parity-v1.json` so they cannot
+  drift about what Vultr said.
+
+  Three things the gate is built around, none of them visible in an answer:
+
+  - **An undeclared action never becomes a request.** `destroy` and `reinstall`
+    are real Vultr endpoints this codebase deliberately does not implement, so
+    the recorded requests are what prove a refused action reached no vendor.
+    The manifest check in the route and the name check in `vultr_actions.rs`
+    are two doors on the same rule.
+  - **Every write drops the SSH-target cache.** `/api/servers` caches a host
+    provider's machines for 30 seconds, so a machine someone just rebooted
+    would otherwise keep reporting its old state there — with the vendor not
+    the one saying so. Invisible in an answer, plain in whether the next
+    `/api/servers` re-fetched.
+  - **A `cli` connection stores no token.** Checked as an end state on purpose:
+    the route sets none and the store strips any it is handed, so breaking
+    either alone changes nothing observable. Seeding both together is what
+    fails the gate, and a gate pinned to one of the two layers would instead
+    fail on a refactor that moved the enforcement while keeping the guarantee.
+
+  One divergence it caught: the host registry's unknown-provider message is
+  "Unknown host provider", where the deploy registry's is "Unknown provider".
+  The registries are separate, so a deploy provider id is still unknown here,
+  and naming which kind is missing is the difference between "you typed it
+  wrong" and "you asked the wrong tab".
 - **The deploy provider surface is most of the way across.** The daemon now
   serves the manifests, the provider-neutral `projects` and `deployments`
   reads, and the whole non-OAuth connection panel — `status`, `connect` (POST
@@ -1320,9 +1358,9 @@ the only thing that has been checking any of this.
     fail on both runtimes, and correcting one side alone would be a divergence
     that reads as a bug fix.
 
-  With this the deploy provider surface is fully native. What is left for the
-  phase as a whole is `/api/hosts/*` above, and the compatibility suite's home
-  below.
+  With this the deploy provider surface is fully native — and with the host
+  routes above, so is the whole provider layer. What is left for the phase is
+  the compatibility suite's home, below.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8
   deletes it, all 66 stop being runnable. The fixtures are the durable half and

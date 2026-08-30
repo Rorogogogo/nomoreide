@@ -26,6 +26,7 @@ use crate::providers::deploy::{
     present, truthy, CreatedDeployment, DeployActionInput, Deployment, DeploymentDetail,
     ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
 };
+use crate::providers::host::HostInstance;
 use crate::providers::oauth::ProviderOAuthSpec;
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_actions::VercelActions;
@@ -35,6 +36,8 @@ use crate::vercel_oauth::vercel_oauth;
 use crate::vercel_provider::{
     env_from_raw, vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
 };
+use crate::vultr_actions::VultrActions;
+use crate::vultr_manager::{VultrApiError, VultrManager};
 use serde_json::Value;
 
 /// Every provider a `provider` argument may name, in the order the tool
@@ -294,6 +297,19 @@ impl From<VercelApiError> for ProviderError {
 
 impl From<CloudflareApiError> for ProviderError {
     fn from(error: CloudflareApiError) -> Self {
+        Self {
+            message: error.message,
+            status: error.status,
+        }
+    }
+}
+
+/// The host side carries the vendor's status for the same reason the deploy
+/// side does: `status` answers `auth_error` for a 401/403 and
+/// `connection_error` for everything else, and no vendor promises to keep
+/// wording its refusals the way it does today.
+impl From<VultrApiError> for ProviderError {
+    fn from(error: VultrApiError) -> Self {
         Self {
             message: error.message,
             status: error.status,
@@ -748,6 +764,184 @@ pub fn deploy_provider_manifests() -> Vec<Value> {
         crate::vercel_provider::manifest(),
         crate::cloudflare_provider::manifest(),
     ]
+}
+
+// ---------------------------------------------------------------------------
+// Host providers
+// ---------------------------------------------------------------------------
+//
+// A second registry rather than a widening of the first, because the two
+// contracts disagree about almost everything: a deploy provider's every read is
+// scoped to a project, and a host provider's is scoped to nothing but the
+// account. They meet in exactly one place — `installed_extensions` below, which
+// reports manifests, and both manifests carry an id, a name, an action list and
+// an egress allowlist.
+
+pub fn host_provider_manifests() -> Vec<Value> {
+    vec![crate::vultr_provider::manifest()]
+}
+
+pub fn find_host_provider(id: &str) -> Option<Value> {
+    host_provider_manifests()
+        .into_iter()
+        .find(|manifest| manifest.get("id").and_then(Value::as_str) == Some(id))
+}
+
+/// The manifest for `id`, or the sentence naming what nobody claims.
+///
+/// **"host provider", not "provider"** — the deploy registry's message says the
+/// latter. The two registries are separate, so an id that is a deploy provider
+/// is still unknown here, and saying *which* kind is missing is the difference
+/// between "you typed it wrong" and "you asked the wrong tab".
+pub fn require_host_provider(id: &str) -> Result<Value, String> {
+    find_host_provider(id).ok_or_else(|| format!("Unknown host provider \"{id}\"."))
+}
+
+/// The read-safe client, whichever host provider it is.
+///
+/// One variant today, and the enum is still the right shape: it is what keeps
+/// `Vultr` out of the route handlers, so a second host provider is a variant
+/// here rather than a branch in the daemon.
+pub enum HostClient {
+    Vultr(VultrManager),
+}
+
+impl HostClient {
+    pub async fn account(&self) -> Result<HostAccount, ProviderError> {
+        match self {
+            Self::Vultr(manager) => {
+                let raw = manager.account().await?;
+                let account = crate::vultr_context::account_from_raw(&raw);
+                Ok(HostAccount {
+                    username: present(account.get("username")),
+                    avatar: present(account.get("avatar")),
+                })
+            }
+        }
+    }
+
+    pub async fn list_instances(&self) -> Result<Vec<HostInstance>, ProviderError> {
+        match self {
+            Self::Vultr(manager) => Ok(manager
+                .list_instances()
+                .await?
+                .iter()
+                .map(crate::vultr_provider::instance_from_raw)
+                .collect()),
+        }
+    }
+
+    pub async fn get_instance(&self, id: &str) -> Result<HostInstance, ProviderError> {
+        match self {
+            Self::Vultr(manager) => Ok(crate::vultr_provider::instance_from_raw(
+                &manager.instance(id).await?,
+            )),
+        }
+    }
+}
+
+/// Who the credential belongs to, in the two fields the status panel renders.
+pub struct HostAccount {
+    pub username: Option<Value>,
+    pub avatar: Option<Value>,
+}
+
+/// The write-capable half, resolved separately and never given to an agent —
+/// the same read/write split the deploy side draws.
+pub enum HostActions {
+    Vultr(VultrActions),
+}
+
+impl HostActions {
+    pub async fn run(&self, action: &str, instance_id: &str) -> Result<(), ProviderError> {
+        match self {
+            Self::Vultr(actions) => Ok(actions.run(action, instance_id).await?),
+        }
+    }
+}
+
+/// A connected client for `provider_id`, or a message naming what is not
+/// connected.
+pub fn require_host_context(
+    provider_id: &str,
+    store: &ConfigStore,
+    config: &Config,
+) -> Result<HostClient, String> {
+    match provider_id {
+        crate::vultr_auth::VULTR_PROVIDER_ID => Ok(HostClient::Vultr(
+            crate::vultr_context::require_client(store, config)?,
+        )),
+        // The host registry's own wording, not the deploy registry's — the
+        // route reports this one verbatim.
+        other => Err(format!("Unknown host provider \"{other}\".")),
+    }
+}
+
+/// The write-capable client, resolved separately from the read context so a
+/// caller that only reads cannot reach a write by accident.
+pub fn require_host_actions(
+    provider_id: &str,
+    store: &ConfigStore,
+    config: &Config,
+) -> Result<HostActions, String> {
+    match provider_id {
+        crate::vultr_auth::VULTR_PROVIDER_ID => Ok(HostActions::Vultr(VultrActions::new(
+            crate::vultr_auth::resolve(store, config)?.token,
+        ))),
+        other => Err(format!("Unknown host provider \"{other}\".")),
+    }
+}
+
+/// Whether the host provider's ambient credential is available, in the shape
+/// the panel reads.
+///
+/// "CLI" is the model's word rather than a claim about a binary. Vultr has no
+/// CLI to log in with, so its `cli` source is backed by an exported
+/// `VULTR_API_KEY` — what makes it `cli` rather than `stored` is the *policy*,
+/// not where the token lives: it is never written to config, so it disappears
+/// when the environment does.
+pub fn host_cli_status(provider_id: &str) -> ProviderCliStatus {
+    match provider_id {
+        crate::vultr_auth::VULTR_PROVIDER_ID => {
+            let (available, error) = crate::vultr_auth::cli_status();
+            ProviderCliStatus {
+                available,
+                error: error.map(str::to_string),
+            }
+        }
+        // A provider nobody claims has no CLI, which is what the panel needs to
+        // hear in order to render its "not configured" screen rather than a
+        // failure.
+        _ => ProviderCliStatus {
+            available: false,
+            error: None,
+        },
+    }
+}
+
+/// The ambient session a host provider offers, if it has one right now.
+///
+/// The `Option<String>` inside is the scope that session is already pinned to.
+/// Vultr's is always `None`: an API key addresses one account, and Vultr has no
+/// team or sub-account to switch between — so there is nothing to inherit,
+/// where a Vercel CLI session carries the team the user last switched to.
+pub fn host_cli_session(provider_id: &str) -> Option<ProviderCliSession> {
+    match provider_id {
+        crate::vultr_auth::VULTR_PROVIDER_ID => {
+            crate::vultr_auth::environment_token().map(|_| ProviderCliSession {
+                current_scope: None,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// What to say when the ambient credential a caller asked for is not there.
+pub fn host_cli_missing(provider_id: &str) -> Option<&'static str> {
+    match provider_id {
+        crate::vultr_auth::VULTR_PROVIDER_ID => Some(crate::vultr_auth::NO_ENVIRONMENT_KEY),
+        _ => None,
+    }
 }
 
 /// One neutral row per installed plugin, both registries flattened together.

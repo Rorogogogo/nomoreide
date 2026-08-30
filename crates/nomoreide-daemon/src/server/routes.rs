@@ -23,6 +23,7 @@ mod extensions;
 mod fs_directories;
 mod git;
 mod github;
+mod host_providers;
 mod jetbrains;
 mod log_sources;
 mod meta;
@@ -147,6 +148,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(errors::routes())
         .merge(extensions::routes())
         .merge(deploy_providers::routes())
+        .merge(host_providers::routes())
         .merge(dashboard::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())
