@@ -96,6 +96,12 @@ jobs:
       # runs from source via tsx (`npm ci` above), against the client
       # `npm run build` already produced.
       - run: cargo build --workspace
+      # Phase 6's exit gate, kept executable rather than asserted once: the
+      # product must run with node, npm, npx and tsx absent from PATH. Node
+      # stays a build-time dependency for the frontend assets `npm run build`
+      # produced above, which is what the daemon serves.
+      - name: Runs with no Node.js on PATH
+        run: ./scripts/check-no-node.sh
       # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
       # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
       # so they drive their crate's own probe example instead of a tool.
