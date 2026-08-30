@@ -43,7 +43,7 @@
 //! when it lands, the way `github/api.rs` sits under `github.rs`.
 
 use crate::server::app::AppState;
-use crate::server::body::{parse_form, read_json_object, string_field};
+use crate::server::body::{decode_uri_component, parse_form, read_json_object, string_field};
 use crate::server::errors::{error, method_not_allowed};
 use crate::server::routes::query::query_value;
 use axum::body::Bytes;
@@ -56,7 +56,8 @@ use nomoreide_core::config::{selected_git_repository, ProviderConnectionDef};
 use nomoreide_core::providers::deploy::ProviderProject;
 use nomoreide_core::providers::registry::{
     cli_missing, provider_cli_session, provider_cli_status, public_provider_connection,
-    require_deploy_provider, require_provider_context, ProviderAccount, ProviderContext,
+    require_deploy_provider, require_provider_actions, require_provider_context, DeployActions,
+    ProviderAccount, ProviderContext,
 };
 use serde_json::{json, Map, Value};
 
@@ -78,6 +79,10 @@ pub(crate) fn routes() -> Router<AppState> {
         .route("/api/providers/:provider/connect", any(connect))
         .route("/api/providers/:provider/scope", any(scope))
         .route("/api/providers/:provider/project", any(project))
+        .route("/api/providers/:provider/env", any(env))
+        .route("/api/providers/:provider/env/:env/reveal", any(reveal_env))
+        .route("/api/providers/:provider/env/:env", any(change_env))
+        .route("/api/providers/:provider/domains", any(domains))
         .route("/api/providers/:provider/projects", any(projects))
         .route("/api/providers/:provider/deployments", any(deployments))
 }
@@ -416,15 +421,267 @@ async fn project(
 }
 
 async fn context(state: &AppState, provider: &str) -> Result<ProviderContext, Response> {
+    provider_context(state, provider)
+        .await
+        .map_err(|failure| error(StatusCode::INTERNAL_SERVER_ERROR, &failure))
+}
+
+/// The same, leaving the status to the caller — the env routes answer 400 or
+/// 500 for the *same* unresolved provider depending on the verb, so they
+/// cannot use the 500 above.
+async fn provider_context(state: &AppState, provider: &str) -> Result<ProviderContext, String> {
     let config = state
         .config_store
         .load()
         .await
-        .map_err(|failure| error(StatusCode::INTERNAL_SERVER_ERROR, &failure.to_string()))?;
+        .map_err(|failure| failure.to_string())?;
     let cwd = state.workspace_cwd().await;
-    require_provider_context(provider, &state.config_store, &config, &cwd)
+    require_provider_context(provider, &state.config_store, &config, &cwd).await
+}
+
+/// The linked project, or the sentence the routes report when there is none.
+fn require_project(context: &ProviderContext) -> Result<&str, String> {
+    context
+        .project
+        .as_ref()
+        .and_then(ProviderProject::identifier)
+        .ok_or_else(|| "No project is linked to this repository.".to_string())
+}
+
+/// The write-capable client, resolved separately from the read context on
+/// purpose — see [`require_provider_actions`].
+async fn actions(state: &AppState, provider: &str) -> Result<DeployActions, String> {
+    let config = state
+        .config_store
+        .load()
         .await
-        .map_err(|failure| error(StatusCode::INTERNAL_SERVER_ERROR, &failure))
+        .map_err(|failure| failure.to_string())?;
+    require_provider_actions(provider, &state.config_store, &config).await
+}
+
+/// The `env` path segment as it was written, before percent-decoding.
+///
+/// Axum hands back a decoded parameter, but the reference decodes with
+/// `decodeURIComponent`, which *throws* on a broken escape rather than passing
+/// it through — and that throw is a 400 the caller sees. Reading the raw
+/// segment back off the URI is what keeps that difference.
+fn raw_env_segment(uri: &Uri) -> &str {
+    uri.path().split('/').nth(5).unwrap_or_default()
+}
+
+/// `GET` lists the project's variables; `POST` adds one.
+///
+/// **The context is resolved before the verb is checked**, which is the
+/// reference's order and is observable: a `PUT` here reaches the vendor to
+/// resolve the project and *then* answers 405, while a `PUT` to a provider
+/// that will not connect answers 400 instead. Both fall out of the reference's
+/// `try` opening before its method guard.
+async fn env(
+    State(state): State<AppState>,
+    Path(provider): Path<String>,
+    method: Method,
+    body: Bytes,
+) -> Response {
+    // A failed read is a server-side problem; a rejected write is the
+    // caller's. The split the routes this replaced drew too.
+    let refusal = if method == Method::GET {
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::BAD_REQUEST
+    };
+    if let Err(message) = require_deploy_provider(&provider) {
+        return error(refusal, &message);
+    }
+    let context = match provider_context(&state, &provider).await {
+        Ok(context) => context,
+        Err(message) => return error(refusal, &message),
+    };
+
+    if method == Method::GET {
+        let project = match require_project(&context) {
+            Ok(project) => project,
+            Err(message) => return error(refusal, &message),
+        };
+        return match context.client.list_env(project).await {
+            Ok(env) => Json(json!({ "ok": true, "env": env })).into_response(),
+            Err(failure) => error(refusal, &failure.message),
+        };
+    }
+    if method != Method::POST {
+        return method_not_allowed().await;
+    }
+
+    let payload = read_json_object(&body);
+    let actions = match actions(&state, &provider).await {
+        Ok(actions) => actions,
+        Err(message) => return error(refusal, &message),
+    };
+    let project = match require_project(&context) {
+        Ok(project) => project.to_string(),
+        Err(message) => return error(refusal, &message),
+    };
+    let key = string_field(&payload, "key").unwrap_or_default().trim();
+    let environments = string_list(&payload, "environments");
+    if key.is_empty() {
+        return error(refusal, "A key is required.");
+    }
+    if environments.is_empty() {
+        return error(refusal, "Choose at least one environment.");
+    }
+    match actions
+        .create_env(
+            &project,
+            key,
+            string_field(&payload, "value").unwrap_or_default(),
+            &environments,
+            // Anything that is not the word `plain` is a secret. The default
+            // is the one whose value does not read back.
+            if string_field(&payload, "type") == Some("plain") {
+                "plain"
+            } else {
+                "encrypted"
+            },
+        )
+        .await
+    {
+        Ok(env) => Json(json!({ "ok": true, "env": env })).into_response(),
+        Err(failure) => error(refusal, &failure.message),
+    }
+}
+
+/// Reveal one variable's value.
+///
+/// `POST` rather than `GET`, and one key at a time, so putting a secret on the
+/// wire is always a deliberate act that leaves a request behind — the same
+/// reasoning that keeps the database's write half off the agent surface. This
+/// route has no MCP tool for that reason.
+async fn reveal_env(
+    State(state): State<AppState>,
+    Path((provider, _env)): Path<(String, String)>,
+    method: Method,
+    uri: Uri,
+) -> Response {
+    // The verb is checked before anything else here, unlike `env` above.
+    if method != Method::POST {
+        return method_not_allowed().await;
+    }
+    let refusal = StatusCode::BAD_REQUEST;
+    if let Err(message) = require_deploy_provider(&provider) {
+        return error(refusal, &message);
+    }
+    let context = match provider_context(&state, &provider).await {
+        Ok(context) => context,
+        Err(message) => return error(refusal, &message),
+    };
+    let project = match require_project(&context) {
+        Ok(project) => project,
+        Err(message) => return error(refusal, &message),
+    };
+    let Some(env_id) = decode_uri_component(raw_env_segment(&uri)) else {
+        return error(refusal, "URI malformed");
+    };
+    match context.client.get_env_value(project, &env_id).await {
+        Ok(value) => Json(json!({ "ok": true, "value": value })).into_response(),
+        Err(failure) => error(refusal, &failure.message),
+    }
+}
+
+/// Update (`PATCH`) or delete (`DELETE`) one variable. The same write boundary
+/// as adding one.
+async fn change_env(
+    State(state): State<AppState>,
+    Path((provider, _env)): Path<(String, String)>,
+    method: Method,
+    uri: Uri,
+    body: Bytes,
+) -> Response {
+    if method != Method::PATCH && method != Method::DELETE {
+        return method_not_allowed().await;
+    }
+    let refusal = StatusCode::BAD_REQUEST;
+    if let Err(message) = require_deploy_provider(&provider) {
+        return error(refusal, &message);
+    }
+    // Context, then actions, then the project, then the id — the reference's
+    // order, and each step can refuse before the next one runs.
+    let context = match provider_context(&state, &provider).await {
+        Ok(context) => context,
+        Err(message) => return error(refusal, &message),
+    };
+    let actions = match actions(&state, &provider).await {
+        Ok(actions) => actions,
+        Err(message) => return error(refusal, &message),
+    };
+    let project = match require_project(&context) {
+        Ok(project) => project.to_string(),
+        Err(message) => return error(refusal, &message),
+    };
+    let Some(env_id) = decode_uri_component(raw_env_segment(&uri)) else {
+        return error(refusal, "URI malformed");
+    };
+
+    if method == Method::DELETE {
+        return match actions.delete_env(&project, &env_id).await {
+            Ok(()) => ok(),
+            Err(failure) => error(refusal, &failure.message),
+        };
+    }
+
+    let payload = read_json_object(&body);
+    // An empty string is not a new value: it is the dialog saying "leave the
+    // value alone and change only the environments".
+    let value = string_field(&payload, "value").filter(|value| !value.is_empty());
+    // Absent rather than empty when the caller sent no list at all, which means
+    // "keep the environments it has".
+    let environments = payload
+        .get("environments")
+        .and_then(Value::as_array)
+        .map(|_| string_list(&payload, "environments"));
+    match actions
+        .update_env(&project, &env_id, value, environments.as_deref())
+        .await
+    {
+        Ok(env) => Json(json!({ "ok": true, "env": env })).into_response(),
+        Err(failure) => error(refusal, &failure.message),
+    }
+}
+
+/// The domains a project serves on. Like the two reads below it, this guards no
+/// verb and answers 500 for everything.
+async fn domains(State(state): State<AppState>, Path(provider): Path<String>) -> Response {
+    let refusal = StatusCode::INTERNAL_SERVER_ERROR;
+    if let Err(message) = require_deploy_provider(&provider) {
+        return error(refusal, &message);
+    }
+    let context = match provider_context(&state, &provider).await {
+        Ok(context) => context,
+        Err(message) => return error(refusal, &message),
+    };
+    let project = match require_project(&context) {
+        Ok(project) => project,
+        Err(message) => return error(refusal, &message),
+    };
+    match context.client.list_domains(project).await {
+        Ok(domains) => Json(json!({ "ok": true, "domains": domains })).into_response(),
+        Err(failure) => error(refusal, &failure.message),
+    }
+}
+
+/// The strings in a JSON array field, with everything that is not a string
+/// dropped — the reference filters rather than refusing, so `["a", 7]` is a
+/// list of one.
+fn string_list(payload: &Value, key: &str) -> Vec<String> {
+    payload
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 async fn projects(

@@ -10,6 +10,7 @@ pub mod app_settings;
 pub mod approval_broker;
 pub mod bundle;
 pub mod claude_settings;
+pub mod cloudflare_actions;
 pub mod cloudflare_auth;
 pub mod cloudflare_context;
 pub mod cloudflare_manager;

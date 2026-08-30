@@ -1236,11 +1236,30 @@ the only thing that has been checking any of this.
   scope and an untrimmed pinned project id where the reference trims both, and
   `Vercel is not connected.` came out lowercased.
 
-  What is left, per provider: `env`, `env/*`, `domains`, `oauth/start` and
-  `oauth/status`, plus the deployment write actions. The OAuth pair is the
-  hard part — it holds a login session in memory across two unrelated requests
-  and serves an HTML result page to a browser tab — and it is why this was
-  left for last rather than an oversight.
+  **The environment and domain surface followed**, and with it the write
+  boundary: `env` (GET and POST), `env/:id/reveal`, `env/:id` (PATCH and
+  DELETE) and `domains`, held by `check-provider-env-parity.ts` at 49 cases.
+  It is a separate gate because it needs a different vendor fixture — env vars
+  and domains are the one place the two providers do not merely word things
+  differently, they store them somewhere else entirely. Cloudflare Pages has
+  no env-var endpoint at all: variables live inside the project's
+  `deployment_configs`, one map per environment, so `cloudflare_actions.rs` is
+  new and every write in it is a `PATCH` of the project. The gate compares the
+  recorded request *bodies*, so a patch that changed something else on the
+  account diverges even when the answer matches.
+
+  One defect surfaced on the way: `VercelActions` built its own HTTP client
+  against a hard-coded `https://api.vercel.com`, so every deploy write bypassed
+  both `NOMOREIDE_VERCEL_API_BASE` and the provider egress allowlist. Writes
+  now go through the same sender as the reads, which is what let the gate reach
+  them with a stub at all.
+
+  What is left, per provider: `oauth/start`, `oauth/status`, and the deployment
+  write actions (`redeploy`, `cancel`, `promote`, `rollback`) — the actions
+  layer those need now exists and is gated. The OAuth pair is the hard part —
+  it holds a login session in memory across two unrelated requests and serves
+  an HTML result page to a browser tab — and it is why this was left for last
+  rather than an oversight.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8
   deletes it, all 66 stop being runnable. The fixtures are the durable half and

@@ -3,6 +3,7 @@
 
 use serde_json::Value;
 
+use crate::cloudflare_actions::CloudflareActions;
 use crate::cloudflare_auth::{resolve, ResolvedCredential, CLOUDFLARE_PROVIDER_ID};
 use crate::cloudflare_manager::CloudflareManager;
 use crate::config::{Config, ConfigStore};
@@ -25,6 +26,26 @@ pub async fn require_client(
             ..credential
         },
     ))
+}
+
+/// Write-capable counterpart, resolved the same way but returned separately so
+/// the read/write split is visible at the call site.
+///
+/// Unlike the read client, this one *requires* an account: every Pages write is
+/// a `PATCH` of `/accounts/<id>/…`, and there is no useful thing to do without
+/// one.
+pub async fn require_actions(
+    store: &ConfigStore,
+    config: &Config,
+) -> Result<CloudflareActions, String> {
+    let credential = resolve(store, config).await?;
+    let account_id = match credential.account_id.clone() {
+        Some(account_id) => account_id,
+        None => adopt_sole_account(store, &credential)
+            .await
+            .ok_or("Choose a Cloudflare account before changing one of its projects.")?,
+    };
+    Ok(CloudflareActions::new(credential.token, account_id))
 }
 
 /// The account to use when the user has never chosen one.

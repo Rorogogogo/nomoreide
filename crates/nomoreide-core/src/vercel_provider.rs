@@ -16,8 +16,8 @@ use serde_json::Value;
 
 use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
-    BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, ProjectLink, ProjectSetting,
-    ProviderProject,
+    present, BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification,
+    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderProject,
 };
 use crate::providers::project_resolution::LinkFile;
 use crate::vercel_manager::{repo_url, VercelApiError, VercelManager};
@@ -168,6 +168,75 @@ pub fn detail_from_raw(raw: &Value) -> DeploymentDetail {
     }
 }
 
+/// One variable, in the neutral shape.
+///
+/// `id` falls back to the key because Vercel's *own* normalization does, and a
+/// variable with neither is reported with no id at all rather than an empty
+/// one — the reveal route addresses a variable by whatever this says.
+pub fn env_from_raw(raw: &Value) -> ProviderEnvVar {
+    let environments = match raw.get("target") {
+        Some(Value::Array(items)) => items.clone(),
+        // Vercel has sent a bare string here for single-environment variables.
+        Some(Value::String(single)) => vec![Value::String(single.clone())],
+        _ => Vec::new(),
+    };
+    ProviderEnvVar {
+        id: present(raw.get("id")).or_else(|| raw.get("key").cloned()),
+        key: raw.get("key").cloned(),
+        environments,
+        // "Sensitive" is the safe default for a variable whose type Vercel did
+        // not say: it means the value does not read back.
+        kind: present(raw.get("type")).unwrap_or_else(|| Value::String("encrypted".into())),
+        // Reported even when there is none. Absent would read as "not asked",
+        // and the dialog distinguishes the two.
+        git_branch: Some(raw.get("gitBranch").cloned().unwrap_or(Value::Null)),
+        comment: Some(raw.get("comment").cloned().unwrap_or(Value::Null)),
+        // Timestamps are passed through: a key Vercel did not send is absent
+        // rather than null, because it was never asked about.
+        created_at: raw.get("createdAt").cloned(),
+        updated_at: raw.get("updatedAt").cloned(),
+    }
+}
+
+pub fn domain_from_raw(raw: &Value) -> ProviderDomain {
+    ProviderDomain {
+        name: raw.get("name").cloned(),
+        apex_name: raw.get("apexName").cloned(),
+        verified: raw
+            .get("verified")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        redirect: Some(raw.get("redirect").cloned().unwrap_or(Value::Null)),
+        git_branch: Some(raw.get("gitBranch").cloned().unwrap_or(Value::Null)),
+        created_at: raw.get("createdAt").cloned(),
+        updated_at: raw.get("updatedAt").cloned(),
+        verification: verification_from_raw(raw.get("verification")),
+    }
+}
+
+/// The DNS records still outstanding, dropping any entry that does not name
+/// both a record and its value — half a record is not something a user can act
+/// on, and rendering one as a row to copy would be worse than omitting it.
+fn verification_from_raw(raw: Option<&Value>) -> Vec<DomainVerification> {
+    raw.and_then(Value::as_array)
+        .map(|entries| {
+            entries
+                .iter()
+                .filter(|entry| {
+                    entry.get("domain").and_then(Value::as_str).is_some()
+                        && entry.get("value").and_then(Value::as_str).is_some()
+                })
+                .map(|entry| DomainVerification {
+                    kind: present(entry.get("type")).unwrap_or_else(|| Value::String("TXT".into())),
+                    domain: entry.get("domain").cloned().unwrap_or(Value::Null),
+                    value: entry.get("value").cloned().unwrap_or(Value::Null),
+                    reason: entry.get("reason").cloned(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// A connected Vercel client answering in the vendor-neutral shapes.
 pub struct VercelDeployProvider {
     manager: VercelManager,
@@ -240,6 +309,44 @@ impl VercelDeployProvider {
         Ok(detail_from_raw(&self.manager.get_deployment_raw(id).await?))
     }
 
+    /// The project's variables, keys and environments only, sorted by key.
+    ///
+    /// The sort is the vendor-neutral layer's, not Vercel's: the list endpoint
+    /// answers in an order nothing documents, and a variable that moved rows
+    /// between reloads reads as a bug.
+    pub async fn list_env(&self, project_id: &str) -> Result<Vec<ProviderEnvVar>, VercelApiError> {
+        let mut envs: Vec<ProviderEnvVar> = self
+            .manager
+            .list_env_raw(project_id)
+            .await?
+            .iter()
+            .map(env_from_raw)
+            .collect();
+        envs.sort_by(|left, right| sort_key(&left.key).cmp(sort_key(&right.key)));
+        Ok(envs)
+    }
+
+    pub async fn get_env_value(
+        &self,
+        project_id: &str,
+        env_id: &str,
+    ) -> Result<String, VercelApiError> {
+        self.manager.env_value(project_id, env_id).await
+    }
+
+    pub async fn list_domains(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<ProviderDomain>, VercelApiError> {
+        Ok(self
+            .manager
+            .list_domains_raw(project_id)
+            .await?
+            .iter()
+            .map(domain_from_raw)
+            .collect())
+    }
+
     pub async fn build_logs(
         &self,
         id: &str,
@@ -261,6 +368,14 @@ impl VercelDeployProvider {
             })
             .collect())
     }
+}
+
+/// What a variable sorts under. A key the vendor did not send sorts first,
+/// which is where `String(undefined)` would not put it — but a variable with
+/// no key at all is not a row anyone can act on, and its position is not a
+/// contract worth reproducing.
+fn sort_key(key: &Option<Value>) -> &str {
+    key.as_ref().and_then(Value::as_str).unwrap_or("")
 }
 
 /// The URL Vercel keys an imported project by, derived from a git remote.

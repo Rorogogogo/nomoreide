@@ -9,11 +9,13 @@
 
 use serde_json::Value;
 
-use crate::cloudflare_manager::{repo_url, CloudflareApiError, CloudflareManager};
+use crate::cloudflare_manager::{
+    repo_url, CloudflareApiError, CloudflareEnvVar, CloudflareManager, PLAIN_TEXT,
+};
 use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
-    BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, ProjectLink, ProjectSetting,
-    ProviderProject,
+    present, BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, DomainVerification,
+    ProjectLink, ProjectSetting, ProviderDomain, ProviderEnvVar, ProviderProject,
 };
 use crate::providers::project_resolution::LinkFile;
 
@@ -280,6 +282,99 @@ fn epoch_ms(value: &str) -> Option<i64> {
         .map(|parsed| parsed.timestamp_millis())
 }
 
+/// One variable, in the neutral shape.
+///
+/// Cloudflare has no variable ids, so the key is both — which is what makes
+/// the reveal and update routes addressable at all.
+pub fn env_from_merged(variable: &CloudflareEnvVar) -> ProviderEnvVar {
+    ProviderEnvVar {
+        id: Some(Value::String(variable.key.clone())),
+        key: Some(Value::String(variable.key.clone())),
+        environments: variable
+            .environments
+            .iter()
+            .map(|environment| Value::String(environment.clone()))
+            .collect(),
+        kind: Value::String(
+            if variable.kind == PLAIN_TEXT {
+                "plain"
+            } else {
+                "encrypted"
+            }
+            .into(),
+        ),
+        // Cloudflare has neither concept, and reporting them as null would
+        // claim it had asked and found nothing.
+        git_branch: None,
+        comment: None,
+        created_at: None,
+        updated_at: None,
+    }
+}
+
+/// One custom domain, in the neutral shape.
+///
+/// A domain that is not yet active *and* has a TXT record to add reports that
+/// record as the one thing the user can do about it. A domain that is merely
+/// pending with nothing to copy reports no record, because an empty row to
+/// paste is worse than none.
+fn domain_from_raw(raw: &Value) -> ProviderDomain {
+    let status = raw
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("pending");
+    let validation = raw.get("validation_data").filter(|value| !value.is_null());
+    let txt_name = validation
+        .and_then(|data| data.get("txt_name"))
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty());
+
+    let verification = match txt_name.filter(|_| status != "active") {
+        Some(txt_name) => vec![DomainVerification {
+            kind: Value::String("TXT".into()),
+            domain: Value::String(txt_name.to_string()),
+            value: Value::String(
+                validation
+                    .and_then(|data| data.get("txt_value"))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
+            // Cloudflare puts the reason in either of two places; when it gives
+            // none, the status is the only thing there is to say.
+            reason: Some(
+                validation
+                    .and_then(|data| present(data.get("error_message")))
+                    .or_else(|| {
+                        present(
+                            raw.get("verification_data")
+                                .and_then(|data| data.get("error_message")),
+                        )
+                    })
+                    .unwrap_or_else(|| Value::String(status.to_string())),
+            ),
+        }],
+        None => Vec::new(),
+    };
+
+    ProviderDomain {
+        name: raw.get("name").cloned(),
+        // Pages has no apex grouping, no redirects, no per-branch domains and
+        // no modification time, so each is absent rather than null.
+        apex_name: None,
+        verified: status == "active",
+        redirect: None,
+        git_branch: None,
+        created_at: raw
+            .get("created_on")
+            .and_then(Value::as_str)
+            .and_then(epoch_ms)
+            .map(Value::from),
+        updated_at: None,
+        verification,
+    }
+}
+
 /// A connected Cloudflare client answering in the vendor-neutral shapes.
 pub struct CloudflareDeployProvider {
     manager: CloudflareManager,
@@ -327,6 +422,79 @@ impl CloudflareDeployProvider {
                 Value::Object(scope)
             })
             .collect())
+    }
+
+    pub async fn list_env(&self, project: &str) -> Result<Vec<ProviderEnvVar>, CloudflareApiError> {
+        Ok(self
+            .manager
+            .list_env(project)
+            .await?
+            .iter()
+            .map(env_from_merged)
+            .collect())
+    }
+
+    pub async fn get_env_value(
+        &self,
+        project: &str,
+        key: &str,
+    ) -> Result<String, CloudflareApiError> {
+        self.manager.env_value(project, key).await
+    }
+
+    /// The project's domains, including the `*.pages.dev` host Cloudflare
+    /// assigns.
+    ///
+    /// `/domains` lists **custom** domains only, so a project serving perfectly
+    /// well reads as having none — while Vercel's equivalent endpoint includes
+    /// the vendor-assigned `*.vercel.app`. Both render through the same generic
+    /// view, so the asymmetry showed up on a live account as "no domains"
+    /// beside a site anyone could load. The assigned host goes last, the way
+    /// Vercel orders its own, so a custom domain still leads.
+    ///
+    /// A failed *project* read degrades to the custom domains alone: the panel
+    /// is still correct, just missing the assigned host.
+    pub async fn list_domains(
+        &self,
+        project: &str,
+    ) -> Result<Vec<ProviderDomain>, CloudflareApiError> {
+        let (custom, project_raw) = tokio::join!(
+            self.manager.list_domains_raw(project),
+            self.manager.get_project_raw(project)
+        );
+        let mut domains: Vec<ProviderDomain> = custom?.iter().map(domain_from_raw).collect();
+        let Ok(project_raw) = project_raw else {
+            return Ok(domains);
+        };
+        let Some(subdomain) = project_raw
+            .get("subdomain")
+            .and_then(Value::as_str)
+            .filter(|subdomain| !subdomain.is_empty())
+        else {
+            return Ok(domains);
+        };
+        if domains
+            .iter()
+            .any(|domain| domain.name.as_ref().and_then(Value::as_str) == Some(subdomain))
+        {
+            return Ok(domains);
+        }
+        domains.push(ProviderDomain {
+            name: Some(Value::String(subdomain.to_string())),
+            apex_name: None,
+            // The assigned host is always serving; there is nothing to verify.
+            verified: true,
+            redirect: None,
+            git_branch: None,
+            created_at: project_raw
+                .get("created_on")
+                .and_then(Value::as_str)
+                .and_then(epoch_ms)
+                .map(Value::from),
+            updated_at: None,
+            verification: Vec::new(),
+        });
+        Ok(domains)
     }
 
     /// Pages has no server-side project search, so the filter is applied here —

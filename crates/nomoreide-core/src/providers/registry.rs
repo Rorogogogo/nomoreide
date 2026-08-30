@@ -12,18 +12,26 @@
 //! divergence between them a thing you notice rather than a thing you go
 //! looking for.
 
-use crate::cloudflare_context::require_client as require_cloudflare_client;
+use crate::cloudflare_actions::CloudflareActions;
+use crate::cloudflare_context::{
+    require_actions as require_cloudflare_actions, require_client as require_cloudflare_client,
+};
 use crate::cloudflare_manager::CloudflareApiError;
 use crate::cloudflare_provider::{
-    cloudflare_repo_url, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE, CLOUDFLARE_PROVIDER_ID,
+    cloudflare_repo_url, env_from_merged, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE,
+    CLOUDFLARE_PROVIDER_ID,
 };
 use crate::config::{Config, ConfigStore, PublicProviderConnectionDef};
-use crate::providers::deploy::{BuildLogLine, Deployment, DeploymentDetail, ProviderProject};
+use crate::providers::deploy::{
+    present, BuildLogLine, Deployment, DeploymentDetail, ProviderDomain, ProviderEnvVar,
+    ProviderProject,
+};
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
-use crate::vercel_context::require_client;
+use crate::vercel_actions::VercelActions;
+use crate::vercel_context::{require_actions as require_vercel_actions, require_client};
 use crate::vercel_manager::VercelApiError;
 use crate::vercel_provider::{
-    vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
+    env_from_raw, vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
 };
 use serde_json::Value;
 
@@ -82,6 +90,37 @@ impl DeployClient {
         match self {
             Self::Vercel(provider) => Ok(provider.get_project(id).await?),
             Self::Cloudflare(provider) => Ok(provider.get_project(id).await?),
+        }
+    }
+
+    /// The project's variables, keys and environments only.
+    ///
+    /// Never the values: listing answers "is this key set, and where", which is
+    /// the question a failed deploy raises. Reading one value is a separate,
+    /// explicitly-requested act — see [`Self::get_env_value`].
+    pub async fn list_env(&self, project: &str) -> Result<Vec<ProviderEnvVar>, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.list_env(project).await?),
+            Self::Cloudflare(provider) => Ok(provider.list_env(project).await?),
+        }
+    }
+
+    /// One variable's value — the single door for putting a secret on the wire.
+    pub async fn get_env_value(
+        &self,
+        project: &str,
+        env_id: &str,
+    ) -> Result<String, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.get_env_value(project, env_id).await?),
+            Self::Cloudflare(provider) => Ok(provider.get_env_value(project, env_id).await?),
+        }
+    }
+
+    pub async fn list_domains(&self, project: &str) -> Result<Vec<ProviderDomain>, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.list_domains(project).await?),
+            Self::Cloudflare(provider) => Ok(provider.list_domains(project).await?),
         }
     }
 
@@ -255,12 +294,6 @@ pub struct ProviderAccount {
     pub avatar: Option<Value>,
 }
 
-/// A field the vendor actually sent, in the sense `??` means it: an absent key
-/// and an explicit null are both "no value".
-fn present(field: Option<&Value>) -> Option<Value> {
-    field.filter(|value| !value.is_null()).cloned()
-}
-
 /// What to call a Cloudflare credential on screen.
 ///
 /// The email first, because Cloudflare's `username` is an opaque 32-char hex
@@ -293,6 +326,97 @@ pub struct ProviderCredential {
     /// The scope actually in force, which is not always the stored one — an
     /// unscoped connection adopts the sole team or account it can see.
     pub scope_id: Option<String>,
+}
+
+/// The write-capable half, whichever provider it is.
+///
+/// A separate type resolved by a separate call, never reachable from a
+/// [`ProviderContext`] — the same read/write split as `git_manager` /
+/// `git_actions` and `db::peek` / `nomoreide_actions::db`. Nothing here is
+/// exposed as an MCP tool: these are reached only from the dashboard's own
+/// routes, where a human clicked the button.
+pub enum DeployActions {
+    Vercel(VercelActions),
+    Cloudflare(CloudflareActions),
+}
+
+impl DeployActions {
+    /// Add a variable.
+    ///
+    /// `kind` is the shared dialog's word — `plain` or `encrypted` — and each
+    /// provider spells it its own way: Vercel takes it verbatim, Cloudflare
+    /// stores `plain_text` or `secret_text`.
+    pub async fn create_env(
+        &self,
+        project: &str,
+        key: &str,
+        value: &str,
+        environments: &[String],
+        kind: &str,
+    ) -> Result<ProviderEnvVar, ProviderError> {
+        match self {
+            Self::Vercel(actions) => Ok(env_from_raw(
+                &actions
+                    .create_env(project, key, value, environments, kind)
+                    .await?,
+            )),
+            Self::Cloudflare(actions) => Ok(env_from_merged(
+                &actions
+                    .create_env(project, key, value, environments, kind != "plain")
+                    .await?,
+            )),
+        }
+    }
+
+    pub async fn update_env(
+        &self,
+        project: &str,
+        env_id: &str,
+        value: Option<&str>,
+        environments: Option<&[String]>,
+    ) -> Result<ProviderEnvVar, ProviderError> {
+        match self {
+            Self::Vercel(actions) => Ok(env_from_raw(
+                &actions
+                    .update_env(project, env_id, value, environments)
+                    .await?,
+            )),
+            Self::Cloudflare(actions) => Ok(env_from_merged(
+                &actions
+                    .update_env(project, env_id, value, environments)
+                    .await?,
+            )),
+        }
+    }
+
+    pub async fn delete_env(&self, project: &str, env_id: &str) -> Result<(), ProviderError> {
+        match self {
+            Self::Vercel(actions) => Ok(actions.delete_env(project, env_id).await?),
+            Self::Cloudflare(actions) => Ok(actions.delete_env(project, env_id).await?),
+        }
+    }
+}
+
+/// The write-capable client for `provider_id`.
+///
+/// Resolved separately from [`require_provider_context`] rather than hanging
+/// off it, so a caller that only reads cannot reach a write by accident — and
+/// so the two can disagree about what is required. Cloudflare's writes need an
+/// account where its reads do not.
+pub async fn require_provider_actions(
+    provider_id: &str,
+    store: &ConfigStore,
+    config: &Config,
+) -> Result<DeployActions, String> {
+    match provider_id {
+        VERCEL_PROVIDER_ID => Ok(DeployActions::Vercel(
+            require_vercel_actions(store, config).await?,
+        )),
+        CLOUDFLARE_PROVIDER_ID => Ok(DeployActions::Cloudflare(
+            require_cloudflare_actions(store, config).await?,
+        )),
+        other => Err(unknown_provider(other)),
+    }
 }
 
 /// A connected client plus whatever project resolves for the repository.

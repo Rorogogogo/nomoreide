@@ -12,6 +12,7 @@
 use serde_json::Value;
 
 use crate::providers::api_base::{provider_api_base, provider_api_host};
+use crate::providers::deploy::present;
 use crate::providers::egress::ProviderEgress;
 
 const API_BASE: &str = "https://api.cloudflare.com/client/v4";
@@ -55,6 +56,21 @@ pub const NO_ACCOUNT: &str = "Choose a Cloudflare account before reading its Pag
 
 /// The one place a Cloudflare API call is made.
 pub async fn request(token: &str, path: &str) -> Result<Value, CloudflareApiError> {
+    request_json(token, "GET", path, None).await
+}
+
+/// The same, with a verb and an optional JSON body.
+///
+/// Shared with `cloudflare_actions` so auth, the egress allowlist, the base URL
+/// and the error shaping stay identical across the read and write halves — the
+/// boundary is which module exposes an operation, not which one can reach the
+/// network.
+pub async fn request_json(
+    token: &str,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> Result<Value, CloudflareApiError> {
     let url = if path.starts_with("http") {
         path.to_string()
     } else {
@@ -69,17 +85,28 @@ pub async fn request(token: &str, path: &str) -> Result<Value, CloudflareApiErro
             status: 0,
         })?;
     let bearer = token.to_string();
+    let payload = body.cloned();
+    let verb = match method {
+        "POST" => reqwest::Method::POST,
+        "PATCH" => reqwest::Method::PATCH,
+        "DELETE" => reqwest::Method::DELETE,
+        _ => reqwest::Method::GET,
+    };
     let response = egress()
         .send(
             &client,
             &url,
             |client, verb, target| {
-                client
+                let request = client
                     .request(verb, target)
                     .header("Authorization", format!("Bearer {bearer}"))
-                    .header("Accept", "application/json")
+                    .header("Accept", "application/json");
+                match payload.as_ref() {
+                    Some(payload) => request.json(payload),
+                    None => request,
+                }
             },
-            reqwest::Method::GET,
+            verb,
         )
         .await
         .map_err(|error| CloudflareApiError {
@@ -112,13 +139,6 @@ fn api_error_message(body: &Value, status: u16, path: &str) -> String {
         .unwrap_or_else(|| format!("Cloudflare returned {status} for {path}"))
 }
 
-/// A field the vendor actually sent, in the sense `??` means it: an absent key
-/// and an explicit `null` are both "no value", and everything else survives as
-/// the JSON it was rather than being narrowed to a string.
-fn present(field: Option<&Value>) -> Option<Value> {
-    field.filter(|value| !value.is_null()).cloned()
-}
-
 /// The identity record, with the keys the vendor had nothing for left out —
 /// `JSON.stringify` drops an `undefined` field, and the shape is compared.
 fn user_value(id: Option<Value>, email: Option<Value>, username: Option<Value>) -> Value {
@@ -129,6 +149,88 @@ fn user_value(id: Option<Value>, email: Option<Value>, username: Option<Value>) 
         }
     }
     Value::Object(user)
+}
+
+/// Cloudflare's two variable types. A type it did not name is treated as the
+/// stricter one, which is the answer that cannot leak a value.
+pub const SECRET_TEXT: &str = "secret_text";
+pub const PLAIN_TEXT: &str = "plain_text";
+
+/// One variable, already merged across the environments it appears in.
+///
+/// Cloudflare stores these as a `{ NAME: { type, value } }` map *per
+/// environment*, so the same key in production and preview is two entries
+/// there and one here.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CloudflareEnvVar {
+    pub key: String,
+    pub environments: Vec<String>,
+    pub kind: String,
+    /// Present only for `plain_text`; a secret's value never reads back.
+    pub value: Option<String>,
+}
+
+/// Flattens the per-environment maps into one entry per key, carrying every
+/// environment it appears in.
+///
+/// A key that is plain text in one environment and a secret in another is
+/// reported as a secret, because the stricter of the two governs whether the
+/// value may be read.
+///
+/// Shared with the write side, which merges whatever a `PATCH` handed back —
+/// so the read and the write cannot disagree about what a project now holds.
+pub fn merge_env_vars(configs: Option<&Value>) -> Vec<CloudflareEnvVar> {
+    let mut merged: Vec<CloudflareEnvVar> = Vec::new();
+    let Some(configs) = configs.and_then(Value::as_object) else {
+        return merged;
+    };
+    for (environment, config) in configs {
+        let Some(variables) = config.get("env_vars").and_then(Value::as_object) else {
+            continue;
+        };
+        for (key, entry) in variables {
+            // An explicit null is a variable Cloudflare has been told to
+            // delete, not one it holds.
+            if entry.is_null() {
+                continue;
+            }
+            let kind = if entry.get("type").and_then(Value::as_str) == Some(PLAIN_TEXT) {
+                PLAIN_TEXT
+            } else {
+                SECRET_TEXT
+            };
+            let value = entry
+                .get("value")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            match merged.iter_mut().find(|variable| &variable.key == key) {
+                Some(existing) => {
+                    existing.environments.push(environment.clone());
+                    if kind == SECRET_TEXT {
+                        existing.kind = kind.to_string();
+                    }
+                    if existing.value.is_none() {
+                        existing.value = value;
+                    }
+                }
+                None => merged.push(CloudflareEnvVar {
+                    key: key.clone(),
+                    environments: vec![environment.clone()],
+                    kind: kind.to_string(),
+                    value,
+                }),
+            }
+        }
+    }
+    merged.sort_by(|left, right| left.key.cmp(&right.key));
+    merged
+}
+
+/// A refusal this client reached on its own, with no request behind it — so it
+/// carries no status, and the caller reports it as a failure rather than as a
+/// rejected credential.
+fn local(message: String) -> CloudflareApiError {
+    CloudflareApiError { message, status: 0 }
 }
 
 /// The `result` of an envelope, as a list.
@@ -233,6 +335,56 @@ impl CloudflareManager {
     /// Every account this token can see, which is what the scope picker offers.
     pub async fn list_accounts(&self) -> Result<Vec<Value>, CloudflareApiError> {
         let path = format!("/accounts?per_page={ACCOUNT_PAGE_SIZE}");
+        Ok(results(&request(&self.token, &path).await?))
+    }
+
+    /// The project's variables, keys and environments only — the value is
+    /// dropped here for every type, so merely listing them never puts a secret
+    /// on the wire.
+    pub async fn list_env(
+        &self,
+        project: &str,
+    ) -> Result<Vec<CloudflareEnvVar>, CloudflareApiError> {
+        let raw = self.get_project_raw(project).await?;
+        Ok(merge_env_vars(raw.get("deployment_configs"))
+            .into_iter()
+            .map(|mut variable| {
+                variable.value = None;
+                variable
+            })
+            .collect())
+    }
+
+    /// One variable's value.
+    ///
+    /// Cloudflare returns `plain_text` values in the project payload but never
+    /// a `secret_text` one — that value is write-only. So this answers for the
+    /// former and says so plainly for the latter, rather than returning an
+    /// empty string the UI would render as "this secret is blank".
+    pub async fn env_value(&self, project: &str, key: &str) -> Result<String, CloudflareApiError> {
+        let raw = self.get_project_raw(project).await?;
+        let variable = merge_env_vars(raw.get("deployment_configs"))
+            .into_iter()
+            .find(|variable| variable.key == key)
+            .ok_or_else(|| local(format!("No variable named \"{key}\" on this project.")))?;
+        if variable.kind == SECRET_TEXT {
+            return Err(local(
+                "Cloudflare never returns a secret's value. Set a new one to change it.".into(),
+            ));
+        }
+        Ok(variable.value.unwrap_or_default())
+    }
+
+    /// The project's **custom** domains, exactly as Cloudflare sent them.
+    ///
+    /// Custom only: the `*.pages.dev` host Cloudflare assigns is on the project
+    /// record instead, and the provider layer puts the two together.
+    pub async fn list_domains_raw(&self, project: &str) -> Result<Vec<Value>, CloudflareApiError> {
+        let account = self.require_account()?.to_string();
+        let path = format!(
+            "/accounts/{account}/pages/projects/{}/domains",
+            segment(project)
+        );
         Ok(results(&request(&self.token, &path).await?))
     }
 

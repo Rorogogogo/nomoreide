@@ -83,6 +83,34 @@ pub async fn request_text(
     path: &str,
     accept: Option<&str>,
 ) -> Result<String, VercelApiError> {
+    request_text_with(auth, method, path, accept, None).await
+}
+
+/// The same request, carrying a JSON body.
+///
+/// A separate entry point rather than a fifth argument on every read: only the
+/// write half sends a body, and every caller that does not should not have to
+/// say so. Both funnel into one sender, which is what keeps the write half
+/// inside the egress allowlist and pointed at the same base URL as the reads —
+/// the writes used to build their own client against a hard-coded
+/// `api.vercel.com`, which put them outside both.
+pub async fn request_json(
+    auth: &RequestAuth,
+    method: &str,
+    path: &str,
+    body: Option<&Value>,
+) -> Result<Value, VercelApiError> {
+    let text = request_text_with(auth, method, path, None, body).await?;
+    serde_json::from_str(&text).or(Ok(Value::Null))
+}
+
+async fn request_text_with(
+    auth: &RequestAuth,
+    method: &str,
+    path: &str,
+    accept: Option<&str>,
+    body: Option<&Value>,
+) -> Result<String, VercelApiError> {
     let mut url = if path.starts_with("http") {
         path.to_string()
     } else {
@@ -109,15 +137,20 @@ pub async fn request_text(
     };
     let token = auth.token.clone();
     let accept_header = accept.unwrap_or("application/json").to_string();
+    let payload = body.cloned();
     let response = egress()
         .send(
             &client,
             &url,
             |client, verb, target| {
-                client
+                let request = client
                     .request(verb, target)
                     .header("Authorization", format!("Bearer {token}"))
-                    .header("Accept", accept_header.clone())
+                    .header("Accept", accept_header.clone());
+                match payload.as_ref() {
+                    Some(payload) => request.json(payload),
+                    None => request,
+                }
             },
             verb,
         )
@@ -434,6 +467,43 @@ impl VercelManager {
             key(a).cmp(&key(b))
         });
         Ok(normalized)
+    }
+
+    /// The project's variables exactly as Vercel sent them.
+    ///
+    /// The provider layer reads these rather than {@link Self::list_env}
+    /// because the desktop shape reports every absent field as `null`, and the
+    /// dashboard contract distinguishes a field the vendor omitted from one it
+    /// sent as null. Same reasoning as `list_projects_raw`.
+    pub async fn list_env_raw(&self, project_id: &str) -> Result<Vec<Value>, VercelApiError> {
+        let path = format!(
+            "/v9/projects/{}/env?limit=200",
+            urlencoding::encode(project_id)
+        );
+        let data = request(&self.auth, "GET", &path, None).await?;
+        Ok(match &data {
+            Value::Array(items) => items.clone(),
+            _ => data
+                .get("envs")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default(),
+        })
+    }
+
+    /// The project's domains exactly as Vercel sent them — see
+    /// {@link Self::list_env_raw} for why the provider layer wants the raw ones.
+    pub async fn list_domains_raw(&self, project_id: &str) -> Result<Vec<Value>, VercelApiError> {
+        let path = format!(
+            "/v9/projects/{}/domains?limit=100",
+            urlencoding::encode(project_id)
+        );
+        let data = request(&self.auth, "GET", &path, None).await?;
+        Ok(data
+            .get("domains")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default())
     }
 
     /// One variable's decrypted value. Deliberately a single-key read: the

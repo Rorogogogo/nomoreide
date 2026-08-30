@@ -8,11 +8,11 @@
 //! production-affecting actions (`promote`, `rollback`) before invoking them.
 //!
 //! Still intentionally excludes the irreversible ones — deleting deployments or
-//! projects, and rotating env values — which would need their own guarded surface.
+//! projects — which would need their own guarded surface.
 
 use serde_json::Value;
 
-use super::vercel_manager::{request, RequestAuth, VercelApiError};
+use super::vercel_manager::{request, request_json, RequestAuth, VercelApiError};
 
 pub struct VercelActions {
     auth: RequestAuth,
@@ -39,7 +39,13 @@ impl VercelActions {
         if let Some(target) = target {
             body["target"] = Value::String(target.to_string());
         }
-        let created = post_json(&self.auth, "/v13/deployments?forceNew=1", body).await?;
+        let created = request_json(
+            &self.auth,
+            "POST",
+            "/v13/deployments?forceNew=1",
+            Some(&body),
+        )
+        .await?;
         Ok(serde_json::json!({
             "uid": created
                 .get("uid")
@@ -102,48 +108,77 @@ impl VercelActions {
         request(&self.auth, "POST", &path, None).await?;
         Ok(())
     }
-}
 
-/// `request` has no JSON body support (nothing on the read side needs one), so
-/// the single action that posts a body does it here rather than widening the
-/// shared helper for one caller.
-async fn post_json(auth: &RequestAuth, path: &str, body: Value) -> Result<Value, VercelApiError> {
-    let mut url = format!("https://api.vercel.com{path}");
-    if let Some(team_id) = auth.team_id.as_ref() {
-        let separator = if url.contains('?') { '&' } else { '?' };
-        url.push(separator);
-        url.push_str(&format!("teamId={}", urlencoding::encode(team_id)));
-    }
-
-    let response = reqwest::Client::new()
-        .post(&url)
-        .header("Authorization", format!("Bearer {}", auth.token))
-        .header("Accept", "application/json")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|error| VercelApiError {
-            message: format!("Vercel request failed: {error}"),
-            status: 0,
-        })?;
-
-    let status = response.status();
-    let text = response.text().await.unwrap_or_default();
-    if !status.is_success() {
-        let message = serde_json::from_str::<Value>(&text)
-            .ok()
-            .and_then(|value| {
-                value
-                    .get("error")
-                    .and_then(|error| error.get("message"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-            })
-            .unwrap_or_else(|| format!("Vercel returned {} for {path}", status.as_u16()));
-        return Err(VercelApiError {
-            message,
-            status: status.as_u16(),
+    /// Add a variable.
+    ///
+    /// `encrypted` (Vercel's "Sensitive") is the default, and its value never
+    /// reads back over the API afterwards — `plain` is for values a build
+    /// script needs to see, not for secrets.
+    pub async fn create_env(
+        &self,
+        project_id: &str,
+        key: &str,
+        value: &str,
+        environments: &[String],
+        kind: &str,
+    ) -> Result<Value, VercelApiError> {
+        let path = format!("/v10/projects/{}/env", urlencoding::encode(project_id));
+        let body = serde_json::json!({
+            "key": key,
+            "value": value,
+            "target": environments,
+            "type": kind,
         });
+        let created = request_json(&self.auth, "POST", &path, Some(&body)).await?;
+        // This endpoint answers either the record itself or a `{ created: [] }`
+        // batch, depending on how Vercel felt about the request.
+        // The record is returned as Vercel sent it; the provider layer is
+        // where a vendor record becomes a neutral one, and doing it here would
+        // be a second place that mapping lives.
+        Ok(created
+            .get("created")
+            .and_then(Value::as_array)
+            .and_then(|batch| batch.first())
+            .cloned()
+            .unwrap_or(created))
     }
-    serde_json::from_str(&text).or(Ok(Value::Null))
+
+    /// Change a variable's value and/or the environments it applies to.
+    ///
+    /// The key itself is not editable: Vercel does not support renaming in
+    /// place, so a rename is a delete-and-recreate the UI does not offer as one
+    /// step.
+    pub async fn update_env(
+        &self,
+        project_id: &str,
+        env_id: &str,
+        value: Option<&str>,
+        environments: Option<&[String]>,
+    ) -> Result<Value, VercelApiError> {
+        let path = format!(
+            "/v9/projects/{}/env/{}",
+            urlencoding::encode(project_id),
+            urlencoding::encode(env_id)
+        );
+        // Only the fields the caller named: an absent `value` means "leave it",
+        // which is not the same as setting it to the empty string.
+        let mut body = serde_json::Map::new();
+        if let Some(value) = value {
+            body.insert("value".into(), Value::String(value.to_string()));
+        }
+        if let Some(environments) = environments {
+            body.insert("target".into(), serde_json::json!(environments));
+        }
+        request_json(&self.auth, "PATCH", &path, Some(&Value::Object(body))).await
+    }
+
+    pub async fn delete_env(&self, project_id: &str, env_id: &str) -> Result<(), VercelApiError> {
+        let path = format!(
+            "/v9/projects/{}/env/{}",
+            urlencoding::encode(project_id),
+            urlencoding::encode(env_id)
+        );
+        request(&self.auth, "DELETE", &path, None).await?;
+        Ok(())
+    }
 }
