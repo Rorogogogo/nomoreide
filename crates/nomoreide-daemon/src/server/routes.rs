@@ -16,7 +16,7 @@ mod dashboard;
 mod database;
 mod database_catalog;
 mod database_write;
-mod deploy_providers;
+pub(crate) mod deploy_providers;
 mod docker;
 mod errors;
 mod extensions;

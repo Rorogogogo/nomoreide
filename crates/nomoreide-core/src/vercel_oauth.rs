@@ -1,11 +1,18 @@
 //! Browser sign-in for Vercel: OAuth 2.0 authorization code + PKCE against a
 //! loopback redirect (RFC 8252, "OAuth 2.0 for Native Apps").
 //!
-//! The Rust counterpart of `src/core/vercel-oauth.ts`, with one structural
-//! difference. The Node build redirects to a path on the daemon's own HTTP
-//! server; the desktop app has no server, so this module binds a `TcpListener`
-//! on an ephemeral loopback port, serves exactly one request, and shuts down.
-//! That is also why the redirect URI is minted per sign-in rather than fixed.
+//! The Rust counterpart of `src/core/vercel-oauth.ts`: Vercel's four constants
+//! and the bindings that pin `providers/oauth.rs` to them. Everything the
+//! protocol needs — discovery, dynamic client registration, PKCE, the code
+//! exchange, rotating refresh — is in that shared module and is not
+//! Vercel-specific.
+//!
+//! What *is* here is a second way to receive the callback. The daemon redirects
+//! to a path on its own HTTP server (`deploy_providers/oauth.rs`); the desktop
+//! app has no server, so this module binds a `TcpListener` on an ephemeral
+//! loopback port, serves exactly one request, and shuts down. That is also why
+//! its redirect URI is minted per sign-in rather than fixed, and why the two
+//! flows share the protocol but not the transport.
 //!
 //! Two behaviours of Vercel's authorization server this is built around:
 //!
@@ -18,37 +25,45 @@
 //! restricts `urn:ietf:params:oauth:grant-type:device_code` to first-party
 //! clients, and a client we register is refused with `unauthorized_client`.
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
-use serde::Serialize;
-use serde_json::Value;
-use sha2::{Digest, Sha256};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
 
+use crate::providers::api_base::provider_api_base;
+use crate::providers::oauth::{authorize_url, random_base64url, ProviderOAuthSpec};
+
+pub use crate::providers::oauth::{now_ms, OAuthMetadata, OAuthTokens, TOKEN_REFRESH_SKEW_MS};
+
+/// Where Vercel's authorization server lives.
+///
+/// Overridable the same loopback-only way the API base is
+/// ([`provider_api_base`]), so a sign-in can be driven end to end against a
+/// stub — the token exchange and the connection it writes are otherwise the one
+/// part of this flow no test can reach without a real Vercel account.
 const VERCEL_ISSUER: &str = "https://vercel.com";
+const ISSUER_VARIABLE: &str = "NOMOREIDE_VERCEL_OAUTH_ISSUER";
 const OAUTH_SCOPE: &str = "offline_access";
-/// Refresh a little early so a call never starts with an about-to-expire token.
-pub const TOKEN_REFRESH_SKEW_MS: i64 = 60_000;
 /// How long to wait for the user to finish consenting in their browser.
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(600);
 
-#[derive(Debug, Clone)]
-pub struct OAuthMetadata {
-    pub authorization_endpoint: String,
-    pub token_endpoint: String,
-    pub registration_endpoint: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OAuthTokens {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    /// Epoch ms at which `access_token` stops being accepted.
-    pub expires_at: i64,
+/// Vercel's half of the shared browser sign-in — four constants, and nothing
+/// else.
+///
+/// Why not the device flow used for GitHub: Vercel restricts
+/// `urn:ietf:params:oauth:grant-type:device_code` to first-party clients, and a
+/// client we register is refused with `unauthorized_client`.
+///
+/// `offline_access` is **required** here specifically — without it Vercel's
+/// grant comes back with no refresh token and dies after an hour.
+pub fn vercel_oauth() -> ProviderOAuthSpec {
+    ProviderOAuthSpec {
+        name: "Vercel".into(),
+        issuer: provider_api_base(ISSUER_VARIABLE, VERCEL_ISSUER),
+        scope: OAUTH_SCOPE.into(),
+        callback_path: "/api/providers/vercel/oauth/callback".into(),
+        client_name: None,
+    }
 }
 
 /// A sign-in that has been started: the browser URL to open, plus everything
@@ -60,78 +75,6 @@ pub struct PendingLogin {
     verifier: String,
     state: String,
     listener: TcpListener,
-}
-
-pub fn now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
-}
-
-/// The issuer's advertised endpoints. Discovered rather than hard-coded so a
-/// move of the token or registration endpoint doesn't silently break sign-in.
-pub async fn discover() -> Result<OAuthMetadata, String> {
-    let response = reqwest::Client::new()
-        .get(format!("{VERCEL_ISSUER}/.well-known/openid-configuration"))
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(|error| format!("Vercel OAuth discovery failed: {error}"))?;
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!("Vercel OAuth discovery failed (HTTP {status})."));
-    }
-    let body: Value = response
-        .json()
-        .await
-        .map_err(|error| format!("Vercel OAuth discovery returned no JSON: {error}"))?;
-
-    let authorization_endpoint = string_field(&body, "authorization_endpoint");
-    let token_endpoint = string_field(&body, "token_endpoint");
-    match (authorization_endpoint, token_endpoint) {
-        (Some(authorization_endpoint), Some(token_endpoint)) => Ok(OAuthMetadata {
-            authorization_endpoint,
-            token_endpoint,
-            registration_endpoint: string_field(&body, "registration_endpoint"),
-        }),
-        _ => Err("Vercel OAuth discovery is missing its authorization or token endpoint.".into()),
-    }
-}
-
-/// Registers a client for `redirect_uri` (RFC 7591).
-///
-/// Called immediately before every sign-in rather than once at install time:
-/// the endpoint hands back a shared client whose redirect list is replaced by
-/// whatever was registered last, so re-registering is what guarantees our own
-/// redirect — including this run's ephemeral port — is the one in force.
-async fn register_client(metadata: &OAuthMetadata, redirect_uri: &str) -> Result<String, String> {
-    let endpoint = metadata
-        .registration_endpoint
-        .as_deref()
-        .ok_or("Vercel does not advertise a client registration endpoint.")?;
-    let response = reqwest::Client::new()
-        .post(endpoint)
-        .header("Accept", "application/json")
-        .json(&serde_json::json!({
-            "client_name": "NoMoreIDE",
-            "redirect_uris": [redirect_uri],
-            "grant_types": ["authorization_code", "refresh_token"],
-            "response_types": ["code"],
-            "token_endpoint_auth_method": "none",
-            "application_type": "native",
-        }))
-        .send()
-        .await
-        .map_err(|error| format!("Vercel client registration failed: {error}"))?;
-
-    let status = response.status();
-    let body: Value = response.json().await.unwrap_or(Value::Null);
-    if !status.is_success() {
-        return Err(oauth_error(&body)
-            .unwrap_or_else(|| format!("Client registration failed (HTTP {status}).")));
-    }
-    string_field(&body, "client_id").ok_or_else(|| "Vercel returned no client_id.".into())
 }
 
 /// Binds the loopback listener, registers a client for it, and builds the URL
@@ -148,22 +91,21 @@ pub async fn begin() -> Result<PendingLogin, String> {
         .port();
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
 
-    let metadata = discover().await?;
-    let client_id = register_client(&metadata, &redirect_uri).await?;
+    let spec = vercel_oauth();
+    let metadata = crate::providers::oauth::discover(&spec).await?;
+    let client_id =
+        crate::providers::oauth::register_client(&spec, &metadata, &redirect_uri).await?;
 
     let verifier = random_base64url(32);
     let state = random_base64url(16);
-    let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
-
-    let authorize_url = format!(
-        "{}?client_id={}&redirect_uri={}&response_type=code&code_challenge={}&code_challenge_method=S256&state={}&scope={}",
-        metadata.authorization_endpoint,
-        urlencoding::encode(&client_id),
-        urlencoding::encode(&redirect_uri),
-        urlencoding::encode(&challenge),
-        urlencoding::encode(&state),
-        urlencoding::encode(OAUTH_SCOPE),
-    );
+    let authorize_url = authorize_url(
+        &metadata.authorization_endpoint,
+        &client_id,
+        &redirect_uri,
+        &verifier,
+        &state,
+        &spec.scope,
+    )?;
 
     Ok(PendingLogin {
         authorize_url,
@@ -269,55 +211,25 @@ async fn exchange_code(
     verifier: &str,
     code: &str,
 ) -> Result<OAuthTokens, String> {
-    token_request(vec![
-        ("grant_type", "authorization_code".to_string()),
-        ("code", code.to_string()),
-        ("redirect_uri", redirect_uri.to_string()),
-        ("client_id", client_id.to_string()),
-        ("code_verifier", verifier.to_string()),
-    ])
+    crate::providers::oauth::complete_login(
+        &vercel_oauth(),
+        &crate::providers::oauth::PendingLogin {
+            state: String::new(),
+            verifier: verifier.to_string(),
+            client_id: client_id.to_string(),
+            redirect_uri: redirect_uri.to_string(),
+            authorize_url: String::new(),
+            created_at: now_ms(),
+        },
+        code,
+    )
     .await
 }
 
 /// Trades a refresh token for a fresh access token. The returned
 /// `refresh_token` replaces the one passed in — Vercel rotates on every use.
 pub async fn refresh_tokens(client_id: &str, refresh_token: &str) -> Result<OAuthTokens, String> {
-    token_request(vec![
-        ("grant_type", "refresh_token".to_string()),
-        ("refresh_token", refresh_token.to_string()),
-        ("client_id", client_id.to_string()),
-    ])
-    .await
-}
-
-async fn token_request(form: Vec<(&str, String)>) -> Result<OAuthTokens, String> {
-    let metadata = discover().await?;
-    let response = reqwest::Client::new()
-        .post(&metadata.token_endpoint)
-        .header("Accept", "application/json")
-        .form(&form)
-        .send()
-        .await
-        .map_err(|error| format!("Vercel token request failed: {error}"))?;
-
-    let status = response.status();
-    let body: Value = response.json().await.unwrap_or(Value::Null);
-    if !status.is_success() {
-        return Err(oauth_error(&body)
-            .unwrap_or_else(|| format!("Vercel token request failed (HTTP {status}).")));
-    }
-
-    let access_token =
-        string_field(&body, "access_token").ok_or("Vercel returned no access token.")?;
-    let expires_in = body
-        .get("expires_in")
-        .and_then(Value::as_i64)
-        .unwrap_or(3600);
-    Ok(OAuthTokens {
-        access_token,
-        refresh_token: string_field(&body, "refresh_token"),
-        expires_at: now_ms() + expires_in * 1000,
-    })
+    crate::providers::oauth::refresh_tokens(&vercel_oauth(), client_id, refresh_token).await
 }
 
 // ---------------------------------------------------------------------------
@@ -386,71 +298,15 @@ fn escape_html(value: &str) -> String {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// A URL-safe random string. `uuid` is already a dependency and is a CSPRNG
-/// source here only in the sense that v4 uses `getrandom`; two of them give the
-/// 256 bits PKCE wants without adding a `rand` dependency.
-fn random_base64url(bytes: usize) -> String {
-    let mut raw = Vec::with_capacity(bytes + 16);
-    while raw.len() < bytes {
-        raw.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
-    }
-    raw.truncate(bytes);
-    URL_SAFE_NO_PAD.encode(raw)
-}
-
-fn string_field(body: &Value, field: &str) -> Option<String> {
-    body.get(field)
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}
-
-fn oauth_error(body: &Value) -> Option<String> {
-    let description = string_field(body, "error_description");
-    let error = string_field(body, "error");
-    match (description, error) {
-        (Some(description), Some(error)) => Some(format!("{description} ({error})")),
-        (Some(description), None) => Some(description),
-        (None, error) => error,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn pkce_challenge_is_the_base64url_sha256_of_the_verifier() {
-        // RFC 7636 appendix B's published vector.
-        let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
-        let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
-        assert_eq!(challenge, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
-    }
-
-    #[test]
-    fn random_values_are_url_safe_and_distinct() {
-        let a = random_base64url(32);
-        let b = random_base64url(32);
-        assert_ne!(a, b);
-        assert!(!a.contains('+') && !a.contains('/') && !a.contains('='));
-    }
 
     #[test]
     fn query_parsing_decodes_percent_escapes() {
         let params = parse_query("code=abc%2F123&state=xy+z");
         assert_eq!(params[0], ("code".into(), "abc/123".into()));
         assert_eq!(params[1], ("state".into(), "xy z".into()));
-    }
-
-    #[test]
-    fn oauth_errors_prefer_the_description() {
-        let body = serde_json::json!({ "error": "invalid_grant", "error_description": "Expired" });
-        assert_eq!(oauth_error(&body).unwrap(), "Expired (invalid_grant)");
-        assert_eq!(
-            oauth_error(&serde_json::json!({ "error": "bad" })).unwrap(),
-            "bad"
-        );
     }
 
     #[test]

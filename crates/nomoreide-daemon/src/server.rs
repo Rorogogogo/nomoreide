@@ -10,6 +10,7 @@ mod sse;
 mod static_assets;
 
 use crate::runtime::DaemonRuntime;
+use crate::server::routes::deploy_providers::oauth::ProviderLogins;
 use crate::DaemonOwnership;
 use anyhow::{Context, Result};
 use app::AppState;
@@ -170,6 +171,7 @@ pub async fn serve_with_shutdown_requests(
         usage_history,
         approvals: ApprovalBroker::new(),
         registry_auth: AuthStates::new(),
+        provider_logins: ProviderLogins::new(),
     });
 
     let (http_shutdown_tx, http_shutdown_rx) = oneshot::channel();

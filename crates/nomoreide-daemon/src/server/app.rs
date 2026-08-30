@@ -3,6 +3,7 @@
 
 use crate::runtime::DaemonRuntime;
 use crate::server::errors::error;
+use crate::server::routes::deploy_providers::oauth::ProviderLogins;
 use axum::extract::{Request, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::middleware::Next;
@@ -87,6 +88,14 @@ pub(crate) struct AppState {
     /// browser tab, `outcome` collects it — and only something outliving all
     /// three can tie them together.
     pub(crate) registry_auth: AuthStates,
+    /// Deploy-provider browser sign-ins waiting on a callback.
+    ///
+    /// Here rather than in the route module for the same reason
+    /// `registry_auth` is: a sign-in spans three unrelated requests — the
+    /// dashboard's `start`, the browser's `callback`, and however many
+    /// `status` polls — and only something outliving all three can tie them
+    /// together.
+    pub(crate) provider_logins: ProviderLogins,
 }
 
 /// One runtime event: what happened, and the thing it happened to.

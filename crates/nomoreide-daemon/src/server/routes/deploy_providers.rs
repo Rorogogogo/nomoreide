@@ -92,8 +92,11 @@ const DEFAULT_RUNTIME_LOG_LINES: u32 = 200;
 /// different number would be a divergence nobody reading the route would see.
 const DEFAULT_DEPLOYMENTS: u32 = 20;
 
+pub(crate) mod oauth;
+
 pub(crate) fn routes() -> Router<AppState> {
     Router::new()
+        .merge(oauth::routes())
         // The reference's pattern routes do not guard the verb for these
         // reads. Keeping that observable behavior matters until the reference
         // and native route can tighten it together.
@@ -293,7 +296,13 @@ async fn connect(
 
     if method == Method::DELETE {
         return match state.config_store.remove_connection(&provider).await {
-            Ok(_) => ok(),
+            Ok(_) => {
+                // Not housekeeping: without this a disconnect after a failed
+                // browser sign-in leaves `oauth/status` reporting that error
+                // for an account that is no longer connected.
+                state.provider_logins.forget(&provider);
+                ok()
+            }
             Err(failure) => error(StatusCode::BAD_REQUEST, &failure.to_string()),
         };
     }

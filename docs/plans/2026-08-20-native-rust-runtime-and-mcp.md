@@ -1280,13 +1280,49 @@ the only thing that has been checking any of this.
   carried only what the MCP tool reads, which joins `line.text` and nothing
   else, and that is not what the dashboard renders.
 
-  What is left, for both providers: `oauth/start`, `oauth/callback` and
-  `oauth/status`. That trio is the hard part — it holds a login session in
-  memory across two unrelated requests and serves an HTML result page to a
-  browser tab rather than JSON — and being the only stateful thing here, it
-  belongs in a `deploy_providers/` submodule of its own when it lands, the way
-  `github/api.rs` sits under `github.rs`. It is why this was left for last
-  rather than an oversight.
+  **The browser sign-in closed the surface.** `oauth/start`, `oauth/callback`
+  and `oauth/status` now serve natively, with the protocol in a
+  provider-neutral `providers/oauth.rs` and only Vercel's four constants left
+  in `vercel_oauth.rs`. It is the one stateful thing here — a sign-in spans
+  three unrelated requests — so `ProviderLogins` lives on `AppState` beside
+  `registry_auth`, and the routes are a `deploy_providers/` submodule the way
+  `github/api.rs` sits under `github.rs`.
+
+  Its gate needed something none of the others did: an **OAuth authorization
+  server**, not just an API. Both runtimes now read
+  `NOMOREIDE_VERCEL_OAUTH_ISSUER`, the same loopback-only override the API base
+  uses, which is what makes the token exchange and the connection it writes
+  reachable without a real Vercel account.
+  `check-provider-oauth-parity.ts` walks 34 cases as *sequences* rather than
+  requests, comparing answers, recorded vendor requests and persisted config at
+  each step — a runtime that answered every request correctly while losing the
+  thread between them would pass every other gate.
+
+  Two values genuinely cannot match between two runtimes, and are compared as
+  claims instead of as data: the PKCE challenge, and the token expiry. The
+  first is worth spelling out, because the obvious check does not work — a
+  random 32-byte verifier is *also* 43 base64url characters, so shape alone
+  cannot tell an S256 digest from a plaintext challenge. The gate therefore
+  recomputes the digest from the verifier it sees on the wire at redemption and
+  **throws** rather than comparing: two runtimes using the plain method
+  together would otherwise agree with each other and be wrong.
+
+  Two things the port turned up:
+
+  - **A `DELETE` to `connect` resets the sign-in phase**, which the Rust
+    `connect` did not do. Without it, disconnecting after a failed sign-in
+    leaves the panel reporting that error for an account that is no longer
+    connected.
+  - **Every IPv6 host is refused by the loopback check, `::1` included.**
+    Splitting on the first colon empties a hostname whose own separators are
+    colons, so the `::1` arm can never be reached. Reproduced rather than
+    fixed, with a test naming it: a daemon reached on `[::1]` has this sign-in
+    fail on both runtimes, and correcting one side alone would be a divergence
+    that reads as a bug fix.
+
+  With this the deploy provider surface is fully native. What is left for the
+  phase as a whole is `/api/hosts/*` above, and the compatibility suite's home
+  below.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8
   deletes it, all 66 stop being runnable. The fixtures are the durable half and

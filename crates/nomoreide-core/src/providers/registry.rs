@@ -26,10 +26,12 @@ use crate::providers::deploy::{
     present, truthy, CreatedDeployment, DeployActionInput, Deployment, DeploymentDetail,
     ProviderDomain, ProviderEnvVar, ProviderLogLine, ProviderProject,
 };
+use crate::providers::oauth::ProviderOAuthSpec;
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_actions::VercelActions;
 use crate::vercel_context::{require_actions as require_vercel_actions, require_client};
 use crate::vercel_manager::VercelApiError;
+use crate::vercel_oauth::vercel_oauth;
 use crate::vercel_provider::{
     env_from_raw, vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
 };
@@ -728,6 +730,19 @@ pub fn public_provider_connection(config: &Config, provider_id: &str) -> Option<
 }
 
 /// Every deploy provider's manifest, in registry order.
+/// The browser sign-in a provider offers, if it offers one.
+///
+/// Cloudflare deliberately returns `None`: Pages is reached with an API token
+/// or a `wrangler login`, both of which the credential layer already reads, and
+/// declaring an OAuth spec it has no authorization server for would put a
+/// "Sign in with browser" button on a panel that could only fail.
+pub fn provider_oauth(provider_id: &str) -> Option<ProviderOAuthSpec> {
+    match provider_id {
+        VERCEL_PROVIDER_ID => Some(vercel_oauth()),
+        _ => None,
+    }
+}
+
 pub fn deploy_provider_manifests() -> Vec<Value> {
     vec![
         crate::vercel_provider::manifest(),
