@@ -90,64 +90,23 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
 
-      # The parity gates: run the TypeScript reference and the native binary
-      # side by side and compare what each reports through MCP. They need the
-      # binary on disk, which `cargo test` only builds incidentally, and the
-      # reference runs from source via tsx (`npm ci` above), against the client
+      # The parity gates: each one runs the TypeScript reference and the native
+      # binary side by side and diffs what the two answer. They need the binary
+      # on disk, which `cargo test` only builds incidentally, and the reference
+      # runs from source via tsx (`npm ci` above), against the client
       # `npm run build` already produced.
       - run: cargo build --workspace
-      - name: MCP runtime parity
-        run: npm run mcp:runtime-parity -- ./target/debug/nomoreide
-      - name: MCP git parity
-        run: npm run mcp:git-parity -- ./target/debug/nomoreide
-      - name: MCP GitHub parity
-        run: npm run mcp:github-parity -- ./target/debug/nomoreide
-      - name: MCP snapshot and onboarding parity
-        run: npm run mcp:onboard-parity -- ./target/debug/nomoreide
-      # SQLite only, and deliberately: the fixture seeds a file, so this needs
-      # no server. Node 22 is what runs here, which is what `node:sqlite` needs.
-      - name: MCP database parity
-        run: npm run mcp:database-parity -- ./target/debug/nomoreide
-      # Each runtime gets its own loopback stand-in for the vendor API, so this
-      # reaches no network — and the gate compares the requests as well as the
-      # answers, which is the only way a wrongly built query is visible.
-      - name: MCP deploy-provider parity
-        run: npm run mcp:deploy-parity -- ./target/debug/nomoreide
-      # The docs half needs no daemon; the UI half starts one per runtime and
-      # takes it back down, so it runs after everything that needs one.
-      - name: MCP docs and UI parity
-        run: npm run mcp:docs-ui-parity -- ./target/debug/nomoreide
-      # Services emit fixed line sequences one service at a time: incident ids
-      # and ordering are assigned by arrival, so the two runtimes are only
-      # comparable if the lines arrive in the same order.
-      - name: MCP error-inbox parity
-        run: npm run mcp:errors-parity -- ./target/debug/nomoreide
-      # Reads the machine rather than the daemon: which agent CLIs are on PATH
-      # and what each one's config file says. Both runtimes are given the same
-      # planted home and the same PATH, so a `claude` installed on the runner
-      # cannot change the answer.
-      - name: MCP agent-environment parity
-        run: npm run mcp:agent-env-parity -- ./target/debug/nomoreide
-      # Saved profiles are a directory tree under the user's config, so this
-      # compares what was written as well as what was said.
-      - name: MCP agent-profile parity
-        run: npm run mcp:profiles-parity -- ./target/debug/nomoreide
-      # The three tools that reach the hosted registry. Each runtime gets its
-      # own loopback stand-in, so this reaches no network — and the gate
-      # compares the requests as well as the answers, which is the only way a
-      # publish that skipped a step is visible.
-      - name: MCP profile-registry parity
-        run: npm run mcp:registry-parity -- ./target/debug/nomoreide
-      # Not an MCP surface: the dashboard and the desktop app reach these, so
-      # the gate drives the crate's own probe example rather than a tool.
-      - name: GitActions parity
+      # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
+      # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
+      # so they drive their crate's own probe example instead of a tool.
+      - name: Build the parity probe examples
         run: |
           cargo build --example git-actions-probe -p nomoreide-actions
-          npm run git-actions-parity
-      # Also not an MCP surface, and not yet an HTTP one either: the daemon's
-      # `/api/hosts/*` routes are Phase 8, so this drives the crate's own probe
-      # example the way the GitActions gate does.
-      - name: Host-provider parity
-        run: |
           cargo build --example vultr-probe -p nomoreide-actions
-          npm run host-parity
+      # One step for every gate, discovered from `scripts/check-*-parity.ts`
+      # rather than listed here. This job used to name each gate in its own
+      # step, which meant it silently ran 13 of the 65 that existed: a gate is
+      # only evidence if it runs, and one nobody remembered to add ran nowhere.
+      # A new gate is now covered the moment its file is committed.
+      - name: Parity gates
+        run: npm run parity -- ./target/debug/nomoreide

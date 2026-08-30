@@ -25,6 +25,8 @@ npm run lint
 
 Both are currently clean, so any error you see there is yours.
 
+**The parity gates are discovered, not listed.** `ci.yml`'s `desktop-check` job also runs the Rust trio (`cargo fmt`/`clippy`/`test`) and then every parity gate through one step, `npm run parity -- ./target/debug/nomoreide`. Each gate launches the TypeScript reference beside the native binary and diffs what the two answer, and `scripts/run-parity-gates.ts` finds them by globbing `scripts/check-*-parity.ts`. **So adding a gate means adding that file — there is no CI list to update**, and the runner fails the build if `package.json` names a gate the glob would miss. Run one during development with `npm run parity -- ./target/debug/nomoreide --only <fragment>`. Gates run one at a time on purpose: each starts two daemons, and several at once produce timeouts that are contention rather than divergence.
+
 **Merging does not release.** `deploy.yml` is `workflow_dispatch`-only — merges accumulate on `main` (tested there by `ci.yml`) until someone cuts a release with `gh workflow run deploy.yml -f bump=patch`. That job bumps the version, tags `v<version>`, and publishes to npm; the tag push is in turn what triggers `desktop-release.yml` to build the dmg and create the GitHub Release, whose notes come from the body of the PR behind the tag's parent commit (`## Release note` preferred — see `.github/pull_request_template.md`).
 
 ## Architecture
