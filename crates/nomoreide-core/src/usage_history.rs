@@ -423,7 +423,10 @@ fn entry_key(entry: &Value) -> String {
         Some(other) => js_string(other),
     };
     if entry.get("source").and_then(Value::as_str) == Some("codex") {
-        return format!("codex:{session}:{}", js_string(entry.get("totalTokens").unwrap_or(&Value::Null)));
+        return format!(
+            "codex:{session}:{}",
+            js_string(entry.get("totalTokens").unwrap_or(&Value::Null))
+        );
     }
     format!(
         "claude:{session}:{}:{}:{}",

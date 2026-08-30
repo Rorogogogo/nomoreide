@@ -223,7 +223,9 @@ fn subtree(rows: &[SystemProcess], pid: i64) -> Vec<&SystemProcess> {
         }
         stack.extend(children.get(&current).cloned().unwrap_or_default());
     }
-    rows.iter().filter(|row| wanted.contains(&row.pid)).collect()
+    rows.iter()
+        .filter(|row| wanted.contains(&row.pid))
+        .collect()
 }
 
 fn push_capped(buffer: &mut Vec<Value>, sample: Value) {
@@ -267,7 +269,10 @@ mod tests {
 
         let activity = store.read_activity(&running);
         assert!(activity["host"]["current"].is_object());
-        assert_eq!(activity["host"]["samples"].as_array().map(Vec::len), Some(1));
+        assert_eq!(
+            activity["host"]["samples"].as_array().map(Vec::len),
+            Some(1)
+        );
         assert!(
             activity["systemProcesses"]
                 .as_array()
@@ -276,10 +281,7 @@ mod tests {
         );
         let series = store.read("self");
         assert_eq!(series["samples"].as_array().map(Vec::len), Some(1));
-        assert_eq!(
-            series["startedAt"],
-            Value::from("2026-01-01T00:00:00.000Z")
-        );
+        assert_eq!(series["startedAt"], Value::from("2026-01-01T00:00:00.000Z"));
     }
 
     #[tokio::test]
@@ -293,7 +295,10 @@ mod tests {
         }];
         store.sample_once(&first).await;
         store.sample_once(&first).await;
-        assert_eq!(store.read("self")["samples"].as_array().map(Vec::len), Some(2));
+        assert_eq!(
+            store.read("self")["samples"].as_array().map(Vec::len),
+            Some(2)
+        );
 
         let restarted = [RunningService {
             name: "self".into(),

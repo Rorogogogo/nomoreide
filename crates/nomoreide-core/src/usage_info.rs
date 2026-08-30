@@ -41,10 +41,8 @@ pub fn codex_home() -> PathBuf {
 pub async fn build_usage_info(cwd: &str) -> Value {
     let home = crate::home::home_directory();
     let codex_root = codex_home();
-    let (claude, codex) = tokio::join!(
-        read_claude_usage(&home, cwd),
-        read_codex_usage(&codex_root)
-    );
+    let (claude, codex) =
+        tokio::join!(read_claude_usage(&home, cwd), read_codex_usage(&codex_root));
     let mut result = Map::new();
     if let Some(claude) = claude {
         result.insert("claude".into(), claude);
@@ -128,7 +126,9 @@ async fn read_claude_state_usage(home: &Path) -> (Option<Value>, Option<Value>) 
 }
 
 async fn read_claude_usage(home: &Path, cwd: &str) -> Option<Value> {
-    let raw = tokio::fs::read_to_string(home.join(".claude.json")).await.ok()?;
+    let raw = tokio::fs::read_to_string(home.join(".claude.json"))
+        .await
+        .ok()?;
     let document: Value = serde_json::from_str(&raw).ok()?;
     let project = field(field(&document, "projects"), cwd).clone();
     let (five_hour, weekly) = read_claude_state_usage(home).await;
@@ -155,7 +155,10 @@ async fn read_claude_usage(home: &Path, cwd: &str) -> Option<Value> {
         ("linesRemoved", "lastLinesRemoved"),
         ("inputTokens", "lastTotalInputTokens"),
         ("outputTokens", "lastTotalOutputTokens"),
-        ("cacheCreationInputTokens", "lastTotalCacheCreationInputTokens"),
+        (
+            "cacheCreationInputTokens",
+            "lastTotalCacheCreationInputTokens",
+        ),
         ("cacheReadInputTokens", "lastTotalCacheReadInputTokens"),
         ("webSearchRequests", "lastTotalWebSearchRequests"),
     ] {
@@ -182,7 +185,10 @@ fn model_usage(project: &Value) -> Vec<Value> {
         return Vec::new();
     }
     let entries: Vec<(String, &Value)> = match raw {
-        Value::Object(map) => map.iter().map(|(key, value)| (key.clone(), value)).collect(),
+        Value::Object(map) => map
+            .iter()
+            .map(|(key, value)| (key.clone(), value))
+            .collect(),
         Value::Array(items) => items
             .iter()
             .enumerate()
@@ -252,13 +258,13 @@ async fn read_codex_usage(codex_home: &Path) -> Option<Value> {
             let Some(usage) = token_count_event(&event) else {
                 continue;
             };
-            let timestamp = field(&event, "timestamp").as_str().unwrap_or_default().to_string();
-            if best
-                .as_ref()
-                .map_or(true, |(previous, _)| {
-                    crate::locale::code_unit_cmp(&timestamp, previous) == std::cmp::Ordering::Greater
-                })
-            {
+            let timestamp = field(&event, "timestamp")
+                .as_str()
+                .unwrap_or_default()
+                .to_string();
+            if best.as_ref().map_or(true, |(previous, _)| {
+                crate::locale::code_unit_cmp(&timestamp, previous) == std::cmp::Ordering::Greater
+            }) {
                 best = Some((timestamp, usage));
             }
         }
@@ -363,10 +369,7 @@ fn read_window(value: &Value) -> Option<Value> {
         return None;
     }
     let mut window = Map::new();
-    window.insert(
-        "usedPercent".into(),
-        number(field(value, "used_percent")),
-    );
+    window.insert("usedPercent".into(), number(field(value, "used_percent")));
     window.insert("resetsAtUnix".into(), number(field(value, "resets_at")));
     let minutes = to_number(field(value, "window_minutes"));
     if minutes.is_finite() && minutes > 0.0 {

@@ -17,13 +17,13 @@ use crate::cloudflare_provider::{
     cloudflare_repo_url, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE, CLOUDFLARE_PROVIDER_ID,
 };
 use crate::config::{Config, ConfigStore};
-use serde_json::Value;
 use crate::providers::deploy::{BuildLogLine, Deployment, DeploymentDetail, ProviderProject};
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_context::require_client;
 use crate::vercel_provider::{
     vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
 };
+use serde_json::Value;
 
 /// Every provider a `provider` argument may name, in the order the tool
 /// descriptions list them.
@@ -275,7 +275,10 @@ fn extension_row(manifest: &Value, kind: &str, merges_into: Value) -> Value {
         _ => Value::Array(Vec::new()),
     };
     let mut row = serde_json::Map::new();
-    row.insert("id".into(), manifest.get("id").cloned().unwrap_or(Value::Null));
+    row.insert(
+        "id".into(),
+        manifest.get("id").cloned().unwrap_or(Value::Null),
+    );
     row.insert(
         "name".into(),
         manifest.get("name").cloned().unwrap_or(Value::Null),

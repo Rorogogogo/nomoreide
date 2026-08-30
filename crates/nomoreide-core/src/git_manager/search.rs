@@ -346,7 +346,9 @@ fn score_path(path: &str, query: &str) -> Option<(i32, Vec<usize>)> {
 
     // The file name starts after the last separator; a hit inside it counts for
     // more than a hit in a directory the user did not type.
-    let name_start = path.rfind('/').map_or(0, |index| path[..=index].chars().count());
+    let name_start = path
+        .rfind('/')
+        .map_or(0, |index| path[..=index].chars().count());
 
     if let Some(start) = contiguous_at(&lowered, &needle, name_start) {
         let positions: Vec<usize> = (start..start + needle.len()).collect();
@@ -392,7 +394,8 @@ fn contiguous_at(haystack: &[char], needle: &[char], from: usize) -> Option<usiz
     if needle.len() > haystack.len() {
         return None;
     }
-    (from..=haystack.len() - needle.len()).find(|&start| &haystack[start..start + needle.len()] == needle)
+    (from..=haystack.len() - needle.len())
+        .find(|&start| &haystack[start..start + needle.len()] == needle)
 }
 
 /// Does the character at `index` begin a path segment or a word?
@@ -612,7 +615,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            found.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(),
+            found
+                .files
+                .iter()
+                .map(|f| f.path.as_str())
+                .collect::<Vec<_>>(),
             vec!["a.txt", "z.txt"],
         );
         assert_eq!(found.files[1].matches.len(), 2);
@@ -629,7 +636,9 @@ mod tests {
             limit: 2,
             ..options()
         };
-        let found = GitManager::search_content(&cwd, "hit", &capped).await.unwrap();
+        let found = GitManager::search_content(&cwd, "hit", &capped)
+            .await
+            .unwrap();
         assert_eq!(found.total_matches, 2);
         assert!(found.truncated);
         tokio::fs::remove_dir_all(&cwd).await.ok();
@@ -646,7 +655,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            found.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(),
+            found
+                .files
+                .iter()
+                .map(|f| f.path.as_str())
+                .collect::<Vec<_>>(),
             vec!["src/a.ts"],
         );
         tokio::fs::remove_dir_all(&cwd).await.ok();

@@ -40,9 +40,10 @@ const PAYLOAD_TAIL: usize = 40;
 const TIMELINE_LIMIT: usize = 120;
 
 pub(crate) fn routes() -> Router<AppState> {
-    Router::new()
-        .route("/api/dashboard", get(dashboard))
-        .route("/api/overview/:domain", get(overview).fallback(method_not_allowed))
+    Router::new().route("/api/dashboard", get(dashboard)).route(
+        "/api/overview/:domain",
+        get(overview).fallback(method_not_allowed),
+    )
 }
 
 // --- the all-projects lens ---------------------------------------------------
@@ -217,7 +218,9 @@ fn build_port_overview(config: &Config, runtime: &[ServiceRuntimeStatus]) -> Val
             let Some(status) = runtime.iter().find(|status| &status.name == name) else {
                 return false;
             };
-            if serde_json::to_value(status.state).ok().and_then(|s| s.as_str().map(str::to_string))
+            if serde_json::to_value(status.state)
+                .ok()
+                .and_then(|s| s.as_str().map(str::to_string))
                 != Some("running".to_string())
             {
                 return false;
@@ -371,7 +374,9 @@ fn build_health(
                             .get("services")
                             .and_then(Value::as_array)
                             .is_some_and(|names| {
-                                names.iter().any(|name| name.as_str() == Some(&service.name))
+                                names
+                                    .iter()
+                                    .any(|name| name.as_str() == Some(&service.name))
                             })
                     })
                     .cloned()

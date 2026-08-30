@@ -134,7 +134,10 @@ pub fn classify_system_processes(
             entry.insert("user".into(), Value::String(row.user.clone()));
             entry.insert("pid".into(), Value::from(row.pid));
             entry.insert("ppid".into(), Value::from(row.ppid));
-            entry.insert("cpuPercent".into(), crate::js_number::value(row.cpu_percent));
+            entry.insert(
+                "cpuPercent".into(),
+                crate::js_number::value(row.cpu_percent),
+            );
             entry.insert("rssMb".into(), crate::js_number::value(row.rss_mb));
             entry.insert("command".into(), Value::String(row.command.clone()));
             entry.insert("canTerminate".into(), Value::Bool(protection.is_none()));
@@ -274,7 +277,8 @@ fn signal_term(pid: i64) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = "  501 roro              4242   1  0.0   8192 /usr/bin/some command --flag\n\
+    const SAMPLE: &str =
+        "  501 roro              4242   1  0.0   8192 /usr/bin/some command --flag\n\
                             0 root                 1   0  0.1   1024 /sbin/launchd\n\
                           501 roro              4243 4242  2.5  16384 child of the first\n\
                           not a row at all\n";
@@ -326,7 +330,9 @@ mod tests {
                 "row {index}"
             );
             assert_eq!(
-                classified[index].get("managedService").and_then(Value::as_str),
+                classified[index]
+                    .get("managedService")
+                    .and_then(Value::as_str),
                 Some("api")
             );
         }
