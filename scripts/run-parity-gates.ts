@@ -29,7 +29,7 @@
  */
 import { spawn } from "node:child_process";
 import { readdir, access, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const scriptsDirectory = join(repositoryRoot, "scripts");
@@ -50,10 +50,11 @@ interface Gate {
  * default covers 62 of the 65 and keeps a new gate working with no edit here.
  */
 const IRREGULAR: Record<string, (candidate: string) => Gate["args"]> = {
-  // Not an MCP or HTTP surface: these drive their crate's own probe example,
-  // and find it themselves when given no argument.
-  "check-git-actions-parity.ts": () => [],
-  "check-host-parity.ts": () => [],
+  // Not an MCP or HTTP surface: these drive their crate's own probe example.
+  // The path is passed rather than left to their default, which assumes the
+  // repository's own `target/` — untrue whenever `CARGO_TARGET_DIR` is set.
+  "check-git-actions-parity.ts": (candidate) => [probeBeside(candidate, "git-actions-probe")],
+  "check-host-parity.ts": (candidate) => [probeBeside(candidate, "vultr-probe")],
   // The tool-surface gate wants a mode flag and an explicit subcommand.
   "check-mcp-parity.ts": (candidate) => ["--surface-only", candidate, "mcp"],
 };
@@ -63,6 +64,18 @@ const EXAMPLES: Record<string, string> = {
   "check-git-actions-parity.ts": "git-actions-probe",
   "check-host-parity.ts": "vultr-probe",
 };
+
+/**
+ * Where cargo puts an example, given where it put the binary.
+ *
+ * Both live under the same profile directory, so deriving one from the other
+ * follows `CARGO_TARGET_DIR` for free — and this repository has good reason to
+ * set it, since a `target/` inside the checkout is subject to whatever the
+ * enclosing directory attracts.
+ */
+function probeBeside(candidate: string, example: string): string {
+  return join(dirname(candidate), "examples", example);
+}
 
 async function discover(candidate: string): Promise<Gate[]> {
   const entries = await readdir(scriptsDirectory);
@@ -189,7 +202,7 @@ function run(gate: Gate, timeoutMs: number): Promise<Result> {
 /** Reports rather than fails when a gate's probe binary was never built. */
 async function missingExample(gate: Gate): Promise<Result | null> {
   if (!gate.example) return null;
-  const path = join(repositoryRoot, "target/debug/examples", gate.example);
+  const path = gate.args[0] ?? "";
   try {
     await access(path);
     return null;
