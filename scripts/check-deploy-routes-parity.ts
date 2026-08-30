@@ -777,17 +777,15 @@ async function walk({
           )
         : observed;
     };
+    const observe = (runtime: Runtime, stub: ApiStub) =>
+      harness.recorded(runtime, step.name, async () => ({
+        answer: await send(runtime, step),
+        requests: requests(stub),
+        ...(step.config ? { config: await persistedConfig(runtime) } : {}),
+      }));
     const answers = {
-      reference: {
-        answer: await send(reference, step),
-        requests: requests(referenceStub),
-        ...(step.config ? { config: await persistedConfig(reference) } : {}),
-      },
-      candidate: {
-        answer: await send(candidate, step),
-        requests: requests(candidateStub),
-        ...(step.config ? { config: await persistedConfig(candidate) } : {}),
-      },
+      reference: await observe(reference, referenceStub),
+      candidate: await observe(candidate, candidateStub),
     };
     if (dump) {
       console.log(`--- ${step.name} ---`);

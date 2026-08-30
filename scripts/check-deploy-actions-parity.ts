@@ -706,9 +706,14 @@ async function walk({ label, providers, pinned, plan, api = API }: WalkOptions):
           )
         : observed;
     };
+    const observe = (runtime: Runtime, stub: ApiStub) =>
+      harness.recorded(runtime, step.name, async () => ({
+        answer: await send(runtime, step),
+        requests: requests(stub),
+      }));
     const answers = {
-      reference: { answer: await send(reference, step), requests: requests(referenceStub) },
-      candidate: { answer: await send(candidate, step), requests: requests(candidateStub) },
+      reference: await observe(reference, referenceStub),
+      candidate: await observe(candidate, candidateStub),
     };
     if (dump) {
       console.log(`--- ${step.name} ---`);

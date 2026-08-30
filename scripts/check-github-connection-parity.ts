@@ -546,14 +546,18 @@ try {
     }
     for (const stub of stubs) stub.take();
 
-    const answers = {
-      reference: await send(reference, step),
-      candidate: await send(candidate, step),
-    };
-    const requests = {
-      reference: outbound(0).flatMap((stub) => stub.take()),
-      candidate: outbound(1).flatMap((stub) => stub.take()),
-    };
+    // One unit per runtime: the answer and the requests it caused are the
+    // comparison, and in replay the reference's side comes from the recording
+    // rather than from a process that no longer exists.
+    const observe = (runtime: Runtime, side: 0 | 1) =>
+      harness.recorded(runtime, step.name, async () => ({
+        answer: await send(runtime, step),
+        requests: outbound(side).flatMap((stub) => stub.take()),
+      }));
+    const reference_ = await observe(reference, 0);
+    const candidate_ = await observe(candidate, 1);
+    const answers = { reference: reference_.answer, candidate: candidate_.answer };
+    const requests = { reference: reference_.requests, candidate: candidate_.requests };
     if (dump) {
       console.log(`--- ${step.name} ---`);
       console.log(`  reference: ${inspect({ ...answers.reference, requests: requests.reference }, { depth: null })}`);

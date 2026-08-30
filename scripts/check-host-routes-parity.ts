@@ -448,11 +448,15 @@ async function walk({
   candidateStub.take();
 
   for (const step of plan) {
-    const observe = async (runtime: Runtime, stub: ApiStub) => ({
-      answer: await send(runtime, step),
-      requests: stub.take(),
-      ...(step.config ? { config: await persistedConfig(runtime) } : {}),
-    });
+    // Wrapped as one unit rather than three: the answer, what the daemon
+    // asked Vultr, and what it persisted are the comparison, and in replay
+    // the reference produced all three at record time or none of them now.
+    const observe = (runtime: Runtime, stub: ApiStub) =>
+      harness.recorded(runtime, step.name, async () => ({
+        answer: await send(runtime, step),
+        requests: stub.take(),
+        ...(step.config ? { config: await persistedConfig(runtime) } : {}),
+      }));
     const answers = {
       reference: await observe(reference, referenceStub),
       candidate: await observe(candidate, candidateStub),

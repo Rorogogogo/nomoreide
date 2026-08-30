@@ -9,9 +9,18 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import type { Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { callMcpTool, normalizeMcpContract, type McpCommand } from "./mcp-contract.js";
+import {
+  parityMode,
+  publishReplayState,
+  Recorder,
+  startRecordingProxy,
+  startReplayServer,
+  type ParityMode,
+} from "./parity-recording.js";
 
 export interface RuntimeSpec {
   /** Label used in failure output: "reference" or "candidate". */
@@ -45,7 +54,21 @@ const REFERENCE_ARGS = [
   join(repoRoot(), "src", "index.ts"),
 ] as const;
 
+/**
+ * A command that cannot exist, used as the reference in replay mode.
+ *
+ * Replay's whole claim is that the TypeScript runtime is never started — that
+ * is what lets `src/` be deleted. Pointing the reference at a path that cannot
+ * resolve turns that claim into something the suite enforces rather than
+ * something a comment asserts: any code path that still tries to spawn it dies
+ * immediately with ENOENT, naming itself.
+ */
+const UNSPAWNABLE_REFERENCE = "/nonexistent/the-typescript-reference-must-not-run-in-replay";
+
 export function referenceSpec(): RuntimeSpec {
+  if (parityMode() === "replay") {
+    return { label: "reference", command: UNSPAWNABLE_REFERENCE, args: [] };
+  }
   return { label: "reference", command: process.execPath, args: [...REFERENCE_ARGS] };
 }
 
@@ -62,8 +85,31 @@ export class RuntimeHarness {
   readonly #daemons: ChildProcess[] = [];
   readonly #stderr = new Map<ChildProcess, () => string>();
 
+  /**
+   * Record/replay state. All of it is inert in `live` mode, which is still the
+   * default and still the strongest check — the recording exists so the gates
+   * keep working after `src/` is deleted, not instead of running them now.
+   */
+  readonly #recorder = new Recorder();
+  readonly #mode = this.#recorder.mode;
+  readonly #servers: Server[] = [];
+
   constructor(root: string) {
     this.#root = root;
+  }
+
+  /** Which of the three modes this run is in, for a gate that wants to say so. */
+  get mode(): ParityMode {
+    return this.#mode;
+  }
+
+  /**
+   * True when this runtime's answers come from a recording rather than a
+   * process. Only ever the reference: the candidate is the thing under test
+   * and always runs for real.
+   */
+  #isReplayed(runtime: Runtime): boolean {
+    return this.#recorder.isReplayed(runtime.label);
   }
 
   get runtimes(): readonly Runtime[] {
@@ -130,9 +176,26 @@ export class RuntimeHarness {
     overrides: Record<string, string> = {},
     cwd: string = repoRoot(),
   ): Promise<void> {
+    // Replayed: nothing is spawned. The recording answers on the port the
+    // gate already knows, and the state the harness waits for is minted here
+    // because it describes this run rather than the recorded one.
+    if (this.#isReplayed(runtime)) {
+      const recording = await this.#recorder.playback();
+      await publishReplayState(runtime);
+      this.#servers.push(await startReplayServer(runtime, recording.http));
+      return;
+    }
+
+    // Recorded: the reference moves to a private port and a proxy takes the
+    // one the gate uses, so every answer is written down without the gate
+    // knowing. The private port is reserved the same way every other one is —
+    // an offset would overflow, because the harness hands out ephemeral ports
+    // that are already near the top of the range.
+    const recording = this.#mode === "record" && runtime.label === "reference";
+    const listenPort = recording ? await availablePort() : runtime.port;
     const daemon = spawn(runtime.command, [...runtime.args, "daemon"], {
       cwd,
-      env: this.env(runtime, overrides),
+      env: this.env(runtime, { ...overrides, NOMOREIDE_DAEMON_PORT: String(listenPort) }),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stderr = "";
@@ -143,6 +206,9 @@ export class RuntimeHarness {
     this.#daemons.push(daemon);
     this.#stderr.set(daemon, () => stderr);
     await waitForDaemon(runtime, daemon, () => stderr);
+    if (recording) {
+      this.#servers.push(await startRecordingProxy(runtime, listenPort, this.#recorder.http));
+    }
   }
 
   /** Invoke one MCP tool against one runtime in a fresh adapter process. */
@@ -152,13 +218,47 @@ export class RuntimeHarness {
     args: Record<string, unknown> = {},
     overrides: Record<string, string> = {},
   ): Promise<unknown> {
-    const command: McpCommand = {
-      command: runtime.command,
-      args: [...runtime.args, "mcp"],
-      cwd: repoRoot(),
-      env: this.env(runtime, overrides),
-    };
-    return callMcpTool(command, tool, args);
+    return this.recorded(runtime, `tool:${tool}`, () => {
+      const command: McpCommand = {
+        command: runtime.command,
+        args: [...runtime.args, "mcp"],
+        cwd: repoRoot(),
+        env: this.env(runtime, overrides),
+      };
+      return callMcpTool(command, tool, args);
+    });
+  }
+
+  /**
+   * Produce one value the way the reference produces it — or, in replay, the
+   * way it produced it when this gate was recorded.
+   *
+   * This is the seam for everything the replay HTTP server cannot stand in
+   * for. Most gates need none of it: they reach the reference over HTTP and
+   * the replay server answers transparently. The rest reach it some other way
+   * — as an MCP process, by draining the vendor stub it made requests to, or
+   * (in two gates) by importing its TypeScript directly — and those wrap the
+   * reference side in this.
+   *
+   * The candidate is never recorded or replayed. It is the thing under test,
+   * so it always runs for real, in every mode.
+   */
+  async recorded<T>(runtime: Runtime, key: string, produce: () => Promise<T> | T): Promise<T> {
+    return this.#recorder.recorded(runtime, key, produce);
+  }
+
+  /**
+   * Drain a vendor stub's recorded requests, through the seam above.
+   *
+   * Twelve gates assert not only what the daemon *answered* but what it *asked
+   * a vendor* — that a refused action reached no API, that a cache held, that
+   * a token was not attached. Those are among the strongest assertions in the
+   * suite and they live in the stub rather than in any response, so they have
+   * to survive replay too: in replay the reference makes no requests at all,
+   * because there is no reference.
+   */
+  async takeStub<T>(runtime: Runtime, key: string, stub: { take(): T[] }): Promise<T[]> {
+    return this.recorded(runtime, `stub:${key}`, () => stub.take());
   }
 
   /**
@@ -236,6 +336,12 @@ export class RuntimeHarness {
         await waitForExit(daemon);
       }),
     );
+    await Promise.all(
+      this.#servers.map(
+        (server) => new Promise<void>((resolve) => server.close(() => resolve())),
+      ),
+    );
+    await this.#recorder.finish();
   }
 }
 

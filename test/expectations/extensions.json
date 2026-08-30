@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "gate": "extensions",
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/extensions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"extensions\":[{\"id\":\"vercel\",\"name\":\"Vercel\",\"kind\":\"deploy\",\"source\":\"built-in\",\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"runtimeLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"cancel\",\"promote\",\"rollback\"],\"productionAffecting\":[\"promote\",\"rollback\"],\"hosts\":[\"api.vercel.com\"],\"mergesInto\":null},{\"id\":\"cloudflare\",\"name\":\"Cloudflare\",\"kind\":\"deploy\",\"source\":\"built-in\",\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"rollback\"],\"productionAffecting\":[\"rollback\"],\"hosts\":[\"api.cloudflare.com\"],\"mergesInto\":null},{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"source\":\"built-in\",\"capabilities\":[],\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"hosts\":[\"api.vultr.com\"],\"mergesInto\":\"servers\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"providers\":[{\"id\":\"vercel\",\"name\":\"Vercel\",\"kind\":\"deploy\",\"strings\":{\"en\":{\"scope.label\":\"Vercel scope\",\"action.redeploy\":\"Redeploy\",\"action.redeploy.done\":\"Redeploy started.\",\"action.cancel\":\"Cancel build\",\"action.cancel.done\":\"Build canceled.\",\"action.promote\":\"Promote\",\"action.promote.done\":\"Promoted to production.\",\"action.promote.confirmTitle\":\"Promote to production?\",\"action.promote.confirm\":\"Production traffic switches to this deployment immediately.\",\"action.rollback\":\"Roll back\",\"action.rollback.done\":\"Rolled back production.\",\"action.rollback.confirmTitle\":\"Roll production back?\",\"action.rollback.confirm\":\"Production traffic switches back to this older deployment immediately.\"},\"zh\":{\"scope.label\":\"Vercel 范围\",\"action.redeploy\":\"重新部署\",\"action.redeploy.done\":\"已开始重新部署。\",\"action.cancel\":\"取消构建\",\"action.cancel.done\":\"已取消构建。\",\"action.promote\":\"提升至生产\",\"action.promote.done\":\"已提升至生产环境。\",\"action.promote.confirmTitle\":\"提升至生产环境？\",\"action.promote.confirm\":\"生产流量将立即切换到该部署。\",\"action.rollback\":\"回滚\",\"action.rollback.done\":\"已回滚生产环境。\",\"action.rollback.confirmTitle\":\"回滚生产环境？\",\"action.rollback.confirm\":\"生产流量将立即切回这个较旧的部署。\"}},\"authSources\":[\"cli\",\"stored\",\"oauth\"],\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"runtimeLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"cancel\",\"promote\",\"rollback\"],\"productionAffecting\":[\"promote\",\"rollback\"],\"api\":{\"hosts\":[\"api.vercel.com\"]}},{\"id\":\"cloudflare\",\"name\":\"Cloudflare\",\"kind\":\"deploy\",\"strings\":{\"en\":{\"scope.label\":\"Cloudflare account\",\"action.redeploy\":\"Retry build\",\"action.redeploy.done\":\"Build retried.\",\"action.rollback\":\"Roll back\",\"action.rollback.done\":\"Rolled back production.\",\"action.rollback.confirmTitle\":\"Roll production back?\",\"action.rollback.confirm\":\"Production traffic switches back to this older deployment immediately.\"},\"zh\":{\"scope.label\":\"Cloudflare 账户\",\"action.redeploy\":\"重试构建\",\"action.redeploy.done\":\"已重试构建。\",\"action.rollback\":\"回滚\",\"action.rollback.done\":\"已回滚生产环境。\",\"action.rollback.confirmTitle\":\"回滚生产环境？\",\"action.rollback.confirm\":\"生产流量将立即切回这个较旧的部署。\"}},\"authSources\":[\"cli\",\"stored\"],\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"env\",\"domains\"],\"requiresScope\":true,\"actions\":[\"redeploy\",\"rollback\"],\"productionAffecting\":[\"rollback\"],\"api\":{\"hosts\":[\"api.cloudflare.com\"]}}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/extensions",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"extensions\":[{\"id\":\"vercel\",\"name\":\"Vercel\",\"kind\":\"deploy\",\"source\":\"built-in\",\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"runtimeLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"cancel\",\"promote\",\"rollback\"],\"productionAffecting\":[\"promote\",\"rollback\"],\"hosts\":[\"api.vercel.com\"],\"mergesInto\":null},{\"id\":\"cloudflare\",\"name\":\"Cloudflare\",\"kind\":\"deploy\",\"source\":\"built-in\",\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"rollback\"],\"productionAffecting\":[\"rollback\"],\"hosts\":[\"api.cloudflare.com\"],\"mergesInto\":null},{\"id\":\"vultr\",\"name\":\"Vultr\",\"kind\":\"host\",\"source\":\"built-in\",\"capabilities\":[],\"actions\":[\"start\",\"halt\",\"reboot\"],\"productionAffecting\":[\"halt\",\"reboot\"],\"hosts\":[\"api.vultr.com\"],\"mergesInto\":\"servers\"}]}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers",
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": "{\"ok\":true,\"providers\":[{\"id\":\"vercel\",\"name\":\"Vercel\",\"kind\":\"deploy\",\"strings\":{\"en\":{\"scope.label\":\"Vercel scope\",\"action.redeploy\":\"Redeploy\",\"action.redeploy.done\":\"Redeploy started.\",\"action.cancel\":\"Cancel build\",\"action.cancel.done\":\"Build canceled.\",\"action.promote\":\"Promote\",\"action.promote.done\":\"Promoted to production.\",\"action.promote.confirmTitle\":\"Promote to production?\",\"action.promote.confirm\":\"Production traffic switches to this deployment immediately.\",\"action.rollback\":\"Roll back\",\"action.rollback.done\":\"Rolled back production.\",\"action.rollback.confirmTitle\":\"Roll production back?\",\"action.rollback.confirm\":\"Production traffic switches back to this older deployment immediately.\"},\"zh\":{\"scope.label\":\"Vercel 范围\",\"action.redeploy\":\"重新部署\",\"action.redeploy.done\":\"已开始重新部署。\",\"action.cancel\":\"取消构建\",\"action.cancel.done\":\"已取消构建。\",\"action.promote\":\"提升至生产\",\"action.promote.done\":\"已提升至生产环境。\",\"action.promote.confirmTitle\":\"提升至生产环境？\",\"action.promote.confirm\":\"生产流量将立即切换到该部署。\",\"action.rollback\":\"回滚\",\"action.rollback.done\":\"已回滚生产环境。\",\"action.rollback.confirmTitle\":\"回滚生产环境？\",\"action.rollback.confirm\":\"生产流量将立即切回这个较旧的部署。\"}},\"authSources\":[\"cli\",\"stored\",\"oauth\"],\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"runtimeLogs\",\"env\",\"domains\"],\"actions\":[\"redeploy\",\"cancel\",\"promote\",\"rollback\"],\"productionAffecting\":[\"promote\",\"rollback\"],\"api\":{\"hosts\":[\"api.vercel.com\"]}},{\"id\":\"cloudflare\",\"name\":\"Cloudflare\",\"kind\":\"deploy\",\"strings\":{\"en\":{\"scope.label\":\"Cloudflare account\",\"action.redeploy\":\"Retry build\",\"action.redeploy.done\":\"Build retried.\",\"action.rollback\":\"Roll back\",\"action.rollback.done\":\"Rolled back production.\",\"action.rollback.confirmTitle\":\"Roll production back?\",\"action.rollback.confirm\":\"Production traffic switches back to this older deployment immediately.\"},\"zh\":{\"scope.label\":\"Cloudflare 账户\",\"action.redeploy\":\"重试构建\",\"action.redeploy.done\":\"已重试构建。\",\"action.rollback\":\"回滚\",\"action.rollback.done\":\"已回滚生产环境。\",\"action.rollback.confirmTitle\":\"回滚生产环境？\",\"action.rollback.confirm\":\"生产流量将立即切回这个较旧的部署。\"}},\"authSources\":[\"cli\",\"stored\"],\"capabilities\":[\"projects\",\"deployments\",\"buildLogs\",\"env\",\"domains\"],\"requiresScope\":true,\"actions\":[\"redeploy\",\"rollback\"],\"productionAffecting\":[\"rollback\"],\"api\":{\"hosts\":[\"api.cloudflare.com\"]}}]}"
+    },
+    {
+      "method": "POST",
+      "path": "/api/extensions",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "POST",
+      "path": "/api/providers",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/extensions/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/providers/",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    },
+    {
+      "method": "GET",
+      "path": "/api/extensions/vercel",
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "Not found"
+    }
+  ],
+  "entries": []
+}

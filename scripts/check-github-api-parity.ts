@@ -561,14 +561,18 @@ try {
     }
     for (const stub of stubs) stub.take();
 
-    const answers = {
-      reference: await send(reference, step),
-      candidate: await send(candidate, step),
-    };
-    const requests = {
-      reference: order(step, stubs[0].take()),
-      candidate: order(step, stubs[1].take()),
-    };
+    // One unit per runtime: the answer and the requests it caused are the
+    // comparison, and in replay the reference's side comes from the recording
+    // rather than from a process that no longer exists.
+    const observe = (runtime: Runtime, stub: (typeof stubs)[number]) =>
+      harness.recorded(runtime, step.name, async () => ({
+        answer: await send(runtime, step),
+        requests: order(step, stub.take()),
+      }));
+    const reference_ = await observe(reference, stubs[0]);
+    const candidate_ = await observe(candidate, stubs[1]);
+    const answers = { reference: reference_.answer, candidate: candidate_.answer };
+    const requests = { reference: reference_.requests, candidate: candidate_.requests };
     if (dump) {
       console.log(`--- ${step.name} ---`);
       console.log(`  reference: ${inspect({ ...answers.reference, requests: requests.reference }, { depth: null })}`);
