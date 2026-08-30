@@ -358,6 +358,20 @@ mod tests {
         let missing = digest_directory(Path::new("/definitely/not/here"));
         let also_missing = digest_directory(Path::new("/also/not/here"));
         assert_eq!(missing, also_missing);
-        assert_ne!(missing, digest_directory(Path::new("/")));
+
+        // The contrast has to be a directory this test made. An earlier version
+        // reached for `Path::new("/")`, which walks and hashes every readable
+        // file on the machine: it did not fail, it simply never finished, and
+        // it read the whole disk while trying. Nothing caught it because the
+        // workspace tests could not run where it was written.
+        let present = std::env::temp_dir().join(format!(
+            "nomoreide-digest-{}",
+            uuid::Uuid::new_v4().simple()
+        ));
+        std::fs::create_dir_all(present.join("nested")).expect("create the fixture");
+        std::fs::write(present.join("skill.md"), b"one file").expect("write the fixture");
+        let present_digest = digest_directory(&present);
+        let _ = std::fs::remove_dir_all(&present);
+        assert_ne!(missing, present_digest);
     }
 }
