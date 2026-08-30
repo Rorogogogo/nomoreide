@@ -13,6 +13,7 @@ mod flags;
 mod git;
 mod profile;
 mod setup;
+mod tui;
 
 use std::process::ExitCode;
 
@@ -50,6 +51,30 @@ async fn main() -> ExitCode {
             }
         }
         "web" => web(&paths, configured_port).await,
+        "tui" => match tui::run(&paths, configured_port).await {
+            Ok(()) => 0,
+            Err(error) => {
+                if let Some(message) = error.message_text() {
+                    eprintln!("{message}");
+                }
+                error.exit_code()
+            }
+        },
+        // Not a user-facing command: the daemon spawns this inside a terminal
+        // window it opened, handing it the socket and the one-shot token that
+        // authorise the attachment. Named with a `__` prefix for that reason,
+        // and absent from every usage string.
+        "__terminal-attach" => {
+            let socket = args.get(1).map(String::as_str).unwrap_or("");
+            let token = args.get(2).map(String::as_str).unwrap_or("");
+            match nomoreide_core::external_terminal::run_attach(socket, token) {
+                Ok(()) => 0,
+                Err(error) => {
+                    eprintln!("{error}");
+                    1
+                }
+            }
+        }
         _ => commands::run(&args, &paths, configured_port).await,
     };
     ExitCode::from(code)

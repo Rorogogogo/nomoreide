@@ -47,6 +47,16 @@ impl CliError {
         }
     }
 
+    /// The exit code, for callers outside [`run`] — `tui` reports its own.
+    pub fn exit_code(&self) -> u8 {
+        self.code()
+    }
+
+    /// The stderr line, for the same callers.
+    pub fn message_text(&self) -> Option<&str> {
+        self.message()
+    }
+
     fn message(&self) -> Option<&str> {
         match self {
             Self::Usage(message) | Self::Failure(message) => Some(message),

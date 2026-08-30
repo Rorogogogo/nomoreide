@@ -64,11 +64,34 @@ interface Step {
   readonly name: string;
   /** Arguments after the executable — the whole command line the user types. */
   readonly args: string[];
+  /**
+   * Keystrokes to write to stdin, for the TUI — one array entry per key.
+   *
+   * The reference only asks for raw mode when stdin is a TTY, and a pipe is
+   * not one, so both runtimes read a piped keystroke exactly as they would
+   * read a typed one and every frame they draw lands in the captured stdout.
+   * That is what makes an interactive screen comparable at all here.
+   *
+   * They are written **one at a time, spaced apart**, and that is not
+   * incidental. The reference's keypress handler is `async` and Node does not
+   * await it before firing the next event, so two keys arriving inside one
+   * render round-trip both mutate the screen state before either frame is
+   * drawn — `b` `b` toggles to bundles and back and draws the services screen
+   * three times. Writing the whole sequence at once would make this gate
+   * assert that race rather than the behaviour, and no human types fast enough
+   * to reach it. An array entry is one key, so an escape sequence stays in one
+   * write and is not mistaken for a bare escape.
+   */
+  readonly stdin?: string[];
   /** Compare stdout as a parsed JSON document rather than as text. */
   readonly json?: boolean;
   /** Seconds to allow. Only the daemon-backed steps need more than the default. */
   readonly timeoutMs?: number;
 }
+
+/** Arrow keys, as a terminal sends them: one escape sequence, one write. */
+const UP = "\u001b[A";
+const DOWN = "\u001b[B";
 
 /**
  * The plan is a **walk**, not a set: `add` steps register what later `list`,
@@ -368,6 +391,44 @@ const PLAN: Step[] = [
   { name: "profile/export-a-profile-that-is-not-there", args: ["profile", "export", "kit"] },
   { name: "profile/publish-without-a-slug", args: ["profile", "publish", "kit"] },
 
+  // --- tui -------------------------------------------------------------------
+  // Each case ends in `q`, so the process exits on its own rather than being
+  // killed on the timeout — a killed process would compare its signal instead
+  // of its frames.
+  { name: "tui/opening-frame", args: ["tui"], stdin: ["q"], timeoutMs: 60_000 },
+  {
+    name: "tui/moving-down-the-service-list",
+    args: ["tui"],
+    stdin: [DOWN, DOWN, "q"],
+    timeoutMs: 60_000,
+  },
+  // Down past the end clamps to the last row rather than running off it.
+  {
+    name: "tui/moving-past-the-end",
+    args: ["tui"],
+    stdin: [DOWN, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN, DOWN, "q"],
+    timeoutMs: 90_000,
+  },
+  { name: "tui/moving-up-from-the-top", args: ["tui"], stdin: [UP, UP, "q"], timeoutMs: 60_000 },
+  { name: "tui/the-bundles-screen", args: ["tui"], stdin: ["b", "q"], timeoutMs: 60_000 },
+  { name: "tui/toggling-bundles-off-again", args: ["tui"], stdin: ["b", "b", "q"], timeoutMs: 60_000 },
+  { name: "tui/selecting-a-bundle", args: ["tui"], stdin: ["b", DOWN, "q"], timeoutMs: 60_000 },
+  { name: "tui/the-logs-screen", args: ["tui"], stdin: ["l", "q"], timeoutMs: 60_000 },
+  {
+    name: "tui/escape-returns-to-services",
+    args: ["tui"],
+    stdin: ["l", "\u001b", "q"],
+    timeoutMs: 60_000,
+  },
+  // Ctrl-C leaves by the same door as `q`, and leaves the services running.
+  { name: "tui/ctrl-c-quits", args: ["tui"], stdin: ["\u0003"], timeoutMs: 60_000 },
+  {
+    name: "tui/an-unnamed-escape-sequence-still-redraws",
+    args: ["tui"],
+    stdin: ["\u001b[C", "q"],
+    timeoutMs: 60_000,
+  },
+
   // --- daemon management -----------------------------------------------------
   { name: "daemon/unknown-subcommand", args: ["daemon", "wat"] },
   { name: "daemon/unknown-subcommand-after-a-port-flag", args: ["daemon", "--port=1", "wat"] },
@@ -434,6 +495,17 @@ interface Transcript {
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
+/**
+ * How long to leave between two TUI keystrokes.
+ *
+ * Long enough for a render — a config read plus two daemon round-trips — to
+ * finish before the next key lands, on the slowest runner. Shorter, and the
+ * reference's un-awaited keypress handlers overlap and the gate starts
+ * comparing a race.
+ */
+const KEY_INTERVAL_MS = 600;
+
+
 function invoke(runtime: Runtime, step: Step, harness: RuntimeHarness): Promise<Transcript> {
   return new Promise((resolve, reject) => {
     // Always the runtime's own workspace, never this checkout: a bare `--cwd`
@@ -442,8 +514,17 @@ function invoke(runtime: Runtime, step: Step, harness: RuntimeHarness): Promise<
     const child = spawn(runtime.command, [...runtime.args, ...step.args], {
       cwd: runtime.workspace,
       env: harness.env(runtime),
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [step.stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
+    if (step.stdin !== undefined) {
+      void (async () => {
+        for (const key of step.stdin ?? []) {
+          await new Promise((tick) => setTimeout(tick, KEY_INTERVAL_MS));
+          child.stdin?.write(key);
+        }
+        child.stdin?.end();
+      })();
+    }
     let stdout = "";
     let stderr = "";
     child.stdout?.setEncoding("utf8");

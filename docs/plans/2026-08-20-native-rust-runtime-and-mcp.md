@@ -1136,6 +1136,57 @@ port.
 
 **Exit gate met** by `scripts/check-no-node.sh`, which CI runs on every push. It drives the built binary with `node`, `npm`, `npx` and `tsx` absent from PATH and asserts 18 things: the daemon starts and mints its credential, twelve real GET routes answer 200, an unknown `/api` path still 404s (so a daemon answering everything with the SPA shell cannot pass by accident), the dashboard shell and its JS bundle are served, and `nomoreide mcp` lists its tools over stdio.
 
+**The CLI bullet above was not actually done when this gate first passed, and
+the gate could not tell.** `check-no-node.sh` exercises the daemon and
+`nomoreide mcp`. Those were the two commands the native binary had; the other
+nine the reference routes — `add`, `list`, `logs`, `start`, `stop`, `restart`,
+`git`, `db`, `agents`, `profile`, `web`, `tui` — answered
+`Usage: nomoreide <daemon|mcp|setup>`. Every gate in the suite passed while a
+user who installed the native build and typed `nomoreide list` got a usage
+error, because nothing in the suite ran the binary *as a command*.
+
+It is done now, and `scripts/check-cli-parity.ts` is what says so: 127 cases
+comparing stdout, stderr and **exit code** between the two binaries, including
+the TUI, whose frames are compared by piping keystrokes in and diffing what
+comes back. The exit code is the part no other gate looks at — `runCli` answers
+1 for a caller's mistake and 2 for a runtime failure, and a command that prints
+the right words while exiting 0 on failure is invisible to every HTTP gate and
+fatal to every script that wraps it.
+
+Four defects it found, none of them in the CLI itself:
+
+- **`exitCode: null` was dropped from every service status.** The reference
+  writes `exitCode` and `signal` together when a run ends, one of them `null`;
+  the wire type had `skip_serializing_if` on both, so a service killed by a
+  signal reported no `exitCode` at all — making "still running" and "killed by
+  a signal" indistinguishable to anything reading the key. The MCP status
+  surface already modelled this correctly with `Option<Option<T>>`; the wire
+  type never got it. No HTTP gate caught it because none stopped a service and
+  compared the payload.
+- **`profile snapshot` saved an empty profile** for an agent with no readable
+  config and no skills, where the reference refuses. That is worse than a
+  refusal: it looks like a captured setup, and applying it later reports
+  "0 MCPs, 0 skills" as though that were the answer.
+- **`db check <unregistered>`** answered with the dashboard's wording. Core
+  carries two refusals for that one question and the CLI resolves through the
+  read-safe one.
+- **`git log --limit banana`** was refused with a friendly message and exit 1,
+  where the reference interpolates `Number()`'s output straight into `-N` and
+  lets git refuse `-NaN` in its own words with exit 2.
+
+Two divergences are pinned rather than reproduced, and they are the same
+reference wart reached two ways: `stopService` fabricates a runtime entry for a
+name that was never registered, so a bare `stop` and the stop half of a failed
+`restart` each leave a phantom service in `/api/status` forever. Already
+declared at `error/stop-unregistered` in `check-mcp-runtime-parity.ts`. Each
+pin names both sides, so it fails if either runtime changes.
+
+One thing the CLI gate deliberately does **not** assert: the order of the
+running-service lines in `nomoreide daemon status` when more than one service
+is up. `/api/status` is a `BTreeMap` on the native side and insertion-ordered
+on the reference's, which `ServiceStatusSnapshot` already documents as an
+accepted difference — the CLI is simply the first surface that *prints* it.
+
 ### Phase 7 — Native distribution and controlled cutover
 
 - Extend release CI to build precompiled CLI archives for:
