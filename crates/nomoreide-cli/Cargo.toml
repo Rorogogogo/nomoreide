@@ -10,6 +10,7 @@ name = "nomoreide"
 path = "src/main.rs"
 
 [dependencies]
+nomoreide-core = { path = "../nomoreide-core" }
 nomoreide-daemon = { path = "../nomoreide-daemon" }
 nomoreide-daemon-client = { path = "../nomoreide-daemon-client" }
 nomoreide-mcp = { path = "../nomoreide-mcp" }

@@ -1,7 +1,13 @@
+mod setup;
+
 use std::process::ExitCode;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    let raw: Vec<String> = std::env::args().skip(1).collect();
+    if raw.first().map(String::as_str) == Some("setup") {
+        return ExitCode::from(setup::run(&raw[1..]));
+    }
     let mut args = std::env::args_os().skip(1);
     match (args.next().as_deref(), args.next()) {
         (Some(command), None) if command == "daemon" => {
@@ -27,7 +33,7 @@ async fn main() -> ExitCode {
             }
         },
         _ => {
-            eprintln!("Usage: nomoreide <daemon|mcp>");
+            eprintln!("Usage: nomoreide <daemon|mcp|setup>");
             ExitCode::FAILURE
         }
     }

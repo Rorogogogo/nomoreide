@@ -263,6 +263,15 @@ pub struct DoctorReport {
     pub has_issues: bool,
 }
 
+/// Where [`install_user_skill`] would put a skill of this name.
+///
+/// Exposed so that callers which have to *find* an installed skill ask the
+/// same question the installer answers, rather than rebuilding the path and
+/// getting a subtly different one.
+pub fn install_skill_destination(agent: Agent, name: &str) -> PathBuf {
+    agent.install_skills_directory(&home()).join(name)
+}
+
 /// Put a skill into an agent's own user-scope skills directory, replacing
 /// whatever was installed under that name.
 ///
@@ -273,7 +282,7 @@ pub fn install_user_skill(
     name: &str,
     source: &Path,
 ) -> Result<Option<PathBuf>, String> {
-    let directory = agent.install_skills_directory(&home()).join(name);
+    let directory = install_skill_destination(agent, name);
     // Whatever is being replaced is copied aside first. Unlike a *copy* between
     // agents, which keeps nothing because the two are the same skill under the
     // same name, an install overwrites a skill the user may have edited in
@@ -290,6 +299,15 @@ pub fn install_user_skill(
         .map_err(|error| format!("Failed to create {}: {error}", directory.display()))?;
     copy_tree(source, &directory)?;
     Ok(taken)
+}
+
+/// Move a skill's directory into the backup store and return where it went.
+///
+/// Public because `nomoreide setup` clears a stale copy of its own skill out
+/// of Codex's second skills directory, and a backup written somewhere else
+/// would be a second place to look for the same kind of thing.
+pub fn backup_skill_directory(source: &Path, name: &str) -> Result<PathBuf, String> {
+    backup::directory(source, name)
 }
 
 /// Copy a file beside itself before something replaces it.

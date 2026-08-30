@@ -9,6 +9,7 @@
 
 mod apply;
 mod credentials;
+pub mod debug_setup;
 pub mod publication;
 mod registry;
 mod snapshot;
