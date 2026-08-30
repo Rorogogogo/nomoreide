@@ -10,6 +10,7 @@
 use serde_json::Value;
 
 use crate::cloudflare_manager::{repo_url, CloudflareApiError, CloudflareManager};
+use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
     BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, ProjectLink, ProjectSetting,
     ProviderProject,
@@ -293,6 +294,41 @@ impl CloudflareDeployProvider {
         self.manager.account_id().unwrap_or_default().to_string()
     }
 
+    /// Who the credential belongs to — `/user`, or the token's own identity
+    /// when `/user` is out of its scope. See [`CloudflareManager::viewer`].
+    pub async fn viewer(&self) -> Result<Value, CloudflareApiError> {
+        self.manager.viewer().await
+    }
+
+    /// The accounts this credential can act as.
+    ///
+    /// Cloudflare accounts have no slug, so the id addresses one and is
+    /// reported as both; a nameless account is offered under its id rather
+    /// than as a blank row.
+    pub async fn list_scopes(&self) -> Result<Vec<Value>, CloudflareApiError> {
+        Ok(self
+            .manager
+            .list_accounts()
+            .await?
+            .iter()
+            .map(|raw| {
+                let id = raw.get("id").filter(|value| !value.is_null()).cloned();
+                let name = raw
+                    .get("name")
+                    .filter(|value| !value.is_null())
+                    .cloned()
+                    .or_else(|| id.clone());
+                let mut scope = serde_json::Map::new();
+                for (key, value) in [("id", id.clone()), ("slug", id), ("name", name)] {
+                    if let Some(value) = value {
+                        scope.insert(key.into(), value);
+                    }
+                }
+                Value::Object(scope)
+            })
+            .collect())
+    }
+
     /// Pages has no server-side project search, so the filter is applied here —
     /// on the name, which is also the id a caller would act on.
     pub async fn list_projects(
@@ -471,9 +507,17 @@ pub fn manifest() -> Value {
         "productionAffecting": [
             "rollback"
         ],
+        // `dash.cloudflare.com` is deliberately absent: the manager builds
+        // dashboard and deployment URLs as strings for the UI to link to, and
+        // never fetches them. An allowlist covers what is requested, not what
+        // is displayed.
+        //
+        // Derived from the base URL rather than written out, so the allowlist
+        // and the place requests actually go cannot drift apart — including
+        // when `NOMOREIDE_CLOUDFLARE_API_BASE` points them at a loopback stub.
         "api": {
             "hosts": [
-                "api.cloudflare.com"
+                provider_api_host(&crate::cloudflare_manager::api_base())
             ]
         }
     })

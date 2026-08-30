@@ -1208,18 +1208,39 @@ the only thing that has been checking any of this.
   through `/api/servers` and the extensions manifest, both of which are ported.
   Porting six routes with no client is not what closes this phase, and saying
   so is more useful than a green tick beside dead surface.
-- **The deploy provider surface is the real remaining gap**, because unlike the
-  host routes it *is* reached by the dashboard. The daemon now serves the
-  manifests plus the provider-neutral `projects` and `deployments` reads for
-  Vercel and Cloudflare; `check-deploy-routes-parity.ts` holds those to 32
-  response-and-vendor-request comparisons.
-  `apps/dashboard/src/lib/api/provider-http.ts` still calls, per provider:
-  `status`, `connect` (POST and DELETE), `oauth/start`, `oauth/status`,
-  `scope`, `env`, `env/*`, and `project`. A native daemon therefore still
-  renders most of the Deploy view's provider panel against missing endpoints.
-  The OAuth pair is the hard part — it holds a login session in memory and
-  serves an HTML result page — and it is why this was left for last rather
-  than an oversight.
+- **The deploy provider surface is most of the way across.** The daemon now
+  serves the manifests, the provider-neutral `projects` and `deployments`
+  reads, and the whole non-OAuth connection panel — `status`, `connect` (POST
+  and DELETE), `scope`, and `project` (GET and PUT) — for Vercel and
+  Cloudflare. `check-deploy-routes-parity.ts` holds them to 78
+  response-, vendor-request- and persisted-config comparisons.
+
+  Three things had to change under the routes for `status` to be portable at
+  all, and each was a real defect rather than a missing call:
+
+  - **The neutral provider error flattened every failure to a message.**
+    `status` has to answer `auth_error` for 401/403 and `connection_error`
+    for everything else, and neither vendor promises to keep wording its
+    refusals the way it does today. `ProviderError` now carries the status
+    the vendor sent.
+  - **Cloudflare had no `viewer()`.** A scoped API token gets a 4xx from
+    `/user`, which is the signal to identify it through
+    `/user/tokens/verify` and name it after its account — not a failure. The
+    Rust client had neither the endpoint nor the fallback, so every
+    API-token connection would have reported itself as broken.
+  - **Both manifests hard-coded their API host** where the reference derives
+    it from the base URL. That is the egress allowlist, so it was also the
+    one place a redirected base and the allowlist could drift apart.
+
+  Two smaller fidelity bugs fell out of the gate: the store kept an untrimmed
+  scope and an untrimmed pinned project id where the reference trims both, and
+  `Vercel is not connected.` came out lowercased.
+
+  What is left, per provider: `env`, `env/*`, `domains`, `oauth/start` and
+  `oauth/status`, plus the deployment write actions. The OAuth pair is the
+  hard part — it holds a login session in memory across two unrelated requests
+  and serves an HTML result page to a browser tab — and it is why this was
+  left for last rather than an oversight.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8
   deletes it, all 66 stop being runnable. The fixtures are the durable half and

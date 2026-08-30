@@ -256,9 +256,12 @@ struct PublicGithubTokenDef<'a> {
     avatar_url: Option<&'a String>,
 }
 
+/// A connection with its two secrets left out, which is the only shape of one
+/// that may leave the process. Borrowed rather than owned so the caller cannot
+/// accidentally build one from a token it still holds.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct PublicProviderConnectionDef<'a> {
+pub struct PublicProviderConnectionDef<'a> {
     source: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     expires_at: Option<i64>,
@@ -270,6 +273,19 @@ struct PublicProviderConnectionDef<'a> {
     scope_slug: Option<&'a String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     username: Option<&'a String>,
+}
+
+impl<'a> PublicProviderConnectionDef<'a> {
+    pub fn new(connection: &'a ProviderConnectionDef) -> Self {
+        Self {
+            source: &connection.source,
+            expires_at: connection.expires_at,
+            client_id: connection.client_id.as_ref(),
+            scope_id: connection.scope_id.as_ref(),
+            scope_slug: connection.scope_slug.as_ref(),
+            username: connection.username.as_ref(),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -433,19 +449,7 @@ impl Config {
             connections: self
                 .connections
                 .iter()
-                .map(|(id, connection)| {
-                    (
-                        id.clone(),
-                        PublicProviderConnectionDef {
-                            source: &connection.source,
-                            expires_at: connection.expires_at,
-                            client_id: connection.client_id.as_ref(),
-                            scope_id: connection.scope_id.as_ref(),
-                            scope_slug: connection.scope_slug.as_ref(),
-                            username: connection.username.as_ref(),
-                        },
-                    )
-                })
+                .map(|(id, connection)| (id.clone(), PublicProviderConnectionDef::new(connection)))
                 .collect(),
             workflows: &self.workflows,
             workflow_triggers: &self.workflow_triggers,
@@ -1068,9 +1072,12 @@ impl ConfigStore {
         let connection = config
             .connections
             .get_mut(provider_id)
-            .ok_or_else(|| anyhow::anyhow!("{provider_id} is not connected."))?;
-        connection.scope_id = scope_id;
-        connection.scope_slug = scope_slug;
+            .ok_or_else(|| anyhow::anyhow!("{} is not connected.", provider_label(provider_id)))?;
+        // Trimmed, and an all-space value dropped entirely: the reference
+        // trims in the store rather than at its callers, so a `scope` request
+        // carrying spaces clears the scope instead of storing them.
+        connection.scope_id = trimmed(scope_id);
+        connection.scope_slug = trimmed(scope_slug);
         self.save(&config).await?;
         Ok(config)
     }
@@ -1095,7 +1102,10 @@ impl ConfigStore {
             .iter_mut()
             .find(|repo| repo.name == repository)
             .ok_or_else(|| anyhow::anyhow!("Git repository \"{repository}\" is not registered."))?;
-        match project_id.filter(|id| !id.trim().is_empty()) {
+        // Trimmed before it is stored, not just before it is tested: the id
+        // goes into a vendor URL, and `" prj_app "` and `"prj_app"` are the
+        // same pin.
+        match trimmed(project_id) {
             Some(id) => {
                 repo.provider_projects
                     .get_or_insert_with(BTreeMap::new)
@@ -1317,6 +1327,29 @@ async fn require_git_worktree(path: &str) -> Result<()> {
 
 /// The repository a request that named none is about: the selected one, or the
 /// first registered one when nothing is selected.
+/// Display name for a provider id in a user-facing message.
+///
+/// The store has no access to provider manifests, so it title-cases the id —
+/// which is exactly right for `vercel`, `cloudflare`, and `vultr`. A provider
+/// whose name needs more than that should surface its own message at the route
+/// layer.
+fn provider_label(provider_id: &str) -> String {
+    let mut characters = provider_id.chars();
+    match characters.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + characters.as_str(),
+        None => String::new(),
+    }
+}
+
+/// A value the caller actually supplied: trimmed, with an empty result read as
+/// nothing at all. `value?.trim() || undefined`, which is how the reference
+/// normalizes every optional string it stores.
+fn trimmed(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
 pub fn selected_git_repository(config: &Config) -> Option<&GitRepoDef> {
     config
         .git_repositories

@@ -112,6 +112,25 @@ fn api_error_message(body: &Value, status: u16, path: &str) -> String {
         .unwrap_or_else(|| format!("Cloudflare returned {status} for {path}"))
 }
 
+/// A field the vendor actually sent, in the sense `??` means it: an absent key
+/// and an explicit `null` are both "no value", and everything else survives as
+/// the JSON it was rather than being narrowed to a string.
+fn present(field: Option<&Value>) -> Option<Value> {
+    field.filter(|value| !value.is_null()).cloned()
+}
+
+/// The identity record, with the keys the vendor had nothing for left out —
+/// `JSON.stringify` drops an `undefined` field, and the shape is compared.
+fn user_value(id: Option<Value>, email: Option<Value>, username: Option<Value>) -> Value {
+    let mut user = serde_json::Map::new();
+    for (key, value) in [("id", id), ("email", email), ("username", username)] {
+        if let Some(value) = value {
+            user.insert(key.into(), value);
+        }
+    }
+    Value::Object(user)
+}
+
 /// The `result` of an envelope, as a list.
 fn results(body: &Value) -> Vec<Value> {
     body.get("result")
@@ -139,6 +158,76 @@ impl CloudflareManager {
             message: NO_ACCOUNT.to_string(),
             status: 0,
         })
+    }
+
+    /// Who this credential belongs to.
+    ///
+    /// `/user` answers for a Wrangler OAuth login but is forbidden to a scoped
+    /// API token, which is the common case — so a 4xx here is not a failure,
+    /// it is the signal to identify the token instead. A 5xx (or a transport
+    /// failure, which arrives as status 0) is a real outage and propagates.
+    ///
+    /// Cloudflare's `username` is an opaque 32-char hex id rather than a
+    /// display name, so the email is the only human-readable identity `/user`
+    /// carries. Preferring `username` here put a hex blob in the account menu.
+    pub async fn viewer(&self) -> Result<Value, CloudflareApiError> {
+        let failure = match request(&self.token, "/user").await {
+            Ok(body) => {
+                let user = body.get("result").cloned().unwrap_or(Value::Null);
+                let email = present(user.get("email"));
+                let username = email.clone().or_else(|| present(user.get("username")));
+                // `email` is reported even when there is none — the reference
+                // writes `email ?? null`, so the key is always on the record.
+                return Ok(user_value(
+                    present(user.get("id")),
+                    Some(email.unwrap_or(Value::Null)),
+                    username,
+                ));
+            }
+            Err(failure) => failure,
+        };
+        if failure.status == 0 || failure.status >= 500 {
+            return Err(failure);
+        }
+        self.token_viewer().await
+    }
+
+    /// Identity for a token that cannot read `/user`. `/user/tokens/verify` is
+    /// answerable by every API token, so a failure *there* is a genuine auth
+    /// error and is left to propagate.
+    async fn token_viewer(&self) -> Result<Value, CloudflareApiError> {
+        let verified = request(&self.token, "/user/tokens/verify")
+            .await?
+            .get("result")
+            .cloned()
+            .unwrap_or(Value::Null);
+        // Only a token Cloudflare calls something other than `active` is
+        // rejected; a response that names no status at all is accepted, the
+        // way a missing field always is here.
+        if let Some(status) = verified.get("status").and_then(Value::as_str) {
+            if status != "active" {
+                return Err(CloudflareApiError {
+                    message: format!("This Cloudflare API token is {status}."),
+                    status: 401,
+                });
+            }
+        }
+        let accounts = self.list_accounts().await.unwrap_or_default();
+        let account = accounts
+            .iter()
+            .find(|entry| entry.get("id").and_then(Value::as_str) == self.account_id.as_deref())
+            .or_else(|| accounts.first());
+        // `listAccounts` reports `name ?? id`, so the fallback to the id is the
+        // account's own and not this function's.
+        let name = account
+            .and_then(|entry| present(entry.get("name")).or_else(|| present(entry.get("id"))));
+        Ok(user_value(
+            present(verified.get("id"))
+                .or_else(|| self.account_id.clone().map(Value::String))
+                .or(Some(Value::String(String::new()))),
+            Some(Value::Null),
+            name.or_else(|| Some(Value::String("Cloudflare API token".into()))),
+        ))
     }
 
     /// Every account this token can see, which is what the scope picker offers.

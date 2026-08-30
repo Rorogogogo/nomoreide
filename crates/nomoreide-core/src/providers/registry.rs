@@ -13,13 +13,15 @@
 //! looking for.
 
 use crate::cloudflare_context::require_client as require_cloudflare_client;
+use crate::cloudflare_manager::CloudflareApiError;
 use crate::cloudflare_provider::{
     cloudflare_repo_url, CloudflareDeployProvider, CLOUDFLARE_LINK_FILE, CLOUDFLARE_PROVIDER_ID,
 };
-use crate::config::{Config, ConfigStore};
+use crate::config::{Config, ConfigStore, PublicProviderConnectionDef};
 use crate::providers::deploy::{BuildLogLine, Deployment, DeploymentDetail, ProviderProject};
 use crate::providers::project_resolution::{project_hints, LinkFile, ProjectHint};
 use crate::vercel_context::require_client;
+use crate::vercel_manager::VercelApiError;
 use crate::vercel_provider::{
     vercel_repo_url, VercelDeployProvider, VERCEL_LINK_FILE, VERCEL_PROVIDER_ID,
 };
@@ -36,13 +38,60 @@ pub enum DeployClient {
 }
 
 impl DeployClient {
+    /// Who the credential belongs to, in the two fields the connection panel
+    /// puts on screen.
+    ///
+    /// Narrower than the vendors' own identity records on purpose: everything
+    /// else they carry — ids, emails, plan names — would be a field nothing
+    /// reads and every provider would have to invent an answer for.
+    pub async fn account(&self) -> Result<ProviderAccount, ProviderError> {
+        match self {
+            Self::Vercel(provider) => {
+                let user = provider.viewer().await?;
+                Ok(ProviderAccount {
+                    // Reported even when it is null: the vendor saying the
+                    // account has no username is an answer, and the reference
+                    // passes it through rather than dropping the key.
+                    username: user.get("username").cloned(),
+                    avatar: present(user.get("avatar")),
+                })
+            }
+            Self::Cloudflare(provider) => Ok(ProviderAccount {
+                username: Some(cloudflare_username(&provider.viewer().await?)),
+                // Neither of Cloudflare's identity endpoints carries one.
+                avatar: None,
+            }),
+        }
+    }
+
+    /// The accounts this credential can act as — a Vercel team, a Cloudflare
+    /// account — which is what the scope switcher offers.
+    pub async fn list_scopes(&self) -> Result<Vec<Value>, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.list_scopes().await?),
+            Self::Cloudflare(provider) => Ok(provider.list_scopes().await?),
+        }
+    }
+
+    /// One project read in full.
+    ///
+    /// Distinct from the project on a [`ProviderContext`], which may have come
+    /// from a *listing* — and Vercel's listing omits the build settings the
+    /// settings panel exists to show.
+    pub async fn get_project(&self, id: &str) -> Result<ProviderProject, ProviderError> {
+        match self {
+            Self::Vercel(provider) => Ok(provider.get_project(id).await?),
+            Self::Cloudflare(provider) => Ok(provider.get_project(id).await?),
+        }
+    }
+
     pub async fn list_projects(
         &self,
         search: Option<&str>,
-    ) -> Result<Vec<ProviderProject>, String> {
+    ) -> Result<Vec<ProviderProject>, ProviderError> {
         match self {
-            Self::Vercel(provider) => provider.list_projects(search).await.map_err(message),
-            Self::Cloudflare(provider) => provider.list_projects(search).await.map_err(message),
+            Self::Vercel(provider) => Ok(provider.list_projects(search).await?),
+            Self::Cloudflare(provider) => Ok(provider.list_projects(search).await?),
         }
     }
 
@@ -51,16 +100,14 @@ impl DeployClient {
         project_id: &str,
         target: Option<&str>,
         limit: u32,
-    ) -> Result<Vec<Deployment>, String> {
+    ) -> Result<Vec<Deployment>, ProviderError> {
         match self {
-            Self::Vercel(provider) => provider
-                .list_deployments(project_id, target, limit)
-                .await
-                .map_err(message),
-            Self::Cloudflare(provider) => provider
-                .list_deployments(project_id, target, limit)
-                .await
-                .map_err(message),
+            Self::Vercel(provider) => {
+                Ok(provider.list_deployments(project_id, target, limit).await?)
+            }
+            Self::Cloudflare(provider) => {
+                Ok(provider.list_deployments(project_id, target, limit).await?)
+            }
         }
     }
 
@@ -70,13 +117,12 @@ impl DeployClient {
         &self,
         project: Option<&str>,
         id: &str,
-    ) -> Result<DeploymentDetail, String> {
+    ) -> Result<DeploymentDetail, ProviderError> {
         match self {
-            Self::Vercel(provider) => provider.get_deployment(id).await.map_err(message),
-            Self::Cloudflare(provider) => provider
-                .get_deployment(project.ok_or(WITHIN_A_PROJECT)?, id)
-                .await
-                .map_err(message),
+            Self::Vercel(provider) => Ok(provider.get_deployment(id).await?),
+            Self::Cloudflare(provider) => Ok(provider
+                .get_deployment(project.ok_or_else(|| local(WITHIN_A_PROJECT))?, id)
+                .await?),
         }
     }
 
@@ -85,23 +131,22 @@ impl DeployClient {
         project: Option<&str>,
         id: &str,
         limit: u32,
-    ) -> Result<Vec<BuildLogLine>, String> {
+    ) -> Result<Vec<BuildLogLine>, ProviderError> {
         match self {
-            Self::Vercel(provider) => provider.build_logs(id, limit).await.map_err(message),
+            Self::Vercel(provider) => Ok(provider.build_logs(id, limit).await?),
             // Pages serves the whole build history in one document, so there is
             // no line cap to pass on — it is applied to what came back, and it
             // keeps the *end*. A capped build log is read to find out why the
             // build failed, and that is the last thing it says. (Vercel gets
             // the same answer from the vendor, which reads its events
             // backwards.)
-            Self::Cloudflare(provider) => provider
-                .build_logs(project.ok_or(WITHIN_A_PROJECT)?, id)
+            Self::Cloudflare(provider) => Ok(provider
+                .build_logs(project.ok_or_else(|| local(WITHIN_A_PROJECT))?, id)
                 .await
                 .map(|lines| {
                     let skip = lines.len().saturating_sub(limit as usize);
                     lines.into_iter().skip(skip).collect()
-                })
-                .map_err(message),
+                })?),
         }
     }
 
@@ -143,13 +188,117 @@ impl DeployClient {
 const WITHIN_A_PROJECT: &str =
     "Cloudflare addresses deployments within a project. Link this repository to a Pages project first.";
 
-fn message(error: impl std::fmt::Display) -> String {
-    error.to_string()
+/// A provider refusal that still knows the status it arrived with.
+///
+/// The message alone was enough while every route answered failure the same
+/// way. `status` cannot tell an expired credential from an outage from a
+/// message — both vendors word theirs differently and neither promises to keep
+/// wording them that way — so the one caller that has to make that distinction
+/// reads the number the vendor sent instead of guessing from prose.
+#[derive(Debug, Clone)]
+pub struct ProviderError {
+    pub message: String,
+    /// The vendor's HTTP status, or 0 when the request never reached it.
+    pub status: u16,
+}
+
+impl ProviderError {
+    /// Whether the vendor refused the *credential* rather than the request,
+    /// which is the difference between offering "reconnect" and "retry".
+    pub fn is_auth(&self) -> bool {
+        matches!(self.status, 401 | 403)
+    }
+}
+
+impl std::fmt::Display for ProviderError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}", self.message)
+    }
+}
+
+/// So a caller that only ever reported the message keeps compiling — and keeps
+/// reporting exactly what it did before.
+impl From<ProviderError> for String {
+    fn from(error: ProviderError) -> String {
+        error.message
+    }
+}
+
+impl From<VercelApiError> for ProviderError {
+    fn from(error: VercelApiError) -> Self {
+        Self {
+            message: error.message,
+            status: error.status,
+        }
+    }
+}
+
+impl From<CloudflareApiError> for ProviderError {
+    fn from(error: CloudflareApiError) -> Self {
+        Self {
+            message: error.message,
+            status: error.status,
+        }
+    }
+}
+
+/// The signed-in account, in the two fields the connection panel shows.
+///
+/// Both are `Value` rather than `String` because both are reported verbatim:
+/// a vendor that sends a null username is saying something, and narrowing it
+/// to a string would make that indistinguishable from sending nothing.
+pub struct ProviderAccount {
+    /// Absent when the vendor's record carried no such key at all.
+    pub username: Option<Value>,
+    /// Absent when the vendor has no avatar *or* sent an explicit null — the
+    /// panel has one fallback for both.
+    pub avatar: Option<Value>,
+}
+
+/// A field the vendor actually sent, in the sense `??` means it: an absent key
+/// and an explicit null are both "no value".
+fn present(field: Option<&Value>) -> Option<Value> {
+    field.filter(|value| !value.is_null()).cloned()
+}
+
+/// What to call a Cloudflare credential on screen.
+///
+/// The email first, because Cloudflare's `username` is an opaque 32-char hex
+/// id rather than a display name and putting one in the account menu reads as
+/// a bug. The `username` field is the fallback for a record that carries no
+/// email — a scoped API token, whose identity endpoint names it after its
+/// account — and the literal is the fallback for a record that carries
+/// neither, which is a vendor answer nobody should have to decipher.
+fn cloudflare_username(user: &Value) -> Value {
+    present(user.get("email"))
+        .or_else(|| present(user.get("username")))
+        .unwrap_or_else(|| Value::String("cloudflare".into()))
+}
+
+/// A refusal this layer raised itself, with no vendor behind it.
+fn local(message: &str) -> ProviderError {
+    ProviderError {
+        message: message.to_string(),
+        status: 0,
+    }
+}
+
+/// Where a connected client's token came from, and which account it acts as.
+///
+/// The token itself is deliberately not here. Nothing above this layer needs
+/// it, and a field nobody reads is a field that ends up in a log.
+pub struct ProviderCredential {
+    /// `cli` | `stored` | `oauth`.
+    pub source: String,
+    /// The scope actually in force, which is not always the stored one — an
+    /// unscoped connection adopts the sole team or account it can see.
+    pub scope_id: Option<String>,
 }
 
 /// A connected client plus whatever project resolves for the repository.
 pub struct ProviderContext {
     pub client: DeployClient,
+    pub credential: ProviderCredential,
     /// Absent when connected but no project is linked to this repo yet.
     pub project: Option<ProviderProject>,
 }
@@ -189,19 +338,35 @@ pub async fn require_provider_context(
     config: &Config,
     git_cwd: &str,
 ) -> Result<ProviderContext, String> {
-    let client = match provider_id {
+    let (client, credential) = match provider_id {
         VERCEL_PROVIDER_ID => {
-            let (manager, _) = require_client(store, config).await?;
-            DeployClient::Vercel(VercelDeployProvider::new(manager))
+            let (manager, credential) = require_client(store, config).await?;
+            (
+                DeployClient::Vercel(VercelDeployProvider::new(manager)),
+                ProviderCredential {
+                    source: credential.source,
+                    scope_id: credential.team_id,
+                },
+            )
         }
         CLOUDFLARE_PROVIDER_ID => {
-            let (manager, _) = require_cloudflare_client(store, config).await?;
-            DeployClient::Cloudflare(CloudflareDeployProvider::new(manager))
+            let (manager, credential) = require_cloudflare_client(store, config).await?;
+            (
+                DeployClient::Cloudflare(CloudflareDeployProvider::new(manager)),
+                ProviderCredential {
+                    source: credential.source,
+                    scope_id: credential.account_id,
+                },
+            )
         }
-        other => return Err(format!("Unknown provider \"{other}\".")),
+        other => return Err(unknown_provider(other)),
     };
     let project = resolve_project(&client, config, provider_id, git_cwd).await;
-    Ok(ProviderContext { client, project })
+    Ok(ProviderContext {
+        client,
+        credential,
+        project,
+    })
 }
 
 /// The project this repository deploys, walking the ladder until one resolves.
@@ -232,6 +397,98 @@ async fn resolve_project(
         }
     }
     None
+}
+
+/// The message a route reports for an id no provider claims. Spelled once
+/// because two routes report it and the dashboard matches on neither — it is
+/// the sentence the user reads.
+fn unknown_provider(id: &str) -> String {
+    format!("Unknown provider \"{id}\".")
+}
+
+/// One provider's manifest, looked up by the id a request named.
+pub fn find_deploy_provider(id: &str) -> Option<Value> {
+    deploy_provider_manifests()
+        .into_iter()
+        .find(|manifest| manifest.get("id").and_then(Value::as_str) == Some(id))
+}
+
+/// The same, refusing with the id the caller asked for — which is what the
+/// route reports.
+pub fn require_deploy_provider(id: &str) -> Result<Value, String> {
+    find_deploy_provider(id).ok_or_else(|| unknown_provider(id))
+}
+
+/// The vendor CLI's own login, when there is one.
+///
+/// **Deliberately without the token.** A CLI token is never copied into
+/// NoMoreIDE's config — it is re-read from the vendor's auth file at use time,
+/// which is what makes `vercel logout` and `wrangler logout` revoke our access
+/// too. Handing one to a caller that persists connections is the one way that
+/// policy could be broken by accident, so it is not on the type.
+pub struct ProviderCliSession {
+    /// The scope the vendor CLI is currently pointed at, adopted as the
+    /// default so the dashboard opens where the CLI already is.
+    pub current_scope: Option<String>,
+}
+
+/// Whether the vendor CLI is logged in, and what to tell the user when it is
+/// not.
+pub struct ProviderCliStatus {
+    pub available: bool,
+    pub error: Option<String>,
+}
+
+pub async fn provider_cli_session(provider_id: &str) -> Option<ProviderCliSession> {
+    match provider_id {
+        VERCEL_PROVIDER_ID => {
+            crate::vercel_auth::read_cli_session()
+                .await
+                .map(|session| ProviderCliSession {
+                    current_scope: session.current_team,
+                })
+        }
+        CLOUDFLARE_PROVIDER_ID => {
+            crate::cloudflare_auth::read_wrangler_session()
+                .await
+                .map(|session| ProviderCliSession {
+                    current_scope: session.current_account,
+                })
+        }
+        _ => None,
+    }
+}
+
+pub async fn provider_cli_status(provider_id: &str) -> ProviderCliStatus {
+    if provider_cli_session(provider_id).await.is_some() {
+        return ProviderCliStatus {
+            available: true,
+            error: None,
+        };
+    }
+    ProviderCliStatus {
+        available: false,
+        error: cli_missing(provider_id).map(str::to_string),
+    }
+}
+
+/// What to tell the user when there is no vendor CLI login to inherit.
+///
+/// `None` only for an id no provider claims, which every caller has already
+/// refused before reaching here.
+pub fn cli_missing(provider_id: &str) -> Option<&'static str> {
+    match provider_id {
+        VERCEL_PROVIDER_ID => Some(crate::vercel_auth::CLI_MISSING),
+        CLOUDFLARE_PROVIDER_ID => Some(crate::cloudflare_auth::CLI_MISSING),
+        _ => None,
+    }
+}
+
+/// The saved connection with its secrets removed, which is the only shape of
+/// one that may leave the process.
+pub fn public_provider_connection(config: &Config, provider_id: &str) -> Option<Value> {
+    let connection = config.connections.get(provider_id)?;
+    serde_json::to_value(PublicProviderConnectionDef::new(connection)).ok()
 }
 
 /// Every deploy provider's manifest, in registry order.
@@ -298,4 +555,58 @@ fn extension_row(manifest: &Value, kind: &str, merges_into: Value) -> Value {
     );
     row.insert("mergesInto".into(), merges_into);
     Value::Object(row)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// The one `??` chain in this file that the parity gate reaches only two
+    /// branches of: its walks cover a record with an email and a token record
+    /// named after its account, but never one that carries neither.
+    #[test]
+    fn a_cloudflare_credential_is_named_by_email_then_username_then_nothing() {
+        for (user, expected) in [
+            (
+                json!({ "email": "dev@acme.test", "username": "9f2c" }),
+                "dev@acme.test",
+            ),
+            (
+                json!({ "email": Value::Null, "username": "Acme Account" }),
+                "Acme Account",
+            ),
+            (
+                json!({ "username": "Cloudflare API token" }),
+                "Cloudflare API token",
+            ),
+            (
+                json!({ "email": Value::Null, "username": Value::Null }),
+                "cloudflare",
+            ),
+            (json!({}), "cloudflare"),
+        ] {
+            assert_eq!(cloudflare_username(&user), json!(expected), "{user}");
+        }
+    }
+
+    /// Only these two statuses mean "reconnect"; everything else, a transport
+    /// failure included, means "try again".
+    #[test]
+    fn only_401_and_403_are_credential_refusals() {
+        for (status, auth) in [
+            (401, true),
+            (403, true),
+            (400, false),
+            (429, false),
+            (500, false),
+            (0, false),
+        ] {
+            let error = ProviderError {
+                message: "no".into(),
+                status,
+            };
+            assert_eq!(error.is_auth(), auth, "{status}");
+        }
+    }
 }

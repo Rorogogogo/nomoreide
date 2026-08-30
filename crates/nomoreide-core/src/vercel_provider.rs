@@ -14,6 +14,7 @@
 
 use serde_json::Value;
 
+use crate::providers::api_base::provider_api_host;
 use crate::providers::deploy::{
     BuildLogLine, Deployment, DeploymentDetail, DeploymentMeta, ProjectLink, ProjectSetting,
     ProviderProject,
@@ -177,6 +178,19 @@ impl VercelDeployProvider {
         Self { manager }
     }
 
+    /// The signed-in account, exactly as Vercel described it. Not normalized:
+    /// the one caller reads two of its fields, and narrowing it here would
+    /// invent answers for the rest.
+    pub async fn viewer(&self) -> Result<Value, VercelApiError> {
+        self.manager.viewer().await
+    }
+
+    /// The teams this credential can act as. Vercel's own list is already the
+    /// neutral `{ id, slug, name }`.
+    pub async fn list_scopes(&self) -> Result<Vec<Value>, VercelApiError> {
+        self.manager.list_teams().await
+    }
+
     pub async fn list_projects(
         &self,
         search: Option<&str>,
@@ -320,9 +334,16 @@ pub fn manifest() -> Value {
             "promote",
             "rollback"
         ],
+        // One host: the REST API and the OIDC userinfo endpoint a browser
+        // sign-in uses are both on it. Notably *not* `vercel.com` — that is
+        // where the dashboard links point, and a link is not a request.
+        //
+        // Derived from the base URL rather than written out, so the allowlist
+        // and the place requests actually go cannot drift apart — including
+        // when `NOMOREIDE_VERCEL_API_BASE` points them at a loopback stub.
         "api": {
             "hosts": [
-                "api.vercel.com"
+                provider_api_host(&crate::vercel_manager::api_base())
             ]
         }
     })

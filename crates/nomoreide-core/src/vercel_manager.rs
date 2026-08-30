@@ -240,11 +240,25 @@ impl VercelManager {
                 teams
                     .iter()
                     .map(|team| {
-                        serde_json::json!({
-                            "id": team.get("id").cloned().unwrap_or(Value::Null),
-                            "slug": team.get("slug").cloned().unwrap_or(Value::Null),
-                            "name": team.get("name").cloned().unwrap_or(Value::Null),
-                        })
+                        // `id` and `slug` are absent when Vercel sent none;
+                        // `name` is reported as null instead, because the
+                        // reference writes `team.name ?? null` and only that
+                        // one. These rows go on the wire, so the difference
+                        // between a missing key and a null one is observable.
+                        let mut row = serde_json::Map::new();
+                        for key in ["id", "slug"] {
+                            if let Some(value) = team.get(key) {
+                                row.insert(key.into(), value.clone());
+                            }
+                        }
+                        row.insert(
+                            "name".into(),
+                            team.get("name")
+                                .filter(|value| !value.is_null())
+                                .cloned()
+                                .unwrap_or(Value::Null),
+                        );
+                        Value::Object(row)
                     })
                     .collect()
             })

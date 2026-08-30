@@ -140,6 +140,14 @@ async fn read_toml_fields(path: &std::path::Path) -> std::collections::HashMap<S
     fields
 }
 
+/// What the dashboard is told when there is no Wrangler login to inherit.
+///
+/// A constant rather than a sentence built at the call site because it is the
+/// same text two surfaces show: the connection panel's CLI option, and the
+/// refusal `connect?source=cli` answers when there is nothing to connect to.
+pub const CLI_MISSING: &str =
+    "No Wrangler login found. Run `wrangler login`, or paste a Cloudflare API token instead.";
+
 /// The token the Cloudflare integration should use, given the saved connection.
 pub async fn resolve(_store: &ConfigStore, config: &Config) -> Result<ResolvedCredential, String> {
     let connection = config.connections.get(CLOUDFLARE_PROVIDER_ID);

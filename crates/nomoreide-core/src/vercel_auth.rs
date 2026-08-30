@@ -93,6 +93,14 @@ pub async fn read_cli_session() -> Option<CliSession> {
     None
 }
 
+/// What the dashboard is told when there is no `vercel login` to inherit.
+///
+/// A constant rather than a sentence built at the call site because it is the
+/// same text two surfaces show: the connection panel's CLI option, and the
+/// refusal `connect?source=cli` answers when there is nothing to connect to.
+pub const CLI_MISSING: &str =
+    "No Vercel CLI login found. Run `vercel login`, or paste a token instead.";
+
 pub async fn cli_status() -> CliStatus {
     if read_cli_session().await.is_some() {
         return CliStatus {
@@ -102,9 +110,7 @@ pub async fn cli_status() -> CliStatus {
     }
     CliStatus {
         available: false,
-        error: Some(
-            "No Vercel CLI login found. Run `vercel login`, or paste a token instead.".into(),
-        ),
+        error: Some(CLI_MISSING.into()),
     }
 }
 
