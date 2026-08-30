@@ -1209,18 +1209,20 @@ the only thing that has been checking any of this.
   Porting six routes with no client is not what closes this phase, and saying
   so is more useful than a green tick beside dead surface.
 - **The deploy provider surface is the real remaining gap**, because unlike the
-  host routes it *is* reached by the dashboard. The daemon serves exactly one
-  route, `GET /api/providers` (the manifests, from `extensions.rs`).
-  `apps/dashboard/src/lib/api/provider-http.ts` also calls, per provider:
+  host routes it *is* reached by the dashboard. The daemon now serves the
+  manifests plus the provider-neutral `projects` and `deployments` reads for
+  Vercel and Cloudflare; `check-deploy-routes-parity.ts` holds those to 32
+  response-and-vendor-request comparisons.
+  `apps/dashboard/src/lib/api/provider-http.ts` still calls, per provider:
   `status`, `connect` (POST and DELETE), `oauth/start`, `oauth/status`,
-  `scope`, `env`, `env/*`, `project`, and `projects`. A native daemon therefore
-  renders the Deploy view's provider panel against nine missing endpoints. The
-  OAuth pair is the hard part — it holds a login session in memory and serves
-  an HTML result page — and it is why this was left for last rather than an
-  oversight.
+  `scope`, `env`, `env/*`, and `project`. A native daemon therefore still
+  renders most of the Deploy view's provider panel against missing endpoints.
+  The OAuth pair is the hard part — it holds a login session in memory and
+  serves an HTML result page — and it is why this was left for last rather
+  than an oversight.
 - **The compatibility suite needs a home that outlives the reference.** Every
   gate works by launching the TypeScript runtime and diffing; when Phase 8
-  deletes it, all 65 stop being runnable. The fixtures are the durable half and
+  deletes it, all 66 stop being runnable. The fixtures are the durable half and
   the plan already says to keep them — but "retain contract fixtures" needs to
   become recorded expectations the native runtime is checked against on its
   own, and that conversion has not started.

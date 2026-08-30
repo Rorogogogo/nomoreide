@@ -16,6 +16,7 @@ mod dashboard;
 mod database;
 mod database_catalog;
 mod database_write;
+mod deploy_providers;
 mod docker;
 mod errors;
 mod extensions;
@@ -145,6 +146,7 @@ fn authenticated(state: AppState) -> Router<AppState> {
         .merge(docker::routes())
         .merge(errors::routes())
         .merge(extensions::routes())
+        .merge(deploy_providers::routes())
         .merge(dashboard::routes())
         .merge(database::routes())
         .merge(database_catalog::routes())

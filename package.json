@@ -45,6 +45,7 @@
     "mcp:onboard-parity": "node --import tsx scripts/check-mcp-onboard-parity.ts",
     "mcp:database-parity": "node --import tsx scripts/check-mcp-database-parity.ts",
     "mcp:deploy-parity": "node --import tsx scripts/check-mcp-deploy-parity.ts",
+    "deploy-routes-parity": "node --import tsx scripts/check-deploy-routes-parity.ts",
     "mcp:docs-ui-parity": "node --import tsx scripts/check-mcp-docs-ui-parity.ts",
     "mcp:errors-parity": "node --import tsx scripts/check-mcp-errors-parity.ts",
     "mcp:agent-env-parity": "node --import tsx scripts/check-mcp-agent-env-parity.ts",
