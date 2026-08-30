@@ -24,6 +24,16 @@ pub fn snapshot(
         .iter()
         .find(|view| view.agent == agent.id())
         .ok_or_else(|| format!("Unknown agent {}", agent.id()))?;
+    // An agent with neither a readable config nor a user skill has nothing to
+    // snapshot, and saving the empty profile that would result is worse than
+    // refusing: it looks like a successful capture of a setup, and applying it
+    // later would report "0 MCPs, 0 skills" as though that were the answer.
+    if !view.exists && view.skills.is_empty() {
+        return Err(format!(
+            "Agent \"{}\" has no live config to snapshot.",
+            agent.id()
+        ));
+    }
 
     let mut mcps = OrderedMap::new();
     for (key, server) in view.mcp_servers.iter() {

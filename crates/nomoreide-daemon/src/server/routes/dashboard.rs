@@ -340,7 +340,9 @@ fn build_health(
             state: state_text.as_deref().unwrap_or("unknown"),
             pid: status.pid,
             url: status.url.as_deref(),
-            exit_code: status.exit_code,
+            // Flattened for the same reason as the health snapshot: this feeds
+            // a verdict about the last run, not a document a reader inspects.
+            exit_code: status.exit_code.flatten(),
             started_at: status.started_at.as_deref(),
         });
 

@@ -1392,12 +1392,11 @@ struct ServiceStatusView<'a> {
 
 impl<'a> ServiceStatusView<'a> {
     fn of(status: &'a ServiceRuntimeStatus) -> Self {
-        // `exitedAt` is the one field the runtime stamps for every ending,
-        // whatever it was, so it — not the exit code — decides whether this
-        // run has an ending to report at all. A container's end is not a
-        // process's end, though: it has no exit code and was killed by no
-        // signal, so it reports neither rather than reporting both as null.
-        let ended = status.exited_at.is_some() && status.container_id.is_none();
+        // The pair is passed through rather than re-derived. The daemon
+        // already decides whether this run has an ending to report — the rule
+        // is documented on `ServiceRuntimeStatus::exit_code` — and deciding it
+        // twice would let the two answers drift, with this one silently
+        // winning on the agent's surface.
         Self {
             name: &status.name,
             state: state_label(status.state),
@@ -1408,8 +1407,11 @@ impl<'a> ServiceStatusView<'a> {
             container_id: status.container_id.as_deref(),
             url: status.url.as_deref(),
             exited_at: status.exited_at.as_deref(),
-            exit_code: ended.then_some(status.exit_code),
-            signal: ended.then_some(status.signal.as_deref()),
+            exit_code: status.exit_code,
+            signal: status
+                .signal
+                .as_ref()
+                .map(|signal| signal.as_ref().map(String::as_str)),
         }
     }
 }
@@ -1529,10 +1531,14 @@ mod tests {
 
     #[test]
     fn an_ended_run_reports_the_exit_code_and_signal_as_a_pair() {
+        // The nesting is the daemon's answer, not this view's: `Some(Some(3))`
+        // is "the key is present and its value is 3", `Some(None)` is "present
+        // and null". A run that ended carries the pair; the view passes it on.
         let exited = ServiceRuntimeStatus {
             pid: None,
             url: None,
-            exit_code: Some(3),
+            exit_code: Some(Some(3)),
+            signal: Some(None),
             exited_at: Some("2026-08-21T10:05:00.000Z".into()),
             ..status(ServiceRuntimeState::Exited)
         };
@@ -1553,8 +1559,8 @@ mod tests {
 
         // Killed by a signal instead: the same pair, the other half filled in.
         let signalled = ServiceRuntimeStatus {
-            exit_code: None,
-            signal: Some("SIGTERM".into()),
+            exit_code: Some(None),
+            signal: Some(Some("SIGTERM".into())),
             ..exited
         };
         let rendered = render(&ServiceStatusView::of(&signalled)).unwrap();

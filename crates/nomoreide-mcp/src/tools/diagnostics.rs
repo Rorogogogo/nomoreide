@@ -175,7 +175,9 @@ fn runtime_snapshot(status: &ServiceRuntimeStatus) -> RuntimeSnapshot<'_> {
         state: state_label(status.state),
         pid: status.pid,
         url: status.url.as_deref(),
-        exit_code: status.exit_code,
+        // Health only asks whether the run ended badly, so the presence
+        // distinction the wire carries is flattened away here on purpose.
+        exit_code: status.exit_code.flatten(),
         started_at: status.started_at.as_deref(),
     }
 }

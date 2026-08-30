@@ -2358,11 +2358,14 @@ dependencies = [
 name = "nomoreide-cli"
 version = "0.1.103"
 dependencies = [
+ "anyhow",
  "libc",
  "nomoreide-core",
  "nomoreide-daemon",
  "nomoreide-daemon-client",
  "nomoreide-mcp",
+ "reqwest 0.12.28",
+ "serde",
  "serde_json",
  "tokio",
 ]

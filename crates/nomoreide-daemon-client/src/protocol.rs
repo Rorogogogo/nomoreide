@@ -143,8 +143,22 @@ pub struct ServiceRuntimeStatus {
     // No `pgid`. The daemon knows the process group — it is what a stop
     // signals — but the reference's status has no such field, and nothing
     // reads one back off the wire.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exit_code: Option<i32>,
+    /// Once a run has ended the reference reports **both** halves of how it
+    /// ended, with whichever one does not apply written as an explicit
+    /// `null` — a process killed by a signal has no exit code, and a process
+    /// that returned one was killed by no signal. Hence the nesting: the outer
+    /// `None` skips the key entirely, `Some(None)` writes `null`.
+    ///
+    /// Flattening this to `Option<i32>` is not a cosmetic loss. It makes
+    /// `nomoreide stop <service> | jq .exitCode` answer nothing instead of
+    /// `null`, and it makes "the service is still running" indistinguishable
+    /// from "the service was killed by a signal".
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_or_null"
+    )]
+    pub exit_code: Option<Option<i32>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
     /// ISO-8601 UTC, to the millisecond, for the launch this status describes.
@@ -159,8 +173,14 @@ pub struct ServiceRuntimeStatus {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exited_at: Option<String>,
     /// The name of the signal that killed the process, never its number.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub signal: Option<String>,
+    /// Nested for the same reason as [`ServiceRuntimeStatus::exit_code`], and
+    /// written at the same moment: the pair travels together or not at all.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_or_null"
+    )]
+    pub signal: Option<Option<String>>,
     /// The HTTP inspector in front of this service, when one was asked for.
     ///
     /// Absent rather than disabled when it is off: the reference reports
@@ -431,4 +451,19 @@ pub struct TerminalSessionsEnvelope {
 pub struct TerminalSessionEnvelope {
     pub ok: bool,
     pub session: TerminalSessionInfo,
+}
+
+/// Read a field that is meaningfully absent, meaningfully `null`, or set.
+///
+/// `serde` collapses the first two by default — a JSON `null` deserializes
+/// into `Option<Option<T>>` as the outer `None`, the same as a missing key.
+/// Pairing this with `#[serde(default)]` restores the distinction: `default`
+/// supplies the outer `None` when the key is absent, and this is only reached
+/// when the key is present, so a `null` becomes `Some(None)`.
+fn present_or_null<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Option::<T>::deserialize(deserializer).map(Some)
 }

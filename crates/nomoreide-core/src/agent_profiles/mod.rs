@@ -19,7 +19,8 @@ mod transfer;
 use crate::agent_env::{Json, OrderedMap};
 use serde::{Deserialize, Serialize};
 
-pub use apply::{apply, ApplyOutcome, ApplyPreview};
+pub use apply::{apply, Applied, ApplyOutcome, ApplyPreview};
+pub use credentials::Credential;
 pub use registry::{
     auth, config as registry_config, install, list_public_profiles, publish, register_github,
     InstallOutcome, PublishOutcome, PublishRequest,

@@ -308,6 +308,12 @@ fn launch_error(error: anyhow::Error) -> RuntimeMutationError {
 }
 
 fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
+    // `exitedAt` is the one field stamped for every ending, whatever it was, so
+    // it — not the exit code — decides whether this run has an ending to
+    // report. A container's end is not a process's end, though: it has no exit
+    // code and was killed by no signal, so it reports neither rather than
+    // reporting both as null. The same rule the MCP status surface applies.
+    let ended = status.exited_at.is_some() && status.container_id.is_none();
     ServiceRuntimeStatus {
         name: status.name,
         state: match status.state {
@@ -321,11 +327,11 @@ fn runtime_status(status: ServiceStatus) -> ServiceRuntimeStatus {
         host: status.host,
         container_id: status.container_id,
         pid: status.pid,
-        exit_code: status.exit_code,
+        exit_code: ended.then_some(status.exit_code),
         url: status.url,
         started_at: status.started_at.map(iso_millis),
         exited_at: status.exited_at.map(iso_millis),
-        signal: status.signal,
+        signal: ended.then_some(status.signal),
         inspector: status.inspector.map(|inspector| InspectorRuntimeStatus {
             enabled: inspector.enabled,
             port: inspector.port,

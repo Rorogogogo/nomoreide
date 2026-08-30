@@ -9,7 +9,7 @@ pub use lifecycle::{
     StopOutcome,
 };
 
-pub use client::{DaemonApiError, DaemonClient, DaemonClientError};
+pub use client::{DaemonApiError, DaemonClient, DaemonClientError, ServiceAction};
 /// Re-exported because the error types above carry one.
 pub use reqwest::StatusCode;
 

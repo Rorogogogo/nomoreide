@@ -150,9 +150,19 @@ impl GitManager {
 
     /// The newest `limit` commits, hash and subject only.
     pub async fn log(cwd: &str, limit: u32) -> Result<Vec<GitLogEntry>> {
+        Self::log_with_count(cwd, &limit.to_string()).await
+    }
+
+    /// The same, with the count passed through as the caller spelled it.
+    ///
+    /// Exists for the CLI, which takes `--limit` as text and hands whatever
+    /// `Number()` made of it straight to git — so `--limit banana` becomes
+    /// `git log -NaN` and fails with git's own words. Reproducing that means
+    /// not parsing the count into a number on the way past.
+    pub async fn log_with_count(cwd: &str, count: &str) -> Result<Vec<GitLogEntry>> {
         let raw = exec::checked(
             cwd,
-            &["log", &format!("-{limit}"), "--pretty=format:%H%x09%s"],
+            &["log", &format!("-{count}"), "--pretty=format:%H%x09%s"],
         )
         .await?;
         Ok(raw

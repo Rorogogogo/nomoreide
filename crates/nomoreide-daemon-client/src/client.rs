@@ -346,6 +346,46 @@ impl DaemonClient {
         Ok(envelope.session)
     }
 
+    /// A service mutation's `status` field **exactly as the daemon sent it** —
+    /// same key order, and explicit `null`s kept.
+    ///
+    /// [`ServiceRuntimeStatus`] cannot carry either. Its fields are declared
+    /// in the order this crate found convenient, and `skip_serializing_if`
+    /// turns an explicit `"exitCode": null` into an absent key on the way
+    /// back out. Both are fine for a caller that reads fields; neither is fine
+    /// for the CLI, which prints the document. A process killed by a signal
+    /// reports `exitCode: null` and no code, and dropping the key changes what
+    /// `nomoreide stop <service> | jq .exitCode` answers from `null` to
+    /// nothing at all.
+    pub async fn service_action_value(
+        &self,
+        name: &str,
+        action: ServiceAction,
+    ) -> Result<serde_json::Value, DaemonClientError> {
+        let body = self
+            .mutation(
+                self.endpoint.action_url("services", name, action.as_str()),
+                MUTATION_TIMEOUT,
+            )
+            .await?;
+        envelope_field(&body, "status")
+    }
+
+    /// The same, for a bundle mutation's `statuses` array.
+    pub async fn bundle_action_value(
+        &self,
+        name: &str,
+        action: ServiceAction,
+    ) -> Result<serde_json::Value, DaemonClientError> {
+        let body = self
+            .mutation(
+                self.endpoint.action_url("bundles", name, action.as_str()),
+                BUNDLE_TIMEOUT,
+            )
+            .await?;
+        envelope_field(&body, "statuses")
+    }
+
     async fn service_action(
         &self,
         name: &str,
@@ -788,4 +828,41 @@ mod tests {
             .unwrap();
         request
     }
+}
+
+/// The three mutations a service or bundle accepts.
+///
+/// An enum rather than a `&str` so the raw-value methods above cannot be
+/// handed a path segment that reaches nothing: they build a URL out of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServiceAction {
+    Start,
+    Stop,
+    Restart,
+}
+
+impl ServiceAction {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Stop => "stop",
+            Self::Restart => "restart",
+        }
+    }
+}
+
+/// Pull one field out of an `{ ok: true, ... }` envelope without typing the
+/// rest of it, so nothing the daemon sends is lost on the way through.
+fn envelope_field(body: &[u8], field: &str) -> Result<serde_json::Value, DaemonClientError> {
+    let envelope = serde_json::from_slice::<serde_json::Value>(body)
+        .map_err(|error| DaemonClientError::Protocol(error.to_string()))?;
+    if envelope.get("ok").and_then(serde_json::Value::as_bool) != Some(true) {
+        return Err(DaemonClientError::Protocol(
+            "daemon returned an unsuccessful response".into(),
+        ));
+    }
+    envelope
+        .get(field)
+        .cloned()
+        .ok_or_else(|| DaemonClientError::Protocol(format!("daemon response has no {field}")))
 }
