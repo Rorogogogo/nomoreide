@@ -15,12 +15,17 @@ pub const VULTR_ACTIONS: &[&str] = &["start", "halt", "reboot"];
 /// dashboard asks before running one; `start` needs no such question.
 pub const PRODUCTION_AFFECTING_ACTIONS: &[&str] = &["halt", "reboot"];
 
-/// The images Vultr offers all land on `root`.
-const DEFAULT_USER: &str = "root";
+/// Vultr builds an instance with either `root` enabled or a sudo-capable
+/// `linuxuser` instead, and says which through `user_scheme`. A target that
+/// names the wrong one is a login that always fails.
+const ROOT_USER: &str = "root";
+const LIMITED_USER: &str = "linuxuser";
+const LIMITED_SCHEME: &str = "limited";
 
-/// Vultr reports an address it has not assigned yet as this rather than as
-/// nothing, so it is not an address.
-const UNASSIGNED_IPV4: &str = "0.0.0.0";
+/// The two spellings of "not assigned yet". Vultr reports an address it has not
+/// given a machine as one of these rather than as nothing, for either family,
+/// so neither is an address.
+const UNASSIGNED: [&str; 2] = ["0.0.0.0", "::"];
 
 /// The one vendor word that decides a machine's state.
 ///
@@ -69,8 +74,32 @@ fn text(raw: &Value, key: &str) -> String {
         .to_string()
 }
 
-fn number(raw: &Value, key: &str) -> u64 {
-    raw.get(key).and_then(Value::as_u64).unwrap_or_default()
+/// A string field, absent when the vendor left it empty.
+///
+/// The vendor blanks `region`, `plan` and `os` on a machine it has not finished
+/// placing, and an empty string in the answer would be reported by the
+/// dashboard as a region whose name is nothing.
+fn optional_text(raw: &Value, key: &str) -> Option<String> {
+    let value = text(raw, key);
+    (!value.is_empty()).then_some(value)
+}
+
+/// A size, absent when the vendor reports none — which it spells as a zero.
+fn optional_number(raw: &Value, key: &str) -> Option<u64> {
+    raw.get(key)
+        .and_then(Value::as_u64)
+        .filter(|value| *value != 0)
+}
+
+/// One address, or nothing.
+///
+/// Shared by both families deliberately: the sentinels are the vendor's, not
+/// IPv4's, and a v6 field carrying `::` means exactly what a v4 field carrying
+/// `0.0.0.0` means.
+fn address(raw: &Value, key: &str) -> Option<String> {
+    let value = text(raw, key);
+    let trimmed = value.trim();
+    (!trimmed.is_empty() && !UNASSIGNED.contains(&trimmed)).then(|| trimmed.to_string())
 }
 
 /// The vendor's ISO timestamp as epoch milliseconds.
@@ -82,31 +111,29 @@ fn epoch_ms(value: &str) -> Option<i64> {
 
 pub fn instance_from_raw(raw: &Value) -> HostInstance {
     let word = deciding_word(raw);
-    let hostname = text(raw, "hostname");
-    let hostname = (!hostname.is_empty()).then_some(hostname);
-    let label = text(raw, "label");
-    let ipv4 = text(raw, "main_ip");
+    let hostname = optional_text(raw, "hostname");
+    let id = text(raw, "id");
 
     HostInstance {
-        id: text(raw, "id"),
-        // A machine with no label is shown by the name it answers to, because
-        // an empty row in the list is worse than a technical one.
-        label: if label.is_empty() {
-            hostname.clone().unwrap_or_default()
-        } else {
-            label
-        },
+        // A machine with no label is shown by the name it answers to, and one
+        // with neither by its id — an empty row in the list is worse than a
+        // technical one, and there is always an id.
+        label: optional_text(raw, "label")
+            .or_else(|| hostname.clone())
+            .unwrap_or_else(|| id.clone()),
+        id,
         state: state_of(&word),
         raw_state: word.clone(),
-        ipv4: (!ipv4.is_empty() && ipv4 != UNASSIGNED_IPV4).then_some(ipv4),
+        ipv4: address(raw, "main_ip"),
+        ipv6: address(raw, "v6_main_ip"),
         hostname,
-        region: text(raw, "region"),
-        plan: text(raw, "plan"),
-        os: text(raw, "os"),
+        region: optional_text(raw, "region"),
+        plan: optional_text(raw, "plan"),
+        os: optional_text(raw, "os"),
         specs: HostInstanceSpecs {
-            vcpus: number(raw, "vcpu_count"),
-            memory_mb: number(raw, "ram"),
-            disk_gb: number(raw, "disk"),
+            vcpus: optional_number(raw, "vcpu_count"),
+            memory_mb: optional_number(raw, "ram"),
+            disk_gb: optional_number(raw, "disk"),
         },
         tags: raw
             .get("tags")
@@ -119,7 +146,11 @@ pub fn instance_from_raw(raw: &Value) -> HostInstance {
             })
             .unwrap_or_default(),
         created_at: epoch_ms(&text(raw, "date_created")),
-        default_user: DEFAULT_USER.into(),
+        default_user: if text(raw, "user_scheme") == LIMITED_SCHEME {
+            LIMITED_USER.into()
+        } else {
+            ROOT_USER.into()
+        },
     }
 }
 

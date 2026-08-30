@@ -41,12 +41,19 @@ impl HostInstanceState {
 }
 
 /// A machine's hardware, as the dashboard shows it.
+///
+/// Every field optional, and a zero is an absence rather than a size: a vendor
+/// reports zeroes for a machine it has not finished building, and a row
+/// claiming 0 GB of disk reads as a fact rather than as "not yet known".
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HostInstanceSpecs {
-    pub vcpus: u64,
-    pub memory_mb: u64,
-    pub disk_gb: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vcpus: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_mb: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_gb: Option<u64>,
 }
 
 /// One machine.
@@ -61,11 +68,20 @@ pub struct HostInstance {
     pub raw_state: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv4: Option<String>,
+    /// A v6-only machine is reachable, and one whose v4 has not been assigned
+    /// yet is reachable *only* here — so this is not decoration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ipv6: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hostname: Option<String>,
-    pub region: String,
-    pub plan: String,
-    pub os: String,
+    /// The three below are absent rather than empty on a machine the vendor
+    /// has not finished placing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os: Option<String>,
     pub specs: HostInstanceSpecs,
     pub tags: Vec<String>,
     /// Epoch milliseconds. The vendor sends an ISO string; every other
@@ -73,7 +89,8 @@ pub struct HostInstance {
     /// here rather than in each caller.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<i64>,
-    /// The account a terminal should open as. Vultr images all land on `root`;
-    /// a provider whose images differ would report its own.
+    /// The account a terminal should open as. Not a constant: Vultr's `limited`
+    /// user scheme provisions a sudo-capable `linuxuser` instead of enabling
+    /// root, and a target that says `root` cannot log in to one of those.
     pub default_user: String,
 }
