@@ -1134,6 +1134,8 @@ port.
 
 **Exit gate:** the complete product runs on a machine with no Node.js installed. Node remains only a build-time dependency for frontend assets and tests.
 
+**Exit gate met** by `scripts/check-no-node.sh`, which CI runs on every push. It drives the built binary with `node`, `npm`, `npx` and `tsx` absent from PATH and asserts 18 things: the daemon starts and mints its credential, twelve real GET routes answer 200, an unknown `/api` path still 404s (so a daemon answering everything with the SPA shell cannot pass by accident), the dashboard shell and its JS bundle are served, and `nomoreide mcp` lists its tools over stdio.
+
 ### Phase 7 — Native distribution and controlled cutover
 
 - Extend release CI to build precompiled CLI archives for:
@@ -1155,6 +1157,16 @@ codex mcp add nomoreide -- nomoreide mcp
 - Optionally publish a crate later for `cargo install`; crates.io distributes source and compilation, not the primary prebuilt artifacts.
 
 **Exit gate:** fresh-machine installation, upgrade, downgrade, uninstall, checksum failure, PATH diagnostics, and all three MCP client setup flows pass without Node.js.
+
+**Exit gate met** by `scripts/check-install.sh`, which CI runs on every push. It builds a release the way `.github/workflows/cli-release.yml` does — same archive layout, same `SHA256SUMS` — serves it over `file://`, and drives the real `apps/website/public/install.sh` through all of it: a fresh install, an upgrade, a downgrade, resolving "latest", a corrupted archive and an unlisted one (both refused with the working install untouched), an unwritable prefix, the PATH diagnostics including a shadowing binary earlier on PATH, and an uninstall that leaves the agent configs alone. It then runs all three setup flows off the installed binary with node absent from PATH and checks what each agent's config actually says.
+
+**What shipped, and what did not:**
+
+- **Targets.** macOS arm64 and x86_64, Linux x86_64 and arm64. Windows remains deferred, on this plan's own condition — the PTY and process suite is not ready for it.
+- **libc.** The Linux archives are glibc, built on the oldest runner GitHub offers, and the `linux-compatibility` job runs the result in Ubuntu 22.04 and Debian 12 containers with no Node installed. That sets the floor at glibc 2.35. RHEL 9 and its rebuilds ship 2.34 and are **below** it. The fix is a musl build, which needs OpenSSL vendored because `reqwest` links it; that is a contained change but not one to make on the way out of a runtime refactor.
+- **Signatures.** Sigstore build provenance through `actions/attest-build-provenance`, verifiable with `gh attestation verify --repo Rorogogogo/nomoreide`. No signing key exists for anyone to hold or lose. `install.sh` verifies the SHA-256 and does not require `gh`; the attestation is the stronger optional check.
+- **Native setup.** `nomoreide setup <agent>` writes this binary's absolute path and `mcp`, and the `nomoreide-debug` skill is compiled into the executable so a downloaded binary with no package around it can still install one.
+- **The npm package** stays published as a compatibility shim and now says so on a terminal, pointing at `install.sh`. The notice is suppressed when stderr is not a TTY, so an agent's MCP transport log and the parity gates never see it.
 
 ### Phase 8 — Remove the TypeScript runtime
 

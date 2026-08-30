@@ -11,17 +11,21 @@ Primary documentation:
 - GitHub: https://github.com/Rorogogogo/nomoreide
 - npm: https://www.npmjs.com/package/nomoreide
 
+Install (no Node.js required; a single binary plus its dashboard):
+curl -fsSL https://www.nomoreide.com/install.sh | sh
+It detects OS and architecture, verifies the download against the release's SHA256SUMS, and installs into ~/.local/bin. Pass --version, --prefix, or --uninstall via `sh -s --`. The npm package remains published for a deprecation window as a compatibility shim.
+
 Recommended setup (MCP plus the bundled nomoreide-debug skill):
-npx -y nomoreide setup codex
-npx -y nomoreide setup claude
-npx -y nomoreide setup gemini
+nomoreide setup codex
+nomoreide setup claude
+nomoreide setup gemini
 
 Manual MCP-only setup:
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
-codex mcp add nomoreide -- npx -y nomoreide
+claude mcp add --transport stdio nomoreide -- nomoreide mcp
+codex mcp add nomoreide -- nomoreide mcp
 
 Gemini MCP server:
-{"mcpServers":{"nomoreide":{"command":"npx","args":["-y","nomoreide"]}}}
+{"mcpServers":{"nomoreide":{"command":"nomoreide","args":["mcp"]}}}
 
 Verify inside the agent with /mcp.
 Open the Web UI at http://127.0.0.1:4317/ by default.

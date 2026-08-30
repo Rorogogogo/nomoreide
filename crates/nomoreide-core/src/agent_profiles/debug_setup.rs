@@ -156,10 +156,23 @@ impl std::error::Error for SetupError {}
 /// desktop session does not necessarily inherit the shell PATH that `setup`
 /// ran under, and an entry the agent cannot resolve fails at the point where
 /// the user has the least idea why.
+///
+/// Symlinks are deliberately *not* resolved. A packaging scheme that puts a
+/// link in `bin` pointing at a versioned directory expects the link to be what
+/// gets recorded; resolving it would pin every agent to the version installed
+/// on the day setup ran, and the next upgrade would silently not take. Only a
+/// path that somehow arrives relative is resolved, because a relative one is
+/// no better than the bare name.
 pub fn native_server_command() -> String {
     std::env::current_exe()
         .ok()
-        .and_then(|path| std::fs::canonicalize(&path).ok().or(Some(path)))
+        .and_then(|path| {
+            if path.is_absolute() {
+                Some(path)
+            } else {
+                std::fs::canonicalize(&path).ok()
+            }
+        })
         .map(|path| path.to_string_lossy().into_owned())
         .filter(|path| !path.is_empty())
         .unwrap_or_else(|| "nomoreide".to_string())

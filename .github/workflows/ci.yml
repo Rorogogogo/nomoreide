@@ -105,6 +105,13 @@ jobs:
       # Two gates reach neither MCP nor HTTP — GitActions is a dashboard and
       # desktop surface, and the daemon's `/api/hosts/*` routes are Phase 8 —
       # so they drive their crate's own probe example instead of a tool.
+      # Phase 7's exit gate: it builds a release the way `cli-release.yml` does,
+      # serves it over `file://`, and drives the real `install.sh` through a
+      # fresh install, an upgrade, a downgrade, a corrupted download, the PATH
+      # diagnostics and an uninstall — then runs all three MCP setup flows off
+      # the installed binary with node absent from PATH.
+      - name: install.sh installs, upgrades and uninstalls
+        run: ./scripts/check-install.sh
       - name: Build the parity probe examples
         run: |
           cargo build --example git-actions-probe -p nomoreide-actions

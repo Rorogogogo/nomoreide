@@ -59,11 +59,47 @@ Prefer a native app? Download the latest universal DMG for both Apple silicon an
 
 ### CLI, Web UI, TUI, and MCP Server
 
-No global installation is required. Run the latest version with Node.js 20 or newer:
+One command, no Node.js:
+
+```bash
+curl -fsSL https://www.nomoreide.com/install.sh | sh
+```
+
+It works out your OS and architecture, downloads the matching release,
+**verifies its SHA-256 against the release's `SHA256SUMS`**, and installs into
+`~/.local/bin` — a single self-contained binary, with the dashboard beside it
+under `~/.local/share/nomoreide`. Prebuilt for macOS (Apple silicon and Intel)
+and Linux (x86_64 and arm64).
+
+```bash
+# a specific version, or somewhere else
+curl -fsSL https://www.nomoreide.com/install.sh | sh -s -- --version 0.1.103
+curl -fsSL https://www.nomoreide.com/install.sh | sh -s -- --prefix /usr/local
+
+# and to remove it again
+curl -fsSL https://www.nomoreide.com/install.sh | sh -s -- --uninstall
+```
+
+Every archive also carries [build provenance](https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
+signed through Sigstore, so you can check where it was built rather than only
+that it downloaded intact:
+
+```bash
+gh attestation verify nomoreide-0.1.103-aarch64-apple-darwin.tar.gz --repo Rorogogogo/nomoreide
+```
+
+<details>
+<summary>Or run it through npm (deprecated)</summary>
+
+The npm package remains published for a deprecation window and needs Node.js 20
+or newer. It is a compatibility shim, not the canonical runtime — new releases
+are the native binaries above.
 
 ```bash
 npx -y nomoreide
 ```
+
+</details>
 
 Use the agent-specific commands below to connect NoMoreIDE as an MCP server.
 
@@ -74,9 +110,9 @@ Use the agent-specific commands below to connect NoMoreIDE as an MCP server.
 Install the NoMoreIDE MCP server together with its triggerable debugging skill:
 
 ```bash
-npx -y nomoreide setup codex
-npx -y nomoreide setup claude
-npx -y nomoreide setup gemini
+nomoreide setup codex
+nomoreide setup claude
+nomoreide setup gemini
 ```
 
 Run the command for your agent, then start a new agent session. The skill routes
@@ -85,11 +121,17 @@ shared NoMoreIDE daemon instead of launching duplicate development processes.
 NoMoreIDE also advertises the same behavior through MCP initialization
 instructions for clients that support them.
 
-Setup is idempotent. If an existing user-level `nomoreide` MCP or
-`nomoreide-debug` skill has different contents, setup stops without changing
-it. Review the conflict, then rerun with `--force` to replace it and preserve a
-backup. Project-scoped MCPs and skills are not changed by this user-level setup
-and can override it inside that project.
+Setup writes the absolute path of the installed binary, so an agent launched
+from a desktop session finds it whether or not it inherited your shell's PATH.
+
+Setup is idempotent, and running it again after an upgrade replaces NoMoreIDE's
+own entry in place — including an older `npx -y nomoreide` one, which it
+recognises and upgrades. It stops only when the `nomoreide` MCP server already
+configured is **not** one of ours; review it, then rerun with `--force` to
+replace it and keep a backup. A `nomoreide-debug` skill that differs from the
+bundled one is copied aside and replaced, and the backup path is printed.
+Project-scoped MCPs and skills are not changed by this user-level setup and can
+override it inside that project.
 
 The agent-specific commands below install only the local stdio MCP server and
 remain available for manual setup.
@@ -97,13 +139,13 @@ remain available for manual setup.
 ### Claude Code
 
 ```bash
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
+claude mcp add --transport stdio nomoreide -- nomoreide mcp
 ```
 
 > Want to share the config with your whole team? Use project scope to commit a `.mcp.json`:
 >
 > ```bash
-> claude mcp add --transport stdio --scope project nomoreide -- npx -y nomoreide
+> claude mcp add --transport stdio --scope project nomoreide -- nomoreide mcp
 > ```
 
 Then confirm inside Claude Code:
@@ -133,7 +175,7 @@ Then confirm inside Claude Code:
 ### Codex CLI
 
 ```bash
-codex mcp add nomoreide -- npx -y nomoreide
+codex mcp add nomoreide -- nomoreide mcp
 ```
 
 <details>
@@ -163,12 +205,16 @@ Open your Gemini CLI settings file (`~/.gemini/settings.json` or the path shown 
 {
   "mcpServers": {
     "nomoreide": {
-      "command": "npx",
-      "args": ["-y", "nomoreide"]
+      "command": "nomoreide",
+      "args": ["mcp"]
     }
   }
 }
 ```
+
+If Gemini CLI does not inherit your shell's PATH, use the absolute path
+(`~/.local/bin/nomoreide`, spelled out) — which is what `nomoreide setup gemini`
+writes for you.
 
 Restart Gemini CLI, then verify:
 
@@ -180,18 +226,23 @@ Restart Gemini CLI, then verify:
 
 ### Local Checkout (any agent)
 
-If you prefer to point agents at a locally built binary instead of the published npm package:
+If you prefer to point agents at a locally built binary instead of an installed
+release, build it and name it directly — `cargo build --release` puts it at
+`target/release/nomoreide`:
 
 ```json
 {
   "mcpServers": {
     "nomoreide": {
-      "command": "node",
-      "args": ["/absolute/path/to/nomoreide/dist/index.js"]
+      "command": "/absolute/path/to/nomoreide/target/release/nomoreide",
+      "args": ["mcp"]
     }
   }
 }
 ```
+
+Running `nomoreide setup <agent>` from a checkout writes exactly this, naming
+whichever binary ran it.
 
 ---
 

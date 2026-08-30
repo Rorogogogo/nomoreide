@@ -203,6 +203,13 @@ fn asset_roots() -> Vec<PathBuf> {
         // A packaged layout, where the client sits beside the binary rather
         // than under a repository's `dist/`.
         roots.push(directory.join("web/client"));
+        // An *installed* layout: `install.sh` unpacks the release archive into
+        // a prefix, so the binary is in `<prefix>/bin` and its assets are in
+        // `<prefix>/share/nomoreide`. Neither of the two above finds that, and
+        // without it an installed daemon answers every page with a 500.
+        if let Some(prefix) = directory.parent() {
+            roots.push(prefix.join("share/nomoreide/web/client"));
+        }
     }
     roots
 }

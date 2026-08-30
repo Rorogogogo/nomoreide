@@ -102,6 +102,7 @@
     "service-inspector-parity": "node --import tsx scripts/check-service-inspector-parity.ts",
     "parity": "node --import tsx scripts/run-parity-gates.ts",
     "no-node-check": "bash scripts/check-no-node.sh",
+    "install-check": "bash scripts/check-install.sh",
     "mcp:parity": "node --import tsx scripts/check-mcp-parity.ts --",
     "mcp:service-parity": "node --import tsx scripts/check-mcp-service-parity.ts",
     "mcp:runtime-parity": "node --import tsx scripts/check-mcp-runtime-parity.ts",

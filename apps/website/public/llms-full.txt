@@ -11,12 +11,16 @@ npm: https://www.npmjs.com/package/nomoreide
 
 ## MCP Setup
 
+Install (no Node.js required):
+curl -fsSL https://www.nomoreide.com/install.sh | sh
+The installer detects OS and architecture, verifies the download against the release's SHA256SUMS, and installs a single binary into ~/.local/bin with the dashboard under ~/.local/share/nomoreide. Options: `sh -s -- --version <x.y.z>`, `--prefix <dir>`, `--uninstall`. Prebuilt for macOS arm64/x86_64 and Linux x86_64/arm64. The npm package remains published for a deprecation window as a compatibility shim.
+
 Recommended setup installs the NoMoreIDE MCP server and the bundled `nomoreide-debug` skill:
 
 ```bash
-npx -y nomoreide setup codex
-npx -y nomoreide setup claude
-npx -y nomoreide setup gemini
+nomoreide setup codex
+nomoreide setup claude
+nomoreide setup gemini
 ```
 
 Start a new agent session after setup, then verify with `/mcp`.
@@ -26,13 +30,13 @@ Manual MCP-only setup:
 Claude Code:
 
 ```bash
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
+claude mcp add --transport stdio nomoreide -- nomoreide mcp
 ```
 
 Codex CLI:
 
 ```bash
-codex mcp add nomoreide -- npx -y nomoreide
+codex mcp add nomoreide -- nomoreide mcp
 ```
 
 Gemini CLI:
@@ -41,8 +45,8 @@ Gemini CLI:
 {
   "mcpServers": {
     "nomoreide": {
-      "command": "npx",
-      "args": ["-y", "nomoreide"]
+      "command": "nomoreide",
+      "args": ["mcp"]
     }
   }
 }
@@ -51,7 +55,7 @@ Gemini CLI:
 Universal prompt:
 
 ```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs `nomoreide mcp`. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
 ```
 
 Verify with `/mcp`.
@@ -380,7 +384,7 @@ Recommended workflow:
 
 ## Troubleshooting
 
-MCP server does not show up: re-run setup, restart the agent, verify with `/mcp`, and confirm `npx -y nomoreide` works.
+MCP server does not show up: re-run setup, restart the agent, verify with `/mcp`, and confirm `nomoreide mcp` starts.
 
 Node or npx problems: use Node.js 20 or newer, check `node --version`, or install globally with `npm install -g nomoreide`.
 

@@ -4,20 +4,33 @@ This guide is written for AI coding agents using NoMoreIDE through MCP.
 
 Last reviewed for NoMoreIDE v0.1.99 in August 2026.
 
+## Install
+
+```bash
+curl -fsSL https://www.nomoreide.com/install.sh | sh
+```
+
+A single native binary, no Node.js. The installer detects OS and architecture,
+verifies the download against the release's `SHA256SUMS`, and installs into
+`~/.local/bin` with the dashboard under `~/.local/share/nomoreide`. Use
+`sh -s -- --version <x.y.z>`, `--prefix <dir>`, or `--uninstall` to vary it.
+The npm package remains published for a deprecation window as a compatibility
+shim, not the canonical runtime.
+
 ## Setup Prompt
 
 Use this prompt when the user asks you to install or connect NoMoreIDE:
 
 ```text
-Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs npx -y nomoreide. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
+Please set up NoMoreIDE as a local MCP server for this agent. Register a server named nomoreide that runs `nomoreide mcp`. After adding it, tell me how to verify it with /mcp, then open the Web UI at http://127.0.0.1:4317/.
 ```
 
 Preferred setup installs the MCP server and the bundled `nomoreide-debug` skill:
 
 ```bash
-npx -y nomoreide setup codex
-npx -y nomoreide setup claude
-npx -y nomoreide setup gemini
+nomoreide setup codex
+nomoreide setup claude
+nomoreide setup gemini
 ```
 
 Start a new agent session after setup. Use the commands below for manual MCP-only setup.
@@ -25,8 +38,8 @@ Start a new agent session after setup. Use the commands below for manual MCP-onl
 Agent-specific setup commands:
 
 ```bash
-claude mcp add --transport stdio nomoreide -- npx -y nomoreide
-codex mcp add nomoreide -- npx -y nomoreide
+claude mcp add --transport stdio nomoreide -- nomoreide mcp
+codex mcp add nomoreide -- nomoreide mcp
 ```
 
 Gemini MCP configuration:
@@ -35,8 +48,8 @@ Gemini MCP configuration:
 {
   "mcpServers": {
     "nomoreide": {
-      "command": "npx",
-      "args": ["-y", "nomoreide"]
+      "command": "nomoreide",
+      "args": ["mcp"]
     }
   }
 }

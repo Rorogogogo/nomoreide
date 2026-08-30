@@ -1,0 +1,230 @@
+name: CLI Release
+
+# Precompiled `nomoreide` archives, attached to the same GitHub Release the npm
+# publish creates. `deploy.yml` pushes a `v*` tag, which starts this workflow
+# alongside `desktop-release.yml`; manual dispatch is there for retrying one.
+#
+# Each archive is a prefix: `bin/nomoreide` and `share/nomoreide/web/client`.
+# That is the layout `install.sh` unpacks into, and the layout the daemon looks
+# for its dashboard in — an installed binary in `<prefix>/bin` finds its assets
+# in `<prefix>/share/nomoreide`, so the dashboard works from a download with no
+# checkout anywhere near it.
+#
+# The Linux archives are glibc, not musl: the workspace links OpenSSL through
+# `reqwest`, and a static musl build would mean vendoring it. Building on the
+# oldest runner GitHub still offers sets the floor at that runner's glibc, and
+# `linux-compatibility` below runs the result on the oldest distributions we
+# claim to support rather than asserting it from the version number.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v0.1.104)"
+        required: true
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  # For the build provenance below: Sigstore signs it with a short-lived
+  # certificate bound to this workflow, so there is no key for anyone here to
+  # hold, lose, or leak.
+  id-token: write
+  attestations: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # One target failing to build should still leave the others inspectable,
+      # and `publish` refuses to ship a partial set anyway.
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-apple-darwin
+            runner: macos-13
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .
+          key: ${{ matrix.target }}
+
+      - run: npm ci
+
+      - name: Sync the version to the release tag
+        run: node scripts/sync-version.mjs "${TAG#v}"
+
+      # Node builds the dashboard; nothing in the archive needs it to run.
+      - name: Build the dashboard
+        run: npm run build
+
+      - name: Build the CLI
+        run: cargo build --release --locked --target ${{ matrix.target }} -p nomoreide-cli
+
+      - name: Stage the archive
+        id: stage
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          NAME="nomoreide-${VERSION}-${{ matrix.target }}"
+          mkdir -p "stage/$NAME/bin" "stage/$NAME/share/nomoreide/web"
+          cp "target/${{ matrix.target }}/release/nomoreide" "stage/$NAME/bin/nomoreide"
+          # `share/nomoreide/web/client`, spelled out: it is the path
+          # `asset_roots()` looks in, and one level off serves a 500.
+          cp -R dist/web/client "stage/$NAME/share/nomoreide/web/client"
+          cp LICENSE "stage/$NAME/LICENSE"
+          cp README.md "stage/$NAME/README.md"
+          # A release archive is a record of what was shipped, so it says which
+          # commit it came from where anyone unpacking it will see it.
+          printf '%s\n' "$VERSION" "${{ github.sha }}" "${{ matrix.target }}" \
+            > "stage/$NAME/share/nomoreide/build-info.txt"
+          tar -C stage -czf "$NAME.tar.gz" "$NAME"
+          # BSD and GNU spell the checksum tool differently and format it the
+          # same; `install.sh` reads either.
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
+          else
+            shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      # Every target above is built on a runner of its own architecture, so
+      # what was just packed can be unpacked and run right here. Uploading an
+      # archive nobody has started even once is how a release ships a binary
+      # that does not launch.
+      - name: The archive unpacks and runs
+        run: |
+          set -euo pipefail
+          host=$(rustc -vV | awk '/^host:/ {print $2}')
+          [ "${{ matrix.target }}" = "$host" ] || {
+            echo "${{ matrix.target }} is not native to this runner ($host); \
+                  the matrix is meant to pair them" >&2
+            exit 1
+          }
+          tar -xzf "${{ steps.stage.outputs.name }}.tar.gz" -C "$RUNNER_TEMP"
+          BIN="$RUNNER_TEMP/${{ steps.stage.outputs.name }}/bin/nomoreide"
+          "$BIN" setup | grep -q "nomoreide setup claude"
+          test -f "$RUNNER_TEMP/${{ steps.stage.outputs.name }}/share/nomoreide/web/client/index.html"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.name }}
+          path: |
+            ${{ steps.stage.outputs.name }}.tar.gz
+            ${{ steps.stage.outputs.name }}.tar.gz.sha256
+          if-no-files-found: error
+
+  linux-compatibility:
+    # The libc claim, tested. `install.sh` offers these archives to anything
+    # calling itself Linux, so what matters is the oldest glibc they run on,
+    # not the newest they were built against.
+    #
+    # The floor is the build runner's own glibc — 2.35, from ubuntu-22.04 —
+    # which covers Ubuntu 22.04+, Debian 12+, and Fedora. It does *not* cover
+    # RHEL 9 and its rebuilds, which ship glibc 2.34; those need a musl build,
+    # and a musl build needs OpenSSL vendored first. Listing an image here that
+    # is known to be below the floor would be a red build, not a warning, so
+    # the gap is written down instead.
+    name: glibc floor (${{ matrix.image }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "debian:12"]
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nomoreide-*-x86_64-unknown-linux-gnu
+          merge-multiple: true
+
+      - name: Unpack and run it with nothing else installed
+        run: |
+          set -eu
+          tar -xzf nomoreide-*-x86_64-unknown-linux-gnu.tar.gz
+          BIN="$(echo nomoreide-*-x86_64-unknown-linux-gnu/bin/nomoreide)"
+          # No Node, no npm, no Rust, no shell profile — the container has what
+          # the base image ships and this binary.
+          ! command -v node >/dev/null 2>&1 || { echo "node is present; this is not the test we meant"; exit 1; }
+          "$BIN" setup | grep -q "nomoreide setup claude"
+          echo "ran on $(ldd --version 2>&1 | head -1)"
+
+  publish:
+    needs: [build, linux-compatibility]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nomoreide-*
+          merge-multiple: true
+          path: assets
+
+      - name: One checksum file for the whole release
+        working-directory: assets
+        run: |
+          set -euo pipefail
+          # Refuse to publish a partial set: an installer that 404s on one
+          # architecture is worse than a release that did not appear.
+          count=$(ls -1 *.tar.gz | wc -l)
+          if [ "$count" -ne 4 ]; then
+            echo "expected 4 archives, found $count" >&2
+            ls -1 >&2
+            exit 1
+          fi
+          cat *.tar.gz.sha256 | sed 's| .*/| |' > SHA256SUMS
+          rm -f *.tar.gz.sha256
+          sha256sum -c SHA256SUMS
+          cat SHA256SUMS
+
+      # What a checksum cannot say: *who* built these, and from what. The
+      # SHA256SUMS file proves an archive is the one the release lists; this
+      # proves the release itself came out of this workflow, at this commit.
+      #   gh attestation verify nomoreide-<version>-<target>.tar.gz \
+      #     --repo Rorogogogo/nomoreide
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: assets/*.tar.gz
+
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `desktop-release.yml` creates the release from the same tag, and
+          # which of the two workflows gets there first is not ours to decide.
+          # Waiting is cheaper than a failed upload someone has to re-run.
+          for _ in $(seq 1 60); do
+            if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+              gh release upload "$TAG" assets/* --clobber --repo "${{ github.repository }}"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "no release for $TAG after 30 minutes; the archives are on this run as artifacts" >&2
+          exit 1
