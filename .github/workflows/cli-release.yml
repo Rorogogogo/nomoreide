@@ -93,7 +93,7 @@ jobs:
         run: npm run build
 
       - name: Build the CLI
-        run: cargo build --release --locked --target ${{ matrix.target }} -p nomoreide-cli
+        run: cargo build --release --locked --target ${{ matrix.target }} -p nomoreide
 
       - name: Stage the archive
         id: stage

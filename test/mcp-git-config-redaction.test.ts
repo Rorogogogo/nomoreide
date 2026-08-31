@@ -49,7 +49,7 @@ const describeIfBuilt = built ? describe : describe.skip;
 if (!built) {
   console.warn(
     `Skipping MCP redaction test: no binary at ${binary}. ` +
-      "Run `cargo build -p nomoreide-cli` to include it.",
+      "Run `cargo build -p nomoreide` to include it.",
   );
 }
 

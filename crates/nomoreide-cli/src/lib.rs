@@ -1,3 +1,10 @@
+//! The `nomoreide` command, as a library.
+//!
+//! This is a library so that the `nomoreide` crate — the name people type
+//! at `cargo install` — can be a real front door rather than a duplicate.
+//! It has nothing to offer as an API beyond [`run`]; the modules below stay
+//! private, and the binary in this crate is itself a three-line caller.
+//!
 //! The `nomoreide` binary's front door — the Rust half of `src/index.ts`.
 //!
 //! Dispatch order matters and mirrors the reference exactly. In particular
@@ -19,8 +26,12 @@ use std::process::ExitCode;
 
 use nomoreide_daemon_client::{resolve_daemon_port, RuntimePaths};
 
-#[tokio::main]
-async fn main() -> ExitCode {
+/// Run the command line, returning the process exit code.
+///
+/// Async rather than blocking, and deliberately not wrapped in a runtime:
+/// each binary supplies its own `#[tokio::main]`, so neither has to know
+/// that the other exists.
+pub async fn run() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     // No deprecation notice here. The reference prints one on an interactive
     // stderr telling the reader to install *this* binary; having installed it,

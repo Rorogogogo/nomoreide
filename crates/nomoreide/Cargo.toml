@@ -1,0 +1,29 @@
+[package]
+name = "nomoreide"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "NoMoreIDE: an AI-native service workbench with a CLI, a TUI, a web dashboard and an MCP server."
+readme = "README.md"
+
+[[bin]]
+name = "nomoreide"
+path = "src/main.rs"
+
+[dependencies]
+nomoreide-cli = { path = "../nomoreide-cli", version = "0.3.1" }
+tokio.workspace = true
+
+# The integration tests drive the built binary through `CARGO_BIN_EXE_nomoreide`,
+# which cargo only defines for the crate that produces it — so they live here
+# rather than beside the library they exercise.
+[dev-dependencies]
+serde_json.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

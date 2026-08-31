@@ -10,6 +10,7 @@ const tauriConfigPath = resolve(root, "crates/nomoreide-tauri/tauri.conf.json");
 const cargoManifestPath = resolve(root, "Cargo.toml");
 const cargoLockPath = resolve(root, "Cargo.lock");
 const rustWorkspacePackages = [
+  "nomoreide",
   "nomoreide-actions",
   "nomoreide-cli",
   "nomoreide-core",

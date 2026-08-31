@@ -1,6 +1,6 @@
 {
   "name": "nomoreide",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "An AI-native terminal workbench for services, Git review, logs, and MCP workflows.",
   "repository": {
@@ -28,7 +28,7 @@
     "build": "npm run build --workspace @nomoreide/dashboard",
     "lint": "biome lint apps/dashboard/src scripts test",
     "lint:fix": "biome lint --write apps/dashboard/src scripts test",
-    "dev": "cargo run -p nomoreide-cli --",
+    "dev": "cargo run -p nomoreide --",
     "dev:web": "npm run dev --workspace @nomoreide/dashboard",
     "mcp:contract:update": "node --import tsx scripts/update-mcp-contract.ts",
     "mcp:git-parity": "node --import tsx scripts/check-mcp-git-parity.ts",

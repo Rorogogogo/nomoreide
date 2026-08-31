@@ -45,6 +45,9 @@ const CRATES = [
       "nomoreide-mcp",
     ],
   },
+  // The name people type. A front door over `nomoreide-cli`, so it publishes
+  // last and carries nothing of its own.
+  { name: "nomoreide", needs: ["nomoreide-cli"] },
 ];
 
 const dryRun = process.argv.includes("--dry-run");

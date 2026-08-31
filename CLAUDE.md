@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-cargo build -p nomoreide-cli   # the binary: target/debug/nomoreide
+cargo build -p nomoreide       # the binary: target/debug/nomoreide
 cargo test --workspace         # the Rust suite
 cargo clippy --workspace --all-targets -- -D warnings
 npm run build        # Vite build of the dashboard → dist/web/client
-npm run dev          # cargo run -p nomoreide-cli --
+npm run dev          # cargo run -p nomoreide --
 npm run dev:web      # Vite dev server for the UI at localhost:5173 (proxies /api → localhost:4317)
 npm test             # Vitest: the dashboard/website tests, and the parity harness support
 npm run lint         # Biome over apps/dashboard/src, scripts, test (lint:fix to autofix)
@@ -37,7 +37,7 @@ Lint is clean of *errors*; it reports warnings, and exits 0. Any error you see i
 
 **The archive layout is still load-bearing for installation metadata.** The dashboard is embedded in the binary at build time and needs no files beside it, but archives retain the `bin/nomoreide` and `share/nomoreide/web/client` prefix because `install.sh` and `check-install.sh` read `build-info.txt` there for version detection and uninstall. `apps/website/public/install.sh` (served at `https://www.nomoreide.com/install.sh`) unpacks that shape; `scripts/check-install.sh` builds a release exactly the way the workflow does, serves it over `file://`, and drives the real installer through install/upgrade/downgrade/uninstall, agent setup, a corrupted download, and PATH diagnostics. Run it with `npm run install-check` after `npm run build`.
 
-**Six Rust crates are crates.io-ready but publishing is separate and irreversible.** `scripts/vendor-crate-assets.mjs` refreshes the fallback files a packaged crate cannot reach above its own directory, and `scripts/publish-crates.mjs --dry-run` checks registry state and package order. Real publication must be explicitly approved and runs in dependency order: `nomoreide-core`, `nomoreide-daemon-client`, `nomoreide-actions`, `nomoreide-daemon`, `nomoreide-mcp`, `nomoreide-cli`. The script is resumable and skips versions already present on crates.io. Never publish merely because a merge or GitHub release was requested.
+**Six Rust crates are crates.io-ready but publishing is separate and irreversible.** `scripts/vendor-crate-assets.mjs` refreshes the fallback files a packaged crate cannot reach above its own directory, and `scripts/publish-crates.mjs --dry-run` checks registry state and package order. Real publication must be explicitly approved and runs in dependency order: `nomoreide-core`, `nomoreide-daemon-client`, `nomoreide-actions`, `nomoreide-daemon`, `nomoreide-mcp`, `nomoreide-cli`, `nomoreide`. The script is resumable and skips versions already present on crates.io. Never publish merely because a merge or GitHub release was requested.
 
 **Merging does not release.** `deploy.yml` is `workflow_dispatch`-only — merges accumulate on `main` (tested there by `ci.yml`) until someone cuts a release with `gh workflow run deploy.yml -f bump=patch`. That job bumps the version and tags `v<version>`; the tag push is what triggers `desktop-release.yml` to build the dmg and create the GitHub Release, whose notes come from the body of the PR behind the tag's parent commit (`## Release note` preferred — see `.github/pull_request_template.md`).
 
@@ -58,7 +58,8 @@ There was a TypeScript implementation of everything below, under `src/`. It is g
 | `nomoreide-daemon-client` | The thin HTTP client every front door uses, plus daemon discovery/spawn (`lifecycle.rs`). |
 | `nomoreide-mcp` | The stdio MCP server and its tools, grouped by domain in `src/tools/<domain>.rs`. |
 | `nomoreide-actions` | The guarded write surface — the operations deliberately kept out of the read-safe modules. |
-| `nomoreide-cli` | Argument parsing and the subcommands; the binary everything ships as. |
+| `nomoreide-cli` | Argument parsing and the subcommands, as a library. |
+| `nomoreide` | The binary everything ships as — a front door over `nomoreide-cli`, and the name `cargo install` takes. |
 | `nomoreide-tauri` | The desktop app. Still spawns its own services rather than using the shared daemon. |
 
 ### Core
@@ -83,7 +84,7 @@ Around that sit the feature modules. Two exist specifically to keep dangerous op
 
 One detached, machine-global daemon (`nomoreide daemon`, state at `~/.nomoreide/daemon.json`) owns every spawned service — it **is** the web server on `127.0.0.1:4317`. MCP, CLI and TUI are all thin HTTP clients of it. `ensure_daemon` in `nomoreide-daemon-client` reuses a healthy one (state file + live pid + `/api/health`), adopts one it did not start, or spawns one by re-executing `current_exe()` with `daemon` — so services survive a session exiting and are visible from every front door at once. Two sessions racing both spawn; the loser fails to bind and exits, and its poll adopts the winner. `nomoreide daemon {status,stop,restart}` manages it; `stop` stops all services. The Tauri app is the known exception.
 
-The daemon prefers dashboard files on disk and falls back to the copy embedded at compile time, so **a client-only checkout change needs `npm run build` plus a browser refresh; rebuilding the embedded copy needs `cargo build -p nomoreide-cli`; a server change also needs `nomoreide daemon restart`** (which stops running services). Disk-first lookup lets a fresh Vite build take effect without recompiling Rust. Published `nomoreide-daemon` crates carry a vendored client fallback staged through `OUT_DIR` by `build.rs`.
+The daemon prefers dashboard files on disk and falls back to the copy embedded at compile time, so **a client-only checkout change needs `npm run build` plus a browser refresh; rebuilding the embedded copy needs `cargo build -p nomoreide`; a server change also needs `nomoreide daemon restart`** (which stops running services). Disk-first lookup lets a fresh Vite build take effect without recompiling Rust. Published `nomoreide-daemon` crates carry a vendored client fallback staged through `OUT_DIR` by `build.rs`.
 
 ### MCP server
 

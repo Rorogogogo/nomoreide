@@ -21,8 +21,8 @@ base64.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 futures-util.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.0" }
-nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.1" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.1" }
 portable-pty.workspace = true
 regex.workspace = true
 reqwest.workspace = true

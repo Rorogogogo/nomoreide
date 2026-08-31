@@ -27,9 +27,9 @@ anyhow.workspace = true
 axum.workspace = true
 chrono.workspace = true
 futures-util.workspace = true
-nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.0" }
-nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.0" }
+nomoreide-actions = { path = "../nomoreide-actions", version = "0.3.1" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.1" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.1" }
 serde.workspace = true
 serde_json.workspace = true
 subtle.workspace = true

@@ -11,15 +11,15 @@ categories.workspace = true
 description = "NoMoreIDE: an AI-native service workbench with a CLI, a TUI, a web dashboard and an MCP server."
 readme = "README.md"
 
-[[bin]]
-name = "nomoreide"
-path = "src/main.rs"
+# No `[[bin]]`: the binary lives in the `nomoreide` crate, which is the name
+# people install. Two crates emitting `nomoreide` collide in `target/`, and
+# cargo warns that the collision may become a hard error.
 
 [dependencies]
-nomoreide-core = { path = "../nomoreide-core", version = "0.3.0" }
-nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.3.0" }
-nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.0" }
-nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.3.0" }
+nomoreide-core = { path = "../nomoreide-core", version = "0.3.1" }
+nomoreide-daemon = { path = "../nomoreide-daemon", version = "0.3.1" }
+nomoreide-daemon-client = { path = "../nomoreide-daemon-client", version = "0.3.1" }
+nomoreide-mcp = { path = "../nomoreide-mcp", version = "0.3.1" }
 anyhow.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -28,10 +28,4 @@ tokio.workspace = true
 
 # The TUI puts the terminal into raw mode and puts it back on the way out.
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[dev-dependencies]
-serde_json.workspace = true
-
-[target.'cfg(unix)'.dev-dependencies]
 libc = "0.2"

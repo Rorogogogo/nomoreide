@@ -13,7 +13,7 @@ The process manager only ever kills what it spawned — a foreign process holdin
 This crate is a component. To install the tool itself:
 
 ```bash
-cargo install nomoreide-cli      # or: curl -fsSL https://www.nomoreide.com/install.sh | sh
+cargo install nomoreide          # or: curl -fsSL https://www.nomoreide.com/install.sh | sh
 ```
 
 ## License
