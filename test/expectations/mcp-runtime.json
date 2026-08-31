@@ -36,7 +36,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"idle\",\n  \"status\": \"unknown\",\n  \"summary\": \"Service is not running.\",\n  \"checkedAt\": \"2026-08-31T06:10:51.053Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"idle\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: unknown\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- none\\n\"\n}"
+              "text": "{\n  \"service\": \"idle\",\n  \"status\": \"unknown\",\n  \"summary\": \"Service is not running.\",\n  \"checkedAt\": \"2026-08-31T09:05:40.267Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"idle\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: unknown\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- none\\n\"\n}"
             }
           ]
         }
@@ -88,7 +88,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 46871,\n  \"startedAt\": \"2026-08-31T06:10:52.795Z\"\n}"
+              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 54436,\n  \"startedAt\": \"2026-08-31T09:05:42.138Z\"\n}"
             }
           ]
         }
@@ -101,7 +101,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 46871,\n      \"startedAt\": \"2026-08-31T06:10:52.795Z\",\n      \"url\": \"http://localhost:4599\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 54436,\n      \"startedAt\": \"2026-08-31T09:05:42.138Z\",\n      \"url\": \"http://localhost:4599\"\n    }\n  }\n}"
             }
           ]
         }
@@ -114,7 +114,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner: booting\",\n    \"timestamp\": \"2026-08-31T06:10:52.813Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner listening on http://localhost:4599\",\n    \"timestamp\": \"2026-08-31T06:10:52.935Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stderr\",\n    \"text\": \"banner: background noise\",\n    \"timestamp\": \"2026-08-31T06:10:53.074Z\"\n  }\n]"
+              "text": "[\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner: booting\",\n    \"timestamp\": \"2026-08-31T09:05:42.156Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner listening on http://localhost:4599\",\n    \"timestamp\": \"2026-08-31T09:05:42.278Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stderr\",\n    \"text\": \"banner: background noise\",\n    \"timestamp\": \"2026-08-31T09:05:42.418Z\"\n  }\n]"
             }
           ]
         }
@@ -127,7 +127,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner listening on http://localhost:4599\",\n    \"timestamp\": \"2026-08-31T06:10:52.935Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stderr\",\n    \"text\": \"banner: background noise\",\n    \"timestamp\": \"2026-08-31T06:10:53.074Z\"\n  }\n]"
+              "text": "[\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stdout\",\n    \"text\": \"banner listening on http://localhost:4599\",\n    \"timestamp\": \"2026-08-31T09:05:42.278Z\"\n  },\n  {\n    \"service\": \"banner\",\n    \"stream\": \"stderr\",\n    \"text\": \"banner: background noise\",\n    \"timestamp\": \"2026-08-31T09:05:42.418Z\"\n  }\n]"
             }
           ]
         }
@@ -140,7 +140,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"banner\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T06:10:55.989Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: running\\n- pid: 46871\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- 2026-08-31T06:10:53.074Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T06:10:52.796Z [info] banner started\\n- 2026-08-31T06:10:52.935Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T06:10:52.935Z [info] banner stdout — banner listening on http://localhost:4599\\n\"\n}"
+              "text": "{\n  \"service\": \"banner\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T09:05:45.520Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: running\\n- pid: 54436\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- 2026-08-31T09:05:42.418Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T09:05:42.138Z [info] banner started\\n- 2026-08-31T09:05:42.278Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T09:05:42.278Z [info] banner stdout — banner listening on http://localhost:4599\\n\"\n}"
             }
           ]
         }
@@ -153,7 +153,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Investigate NoMoreIDE service \"banner\".\n\nService:\n- command: %%NODE%%\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: http://localhost:4599\n- state: running\n- pid: 46871\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- 2026-08-31T06:10:53.074Z stderr: banner: background noise\n\nRecent timeline:\n- 2026-08-31T06:10:52.796Z [info] banner started\n- 2026-08-31T06:10:52.935Z [info] banner reported http://localhost:4599 — http://localhost:4599\n- 2026-08-31T06:10:52.935Z [info] banner stdout — banner listening on http://localhost:4599\n"
+              "text": "Investigate NoMoreIDE service \"banner\".\n\nService:\n- command: %%NODE%%\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: http://localhost:4599\n- state: running\n- pid: 54436\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- 2026-08-31T09:05:42.418Z stderr: banner: background noise\n\nRecent timeline:\n- 2026-08-31T09:05:42.138Z [info] banner started\n- 2026-08-31T09:05:42.278Z [info] banner reported http://localhost:4599 — http://localhost:4599\n- 2026-08-31T09:05:42.278Z [info] banner stdout — banner listening on http://localhost:4599\n"
             }
           ]
         }
@@ -166,7 +166,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 46871,\n  \"startedAt\": \"2026-08-31T06:10:52.795Z\",\n  \"url\": \"http://localhost:4599\"\n}"
+              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 54436,\n  \"startedAt\": \"2026-08-31T09:05:42.138Z\",\n  \"url\": \"http://localhost:4599\"\n}"
             }
           ]
         }
@@ -179,7 +179,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 47471,\n  \"startedAt\": \"2026-08-31T06:10:57.284Z\"\n}"
+              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55068,\n  \"startedAt\": \"2026-08-31T09:05:46.932Z\"\n}"
             }
           ]
         }
@@ -192,7 +192,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 47471,\n      \"startedAt\": \"2026-08-31T06:10:57.284Z\",\n      \"url\": \"http://localhost:4599\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 55068,\n      \"startedAt\": \"2026-08-31T09:05:46.932Z\",\n      \"url\": \"http://localhost:4599\"\n    }\n  }\n}"
             }
           ]
         }
@@ -205,7 +205,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 47471,\n  \"startedAt\": \"2026-08-31T06:10:57.284Z\",\n  \"url\": \"http://localhost:4599\",\n  \"exitedAt\": \"2026-08-31T06:10:59.616Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}"
+              "text": "{\n  \"name\": \"banner\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 55068,\n  \"startedAt\": \"2026-08-31T09:05:46.932Z\",\n  \"url\": \"http://localhost:4599\",\n  \"exitedAt\": \"2026-08-31T09:05:49.364Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}"
             }
           ]
         }
@@ -218,7 +218,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 47471,\n      \"startedAt\": \"2026-08-31T06:10:57.284Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:10:59.616Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 55068,\n      \"startedAt\": \"2026-08-31T09:05:46.932Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:05:49.364Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  }\n}"
             }
           ]
         }
@@ -231,7 +231,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"banner\",\n  \"status\": \"unknown\",\n  \"summary\": \"Service is not running.\",\n  \"checkedAt\": \"2026-08-31T06:11:01.271Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: stopped\\n- pid: 47471\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T06:10:53.074Z stderr: banner: background noise\\n- 2026-08-31T06:10:57.563Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T06:10:52.796Z [info] banner started\\n- 2026-08-31T06:10:52.935Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T06:10:52.935Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T06:10:57.283Z [info] banner stopped\\n- 2026-08-31T06:10:57.283Z [info] banner stopped\\n- 2026-08-31T06:10:57.284Z [info] banner started\\n- 2026-08-31T06:10:57.423Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T06:10:57.423Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T06:10:59.617Z [info] banner stopped\\n- 2026-08-31T06:10:59.617Z [info] banner stopped\\n\"\n}"
+              "text": "{\n  \"service\": \"banner\",\n  \"status\": \"unknown\",\n  \"summary\": \"Service is not running.\",\n  \"checkedAt\": \"2026-08-31T09:05:51.117Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: stopped\\n- pid: 55068\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T09:05:42.418Z stderr: banner: background noise\\n- 2026-08-31T09:05:47.212Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T09:05:42.138Z [info] banner started\\n- 2026-08-31T09:05:42.278Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T09:05:42.278Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T09:05:46.931Z [info] banner stopped\\n- 2026-08-31T09:05:46.931Z [info] banner stopped\\n- 2026-08-31T09:05:46.932Z [info] banner started\\n- 2026-08-31T09:05:47.072Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T09:05:47.072Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T09:05:49.365Z [info] banner stopped\\n- 2026-08-31T09:05:49.365Z [info] banner stopped\\n\"\n}"
             }
           ]
         }
@@ -257,7 +257,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"quitter\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 48212,\n  \"startedAt\": \"2026-08-31T06:11:02.129Z\"\n}"
+              "text": "{\n  \"name\": \"quitter\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55811,\n  \"startedAt\": \"2026-08-31T09:05:52.055Z\"\n}"
             }
           ]
         }
@@ -270,7 +270,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 48212,\n      \"startedAt\": \"2026-08-31T06:11:02.129Z\",\n      \"exitedAt\": \"2026-08-31T06:11:02.413Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 55811,\n      \"startedAt\": \"2026-08-31T09:05:52.055Z\",\n      \"exitedAt\": \"2026-08-31T09:05:52.336Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  }\n}"
             }
           ]
         }
@@ -283,7 +283,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"service\": \"quitter\",\n    \"stream\": \"stdout\",\n    \"text\": \"quitter: starting\",\n    \"timestamp\": \"2026-08-31T06:11:02.146Z\"\n  },\n  {\n    \"service\": \"quitter\",\n    \"stream\": \"stderr\",\n    \"text\": \"quitter: giving up\",\n    \"timestamp\": \"2026-08-31T06:11:02.267Z\"\n  }\n]"
+              "text": "[\n  {\n    \"service\": \"quitter\",\n    \"stream\": \"stdout\",\n    \"text\": \"quitter: starting\",\n    \"timestamp\": \"2026-08-31T09:05:52.073Z\"\n  },\n  {\n    \"service\": \"quitter\",\n    \"stream\": \"stderr\",\n    \"text\": \"quitter: giving up\",\n    \"timestamp\": \"2026-08-31T09:05:52.195Z\"\n  }\n]"
             }
           ]
         }
@@ -296,7 +296,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"quitter\",\n  \"status\": \"unhealthy\",\n  \"summary\": \"Service exited with code 7.\",\n  \"checkedAt\": \"2026-08-31T06:11:05.409Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"quitter\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: exited\\n- pid: 48212\\n\\nHealth:\\n- Service exited with code 7.\\n\\nRecent logs:\\n- 2026-08-31T06:11:02.267Z stderr: quitter: giving up\\n\\nRecent timeline:\\n- 2026-08-31T06:11:02.129Z [info] quitter started\\n- 2026-08-31T06:11:02.414Z [error] quitter exited\\n\"\n}"
+              "text": "{\n  \"service\": \"quitter\",\n  \"status\": \"unhealthy\",\n  \"summary\": \"Service exited with code 7.\",\n  \"checkedAt\": \"2026-08-31T09:05:55.441Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"quitter\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: exited\\n- pid: 55811\\n\\nHealth:\\n- Service exited with code 7.\\n\\nRecent logs:\\n- 2026-08-31T09:05:52.195Z stderr: quitter: giving up\\n\\nRecent timeline:\\n- 2026-08-31T09:05:52.055Z [info] quitter started\\n- 2026-08-31T09:05:52.336Z [error] quitter exited\\n\"\n}"
             }
           ]
         }
@@ -309,7 +309,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Investigate NoMoreIDE service \"quitter\".\n\nService:\n- command: %%NODE%%\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: not detected\n- state: exited\n- pid: 48212\n\nHealth:\n- Service exited with code 7.\n\nRecent logs:\n- 2026-08-31T06:11:02.267Z stderr: quitter: giving up\n\nRecent timeline:\n- 2026-08-31T06:11:02.129Z [info] quitter started\n- 2026-08-31T06:11:02.414Z [error] quitter exited\n"
+              "text": "Investigate NoMoreIDE service \"quitter\".\n\nService:\n- command: %%NODE%%\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: not detected\n- state: exited\n- pid: 55811\n\nHealth:\n- Service exited with code 7.\n\nRecent logs:\n- 2026-08-31T09:05:52.195Z stderr: quitter: giving up\n\nRecent timeline:\n- 2026-08-31T09:05:52.055Z [info] quitter started\n- 2026-08-31T09:05:52.336Z [error] quitter exited\n"
             }
           ]
         }
@@ -322,7 +322,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"3f1349fe-6436-4d75-8243-3b3ba38fc575\",\n    \"timestamp\": \"2026-08-31T06:11:02.129Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 48212\n    }\n  },\n  {\n    \"id\": \"f7919048-8cac-465a-a58c-f9863fe963ef\",\n    \"timestamp\": \"2026-08-31T06:11:02.414Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"d6791d24-5b13-4bf6-89f2-52508988f76e\",\n    \"timestamp\": \"2026-08-31T09:05:52.055Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 55811\n    }\n  },\n  {\n    \"id\": \"884e202f-34cb-4fef-8eac-cbec5b93d413\",\n    \"timestamp\": \"2026-08-31T09:05:52.336Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  }\n]"
             }
           ]
         }
@@ -403,7 +403,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"2aad0a72-4580-4e93-ba96-48cdb16094b4\",\n    \"timestamp\": \"2026-08-31T06:11:07.134Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"not-registered\",\n    \"severity\": \"info\",\n    \"title\": \"not-registered stopped\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"a381ad55-5a73-41a4-89ff-ee49fc64f147\",\n    \"timestamp\": \"2026-08-31T09:05:57.336Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"not-registered\",\n    \"severity\": \"info\",\n    \"title\": \"not-registered stopped\"\n  }\n]"
             }
           ]
         }
@@ -444,7 +444,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"name\": \"banner\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 49486,\n    \"startedAt\": \"2026-08-31T06:11:10.039Z\"\n  }\n]"
+              "text": "[\n  {\n    \"name\": \"banner\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 57105,\n    \"startedAt\": \"2026-08-31T09:06:00.377Z\"\n  }\n]"
             }
           ]
         }
@@ -457,7 +457,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 48212,\n      \"startedAt\": \"2026-08-31T06:11:02.129Z\",\n      \"exitedAt\": \"2026-08-31T06:11:02.413Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 55811,\n      \"startedAt\": \"2026-08-31T09:05:52.055Z\",\n      \"exitedAt\": \"2026-08-31T09:05:52.336Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
             }
           ]
         }
@@ -470,7 +470,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"name\": \"banner\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 49486,\n    \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n    \"url\": \"http://localhost:4599\"\n  },\n  {\n    \"name\": \"quitter\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 49703,\n    \"startedAt\": \"2026-08-31T06:11:12.400Z\"\n  }\n]"
+              "text": "[\n  {\n    \"name\": \"banner\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 57105,\n    \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n    \"url\": \"http://localhost:4599\"\n  },\n  {\n    \"name\": \"quitter\",\n    \"state\": \"running\",\n    \"kind\": \"local\",\n    \"pid\": 57264,\n    \"startedAt\": \"2026-08-31T09:06:02.729Z\"\n  }\n]"
             }
           ]
         }
@@ -483,7 +483,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 49703,\n      \"startedAt\": \"2026-08-31T06:11:12.400Z\",\n      \"exitedAt\": \"2026-08-31T06:11:12.680Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"running\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"exited\",\n      \"kind\": \"local\",\n      \"pid\": 57264,\n      \"startedAt\": \"2026-08-31T09:06:02.729Z\",\n      \"exitedAt\": \"2026-08-31T09:06:03.008Z\",\n      \"exitCode\": 7,\n      \"signal\": null\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
             }
           ]
         }
@@ -496,7 +496,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"name\": \"quitter\",\n    \"state\": \"stopped\"\n  },\n  {\n    \"name\": \"banner\",\n    \"state\": \"stopped\",\n    \"kind\": \"local\",\n    \"pid\": 49486,\n    \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n    \"url\": \"http://localhost:4599\",\n    \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n    \"exitCode\": null,\n    \"signal\": \"SIGTERM\"\n  }\n]"
+              "text": "[\n  {\n    \"name\": \"quitter\",\n    \"state\": \"stopped\"\n  },\n  {\n    \"name\": \"banner\",\n    \"state\": \"stopped\",\n    \"kind\": \"local\",\n    \"pid\": 57105,\n    \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n    \"url\": \"http://localhost:4599\",\n    \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n    \"exitCode\": null,\n    \"signal\": \"SIGTERM\"\n  }\n]"
             }
           ]
         }
@@ -509,7 +509,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    }\n  }\n}"
             }
           ]
         }
@@ -522,7 +522,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"remote\",\n  \"state\": \"running\",\n  \"kind\": \"ssh\",\n  \"host\": \"parity-host\",\n  \"pid\": 50320,\n  \"startedAt\": \"2026-08-31T06:11:16.919Z\"\n}"
+              "text": "{\n  \"name\": \"remote\",\n  \"state\": \"running\",\n  \"kind\": \"ssh\",\n  \"host\": \"parity-host\",\n  \"pid\": 57928,\n  \"startedAt\": \"2026-08-31T09:06:07.297Z\"\n}"
             }
           ]
         }
@@ -535,7 +535,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"running\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 50320,\n      \"startedAt\": \"2026-08-31T06:11:16.919Z\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"running\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 57928,\n      \"startedAt\": \"2026-08-31T09:06:07.297Z\"\n    }\n  }\n}"
             }
           ]
         }
@@ -548,7 +548,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"service\": \"remote\",\n    \"stream\": \"stdout\",\n    \"text\": \"ssh-stub arg: parity-host\",\n    \"timestamp\": \"2026-08-31T06:11:17.035Z\"\n  },\n  {\n    \"service\": \"remote\",\n    \"stream\": \"stdout\",\n    \"text\": \"ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\",\n    \"timestamp\": \"2026-08-31T06:11:17.035Z\"\n  }\n]"
+              "text": "[\n  {\n    \"service\": \"remote\",\n    \"stream\": \"stdout\",\n    \"text\": \"ssh-stub arg: parity-host\",\n    \"timestamp\": \"2026-08-31T09:06:07.583Z\"\n  },\n  {\n    \"service\": \"remote\",\n    \"stream\": \"stdout\",\n    \"text\": \"ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\",\n    \"timestamp\": \"2026-08-31T09:06:07.583Z\"\n  }\n]"
             }
           ]
         }
@@ -561,7 +561,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"remote\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T06:11:19.704Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"remote\\\".\\n\\nService:\\n- command: npm start\\n- cwd: /srv/app\\n- configured port: not configured\\n- runtime url: not detected\\n- state: running\\n- pid: 50320\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: parity-host\\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\\n\\nRecent timeline:\\n- 2026-08-31T06:11:16.920Z [info] remote started\\n\"\n}"
+              "text": "{\n  \"service\": \"remote\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T09:06:10.089Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"remote\\\".\\n\\nService:\\n- command: npm start\\n- cwd: /srv/app\\n- configured port: not configured\\n- runtime url: not detected\\n- state: running\\n- pid: 57928\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: parity-host\\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\\n\\nRecent timeline:\\n- 2026-08-31T09:06:07.297Z [info] remote started\\n\"\n}"
             }
           ]
         }
@@ -574,7 +574,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Investigate NoMoreIDE service \"remote\".\n\nService:\n- command: npm start\n- cwd: /srv/app\n- configured port: not configured\n- runtime url: not detected\n- state: running\n- pid: 50320\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: parity-host\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\n\nRecent timeline:\n- 2026-08-31T06:11:16.920Z [info] remote started\n"
+              "text": "Investigate NoMoreIDE service \"remote\".\n\nService:\n- command: npm start\n- cwd: /srv/app\n- configured port: not configured\n- runtime url: not detected\n- state: running\n- pid: 57928\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: parity-host\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\n\nRecent timeline:\n- 2026-08-31T09:06:07.297Z [info] remote started\n"
             }
           ]
         }
@@ -587,7 +587,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"remote\",\n  \"state\": \"stopped\",\n  \"kind\": \"ssh\",\n  \"host\": \"parity-host\",\n  \"pid\": 50320,\n  \"startedAt\": \"2026-08-31T06:11:16.919Z\",\n  \"exitedAt\": \"2026-08-31T06:11:20.613Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}"
+              "text": "{\n  \"name\": \"remote\",\n  \"state\": \"stopped\",\n  \"kind\": \"ssh\",\n  \"host\": \"parity-host\",\n  \"pid\": 57928,\n  \"startedAt\": \"2026-08-31T09:06:07.297Z\",\n  \"exitedAt\": \"2026-08-31T09:06:10.975Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}"
             }
           ]
         }
@@ -600,7 +600,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 50320,\n      \"startedAt\": \"2026-08-31T06:11:16.919Z\",\n      \"exitedAt\": \"2026-08-31T06:11:20.613Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 57928,\n      \"startedAt\": \"2026-08-31T09:06:07.297Z\",\n      \"exitedAt\": \"2026-08-31T09:06:10.975Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  }\n}"
             }
           ]
         }
@@ -613,7 +613,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"composed\",\n  \"state\": \"running\",\n  \"kind\": \"docker-compose\",\n  \"startedAt\": \"2026-08-31T06:11:22.387Z\",\n  \"containerId\": \"parity-container-id\"\n}"
+              "text": "{\n  \"name\": \"composed\",\n  \"state\": \"running\",\n  \"kind\": \"docker-compose\",\n  \"startedAt\": \"2026-08-31T09:06:12.906Z\",\n  \"containerId\": \"parity-container-id\"\n}"
             }
           ]
         }
@@ -626,7 +626,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 50320,\n      \"startedAt\": \"2026-08-31T06:11:16.919Z\",\n      \"exitedAt\": \"2026-08-31T06:11:20.613Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"composed\": {\n      \"name\": \"composed\",\n      \"state\": \"running\",\n      \"kind\": \"docker-compose\",\n      \"startedAt\": \"2026-08-31T06:11:22.387Z\",\n      \"containerId\": \"parity-container-id\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 57928,\n      \"startedAt\": \"2026-08-31T09:06:07.297Z\",\n      \"exitedAt\": \"2026-08-31T09:06:10.975Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"composed\": {\n      \"name\": \"composed\",\n      \"state\": \"running\",\n      \"kind\": \"docker-compose\",\n      \"startedAt\": \"2026-08-31T09:06:12.906Z\",\n      \"containerId\": \"parity-container-id\"\n    }\n  }\n}"
             }
           ]
         }
@@ -639,7 +639,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"service\": \"composed\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T06:11:24.227Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"composed\\\".\\n\\nService:\\n- command: undefined\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: running\\n- pid: n/a\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- 2026-08-31T06:11:22.387Z [info] composed started\\n\"\n}"
+              "text": "{\n  \"service\": \"composed\",\n  \"status\": \"healthy\",\n  \"summary\": \"Service is running without detected warnings.\",\n  \"checkedAt\": \"2026-08-31T09:06:14.772Z\",\n  \"checks\": [],\n  \"ports\": [],\n  \"agentContext\": \"Investigate NoMoreIDE service \\\"composed\\\".\\n\\nService:\\n- command: undefined\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: running\\n- pid: n/a\\n\\nHealth:\\n- Service is running without detected warnings.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- 2026-08-31T09:06:12.906Z [info] composed started\\n\"\n}"
             }
           ]
         }
@@ -652,7 +652,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Investigate NoMoreIDE service \"composed\".\n\nService:\n- command: undefined\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: not detected\n- state: running\n- pid: n/a\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- none\n\nRecent timeline:\n- 2026-08-31T06:11:22.387Z [info] composed started\n"
+              "text": "Investigate NoMoreIDE service \"composed\".\n\nService:\n- command: undefined\n- cwd: %%WORKSPACE%%\n- configured port: not configured\n- runtime url: not detected\n- state: running\n- pid: n/a\n\nHealth:\n- Service is running without detected warnings.\n\nRecent logs:\n- none\n\nRecent timeline:\n- 2026-08-31T09:06:12.906Z [info] composed started\n"
             }
           ]
         }
@@ -665,7 +665,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"name\": \"composed\",\n  \"state\": \"stopped\",\n  \"kind\": \"docker-compose\",\n  \"startedAt\": \"2026-08-31T06:11:22.387Z\",\n  \"containerId\": \"parity-container-id\",\n  \"exitedAt\": \"2026-08-31T06:11:25.144Z\"\n}"
+              "text": "{\n  \"name\": \"composed\",\n  \"state\": \"stopped\",\n  \"kind\": \"docker-compose\",\n  \"startedAt\": \"2026-08-31T09:06:12.906Z\",\n  \"containerId\": \"parity-container-id\",\n  \"exitedAt\": \"2026-08-31T09:06:15.688Z\"\n}"
             }
           ]
         }
@@ -678,7 +678,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 49486,\n      \"startedAt\": \"2026-08-31T06:11:10.039Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T06:11:15.284Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 50320,\n      \"startedAt\": \"2026-08-31T06:11:16.919Z\",\n      \"exitedAt\": \"2026-08-31T06:11:20.613Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"composed\": {\n      \"name\": \"composed\",\n      \"state\": \"stopped\",\n      \"kind\": \"docker-compose\",\n      \"startedAt\": \"2026-08-31T06:11:22.387Z\",\n      \"containerId\": \"parity-container-id\",\n      \"exitedAt\": \"2026-08-31T06:11:25.144Z\"\n    }\n  }\n}"
+              "text": "{\n  \"services\": {\n    \"banner\": {\n      \"name\": \"banner\",\n      \"state\": \"stopped\",\n      \"kind\": \"local\",\n      \"pid\": 57105,\n      \"startedAt\": \"2026-08-31T09:06:00.377Z\",\n      \"url\": \"http://localhost:4599\",\n      \"exitedAt\": \"2026-08-31T09:06:05.627Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"quitter\": {\n      \"name\": \"quitter\",\n      \"state\": \"stopped\"\n    },\n    \"not-registered\": {\n      \"name\": \"not-registered\",\n      \"state\": \"stopped\"\n    },\n    \"remote\": {\n      \"name\": \"remote\",\n      \"state\": \"stopped\",\n      \"kind\": \"ssh\",\n      \"host\": \"parity-host\",\n      \"pid\": 57928,\n      \"startedAt\": \"2026-08-31T09:06:07.297Z\",\n      \"exitedAt\": \"2026-08-31T09:06:10.975Z\",\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    },\n    \"composed\": {\n      \"name\": \"composed\",\n      \"state\": \"stopped\",\n      \"kind\": \"docker-compose\",\n      \"startedAt\": \"2026-08-31T09:06:12.906Z\",\n      \"containerId\": \"parity-container-id\",\n      \"exitedAt\": \"2026-08-31T09:06:15.688Z\"\n    }\n  }\n}"
             }
           ]
         }
@@ -691,7 +691,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"bb0611c6-d7a4-40e8-b681-ce90e5d29dea\",\n    \"timestamp\": \"2026-08-31T06:11:22.387Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed started\",\n    \"data\": {\n      \"containerId\": \"parity-container-id\"\n    }\n  },\n  {\n    \"id\": \"a05a8a55-1d19-45a8-86e3-c130da537d90\",\n    \"timestamp\": \"2026-08-31T06:11:25.144Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed stopped\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"d8572d78-d676-4fdb-8035-b8edfd2a670e\",\n    \"timestamp\": \"2026-08-31T09:06:12.906Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed started\",\n    \"data\": {\n      \"containerId\": \"parity-container-id\"\n    }\n  },\n  {\n    \"id\": \"ca8cbfaa-ba73-4577-a188-8bcb1caa4e5c\",\n    \"timestamp\": \"2026-08-31T09:06:15.688Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed stopped\"\n  }\n]"
             }
           ]
         }
@@ -704,7 +704,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"service\": \"banner\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T06:11:27.205Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: stopped\\n- pid: 49486\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T06:10:53.074Z stderr: banner: background noise\\n- 2026-08-31T06:10:57.563Z stderr: banner: background noise\\n- 2026-08-31T06:11:10.318Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T06:10:57.423Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T06:10:57.423Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T06:10:59.617Z [info] banner stopped\\n- 2026-08-31T06:10:59.617Z [info] banner stopped\\n- 2026-08-31T06:11:01.710Z [info] banner stopped\\n- 2026-08-31T06:11:10.039Z [info] banner started\\n- 2026-08-31T06:11:10.179Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T06:11:10.179Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T06:11:15.284Z [info] banner stopped\\n- 2026-08-31T06:11:15.284Z [info] banner stopped\\n\"\n  },\n  {\n    \"service\": \"quitter\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T06:11:27.205Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"quitter\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T06:11:02.267Z stderr: quitter: giving up\\n- 2026-08-31T06:11:12.539Z stderr: quitter: giving up\\n\\nRecent timeline:\\n- 2026-08-31T06:11:02.129Z [info] quitter started\\n- 2026-08-31T06:11:02.414Z [error] quitter exited\\n- 2026-08-31T06:11:12.401Z [info] quitter started\\n- 2026-08-31T06:11:12.680Z [error] quitter exited\\n- 2026-08-31T06:11:15.283Z [info] quitter stopped\\n\"\n  },\n  {\n    \"service\": \"idle\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T06:11:27.206Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"idle\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: unknown\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- none\\n\"\n  },\n  {\n    \"service\": \"remote\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T06:11:27.206Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"remote\\\".\\n\\nService:\\n- command: npm start\\n- cwd: /srv/app\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: 50320\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: parity-host\\n- 2026-08-31T06:11:17.035Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\\n\\nRecent timeline:\\n- 2026-08-31T06:11:16.920Z [info] remote started\\n- 2026-08-31T06:11:20.613Z [info] remote stopped\\n- 2026-08-31T06:11:20.613Z [info] remote stopped\\n\"\n  },\n  {\n    \"service\": \"composed\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T06:11:27.206Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"composed\\\".\\n\\nService:\\n- command: undefined\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- 2026-08-31T06:11:22.387Z [info] composed started\\n- 2026-08-31T06:11:25.144Z [info] composed stopped\\n\"\n  }\n]"
+              "text": "[\n  {\n    \"service\": \"banner\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T09:06:17.754Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"banner\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: http://localhost:4599\\n- state: stopped\\n- pid: 57105\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T09:05:42.418Z stderr: banner: background noise\\n- 2026-08-31T09:05:47.212Z stderr: banner: background noise\\n- 2026-08-31T09:06:00.656Z stderr: banner: background noise\\n\\nRecent timeline:\\n- 2026-08-31T09:05:47.072Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T09:05:47.072Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T09:05:49.365Z [info] banner stopped\\n- 2026-08-31T09:05:49.365Z [info] banner stopped\\n- 2026-08-31T09:05:51.597Z [info] banner stopped\\n- 2026-08-31T09:06:00.377Z [info] banner started\\n- 2026-08-31T09:06:00.516Z [info] banner reported http://localhost:4599 — http://localhost:4599\\n- 2026-08-31T09:06:00.516Z [info] banner stdout — banner listening on http://localhost:4599\\n- 2026-08-31T09:06:05.627Z [info] banner stopped\\n- 2026-08-31T09:06:05.627Z [info] banner stopped\\n\"\n  },\n  {\n    \"service\": \"quitter\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T09:06:17.754Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"quitter\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T09:05:52.195Z stderr: quitter: giving up\\n- 2026-08-31T09:06:02.867Z stderr: quitter: giving up\\n\\nRecent timeline:\\n- 2026-08-31T09:05:52.055Z [info] quitter started\\n- 2026-08-31T09:05:52.336Z [error] quitter exited\\n- 2026-08-31T09:06:02.729Z [info] quitter started\\n- 2026-08-31T09:06:03.009Z [error] quitter exited\\n- 2026-08-31T09:06:05.625Z [info] quitter stopped\\n\"\n  },\n  {\n    \"service\": \"idle\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T09:06:17.754Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"idle\\\".\\n\\nService:\\n- command: %%NODE%%\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: unknown\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- none\\n\"\n  },\n  {\n    \"service\": \"remote\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T09:06:17.755Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"remote\\\".\\n\\nService:\\n- command: npm start\\n- cwd: /srv/app\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: 57928\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: parity-host\\n- 2026-08-31T09:06:07.583Z stdout: ssh-stub arg: cd '/srv/app' && Z_LAST='z value' A_FIRST='a value' exec npm start\\n\\nRecent timeline:\\n- 2026-08-31T09:06:07.297Z [info] remote started\\n- 2026-08-31T09:06:10.976Z [info] remote stopped\\n- 2026-08-31T09:06:10.976Z [info] remote stopped\\n\"\n  },\n  {\n    \"service\": \"composed\",\n    \"status\": \"unknown\",\n    \"summary\": \"Service is not running.\",\n    \"checkedAt\": \"2026-08-31T09:06:17.755Z\",\n    \"checks\": [],\n    \"ports\": [],\n    \"agentContext\": \"Investigate NoMoreIDE service \\\"composed\\\".\\n\\nService:\\n- command: undefined\\n- cwd: %%WORKSPACE%%\\n- configured port: not configured\\n- runtime url: not detected\\n- state: stopped\\n- pid: n/a\\n\\nHealth:\\n- Service is not running.\\n\\nRecent logs:\\n- none\\n\\nRecent timeline:\\n- 2026-08-31T09:06:12.906Z [info] composed started\\n- 2026-08-31T09:06:15.688Z [info] composed stopped\\n\"\n  }\n]"
             }
           ]
         }
@@ -717,7 +717,7 @@
           "content": [
             {
               "type": "text",
-              "text": "[\n  {\n    \"id\": \"c04e415f-d14d-4538-a91e-024790c4bc94\",\n    \"timestamp\": \"2026-08-31T06:10:52.796Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 46871\n    }\n  },\n  {\n    \"id\": \"8ac6ce4a-8500-4708-8942-636fe27fa20d\",\n    \"timestamp\": \"2026-08-31T06:10:52.935Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"3ef3e098-abbb-4d54-a82c-cdf8b3d60f5b\",\n    \"timestamp\": \"2026-08-31T06:10:52.935Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"3d9fd066-8bcd-4462-a86a-7f9508f1c555\",\n    \"timestamp\": \"2026-08-31T06:10:57.283Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"48a64ab2-9000-429f-975d-92d432df669c\",\n    \"timestamp\": \"2026-08-31T06:10:57.283Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"de9d3cee-16e9-48c3-8bf5-22ad2273f15e\",\n    \"timestamp\": \"2026-08-31T06:10:57.284Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 47471\n    }\n  },\n  {\n    \"id\": \"941c3792-c9f3-4e1b-9bba-daa0f770a79e\",\n    \"timestamp\": \"2026-08-31T06:10:57.423Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"9b36d047-5944-4f4e-b530-757ef67c97fb\",\n    \"timestamp\": \"2026-08-31T06:10:57.423Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"8138025e-5c9b-4869-8600-b45b5f2d26d5\",\n    \"timestamp\": \"2026-08-31T06:10:59.617Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"1e869af6-3aac-4cc2-93eb-3d99fe1738e3\",\n    \"timestamp\": \"2026-08-31T06:10:59.617Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"f295c5b4-f9cb-406f-9144-f864fe1f7640\",\n    \"timestamp\": \"2026-08-31T06:11:01.710Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"3f1349fe-6436-4d75-8243-3b3ba38fc575\",\n    \"timestamp\": \"2026-08-31T06:11:02.129Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 48212\n    }\n  },\n  {\n    \"id\": \"f7919048-8cac-465a-a58c-f9863fe963ef\",\n    \"timestamp\": \"2026-08-31T06:11:02.414Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  },\n  {\n    \"id\": \"2aad0a72-4580-4e93-ba96-48cdb16094b4\",\n    \"timestamp\": \"2026-08-31T06:11:07.134Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"not-registered\",\n    \"severity\": \"info\",\n    \"title\": \"not-registered stopped\"\n  },\n  {\n    \"id\": \"6415e81f-86fd-437b-a11e-516077b54555\",\n    \"timestamp\": \"2026-08-31T06:11:10.039Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 49486\n    }\n  },\n  {\n    \"id\": \"e380929a-3297-4d33-abb2-d99c2078a5ef\",\n    \"timestamp\": \"2026-08-31T06:11:10.179Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"c850aab7-b00a-49a0-8786-269ba2823805\",\n    \"timestamp\": \"2026-08-31T06:11:10.179Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"7109badf-372e-4ccb-9436-4e8f49e83e92\",\n    \"timestamp\": \"2026-08-31T06:11:12.401Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 49703\n    }\n  },\n  {\n    \"id\": \"a3f7b847-c85e-479c-be8e-efed3cb09214\",\n    \"timestamp\": \"2026-08-31T06:11:12.680Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  },\n  {\n    \"id\": \"a9259435-c311-4ec2-8847-b685a47327b1\",\n    \"timestamp\": \"2026-08-31T06:11:15.283Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter stopped\"\n  },\n  {\n    \"id\": \"50c3b531-1111-4c46-900d-263b0ce85f5c\",\n    \"timestamp\": \"2026-08-31T06:11:15.284Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"9fd4fad8-0301-48cd-94c6-015acec4083f\",\n    \"timestamp\": \"2026-08-31T06:11:15.284Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"c54453e3-f48a-4e73-91db-03bb2391eda2\",\n    \"timestamp\": \"2026-08-31T06:11:16.920Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote started\",\n    \"data\": {\n      \"pid\": 50320\n    }\n  },\n  {\n    \"id\": \"d3124113-0b73-4134-b739-a4eab4f03c3c\",\n    \"timestamp\": \"2026-08-31T06:11:20.613Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"51332650-9910-4768-81c3-5f5e71b5834f\",\n    \"timestamp\": \"2026-08-31T06:11:20.613Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote stopped\"\n  },\n  {\n    \"id\": \"bb0611c6-d7a4-40e8-b681-ce90e5d29dea\",\n    \"timestamp\": \"2026-08-31T06:11:22.387Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed started\",\n    \"data\": {\n      \"containerId\": \"parity-container-id\"\n    }\n  },\n  {\n    \"id\": \"a05a8a55-1d19-45a8-86e3-c130da537d90\",\n    \"timestamp\": \"2026-08-31T06:11:25.144Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed stopped\"\n  }\n]"
+              "text": "[\n  {\n    \"id\": \"3d290ed7-bd55-4b29-a4d5-c61ae251b736\",\n    \"timestamp\": \"2026-08-31T09:05:42.138Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 54436\n    }\n  },\n  {\n    \"id\": \"c6753471-ad44-4b8b-b607-503b5315915d\",\n    \"timestamp\": \"2026-08-31T09:05:42.278Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"9865eed1-bc70-4864-9a8b-3e50fd105154\",\n    \"timestamp\": \"2026-08-31T09:05:42.278Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"cbbe915c-6983-4658-932e-a634ea0ca76d\",\n    \"timestamp\": \"2026-08-31T09:05:46.931Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"dd5f7ed3-bceb-4752-9551-a3e89fa76a55\",\n    \"timestamp\": \"2026-08-31T09:05:46.931Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"f248d63f-0eae-4b34-91f7-7fd46be783a4\",\n    \"timestamp\": \"2026-08-31T09:05:46.932Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 55068\n    }\n  },\n  {\n    \"id\": \"2083582c-86d7-4254-a51b-8f52b73430c0\",\n    \"timestamp\": \"2026-08-31T09:05:47.072Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"e71ed50e-fd0d-4b97-b895-08e6b263f799\",\n    \"timestamp\": \"2026-08-31T09:05:47.072Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"61811ef6-58af-4b26-929e-0444129b0178\",\n    \"timestamp\": \"2026-08-31T09:05:49.365Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"76c94efe-f5dd-4872-a8ce-2086409bda4c\",\n    \"timestamp\": \"2026-08-31T09:05:49.365Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"6efa6753-83e6-48d1-bc29-7cfd4579d7e3\",\n    \"timestamp\": \"2026-08-31T09:05:51.597Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"d6791d24-5b13-4bf6-89f2-52508988f76e\",\n    \"timestamp\": \"2026-08-31T09:05:52.055Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 55811\n    }\n  },\n  {\n    \"id\": \"884e202f-34cb-4fef-8eac-cbec5b93d413\",\n    \"timestamp\": \"2026-08-31T09:05:52.336Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  },\n  {\n    \"id\": \"a381ad55-5a73-41a4-89ff-ee49fc64f147\",\n    \"timestamp\": \"2026-08-31T09:05:57.336Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"not-registered\",\n    \"severity\": \"info\",\n    \"title\": \"not-registered stopped\"\n  },\n  {\n    \"id\": \"b6b02c04-ed55-4aea-9ad2-50b3cf2837b6\",\n    \"timestamp\": \"2026-08-31T09:06:00.377Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner started\",\n    \"data\": {\n      \"pid\": 57105\n    }\n  },\n  {\n    \"id\": \"d509ea2b-d6ac-4edf-88ba-b50f6aab96a9\",\n    \"timestamp\": \"2026-08-31T09:06:00.516Z\",\n    \"kind\": \"service.port\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner reported http://localhost:4599\",\n    \"detail\": \"http://localhost:4599\"\n  },\n  {\n    \"id\": \"7b75cf31-5959-4818-bb0d-f919d420a0b8\",\n    \"timestamp\": \"2026-08-31T09:06:00.516Z\",\n    \"kind\": \"service.log\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stdout\",\n    \"detail\": \"banner listening on http://localhost:4599\"\n  },\n  {\n    \"id\": \"35f571ba-90f0-40ee-bcc0-81e3137d162d\",\n    \"timestamp\": \"2026-08-31T09:06:02.729Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter started\",\n    \"data\": {\n      \"pid\": 57264\n    }\n  },\n  {\n    \"id\": \"414051d9-558d-44de-8142-e28ffcdad8ae\",\n    \"timestamp\": \"2026-08-31T09:06:03.009Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"error\",\n    \"title\": \"quitter exited\",\n    \"data\": {\n      \"exitCode\": 7,\n      \"signal\": null\n    }\n  },\n  {\n    \"id\": \"9642d92d-a37b-4e33-bf1e-9da79eb21474\",\n    \"timestamp\": \"2026-08-31T09:06:05.625Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"quitter\",\n    \"severity\": \"info\",\n    \"title\": \"quitter stopped\"\n  },\n  {\n    \"id\": \"8111e24d-59a2-4ad5-8590-a4ba164b6bd3\",\n    \"timestamp\": \"2026-08-31T09:06:05.627Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"e02f3062-4266-4c8b-97cd-6f6ea20cea8e\",\n    \"timestamp\": \"2026-08-31T09:06:05.627Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"banner\",\n    \"severity\": \"info\",\n    \"title\": \"banner stopped\"\n  },\n  {\n    \"id\": \"e3ed7515-b39d-475e-92a2-34d8f1877a6d\",\n    \"timestamp\": \"2026-08-31T09:06:07.297Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote started\",\n    \"data\": {\n      \"pid\": 57928\n    }\n  },\n  {\n    \"id\": \"c2fb3ca0-cfef-4094-adec-3beb26409164\",\n    \"timestamp\": \"2026-08-31T09:06:10.976Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote stopped\",\n    \"data\": {\n      \"exitCode\": null,\n      \"signal\": \"SIGTERM\"\n    }\n  },\n  {\n    \"id\": \"eab17f2c-99f0-4774-9db1-3d3f2047db94\",\n    \"timestamp\": \"2026-08-31T09:06:10.976Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"remote\",\n    \"severity\": \"info\",\n    \"title\": \"remote stopped\"\n  },\n  {\n    \"id\": \"d8572d78-d676-4fdb-8035-b8edfd2a670e\",\n    \"timestamp\": \"2026-08-31T09:06:12.906Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed started\",\n    \"data\": {\n      \"containerId\": \"parity-container-id\"\n    }\n  },\n  {\n    \"id\": \"ca8cbfaa-ba73-4577-a188-8bcb1caa4e5c\",\n    \"timestamp\": \"2026-08-31T09:06:15.688Z\",\n    \"kind\": \"service.lifecycle\",\n    \"service\": \"composed\",\n    \"severity\": \"info\",\n    \"title\": \"composed stopped\"\n  }\n]"
             }
           ]
         }

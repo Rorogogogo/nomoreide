@@ -23,6 +23,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { inspect } from "node:util";
+import { gitVersion } from "../test/support/parity-recording.js";
 import {
   candidateSpec,
   referenceSpec,
@@ -191,6 +192,12 @@ const harness = new RuntimeHarness(root);
 let failures = 0;
 
 try {
+  // This gate compares git's own words, and those change between versions of
+  // git. The comparison is worth keeping unnormalised — it is what says the
+  // port surfaces git's message rather than inventing one that reads about
+  // right — so the recording is stamped with the git that made it instead,
+  // and a replay against a different one stops and says so.
+  await harness.bind("git", await gitVersion());
   const runtimes: Runtime[] = [];
   for (const spec of [referenceSpec(), candidateSpec(argv)]) {
     const runtime = await harness.provision(

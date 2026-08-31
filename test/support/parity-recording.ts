@@ -42,6 +42,25 @@ import type { Runtime } from "./runtime-parity.js";
 
 export type ParityMode = "live" | "record" | "replay";
 
+/**
+ * What a gate exits with to say it cannot run here — the runner reports it as
+ * skipped rather than failed. Mirrored in `scripts/run-parity-gates.ts`.
+ */
+export const SKIPPED_EXIT = 3;
+
+/**
+ * `git --version`, for a gate whose recording is bound to it.
+ *
+ * Read through the same `git` the gate and the daemon will use, so what is
+ * written down is what actually produced the answers.
+ */
+export async function gitVersion(): Promise<string> {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const { stdout } = await promisify(execFile)("git", ["--version"]);
+  return stdout.trim();
+}
+
 /** One request the reference answered, as it will be replayed. */
 export interface RecordedExchange {
   readonly method: string;
@@ -78,6 +97,22 @@ export interface Recording {
   /** Bumped when the on-disk shape changes, so a stale file fails loudly. */
   readonly version: 1;
   readonly gate: string;
+  /**
+   * Host facts this recording is only valid against, by name.
+   *
+   * Some gates compare a tool's own words — the usage `git diff` prints when
+   * it is handed a bad flag, for instance — and those words change between
+   * versions of the tool. That comparison is worth keeping: it is what says
+   * the port surfaces git's message rather than inventing one that reads
+   * about right. But it means the recording is an artefact of one git, and
+   * replaying it against another produces a difference that looks like a
+   * defect and is not.
+   *
+   * So the gate says what it is bound to, the value is written down here, and
+   * a replay that does not match stops and says which two versions it is
+   * caught between. See {@link Recorder.bind}.
+   */
+  readonly bindings?: Readonly<Record<string, string>>;
   readonly http: RecordedExchange[];
   readonly entries: RecordedEntry[];
 }
@@ -606,6 +641,7 @@ export class Recorder {
   readonly gate: string;
   readonly #root: string;
   readonly http: RecordedExchange[] = [];
+  readonly #bindings: Record<string, string> = {};
   readonly #redactors: Array<(exchange: RecordedExchange) => string | undefined> = [];
   readonly #entries: RecordedEntry[] = [];
   #playback: Recording | undefined;
@@ -639,6 +675,36 @@ export class Recorder {
       (body, redact) => redact({ ...exchange, body }) ?? body,
       exchange.body,
     );
+  }
+
+  /**
+   * Declare a host fact this gate's recording is only valid against.
+   *
+   * Recording stores the value; replaying re-reads it and compares. A gate
+   * that binds `git` to `git version 2.51.0` and is replayed where git is
+   * 2.39.3 does not report a divergence — it reports that it cannot make the
+   * comparison here, by exiting {@link SKIPPED_EXIT}, which the runner shows
+   * as skipped and `--allow-skips` lets pass.
+   *
+   * Live mode ignores bindings entirely: both runtimes are calling the same
+   * git on the same machine, which is exactly why the comparison is sound
+   * there and worth keeping unnormalised.
+   */
+  async bind(name: string, value: string): Promise<void> {
+    if (this.mode === "record") {
+      this.#bindings[name] = value;
+      return;
+    }
+    if (this.mode !== "replay") return;
+    const recorded = (await this.playback()).bindings?.[name];
+    if (recorded === undefined || recorded === value) return;
+    console.log(
+      `skipped: this recording is bound to ${name} "${recorded}" and this machine has "${value}".\n` +
+        `  The gate compares that tool's own output, which differs between versions — a mismatch\n` +
+        `  here is the tool, not the port. Run it live, or re-record:\n` +
+        `    npm run parity -- <candidate> --only check-${this.gate}-parity.ts --record`,
+    );
+    process.exit(SKIPPED_EXIT);
   }
 
   /** Whether this side's answers come from the recording rather than a process. */
@@ -693,7 +759,13 @@ export class Recorder {
   async finish(): Promise<void> {
     if (this.mode !== "record") return;
     const path = await writeRecording(
-      { version: 1, gate: this.gate, http: this.http, entries: this.#entries },
+      {
+        version: 1,
+        gate: this.gate,
+        ...(Object.keys(this.#bindings).length > 0 ? { bindings: this.#bindings } : {}),
+        http: this.http,
+        entries: this.#entries,
+      },
       this.#root,
     );
     console.log(

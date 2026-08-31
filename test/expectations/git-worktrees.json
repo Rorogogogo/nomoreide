@@ -54,7 +54,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false}}"
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false}}"
     },
     {
       "method": "GET",
@@ -63,7 +63,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787147.242,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "POST",
@@ -72,7 +72,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}}"
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787740.4958,\"primary\":false,\"dirty\":false}}"
     },
     {
       "method": "GET",
@@ -81,7 +81,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787147.242,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787740.4958,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "POST",
@@ -144,7 +144,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787147.242,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787740.4958,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "DELETE",
@@ -189,7 +189,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/zsh\",\"state\":\"running\",\"presentation\":\"dock\"}}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"term_1\",\"cols\":80,\"cwd\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"kind\":\"shell\",\"rows\":24,\"shell\":\"/bin/bash\",\"state\":\"running\",\"presentation\":\"dock\"}}"
     },
     {
       "method": "PUT",
@@ -216,7 +216,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"sleeper\",\"state\":\"running\",\"kind\":\"local\",\"pid\":73677,\"startedAt\":\"2026-08-31T06:04:15.669Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"sleeper\",\"state\":\"running\",\"kind\":\"local\",\"pid\":90302,\"startedAt\":\"2026-08-31T08:59:48.138Z\"}}"
     },
     {
       "method": "DELETE",
@@ -234,7 +234,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":false}}"
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789585.9282,\"primary\":false,\"dirty\":false}}"
     },
     {
       "method": "POST",
@@ -243,7 +243,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257175.3862,\"primary\":false,\"dirty\":false}}"
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-four\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789631.8184,\"primary\":false,\"dirty\":false}}"
     },
     {
       "method": "POST",
@@ -252,7 +252,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false}}"
+      "body": "{\"ok\":true,\"worktree\":{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789669.3362,\"primary\":false,\"dirty\":false}}"
     },
     {
       "method": "POST",
@@ -261,7 +261,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"neighbour\",\"state\":\"running\",\"kind\":\"local\",\"pid\":73916,\"startedAt\":\"2026-08-31T06:04:17.238Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"neighbour\",\"state\":\"running\",\"kind\":\"local\",\"pid\":90556,\"startedAt\":\"2026-08-31T08:59:49.697Z\"}}"
     },
     {
       "method": "PUT",
@@ -306,7 +306,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"running\",\"kind\":\"local\",\"pid\":74507,\"startedAt\":\"2026-08-31T06:04:19.006Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"running\",\"kind\":\"local\",\"pid\":91132,\"startedAt\":\"2026-08-31T08:59:51.488Z\"}}"
     },
     {
       "method": "POST",
@@ -315,7 +315,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":74507,\"startedAt\":\"2026-08-31T06:04:19.006Z\",\"exitedAt\":\"2026-08-31T06:04:19.712Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"idle\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":91132,\"startedAt\":\"2026-08-31T08:59:51.488Z\",\"exitedAt\":\"2026-08-31T08:59:52.191Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
     },
     {
       "method": "DELETE",
@@ -333,7 +333,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787147.242,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789669.3362,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789585.9282,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787740.4958,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "POST",
@@ -351,7 +351,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156254688.3901,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257211.414,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255178.8567,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156257128.2747,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"a40dc884ef4089bf887e9c556dd15f1e0ff0056d\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156255279.4714,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"/private%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787147.242,\"primary\":true,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-four-extra\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-four-extra\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789669.3362,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-one\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-one\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787640.47,\"primary\":false,\"dirty\":false},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-three\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-three\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166789585.9282,\"primary\":false,\"dirty\":true},{\"path\":\"/private%%HOME%%/.nomoreide/worktrees/repo/wt-two\",\"head\":\"2ebe44de4577dce2def90664fc18b1c93b158c9e\",\"branch\":\"wt-two\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166787740.4958,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "POST",

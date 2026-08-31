@@ -792,7 +792,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"probe\":{\"host\":\"alpha\",\"reachable\":true,\"latencyMs\":20,\"hostname\":\"alpha-box\",\"platform\":\"Linux\"}}"
+      "body": "{\"ok\":true,\"probe\":{\"host\":\"alpha\",\"reachable\":true,\"latencyMs\":22,\"hostname\":\"alpha-box\",\"platform\":\"Linux\"}}"
     },
     {
       "method": "POST",
@@ -810,7 +810,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"probe\":{\"host\":\"weird\",\"reachable\":false,\"latencyMs\":20,\"error\":\"Remote probe returned an unexpected response.\"}}"
+      "body": "{\"ok\":true,\"probe\":{\"host\":\"weird\",\"reachable\":false,\"latencyMs\":21,\"error\":\"Remote probe returned an unexpected response.\"}}"
     },
     {
       "method": "POST",
@@ -837,7 +837,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"probe\":{\"host\":\"deploy@10.0.0.1\",\"reachable\":true,\"latencyMs\":19,\"hostname\":\"deploy@10.0.0.1-box\",\"platform\":\"Linux\"}}"
+      "body": "{\"ok\":true,\"probe\":{\"host\":\"deploy@10.0.0.1\",\"reachable\":true,\"latencyMs\":20,\"hostname\":\"deploy@10.0.0.1-box\",\"platform\":\"Linux\"}}"
     },
     {
       "method": "GET",
@@ -855,7 +855,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"metrics\":{\"host\":\"alpha\",\"hostname\":\"alpha-box\",\"platform\":\"Linux\",\"current\":{\"t\":1788156735413,\"cpuPercent\":12.5,\"memoryUsedBytes\":5120000000,\"memoryTotalBytes\":8192000000,\"memoryUsedPercent\":62.5,\"loadAverage\":[0.5,0.7,1.2],\"uptimeSeconds\":123456.78,\"logicalCpuCount\":4,\"disk\":{\"path\":\"/\",\"totalBytes\":102400000000,\"usedBytes\":40960000000,\"availableBytes\":56320000000,\"usedPercent\":40}},\"processes\":[{\"pid\":1,\"ppid\":0,\"user\":\"root\",\"cpuPercent\":0.5,\"rssMb\":12.0556640625,\"command\":\"/sbin/init\"},{\"pid\":842,\"ppid\":1,\"user\":\"www-data\",\"cpuPercent\":3.2,\"rssMb\":200,\"command\":\"nginx: worker process\"},{\"pid\":17,\"ppid\":1,\"user\":\"deploy\",\"cpuPercent\":10.75,\"rssMb\":8,\"command\":\"/usr/bin/node --enable-source-maps server.js\"}]}}"
+      "body": "{\"ok\":true,\"metrics\":{\"host\":\"alpha\",\"hostname\":\"alpha-box\",\"platform\":\"Linux\",\"current\":{\"t\":1788167225937,\"cpuPercent\":12.5,\"memoryUsedBytes\":5120000000,\"memoryTotalBytes\":8192000000,\"memoryUsedPercent\":62.5,\"loadAverage\":[0.5,0.7,1.2],\"uptimeSeconds\":123456.78,\"logicalCpuCount\":4,\"disk\":{\"path\":\"/\",\"totalBytes\":102400000000,\"usedBytes\":40960000000,\"availableBytes\":56320000000,\"usedPercent\":40}},\"processes\":[{\"pid\":1,\"ppid\":0,\"user\":\"root\",\"cpuPercent\":0.5,\"rssMb\":12.0556640625,\"command\":\"/sbin/init\"},{\"pid\":842,\"ppid\":1,\"user\":\"www-data\",\"cpuPercent\":3.2,\"rssMb\":200,\"command\":\"nginx: worker process\"},{\"pid\":17,\"ppid\":1,\"user\":\"deploy\",\"cpuPercent\":10.75,\"rssMb\":8,\"command\":\"/usr/bin/node --enable-source-maps server.js\"}]}}"
     },
     {
       "method": "GET",
@@ -864,7 +864,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"metrics\":{\"host\":\"nodisk\",\"hostname\":\"nodisk-box\",\"platform\":\"Linux\",\"current\":{\"t\":1788156735455,\"cpuPercent\":12.5,\"memoryUsedBytes\":5120000000,\"memoryTotalBytes\":8192000000,\"memoryUsedPercent\":62.5,\"loadAverage\":[0.5,0.7,1.2],\"uptimeSeconds\":123456.78,\"logicalCpuCount\":4,\"disk\":null},\"processes\":[{\"pid\":1,\"ppid\":0,\"user\":\"root\",\"cpuPercent\":0.5,\"rssMb\":12.0556640625,\"command\":\"/sbin/init\"},{\"pid\":842,\"ppid\":1,\"user\":\"www-data\",\"cpuPercent\":3.2,\"rssMb\":200,\"command\":\"nginx: worker process\"},{\"pid\":17,\"ppid\":1,\"user\":\"deploy\",\"cpuPercent\":10.75,\"rssMb\":8,\"command\":\"/usr/bin/node --enable-source-maps server.js\"}]}}"
+      "body": "{\"ok\":true,\"metrics\":{\"host\":\"nodisk\",\"hostname\":\"nodisk-box\",\"platform\":\"Linux\",\"current\":{\"t\":1788167225979,\"cpuPercent\":12.5,\"memoryUsedBytes\":5120000000,\"memoryTotalBytes\":8192000000,\"memoryUsedPercent\":62.5,\"loadAverage\":[0.5,0.7,1.2],\"uptimeSeconds\":123456.78,\"logicalCpuCount\":4,\"disk\":null},\"processes\":[{\"pid\":1,\"ppid\":0,\"user\":\"root\",\"cpuPercent\":0.5,\"rssMb\":12.0556640625,\"command\":\"/sbin/init\"},{\"pid\":842,\"ppid\":1,\"user\":\"www-data\",\"cpuPercent\":3.2,\"rssMb\":200,\"command\":\"nginx: worker process\"},{\"pid\":17,\"ppid\":1,\"user\":\"deploy\",\"cpuPercent\":10.75,\"rssMb\":8,\"command\":\"/usr/bin/node --enable-source-maps server.js\"}]}}"
     },
     {
       "method": "GET",

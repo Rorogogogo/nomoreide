@@ -18,7 +18,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=6a5af0082259a0e9fcd2d8d4f037fc5a&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D6a5af0082259a0e9fcd2d8d4f037fc5a\",\"state\":\"6a5af0082259a0e9fcd2d8d4f037fc5a\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=4d1057a73bf4ab6f637642770a3fc13f&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D4d1057a73bf4ab6f637642770a3fc13f\",\"state\":\"4d1057a73bf4ab6f637642770a3fc13f\"}"
     },
     {
       "method": "GET",
@@ -54,11 +54,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=d600e50af9cfcc1699d6cdfa4a5d0916&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Dd600e50af9cfcc1699d6cdfa4a5d0916\",\"state\":\"d600e50af9cfcc1699d6cdfa4a5d0916\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=53bad3f3e4c396949428126f1bee3c94&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D53bad3f3e4c396949428126f1bee3c94\",\"state\":\"53bad3f3e4c396949428126f1bee3c94\"}"
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/finish?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "path": "/api/agent-env/auth/finish?state=53bad3f3e4c396949428126f1bee3c94",
       "status": 400,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -67,7 +67,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "path": "/api/agent-env/auth/outcome?state=53bad3f3e4c396949428126f1bee3c94",
       "status": 200,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -76,7 +76,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=d600e50af9cfcc1699d6cdfa4a5d0916",
+      "path": "/api/agent-env/auth/outcome?state=53bad3f3e4c396949428126f1bee3c94",
       "status": 404,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -90,11 +90,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=b3a0cac3be60446df3bf80da5a05ac45&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Db3a0cac3be60446df3bf80da5a05ac45\",\"state\":\"b3a0cac3be60446df3bf80da5a05ac45\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=69f53f5db5489eb9215d2c47dca7ea92&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D69f53f5db5489eb9215d2c47dca7ea92\",\"state\":\"69f53f5db5489eb9215d2c47dca7ea92\"}"
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/finish?state=b3a0cac3be60446df3bf80da5a05ac45&error=access_denied",
+      "path": "/api/agent-env/auth/finish?state=69f53f5db5489eb9215d2c47dca7ea92&error=access_denied",
       "status": 400,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -103,7 +103,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=b3a0cac3be60446df3bf80da5a05ac45",
+      "path": "/api/agent-env/auth/outcome?state=69f53f5db5489eb9215d2c47dca7ea92",
       "status": 200,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -112,7 +112,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=b3a0cac3be60446df3bf80da5a05ac45",
+      "path": "/api/agent-env/auth/outcome?state=69f53f5db5489eb9215d2c47dca7ea92",
       "status": 404,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -126,11 +126,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=d72a56f0b71a1f6a2d2166520f39f925&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Dd72a56f0b71a1f6a2d2166520f39f925\",\"state\":\"d72a56f0b71a1f6a2d2166520f39f925\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=59611da25cf9fdb4f0746a52d2630c5c&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D59611da25cf9fdb4f0746a52d2630c5c\",\"state\":\"59611da25cf9fdb4f0746a52d2630c5c\"}"
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/finish?state=d72a56f0b71a1f6a2d2166520f39f925&token=nope",
+      "path": "/api/agent-env/auth/finish?state=59611da25cf9fdb4f0746a52d2630c5c&token=nope",
       "status": 401,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -139,7 +139,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=d72a56f0b71a1f6a2d2166520f39f925",
+      "path": "/api/agent-env/auth/outcome?state=59611da25cf9fdb4f0746a52d2630c5c",
       "status": 200,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -148,7 +148,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=d72a56f0b71a1f6a2d2166520f39f925",
+      "path": "/api/agent-env/auth/outcome?state=59611da25cf9fdb4f0746a52d2630c5c",
       "status": 404,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -162,11 +162,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=12ff0eedb66c903564c84663538f3c4a&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3D12ff0eedb66c903564c84663538f3c4a\",\"state\":\"12ff0eedb66c903564c84663538f3c4a\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:%%VOLATILE-0%%/app/cli-login?state=f14c2aa24b75ab33ee88efdf3f869954&callback=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fagent-env%2Fauth%2Ffinish%3Fstate%3Df14c2aa24b75ab33ee88efdf3f869954\",\"state\":\"f14c2aa24b75ab33ee88efdf3f869954\"}"
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/finish?state=12ff0eedb66c903564c84663538f3c4a&token=token-that-works",
+      "path": "/api/agent-env/auth/finish?state=f14c2aa24b75ab33ee88efdf3f869954&token=token-that-works",
       "status": 200,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -175,7 +175,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=12ff0eedb66c903564c84663538f3c4a",
+      "path": "/api/agent-env/auth/outcome?state=f14c2aa24b75ab33ee88efdf3f869954",
       "status": 200,
       "headers": {
         "content-type": "application/json; charset=utf-8"
@@ -184,7 +184,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/agent-env/auth/outcome?state=12ff0eedb66c903564c84663538f3c4a",
+      "path": "/api/agent-env/auth/outcome?state=f14c2aa24b75ab33ee88efdf3f869954",
       "status": 404,
       "headers": {
         "content-type": "application/json; charset=utf-8"

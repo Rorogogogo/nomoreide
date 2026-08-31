@@ -207,7 +207,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.614Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.615Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.597Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.598Z\",\"hasLocalChanges\":false}}]}"
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T08:58:00.693Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T08:58:00.694Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T08:58:00.676Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T08:58:00.677Z\",\"hasLocalChanges\":false}}]}"
     },
     {
       "method": "POST",
@@ -342,7 +342,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.614Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T06:02:27.615Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T06:02:27.597Z\",\"registry\":{\"origin\":\"published\",\"slug\":\"known-one\",\"version\":\"1.0.0\",\"linkedAt\":\"2026-08-31T06:02:27.698Z\",\"hasLocalChanges\":false}}]}"
+      "body": "{\"ok\":true,\"profiles\":[{\"name\":\"copied\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T08:58:00.693Z\",\"registry\":{\"origin\":\"installed\",\"slug\":\"installable\",\"version\":\"2.3.4\",\"linkedAt\":\"2026-08-31T08:58:00.694Z\",\"hasLocalChanges\":false}},{\"name\":\"base\",\"description\":\"The one that gets published.\",\"sourceAgent\":\"claude\",\"mcpCount\":1,\"skillCount\":1,\"pluginCount\":0,\"updatedAt\":\"2026-08-31T08:58:00.676Z\",\"registry\":{\"origin\":\"published\",\"slug\":\"known-one\",\"version\":\"1.0.0\",\"linkedAt\":\"2026-08-31T08:58:00.774Z\",\"hasLocalChanges\":false}}]}"
     },
     {
       "method": "POST",

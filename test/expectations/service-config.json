@@ -282,7 +282,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57803,\"startedAt\":\"2026-08-31T06:12:16.428Z\"}]}"
+      "body": "{\"ok\":true,\"statuses\":[{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65400,\"startedAt\":\"2026-08-31T09:07:07.046Z\"}]}"
     },
     {
       "method": "GET",
@@ -291,7 +291,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"services\":{\"worker\":{\"name\":\"worker\",\"state\":\"stopped\"},\"db\":{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57803,\"startedAt\":\"2026-08-31T06:12:16.428Z\"}}}}"
+      "body": "{\"ok\":true,\"status\":{\"services\":{\"worker\":{\"name\":\"worker\",\"state\":\"stopped\"},\"db\":{\"name\":\"db\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65400,\"startedAt\":\"2026-08-31T09:07:07.046Z\"}}}}"
     },
     {
       "method": "POST",

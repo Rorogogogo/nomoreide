@@ -311,6 +311,11 @@ export class RuntimeHarness {
    * to survive replay too: in replay the reference makes no requests at all,
    * because there is no reference.
    */
+  /** Declare a host fact this recording is only valid against. See {@link Recorder.bind}. */
+  async bind(name: string, value: string): Promise<void> {
+    await this.#recorder.bind(name, value);
+  }
+
   /** Install a record-time body redactor. See {@link Recorder.redact}. */
   redact(redactor: Parameters<Recorder["redact"]>[0]): void {
     this.#recorder.redact(redactor);

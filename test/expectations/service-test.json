@@ -9,7 +9,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:21.912Z\",\"failingCount\":0}}"
+      "body": "{\"ok\":true,\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:12.667Z\",\"failingCount\":0}}"
     },
     {
       "method": "POST",
@@ -18,7 +18,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:24.945Z\",\"failingCount\":0}}"
+      "body": "{\"ok\":true,\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:15.709Z\",\"failingCount\":0}}"
     },
     {
       "method": "POST",
@@ -27,7 +27,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"run\":{\"id\":3,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:28.483Z\",\"failingCount\":0}}"
+      "body": "{\"ok\":true,\"run\":{\"id\":3,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:19.248Z\",\"failingCount\":0}}"
     },
     {
       "method": "POST",
@@ -36,7 +36,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:32.001Z\",\"failingCount\":0}}"
+      "body": "{\"ok\":true,\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:22.765Z\",\"failingCount\":0}}"
     },
     {
       "method": "GET",
@@ -45,7 +45,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"incidents\":[{\"id\":1,\"service\":\"failer:test\",\"level\":\"error\",\"signature\":\"failer:test error: failer tests failed (<n> failing) — exit <n> — node -e \\\"console.log('fail a.test.js'); console.log('<n> failed'); process.exit(<n>)\\\"\",\"title\":\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"firstSeen\":\"2026-08-31T06:12:24.967Z\",\"lastSeen\":\"2026-08-31T06:12:28.516Z\",\"count\":2,\"logExcerpt\":[\"FAIL a.test.js\",\"1 failed\",\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"FAIL a.test.js\",\"1 failed\",\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\"]}]}"
+      "body": "{\"ok\":true,\"incidents\":[{\"id\":1,\"service\":\"failer:test\",\"level\":\"error\",\"signature\":\"failer:test error: failer tests failed (<n> failing) — exit <n> — node -e \\\"console.log('fail a.test.js'); console.log('<n> failed'); process.exit(<n>)\\\"\",\"title\":\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"firstSeen\":\"2026-08-31T09:07:15.732Z\",\"lastSeen\":\"2026-08-31T09:07:19.281Z\",\"count\":2,\"logExcerpt\":[\"FAIL a.test.js\",\"1 failed\",\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"FAIL a.test.js\",\"1 failed\",\"ERROR: failer tests failed (1 failing) — exit 1 — node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\"]}]}"
     },
     {
       "method": "POST",
@@ -54,7 +54,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"run\":{\"id\":5,\"service\":\"slow\",\"command\":\"node -e \\\"setTimeout(()=>{},4000)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:35.552Z\",\"failingCount\":0}}"
+      "body": "{\"ok\":true,\"run\":{\"id\":5,\"service\":\"slow\",\"command\":\"node -e \\\"setTimeout(()=>{},4000)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:26.325Z\",\"failingCount\":0}}"
     },
     {
       "method": "POST",
@@ -102,10 +102,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:23 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:14 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T06:12:21.912Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T06:12:21.935Z\"}}\n\n"
+        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T09:07:12.667Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T09:07:12.691Z\"}}\n\n"
       }
     },
     {
@@ -116,7 +116,7 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:24 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:14 GMT",
           "transfer-encoding": "chunked"
         },
         "body": "retry: 2000\n\n"
@@ -130,10 +130,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:24 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:15 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:24.945Z\",\"failingCount\":0}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:24.945Z\",\"failingCount\":1},\"line\":{\"stream\":\"stdout\",\"text\":\"FAIL a.test.js\"}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:24.945Z\",\"failingCount\":1},\"line\":{\"stream\":\"stdout\",\"text\":\"1 failed\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"failed\",\"startedAt\":\"2026-08-31T06:12:24.945Z\",\"failingCount\":1,\"exitCode\":1,\"endedAt\":\"2026-08-31T06:12:24.968Z\"}}\n\n"
+        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:15.709Z\",\"failingCount\":0}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:15.709Z\",\"failingCount\":1},\"line\":{\"stream\":\"stdout\",\"text\":\"FAIL a.test.js\"}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:15.709Z\",\"failingCount\":1},\"line\":{\"stream\":\"stdout\",\"text\":\"1 failed\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":2,\"service\":\"failer\",\"command\":\"node -e \\\"console.log('FAIL a.test.js'); console.log('1 failed'); process.exit(1)\\\"\",\"status\":\"failed\",\"startedAt\":\"2026-08-31T09:07:15.709Z\",\"failingCount\":1,\"exitCode\":1,\"endedAt\":\"2026-08-31T09:07:15.733Z\"}}\n\n"
       }
     },
     {
@@ -144,7 +144,7 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:28 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:19 GMT",
           "transfer-encoding": "chunked"
         },
         "body": "retry: 2000\n\n"
@@ -158,10 +158,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:31 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:22 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T06:12:21.912Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T06:12:21.935Z\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:32.001Z\",\"failingCount\":0}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T06:12:32.001Z\",\"failingCount\":0},\"line\":{\"stream\":\"stdout\",\"text\":\"one line\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T06:12:32.001Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T06:12:32.034Z\"}}\n\n"
+        "body": "retry: 2000\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":1,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\"\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T09:07:12.667Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T09:07:12.691Z\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:22.765Z\",\"failingCount\":0}}\n\nevent: output\ndata: {\"type\":\"output\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"running\",\"startedAt\":\"2026-08-31T09:07:22.765Z\",\"failingCount\":0},\"line\":{\"stream\":\"stdout\",\"text\":\"one line\"}}\n\nevent: status\ndata: {\"type\":\"status\",\"run\":{\"id\":4,\"service\":\"passer\",\"command\":\"node -e \\\"console.log('one line')\\\" a.test.js\",\"pattern\":\"a.test.js\",\"status\":\"passed\",\"startedAt\":\"2026-08-31T09:07:22.765Z\",\"failingCount\":0,\"exitCode\":0,\"endedAt\":\"2026-08-31T09:07:22.807Z\"}}\n\n"
       }
     }
   ]

@@ -1,6 +1,9 @@
 {
   "version": 1,
   "gate": "git-branch",
+  "bindings": {
+    "git": "git version 2.44.0"
+  },
   "http": [
     {
       "method": "POST",

@@ -45,7 +45,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"ref\":\"refs/nomoreide/snapshots/1788156150361-agent-session\",\"label\":\"agent session\",\"createdAt\":\"2026-08-31T06:02:30.364Z\"}}"
+      "body": "{\"ok\":true,\"snapshot\":{\"sha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"ref\":\"refs/nomoreide/snapshots/1788166683400-agent-session\",\"label\":\"agent session\",\"createdAt\":\"2026-08-31T08:58:03.405Z\"}}"
     },
     {
       "method": "GET",
@@ -54,7 +54,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},{\"id\":\"no-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"startedAt\":\"2026-08-02T00:00:00.000Z\",\"lastToolAt\":\"2026-08-02T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"stale-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"0000000000000000000000000000000000000000\",\"startedAt\":\"2026-08-03T00:00:00.000Z\",\"lastToolAt\":\"2026-08-03T00:01:00.000Z\",\"toolCount\":2},{\"id\":\"missing-repo\",\"repoPath\":\"%%HOME%%/deleted-repo\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-04T00:00:00.000Z\",\"lastToolAt\":\"2026-08-04T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"spaced id\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-06T00:00:00.000Z\",\"lastToolAt\":\"2026-08-06T00:01:00.000Z\",\"toolCount\":1}]}"
+      "body": "{\"ok\":true,\"sessions\":[{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},{\"id\":\"no-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"startedAt\":\"2026-08-02T00:00:00.000Z\",\"lastToolAt\":\"2026-08-02T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"stale-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"0000000000000000000000000000000000000000\",\"startedAt\":\"2026-08-03T00:00:00.000Z\",\"lastToolAt\":\"2026-08-03T00:01:00.000Z\",\"toolCount\":2},{\"id\":\"missing-repo\",\"repoPath\":\"%%HOME%%/deleted-repo\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"startedAt\":\"2026-08-04T00:00:00.000Z\",\"lastToolAt\":\"2026-08-04T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},{\"id\":\"spaced id\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"startedAt\":\"2026-08-06T00:00:00.000Z\",\"lastToolAt\":\"2026-08-06T00:01:00.000Z\",\"toolCount\":1}]}"
     },
     {
       "method": "POST",
@@ -72,7 +72,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},\"files\":[]}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"with-snapshot\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"snapshotRef\":\"refs/nomoreide/snapshots/1-agent\",\"startedAt\":\"2026-08-01T00:00:00.000Z\",\"lastToolAt\":\"2026-08-01T00:05:00.000Z\",\"toolCount\":3},\"files\":[]}"
     },
     {
       "method": "GET",
@@ -126,7 +126,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"session\":{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"197bbc34417b89cec88686766a136fed78ca702e\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},\"files\":[]}"
+      "body": "{\"ok\":true,\"session\":{\"id\":\"a%2Fb\",\"repoPath\":\"%%WORKSPACE%%\",\"snapshotSha\":\"fb23f5a071a75a40ef582590de090e17465ac737\",\"startedAt\":\"2026-08-05T00:00:00.000Z\",\"lastToolAt\":\"2026-08-05T00:01:00.000Z\",\"toolCount\":1},\"files\":[]}"
     },
     {
       "method": "GET",
@@ -297,7 +297,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"ac63f3055fb652b56f99ad9fb26dd492c628d791\",\"ref\":\"refs/nomoreide/snapshots/1788156150794-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T06:02:30.798Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"a79d50fd50dd969e19f62614b460d1bc9be91682\",\"ref\":\"refs/nomoreide/snapshots/1788166683842-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T08:58:03.847Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
     },
     {
       "method": "GET",
@@ -315,7 +315,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"ac63f3055fb652b56f99ad9fb26dd492c628d791\",\"ref\":\"refs/nomoreide/snapshots/1788156150897-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T06:02:30.900Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
+      "body": "{\"ok\":true,\"preRestore\":{\"sha\":\"a79d50fd50dd969e19f62614b460d1bc9be91682\",\"ref\":\"refs/nomoreide/snapshots/1788166683942-pre-restore-agent-session\",\"label\":\"pre-restore (agent session)\",\"createdAt\":\"2026-08-31T08:58:03.945Z\"},\"restoredFiles\":0,\"deletedPaths\":[]}"
     }
   ],
   "entries": []

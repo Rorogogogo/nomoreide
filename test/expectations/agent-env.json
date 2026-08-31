@@ -720,7 +720,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185019\"]}"
+      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185756\"]}"
     },
     {
       "method": "POST",
@@ -729,7 +729,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185019-1\"]}"
+      "body": "{\"ok\":true,\"agent\":\"claude\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185756-1\"]}"
     },
     {
       "method": "POST",
@@ -738,7 +738,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019\"]}"
+      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756\"]}"
     },
     {
       "method": "POST",
@@ -747,7 +747,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"agent\":\"antigravity\",\"backups\":[\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json.bak.20260831-185019\"]}"
+      "body": "{\"ok\":true,\"agent\":\"antigravity\",\"backups\":[\"%%HOME%%/.gemini/antigravity-cli/mcp_config.json.bak.20260831-185756\"]}"
     },
     {
       "method": "POST",
@@ -819,7 +819,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-1\"]}"
+      "body": "{\"ok\":true,\"agent\":\"codex\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-1\"]}"
     },
     {
       "method": "GET",
@@ -900,7 +900,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-2\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-2\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-2\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-2\"]}"
     },
     {
       "method": "GET",
@@ -918,7 +918,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-3\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-3\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"local-tool\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"local-tool\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-3\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-3\"]}"
     },
     {
       "method": "POST",
@@ -927,7 +927,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"sse-one\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"sse-one\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-4\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-4\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"copy\",\"name\":\"sse-one\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Copy MCP \\\"sse-one\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-4\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-4\"]}"
     },
     {
       "method": "GET",
@@ -963,7 +963,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"local-tool\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove MCP \\\"local-tool\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-5\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185019-5\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"remove\",\"name\":\"local-tool\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove MCP \\\"local-tool\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-5\"]}],\"backups\":[\"%%HOME%%/.codex/config.toml.bak.20260831-185756-5\"]}"
     },
     {
       "method": "GET",
@@ -990,7 +990,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"move\",\"name\":\"docs\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\",\"targetAgent\":\"claude\"},\"ok\":true,\"summary\":\"Move MCP \\\"docs\\\" from Codex CLI (user) to Claude Code (user)\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185019-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-185019-6\"]}],\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185019-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-185019-6\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"mcp\",\"action\":\"move\",\"name\":\"docs\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\",\"targetAgent\":\"claude\"},\"ok\":true,\"summary\":\"Move MCP \\\"docs\\\" from Codex CLI (user) to Claude Code (user)\",\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185756-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-185756-6\"]}],\"backups\":[\"%%HOME%%/.claude.json.bak.20260831-185756-2\",\"%%HOME%%/.codex/config.toml.bak.20260831-185756-6\"]}"
     },
     {
       "method": "GET",
@@ -1035,7 +1035,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"zulu\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Move skill \\\"zulu\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-185019\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-185019\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"move\",\"name\":\"zulu\",\"sourceAgent\":\"claude\",\"sourceScope\":\"user\",\"targetAgent\":\"codex\"},\"ok\":true,\"summary\":\"Move skill \\\"zulu\\\" from Claude Code (user) to Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-185756\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/zulu.20260831-185756\"]}"
     },
     {
       "method": "GET",
@@ -1062,7 +1062,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"remove\",\"name\":\"summarise\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove skill \\\"summarise\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-185019\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-185019\"]}"
+      "body": "{\"ok\":true,\"applied\":1,\"failed\":0,\"results\":[{\"change\":{\"category\":\"skill\",\"action\":\"remove\",\"name\":\"summarise\",\"sourceAgent\":\"codex\",\"sourceScope\":\"user\"},\"ok\":true,\"summary\":\"Remove skill \\\"summarise\\\" from Codex CLI (user)\",\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-185756\"]}],\"backups\":[\"%%HOME%%/.config/nomoreide/agent-env-backups/summarise.20260831-185756\"]}"
     },
     {
       "method": "GET",
@@ -1323,7 +1323,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\\"model\\\":\\\"opus\\\"}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\\"model\\\":\\\"opus\\\"}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756\"}"
     },
     {
       "method": "GET",
@@ -1341,7 +1341,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\",\\n  \\\"cleanupPeriodDays\\\": 7\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-1\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\",\\n  \\\"cleanupPeriodDays\\\": 7\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-1\"}"
     },
     {
       "method": "PUT",
@@ -1359,7 +1359,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5\\\"\\napproval_policy = \\\"on-request\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185019-7\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"model = \\\"gpt-5\\\"\\napproval_policy = \\\"on-request\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185756-7\"}"
     },
     {
       "method": "GET",
@@ -1377,7 +1377,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"gpt-5\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185019-8\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"gpt-5\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185756-8\"}"
     },
     {
       "method": "POST",
@@ -1386,7 +1386,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"o3\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"o3\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185019-9\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"codex\",\"path\":\"%%HOME%%/.codex/config.toml\",\"exists\":true,\"format\":\"toml\",\"content\":\"# a comment\\nmodel = \\\"o3\\\"\\n\\n[profiles.fast]\\nmodel = \\\"gpt-5-mini\\\"\\n\",\"model\":\"o3\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.codex/config.toml.bak.20260831-185756-9\"}"
     },
     {
       "method": "GET",
@@ -1503,7 +1503,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\"\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-2\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"model\\\": \\\"opus\\\"\\n}\\n\",\"model\":\"opus\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-2\"}"
     },
     {
       "method": "POST",
@@ -1512,7 +1512,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-3\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-3\"}"
     },
     {
       "method": "GET",
@@ -1620,7 +1620,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-4\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2\\n}\\n\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-4\"}"
     },
     {
       "method": "POST",
@@ -1629,7 +1629,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-5\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-5\"}"
     },
     {
       "method": "GET",
@@ -1647,7 +1647,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-6\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"sonnet\\\"\\n}\\n\",\"model\":\"sonnet\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-6\"}"
     },
     {
       "method": "POST",
@@ -1656,7 +1656,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"gpt-5\\\"\\n}\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185019-7\"}"
+      "body": "{\"ok\":true,\"settings\":{\"agent\":\"claude\",\"path\":\"%%HOME%%/.claude/settings.json\",\"exists\":true,\"format\":\"json\",\"content\":\"{\\n  \\\"alpha\\\": 1,\\n  \\\"omega\\\": 2,\\n  \\\"model\\\": \\\"gpt-5\\\"\\n}\\n\",\"model\":\"gpt-5\",\"modelEditable\":true},\"backup\":\"%%HOME%%/.claude/settings.json.bak.20260831-185756-7\"}"
     },
     {
       "method": "POST",

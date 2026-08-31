@@ -21,7 +21,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
-import { Recorder } from "../test/support/parity-recording.js";
+import { Recorder, gitVersion } from "../test/support/parity-recording.js";
 import type { Runtime } from "../test/support/runtime-parity.js";
 
 const execFileAsync = promisify(execFile);
@@ -263,6 +263,12 @@ const cases: Case[] = [
 const roots: string[] = [];
 const recorder = new Recorder();
 try {
+  // This gate compares git's own words, and those change between versions of
+  // git. The comparison is worth keeping unnormalised — it is what says the
+  // port surfaces git's message rather than inventing one that reads about
+  // right — so the recording is stamped with the git that made it instead,
+  // and a replay against a different one stops and says so.
+  await recorder.bind("git", await gitVersion());
   let compared = 0;
   for (const scenario of cases) {
     const referenceFixture = await build(scenario);

@@ -229,7 +229,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"status\": \"already_running\",\n  \"url\": \"http://127.0.0.1:64548\",\n  \"port\": 64548,\n  \"pid\": 105\n}"
+              "text": "{\n  \"status\": \"already_running\",\n  \"url\": \"http://127.0.0.1:60231\",\n  \"port\": 60231,\n  \"pid\": 13428\n}"
             }
           ]
         }
@@ -242,7 +242,7 @@
           "content": [
             {
               "type": "text",
-              "text": "{\n  \"status\": \"adopted\",\n  \"url\": \"http://127.0.0.1:%%PORT%%\",\n  \"port\": %%PORT%%,\n  \"pid\": 105\n}"
+              "text": "{\n  \"status\": \"adopted\",\n  \"url\": \"http://127.0.0.1:%%PORT%%\",\n  \"port\": %%PORT%%,\n  \"pid\": 13428\n}"
             }
           ]
         }
@@ -255,7 +255,7 @@
           "content": [
             {
               "type": "text",
-              "text": "Tool 'nomoreide_open_ui' execution failed: Port 64557 is held by a process that is not a NoMoreIDE daemon. Stop it or set NOMOREIDE_DAEMON_PORT to use a different port."
+              "text": "Tool 'nomoreide_open_ui' execution failed: Port 60239 is held by a process that is not a NoMoreIDE daemon. Stop it or set NOMOREIDE_DAEMON_PORT to use a different port."
             }
           ],
           "isError": true

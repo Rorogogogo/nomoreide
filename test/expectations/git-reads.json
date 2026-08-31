@@ -297,7 +297,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156250020.8752,\"primary\":true,\"dirty\":true},{\"path\":\"/private%%HOME%%/wt-feature\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"feature\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788156250079.5847,\"primary\":false,\"dirty\":false}]}"
+      "body": "{\"ok\":true,\"activePath\":\"%%WORKSPACE%%\",\"worktrees\":[{\"path\":\"/private%%WORKSPACE%%\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"master\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166782407.7559,\"primary\":true,\"dirty\":true},{\"path\":\"/private%%HOME%%/wt-feature\",\"head\":\"ad681f55acefb2be40eb52928e8abb5c64ef9663\",\"branch\":\"feature\",\"bare\":false,\"detached\":false,\"locked\":false,\"prunable\":false,\"createdAt\":1788166782468.5442,\"primary\":false,\"dirty\":false}]}"
     },
     {
       "method": "POST",

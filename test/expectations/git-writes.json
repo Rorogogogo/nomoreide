@@ -225,7 +225,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"output\":\"[master c38802a] fix a+b parsing\\n 1 file changed, 1 insertion(+), 1 deletion(-)\\n\",\"author\":{\"host\":\"github.com\",\"login\":\"gate-bot\",\"name\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\"}}"
+      "body": "{\"ok\":true,\"output\":\"[master 742d893] fix a+b parsing\\n 1 file changed, 1 insertion(+), 1 deletion(-)\\n\",\"author\":{\"host\":\"github.com\",\"login\":\"gate-bot\",\"name\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\"}}"
     },
     {
       "method": "GET",
@@ -234,7 +234,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"c38802ae71ab89bb9c949902001e2abb9051835e\",\"parents\":[\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\"],\"author\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\",\"timestamp\":1788156262,\"subject\":\"fix a+b parsing\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"5a345f83152363e9bac5b15a0af04cdeeb2833c4\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1788156262,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
+      "body": "{\"ok\":true,\"commits\":[{\"hash\":\"742d8931ed162bc9ed6d46d14a4766510ee57129\",\"parents\":[\"62862d90c8a4abe567acbf5fc34ba06d099120fd\"],\"author\":\"Gate Bot\",\"email\":\"gate-bot@users.noreply.github.com\",\"timestamp\":1788166795,\"subject\":\"fix a+b parsing\",\"refs\":[{\"name\":\"HEAD\",\"kind\":\"head\"},{\"name\":\"master\",\"kind\":\"branch\"}],\"lane\":0,\"laneCount\":1,\"edges\":[{\"fromLane\":0,\"toLane\":0,\"parentHash\":\"62862d90c8a4abe567acbf5fc34ba06d099120fd\",\"kind\":\"straight\"}],\"throughLanes\":[]},{\"hash\":\"62862d90c8a4abe567acbf5fc34ba06d099120fd\",\"parents\":[],\"author\":\"Gate\",\"email\":\"gate@example.com\",\"timestamp\":1788166794,\"subject\":\"first\",\"refs\":[],\"lane\":0,\"laneCount\":1,\"edges\":[],\"throughLanes\":[]}]}"
     },
     {
       "method": "GET",

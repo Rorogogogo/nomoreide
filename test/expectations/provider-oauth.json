@@ -81,7 +81,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65486/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=_WtDo4HCPS4eWHKhoofVnis8aYosKbCD6Xs4T5C6j64&code_challenge_method=S256&state=ltkAIdgE3Kd8OqaVGhsnBw&scope=offline_access\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:61110/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=Y1TdqEFE5MdZGRnmsMkoZ5tl-w0diKOqN-Qjd4_FAJs&code_challenge_method=S256&state=m-KmNMxs8Wj6O6WwMlfxNw&scope=offline_access\"}"
     },
     {
       "method": "GET",
@@ -112,7 +112,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/providers/vercel/oauth/callback?state=ltkAIdgE3Kd8OqaVGhsnBw",
+      "path": "/api/providers/vercel/oauth/callback?state=m-KmNMxs8Wj6O6WwMlfxNw",
       "status": 400,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -126,11 +126,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65499/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=y9xEid3ss-JsCemvrLa-RMt7Ln4QPWpHhoPY8_LZ048&code_challenge_method=S256&state=9RSK5Mfx1If2AztI0z6O6w&scope=offline_access\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:61123/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=QICtmXz0AO9mZFI3unAtEkqebgbsJKLQUtoGcw4HG3U&code_challenge_method=S256&state=R4g8oZsJOD1EkenZGV7R0Q&scope=offline_access\"}"
     },
     {
       "method": "GET",
-      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=9RSK5Mfx1If2AztI0z6O6w",
+      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=R4g8oZsJOD1EkenZGV7R0Q",
       "status": 200,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -148,7 +148,7 @@
     },
     {
       "method": "GET",
-      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=9RSK5Mfx1If2AztI0z6O6w",
+      "path": "/api/providers/vercel/oauth/callback?code=auth-code&state=R4g8oZsJOD1EkenZGV7R0Q",
       "status": 400,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -189,11 +189,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:65513/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=SETDQ4SliSuT3syNKV1gvajudBV8k-tNyyv41IUbDD8&code_challenge_method=S256&state=035RtQTDYjt-vOIjhCwt1Q&scope=offline_access\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:61137/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=73WSqfiTbBZYqy0xdhaLxqFFvv5J2kP-5qUHBVjL2Es&code_challenge_method=S256&state=LJpT3FvyCqzumR6WwPes_w&scope=offline_access\"}"
     },
     {
       "method": "GET",
-      "path": "/api/providers/cloudflare/oauth/callback?code=auth-code&state=035RtQTDYjt-vOIjhCwt1Q",
+      "path": "/api/providers/cloudflare/oauth/callback?code=auth-code&state=LJpT3FvyCqzumR6WwPes_w",
       "status": 200,
       "headers": {
         "content-type": "text/html; charset=utf-8"
@@ -270,11 +270,11 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:49153/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=QWRi0hSrAhDwo5J3hFR--LvA91tGmcK4ZTMBXjrvR1k&code_challenge_method=S256&state=A7msZfzhO1bf1jLNSWVNeA&scope=offline_access\"}"
+      "body": "{\"ok\":true,\"url\":\"http://127.0.0.1:61160/oauth/authorize?client_id=cl_parity&redirect_uri=http%3A%2F%2F127.0.0.1%3A%%PORT%%%2Fapi%2Fproviders%2Fvercel%2Foauth%2Fcallback&response_type=code&code_challenge=t1ptrmsM3nQxIbbsCybKRC-qt2HxbogjkVw7Lfxsz5g&code_challenge_method=S256&state=nhkTnQ4xH8VkYqVKkTNRfQ&scope=offline_access\"}"
     },
     {
       "method": "GET",
-      "path": "/api/providers/vercel/oauth/callback?code=stale&state=A7msZfzhO1bf1jLNSWVNeA",
+      "path": "/api/providers/vercel/oauth/callback?code=stale&state=nhkTnQ4xH8VkYqVKkTNRfQ",
       "status": 400,
       "headers": {
         "content-type": "text/html; charset=utf-8"

@@ -1,6 +1,9 @@
 {
   "version": 1,
   "gate": "mcp-git",
+  "bindings": {
+    "git": "git version 2.44.0"
+  },
   "http": [],
   "entries": [
     {

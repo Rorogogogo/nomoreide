@@ -9,7 +9,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"running\",\"kind\":\"local\",\"pid\":62160,\"startedAt\":\"2026-08-31T06:12:41.080Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"running\",\"kind\":\"local\",\"pid\":69584,\"startedAt\":\"2026-08-31T09:07:31.826Z\"}}"
     },
     {
       "method": "POST",
@@ -18,7 +18,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":62160,\"startedAt\":\"2026-08-31T06:12:41.080Z\",\"exitedAt\":\"2026-08-31T06:12:43.111Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"errorer\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":69584,\"startedAt\":\"2026-08-31T09:07:31.826Z\",\"exitedAt\":\"2026-08-31T09:07:33.849Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
     },
     {
       "method": "POST",
@@ -27,7 +27,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"late\",\"state\":\"running\",\"kind\":\"local\",\"pid\":62478,\"startedAt\":\"2026-08-31T06:12:44.410Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"late\",\"state\":\"running\",\"kind\":\"local\",\"pid\":69820,\"startedAt\":\"2026-08-31T09:07:35.153Z\"}}"
     },
     {
       "method": "POST",
@@ -57,10 +57,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:43 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:34 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n"
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T09:07:31.848Z\",\"lastSeen\":\"2026-08-31T09:07:31.848Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n"
       }
     },
     {
@@ -71,10 +71,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:44 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:35 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T06:12:44.441Z\",\"lastSeen\":\"2026-08-31T06:12:44.441Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\n"
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T09:07:31.848Z\",\"lastSeen\":\"2026-08-31T09:07:31.848Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T09:07:35.190Z\",\"lastSeen\":\"2026-08-31T09:07:35.190Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\n"
       }
     },
     {
@@ -85,10 +85,10 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:12:46 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:37 GMT",
           "transfer-encoding": "chunked"
         },
-        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T06:12:44.441Z\",\"lastSeen\":\"2026-08-31T06:12:44.441Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T06:12:41.101Z\",\"lastSeen\":\"2026-08-31T06:12:41.101Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n: ping\n\n"
+        "body": "retry: 2000\n\nevent: incident\ndata: {\"id\":2,\"service\":\"late\",\"level\":\"error\",\"signature\":\"late fatal error: the gasket failed\",\"title\":\"fatal error: the gasket failed\",\"firstSeen\":\"2026-08-31T09:07:35.190Z\",\"lastSeen\":\"2026-08-31T09:07:35.190Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the gasket failed\"]}\n\nevent: incident\ndata: {\"id\":1,\"service\":\"errorer\",\"level\":\"error\",\"signature\":\"errorer fatal error: the widget exploded\",\"title\":\"fatal error: the widget exploded\",\"firstSeen\":\"2026-08-31T09:07:31.848Z\",\"lastSeen\":\"2026-08-31T09:07:31.848Z\",\"count\":1,\"logExcerpt\":[\"fatal error: the widget exploded\"]}\n\n: ping\n\n"
       }
     },
     {
@@ -99,7 +99,7 @@
           "cache-control": "no-cache, no-transform",
           "connection": "keep-alive",
           "content-type": "text/event-stream",
-          "date": "Mon, 31 Aug 2026 06:13:05 GMT",
+          "date": "Mon, 31 Aug 2026 09:07:56 GMT",
           "transfer-encoding": "chunked"
         },
         "body": "retry: 2000\n\n"

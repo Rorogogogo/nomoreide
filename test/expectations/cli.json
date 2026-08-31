@@ -1,6 +1,9 @@
 {
   "version": 1,
   "gate": "cli",
+  "bindings": {
+    "git": "git version 2.44.0"
+  },
   "http": [],
   "entries": [
     {
@@ -323,7 +326,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55665,\n  \"startedAt\": \"2026-08-31T06:02:41.859Z\"\n}\n",
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 28001,\n  \"startedAt\": \"2026-08-31T09:13:23.926Z\"\n}\n",
         "stderr": ""
       }
     },
@@ -341,7 +344,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "2026-08-31T06:02:41.865Z\tstdout\talpha listening\n",
+        "stdout": "2026-08-31T09:13:23.931Z\tstdout\talpha listening\n",
         "stderr": ""
       }
     },
@@ -350,7 +353,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 55665,\n  \"startedAt\": \"2026-08-31T06:02:41.859Z\",\n  \"exitedAt\": \"2026-08-31T06:02:42.776Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 28001,\n  \"startedAt\": \"2026-08-31T09:13:23.926Z\",\n  \"exitedAt\": \"2026-08-31T09:13:24.852Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
         "stderr": ""
       }
     },
@@ -359,7 +362,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 55832,\n  \"startedAt\": \"2026-08-31T06:02:43.088Z\"\n}\n",
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"running\",\n  \"kind\": \"local\",\n  \"pid\": 28169,\n  \"startedAt\": \"2026-08-31T09:13:25.173Z\"\n}\n",
         "stderr": ""
       }
     },
@@ -368,7 +371,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 55832,\n  \"startedAt\": \"2026-08-31T06:02:43.088Z\",\n  \"exitedAt\": \"2026-08-31T06:02:43.404Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
+        "stdout": "{\n  \"name\": \"alpha\",\n  \"state\": \"stopped\",\n  \"kind\": \"local\",\n  \"pid\": 28169,\n  \"startedAt\": \"2026-08-31T09:13:25.173Z\",\n  \"exitedAt\": \"2026-08-31T09:13:25.498Z\",\n  \"exitCode\": null,\n  \"signal\": \"SIGTERM\"\n}\n",
         "stderr": ""
       }
     },
@@ -1097,7 +1100,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T06:02:41.865Z stdout alpha listening\n2026-08-31T06:02:43.094Z stdout alpha listening\n",
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T09:13:23.931Z stdout alpha listening\n2026-08-31T09:13:25.179Z stdout alpha listening\n",
         "stderr": ""
       }
     },
@@ -1106,7 +1109,7 @@
       "value": {
         "code": 0,
         "signal": null,
-        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T06:02:41.865Z stdout alpha listening\n2026-08-31T06:02:43.094Z stdout alpha listening\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
+        "stdout": "\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nLogs - alpha\n2026-08-31T09:13:23.931Z stdout alpha listening\n2026-08-31T09:13:25.179Z stdout alpha listening\n\u001bcNoMoreIDE\ns start   x stop   r restart   b bundles   l logs   q quit\n\nServices\n> alpha              stopped  port -    \n  beta               stopped  port 4002 \n  gamma              stopped  port -     a described service\n  zeta               stopped  port -     a\n  compose-a          stopped  port -    \n  ssh-a              stopped  port -    \n\nBundles\n  ghosts  [nobody]\n  pair  [alpha]\n",
         "stderr": ""
       }
     },

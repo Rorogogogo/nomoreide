@@ -219,6 +219,7 @@ function run(gate: Gate, timeoutMs: number, mode: "replay"): Promise<Result> {
 /** What a gate exits with to say it cannot run here. See {@link run}. */
 const SKIPPED_EXIT = 3;
 
+
 /** Reports rather than fails when a gate's probe binary was never built. */
 async function missingExample(gate: Gate): Promise<Result | null> {
   if (!gate.example) return null;

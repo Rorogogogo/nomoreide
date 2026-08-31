@@ -36,7 +36,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\"}}"
     },
     {
       "method": "POST",
@@ -45,7 +45,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49216,\"upstreamPort\":49213}}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\",\"inspector\":{\"enabled\":true,\"port\":61221,\"upstreamPort\":61218}}}"
     },
     {
       "method": "POST",
@@ -54,7 +54,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49216,\"upstreamPort\":49213}}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\",\"inspector\":{\"enabled\":true,\"port\":61221,\"upstreamPort\":61218}}}"
     },
     {
       "method": "GET",
@@ -63,7 +63,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"timeline\":[{\"id\":\"44016c13-3fa3-4799-8397-91c2e5f3b2eb\",\"timestamp\":\"2026-08-31T06:12:17.758Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web started\",\"data\":{\"pid\":57944}},{\"id\":\"b37798a2-fdd1-4554-b29f-bbfd6e644a30\",\"timestamp\":\"2026-08-31T06:12:17.781Z\",\"kind\":\"service.port\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web reported http://127.0.0.1:49213/\",\"detail\":\"http://127.0.0.1:49213/\"},{\"id\":\"bf043d1d-07a6-4a40-8748-fe5cb62a13f7\",\"timestamp\":\"2026-08-31T06:12:17.781Z\",\"kind\":\"service.log\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web stdout\",\"detail\":\"ready on http://127.0.0.1:49213/\"},{\"id\":\"95173bb1-cc2c-4c87-bd52-e05be66c36a3\",\"timestamp\":\"2026-08-31T06:12:19.277Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web HTTP inspector on :49216\",\"detail\":\"Proxying to upstream :49213\"},{\"id\":\"943b593d-f880-4e6a-a253-1be003608b58\",\"timestamp\":\"2026-08-31T06:12:19.280Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"GET /hello?x=1 → 200\",\"detail\":\"5.2 ms\",\"data\":{\"id\":\"eb2ba87e-993f-41ea-9680-6e50ba381479\",\"method\":\"GET\",\"path\":\"/hello?x=1\",\"status\":200,\"durationMs\":5.2,\"reqBytes\":0,\"resBytes\":61}},{\"id\":\"feb58698-e0e8-4f9b-a30a-2ec544edf9ee\",\"timestamp\":\"2026-08-31T06:12:19.293Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"error\",\"title\":\"GET /refuse → 503\",\"detail\":\"1.5 ms\",\"data\":{\"id\":\"17e2a1da-983f-46b6-b6c8-086f5218f3e7\",\"method\":\"GET\",\"path\":\"/refuse\",\"status\":503,\"durationMs\":1.5,\"reqBytes\":0,\"resBytes\":58}},{\"id\":\"eb6e8509-5715-4b7b-95f7-863b019ac855\",\"timestamp\":\"2026-08-31T06:12:19.296Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"POST /submit → 200\",\"detail\":\"0.7 ms\",\"data\":{\"id\":\"3d74a490-d57b-4e3d-811c-2c2b5b932f6e\",\"method\":\"POST\",\"path\":\"/submit\",\"status\":200,\"durationMs\":0.7,\"reqBytes\":11,\"resBytes\":59}}]}"
+      "body": "{\"ok\":true,\"timeline\":[{\"id\":\"1f13e6ce-3279-4fde-b825-7beb28528b55\",\"timestamp\":\"2026-08-31T09:07:08.424Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web started\",\"data\":{\"pid\":65559}},{\"id\":\"94aa4b0f-c1db-487e-9cc1-5d387ef2a819\",\"timestamp\":\"2026-08-31T09:07:08.449Z\",\"kind\":\"service.port\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web reported http://127.0.0.1:61218/\",\"detail\":\"http://127.0.0.1:61218/\"},{\"id\":\"32d44a2f-89bb-4fea-bee3-5199293bed78\",\"timestamp\":\"2026-08-31T09:07:08.449Z\",\"kind\":\"service.log\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web stdout\",\"detail\":\"ready on http://127.0.0.1:61218/\"},{\"id\":\"7b0dfd35-6c7d-4124-adcf-7e62a57e1411\",\"timestamp\":\"2026-08-31T09:07:09.951Z\",\"kind\":\"service.lifecycle\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"web HTTP inspector on :61221\",\"detail\":\"Proxying to upstream :61218\"},{\"id\":\"883b53ce-8831-4d8b-8528-e3413a74aa35\",\"timestamp\":\"2026-08-31T09:07:09.955Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"GET /hello?x=1 → 200\",\"detail\":\"4.8 ms\",\"data\":{\"id\":\"9cb71c90-a762-43ef-b520-555993983bb9\",\"method\":\"GET\",\"path\":\"/hello?x=1\",\"status\":200,\"durationMs\":4.8,\"reqBytes\":0,\"resBytes\":61}},{\"id\":\"e4dfb932-a0a7-4121-afab-6387a313946e\",\"timestamp\":\"2026-08-31T09:07:09.976Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"error\",\"title\":\"GET /refuse → 503\",\"detail\":\"1.6 ms\",\"data\":{\"id\":\"6a0efa2b-1e51-4568-98ee-4c8d617d9ec2\",\"method\":\"GET\",\"path\":\"/refuse\",\"status\":503,\"durationMs\":1.6,\"reqBytes\":0,\"resBytes\":58}},{\"id\":\"fddef380-4009-409a-8558-93cfdc59397d\",\"timestamp\":\"2026-08-31T09:07:09.979Z\",\"kind\":\"service.http\",\"service\":\"web\",\"severity\":\"info\",\"title\":\"POST /submit → 200\",\"detail\":\"0.5 ms\",\"data\":{\"id\":\"947ee527-095f-4a2b-a568-37d5c43988f3\",\"method\":\"POST\",\"path\":\"/submit\",\"status\":200,\"durationMs\":0.5,\"reqBytes\":11,\"resBytes\":59}}]}"
     },
     {
       "method": "POST",
@@ -72,7 +72,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -81,7 +81,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"inspector\":{\"enabled\":true,\"port\":49229,\"upstreamPort\":49213}}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\",\"inspector\":{\"enabled\":true,\"port\":61234,\"upstreamPort\":61218}}}"
     },
     {
       "method": "POST",
@@ -90,7 +90,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -99,7 +99,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -108,7 +108,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -117,7 +117,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -126,7 +126,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -135,7 +135,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65733,\"startedAt\":\"2026-08-31T09:07:10.507Z\"}}"
     },
     {
       "method": "POST",
@@ -144,7 +144,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\",\"inspector\":{\"enabled\":true}}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65733,\"startedAt\":\"2026-08-31T09:07:10.507Z\",\"inspector\":{\"enabled\":true}}}"
     },
     {
       "method": "POST",
@@ -153,7 +153,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65733,\"startedAt\":\"2026-08-31T09:07:10.507Z\"}}"
     },
     {
       "method": "POST",
@@ -162,7 +162,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"running\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\"}}"
     },
     {
       "method": "POST",
@@ -171,7 +171,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":57944,\"startedAt\":\"2026-08-31T06:12:17.757Z\",\"url\":\"http://127.0.0.1:49213/\",\"exitedAt\":\"2026-08-31T06:12:20.645Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"web\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":65559,\"startedAt\":\"2026-08-31T09:07:08.424Z\",\"url\":\"http://127.0.0.1:61218/\",\"exitedAt\":\"2026-08-31T09:07:11.326Z\",\"exitCode\":null,\"signal\":\"SIGTERM\"}}"
     },
     {
       "method": "POST",
@@ -180,7 +180,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":58117,\"startedAt\":\"2026-08-31T06:12:19.826Z\",\"exitedAt\":\"2026-08-31T06:12:20.649Z\",\"exitCode\":0,\"signal\":null}}"
+      "body": "{\"ok\":true,\"status\":{\"name\":\"quiet\",\"state\":\"stopped\",\"kind\":\"local\",\"pid\":65733,\"startedAt\":\"2026-08-31T09:07:10.507Z\",\"exitedAt\":\"2026-08-31T09:07:11.330Z\",\"exitCode\":0,\"signal\":null}}"
     }
   ],
   "entries": [
@@ -224,8 +224,8 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z"
           }
         }
       }
@@ -240,13 +240,13 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/",
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/",
             "inspector": {
               "enabled": true,
-              "port": 49216,
-              "upstreamPort": 49213
+              "port": 61221,
+              "upstreamPort": 61218
             }
           }
         }
@@ -262,13 +262,13 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/",
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/",
             "inspector": {
               "enabled": true,
-              "port": 49216,
-              "upstreamPort": 49213
+              "port": 61221,
+              "upstreamPort": 61218
             }
           }
         }
@@ -279,76 +279,76 @@
       "value": {
         "status": 200,
         "fromUpstream": "upstream",
-        "body": "{\"path\":\"/hello?x=1\",\"method\":\"GET\",\"host\":\"127.0.0.1:49213\"}"
+        "body": "{\"path\":\"/hello?x=1\",\"method\":\"GET\",\"host\":\"127.0.0.1:61218\"}"
       }
     },
     {
       "key": "proxy/an-upstream-failure-passes-through",
       "value": {
         "status": 503,
-        "body": "{\"path\":\"/refuse\",\"method\":\"GET\",\"host\":\"127.0.0.1:49213\"}"
+        "body": "{\"path\":\"/refuse\",\"method\":\"GET\",\"host\":\"127.0.0.1:61218\"}"
       }
     },
     {
       "key": "proxy/a-post-with-a-body",
       "value": {
         "status": 200,
-        "body": "{\"path\":\"/submit\",\"method\":\"POST\",\"host\":\"127.0.0.1:49213\"}"
+        "body": "{\"path\":\"/submit\",\"method\":\"POST\",\"host\":\"127.0.0.1:61218\"}"
       }
     },
     {
       "key": "timeline/the-requests-were-recorded",
       "value": [
         {
-          "id": "943b593d-f880-4e6a-a253-1be003608b58",
-          "timestamp": "2026-08-31T06:12:19.280Z",
+          "id": "883b53ce-8831-4d8b-8528-e3413a74aa35",
+          "timestamp": "2026-08-31T09:07:09.955Z",
           "kind": "service.http",
           "service": "web",
           "severity": "info",
           "title": "GET /hello?x=1 → 200",
-          "detail": "5.2 ms",
+          "detail": "4.8 ms",
           "data": {
-            "id": "eb2ba87e-993f-41ea-9680-6e50ba381479",
+            "id": "9cb71c90-a762-43ef-b520-555993983bb9",
             "method": "GET",
             "path": "/hello?x=1",
             "status": 200,
-            "durationMs": 5.2,
+            "durationMs": 4.8,
             "reqBytes": 0,
             "resBytes": 61
           }
         },
         {
-          "id": "feb58698-e0e8-4f9b-a30a-2ec544edf9ee",
-          "timestamp": "2026-08-31T06:12:19.293Z",
+          "id": "e4dfb932-a0a7-4121-afab-6387a313946e",
+          "timestamp": "2026-08-31T09:07:09.976Z",
           "kind": "service.http",
           "service": "web",
           "severity": "error",
           "title": "GET /refuse → 503",
-          "detail": "1.5 ms",
+          "detail": "1.6 ms",
           "data": {
-            "id": "17e2a1da-983f-46b6-b6c8-086f5218f3e7",
+            "id": "6a0efa2b-1e51-4568-98ee-4c8d617d9ec2",
             "method": "GET",
             "path": "/refuse",
             "status": 503,
-            "durationMs": 1.5,
+            "durationMs": 1.6,
             "reqBytes": 0,
             "resBytes": 58
           }
         },
         {
-          "id": "eb6e8509-5715-4b7b-95f7-863b019ac855",
-          "timestamp": "2026-08-31T06:12:19.296Z",
+          "id": "fddef380-4009-409a-8558-93cfdc59397d",
+          "timestamp": "2026-08-31T09:07:09.979Z",
           "kind": "service.http",
           "service": "web",
           "severity": "info",
           "title": "POST /submit → 200",
-          "detail": "0.7 ms",
+          "detail": "0.5 ms",
           "data": {
-            "id": "3d74a490-d57b-4e3d-811c-2c2b5b932f6e",
+            "id": "947ee527-095f-4a2b-a568-37d5c43988f3",
             "method": "POST",
             "path": "/submit",
             "status": 200,
-            "durationMs": 0.7,
+            "durationMs": 0.5,
             "reqBytes": 11,
             "resBytes": 59
           }
@@ -365,9 +365,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -388,13 +388,13 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/",
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/",
             "inspector": {
               "enabled": true,
-              "port": 49229,
-              "upstreamPort": 49213
+              "port": 61234,
+              "upstreamPort": 61218
             }
           }
         }
@@ -410,9 +410,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -427,9 +427,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -444,9 +444,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -461,9 +461,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -478,9 +478,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }
@@ -495,8 +495,8 @@
             "name": "quiet",
             "state": "running",
             "kind": "local",
-            "pid": 58117,
-            "startedAt": "2026-08-31T06:12:19.826Z"
+            "pid": 65733,
+            "startedAt": "2026-08-31T09:07:10.507Z"
           }
         }
       }
@@ -511,8 +511,8 @@
             "name": "quiet",
             "state": "running",
             "kind": "local",
-            "pid": 58117,
-            "startedAt": "2026-08-31T06:12:19.826Z",
+            "pid": 65733,
+            "startedAt": "2026-08-31T09:07:10.507Z",
             "inspector": {
               "enabled": true
             }
@@ -530,8 +530,8 @@
             "name": "quiet",
             "state": "running",
             "kind": "local",
-            "pid": 58117,
-            "startedAt": "2026-08-31T06:12:19.826Z"
+            "pid": 65733,
+            "startedAt": "2026-08-31T09:07:10.507Z"
           }
         }
       }
@@ -546,9 +546,9 @@
             "name": "web",
             "state": "running",
             "kind": "local",
-            "pid": 57944,
-            "startedAt": "2026-08-31T06:12:17.757Z",
-            "url": "http://127.0.0.1:49213/"
+            "pid": 65559,
+            "startedAt": "2026-08-31T09:07:08.424Z",
+            "url": "http://127.0.0.1:61218/"
           }
         }
       }

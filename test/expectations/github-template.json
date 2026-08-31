@@ -63,7 +63,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"commits\":[{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
     },
     {
       "method": "GET",
@@ -81,7 +81,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"commits\":[{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
     },
     {
       "method": "GET",
@@ -90,7 +90,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Server Error\",\"Could not compare pushed GitHub branches: Not Found\"]}}"
+      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Second change\",\"body\":\"## Commits\\n- Second change\\n\\n## Changed files\\n- A app.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":1,\"headSha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"commits\":[{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"message\":\"Second change\"}],\"files\":[{\"path\":\"app.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Server Error\",\"Could not compare pushed GitHub branches: Not Found\"]}}"
     },
     {
       "method": "GET",
@@ -117,7 +117,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"},{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
+      "body": "{\"ok\":true,\"template\":{\"repository\":{\"full_name\":\"acme/widgets\",\"default_branch\":\"main\"},\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"commits\":[{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"message\":\"Second change\"},{\"sha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not compare pushed GitHub branches: Not Found\"]}}"
     },
     {
       "method": "GET",
@@ -180,7 +180,7 @@
       "headers": {
         "content-type": "application/json; charset=utf-8"
       },
-      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"commits\":[{\"sha\":\"7b25465354df924e722d4ab933e7ed53c903c1c9\",\"message\":\"Second change\"},{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"3ce48bf697d06f06463e2999e2ec00d011df4637\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Bad credentials\",\"Could not compare pushed GitHub branches: Bad credentials\"]}}"
+      "body": "{\"ok\":true,\"template\":{\"repository\":null,\"currentBranch\":\"feature\",\"suggestedBase\":\"main\",\"base\":\"main\",\"head\":\"feature\",\"title\":\"Rename and add\",\"body\":\"## Commits\\n- Second change\\n- Rename and add\\n\\n## Changed files\\n- R README.md\\n- A app.ts\\n- A extra.ts\",\"draft\":false,\"compare\":{\"base\":\"main\",\"head\":\"feature\",\"aheadBy\":2,\"headSha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"commits\":[{\"sha\":\"8463fd6351b2a1ca83ba171e7788f1c632f44305\",\"message\":\"Second change\"},{\"sha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"message\":\"Rename and add\"}],\"files\":[{\"path\":\"README.md\",\"status\":\"R\"},{\"path\":\"app.ts\",\"status\":\"A\"},{\"path\":\"extra.ts\",\"status\":\"A\"}],\"ciStatus\":{\"sha\":\"37b084b2828da1dcaf3477e46b5c6ba79f5d791d\",\"state\":\"unknown\",\"totalCount\":0,\"runs\":[]}},\"warnings\":[\"Could not read GitHub repository metadata: Bad credentials\",\"Could not compare pushed GitHub branches: Bad credentials\"]}}"
     },
     {
       "method": "GET",
@@ -886,10 +886,10 @@
                 "base": "main",
                 "head": "feature",
                 "aheadBy": 1,
-                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "headSha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                 "commits": [
                   {
-                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                     "message": "Second change"
                   }
                 ],
@@ -900,7 +900,7 @@
                   }
                 ],
                 "ciStatus": {
-                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                   "state": "unknown",
                   "totalCount": 0,
                   "runs": []
@@ -935,7 +935,7 @@
           },
           {
             "method": "GET",
-            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "path": "/repos/acme/widgets/commits/8463fd6351b2a1ca83ba171e7788f1c632f44305/check-runs?per_page=100",
             "accept": "application/vnd.github+json",
             "authorization": "Bearer tok-fixture",
             "contentType": null,
@@ -1026,10 +1026,10 @@
                 "base": "main",
                 "head": "feature",
                 "aheadBy": 1,
-                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "headSha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                 "commits": [
                   {
-                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                     "message": "Second change"
                   }
                 ],
@@ -1040,7 +1040,7 @@
                   }
                 ],
                 "ciStatus": {
-                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                   "state": "unknown",
                   "totalCount": 0,
                   "runs": []
@@ -1075,7 +1075,7 @@
           },
           {
             "method": "GET",
-            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "path": "/repos/acme/widgets/commits/8463fd6351b2a1ca83ba171e7788f1c632f44305/check-runs?per_page=100",
             "accept": "application/vnd.github+json",
             "authorization": "Bearer tok-fixture",
             "contentType": null,
@@ -1106,10 +1106,10 @@
                 "base": "main",
                 "head": "feature",
                 "aheadBy": 1,
-                "headSha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                "headSha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                 "commits": [
                   {
-                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                     "message": "Second change"
                   }
                 ],
@@ -1120,7 +1120,7 @@
                   }
                 ],
                 "ciStatus": {
-                  "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                  "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                   "state": "unknown",
                   "totalCount": 0,
                   "runs": []
@@ -1156,7 +1156,7 @@
           },
           {
             "method": "GET",
-            "path": "/repos/acme/widgets/commits/7b25465354df924e722d4ab933e7ed53c903c1c9/check-runs?per_page=100",
+            "path": "/repos/acme/widgets/commits/8463fd6351b2a1ca83ba171e7788f1c632f44305/check-runs?per_page=100",
             "accept": "application/vnd.github+json",
             "authorization": "Bearer tok-fixture",
             "contentType": null,
@@ -1282,14 +1282,14 @@
                 "base": "main",
                 "head": "feature",
                 "aheadBy": 2,
-                "headSha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                "headSha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                 "commits": [
                   {
-                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                     "message": "Second change"
                   },
                   {
-                    "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                    "sha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                     "message": "Rename and add"
                   }
                 ],
@@ -1308,7 +1308,7 @@
                   }
                 ],
                 "ciStatus": {
-                  "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                  "sha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                   "state": "unknown",
                   "totalCount": 0,
                   "runs": []
@@ -1343,7 +1343,7 @@
           },
           {
             "method": "GET",
-            "path": "/repos/acme/widgets/commits/3ce48bf697d06f06463e2999e2ec00d011df4637/check-runs?per_page=100",
+            "path": "/repos/acme/widgets/commits/37b084b2828da1dcaf3477e46b5c6ba79f5d791d/check-runs?per_page=100",
             "accept": "application/vnd.github+json",
             "authorization": "Bearer tok-fixture",
             "contentType": null,
@@ -1721,14 +1721,14 @@
                 "base": "main",
                 "head": "feature",
                 "aheadBy": 2,
-                "headSha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                "headSha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                 "commits": [
                   {
-                    "sha": "7b25465354df924e722d4ab933e7ed53c903c1c9",
+                    "sha": "8463fd6351b2a1ca83ba171e7788f1c632f44305",
                     "message": "Second change"
                   },
                   {
-                    "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                    "sha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                     "message": "Rename and add"
                   }
                 ],
@@ -1747,7 +1747,7 @@
                   }
                 ],
                 "ciStatus": {
-                  "sha": "3ce48bf697d06f06463e2999e2ec00d011df4637",
+                  "sha": "37b084b2828da1dcaf3477e46b5c6ba79f5d791d",
                   "state": "unknown",
                   "totalCount": 0,
                   "runs": []
@@ -1783,7 +1783,7 @@
           },
           {
             "method": "GET",
-            "path": "/repos/acme/widgets/commits/3ce48bf697d06f06463e2999e2ec00d011df4637/check-runs?per_page=100",
+            "path": "/repos/acme/widgets/commits/37b084b2828da1dcaf3477e46b5c6ba79f5d791d/check-runs?per_page=100",
             "accept": "application/vnd.github+json",
             "authorization": "Bearer tok-fixture",
             "contentType": null,
