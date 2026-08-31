@@ -28,8 +28,11 @@ const aiContextMenuSource = readFileSync(
   resolve(root, "apps/dashboard/src/features/agent/context-menu/ai-context-menu.tsx"),
   "utf8",
 );
+// The Rust route module now, the TypeScript one having been deleted with the
+// rest of the port's reference implementation. The assertion is unchanged in
+// substance: no `/docs` route is served.
 const shellRoutesSource = readFileSync(
-  resolve(root, "src/web/routes/shell-routes.ts"),
+  resolve(root, "crates/nomoreide-daemon/src/server/routes/shell.rs"),
   "utf8",
 );
 // UI copy now lives in the i18n catalog (t("...")), so rendered text is asserted

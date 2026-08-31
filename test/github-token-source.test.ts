@@ -8,7 +8,6 @@ const hookSource = readFileSync(
   "apps/dashboard/src/features/github/hooks/use-github-token.ts",
   "utf8",
 );
-const routeSource = readFileSync("src/web/routes/github-routes.ts", "utf8");
 const indicatorSource = readFileSync(
   "apps/dashboard/src/features/github/github-header-indicator.tsx",
   "utf8",
@@ -46,10 +45,10 @@ describe("GitHub token client status", () => {
 
   test("the connected account carries an avatar for the header indicator", () => {
     expect(apiSource).toContain("user?: { login: string; avatarUrl?: string }");
-    // Cached at connect time so a status check costs no extra GitHub API call.
-    expect(routeSource).toContain("fetchGitHubProfile");
-    expect(routeSource).toContain("getGithubProfile");
-    expect(routeSource).toContain("setGithubProfile");
+    // The server half — that the profile is cached at connect time, so a
+    // status check costs no extra GitHub API call — is asserted against real
+    // responses by `check-github-connection-parity`, not by grepping a source
+    // file for an identifier.
     expect(indicatorSource).toContain("user.avatarUrl");
     // Offline dashboards must not render a broken-image glyph.
     expect(avatarSource).toContain("onError");
@@ -69,10 +68,7 @@ describe("GitHub token client status", () => {
     // the credential working — reporting it as "connection failed / Not Found"
     // read as "you are logged out" and sent people to reconnect.
     expect(apiSource).toContain('"repo_access"');
-    expect(routeSource).toContain("error.status !== 404) throw error");
-    expect(routeSource).toContain('status: "repo_access"');
     // The remote names the repo even when the API refuses to describe it.
-    expect(routeSource).toContain("const repositorySlug = `${context.owner}/${context.repo}`;");
     expect(apiSource).toContain("repositorySlug?: string");
   });
 

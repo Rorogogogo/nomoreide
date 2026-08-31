@@ -11,7 +11,6 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import type { Server } from "node:http";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { callMcpTool, normalizeMcpContract, type McpCommand } from "./mcp-contract.js";
 import {
   parityMode,
@@ -43,15 +42,21 @@ export interface WorkspaceFile {
 }
 
 /**
- * Absolute, so the reference boots from any working directory. A bare `tsx`
- * and a relative `src/index.ts` would both resolve against the daemon's cwd,
- * which {@link RuntimeHarness.startDaemon} lets a gate point elsewhere.
+ * There is no reference any more.
+ *
+ * `src/` was the TypeScript implementation these gates diffed the native
+ * binary against, and it has been deleted — the port is finished, and it was
+ * the record/replay work that made deleting it possible. Every recording in
+ * `test/expectations/` is what the reference answered while it still existed,
+ * and replay is now the only mode.
+ *
+ * Recovering it, should a gate ever need re-recording, means checking out a
+ * commit that still has `src/` — the deletion commit's parent — and recording
+ * there. That is deliberately awkward: a recording is a historical artefact
+ * now, not something to regenerate casually.
  */
-const REFERENCE_ARGS = [
-  "--import",
-  pathToFileURL(join(repoRoot(), "node_modules", "tsx", "dist", "loader.mjs")).href,
-  join(repoRoot(), "src", "index.ts"),
-] as const;
+const REFERENCE_IS_DELETED =
+  "the TypeScript reference was deleted when the port finished; only replay mode exists";
 
 /**
  * A command that cannot exist, used as the reference in replay mode.
@@ -65,10 +70,16 @@ const REFERENCE_ARGS = [
 const UNSPAWNABLE_REFERENCE = "/nonexistent/the-typescript-reference-must-not-run-in-replay";
 
 export function referenceSpec(): RuntimeSpec {
-  if (parityMode() === "replay") {
-    return { label: "reference", command: UNSPAWNABLE_REFERENCE, args: [] };
+  if (parityMode() !== "replay") {
+    // Thrown rather than left to fail at spawn time: "ENOENT
+    // /nonexistent/..." is a puzzle, and the answer — that live and record
+    // modes died with `src/` — is worth saying outright.
+    throw new Error(
+      `${REFERENCE_IS_DELETED}. Run the gates with --replay (or ` +
+        `NOMOREIDE_PARITY_MODE=replay); \`npm run parity -- <binary> --replay\`.`,
+    );
   }
-  return { label: "reference", command: process.execPath, args: [...REFERENCE_ARGS] };
+  return { label: "reference", command: UNSPAWNABLE_REFERENCE, args: [] };
 }
 
 export function candidateSpec(argv: string[]): RuntimeSpec {

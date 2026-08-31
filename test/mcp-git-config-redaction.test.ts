@@ -23,6 +23,19 @@ function text(response: Awaited<ReturnType<typeof callMcpTool>>): string {
   return content?.[0]?.text ?? "";
 }
 
+/**
+ * The built `nomoreide`, which this test drives as an MCP server.
+ *
+ * `NOMOREIDE_TEST_BINARY` first so a release build can be checked the same
+ * way; otherwise the debug binary a `cargo build` leaves behind.
+ */
+function candidateBinary(): string {
+  const override = process.env.NOMOREIDE_TEST_BINARY;
+  if (override) return override;
+  const target = process.env.CARGO_TARGET_DIR ?? join(root, "target");
+  return join(target, "debug", "nomoreide");
+}
+
 describe("git config tools over MCP", () => {
   /**
    * These tools answer with the whole config, which holds every stored GitHub
@@ -44,9 +57,13 @@ describe("git config tools over MCP", () => {
         (entry): entry is [string, string] => entry[1] !== undefined,
       ),
     );
+    // The native binary, the TypeScript one it used to drive having been
+    // deleted with the rest of the port's reference implementation. This is a
+    // security assertion — a stored token must never come back out of a git
+    // config read — so it is worth keeping pointed at what actually ships.
     const command: McpCommand = {
-      command: process.execPath,
-      args: ["--import", "tsx", "src/index.ts", "mcp"],
+      command: candidateBinary(),
+      args: ["mcp"],
       cwd: root,
       env: {
         ...env,
