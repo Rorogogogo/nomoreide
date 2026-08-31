@@ -1153,7 +1153,9 @@ comes back. The exit code is the part no other gate looks at — `runCli` answer
 the right words while exiting 0 on failure is invisible to every HTTP gate and
 fatal to every script that wraps it.
 
-Four defects it found, none of them in the CLI itself:
+Four defects it found. Two were already shipped and reach far past the command
+line; the other two were in the CLI written for this phase, and the gate caught
+them before either was committed:
 
 - **`exitCode: null` was dropped from every service status.** The reference
   writes `exitCode` and `signal` together when a run ends, one of them `null`;
@@ -1167,6 +1169,8 @@ Four defects it found, none of them in the CLI itself:
   config and no skills, where the reference refuses. That is worse than a
   refusal: it looks like a captured setup, and applying it later reports
   "0 MCPs, 0 skills" as though that were the answer.
+The two the gate caught in this phase's own new code, neither ever shipped:
+
 - **`db check <unregistered>`** answered with the dashboard's wording. Core
   carries two refusals for that one question and the CLI resolves through the
   read-safe one.
@@ -1231,9 +1235,17 @@ codex mcp add nomoreide -- nomoreide mcp
 **Not met, and it cannot be met inside a working session.** The first bullet
 above is "run at least one stable native release", and the second is "remove
 the TypeScript code only after the rollback window closes". Both are waiting on
-wall-clock time after a release goes out, not on work. Deleting the TypeScript
-runtime before that would also delete the differential parity gates, which are
-the only thing that has been checking any of this.
+wall-clock time after a release goes out, not on work.
+
+**The suite no longer stands in the way.** Deleting the TypeScript runtime used
+to delete the differential gates with it — 59 of the 71 worked by launching the
+reference beside the native binary — which made the phase circular. Every gate
+now records what the reference answered into `test/expectations/<gate>.json` and
+can replay it with the reference never started, and CI runs the suite both ways.
+Replaying points the reference at a path that cannot exist, so the claim is
+enforced rather than asserted: a gate that still reaches for TypeScript dies
+naming itself. When the rollback window closes, `src/` can go and all 71 gates
+keep running.
 
 **What has landed toward it:**
 
